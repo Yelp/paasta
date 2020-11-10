@@ -95,16 +95,16 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
-from kubernetes.client import V2beta1CrossVersionObjectReference
-from kubernetes.client import V2beta1ExternalMetricSource
-from kubernetes.client import V2beta1HorizontalPodAutoscaler
-from kubernetes.client import V2beta1HorizontalPodAutoscalerCondition
-from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta1MetricSpec
-from kubernetes.client import V2beta1PodsMetricSource
-from kubernetes.client import V2beta1ResourceMetricSource
+from kubernetes.client import V2beta2CrossVersionObjectReference
+from kubernetes.client import V2beta2ExternalMetricSource
+from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta2MetricIdentifier
+from kubernetes.client import V2beta2MetricSpec
+from kubernetes.client import V2beta2MetricTarget
+from kubernetes.client import V2beta2PodsMetricSource
+from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
-from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
@@ -189,24 +189,6 @@ desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_ave
 
 max(desired_instances / current_replicas, 0).publish()
 """
-
-
-# For detail, https://github.com/kubernetes-client/python/issues/553
-# This hack should be removed when the issue got fixed.
-# This is no better way to work around rn.
-class MonkeyPatchAutoScalingConditions(V2beta1HorizontalPodAutoscalerStatus):
-    @property
-    def conditions(self) -> Sequence[V2beta1HorizontalPodAutoscalerCondition]:
-        return super().conditions()
-
-    @conditions.setter
-    def conditions(
-        self, conditions: Optional[Sequence[V2beta1HorizontalPodAutoscalerCondition]]
-    ) -> None:
-        self._conditions = list() if conditions is None else conditions
-
-
-models.V2beta1HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):
@@ -407,7 +389,7 @@ class KubeClient:
         self.policy = kube_client.PolicyV1beta1Api()
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
-        self.autoscaling = kube_client.AutoscalingV2beta1Api()
+        self.autoscaling = kube_client.AutoscalingV2beta2Api()
         self.request = kube_client.ApiClient().request
 
 
@@ -486,7 +468,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_hpa_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
-    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         hpa_config = self.config_dict["horizontal_autoscaling"]
         min_replicas = hpa_config.get("min_replicas", 1)
         max_replicas = hpa_config["max_replicas"]
@@ -498,12 +480,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 continue
             if metric_name in {"cpu", "memory"}:
                 metrics.append(
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="Resource",
-                        resource=V2beta1ResourceMetricSource(
+                        resource=V2beta2ResourceMetricSource(
                             name=metric_name,
-                            target_average_utilization=int(
-                                value["target_average_value"] * 100
+                            target=V2beta2MetricTarget(
+                                type="Utilization",
+                                average_utilization=int(
+                                    value["target_average_value"] * 100
+                                ),
                             ),
                         ),
                     )
@@ -511,12 +496,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             elif metric_name in {"http", "uwsgi"}:
                 if "dimensions" not in value:
                     metrics.append(
-                        V2beta1MetricSpec(
+                        V2beta2MetricSpec(
                             type="Pods",
-                            pods=V2beta1PodsMetricSource(
-                                metric_name=metric_name,
-                                target_average_value=value["target_average_value"],
-                                selector=selector,
+                            pods=V2beta2PodsMetricSource(
+                                metric=V2beta2MetricIdentifier(
+                                    name=metric_name, selector=selector,
+                                ),
+                                target=V2beta2MetricTarget(
+                                    type="AverageValue",
+                                    average_value=value["target_average_value"],
+                                ),
                             ),
                         )
                     )
@@ -525,11 +514,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         metric_name
                     )
                     metrics.append(
-                        V2beta1MetricSpec(
+                        V2beta2MetricSpec(
                             type="External",
-                            external=V2beta1ExternalMetricSource(
-                                metric_name=namespaced_metric_name,
-                                target_value=value["target_average_value"],
+                            external=V2beta2ExternalMetricSource(
+                                metric=V2beta2MetricIdentifier(
+                                    name=namespaced_metric_name,
+                                ),
+                                target=V2beta2MetricTarget(
+                                    type="Value", value=value["target_average_value"],
+                                ),
                             ),
                         )
                     )
@@ -544,11 +537,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     metric_name
                 )
                 metrics.append(
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="External",
-                        external=V2beta1ExternalMetricSource(
-                            metric_name=namespaced_metric_name,
-                            target_value=value["target_value"],
+                        external=V2beta2ExternalMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=namespaced_metric_name,
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value", value=value["target_value"],
+                            ),
                         ),
                     )
                 )
@@ -556,16 +553,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     f"signalfx.com.external.metric/{namespaced_metric_name}"
                 ] = value["signalflow_metrics_query"]
 
-        return V2beta1HorizontalPodAutoscaler(
+        return V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name=name, namespace=namespace, annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
@@ -576,7 +573,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaling_metric_spec(
         self, name: str, cluster: str, namespace: str = "paasta"
-    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
 
@@ -609,10 +606,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         if metrics_provider == "mesos_cpu":
             metrics.append(
-                V2beta1MetricSpec(
+                V2beta2MetricSpec(
                     type="Resource",
-                    resource=V2beta1ResourceMetricSource(
-                        name="cpu", target_average_utilization=int(target * 100)
+                    resource=V2beta2ResourceMetricSource(
+                        name="cpu",
+                        target=V2beta2MetricTarget(
+                            type="Utilization", average_utilization=int(target * 100),
+                        ),
                     ),
                 )
             )
@@ -639,22 +639,28 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ] = signalflow
 
                 metrics.append(
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="External",
-                        external=V2beta1ExternalMetricSource(
-                            metric_name=hpa_metric_name,
-                            target_value=1,  # see comments on signalflow template above
+                        external=V2beta2ExternalMetricSource(
+                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,  # see comments on signalflow template above
+                            ),
                         ),
                     )
                 )
             else:
                 metrics.append(
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name=metrics_provider,
-                            target_average_value=target,
-                            selector=selector,
+                        pods=V2beta2PodsMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=metrics_provider, selector=selector,
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="AverageValue", average_value=target,
+                            ),
                         ),
                     )
                 )
@@ -666,16 +672,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        return V2beta1HorizontalPodAutoscaler(
+        return V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name=name, namespace=namespace, annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
