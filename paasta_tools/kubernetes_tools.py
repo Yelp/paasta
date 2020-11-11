@@ -98,6 +98,7 @@ from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
@@ -105,6 +106,7 @@ from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
+from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
@@ -189,6 +191,25 @@ desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_ave
 
 max(desired_instances / current_replicas, 0).publish()
 """
+
+
+# conditions is None when creating a new HPA, but the client raises an error in that case.
+# For detail, https://github.com/kubernetes-client/python/issues/553
+# This hack should be removed when the issue got fixed.
+# This is no better way to work around rn.
+class MonkeyPatchAutoScalingConditions(V2beta2HorizontalPodAutoscalerStatus):
+    @property
+    def conditions(self) -> Sequence[V2beta2HorizontalPodAutoscalerCondition]:
+        return super().conditions()
+
+    @conditions.setter
+    def conditions(
+        self, conditions: Optional[Sequence[V2beta2HorizontalPodAutoscalerCondition]]
+    ) -> None:
+        self._conditions = list() if conditions is None else conditions
+
+
+models.V2beta2HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):
