@@ -140,9 +140,14 @@ class KubernetesClusterConnector(ClusterConnector):
         return False
 
     def _get_pod_unschedulable_reason(self, pod: KubernetesPod) -> PodUnschedulableReason:
+        # TODO (CLUSTERMAN-587) delete this feature toggle once we're sure everything's working as planned
+        if not self.pool_config.read_bool('autoscale_signal.prioritize_pending_pods', default=False):
+            return PodUnschedulableReason.Unknown
+
         pod_resource_request = total_pod_resources(pod)
-        for node in self._nodes_by_ip.values():
-            if pod_resource_request < total_node_resources(node):
+        for node_ip, pods_on_node in self._pods_by_ip.items():
+            node = self._nodes_by_ip.get(node_ip)
+            if node and pod_resource_request < total_node_resources(node) - allocated_node_resources(pods_on_node):
                 return PodUnschedulableReason.Unknown
 
         return PodUnschedulableReason.InsufficientResources

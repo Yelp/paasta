@@ -141,6 +141,7 @@ class Autoscaler:
             logger.info('Autoscaling is currently paused; doing nothing')
             return
 
+        self.pool_manager.reload_state()
         try:
             signal_name = self.signal.name
             resource_request = self.signal.evaluate(timestamp)
@@ -152,8 +153,6 @@ class Autoscaler:
             exception, tb = e, traceback.format_exc()
 
         logger.info(f'Signal {signal_name} requested {resource_request}')
-
-        self.pool_manager.reload_state()
 
         no_scale_down = False
         if self.autoscaling_config.prevent_scale_down_after_capacity_loss:

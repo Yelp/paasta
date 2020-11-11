@@ -153,8 +153,9 @@ debug:
 		-v $(shell pwd)/etc-kubernetes:/etc/kubernetes:ro \
 		-v /nail/etc/services:/nail/etc/services:ro \
 		-v /etc/boto_cfg:/etc/boto_cfg:ro \
-		-e "CMAN_CLUSTER=mesosstage" \
+		-e "CMAN_CLUSTER=kubestage" \
 		-e "CMAN_POOL=default" \
+		-e "CMAN_SCHEDULER=kubernetes" \
 		clusterman_debug_container /bin/bash
 
 .PHONY:

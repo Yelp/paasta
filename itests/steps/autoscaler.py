@@ -95,7 +95,7 @@ def autoscaler_patches(context):
         )
         mock_metrics.return_value = {}  # don't know why this is necessary but we get flaky tests if it's not set
         mock_cluster_connector.return_value.get_cluster_total_resources.return_value = resource_totals
-        context.mock_cluster_connector = mock_cluster_connector
+        context.mock_cluster_connector = mock_cluster_connector.return_value
         yield
 
 
@@ -185,7 +185,7 @@ def make_mock_scaling_metrics(allocated_cpus, boost_factor):
     return mock_scaling_metrics
 
 
-@behave.given('a cluster with (?P<rgnum>\d+) resource groups')
+@behave.given('a cluster with (?P<rgnum>\d+) resource groups?')
 def rgnum(context, rgnum):
     context.rgnum = int(rgnum)
 
@@ -204,9 +204,9 @@ def resources(context, cpus, mem, disk, gpus):
 
 
 @behave.given('(?P<allocated_cpus>\d+) CPUs allocated and (?P<pending_cpus>\d+) CPUs pending')
-def resources_requested(context, allocated_cpus, pending_cpus):
+def resources_requested(context, allocated_cpus, pending_cpus=None):
     context.allocated_cpus = float(allocated_cpus)
-    context.pending_cpus = pending_cpus
+    context.pending_cpus = pending_cpus or 0
 
 
 @behave.given('a mesos autoscaler object')
@@ -239,50 +239,51 @@ def k8s_autoscaler_prevent_scale_dpwn(context):
 
 def create_k8s_autoscaler(context, prevent_scale_down_after_capacity_loss=False):
     behave.use_fixture(autoscaler_patches, context)
-    context.mock_cluster_connector.return_value.__class__ = KubernetesClusterConnector
-    context.mock_cluster_connector.return_value.get_cluster_allocated_resources.return_value = ClustermanResources(
+    context.mock_cluster_connector.__class__ = KubernetesClusterConnector
+    context.mock_cluster_connector.get_cluster_allocated_resources.return_value = ClustermanResources(
         cpus=context.allocated_cpus,
     )
-    context.mock_cluster_connector.return_value.get_unschedulable_pods.return_value = (
-        [] if float(context.pending_cpus) == 0
-        else [(
-                V1Pod(
-                    metadata=V1ObjectMeta(name='pod1'),
-                    status=V1PodStatus(
-                        phase='Pending',
-                        conditions=[
-                            V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
-                        ],
-                    ),
-                    spec=V1PodSpec(containers=[
-                        V1Container(
-                            name='container1',
-                            resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
-                        ),
-                    ]),
+    context.mock_cluster_connector._pending_pods = []
+    if float(context.pending_cpus) > 0:
+        context.mock_cluster_connector.get_unschedulable_pods = \
+            lambda: KubernetesClusterConnector.get_unschedulable_pods(context.mock_cluster_connector)
+        context.mock_cluster_connector._get_pod_unschedulable_reason.side_effect = lambda pod: (
+            PodUnschedulableReason.InsufficientResources
+            if pod.metadata.name == 'pod1'
+            else PodUnschedulableReason.Unknown
+        )
+        context.mock_cluster_connector._pending_pods = [
+            V1Pod(
+                metadata=V1ObjectMeta(name='pod1'),
+                status=V1PodStatus(
+                    phase='Pending',
+                    conditions=[
+                        V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+                    ],
                 ),
-                PodUnschedulableReason.InsufficientResources,
+                spec=V1PodSpec(containers=[
+                    V1Container(
+                        name='container1',
+                        resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
+                    ),
+                ]),
             ),
-            (
-                V1Pod(
-                    metadata=V1ObjectMeta(name='pod2'),
-                    status=V1PodStatus(
-                        phase='Pending',
-                        conditions=[
-                            V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
-                        ],
-                    ),
-                    spec=V1PodSpec(containers=[
-                        V1Container(
-                            name='container1',
-                            resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
-                        ),
-                    ]),
+            V1Pod(
+                metadata=V1ObjectMeta(name='pod2'),
+                status=V1PodStatus(
+                    phase='Pending',
+                    conditions=[
+                        V1PodCondition(status='False', type='PodScheduled', reason='Unschedulable')
+                    ],
                 ),
-                PodUnschedulableReason.Unknown,
+                spec=V1PodSpec(containers=[
+                    V1Container(
+                        name='container1',
+                        resources=V1ResourceRequirements(requests={'cpu': context.pending_cpus})
+                    ),
+                ]),
             ),
         ]
-    )
 
     context.autoscaler = Autoscaler(
         cluster='kube-test',
@@ -377,7 +378,21 @@ def run_autoscaler(context, once_only=False):
 
 @behave.when('the cluster has recently lost capacity')
 def lost_capacity(context):
-    context.mock_cluster_connector.return_value.get_num_removed_nodes_before_last_reload.return_value = 1
+    context.mock_cluster_connector.get_num_removed_nodes_before_last_reload.return_value = 1
+
+
+@behave.when('allocated CPUs changes to (?P<allocated_cpus>\d+)')
+def allocated_cpus_changes(context, allocated_cpus):
+    context.allocated_cpus = float(allocated_cpus)
+    reload_fn = context.autoscaler.pool_manager.reload_state
+
+    def change_allocated_cpus():
+        reload_fn()
+        context.mock_cluster_connector.get_cluster_allocated_resources.return_value = ClustermanResources(
+            cpus=context.allocated_cpus,
+        )
+
+    context.autoscaler.pool_manager.reload_state = mock.Mock(side_effect=change_allocated_cpus)
 
 
 @behave.then('the autoscaler should scale rg(?P<rg>[12]) to (?P<target>\d+) capacity')
