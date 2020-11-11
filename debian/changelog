@@ -1,3 +1,11 @@
+paasta-tools (0.97.31) xenial; urgency=medium
+
+  * 0.97.31 tagged with 'make release'
+    Commit: Merge pull request #2971 from Yelp/u/kawaiwan/revert-v2beta2-
+    hpa-api  Revert Yelp/paasta#2970
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 10 Nov 2020 19:24:55 -0800
+
 paasta-tools (0.97.30) xenial; urgency=medium
 
   * 0.97.30 tagged with 'make release'
