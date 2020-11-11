@@ -122,7 +122,7 @@ def autoscaling_status(
             raise
 
     # Parse metrics sources, based on
-    # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta1ExternalMetricSource.md#v2beta1externalmetricsource
+    # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta2ExternalMetricSource.md#v2beta2externalmetricsource
     parser = HPAMetricsParser(hpa)
 
     # https://github.com/python/mypy/issues/7217
