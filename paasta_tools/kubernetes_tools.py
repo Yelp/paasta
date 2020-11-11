@@ -187,7 +187,7 @@ load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation
 desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
 desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
 
-max(desired_instances / current_replicas, 0).publish()
+(desired_instances / current_replicas).above(0).publish()
 """
 
 
