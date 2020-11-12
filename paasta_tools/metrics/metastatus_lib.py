@@ -884,9 +884,12 @@ def get_resource_utilization_by_grouping_kube(
 
     node_groupings = group_slaves_by_key_func(grouping_func, nodes, sort_func)
 
+    pods: Sequence[V1Pod] = get_all_pods(kube_client)
+
     pods_by_node = {}
     for node in nodes:
-        pods_by_node[node.metadata.name] = get_pods_by_node(kube_client, node)
+        pods_by_node[node.metadata.name] = [pod for pod in pods if node.metadata.name == pod.spec.node_name]
+
     return {
         attribute_value: calculate_resource_utilization_for_kube_nodes(
             nodes, pods_by_node
