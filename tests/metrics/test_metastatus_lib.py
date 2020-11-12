@@ -272,7 +272,7 @@ def test_assert_kube_deployments():
 
 def test_assert_kube_pods_running():
     with mock.patch(
-        "paasta_tools.metrics.metastatus_lib.get_all_pods", autospec=True
+        "paasta_tools.metrics.metastatus_lib.get_all_pods_cached", autospec=True
     ) as mock_get_all_pods:
         client = Mock()
         mock_get_all_pods.return_value = [

@@ -228,6 +228,7 @@ def utilization_table_by_grouping_from_kube(
     service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[Sequence[MutableSequence[str]], bool]:
     grouping_function = metastatus_lib.key_func_for_attribute_multi_kube(groupings)
+
     resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping_kube(
         grouping_function, kube_client
     )

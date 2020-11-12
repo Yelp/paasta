@@ -2169,6 +2169,14 @@ def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
 
+@time_cache(ttl=300)
+def get_all_pods_cached(
+    kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[V1Pod]:
+    pods: Sequence[V1Pod] = get_all_pods(kube_client, namespace)
+    return pods
+
+
 def filter_pods_by_service_instance(
     pod_list: Sequence[V1Pod], service: str, instance: str
 ) -> Sequence[V1Pod]:
@@ -2257,6 +2265,12 @@ def get_active_shas_for_service(
 
 def get_all_nodes(kube_client: KubeClient,) -> Sequence[V1Node]:
     return kube_client.core.list_node().items
+
+
+@time_cache(ttl=300)
+def get_all_nodes_cached(kube_client: KubeClient) -> Sequence[V1Node]:
+    nodes: Sequence[V1Node] = get_all_nodes(kube_client)
+    return nodes
 
 
 def filter_nodes_by_blacklist(
