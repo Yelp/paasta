@@ -34,10 +34,9 @@ from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 from typing_extensions import Counter as _Counter
 
-from paasta_tools.kubernetes_tools import get_all_nodes
-from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import get_all_nodes_cached
+from paasta_tools.kubernetes_tools import get_all_pods_cached
 from paasta_tools.kubernetes_tools import get_pod_status
-from paasta_tools.kubernetes_tools import get_pods_by_node
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
@@ -56,7 +55,6 @@ from paasta_tools.mesos_tools import is_task_terminal
 from paasta_tools.mesos_tools import MesosResources
 from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import print_with_indent
 
 
@@ -453,7 +451,7 @@ def assert_mesos_tasks_running(metrics: MesosMetrics,) -> HealthCheckResult:
 
 
 def assert_kube_pods_running(kube_client: KubeClient,) -> HealthCheckResult:
-    statuses = [get_pod_status(pod) for pod in get_kube_all_pods(kube_client)]
+    statuses = [get_pod_status(pod) for pod in get_all_pods_cached(kube_client)]
     running = statuses.count(PodStatus.RUNNING)
     pending = statuses.count(PodStatus.PENDING)
     failed = statuses.count(PodStatus.FAILED)
@@ -857,15 +855,6 @@ def get_resource_utilization_by_grouping(
         for attribute_value, slaves in slave_groupings.items()
     }
 
-@time_cache(ttl=300)
-def get_kube_all_nodes(kube_client: KubeClient) -> Sequence[V1Node]:
-    nodes: Sequence[V1Node] = get_all_nodes(kube_client)
-    return nodes
-
-@time_cache(ttl=300)
-def get_kube_all_pods(kube_client: KubeClient) -> Sequence[V1Pod]:
-    pods:  Sequence[V1Pod] = get_all_pods(kube_client)
-    return pods
 
 def get_resource_utilization_by_grouping_kube(
     grouping_func: _GenericNodeGroupingFunctionT,
@@ -887,18 +876,20 @@ def get_resource_utilization_by_grouping_kube(
     is the dict returned by ``calculate_resource_utilization_for_kube_nodes`` for
     nodes grouped by attribute value.
     """
-    nodes = get_kube_all_nodes(kube_client)
+    nodes = get_all_nodes_cached(kube_client)
     nodes = filter_slaves(nodes, filters)
     if len(nodes) == 0:
         raise ValueError("There are no nodes registered in the Kubernetes.")
 
     node_groupings = group_slaves_by_key_func(grouping_func, nodes, sort_func)
 
-    pods = get_kube_all_pods(kube_client)
+    pods = get_all_pods_cached(kube_client)
 
     pods_by_node = {}
     for node in nodes:
-        pods_by_node[node.metadata.name] = [pod for pod in pods if pod.spec.node_name == node.metadata.name]
+        pods_by_node[node.metadata.name] = [
+            pod for pod in pods if pod.spec.node_name == node.metadata.name
+        ]
     return {
         attribute_value: calculate_resource_utilization_for_kube_nodes(
             nodes, pods_by_node
@@ -958,7 +949,7 @@ def get_kube_resource_utilization_health(
     :returns: a list of HealthCheckResult tuples
     """
 
-    nodes = get_kube_all_nodes(kube_client)
+    nodes = get_all_nodes_cached(kube_client)
 
     return [
         assert_cpu_health(get_kube_cpu_status(nodes)),
