@@ -21,8 +21,8 @@ def test_main_kubernetes():
     ) as mock_yelp_meteorite, mock.patch(
         "paasta_tools.check_services_replication_tools.sys.exit", autospec=True,
     ) as mock_sys_exit:
-        mock_parse_args.return_value.under_replicated_crit_pct = 10
-        mock_parse_args.return_value.under_replicated_warn_pct = 5
+        mock_parse_args.return_value.under_replicated_crit_pct = 5
+        mock_parse_args.return_value.min_count_critical = 1
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -40,7 +40,7 @@ def test_main_kubernetes():
         mock_gauge = mock_yelp_meteorite.create_gauge.return_value
         mock_gauge.set.assert_called_once_with(6)
 
-        mock_sys_exit.assert_called_once_with(1)
+        mock_sys_exit.assert_called_once_with(2)
 
 
 def test_main_mesos():
@@ -61,8 +61,8 @@ def test_main_mesos():
     ) as mock_yelp_meteorite, mock.patch(
         "paasta_tools.check_services_replication_tools.sys.exit", autospec=True,
     ) as mock_sys_exit:
-        mock_parse_args.return_value.under_replicated_crit_pct = 10
-        mock_parse_args.return_value.under_replicated_warn_pct = 5
+        mock_parse_args.return_value.under_replicated_crit_pct = 5
+        mock_parse_args.return_value.min_count_critical = 1
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -83,7 +83,7 @@ def test_main_mesos():
         mock_gauge = mock_yelp_meteorite.create_gauge.return_value
         mock_gauge.set.assert_called_once_with(6)
 
-        mock_sys_exit.assert_called_once_with(1)
+        mock_sys_exit.assert_called_once_with(2)
 
 
 def test_check_services_replication():
