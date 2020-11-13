@@ -1,3 +1,12 @@
+paasta-tools (0.97.32) xenial; urgency=medium
+
+  * 0.97.32 tagged with 'make release'
+    Commit: Merge pull request #2974 from Yelp/PAASTA-17054-metastatus-
+    timing  Improve metastatus performance by pulling all pods at once &
+    caching
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 13 Nov 2020 09:38:19 -0800
+
 paasta-tools (0.97.31) xenial; urgency=medium
 
   * 0.97.31 tagged with 'make release'
