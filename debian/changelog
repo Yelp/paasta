@@ -1,3 +1,11 @@
+paasta-tools (0.97.33) xenial; urgency=medium
+
+  * 0.97.33 tagged with 'make release'
+    Commit: Merge pull request #2965 from Yelp/PAASTA-17064-exit-1  Only
+    exit non-zero if there is a critical failure for replication scr…
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 13 Nov 2020 11:30:00 -0800
+
 paasta-tools (0.97.32) xenial; urgency=medium
 
   * 0.97.32 tagged with 'make release'
