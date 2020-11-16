@@ -40,6 +40,6 @@ def api_failure_response(exc, request):
     """
     log.error(exc.msg)
 
-    response = Response('ERROR: %s' % exc.msg)
+    response = Response("ERROR: %s" % exc.msg)
     response.status_int = exc.err
     return response

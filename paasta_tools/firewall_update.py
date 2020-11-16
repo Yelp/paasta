@@ -20,36 +20,49 @@ DEFAULT_UPDATE_SECS = 5
 
 
 def parse_args(argv):
-    parser = argparse.ArgumentParser(description='Monitor synapse changes and update service firewall rules')
+    parser = argparse.ArgumentParser(
+        description="Monitor synapse changes and update service firewall rules"
+    )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="soa_dir",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="soa_dir",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory (default %(default)s)",
     )
     parser.add_argument(
-        '--synapse-service-dir', dest="synapse_service_dir",
+        "--synapse-service-dir",
+        dest="synapse_service_dir",
         default=firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
         help="Path to synapse service dir (default %(default)s)",
     )
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true')
+    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true")
 
-    subparsers = parser.add_subparsers(help='mode to run firewall update in', dest='mode')
+    subparsers = parser.add_subparsers(
+        help="mode to run firewall update in", dest="mode"
+    )
     subparsers.required = True
 
     daemon_parser = subparsers.add_parser(
-        'daemon', description=(
-            'Run a daemon which watches updates to synapse backends and updates iptables rules.'
+        "daemon",
+        description=(
+            "Run a daemon which watches updates to synapse backends and updates iptables rules."
         ),
     )
     daemon_parser.add_argument(
-        '-u', '--update-secs', dest="update_secs",
-        default=DEFAULT_UPDATE_SECS, type=int,
+        "-u",
+        "--update-secs",
+        dest="update_secs",
+        default=DEFAULT_UPDATE_SECS,
+        type=int,
         help="Poll for new containers every N secs (default %(default)s)",
     )
 
     subparsers.add_parser(
-        'cron', description=(
-            'Do a one-time update of iptables rules to match the current running services.'
+        "cron",
+        description=(
+            "Do a one-time update of iptables rules to match the current running services."
         ),
     )
 
@@ -71,14 +84,16 @@ def run_daemon(args):
     for event in inotify.event_gen():  # blocks for only up to 1 second at a time
         if services_by_dependencies_time + args.update_secs < time.time():
             services_by_dependencies = smartstack_dependencies_of_running_firewalled_services(
-                soa_dir=args.soa_dir,
+                soa_dir=args.soa_dir
             )
             services_by_dependencies_time = time.time()
 
         if event is None:
             continue
 
-        process_inotify_event(event, services_by_dependencies, args.soa_dir, args.synapse_service_dir)
+        process_inotify_event(
+            event, services_by_dependencies, args.soa_dir, args.synapse_service_dir
+        )
 
 
 def run_cron(args):
@@ -86,12 +101,14 @@ def run_cron(args):
         firewall.general_update(args.soa_dir, args.synapse_service_dir)
 
 
-def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_service_dir):
+def process_inotify_event(
+    event, services_by_dependencies, soa_dir, synapse_service_dir
+):
     filename = event[3].decode()
-    log.debug(f'process_inotify_event on {filename}')
+    log.debug(f"process_inotify_event on {filename}")
 
     service_instance, suffix = os.path.splitext(filename)
-    if suffix != '.json':
+    if suffix != ".json":
         return
 
     services_to_update = services_by_dependencies.get(service_instance, ())
@@ -110,12 +127,12 @@ def process_inotify_event(event, services_by_dependencies, soa_dir, synapse_serv
             firewall.ensure_service_chains(service_groups, soa_dir, synapse_service_dir)
 
         for service_to_update in services_to_update:
-            log.debug(f'Updated {service_to_update}')
+            log.debug(f"Updated {service_to_update}")
     except TimeoutError as e:
         log.error(
-            'Unable to update firewalls for {} because time-out obtaining flock: {}'.format(
-                service_groups.keys(), e,
-            ),
+            "Unable to update firewalls for {} because time-out obtaining flock: {}".format(
+                service_groups.keys(), e
+            )
         )
 
 
@@ -129,16 +146,21 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
             load_deployments=False,
             soa_dir=soa_dir,
         )
+        inbound_firewall = config.get_inbound_firewall()
         outbound_firewall = config.get_outbound_firewall()
-        if not outbound_firewall:
+        if not inbound_firewall and not outbound_firewall:
             continue
 
         dependencies = config.get_dependencies() or ()
 
-        smartstack_dependencies = [d['smartstack'] for d in dependencies if d.get('smartstack')]
+        smartstack_dependencies = [
+            d["smartstack"] for d in dependencies if d.get("smartstack")
+        ]
         for smartstack_dependency in smartstack_dependencies:
             # TODO: filter down to only services that have no proxy_port
-            dependencies_to_services[smartstack_dependency].add(firewall.ServiceGroup(service, instance))
+            dependencies_to_services[smartstack_dependency].add(
+                firewall.ServiceGroup(service, instance)
+            )
 
     return dependencies_to_services
 
@@ -146,7 +168,4 @@ def smartstack_dependencies_of_running_firewalled_services(soa_dir=DEFAULT_SOA_D
 def main(argv=None):
     args = parse_args(argv)
     setup_logging(args.verbose)
-    {
-        'daemon': run_daemon,
-        'cron': run_cron,
-    }[args.mode](args)
+    {"daemon": run_daemon, "cron": run_cron}[args.mode](args)

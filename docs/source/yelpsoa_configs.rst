@@ -12,6 +12,10 @@ Duplication can be reduced by using YAML `anchors and merges <https://gist.githu
 PaaSTA will **not** attempt to run any definition prefixed with ``_``,
 so you are free to use them for YAML templates.
 
+**Note** that service names (the name of the folder where your config file is located) should be no more than 63 characters.
+For kubernetes services(config files with kubernetes as prefix), the instance names should be no more than 63 characters as well.
+_ is counted as two character. We convert _  to -- because underscore is not allowed in kubernetes pod names.
+
 Example::
 
     _template: &template
@@ -37,42 +41,45 @@ Example::
 All configuration files that define something to launch on a PaaSTA Cluster can
 specify the following options:
 
-  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
+  * ``cpus``: Number of CPUs an instance needs. Defaults to 1. CPUs in Mesos
     are "shares" and represent a minimal amount of a CPU to share with a task
     relative to the other tasks on a host.  A task can burst to use any
     available free CPU, but is guaranteed to get the CPU shares specified.  For
     a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
 
-  * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use
-    while bursting; if unspecified, PaaSTA defaults to 1. For example, if a
-    service specifies that it needs 2 CPUs normally and 1 for burst, the service
-    may go up to 3 CPUs, if needed.
+  * ``cpu_burst_add``: Maximum number of additional CPUs an instance may use while bursting; if unspecified, PaaSTA defaults to 1 for long-running services, and 0 for scheduled jobs (Tron).
+    For example, if a service specifies that it needs 2 CPUs normally and 1 for burst, the service may go up to 3 CPUs, if needed.
 
-  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 4096 (4GB). In Mesos
     memory is constrained to the specified limit, and tasks will reach
     out-of-memory (OOM) conditions if they attempt to exceed these limits, and
     then be killed.  There is currently not way to detect if this condition is
     met, other than a ``TASK_FAILED`` message. For more a more detailed read on
     how this works, see the docs on `isolation <isolation.html>`_
 
-  * ``docker_init``: Bool. If set ``false``, will disable the ``--init`` functionality
-    of Docker. Without ``--init``, it is up to the user to properly respond to
-    signals when behaving as PID #1 in a container. (See
-    `dumb-init <https://github.com/Yelp/dumb-init#why-you-need-an-init-system>`_
-    as an example of how to run a program in a container properly without
-    ``--init``) Defaults to ``true``.
+  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
+    may or may not be enforced, but services should set their ``disk`` setting
+    regardless to ensure the scheduler has adequate information for distributing
+    tasks.
 
   * ``env``: A dictionary of environment variables that will be made available
-    to the container. PaaSTA additionally will inject the following variables:
+    to the container. PaaSTA additionally will inject the following variables automatically (keep in mind all environment variables are strings in a shell):
 
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+    * ``PAASTA_HOST``: The hostname of the actual server the container is runnig on
+    * ``PAASTA_PORT``: The configured port the service should listen on
     * ``PAASTA_DOCKER_IMAGE``: The docker image name
+    * ``PAASTA_GIT_SHA``: The short git sha of the code the container has
     * ``PAASTA_DEPLOY_GROUP``: The `deploy group <deploy_group.html>`_ specified
     * ``PAASTA_MONITORING_TEAM``: The team that is configured to get alerts.
-    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username
-      of the user who launched the paasta container.
+    * ``PAASTA_LAUNCHED_BY``: May not be present. If present, will have the username of the user who launched the paasta container
+    * ``PAASTA_RESOURCE_CPUS``: Number of cpus allocated to a container
+    * ``PAASTA_RESOURCE_MEM``: Amount of ram in MB allocated to a container
+    * ``PAASTA_RESOURCE_DISK``: Amount of disk space in MB allocated to a container
+    * ``PAASTA_RESOURCE_GPUS``: Number of GPUS (if requested) allocated to a container
+
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -99,17 +106,25 @@ specify the following options:
     validate that the bind mounts are "safe".
 
 
-``Placement Options (Constraints)``
------------------------------------
+Placement Options
+-----------------
 
-Constraint options control how Mesos schedules a task, whether it is scheduled by
-Marathon, Chronos, Tron, or ``paasta remote-run``.
+Placement options provide control over how PaaSTA schedules a task, whether it
+is scheduled by Marathon (on Mesos), Kubernetes, Tron, or ``paasta remote-run``.
+Most commonly, it is used to restrict tasks to specific locations.
+
+.. _general-placement-options:
+
+General
+^^^^^^^
+
+These options are applicable to tasks scheduled through Mesos or Kubernetes.
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
       ``deploy_blacklist: [["region", "uswest1-prod"]]``
 
-   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region.
 
   * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
 
@@ -119,6 +134,114 @@ Marathon, Chronos, Tron, or ``paasta remote-run``.
     is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
     a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
     of whitelisting may be specified.
+
+  * ``pool``: The pool of machines a PaaSTA app runs in. If no pool is set,
+    an app will automatically be set to run in ``default`` pool.
+
+    Warning: In order for an service to be launched in a particular pool, there
+    *must* exist some nodes that already exist with that particular
+    pool attribute set.
+
+.. _k8s-placement-options:
+
+Kubernetes
+^^^^^^^^^^
+
+These options are only applicable to tasks scheduled on Kubernetes.
+
+  * ``node_selectors``: A map of labels a node is required to have for a task
+    to be launched on said node. There are several ways to define a selector.
+    The simplest is a key-value pair. For example, this selector restricts a
+    task to c3.8xlarge instances::
+
+      node_selectors:
+        instance_type: c3.8xlarge
+
+    The value can also be a list of multiple values. For example, this selector
+    restricts a task to both c3.8xlarge and m5.2xlarge instances::
+
+      node_selectors:
+        instance_type: ["c3.8xlarge", "m5.2xlarge"]
+
+    For more complex cases, an operator, and optionally a value (or values) must
+    be set. Here are some examples:
+
+    * Restricts a task to instances that are not c3.8xlarges::
+
+        node_selectors:
+          instance_type:
+            - operator: NotIn
+              values: ["c3.8xlarge"]
+
+    * Requires that a node have the ``ssd`` label::
+
+        node_selectors:
+          ssd:
+            - operator: Exists
+
+    * Requires that a node not have the ``ssd`` label::
+
+        node_selectors:
+          ssd:
+            - operator: DoesNotExist
+
+    * Requires that a node have a label ``priority`` with a value greater than 1
+      and less than 5::
+
+        node_selectors:
+          priority:
+            - operator: Gt
+              value: 1
+            - operator: Lt
+              value: 5
+
+    .. note::
+
+      The label ``instance_type`` is special. If set as a node selector,
+      PaaSTA will automatically convert it to a canonical version set by
+      Kubernetes on all AWS nodes.
+
+  * ``anti_affinity``: A set of rules define when a node *should not* be
+    selected for spawning a task in terms of task running on the node.
+    This can be used to schedule a single task per node and provide better
+    resource isolation for resource intensive tasks. For example::
+
+      anti_affinity:
+        service: acron
+
+    for a service ``acron`` indicates to not schedule any 2 instances
+    ``acron`` service on the same host. This can be extended to
+    service ``instances`` also. For example::
+
+      anti_affinity:
+        service: acron
+        instance: test
+
+    would indicate to not schedule any 2 instances with name ``test``
+    of service ``acron`` on the same host.
+    Multiple anti_affinities rules can also be used which will result
+    ``AND-ing`` of all the rules. For example::
+
+      anti_affinity:
+        - service: acron
+        - service: kafka-k8s
+
+    would indicate the scheduler to not select a node when both
+    ``acron`` and ``kafka-k8s`` is running on the node
+    **Note:** ``anti_affinity`` rules should be used with judiciously
+    and with caution as they require substantial processing and
+    may slow down scheduling significantly in large clusters
+
+For more information on selector operators, see the official Kubernetes
+documentation on `node affinities
+<https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
+
+.. _mesos-placement-options:
+
+Mesos
+^^^^^
+
+These options are applicable only to tasks scheduled on Mesos.
 
   * ``constraints``: Overrides the default placement constraints for services.
     Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``
@@ -138,17 +261,177 @@ Marathon, Chronos, Tron, or ``paasta remote-run``.
     constraints instead of replacing them. See ``constraints`` for details on
     format and the default constraints.
 
-  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
-    Marathon apps. The default pool is ``default``, which equates to::
+``kubernetes-[clustername].yaml``
+-------------------------------
 
-       ["pool", "LIKE", "default"]
+**Note:** All values in this file except the following will cause PaaSTA to
+`bounce <workflow.html#bouncing>`_ the service:
 
-    This constraint is automatically appended to the list of constraints for
-    a service unless overridden with the ``constraints`` input.
+* ``min_instances``
+* ``instances``
+* ``max_instances``
+* ``backoff_seconds``
 
-    Warning: In order for an service to be launched in a particular pool, there
-    *must* exist some Mesos slaves that already exist with that particular
-    pool attribute set.
+Top level keys are instance names, e.g. ``main`` and ``canary``. Each
+instance MAY have:
+
+  * Anything in the `Common Settings`_.
+
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Kubernetes Placement Options <k8s-placement-options>`.
+
+  * ``cap_add``: List of capabilities that are passed to Docker. Defaults
+    to empty list. Example::
+
+      "cap_add": ["IPC_LOCK", "SYS_PTRACE"]
+
+  * ``instances``: Kubernetes will attempt to run this many instances of the Service
+
+  * ``min_instances``: When autoscaling, the minimum number of instances that
+    kubernetes will create for a service. Defaults to 1.
+
+  * ``max_instances``: When autoscaling, the maximum number of instances that
+    kubernetes will create for a service
+
+  * ``registrations``: A list of SmartStack registrations (service.namespace)
+    where instances of this PaaSTA service ought register in. In SmartStack,
+    each service has difference pools of backend servers that are listening on
+    a particular port. In PaaSTA we call these "Registrations". By default, the
+    Registration assigned to a particular instance in PaaSTA has the *same name*,
+    so a service ``foo`` with a ``main`` instance will correspond to the
+    ``foo.main`` Registration. This would correspond to the SmartStack
+    namespace defined in the Registration service's ``smartstack.yaml``. This
+    ``registrations`` option allows users to make PaaSTA instances appear
+    under an *alternative* namespace (or even service). For example
+    ``canary`` instances can have ``registrations: ['foo.main']`` to route
+    their traffic to the same pool as the other ``main`` instances.
+
+  * ``container_port``: Specify the port to expose when in ``bridge`` mode.
+    Defaults to ``8888``.
+
+  * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
+    Note: the upthendown bounce is not available to kubernetes instances.
+
+  * ``bounce_health_params``: A dictionary of parameters for get_happy_tasks.
+
+    * ``check_haproxy``: Boolean indicating if PaaSTA should check the local
+      haproxy to make sure this task has been registered and discovered
+      (Defaults to ``True`` if service is in SmartStack)
+
+    * ``min_task_uptime``: Minimum number of seconds that a task must be
+      running before we consider it healthy (Disabled by default)
+
+    * ``haproxy_min_fraction_up``: if ``check_haproxy`` is True, we check haproxy on up to 20 boxes to see whether a task is available.
+      This fraction of boxes must agree that the task is up for the bounce to treat a task as healthy.
+      Defaults to 1.0 -- haproxy on all queried boxes must agree that the task is up.
+
+  * ``bounce_margin_factor``: proportionally increase the number of old instances
+    to be drained when the crossover bounce method is used.
+    0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
+    This allows bounces to proceed in the face of a percentage of failures.
+    It doesn’t affect any other bounce method but crossover.
+    See `the bounce docs <bouncing.html>`_ for a more detailed description.
+
+  * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
+    to soa-configs or the marked-for-deployment version of an instance.
+    Defaults to 0. (deadline = now)
+    When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
+    Set this to a large positive number to allow deployd to process other instances before this one, even if their
+      soa-configs change or mark-for-deployment happened after this one.
+    This setting only affects the first time deployd processes an instance after a change --
+      instances that need to be reprocessed will be reenqueued normally.
+
+  * ``drain_method``: Controls the drain method; see `drain_lib
+    <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
+    instances that are not in Smartstack, or ``hacheck`` if they are.
+
+  * ``drain_method_params``: A dictionary of parameters for the specified
+    drain_method. Valid parameters are any of the kwargs defined for the
+    specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
+
+  * ``cmd``: The command that is executed. If a string, will be wrapped in ``/bin/sh -c``.
+    If a list, will be executed directly as is with no shell parsing.
+
+  * ``args``: An array of docker args if you use the `"entrypoint"
+    <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality.
+
+  * ``monitoring``: See the `monitoring.yaml`_ section for details.
+
+  * ``autoscaling``: TBD
+
+  * ``deploy_group``: A string identifying what deploy group this instance belongs
+    to. The ``step`` parameter in ``deploy.yaml`` references this value
+    to determine the order in which to build & deploy deploy groups. Defaults to
+    ``clustername.instancename``. See the deploy group doc_ for more information.
+
+  * ``replication_threshold``: An integer representing the percentage of instances that
+    need to be available for monitoring purposes. If less than ``replication_threshold``
+    percent instances of a service's backends are not available, the monitoring
+    scripts will send a CRITICAL alert.
+
+  * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
+    If set to ``http`` or ``https``, a ``curl`` command will be executed
+    inside the container.
+
+    If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and
+    examine the return code. It must return 0 to be considered healthy.
+
+    If the service is registered in SmartStack, the healthcheck_mode will
+    automatically use the same setings specified by ``smartstack.yaml``.
+
+    If not in smartstack, the default healthcheck is "None", which means
+    the container is considered healthy unless it crashes.
+
+    A http healthcheck is considered healthy if it returns a 2xx or 3xx
+    response code.
+
+  * ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this
+    command is executed inside the container as a healthcheck. It must exit
+    with status code 0 to signify a successful healthcheck. Any other exit code
+    is treated as a failure. This is a required field if ``healthcheck_mode``
+    is ``cmd``.
+
+  * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long
+    after the container has started before liveness or readiness probes are
+    initiated. Defaults to 60 seconds.
+
+  * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
+    healthchecks. Defaults to 10 seconds.
+
+  * ``healthcheck_timeout_seconds``: Kubernetes will wait this long for a
+    healthcheck to return before considering it a failure. Defaults to 10
+    seconds.
+
+  * ``healthcheck_max_consecutive_failures``: Kubernetes will kill the current
+    task if this many healthchecks fail consecutively. Defaults to 6 attempts.
+
+  * ``healthcheck_uri``: The url of the service to healthcheck if using http.
+    Defaults to the same uri specified in ``smartstack.yaml``, but can be
+    set to something different here.
+
+ * ``prometheus_shard``: Optional name of Prometheus shard to be configured to
+   scrape the service. This shard should already exist and will not be
+   automatically created.
+
+ * ``prometheus_path``: Optional path the Prometheus shard to be configured with
+   to scrape the service. This shard should already exist and will not be
+   automatically created.
+
+ * ``prometheus_port``: Optional port, not equal to ``container_port``, to
+   expose for prometheus scraping.
+
+**Note**: Although many of these settings are inherited from ``smartstack.yaml``,
+their thresholds are not the same. The reason for this has to do with control
+loops and infrastructure stability. The load balancer tier can be pickier
+about which copies of a service it can send requests to, compared to Mesos.
+
+A load balancer can take a container out of service and put it back in a few
+seconds later. Minor flaps and transient errors are tolerated.
+
+The healthchecks specified here in this file signal to the infrastructure that
+a container is unhealthy, and the action to take is to completely destroy it and
+launch it elsewhere. This is a more expensive operation than taking a container
+out of the load balancer, so it justifies having less sensitive thresholds.
 
 ``marathon-[clustername].yaml``
 -------------------------------
@@ -171,22 +454,8 @@ instance MAY have:
 
   * Anything in the `Common Settings`_.
 
-  * Anything in the `Placement Options (Constraints)`_.
-
-  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). Disk limits
-    may or may not be enforced, but services should set their ``disk`` setting
-    regardless to ensure the scheduler has adequate information for distributing
-    tasks.
-
-  * ``ulimit``: Dictionary of ulimit values that are passed to Docker. Defaults
-    to empty dictionary. Each ulimit value is a dictionary with the soft limit
-    specified under the 'soft' key and the optional hard limit specified under
-    the 'hard' key. Ulimit values that are not set are inherited from the
-    default ulimits set on the Docker daemon. Example::
-
-      ulimit:
-        - nofile: {"soft": 1024, "hard": 2048}
-        - nice: {"soft": 20}
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Mesos Placement Options <mesos-placement-options>`.
 
   * ``cap_add``: List of capabilities that are passed to Docker. Defaults
     to empty list. Example::
@@ -256,12 +525,14 @@ instance MAY have:
     It doesn’t affect any other bounce method but crossover.
     See `the bounce docs <bouncing.html>`_ for a more detailed description.
 
-  * ``bounce_priority``: an integer priority that informs paasta-deployd which service
-    instances should take priority over each other. The default priority is 0 and higher numbers
-    are considered higher priority. For example: if there are three service instances that need
-    bouncing: the first with a ``bounce_priority`` -1, the second with no ``bounce_priority`` and the
-    third with ``bounce_priority`` 1. Then paasta-deployd will prioritise the bounce of the third
-    service instance, then the second service instance and finally the first service instance.
+  * ``bounce_start_deadline``: a floating point number of seconds to add to the deadline when deployd notices a change
+    to soa-configs or the marked-for-deployment version of an instance.
+    Defaults to 0. (deadline = now)
+    When deployd has a queue of instances to process, it will choose to process instances with a lower deadline first.
+    Set this to a large positive number to allow deployd to process other instances before this one, even if their
+      soa-configs change or mark-for-deployment happened after this one.
+    This setting only affects the first time deployd processes an instance after a change --
+      instances that need to be reprocessed will be reenqueued normally.
 
   * ``drain_method``: Controls the drain method; see `drain_lib
     <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
@@ -289,20 +560,6 @@ instance MAY have:
     * ``metrics_provider``: Which method PaaSTA will use to determine a service's utilization.
 
     * ``decision_policy``: Which method PaaSTA will use to determine when to autoscale a service.
-
-  * ``monitoring_blacklist``: A list of lists indicating a set of locations to
-    *not* monitor for Smartstack replication. For example:
-
-      ``monitoring_blacklist: [["region", "uswest1-prod"]]``
-
-   would indicate that PaaSTA should ignore the ``uswest1-prod`` region. PaaSTA
-   currently assumes that the instance count in *other* regions include
-   instances that would have otherwise gotten deployed to ``uswest1-prod``. In
-   other words, the ``monitoring_blacklist`` assumes that instances are not
-   deployed there as well. For example, suppose the total instance count was
-   10, and there are two regions, one of which is blacklisted.  The monitoring
-   logic will assume that there are no instances in the blacklisted region,
-   implying that we should expect all 10 in the non-blacklisted region.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value
@@ -395,121 +652,6 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 
 .. _doc: deploy_groups.html
 
-``chronos-[clustername].yaml``
-------------------------------
-
-The yaml where Chronos jobs are defined. Top-level keys are the job names.
-
-NB: Yelp maintains its own fork of Chronos at https://github.com/Yelp/chronos,
-and this is the version deployed in the paasta clusters at Yelp. The fork is
-based off the 2.4 release of upstream Chronos. The most notable change is the
-support for specifying schedules in crontab format, but also contains various
-stability fixes. We have not backported any of the new features to hit 3.0.
-Consequently, the list shown here is the most accurate documentation of
-supported fields; the docs upstream may describe keys that are not supported or
-have different behaviour to those mentioned here.
-
-Each job configuration MUST specify the following options:
-
-  * One of ``schedule`` and ``parents``. If both are present, then ``schedule``
-    takes precedence and ``parents`` is ignored.
-
-Each job configuration MAY specify the following options:
-
-  * Anything in the `Common Settings`_.
-
-  * Anything in the `Placement Options (Constraints)`_.
-
-  * ``schedule``: When the job should run. This can be in either ISO8601 notation,
-    or in cron notation.  For more details about ISO8601 formats, see the
-    `wikipedia page <https://en.wikipedia.org/wiki/ISO_8601>`_; for more details on the Cron format,
-    see `crontab(5) <http://man7.org/linux/man-pages/man5/crontab.5.html>`_. Note that
-    the extensions mentioned in that page are *not* supported at this time.
-
-    * **Note:** Although Chronos supports an empty start time to indicate that
-      the job should start immediately, we do not allow this. In a situation
-      such as restarting Chronos, all jobs with empty start times would start
-      simultaneously, causing serious performance degradation and ignoring the
-      fact that the job may have just run.
-
-    * **Warning**: Chronos does *not* allow overlapping jobs. If a job has a
-      ``schedule`` set to repeat every hour, and the task takes longer than
-      an hour, Chronos will *not* schedule the next task while the previous
-      one is still running. (if N starts and overflows to the next time slot,
-      N+1 and any future runs will be canceled until N finishes)
-
-  * ``parents``: An array of parents jobs. If specified, then the job will not run
-    until *all* of the jobs in this array have completed. The parents jobs should be
-    in the form of ``service.instance``. For example::
-
-        cat myservice/chronos-testcluster.yml
-        ---
-        job_one:
-          schedule: R/2014-10-10T18:32:00Z/PT60M
-
-        job_two:
-          schedule: R/2014-10-10T19:32:00Z/PT60M
-
-        child_job:
-          parents:
-            - myservice.parent_one
-            - myservice.parent_two
-
-
-
-  * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
-    Additionally ``cmd`` strings with time or date strings that Tron
-    understands will be interpreted and replaced. ``shortdate``, ``year``,
-    ``month``, ``day``, and ``daynumber`` are supported. Read more in the
-    official `tron documentation
-    <http://tron.readthedocs.io/en/latest/command_context.html#built-in-cc>`_
-    for more information on how to use these variables.
-
-    * **WARNING**: Chronos ``cmd`` parsing is done via `python string
-      replacement
-      <https://docs.python.org/2/library/string.html#format-string-syntax>`_,
-      which means that the special character strings like ``%`` must
-      be escaped in order to be used literally.
-
-  * ``args``: See the `marathon-[clustername].yaml`_ section for details
-
-  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it
-    will still run the job if the time is within this interval. The value must
-    be formatted like an ISO 8601 Duration. See:
-    https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S',
-    indicating that a job may be launched up to a minute late.
-
-  * ``retries``: Number of retries to attempt if a command returns a
-    non-zero exit status. Defaults to 2.
-
-  * ``net``: Specify which kind of
-    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
-    instances of this service should be launched using. Defaults to ``'bridge'``.
-
-  * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
-
-  * ``bounce_method``: Controls what happens to the old version(s) of a job
-    when a new version is deployed. Currently the only option is ``graceful``,
-    which disable the old versions but allows them to finish their current run.
-    If unspecified, defaults to ``graceful``.
-
-  * ``monitoring``: See the `monitoring.yaml`_ section for details.
-
-  * ``deploy_group``: Same as ``deploy_group`` for marathon-\*.yaml.
-
-  * ``schedule_time_zone``: The time zone name to use when scheduling the job.
-    Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.
-
-    * This field takes precedence over any time zone specified in schedule.
-    * See list of `tz database time zones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`_.
-    * For example, the effective time zone for the following is America/Los_Angeles::
-
-
-        ---
-        main:
-          schedule: R/2014-10-10T18:32:00Z/PT60M
-          schedule_time_zone: America/Los_Angeles
-
 ``tron-[tron-clustername].yaml``
 --------------------------------
 
@@ -520,30 +662,28 @@ The documentation here is for the PaaSTA-specific options. For all other
 settings, please see the
 `canonical docs <https://tron.readthedocs.io/en/latest/jobs.html>`_.
 
-.. warning:: The PaaSTA-Tron Integration is currently in an ALPHA state. Do not use it unless directed to.
 
 Example Job
 ^^^^^^^^^^^
 
 ::
 
-  jobs:
-      - name: convert_logs
-        node: node1
-        schedule:
-          start_time: 04:00:00
-        actions:
-          - name: verify_logs_present
-            command: "ls /var/log/app/log_%(shortdate-1)s.txt"
-            executor: ssh
-          - name: convert_logs
-            requires: [verify_logs_present]
-            command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
-            executor: paasta
-            service: test_service
-            deploy_group: prod
-            cpus: .5
-            mem: 100
+    ---
+    convert_logs:
+      node: paasta
+      schedule:
+        start_time: 04:00:00
+      actions:
+        verify_logs_present:
+          command: "ls /var/log/app/log_%(shortdate-1)s.txt"
+          executor: ssh
+        convert_logs:
+          requires: [verify_logs_present]
+          command: "convert_logs /var/log/app/log_%(shortdate-1)s.txt /var/log/app_converted/log_%(shortdate-1)s.txt"
+          service: test_service
+          deploy_group: prod
+          cpus: .5
+          mem: 100
 
 PaaSTA-Specific Options
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -566,14 +706,16 @@ Each Tron **action** of a job MAY specify the following:
 
   * Anything in the `Common Settings`_.
 
-  * Anything in the `Placement Options (Constraints)`_.
+  * Anything from :ref:`General Placement Options <general-placement-options>`
+    and :ref:`Mesos Placement Options <mesos-placement-options>` (currently, Tron
+    only supports Mesos workloads).
 
   * ``service``: Uses a docker image from different service. When ``service`` is set
     for an action, that setting takes precedence over what is set for the job.
 
   * ``executor``: Configures Tron to execute the command in a particular way.
-    Set to ``paasta`` to configure Tron to launch the job on he PaaSTA cluster.
-    Defaults to ``ssh``, which is the classic Tron execution method. When ``executor``
+    Set to ``paasta`` to configure Tron to launch the job on the PaaSTA cluster.
+    Defaults to ``paasta``. When ``executor``
     is NOT ``paasta`` (and is using ``ssh``), all of these paasta-specific options
     listed here in this documentation will have no effect. It is OK to have a job
     composed of mixed ``paasta`` and ``ssh`` actions.
@@ -581,9 +723,28 @@ Each Tron **action** of a job MAY specify the following:
   * ``deploy_group``: Same setting as the ``Job``, but on a per-action basis. Defaults
     to the setting for the entire job.
 
-  * ``command``: The command to run. If the action is configured with ``executor: paasta``,
+  * ``command``: The command to run. If the action is configured with ``executor: paasta`` (default),
     then the command should be something available in the docker container (it should NOT
     start with ``paasta local-run``).
+
+If a Tron **action** of a job is of executor type ``spark``, it MAY specify the following:
+
+  * ``spark_paasta_cluster``: The Paasta cluster on which to run spark jobs (spark executors).
+    Default to the same cluster the tron job (spark driver) is running on.
+
+  * ``spark_paasta_pool``: The Paasta pool on which to run spark jobs (spark executors).
+    Default to ``batch`` pool if not specified.
+
+  * ``spark_args``: Dictionary of spark configurations documented in
+    https://spark.apache.org/docs/latest/configuration.html. Note some configurations are non-
+    user-editable as they will be populated by paasta tools. See
+    https://github.com/Yelp/service_configuration_lib/blob/master/service_configuration_lib/spark_config.py#L9
+    for a complete list of such configurations.
+
+  * ``aws_credentials_yaml``: Path to the yaml file containing credentials to be set in the task's
+    AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables. Default to
+    ``/etc/boto_cfg/<your-service-name>.yaml``. If the file path does not exist, or the file does
+    not contain keys for aws_access_key_id and aws_secret_access_key, those variables will be unset.
 
 ``adhoc-[clustername].yaml``
 -------------------------------
@@ -639,7 +800,7 @@ Basic HTTP and TCP options
    for requests. If ``null`` this service will be "discovery only" meaning that
    it will generate synapse discovery files on every host, but no listening
    port will be allocated. This must be unique across all environments where
-   PaaSTA (or synapse) runs. At Yelp, we pick from the range [20000, 21000].
+   PaaSTA (or synapse) runs. At Yelp, we pick from the range [19000, 21000].
    Feel free to pick the next available value -- paasta fsm will do this for
    you automatically!
 
@@ -772,6 +933,16 @@ Routing and Reliability
    in milliseconds, defaults to 1000.
  * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
+ * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
+   specific endpoints. This is useful for when there is a long running endpoint
+   that requires a large timeout value but you would like to keep the default
+   timeout at a resonable value. Endpoints are prefix-matched to what is
+   specified here so for example ``/specials/bulk/v1`` will match the
+   endpoints ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
+   Example::
+
+     endpoint_timeouts:
+         "/specials/bulk/v1": 15000
 
 Fault Injection
 ```````````````
@@ -929,7 +1100,7 @@ Here is a list of options that PaaSTA will pass through:
  * ``check_oom_events``: Boolean to indicate if an instance should alert when
    the Out Of Memory killer kills processes in the instance containers.
    This alert sends an email to ``notification_email`` and post notifications
-   to ``irc_channels``. It neither pages nor makes a JIRA ticket. Defaults to **true**.
+   to ``irc_channels``. It does not page. Defaults to **true**.
 
 
 Monitoring Examples
@@ -947,26 +1118,26 @@ An example of a service that only pages on a cluster called "prod"::
       monitoring:
          page: true
 
-A service that pages everywhere, but only makes a ticket for a chronos job::
+A service that pages everywhere, but only makes a ticket for a tron job::
 
     # monitoring.yaml
     team: backend
     page: true
 
-    # chronos-prod.yaml
+    # tron-prod.yaml
     nightly_batch:
       schedule: .....
       monitoring:
         page: false
         ticket: true
 
-A marathon service that overrides options on different instances (canary)::
+A marathon/kubernetes service that overrides options on different instances (canary)::
 
     # monitoring.yaml
     team: frontend
     page: false
 
-    # marathon-prod.yaml
+    # marathon-prod.yaml or kubernetes-prod.yaml
     main:
       instances: 20
       monitoring:

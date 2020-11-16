@@ -19,28 +19,27 @@ from marathon.exceptions import MarathonError
 
 from paasta_tools import marathon_tools
 from paasta_tools.metrics.metastatus_lib import assert_marathon_apps
-from paasta_tools.utils import paasta_print
 
 
 def check_marathon_apps():
     clients = marathon_tools.get_list_of_marathon_clients()
     if not clients:
-        paasta_print("UNKNOWN: Failed to load marathon clients.")
+        print("UNKNOWN: Failed to load marathon clients.")
         sys.exit(3)
 
     try:
         result = assert_marathon_apps(clients)
     except (MarathonError, InternalServerError, ValueError) as e:
-        paasta_print("CRITICAL: Unable to connect to Marathon cluster: %s" % e)
+        print("CRITICAL: Unable to connect to Marathon cluster: %s" % e)
         sys.exit(2)
 
     if result.healthy:
-        paasta_print("OK: " + result.message)
+        print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print(result.message)
+        print(result.message)
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_marathon_apps()

@@ -23,30 +23,36 @@ from paasta_tools.metrics.metastatus_lib import ResourceUtilization as RU
 
 def test_main_no_marathon_servers():
     with patch(
-        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+        "paasta_tools.paasta_metastatus.load_system_paasta_config", autospec=True
     ), patch(
-        'paasta_tools.marathon_tools.get_marathon_servers', autospec=True, return_value={},
+        "paasta_tools.marathon_tools.get_marathon_servers",
+        autospec=True,
+        return_value={},
     ), patch(
-        'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
-    ), patch(
-        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
+        "paasta_tools.paasta_metastatus.is_mesos_available",
+        autospec=True,
         return_value=True,
     ), patch(
-        'paasta_tools.metrics.metastatus_lib.get_chronos_status', autospec=True,
-    ), patch(
-        'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
+        "paasta_tools.paasta_metastatus.get_mesos_master", autospec=True
     ) as get_mesos_master, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_state_status', autospec=True,
-        return_value=([('fake_output', True)]),
-    ) as get_mesos_state_status_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health', autospec=True,
-    ) as get_mesos_resource_utilization_health_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_marathon_status',
+        "paasta_tools.metrics.metastatus_lib.get_mesos_state_status",
         autospec=True,
-        return_value=([HealthCheckResult(message='fake_output', healthy=True)]),
+        return_value=([("fake_output", True)]),
+    ) as get_mesos_state_status_patch, patch(
+        "paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health",
+        autospec=True,
+    ) as get_mesos_resource_utilization_health_patch, patch(
+        "paasta_tools.metrics.metastatus_lib.get_marathon_status",
+        autospec=True,
+        return_value=([HealthCheckResult(message="fake_output", healthy=True)]),
     ), patch(
-        'paasta_tools.paasta_metastatus.get_mesos_leader', autospec=True,
-        return_value='localhost',
+        "paasta_tools.paasta_metastatus.get_mesos_leader",
+        autospec=True,
+        return_value="localhost",
+    ), patch(
+        "paasta_tools.paasta_metastatus.is_kubernetes_available",
+        autospec=True,
+        return_value=False,
     ):
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
@@ -55,42 +61,6 @@ def test_main_no_marathon_servers():
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
 
-        with raises(SystemExit) as excinfo:
-            paasta_metastatus.main(())
-        assert excinfo.value.code == 0
-
-
-def test_main_no_chronos_config():
-    with patch(
-        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
-    ), patch(
-        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
-        return_value=True,
-    ), patch(
-        'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
-    ) as load_chronos_config_patch, patch(
-        'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
-    ) as get_mesos_master, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_state_status', autospec=True,
-        return_value=([('fake_output', True)]),
-    ) as get_mesos_state_status_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health', autospec=True,
-    ) as get_mesos_resource_utilization_health_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_marathon_status',
-        autospec=True,
-        return_value=([HealthCheckResult(message='fake_output', healthy=True)]),
-    ), patch(
-        'paasta_tools.paasta_metastatus.get_mesos_leader', autospec=True,
-        return_value='localhost',
-    ):
-        fake_master = Mock(autospace=True)
-        fake_master.state.return_value = {}
-        get_mesos_master.return_value = fake_master
-
-        get_mesos_state_status_patch.return_value = []
-        get_mesos_resource_utilization_health_patch.return_value = []
-
-        load_chronos_config_patch.return_value = {}
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main(())
         assert excinfo.value.code == 0
@@ -98,23 +68,24 @@ def test_main_no_chronos_config():
 
 def test_main_marathon_jsondecode_error():
     with patch(
-        'paasta_tools.paasta_metastatus.load_system_paasta_config', autospec=True,
+        "paasta_tools.paasta_metastatus.load_system_paasta_config", autospec=True
     ), patch(
-        'paasta_tools.paasta_metastatus.is_mesos_available', autospec=True,
+        "paasta_tools.paasta_metastatus.is_mesos_available",
+        autospec=True,
         return_value=True,
     ), patch(
-        'paasta_tools.marathon_tools.get_marathon_servers', autospec=True,
+        "paasta_tools.marathon_tools.get_marathon_servers", autospec=True
     ) as get_marathon_status_patch, patch(
-        'paasta_tools.paasta_metastatus.load_chronos_config', autospec=True,
-    ), patch(
-        'paasta_tools.paasta_metastatus.get_mesos_master', autospec=True,
+        "paasta_tools.paasta_metastatus.get_mesos_master", autospec=True
     ) as get_mesos_master, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_state_status', autospec=True,
-        return_value=([('fake_output', True)]),
+        "paasta_tools.metrics.metastatus_lib.get_mesos_state_status",
+        autospec=True,
+        return_value=([("fake_output", True)]),
     ) as get_mesos_state_status_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_mesos_resource_utilization_health",
+        autospec=True,
     ) as get_mesos_resource_utilization_health_patch, patch(
-        'paasta_tools.metrics.metastatus_lib.get_marathon_status', autospec=True,
+        "paasta_tools.metrics.metastatus_lib.get_marathon_status", autospec=True
     ) as get_marathon_status_patch:
         fake_master = Mock(autospace=True)
         fake_master.state.return_value = {}
@@ -122,7 +93,7 @@ def test_main_marathon_jsondecode_error():
 
         get_marathon_status_patch.return_value = [{"url": "http://foo"}]
 
-        get_marathon_status_patch.side_effect = ValueError('could not decode json')
+        get_marathon_status_patch.side_effect = ValueError("could not decode json")
 
         get_mesos_state_status_patch.return_value = []
         get_mesos_resource_utilization_health_patch.return_value = []
@@ -138,21 +109,25 @@ def test_get_service_instance_stats():
     instance_config_mock = Mock()
     instance_config_mock.get_gpus.return_value = None
     with patch(
-        'paasta_tools.paasta_metastatus.get_instance_config', autospec=True, return_value=instance_config_mock,
+        "paasta_tools.paasta_metastatus.get_instance_config",
+        autospec=True,
+        return_value=instance_config_mock,
     ):
-        stats = paasta_metastatus.get_service_instance_stats('fakeservice', 'fakeinstance', 'fakecluster')
-        assert set(stats.keys()) == {'mem', 'cpus', 'disk', 'gpus'}
+        stats = paasta_metastatus.get_service_instance_stats(
+            "fakeservice", "fakeinstance", "fakecluster"
+        )
+        assert set(stats.keys()) == {"mem", "cpus", "disk", "gpus"}
 
 
 def test_fill_table_rows_with_service_instance_stats():
-    fake_service_instance_stats = {'mem': 40, 'cpus': 0.3, 'disk': 1.0, 'gpus': 0}
+    fake_service_instance_stats = {"mem": 40, "cpus": 0.3, "disk": 1.0, "gpus": 0}
     fake_table_rows = [[]]
     # For reference, ResourceUtilization is (metric, total, free)
-    fake_rsrc_utils = [RU('mem', 100, 80), RU('cpus', 100, 50), RU('disk', 20, 15)]
+    fake_rsrc_utils = [RU("mem", 100, 80), RU("cpus", 100, 50), RU("disk", 20, 15)]
     paasta_metastatus.fill_table_rows_with_service_instance_stats(
-        fake_service_instance_stats, fake_rsrc_utils, fake_table_rows,
+        fake_service_instance_stats, fake_rsrc_utils, fake_table_rows
     )
     result_str = fake_table_rows[0][0]
     # Clearly memory is the limiting factor as there is only 80 memory and each service instance takes 40 memory
-    assert '2' in result_str
-    assert 'mem' in result_str
+    assert "2" in result_str
+    assert "mem" in result_str

@@ -35,44 +35,41 @@ class TronClient:
         self.master_url = url
 
     def _request(self, method, url, data):
-        headers = {'User-Agent': get_user_agent()}
-        kwargs = {
-            'url': urljoin(self.master_url, url),
-            'headers': headers,
-        }
-        if method == 'GET':
-            kwargs['params'] = data
+        headers = {"User-Agent": get_user_agent()}
+        kwargs = {"url": urljoin(self.master_url, url), "headers": headers}
+        if method == "GET":
+            kwargs["params"] = data
             response = requests.get(**kwargs)
-        elif method == 'POST':
-            kwargs['data'] = data
+        elif method == "POST":
+            kwargs["data"] = data
             response = requests.post(**kwargs)
         else:
-            raise ValueError(f'Unrecognized method: {method}')
+            raise ValueError(f"Unrecognized method: {method}")
 
         return self._get_response_or_error(response)
 
     def _get_response_or_error(self, response):
         try:
             result = response.json()
-            if 'error' in result:
-                raise TronRequestError(result['error'])
+            if "error" in result:
+                raise TronRequestError(result["error"])
             return result
         except ValueError:  # Not JSON
             if not response.ok:
                 raise TronRequestError(
-                    'Status code {status_code} for {url}: {reason}'.format(
+                    "Status code {status_code} for {url}: {reason}".format(
                         status_code=response.status_code,
                         url=response.url,
                         reason=response.reason,
-                    ),
+                    )
                 )
             return response.text
 
     def _get(self, url, data=None):
-        return self._request('GET', url, data)
+        return self._request("GET", url, data)
 
     def _post(self, url, data=None):
-        return self._request('POST', url, data)
+        return self._request("POST", url, data)
 
     def update_namespace(self, namespace, new_config, skip_if_unchanged=True):
         """Updates the configuration for a namespace.
@@ -82,44 +79,42 @@ class TronClient:
         :param skip_if_unchanged: boolean. If False, will send the update
             even if the current config matches the new config.
         """
-        current_config = self._get(
-            '/api/config',
-            {
-                'name': namespace,
-                'no_header': 1,
-            },
-        )
+        current_config = self._get("/api/config", {"name": namespace, "no_header": 1})
 
         if skip_if_unchanged:
-            if yaml.safe_load(new_config) == yaml.safe_load(current_config['config']):
-                log.debug('No change in config, skipping update.')
+            if yaml.safe_load(new_config) == yaml.safe_load(current_config["config"]):
+                log.debug("No change in config, skipping update.")
                 return
 
         return self._post(
-            '/api/config',
+            "/api/config",
             data={
-                'name': namespace,
-                'config': new_config,
-                'hash': current_config['hash'],
-                'check': 0,
+                "name": namespace,
+                "config": new_config,
+                "hash": current_config["hash"],
+                "check": 0,
             },
         )
 
     def list_namespaces(self):
         """Gets the namespaces that are currently configured."""
-        response = self._get('/api')
-        return response.get('namespaces', [])
+        response = self._get("/api")
+        return response.get("namespaces", [])
 
     def get_job_content(self, job: str) -> dict:
         return self._get(f"/api/jobs/{job}/")
 
     def get_latest_job_run_id(self, job_content: dict) -> str:
         job_runs = sorted(
-            job_content.get('runs', []),
-            key=lambda k: (k['state'] != 'scheduled', k['run_num']),
+            job_content.get("runs", []),
+            key=lambda k: (k["state"] != "scheduled", k["run_num"]),
             reverse=True,
         )
+        if not job_runs:
+            return None
         return job_runs[0]["run_num"]
 
     def get_action_run(self, job: str, action: str, run_id: str) -> dict:
-        return self._get(f"/api/jobs/{job}/{run_id}/{action}?include_stderr=1&include_stdout=1&num_lines=10")
+        return self._get(
+            f"/api/jobs/{job}/{run_id}/{action}?include_stderr=1&include_stdout=1&num_lines=10"
+        )

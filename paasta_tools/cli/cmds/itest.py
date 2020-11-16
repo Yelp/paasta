@@ -27,7 +27,7 @@ from paasta_tools.utils import list_services
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'itest',
+        "itest",
         help="Runs 'make itest' as part of the PaaSTA contract.",
         description=(
             "'paasta itest' runs 'make itest' in the root of a service directory. "
@@ -36,27 +36,30 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-s', '--service',
-        help='Test and build docker image for this service. Leading '
-             '"services-", as included in a Jenkins job name, '
-             'will be stripped.',
+        "-s",
+        "--service",
+        help="Test and build docker image for this service. Leading "
+        '"services-", as included in a Jenkins job name, '
+        "will be stripped.",
         required=True,
     )
     list_parser.add_argument(
-        '-c', '--commit',
-        help='Git sha used to construct tag for built image',
+        "-c",
+        "--commit",
+        help="Git sha used to construct tag for built image",
         required=True,
     )
     list_parser.add_argument(
-        '-d', '--soa-dir',
-        dest='soa_dir',
-        help='A directory from which soa-configs should be read from',
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        help="A directory from which soa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
-        '--timeout',
-        dest='timeout',
-        help='How many seconds before this command times out',
+        "--timeout",
+        dest="timeout",
+        help="How many seconds before this command times out",
         default=3600,
     )
     list_parser.set_defaults(command=paasta_itest)
@@ -66,48 +69,41 @@ def paasta_itest(args):
     """Build and test a docker image"""
     service = args.service
     soa_dir = args.soa_dir
-    if service and service.startswith('services-'):
-        service = service.split('services-', 1)[1]
+    if service and service.startswith("services-"):
+        service = service.split("services-", 1)[1]
     validate_service_name(service, soa_dir=soa_dir)
 
     tag = build_docker_tag(service, args.commit)
     run_env = os.environ.copy()
-    run_env['DOCKER_TAG'] = tag
+    run_env["DOCKER_TAG"] = tag
     cmd = "make itest"
     loglines = []
 
     _log(
         service=service,
-        line='starting itest for %s.' % args.commit,
-        component='build',
-        level='event',
+        line="starting itest for %s." % args.commit,
+        component="build",
+        level="event",
     )
     returncode, output = _run(
         cmd,
         env=run_env,
         timeout=args.timeout,
         log=True,
-        component='build',
+        component="build",
         service=service,
-        loglevel='debug',
+        loglevel="debug",
     )
     if returncode != 0:
-        loglines.append(
-            'ERROR: itest failed for %s.' % args.commit,
-        )
+        loglines.append("ERROR: itest failed for %s." % args.commit)
         output = get_jenkins_build_output_url()
         if output:
-            loglines.append('See output: %s' % output)
+            loglines.append("See output: %s" % output)
     else:
-        loglines.append('itest passed for %s.' % args.commit)
+        loglines.append("itest passed for %s." % args.commit)
         if not check_docker_image(service, args.commit):
-            loglines.append('ERROR: itest has not created %s' % tag)
+            loglines.append("ERROR: itest has not created %s" % tag)
             returncode = 1
     for logline in loglines:
-        _log(
-            service=service,
-            line=logline,
-            component='build',
-            level='event',
-        )
+        _log(service=service, line=logline, component="build", level="event")
     return returncode

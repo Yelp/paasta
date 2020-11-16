@@ -22,13 +22,16 @@ else
 	PAASTA_ENV ?= $(shell hostname -f)
 endif
 
-.PHONY: all docs test itest
+.PHONY: all docs test itest k8s_itests
+
+dev: .paasta/bin/activate
+	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 docs: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
 
 test: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL)
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
 
 .tox/py36-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -60,10 +63,42 @@ release:
 	make -C yelp_package release
 
 clean:
-	rm -rf ./dist
-	make -C yelp_package clean
-	rm -rf docs/build
-	find . -name '*.pyc' -delete
-	find . -name '__pycache__' -delete
-	rm -rf .tox
-	rm -rf .paasta
+	-rm -rf ./dist
+	-make -C yelp_package clean
+	-rm -rf docs/build
+	-find . -name '*.pyc' -delete
+	-find . -name '__pycache__' -delete
+	-rm -rf .tox
+	-rm -rf .paasta
+
+yelpy: ## Installs the yelp-internal packages into the default tox environment
+	.tox/py36-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
+
+
+.PHONY: help
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: install-hooks
+install-hooks:
+	tox -e install-hooks
+
+k8s_itests: .paasta/bin/activate
+	make -C k8s_itests all
+
+# image source: openapitools/openapi-generator-cli:latest
+# java command:
+#   in oapi repo: mvn clean && mvn install
+#   in paasta repo: java -jar ~/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar
+openapi-codegen:
+	rm -rf paasta_tools/paastaapi
+	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
+		yelp/openapi-generator-cli:20201026 \
+		generate \
+		-i paasta_tools/api/api_docs/oapi.yaml \
+		-g python-experimental \
+		--package-name paasta_tools.paastaapi \
+		-o temp-openapi-client \
+		-p pythonAttrNoneIfUnset=true
+	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
+	rm -rf temp-openapi-client

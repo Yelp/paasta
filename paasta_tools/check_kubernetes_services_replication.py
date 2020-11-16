@@ -31,6 +31,7 @@ CRITICAL. If replication_threshold is defined in the yelpsoa config for a servic
 instance then it will be used instead.
 """
 import logging
+from typing import Optional
 from typing import Sequence
 
 from paasta_tools import kubernetes_tools
@@ -41,10 +42,11 @@ from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
-from paasta_tools.smartstack_tools import KubeSmartstackReplicationChecker
+from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 
 
 log = logging.getLogger(__name__)
+DEFAULT_ALERT_AFTER = "10m"
 
 
 def check_healthy_kubernetes_tasks_for_service_instance(
@@ -58,7 +60,9 @@ def check_healthy_kubernetes_tasks_for_service_instance(
         instance=instance_config.instance,
     )
     num_healthy_tasks = len([pod for pod in si_pods if is_pod_ready(pod)])
-    log.info(f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack")
+    log.info(
+        f"Checking {instance_config.service}.{instance_config.instance} in kubernetes as it is not in smartstack"
+    )
     monitoring_tools.send_replication_event_if_under_replication(
         instance_config=instance_config,
         expected_count=expected_count,
@@ -68,34 +72,55 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 def check_kubernetes_pod_replication(
     instance_config: KubernetesDeploymentConfig,
-    all_pods: Sequence[V1Pod],
-    smartstack_replication_checker: KubeSmartstackReplicationChecker,
-) -> None:
+    all_tasks_or_pods: Sequence[V1Pod],
+    replication_checker: KubeSmartstackEnvoyReplicationChecker,
+) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
-    should be monitored. (smartstack or k8s)
+    should be monitored. (smartstack/envoy or k8s)
 
     :param instance_config: an instance of KubernetesDeploymentConfig
-    :param smartstack_replication_checker: an instance of KubeSmartstackReplicationChecker
+    :param replication_checker: an instance of KubeSmartstackEnvoyReplicationChecker
     """
+    default_alert_after = DEFAULT_ALERT_AFTER
     expected_count = instance_config.get_instances()
-    log.info("Expecting %d total tasks for %s" % (expected_count, instance_config.job_id))
+    log.info(
+        "Expecting %d total tasks for %s" % (expected_count, instance_config.job_id)
+    )
     proxy_port = get_proxy_port_for_instance(instance_config)
 
     registrations = instance_config.get_registrations()
+
+    # If this instance does not autoscale and only has 1 instance, set alert after to 20m.
+    # Otherwise, set it to 10 min.
+    if (
+        not instance_config.is_autoscaling_enabled()
+        and instance_config.get_instances() == 1
+    ):
+        default_alert_after = "20m"
+    if "monitoring" not in instance_config.config_dict:
+        instance_config.config_dict["monitoring"] = {}
+    instance_config.config_dict["monitoring"][
+        "alert_after"
+    ] = instance_config.config_dict["monitoring"].get(
+        "alert_after", default_alert_after
+    )
+
     # if the primary registration does not match the service_instance name then
     # the best we can do is check k8s for replication (for now).
     if proxy_port is not None and registrations[0] == instance_config.job_id:
-        monitoring_tools.check_smartstack_replication_for_instance(
+        is_well_replicated = monitoring_tools.check_replication_for_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            smartstack_replication_checker=smartstack_replication_checker,
+            replication_checker=replication_checker,
         )
+        return is_well_replicated
     else:
         check_healthy_kubernetes_tasks_for_service_instance(
             instance_config=instance_config,
             expected_count=expected_count,
-            all_pods=all_pods,
+            all_pods=all_tasks_or_pods,
         )
+        return None
 
 
 if __name__ == "__main__":

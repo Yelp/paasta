@@ -1,13 +1,6 @@
 monitoring Module
 =================
 
-Scripts:
-
-.. toctree::
-   :maxdepth: 2
-
-   ../../generated/paasta_tools.monitoring.check_synapse_replication
-
 Libraries:
 
 .. toctree::

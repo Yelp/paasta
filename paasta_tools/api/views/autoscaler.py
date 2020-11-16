@@ -20,75 +20,86 @@ from pyramid.view import view_config
 
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.long_running_service_tools import set_instances_for_marathon_service
-from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
-@view_config(route_name='service.autoscaler.get', request_method='GET', renderer='json')
+@view_config(route_name="service.autoscaler.get", request_method="GET", renderer="json")
 def get_autoscaler_count(request):
-    service = request.swagger_data.get('service')
-    instance = request.swagger_data.get('instance')
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
     cluster = settings.cluster
     soa_dir = settings.soa_dir
-    try:
-        service_config = load_marathon_service_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-            load_deployments=False,
+
+    instance_config = get_instance_config(service, instance, cluster, soa_dir)
+    if not isinstance(
+        instance_config, (KubernetesDeploymentConfig, MarathonServiceConfig)
+    ):
+        error_message = (
+            f"Autoscaling is not supported for {service}.{instance} because instance type is not "
+            f"marathon or kubernetes."
         )
-    except Exception:
-        error_message = f'Unable to load service config for {service}.{instance}'
-        raise ApiFailure(error_message, 404)
+        raise ApiFailure(error_message, 501)
 
     response_body = {
-        'desired_instances': service_config.get_instances(),
-        'calculated_instances': service_config.get_instances(with_limit=False),
+        "desired_instances": instance_config.get_instances(),
+        "calculated_instances": instance_config.get_instances(with_limit=False),
     }
     return Response(json_body=response_body, status_code=200)
 
 
-@view_config(route_name='service.autoscaler.post', request_method='POST', renderer='json')
+@view_config(
+    route_name="service.autoscaler.post", request_method="POST", renderer="json"
+)
 def update_autoscaler_count(request):
-    service = request.swagger_data.get('service')
-    instance = request.swagger_data.get('instance')
-    desired_instances = request.swagger_data.get('json_body')['desired_instances']
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    cluster = settings.cluster
+    soa_dir = settings.soa_dir
+    desired_instances = request.swagger_data.get("json_body")["desired_instances"]
     if not isinstance(desired_instances, int):
         error_message = 'The provided body does not have an integer value for "desired_instances": {}'.format(
-            request.swagger_data.get('json_body'),
+            request.swagger_data.get("json_body")
         )
         raise ApiFailure(error_message, 500)
 
-    try:
-        service_config = load_marathon_service_config(
-            service=service,
-            instance=instance,
-            cluster=settings.cluster,
-            soa_dir=settings.soa_dir,
-            load_deployments=False,
+    instance_config = get_instance_config(service, instance, cluster, soa_dir, True)
+    if not isinstance(
+        instance_config, (KubernetesDeploymentConfig, MarathonServiceConfig)
+    ):
+        error_message = (
+            f"Autoscaling is not supported for {service}.{instance} because instance type is not "
+            f"marathon or kubernetes."
         )
-    except Exception:
-        error_message = f'Unable to load service config for {service}.{instance}'
-        raise ApiFailure(error_message, 404)
+        raise ApiFailure(error_message, 501)
 
-    max_instances = service_config.get_max_instances()
+    max_instances = instance_config.get_max_instances()
     if max_instances is None:
-        error_message = f'Autoscaling is not enabled for {service}.{instance}'
+        error_message = f"Autoscaling is not enabled for {service}.{instance}"
         raise ApiFailure(error_message, 404)
+    min_instances = instance_config.get_min_instances()
 
-    min_instances = service_config.get_min_instances()
-
-    # Dump whatever number from the client to zk. get_instances() will limit
-    # readings from zk to [min_instances, max_instances].
-    set_instances_for_marathon_service(service=service, instance=instance, instance_count=desired_instances)
-    status = 'SUCCESS'
+    status = "SUCCESS"
     if desired_instances > max_instances:
         desired_instances = max_instances
-        status = 'WARNING desired_instances is greater than max_instances %d' % max_instances
+        status = (
+            "WARNING desired_instances is greater than max_instances %d" % max_instances
+        )
     elif desired_instances < min_instances:
         desired_instances = min_instances
-        status = 'WARNING desired_instances is less than min_instances %d' % min_instances
+        status = (
+            "WARNING desired_instances is less than min_instances %d" % min_instances
+        )
+    try:
+        if isinstance(instance_config, KubernetesDeploymentConfig):
+            instance_config.set_autoscaled_instances(
+                instance_count=desired_instances, kube_client=settings.kubernetes_client
+            )
+        else:
+            instance_config.set_autoscaled_instances(instance_count=desired_instances)
+    except Exception as err:
+        raise ApiFailure(err, 500)
 
-    response_body = {'desired_instances': desired_instances, 'status': status}
+    response_body = {"desired_instances": desired_instances, "status": status}
     return Response(json_body=response_body, status_code=202)

@@ -12,7 +12,13 @@ class MarathonContainer(MarathonObject):
     port_mappings = ...  # type: Any
     docker = ...  # type: Any
     volumes = ...  # type: Any
-    def __init__(self, docker: Optional[Any] = ..., type: str = ..., port_mappings: Optional[Any] = ..., volumes: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        docker: Optional[Any] = ...,
+        type: str = ...,
+        port_mappings: Optional[Any] = ...,
+        volumes: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonDockerContainer(MarathonObject):
     NETWORK_MODES = ...  # type: Any
@@ -22,7 +28,16 @@ class MarathonDockerContainer(MarathonObject):
     parameters = ...  # type: Any
     privileged = ...  # type: Any
     force_pull_image = ...  # type: Any
-    def __init__(self, image: Optional[Any] = ..., network: Optional[Any] = ..., port_mappings: Optional[Any] = ..., parameters: Optional[Any] = ..., privileged: Optional[Any] = ..., force_pull_image: Optional[Any] = ..., **kwargs) -> None: ...
+    def __init__(
+        self,
+        image: Optional[Any] = ...,
+        network: Optional[Any] = ...,
+        port_mappings: Optional[Any] = ...,
+        parameters: Optional[Any] = ...,
+        privileged: Optional[Any] = ...,
+        force_pull_image: Optional[Any] = ...,
+        **kwargs,
+    ) -> None: ...
 
 class MarathonContainerPortMapping(MarathonObject):
     PROTOCOLS = ...  # type: Any
@@ -32,7 +47,15 @@ class MarathonContainerPortMapping(MarathonObject):
     service_port = ...  # type: Any
     protocol = ...  # type: Any
     labels = ...  # type: Any
-    def __init__(self, name: Optional[Any] = ..., container_port: Optional[Any] = ..., host_port: int = ..., service_port: Optional[Any] = ..., protocol: str = ..., labels: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        name: Optional[Any] = ...,
+        container_port: Optional[Any] = ...,
+        host_port: int = ...,
+        service_port: Optional[Any] = ...,
+        protocol: str = ...,
+        labels: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonContainerVolume(MarathonObject):
     MODES = ...  # type: Any
@@ -41,4 +64,11 @@ class MarathonContainerVolume(MarathonObject):
     mode = ...  # type: Any
     persistent = ...  # type: Any
     external = ...  # type: Any
-    def __init__(self, container_path: Optional[Any] = ..., host_path: Optional[Any] = ..., mode: str = ..., persistent: Optional[Any] = ..., external: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        container_path: Optional[Any] = ...,
+        host_path: Optional[Any] = ...,
+        mode: str = ...,
+        persistent: Optional[Any] = ...,
+        external: Optional[Any] = ...,
+    ) -> None: ...

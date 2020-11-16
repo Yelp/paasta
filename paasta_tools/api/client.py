@@ -15,16 +15,19 @@
 """
 Client interface for the Paasta rest api.
 """
-import json
 import logging
 import os
-from typing import Any
+from typing import Mapping
+from typing import Optional
+from typing import Type
+from urllib.parse import ParseResult
 from urllib.parse import urlparse
 
-from bravado.client import SwaggerClient
-from bravado.requests_client import RequestsClient
+from dataclasses import dataclass
 
-import paasta_tools.api
+import paasta_tools.paastaapi.apis as paastaapis
+from paasta_tools import paastaapi
+from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -32,11 +35,73 @@ from paasta_tools.utils import SystemPaastaConfig
 log = logging.getLogger(__name__)
 
 
-def get_paasta_api_client(
+def get_paasta_ssl_opts(
+    cluster: str, system_paasta_config: SystemPaastaConfig
+) -> Mapping:
+    if system_paasta_config.get_enable_client_cert_auth():
+        ecosystem = system_paasta_config.get_vault_cluster_config()[cluster]
+        paasta_dir = os.path.expanduser("~/.paasta/pki")
+        if (
+            not os.path.isfile(f"{paasta_dir}/{ecosystem}.crt")
+            or not os.path.isfile(f"{paasta_dir}/{ecosystem}.key")
+            or not os.path.isfile(f"{paasta_dir}/{ecosystem}_ca.crt")
+        ):
+            renew_issue_cert(system_paasta_config=system_paasta_config, cluster=cluster)
+        return dict(
+            key=f"{paasta_dir}/{ecosystem}.crt",
+            cert=f"{paasta_dir}/{ecosystem}.key",
+            ca=f"{paasta_dir}/{ecosystem}_ca.crt",
+        )
+    else:
+        return {}
+
+
+@dataclass
+class PaastaOApiClient:
+    autoscaler: paastaapis.AutoscalerApi
+    default: paastaapis.DefaultApi
+    marathon_dashboard: paastaapis.MarathonDashboardApi
+    resources: paastaapis.ResourcesApi
+    service: paastaapis.ServiceApi
+    api_error: Type[paastaapi.ApiException]
+    connection_error: Type[paastaapi.ApiException]
+    timeout_error: Type[paastaapi.ApiException]
+    request_error: Type[paastaapi.ApiException]
+
+
+def get_paasta_oapi_client_by_url(
+    parsed_url: ParseResult,
+    cert_file: Optional[str] = None,
+    key_file: Optional[str] = None,
+    ssl_ca_cert: Optional[str] = None,
+) -> PaastaOApiClient:
+    server_variables = dict(scheme=parsed_url.scheme, host=parsed_url.netloc)
+    config = paastaapi.Configuration(
+        server_variables=server_variables, discard_unknown_keys=True,
+    )
+    config.cert_file = cert_file
+    config.key_file = key_file
+    config.ssl_ca_cert = ssl_ca_cert
+
+    client = paastaapi.ApiClient(configuration=config)
+    return PaastaOApiClient(
+        autoscaler=paastaapis.AutoscalerApi(client),
+        default=paastaapis.DefaultApi(client),
+        marathon_dashboard=paastaapis.MarathonDashboardApi(client),
+        resources=paastaapis.ResourcesApi(client),
+        service=paastaapis.ServiceApi(client),
+        api_error=paastaapi.ApiException,
+        connection_error=paastaapi.ApiException,
+        timeout_error=paastaapi.ApiException,
+        request_error=paastaapi.ApiException,
+    )
+
+
+def get_paasta_oapi_client(
     cluster: str = None,
     system_paasta_config: SystemPaastaConfig = None,
     http_res: bool = False,
-) -> Any:
+) -> Optional[PaastaOApiClient]:
     if not system_paasta_config:
         system_paasta_config = load_system_paasta_config()
 
@@ -45,60 +110,33 @@ def get_paasta_api_client(
 
     api_endpoints = system_paasta_config.get_api_endpoints()
     if cluster not in api_endpoints:
-        log.error('Cluster %s not in paasta-api endpoints config', cluster)
+        log.error("Cluster %s not in paasta-api endpoints config", cluster)
         return None
 
-    url = str(api_endpoints[cluster])
-    parsed = urlparse(url)
-    if not parsed:
-        log.error('Unsupported paasta-api url %s', url)
-        return None
-    api_server = parsed.netloc
+    parsed = urlparse(api_endpoints[cluster])
+    cert_file = key_file = ssl_ca_cert = None
+    if parsed.scheme == "https":
+        opts = get_paasta_ssl_opts(cluster, system_paasta_config)
+        if opts:
+            cert_file = opts["cert"]
+            key_file = opts["key"]
+            ssl_ca_cert = opts["ca"]
 
-    # Get swagger spec from file system instead of the api server
-    paasta_api_path = os.path.dirname(paasta_tools.api.__file__)
-    swagger_file = os.path.join(paasta_api_path, 'api_docs/swagger.json')
-    if not os.path.isfile(swagger_file):
-        log.error('paasta-api swagger spec %s does not exist', swagger_file)
-        return None
+    return get_paasta_oapi_client_by_url(parsed, cert_file, key_file, ssl_ca_cert)
 
-    with open(swagger_file) as f:
-        spec_dict = json.load(f)
-    # replace localhost in swagger.json with actual api server
-    spec_dict['host'] = api_server
-    spec_dict['schemes'] = [parsed.scheme]
 
-    # sometimes we want the status code
-    requests_client = PaastaRequestsClient(
-        scheme=parsed.scheme,
-        cluster=cluster,
-        system_paasta_config=system_paasta_config,
+def renew_issue_cert(system_paasta_config: SystemPaastaConfig, cluster: str) -> None:
+    secret_provider_kwargs = {
+        "vault_cluster_config": system_paasta_config.get_vault_cluster_config()
+    }
+    sp = get_secret_provider(
+        secret_provider_name=system_paasta_config.get_secret_provider_name(),
+        cluster_names=[cluster],
+        secret_provider_kwargs=secret_provider_kwargs,
+        soa_dir=None,
+        service_name=None,
     )
-    if http_res:
-        config = {'also_return_response': True}
-        return SwaggerClient.from_spec(spec_dict=spec_dict, config=config, http_client=requests_client)
-    else:
-        return SwaggerClient.from_spec(spec_dict=spec_dict, http_client=requests_client)
-
-
-class PaastaRequestsClient(RequestsClient):
-    def __init__(
-        self,
-        scheme: str,
-        cluster: str,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> None:
-        if scheme == 'https':
-            if system_paasta_config.get_enable_client_cert_auth():
-                paasta_dir = os.path.expanduser('~/.paasta/pki')
-                ssl_cert = (f'{paasta_dir}/{cluster}.crt', f'{paasta_dir}/{cluster}.key')
-            else:
-                ssl_cert = None
-            super().__init__(ssl_verify=True, ssl_cert=ssl_cert)
-            ca_cert_path = system_paasta_config.get_api_ca_certificates().get(
-                cluster,
-                system_paasta_config.get_default_api_ca_certificate(),
-            )
-            self.session.verify = ca_cert_path
-        else:
-            super().__init__()
+    sp.renew_issue_cert(
+        pki_backend=system_paasta_config.get_pki_backend(),
+        ttl=system_paasta_config.get_auth_certificate_ttl(),
+    )

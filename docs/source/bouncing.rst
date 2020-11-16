@@ -3,8 +3,7 @@ How PaaSTA Bounces New Code and SOA-config changes
 
 In the context of this document, "Bouncing" refers to the procedure of
 replacing old tasks with new ones. With long-running services bouncing
-is implemented by controlling Marathon Apps. For periodic tasks, see the
-section on "Chronos Bouncing."
+is implemented by controlling Marathon or Kubernetes.
 
 A "Bounce" can happen for one of these reasons:
 
@@ -91,6 +90,8 @@ to account for this::
 upthendown
 """"""""""
 
+Note: This option is not available on Kubernetes
+
 The ``upthendown`` bounce will wait till there is a full healthy copy of a new
 app before draining and gracefully killing the old one.
 
@@ -103,6 +104,8 @@ combined with a limited cluster size.
 
 .. image:: bounce_upthendown.png
    :scale: 100%
+
+**Note**: This is deprecated on kubernetes.
 
 downthenup
 """"""""""
@@ -170,12 +173,6 @@ The setting effectively gives PaaSTA permission to allow the service to dip belo
 The setting is most effective in situations where there are resource constraints.
 If the service is small and running in a large pool with plenty of headroom, a ``bounce_margin_factor`` is not necessary.
 For a large service in a small pool where there is no headroom, a ``bounce_margin_factor`` is essential, as we need to give PaaSTA permission to make room for the new copies of the service.
-
-Chronos Bouncing
-^^^^^^^^^^^^^^^^
-
-In PaaSTA Chronos jobs are simply configured to use new code or config **on the
-next execution of the job**. In progress jobs are not adjusted or killed.
 
 Tron Bouncing
 ^^^^^^^^^^^^^

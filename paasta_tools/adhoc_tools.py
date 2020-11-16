@@ -20,6 +20,7 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -29,24 +30,22 @@ from paasta_tools.utils import prompt_pick_one
 log = logging.getLogger(__name__)
 
 
-def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_adhoc_job_config(
+    service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR
+):
     general_config = service_configuration_lib.read_service_configuration(
-        service,
+        service, soa_dir=soa_dir
+    )
+    instance_config = load_service_instance_config(
+        service=service,
+        instance=instance,
+        instance_type="adhoc",
+        cluster=cluster,
         soa_dir=soa_dir,
     )
-    adhoc_conf_file = "adhoc-%s" % cluster
-    instance_configs = service_configuration_lib.read_extra_service_information(
-        service_name=service,
-        extra_info=adhoc_conf_file,
-        soa_dir=soa_dir,
+    general_config = deep_merge_dictionaries(
+        overrides=instance_config, defaults=general_config
     )
-
-    if instance not in instance_configs:
-        raise NoConfigurationForServiceError(
-            f"{instance} not found in config file {soa_dir}/{service}/{adhoc_conf_file}.yaml.",
-        )
-
-    general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
     branch_dict = None
     if load_deployments:
@@ -74,7 +73,7 @@ def load_adhoc_job_config(service, instance, cluster, load_deployments=True, soa
 
 
 class AdhocJobConfig(LongRunningServiceConfig):
-    config_filename_prefix = 'adhoc'
+    config_filename_prefix = "adhoc"
 
     def __init__(
         self,
@@ -96,23 +95,18 @@ class AdhocJobConfig(LongRunningServiceConfig):
 
 
 def get_default_interactive_config(
-    service: str,
-    cluster: str,
-    soa_dir: str,
-    load_deployments: bool = False,
+    service: str, cluster: str, soa_dir: str, load_deployments: bool = False
 ) -> AdhocJobConfig:
-    default_job_config = {
-        'cpus': 4,
-        'mem': 10240,
-        'disk': 1024,
-    }
+    default_job_config = {"cpus": 4, "mem": 10240, "disk": 1024}
 
     try:
-        job_config = load_adhoc_job_config(service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir)
+        job_config = load_adhoc_job_config(
+            service=service, instance="interactive", cluster=cluster, soa_dir=soa_dir
+        )
     except NoConfigurationForServiceError:
         job_config = AdhocJobConfig(
             service=service,
-            instance='interactive',
+            instance="interactive",
             cluster=cluster,
             config_dict={},
             branch_dict=None,
@@ -120,21 +114,26 @@ def get_default_interactive_config(
         )
     except NoDeploymentsAvailable:
         job_config = load_adhoc_job_config(
-            service=service, instance='interactive', cluster=cluster, soa_dir=soa_dir, load_deployments=False,
+            service=service,
+            instance="interactive",
+            cluster=cluster,
+            soa_dir=soa_dir,
+            load_deployments=False,
         )
 
     if not job_config.branch_dict and load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
         deploy_group = prompt_pick_one(
-            deployments_json.get_deploy_groups(),
-            choosing='deploy group',
+            deployments_json.get_deploy_groups(), choosing="deploy group"
         )
-        job_config.config_dict['deploy_group'] = deploy_group
+        job_config.config_dict["deploy_group"] = deploy_group
         job_config.branch_dict = {
-            'docker_image': deployments_json.get_docker_image_for_deploy_group(deploy_group),
-            'git_sha': deployments_json.get_git_sha_for_deploy_group(deploy_group),
-            'force_bounce': None,
-            'desired_state': 'start',
+            "docker_image": deployments_json.get_docker_image_for_deploy_group(
+                deploy_group
+            ),
+            "git_sha": deployments_json.get_git_sha_for_deploy_group(deploy_group),
+            "force_bounce": None,
+            "desired_state": "start",
         }
 
     for key, value in default_job_config.items():

@@ -12,8 +12,6 @@ from subprocess import STDOUT
 
 import yaml
 
-from paasta_tools.utils import paasta_print
-
 
 def _timeout(process):
     """Helper function for _run. It terminates the process.
@@ -42,14 +40,14 @@ def cmd(command):
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
-        for line in iter(process.stdout.readline, ''):
+        for line in iter(process.stdout.readline, ""):
             if stream:
-                paasta_print(line.rstrip('\n'))
-            output.append(line.rstrip('\n'))
+                print(line.rstrip("\n"))
+            output.append(line.rstrip("\n"))
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:
-        output.append(e.strerror.rstrip('\n'))
+        output.append(e.strerror.rstrip("\n"))
         returncode = e.errno
     except (KeyboardInterrupt, SystemExit):
         # need to clean up the timing thread here
@@ -62,24 +60,24 @@ def cmd(command):
             proctimer.cancel()
     if returncode == -9:
         output.append(f"Command '{command}' timed out (longer than {timeout}s)")
-    return returncode, '\n'.join(output)
+    return returncode, "\n".join(output)
 
 
 def abort(message):
-    paasta_print(message)
+    print(message)
     sys.exit(1)
 
 
 def condquit(rc, message):
     if rc != 0:
-        paasta_print(message)
+        print(message)
         sys.exit(rc)
 
 
 def docker_env_to_dict(environment_array):
     environment = {}
     for kv in environment_array:
-        k, v = kv.split('=', 1)
+        k, v = kv.split("=", 1)
         environment[k] = v
     return environment
 
@@ -88,10 +86,10 @@ def get_proxy_port(service_name, instance_name):
     smartstack_yaml = "/nail/etc/services/%s/smartstack.yaml" % service_name
     proxy_port = None
     if os.path.exists(smartstack_yaml):
-        with open(smartstack_yaml, 'r') as stream:
+        with open(smartstack_yaml, "r") as stream:
             data = yaml.safe_load(stream)
             if instance_name in data:
-                proxy_port = data[instance_name].get('proxy_port', None)
+                proxy_port = data[instance_name].get("proxy_port", None)
     return proxy_port
 
 
@@ -108,7 +106,7 @@ def get_last_killed(drained_apps, service, instance):
 
 
 def has_all_paasta_env(environment):
-    for k in ('PAASTA_SERVICE', 'PAASTA_INSTANCE', 'MARATHON_PORT'):
+    for k in ("PAASTA_SERVICE", "PAASTA_INSTANCE", "MARATHON_PORT"):
         if k not in environment:
             return False
 
@@ -116,8 +114,8 @@ def has_all_paasta_env(environment):
 
 
 def main():
-    rc, output = cmd('sudo docker ps -q')
-    condquit(rc, 'docker ps')
+    rc, output = cmd("sudo docker ps -q")
+    condquit(rc, "docker ps")
     lines = output.split("\n")
 
     if len(lines) == 0:
@@ -143,38 +141,36 @@ def main():
         rc, output = cmd("sudo docker inspect %s" % container_id)
         condquit(rc, "docker inspect %s" % container_id)
         docker_inspect_data = json.loads(output)
-        environment = docker_env_to_dict(docker_inspect_data[0]['Config']['Env'])
-        if 'CHRONOS_JOB_NAME' in environment:
-            paasta_print(
-                "# WARNING! {} is a chronos job ({}), skipping".format(container_id, environment['CHRONOS_JOB_NAME']),
-            )
-            paasta_print()
-            continue
+        environment = docker_env_to_dict(docker_inspect_data[0]["Config"]["Env"])
         if not has_all_paasta_env(environment):
-            paasta_print("# WARNING: %s is not a paasta container, skipping)" % (container_id))
+            print("# WARNING: %s is not a paasta container, skipping)" % (container_id))
             continue
-        service = environment['PAASTA_SERVICE']
-        instance = environment['PAASTA_INSTANCE']
-        paasta_print(f"# {service}.{instance}")
-        marathon_port = int(environment['MARATHON_PORT'])
+        service = environment["PAASTA_SERVICE"]
+        instance = environment["PAASTA_INSTANCE"]
+        print(f"# {service}.{instance}")
+        marathon_port = int(environment["MARATHON_PORT"])
         proxy_port = get_proxy_port(service, instance)
-        paasta_print(f"# {container_id},{service},{instance},{proxy_port},{marathon_port}")
-        paasta_print("sudo hadown -P {} -e $((`date +'%s'`+{})) {}.{}".format(
-            marathon_port, hadown_expire_in_seconds, service, instance,
-        ))
-        paasta_print("sleep %s" % smartstack_grace_sleep)
+        print(f"# {container_id},{service},{instance},{proxy_port},{marathon_port}")
+        print(
+            "sudo hadown -P {} -e $((`date +'%s'`+{})) {}.{}".format(
+                marathon_port, hadown_expire_in_seconds, service, instance
+            )
+        )
+        print("sleep %s" % smartstack_grace_sleep)
         t += smartstack_grace_sleep
-        paasta_print("sudo docker kill %s" % container_id)
-        paasta_print(f"sudo haup -P {marathon_port} {service}.{instance}")
+        print("sudo docker kill %s" % container_id)
+        print(f"sudo haup -P {marathon_port} {service}.{instance}")
         last_killed_t = get_last_killed(drained_apps, service, instance)
         drained_apps.append((t, service, instance))
         # print "t:%s last_killed_t:%s" % (t, last_killed_t)
         sleep_amount = between_containers_grace_sleep
         if (t - last_killed_t) < min_kill_interval:
-            sleep_amount = min_kill_interval - (t - last_killed_t) + between_containers_grace_sleep
-        paasta_print("sleep %s" % sleep_amount)
+            sleep_amount = (
+                min_kill_interval - (t - last_killed_t) + between_containers_grace_sleep
+            )
+        print("sleep %s" % sleep_amount)
         t += sleep_amount
-        paasta_print()
+        print()
 
 
 if __name__ == "__main__":

@@ -22,28 +22,28 @@ from paasta_tools.cli.cli import main
 def each_command():
     parser = get_argparser()
     # We're doing some wacky inspection here, let's make sure things are sane
-    subparsers, = [
+    (subparsers,) = [
         action
         for action in parser._actions
         if isinstance(action, argparse._SubParsersAction)
     ]
     # Remove our dummy help command, paasta help --help is nonsense
-    choices = tuple(set(subparsers.choices) - {'help'})
+    choices = tuple(set(subparsers.choices) - {"help"})
     assert choices
-    assert 'local-run' in choices
+    assert "local-run" in choices
     return choices
 
 
-@pytest.mark.parametrize('cmd', each_command())
+@pytest.mark.parametrize("cmd", each_command())
 def test_help(cmd, capfd):
     # Should pass and produce something
     with pytest.raises(SystemExit) as excinfo:
-        main((cmd, '--help'))
+        main((cmd, "--help"))
     assert excinfo.value.code == 0
     assert cmd in capfd.readouterr()[0]
 
 
 def test_invalid_arguments_returns_non_zero():
     with pytest.raises(SystemExit) as excinfo:
-        main(('get-latest-deployment', '--herp'))
+        main(("get-latest-deployment", "--herp"))
     assert excinfo.value.code == 1

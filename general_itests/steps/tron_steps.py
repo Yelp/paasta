@@ -17,12 +17,12 @@ from behave import when
 from paasta_tools.utils import _run
 
 
-@given('some tronfig')
+@given("some tronfig")
 def step_some_tronfig(context):
-    context.soa_dir = 'fake_soa_configs_tron'
+    context.soa_dir = "fake_soa_configs_tron"
 
 
-@when('we run paasta_setup_tron_namespace in dry-run mode')
+@when("we run paasta_setup_tron_namespace in dry-run mode")
 def step_run_paasta_setup_tron_namespace_dry_run(context):
     cmd = (
         f"paasta_setup_tron_namespace --dry-run -a --soa-dir {context.soa_dir}"

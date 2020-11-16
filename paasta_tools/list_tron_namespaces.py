@@ -14,17 +14,23 @@
 import argparse
 
 from paasta_tools import tron_tools
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Lists Tron namespaces for a cluster, excluding MASTER')
+    parser = argparse.ArgumentParser(
+        description="Lists Tron namespaces for a cluster, excluding MASTER"
+    )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", default=None,
+        "-c",
+        "--cluster",
+        dest="cluster",
+        default=None,
         help="Use a different Tron cluster",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
         default=tron_tools.DEFAULT_SOA_DIR,
         help="Use a different soa config directory",
     )
@@ -34,8 +40,10 @@ def parse_args():
 
 def main():
     args = parse_args()
-    namespaces = tron_tools.get_tron_namespaces(cluster=args.cluster, soa_dir=args.soa_dir)
-    paasta_print('\n'.join(namespaces))
+    namespaces = tron_tools.get_tron_namespaces(
+        cluster=args.cluster, soa_dir=args.soa_dir
+    )
+    print("\n".join(namespaces))
 
 
 if __name__ == "__main__":

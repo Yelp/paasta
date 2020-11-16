@@ -1,7 +1,10 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-PIP_INDEX_URL ?= https://pypi.python.org/simple
+PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
+
+DISTRIB_CODENAME := $(shell sed -n 's|DISTRIB_CODENAME=\(.*\)|\1|p' </etc/lsb-release)
+PYTHON_VERSION := $(if $(filter-out focal,$(DISTRIB_CODENAME)),3.6,3.8)
 
 %:
 	dh $@ --with python-virtualenv
@@ -17,5 +20,13 @@ override_dh_auto_build:
 override_dh_auto_test:
 	true
 
+PACKAGE=$(shell dh_listpackages)
+DH_VIRTUALENV_INSTALL_ROOT=/opt/venvs
+DH_VENV_DIR=debian/$(PACKAGE)$(DH_VIRTUALENV_INSTALL_ROOT)/$(PACKAGE)
 override_dh_virtualenv:
-	dh_virtualenv -i $(PIP_INDEX_URL) --python=/usr/bin/python3.6 --preinstall no-manylinux1 --preinstall pip-custom-platform --pip-tool pip-custom-platform
+	dh_virtualenv -i $(PIP_INDEX_URL) \
+		--python=/usr/bin/python$(PYTHON_VERSION) \
+		--preinstall no-manylinux1 \
+		--preinstall=-rrequirements-bootstrap.txt \
+		--pip-tool pip-custom-platform
+	cp yelp_package/gopath/paasta_go $(DH_VENV_DIR)/bin/paasta_go

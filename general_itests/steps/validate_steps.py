@@ -17,37 +17,39 @@ from behave import when
 
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.utils import _run
-from paasta_tools.utils import paasta_print
 
 
 @given('a "{service_type}" service')
 @given('an "{service_type}" service')
 def given_service(context, service_type):
-    context.service = 'fake_%s_service' % service_type
-    context.soa_dir = 'fake_soa_configs_validate'
+    context.service = "fake_%s_service" % service_type
+    context.soa_dir = "fake_soa_configs_validate"
 
 
-@when('we run paasta validate')
+@when("we run paasta validate")
 def run_paasta_validate(context):
-    validate_cmd = ("paasta validate "
-                    "--yelpsoa-config-root %s "
-                    "--service %s " % (context.soa_dir, context.service))
+    validate_cmd = (
+        "paasta validate "
+        "--yelpsoa-config-root %s "
+        "--service %s " % (context.soa_dir, context.service)
+    )
     context.return_code, context.output = _run(command=validate_cmd)
 
 
 @then('it should have a return code of "{code:d}"')
 def see_expected_return_code(context, code):
-    paasta_print(context.output)
-    paasta_print(context.return_code)
-    paasta_print()
+    print(context.output)
+    print(context.return_code)
+    print()
     assert context.return_code == code
 
 
-@then('everything should pass')
+@then("everything should pass")
 def validate_status_all_pass(context):
     assert not context.output or x_mark() not in context.output
 
 
-@then('it should report an error in the output')
+@then("it should report an error in the output")
 def validate_status_something_fail(context):
-    assert x_mark() in context.output
+    print(context.output)
+    assert "Successfully validated schema" not in context.output

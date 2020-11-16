@@ -7,7 +7,6 @@ from typing import Optional
 from typing import Tuple
 
 import service_configuration_lib
-from kazoo.exceptions import NoNodeError
 from mypy_extensions import TypedDict
 
 from paasta_tools.utils import BranchDictV2
@@ -20,19 +19,20 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import ZookeeperPool
-
-DEFAULT_CONTAINER_PORT = 8888
+from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
-logging.getLogger('marathon').setLevel(logging.WARNING)
+logging.getLogger("marathon").setLevel(logging.WARNING)
 
-AUTOSCALING_ZK_ROOT = '/autoscaling'
-ZK_PAUSE_AUTOSCALE_PATH = '/autoscaling/paused'
+ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
+DEFAULT_CONTAINER_PORT = 8888
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     drain_method: str
+    iam_role: str
+    iam_role_provider: str
+    fs_group: int
     container_port: int
     drain_method_params: Dict
     healthcheck_cmd: str
@@ -46,23 +46,23 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     max_instances: int
     min_instances: int
     nerve_ns: str
+    network_mode: str
     registrations: List[str]
     replication_threshold: int
-    bounce_priority: int
+    bounce_start_deadline: float
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
-BounceMethodConfigDict = TypedDict('BounceMethodConfigDict', {"instances": int})
+BounceMethodConfigDict = TypedDict("BounceMethodConfigDict", {"instances": int})
 
 
 class ServiceNamespaceConfig(dict):
-
     def get_healthcheck_mode(self) -> str:
         """Get the healthcheck mode for the service. In most cases, this will match the mode
         of the service, but we do provide the opportunity for users to specify both. Default to the mode
         if no healthcheck_mode is specified.
         """
-        healthcheck_mode = self.get('healthcheck_mode', None)
+        healthcheck_mode = self.get("healthcheck_mode", None)
         if not healthcheck_mode:
             return self.get_mode()
         else:
@@ -75,25 +75,25 @@ class ServiceNamespaceConfig(dict):
         in the config, the service uses smartstack, and we can thus safely assume its mode is http.
         If the mode is not defined and the service does not use smartstack, we set the mode to None.
         """
-        mode = self.get('mode', None)
+        mode = self.get("mode", None)
         if mode is None:
             if not self.is_in_smartstack():
                 return None
             else:
-                return 'http'
-        elif mode in ['http', 'tcp', 'https']:
+                return "http"
+        elif mode in ["http", "tcp", "https"]:
             return mode
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
 
     def get_healthcheck_uri(self) -> str:
-        return self.get('healthcheck_uri', '/status')
+        return self.get("healthcheck_uri", "/status")
 
     def get_discover(self) -> str:
-        return self.get('discover', 'region')
+        return self.get("discover", "region")
 
     def is_in_smartstack(self) -> bool:
-        if self.get('proxy_port') is not None:
+        if self.get("proxy_port") is not None:
             return True
         else:
             return False
@@ -103,8 +103,13 @@ class LongRunningServiceConfig(InstanceConfig):
     config_dict: LongRunningServiceConfigDict
 
     def __init__(
-        self, service: str, cluster: str, instance: str, config_dict: LongRunningServiceConfigDict,
-        branch_dict: Optional[BranchDictV2], soa_dir: str = DEFAULT_SOA_DIR,
+        self,
+        service: str,
+        cluster: str,
+        instance: str,
+        config_dict: LongRunningServiceConfigDict,
+        branch_dict: Optional[BranchDictV2],
+        soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
         super().__init__(
             cluster=cluster,
@@ -115,120 +120,174 @@ class LongRunningServiceConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
 
+    def get_bounce_method(self) -> str:
+        raise NotImplementedError
+
+    def get_kubernetes_namespace(self) -> str:
+        """
+        Only needed on kubernetes LongRunningServiceConfig
+        """
+        raise NotImplementedError
+
+    def get_sanitised_deployment_name(self) -> str:
+        """
+        Only needed on kubernetes LongRunningServiceConfig
+        """
+        raise NotImplementedError
+
+    def get_service_name_smartstack(self) -> str:
+        """
+        This is just the service name here
+        For cassandra we have to override this to support apollo
+        """
+        return self.get_service()
+
+    def get_env(
+        self, system_paasta_config: Optional[SystemPaastaConfig] = None
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
+        env["PAASTA_PORT"] = str(self.get_container_port())
+        return env
+
+    def get_container_port(self) -> int:
+        return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
+
     def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         """Get the drain method specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain method specified in the config, or 'noop' if not specified"""
-        default = 'noop'
+        default = "noop"
         # Default to hacheck draining if the service is in smartstack
         if service_namespace_config.is_in_smartstack():
-            default = 'hacheck'
-        return self.config_dict.get('drain_method', default)
+            default = "hacheck"
+        return self.config_dict.get("drain_method", default)
 
-    def get_drain_method_params(self, service_namespace_config: ServiceNamespaceConfig) -> Dict:
+    def get_drain_method_params(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> Dict:
         """Get the drain method parameters specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
         default: Dict = {}
         if service_namespace_config.is_in_smartstack():
-            default = {'delay': 60}
-        return self.config_dict.get('drain_method_params', default)
+            default = {"delay": 60}
+        return self.config_dict.get("drain_method_params", default)
 
     # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self) -> str:
         return decompose_job_id(self.get_registrations()[0])[1]
 
     def get_registrations(self) -> List[str]:
-        registrations = self.config_dict.get('registrations', [])
+        registrations = self.config_dict.get("registrations", [])
         for registration in registrations:
             try:
                 decompose_job_id(registration)
             except InvalidJobNameError:
                 log.error(
-                    'Provided registration {} for service '
-                    '{} is invalid'.format(registration, self.service),
+                    "Provided registration {} for service "
+                    "{} is invalid".format(registration, self.service)
                 )
 
         # Backwards compatibility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
-        if not registrations and 'nerve_ns' in self.config_dict:
+        if not registrations and "nerve_ns" in self.config_dict:
             registrations.append(
-                compose_job_id(self.service, self.config_dict['nerve_ns']),
+                compose_job_id(self.service, self.config_dict["nerve_ns"])
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
 
     def get_replication_crit_percentage(self) -> int:
-        return self.config_dict.get('replication_threshold', 50)
+        return self.config_dict.get("replication_threshold", 50)
 
-    def get_healthcheck_uri(self, service_namespace_config: ServiceNamespaceConfig) -> str:
-        return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+    def get_iam_role(self) -> str:
+        return self.config_dict.get("iam_role", "")
+
+    def get_iam_role_provider(self) -> str:
+        return self.config_dict.get("iam_role_provider", "kiam")
+
+    def get_fs_group(self) -> Optional[int]:
+        return self.config_dict.get("fs_group")
+
+    def get_healthcheck_uri(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> str:
+        return self.config_dict.get(
+            "healthcheck_uri", service_namespace_config.get_healthcheck_uri()
+        )
 
     def get_healthcheck_cmd(self) -> str:
-        cmd = self.config_dict.get('healthcheck_cmd', None)
+        cmd = self.config_dict.get("healthcheck_cmd", None)
         if cmd is None:
-            raise InvalidInstanceConfig("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+            raise InvalidInstanceConfig(
+                "healthcheck mode 'cmd' requires a healthcheck_cmd to run"
+            )
         else:
             return cmd
 
     def get_healthcheck_grace_period_seconds(self) -> float:
-        """How long Marathon should give a service to come up before counting failed healthchecks."""
-        return self.config_dict.get('healthcheck_grace_period_seconds', 60)
+        """
+        Grace periods indicate different things on kubernetes/marathon: on
+        marathon, it indicates how long marathon will tolerate failing
+        healthchecks; on kubernetes, how long before kubernetes will start
+        sending healthcheck and liveness probes.
+        """
+        return self.config_dict.get("healthcheck_grace_period_seconds", 60)
 
     def get_healthcheck_interval_seconds(self) -> float:
-        return self.config_dict.get('healthcheck_interval_seconds', 10)
+        return self.config_dict.get("healthcheck_interval_seconds", 10)
 
     def get_healthcheck_timeout_seconds(self) -> float:
-        return self.config_dict.get('healthcheck_timeout_seconds', 10)
+        return self.config_dict.get("healthcheck_timeout_seconds", 10)
 
     def get_healthcheck_max_consecutive_failures(self) -> int:
-        return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
+        return self.config_dict.get("healthcheck_max_consecutive_failures", 30)
 
-    def get_healthcheck_mode(self, service_namespace_config: ServiceNamespaceConfig) -> str:
-        mode = self.config_dict.get('healthcheck_mode', None)
+    def get_healthcheck_mode(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> str:
+        mode = self.config_dict.get("healthcheck_mode", None)
         if mode is None:
             mode = service_namespace_config.get_healthcheck_mode()
-        elif mode not in ['http', 'https', 'tcp', 'cmd', None]:
+        elif mode not in ["http", "https", "tcp", "cmd", None]:
             raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
-    def get_bounce_priority(self) -> int:
-        """Gives a priority to each service instance which deployd will use to prioritise services.
-        Higher numbers are higher priority. This affects the order in which deployd workers pick
-        instances from the bounce queue.
+    def get_bounce_start_deadline(self) -> float:
+        return self.config_dict.get("bounce_start_deadline", 0)
 
-        NB: we multiply by -1 here because *internally* lower numbers are higher priority.
-        """
-        return self.config_dict.get('bounce_priority', 0) * -1
+    def get_autoscaled_instances(self) -> int:
+        raise NotImplementedError()
 
     def get_instances(self, with_limit: bool = True) -> int:
         """Gets the number of instances for a service, ignoring whether the user has requested
         the service to be started or stopped"""
-        if self.get_max_instances() is not None:
-            try:
-                zk_instances = get_instances_from_zookeeper(
-                    service=self.service,
-                    instance=self.instance,
-                )
-                log.debug("Got %d instances out of zookeeper" % zk_instances)
-            except NoNodeError:
-                log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
+        if self.is_autoscaling_enabled():
+            autoscaled_instances = self.get_autoscaled_instances()
+            if autoscaled_instances is None:
                 return self.get_max_instances()
             else:
-                limited_instances = self.limit_instance_count(zk_instances) if with_limit else zk_instances
+                limited_instances = (
+                    self.limit_instance_count(autoscaled_instances)
+                    if with_limit
+                    else autoscaled_instances
+                )
                 return limited_instances
         else:
-            instances = self.config_dict.get('instances', 1)
+            instances = self.config_dict.get("instances", 1)
             log.debug("Autoscaling not enabled, returning %d instances" % instances)
             return instances
 
     def get_min_instances(self) -> int:
-        return self.config_dict.get('min_instances', 1)
+        return self.config_dict.get("min_instances", 1)
 
-    def get_max_instances(self) -> int:
-        return self.config_dict.get('max_instances', None)
+    def is_autoscaling_enabled(self) -> bool:
+        return self.get_max_instances() is not None
+
+    def get_max_instances(self) -> Optional[int]:
+        return self.config_dict.get("max_instances", None)
 
     def get_desired_instances(self) -> int:
         """Get the number of instances specified in zookeeper or the service's marathon configuration.
@@ -240,7 +299,7 @@ class LongRunningServiceConfig(InstanceConfig):
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'.
                   """
-        if self.get_desired_state() == 'start':
+        if self.get_desired_state() == "start":
             return self.get_instances()
         else:
             log.debug("Instance is set to stop. Returning '0' instances")
@@ -252,13 +311,7 @@ class LongRunningServiceConfig(InstanceConfig):
         Returns max_instances if instances > max_instances
         Returns min_instances if instances < min_instances
         """
-        return max(
-            self.get_min_instances(),
-            min(self.get_max_instances(), instances),
-        )
-
-    def get_container_port(self) -> int:
-        return self.config_dict.get('container_port', DEFAULT_CONTAINER_PORT)
+        return max(self.get_min_instances(), min(self.get_max_instances(), instances))
 
 
 class InvalidHealthcheckMode(Exception):
@@ -278,19 +331,17 @@ def get_healthcheck_for_instance(
     """
     namespace = service_manifest.get_nerve_namespace()
     smartstack_config = load_service_namespace_config(
-        service=service,
-        namespace=namespace,
-        soa_dir=soa_dir,
+        service=service, namespace=namespace, soa_dir=soa_dir
     )
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 
     if mode == "http" or mode == "https":
         path = service_manifest.get_healthcheck_uri(smartstack_config)
-        healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
+        healthcheck_command = "%s://%s:%d%s" % (mode, hostname, random_port, path)
     elif mode == "tcp":
-        healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
-    elif mode == 'cmd':
+        healthcheck_command = "%s://%s:%d" % (mode, hostname, random_port)
+    elif mode == "cmd":
         healthcheck_command = service_manifest.get_healthcheck_cmd()
     else:
         mode = None
@@ -299,9 +350,7 @@ def get_healthcheck_for_instance(
 
 
 def load_service_namespace_config(
-    service: str,
-    namespace: str,
-    soa_dir: str = DEFAULT_SOA_DIR,
+    service: str, namespace: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> ServiceNamespaceConfig:
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
@@ -333,10 +382,10 @@ def load_service_namespace_config(
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(
-        service_name=service, soa_dir=soa_dir,
+    smartstack_config = service_configuration_lib.read_extra_service_information(
+        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
     )
-    smartstack_config = service_config.get('smartstack', {})
+
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()
@@ -346,21 +395,21 @@ def load_service_namespace_config(
     # and there's other things that appear in the smartstack section in
     # several cases.
     key_whitelist = {
-        'healthcheck_mode',
-        'healthcheck_uri',
-        'healthcheck_port',
-        'healthcheck_timeout_s',
-        'healthcheck_body_expect',
-        'updown_timeout_s',
-        'proxy_port',
-        'timeout_connect_ms',
-        'timeout_server_ms',
-        'timeout_client_ms',
-        'retries',
-        'mode',
-        'discover',
-        'advertise',
-        'extra_healthcheck_headers',
+        "healthcheck_mode",
+        "healthcheck_uri",
+        "healthcheck_port",
+        "healthcheck_timeout_s",
+        "healthcheck_body_expect",
+        "updown_timeout_s",
+        "proxy_port",
+        "timeout_connect_ms",
+        "timeout_server_ms",
+        "timeout_client_ms",
+        "retries",
+        "mode",
+        "discover",
+        "advertise",
+        "extra_healthcheck_headers",
     }
 
     for key, value in namespace_config_from_file.items():
@@ -370,18 +419,20 @@ def load_service_namespace_config(
     # Other code in paasta_tools checks 'mode' after the config file
     # is loaded, so this ensures that it is set to the appropriate default
     # if not otherwise specified, even if appropriate default is None.
-    service_namespace_config['mode'] = service_namespace_config.get_mode()
+    service_namespace_config["mode"] = service_namespace_config.get_mode()
 
-    if 'routes' in namespace_config_from_file:
-        service_namespace_config['routes'] = [(route['source'], dest)
-                                              for route in namespace_config_from_file['routes']
-                                              for dest in route['destinations']]
+    if "routes" in namespace_config_from_file:
+        service_namespace_config["routes"] = [
+            (route["source"], dest)
+            for route in namespace_config_from_file["routes"]
+            for dest in route["destinations"]
+        ]
 
-    if 'extra_advertise' in namespace_config_from_file:
-        service_namespace_config['extra_advertise'] = [
+    if "extra_advertise" in namespace_config_from_file:
+        service_namespace_config["extra_advertise"] = [
             (src, dst)
-            for src in namespace_config_from_file['extra_advertise']
-            for dst in namespace_config_from_file['extra_advertise'][src]
+            for src in namespace_config_from_file["extra_advertise"]
+            for dst in namespace_config_from_file["extra_advertise"][src]
         ]
 
     return service_namespace_config
@@ -389,28 +440,6 @@ def load_service_namespace_config(
 
 class InvalidSmartstackMode(Exception):
     pass
-
-
-def get_instances_from_zookeeper(service: str, instance: str) -> int:
-    with ZookeeperPool() as zookeeper_client:
-        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
-        return int(instances)
-
-
-def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
-    return f'{AUTOSCALING_ZK_ROOT}/{service}/{instance}'
-
-
-def set_instances_for_marathon_service(
-    service: str,
-    instance: str,
-    instance_count: int,
-    soa_dir: str = DEFAULT_SOA_DIR,
-) -> None:
-    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count).encode('utf8'))
 
 
 def get_proxy_port_for_instance(
@@ -428,12 +457,14 @@ def get_proxy_port_for_instance(
     registration = service_config.get_registrations()[0]
     service, namespace, _, __ = decompose_job_id(registration)
     nerve_dict = load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=service_config.soa_dir,
+        service=service, namespace=namespace, soa_dir=service_config.soa_dir
     )
-    return nerve_dict.get('proxy_port')
+    return nerve_dict.get("proxy_port")
 
 
-def host_passes_blacklist(host_attributes: Mapping[str, str], blacklist: DeployBlacklist) -> bool:
+def host_passes_blacklist(
+    host_attributes: Mapping[str, str], blacklist: DeployBlacklist
+) -> bool:
     """
     :param host: A single host attributes dict
     :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
@@ -450,7 +481,9 @@ def host_passes_blacklist(host_attributes: Mapping[str, str], blacklist: DeployB
     return True
 
 
-def host_passes_whitelist(host_attributes: Mapping[str, str], whitelist: DeployWhitelist) -> bool:
+def host_passes_whitelist(
+    host_attributes: Mapping[str, str], whitelist: DeployWhitelist
+) -> bool:
     """
     :param host: A single host attributes dict.
     :param whitelist: A 2 item list like ["location_type", ["location1", 'location2']]

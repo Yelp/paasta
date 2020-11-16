@@ -16,13 +16,11 @@ import argparse
 import json
 import sys
 import time
-from collections import namedtuple
-from random import choice
 
 from pysensu_yelp import Status
 
 from paasta_tools import monitoring_tools
-from paasta_tools.chronos_tools import compose_check_name_for_service_instance
+from paasta_tools.cli.cmds.logs import scribe_env_to_locations
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -30,30 +28,59 @@ from paasta_tools.utils import load_system_paasta_config
 
 try:
     from scribereader import scribereader
+    from clog.readers import StreamTailerSetupError
 except ImportError:
     scribereader = None
 
 
-OOM_EVENTS_STREAM = 'tmp_paasta_oom_events'
+OOM_EVENTS_STREAM = "tmp_paasta_oom_events"
 
-OOMEvent = namedtuple('OOMEvent', ['hostname', 'container_id', 'process_name'])
+
+def compose_check_name_for_service_instance(check_name, service, instance):
+    return f"{check_name}.{service}.{instance}"
 
 
 def parse_args(args):
-    parser = argparse.ArgumentParser(description=(
-        'Check the %s stream and report to Sensu if'
-        ' there are any OOM events.' % OOM_EVENTS_STREAM
-    ))
+    parser = argparse.ArgumentParser(
+        description=(
+            "Check the %s stream and report to Sensu if"
+            " there are any OOM events." % OOM_EVENTS_STREAM
+        )
+    )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", default=DEFAULT_SOA_DIR,
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-r', '--realert-every', dest="realert_every", type=int, default=1,
+        "-r",
+        "--realert-every",
+        dest="realert_every",
+        type=int,
+        default=1,
         help="Sensu 'realert_every' to use.",
     )
     parser.add_argument(
-        '-s', '--superregion', dest="superregion", required=True,
+        "--check-interval",
+        dest="check_interval",
+        type=int,
+        default=1,
+        help="How often this check runs, in minutes.",
+    )
+    parser.add_argument(
+        "--alert-threshold",
+        dest="alert_threshold",
+        type=int,
+        default=1,
+        help="Number of OOM kills required in the check interval to send an alert.",
+    )
+    parser.add_argument(
+        "-s",
+        "--superregion",
+        dest="superregion",
+        required=True,
         help="The superregion to read OOM events from.",
     )
     return parser.parse_args(args)
@@ -61,22 +88,36 @@ def parse_args(args):
 
 def read_oom_events_from_scribe(cluster, superregion, num_lines=1000):
     """Read the latest 'num_lines' lines from OOM_EVENTS_STREAM and iterate over them."""
-    host_port = choice(scribereader.get_default_scribe_hosts(tail=True))
+    # paasta configs incls a map for cluster -> env that is expected by scribe
+    log_reader_config = load_system_paasta_config().get_log_reader()
+    cluster_map = log_reader_config["options"]["cluster_map"]
+    scribe_env = cluster_map[cluster]
+
+    # `scribe_env_to_locations` slightly mutates the scribe env based on whether
+    # or not it is in dev or prod
+    host, port = scribereader.get_tail_host_and_port(
+        **scribe_env_to_locations(scribe_env),
+    )
     stream = scribereader.get_stream_tailer(
         stream_name=OOM_EVENTS_STREAM,
-        tailing_host=host_port['host'],
-        tailing_port=host_port['port'],
-        use_kafka=True,
+        tailing_host=host,
+        tailing_port=port,
         lines=num_lines,
         superregion=superregion,
     )
-    for line in stream:
-        try:
-            j = json.loads(line)
-            if j.get('cluster', '') == cluster:
-                yield j
-        except json.decoder.JSONDecodeError:
+    try:
+        for line in stream:
+            try:
+                j = json.loads(line)
+                if j.get("cluster", "") == cluster:
+                    yield j
+            except json.decoder.JSONDecodeError:
+                pass
+    except StreamTailerSetupError as e:
+        if "No data in stream" in str(e):
             pass
+        else:
+            raise e
 
 
 def latest_oom_events(cluster, superregion, interval=60):
@@ -87,46 +128,40 @@ def latest_oom_events(cluster, superregion, interval=60):
     start_timestamp = int(time.time()) - interval
     res = {}
     for e in read_oom_events_from_scribe(cluster, superregion):
-        if e['timestamp'] > start_timestamp:
-            key = (e['service'], e['instance'])
-            res.setdefault(key, []).append(
-                OOMEvent(
-                    hostname=e.get('hostname', ''),
-                    container_id=e.get('container_id', ''),
-                    process_name=e.get('process_name', ''),
-                ),
-            )
+        if e["timestamp"] > start_timestamp:
+            key = (e["service"], e["instance"])
+            res.setdefault(key, set()).add(e.get("container_id", ""))
     return res
 
 
-def compose_sensu_status(instance, oom_events, is_check_enabled):
+def compose_sensu_status(
+    instance, oom_events, is_check_enabled, alert_threshold, check_interval
+):
     """
     :param instance: InstanceConfig
     :param oom_events: a list of OOMEvents
     :param is_check_enabled: boolean to indicate whether the check enabled for the instance
     """
+    interval_string = f"{check_interval} minute(s)"
+    instance_name = f"{instance.service}.{instance.instance}"
     if not is_check_enabled:
+        return (Status.OK, f"This check is disabled for {instance_name}.")
+    if not oom_events:
         return (
-            Status.OK, 'This check is disabled for {}.{}.'.format(
-                instance.service,
-                instance.instance,
-            ),
+            Status.OK,
+            f"No oom events for {instance_name} in the last {interval_string}.",
         )
-    if len(oom_events) == 0:
+    elif len(oom_events) >= alert_threshold:
         return (
-            Status.OK, 'No oom events for %s.%s in the last minute.' %
-            (instance.service, instance.instance),
+            Status.CRITICAL,
+            f"The Out Of Memory killer killed processes for {instance_name} "
+            f"in the last {interval_string}.",
         )
     else:
-        return (
-            Status.CRITICAL, 'The Out Of Memory killer killed %d processes (%s) '
-            'in the last minute in %s.%s containers.' % (
-                len(oom_events),
-                ','.join(sorted({e.process_name for e in oom_events if e.process_name})),
-                instance.service,
-                instance.instance,
-            ),
-        )
+        # If the number of OOM kills isn't above the alert threshold,
+        # don't send anything. This will keep an alert open if it's already open,
+        # but won't start a new alert if there wasn't one yet
+        return None
 
 
 def send_sensu_event(instance, oom_events, args):
@@ -135,24 +170,34 @@ def send_sensu_event(instance, oom_events, args):
     :param oom_events: a list of OOMEvents
     """
     check_name = compose_check_name_for_service_instance(
-        'oom-killer',
-        instance.service,
-        instance.instance,
+        "oom-killer", instance.service, instance.instance
     )
     monitoring_overrides = instance.get_monitoring()
     status = compose_sensu_status(
         instance=instance,
         oom_events=oom_events,
-        is_check_enabled=monitoring_overrides.get('check_oom_events', True),
+        is_check_enabled=monitoring_overrides.get("check_oom_events", True),
+        alert_threshold=args.alert_threshold,
+        check_interval=args.check_interval,
     )
-    monitoring_overrides.update({
-        'page': False,
-        'ticket': False,
-        'alert_after': '0m',
-        'realert_every': args.realert_every,
-        'runbook': 'y/check-oom-events',
-        'tip': 'Try bumping the memory limit past %dMB' % instance.get_mem(),
-    })
+    if not status:
+        return
+
+    memory_limit = instance.get_mem()
+    try:
+        memory_limit_str = f"{int(memory_limit)}MB"
+    except ValueError:
+        memory_limit_str = memory_limit
+
+    monitoring_overrides.update(
+        {
+            "page": False,
+            "alert_after": "0m",
+            "realert_every": args.realert_every,
+            "runbook": "y/check-oom-events",
+            "tip": "Try bumping the memory limit past %s" % memory_limit_str,
+        }
+    )
     return monitoring_tools.send_event(
         service=instance.service,
         check_name=check_name,
@@ -166,7 +211,9 @@ def send_sensu_event(instance, oom_events, args):
 def main(sys_argv):
     args = parse_args(sys_argv[1:])
     cluster = load_system_paasta_config().get_cluster()
-    victims = latest_oom_events(cluster, args.superregion)
+    victims = latest_oom_events(
+        cluster, args.superregion, interval=(60 * args.check_interval)
+    )
     for (service, instance) in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
         try:
             instance_config = get_instance_config(
@@ -182,5 +229,5 @@ def main(sys_argv):
             pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(sys.argv)

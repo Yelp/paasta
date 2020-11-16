@@ -1,7 +1,7 @@
-paasta_tools.async_utils module
-===============================
+paasta\_tools.async\_utils module
+=================================
 
 .. automodule:: paasta_tools.async_utils
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

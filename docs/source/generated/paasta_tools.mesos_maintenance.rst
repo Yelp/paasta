@@ -1,7 +1,7 @@
-paasta_tools.mesos_maintenance module
-=====================================
+paasta\_tools.mesos\_maintenance module
+=======================================
 
 .. automodule:: paasta_tools.mesos_maintenance
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

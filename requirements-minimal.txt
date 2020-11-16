@@ -1,32 +1,39 @@
 a-sync >= 0.5.0
-aiohttp >= 3.2.1
+aiohttp >= 3.5.4
 argcomplete >= 0.8.1
+boto
 boto3
+boto3-type-annotations
 botocore
 bravado >= 10.2.0
+certifi
 choice >= 0.1
-chronos-python >= 1.2.0
 cookiecutter >= 1.4.0
 croniter
+dataclasses >= 0.7; python_version < '3.7'
 # Don't update this unless you have confirmed the client works with
 # the Docker version deployed on PaaSTA servers
 docker-py >= 1.2.3
 dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
-gevent >= 1.1.1
 graphviz
 gunicorn
+humanfriendly
 humanize >= 0.5.1
 inotify >= 0.2.8
+ipaddress >= 1.0.22
 isodate >= 0.5.0
 jsonschema[format]
 kazoo >= 2.0.0
 kubernetes
 manhole
-marathon >= 0.9.3
+marathon >= 0.12.0
 mypy-extensions >= 0.3.0
+nulltype
 objgraph
+ply
 progressbar2 >= 3.10.0
+prometheus-client
 pymesos >= 0.2.0
 pyramid >= 1.8
 pyramid-swagger >= 2.3.0
@@ -42,15 +49,17 @@ requests-cache >= 0.4.10,<= 0.5.0
 retry
 ruamel.yaml
 sensu-plugin
-service-configuration-lib >= 0.12.0
+service-configuration-lib >= 2.5.0
 signalfx
 slackclient >= 1.2.1
+sticht >= 1.1.0
 syslogmp
 task-processing
+thriftpy2
 transitions
 typing-extensions
 tzlocal
 ujson >= 1.35
+urllib3
 utaw >= 0.2.0
 wsgicors
-yelp-clog >= 2.7.2

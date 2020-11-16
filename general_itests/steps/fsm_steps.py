@@ -21,25 +21,18 @@ from behave import then
 from behave import when
 from service_configuration_lib import read_services_configuration
 
-from paasta_tools.cli.cmds.fsm import paasta_fsm
+from paasta_tools.cli.fsm_cmd import paasta_fsm
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@given('a fake yelpsoa-config-root with an existing service')
+@given("a fake yelpsoa-config-root with an existing service")
 def step_impl_given(context):
     # Cleaned up in after_scenario()
-    context.tmpdir = tempfile.mkdtemp('paasta_tools_fsm_itest')
-    context.fake_yelpsoa_configs = os.path.join(
-        context.tmpdir,
-        'yelpsoa-configs',
-    )
-    fake_yelpsoa_configs_src = os.path.join(
-        'fake_soa_configs_fsm',
-    )
+    context.tmpdir = tempfile.mkdtemp("paasta_tools_fsm_itest")
+    context.fake_yelpsoa_configs = os.path.join(context.tmpdir, "yelpsoa-configs")
+    fake_yelpsoa_configs_src = os.path.join("fake_soa_configs_fsm")
     shutil.copytree(
-        src=fake_yelpsoa_configs_src,
-        dst=context.fake_yelpsoa_configs,
-        symlinks=True,
+        src=fake_yelpsoa_configs_src, dst=context.fake_yelpsoa_configs, symlinks=True
     )
 
 
@@ -48,27 +41,25 @@ def _load_yelpsoa_configs(context, service):
     context.my_config = all_services[service]
 
 
-@when('we fsm a new service')
+@when("we fsm a new service")
 def step_impl_when_fsm_auto(context):
     service = "my-cool-service"
 
-    fake_args = mock.Mock(
-        yelpsoa_config_root=context.fake_yelpsoa_configs,
-    )
-    with mock.patch('paasta_tools.cli.cmds.fsm.load_system_paasta_config', autospec=True) \
-            as mock_load_system_paasta_config:
+    fake_args = mock.Mock(yelpsoa_config_root=context.fake_yelpsoa_configs)
+    with mock.patch(
+        "paasta_tools.cli.fsm_cmd.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config:
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-            config={},
-            directory=context.fake_yelpsoa_configs,
+            config={}, directory=context.fake_yelpsoa_configs
         )
         paasta_fsm(fake_args)
 
     _load_yelpsoa_configs(context, service)
 
 
-@then('the new yelpsoa-configs directory has a valid smartstack proxy_port')
+@then("the new yelpsoa-configs directory has a valid smartstack proxy_port")
 def step_impl_then_proxy_port(context):
-    port = context.my_config['smartstack']['main']['proxy_port']
-    assert port >= 20000
+    port = context.my_config["smartstack"]["main"]["proxy_port"]
+    assert port >= 19000
     assert port <= 21000
     assert port != 20666

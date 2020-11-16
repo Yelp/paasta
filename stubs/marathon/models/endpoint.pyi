@@ -11,6 +11,13 @@ class MarathonEndpoint(MarathonObject):
     host = ...  # type: Any
     task_id = ...  # type: Any
     task_port = ...  # type: Any
-    def __init__(self, app_id: Optional[Any] = ..., service_port: Optional[Any] = ..., host: Optional[Any] = ..., task_id: Optional[Any] = ..., task_port: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        app_id: Optional[Any] = ...,
+        service_port: Optional[Any] = ...,
+        host: Optional[Any] = ...,
+        task_id: Optional[Any] = ...,
+        task_port: Optional[Any] = ...,
+    ) -> None: ...
     @classmethod
     def from_tasks(cls, tasks): ...

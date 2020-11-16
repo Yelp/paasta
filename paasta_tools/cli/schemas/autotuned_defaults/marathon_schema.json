@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Properties that can be set by automated processes for http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "patternProperties": {
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 128,
+                    "exclusiveMinimum": true
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true
+                }
+            }
+        }
+    }
+}

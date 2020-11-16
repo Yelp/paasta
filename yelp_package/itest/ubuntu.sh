@@ -20,26 +20,20 @@ autoscale_all_services
 check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
-check_flink_services_replication
-cleanup_chronos_jobs
-check_chronos_jobs
+check_flink_services_health
+check_cassandracluster_services_replication
 cleanup_marathon_jobs
 paasta_cleanup_tron_namespaces
-deploy_chronos_jobs
+paasta_cleanup_stale_nodes
 deploy_marathon_services
 paasta_deploy_tron_jobs
 generate_deployments_for_service
 generate_services_file
 generate_services_yaml
-list_chronos_jobs
 list_marathon_service_instances
 paasta_list_tron_namespaces
-paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
-paasta_serviceinit
-setup_chronos_job
-chronos_rerun
 setup_marathon_job
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
@@ -54,10 +48,6 @@ fake_service_dos.all_fake"
 PAASTA_COMMANDS="list
 list-clusters
 check
-generate-pipeline
-emergency-stop
-emergency-start
-emergency-restart
 fsm
 info
 itest
@@ -130,13 +120,6 @@ do
 done
 echo "Running 'paasta --version', it should return non-zero"
 paasta --version || (echo "paasta --version failed to execute!"; exit 1)
-
-if check_synapse_replication --help >/dev/null; then
-  echo "Looks like we can check_synapse_replication with --help"
-else
-  echo "Could not invoke check_synapse_replication with --help"
-  exit 1
-fi
 
 # Test generate_services_yaml
 

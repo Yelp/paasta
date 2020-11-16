@@ -1,0 +1,1320 @@
+# Please run `make openapi-codegen` after modifying this file
+openapi: 3.0.0
+info:
+  title: Paasta API
+  version: 1.0.0
+servers:
+- url: "{scheme}://{host}/{basePath}"
+  variables:
+    basePath: {default: v1}
+    host: {default: localhost}
+    scheme: {default: http, enum: [http, https]}
+tags:
+- description: Information about a paasta service.
+  name: service
+components:
+  schemas:
+    AutoscalerCountMsg:
+      description: Specification for autoscaler count endpoints
+      properties:
+        calculated_instances:
+          type: integer
+        desired_instances:
+          type: integer
+        status:
+          type: string
+      type: object
+    AdhocLaunchHistory:
+      description: A single run
+      properties:
+        framework_id:
+          description: framework id
+          type: string
+        launch_time:
+          description: when the job was launched
+          type: string
+        run_id:
+          description: id of the single run
+          type: string
+      type: object
+    DeployQueue:
+      description: Current state of the deployd queue
+      properties:
+        available_service_instances:
+          description: Service instances that are ready to be acted on by deployd
+          items:
+            $ref: '#/components/schemas/DeployQueueServiceInstance'
+          type: array
+        unavailable_service_instances:
+          description: Service instances that deployd is waiting to act on
+          items:
+            $ref: '#/components/schemas/DeployQueueServiceInstance'
+          type: array
+      type: object
+    DeployQueueServiceInstance:
+      description: An instance of a service in the deploy queue
+      properties:
+        bounce_by:
+          description: Desired timestamp by which the service instance should be bounced
+          format: float
+          type: number
+        bounce_start_time:
+          description: Timestamp at which service instance was first added to the
+            queue
+          format: float
+          type: number
+        enqueue_time:
+          description: Timestamp at which the service instance was last added to the
+            queue
+          format: float
+          type: number
+        failures:
+          description: Number of times deployment actions have failed on this service
+            instance
+          format: int32
+          type: integer
+        instance:
+          description: Name of the instance of the service
+          type: string
+        processed_count:
+          description: Number of times any deployment action has been taken on this
+            service instance
+          format: int32
+          type: integer
+        service:
+          description: Name of the service
+          type: string
+        wait_until:
+          description: Timestamp before which no action should be taken on this service
+            instance
+          format: float
+          type: number
+        watcher:
+          description: The process that enqueued the task
+          type: string
+      type: object
+    EnvoyBackend:
+      properties:
+        address:
+          description: Address of the host on which the backend is running
+          type: string
+        eds_health_status:
+          description: Status of the backend in Envoy as reported by the EDS
+          type: string
+        has_associated_task:
+          description: Whether this backend has an associated task running
+          type: boolean
+        hostname:
+          description: Name of the host on which the backend is running
+          type: string
+        port_value:
+          description: Port number on which the backend responds
+          format: int32
+          type: integer
+        weight:
+          description: The weight of this backend in the cluster
+          format: int32
+          type: integer
+      type: object
+    EnvoyLocation:
+      properties:
+        backends:
+          description: Envoy backends running in this location
+          items:
+            $ref: '#/components/schemas/EnvoyBackend'
+          type: array
+        is_proxied_through_casper:
+          description: Whether this backend is proxied through Casper
+          type: boolean
+        name:
+          description: Name of the location
+          type: string
+        running_backends_count:
+          description: Number of running backends for the service in this location
+          format: int32
+          type: integer
+      type: object
+    EnvoyStatus:
+      properties:
+        expected_backends_per_location:
+          description: Number of backends expected to be present in each location
+          format: int32
+          type: integer
+        locations:
+          description: Locations the service is deployed
+          items:
+            $ref: '#/components/schemas/EnvoyLocation'
+          type: array
+        registration:
+          description: Registration name of the service in Smartstack
+          type: string
+      type: object
+    FloatAndError:
+      properties:
+        error_message:
+          type: string
+        value:
+          format: float
+          type: number
+      type: object
+    HPAMetric:
+      properties:
+        current_value:
+          description: setpoint/target_value as specified in yelpsoa_configs
+          type: string
+        name:
+          description: name of the metric
+          type: string
+        target_value:
+          description: setpoint/target_value as specified in yelpsoa_configs
+          type: string
+      type: object
+    InstanceDelay:
+      type: object
+    InstanceMetadataKafkaCluster:
+      description: Kafka instance metadata
+      type: object
+    InstanceSpecKafkaCluster:
+      description: Kafka instance spec
+      type: object
+    InstanceStatus:
+      properties:
+        adhoc:
+          $ref: '#/components/schemas/InstanceStatusAdhoc'
+          description: Adhoc instance status
+        flink:
+          description: Nullable Flink instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceStatusFlinkMetadata'
+            status:
+              $ref: '#/components/schemas/InstanceStatusFlinkStatus'
+          type: object
+        git_sha:
+          description: Git sha of a service
+          type: string
+        instance:
+          description: Instance name
+          type: string
+        kafkacluster:
+          description: Nullable KafkaCluster instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceMetadataKafkaCluster'
+            status:
+              $ref: '#/components/schemas/InstanceStatusKafkaCluster'
+          type: object
+        kubernetes:
+          $ref: '#/components/schemas/InstanceStatusKubernetes'
+          description: Kubernetes instance status
+        marathon:
+          $ref: '#/components/schemas/InstanceStatusMarathon'
+          description: Marathon instance status
+        service:
+          description: Service name
+          type: string
+        tron:
+          $ref: '#/components/schemas/InstanceStatusTron'
+          description: Tron instance status
+      type: object
+    InstanceStatusAdhoc:
+      description: List of runs associated with job
+      items:
+        $ref: '#/components/schemas/AdhocLaunchHistory'
+      type: array
+    InstanceStatusFlinkMetadata:
+      description: Flink instance metadata
+      type: object
+    InstanceStatusFlinkStatus:
+      description: Flink instance status
+      type: object
+    InstanceStatusKafkaCluster:
+      description: Kafka instance status
+      type: object
+    InstanceStatusKubernetes:
+      properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 2
+            maxItems: 2
+        app_count:
+          description: The number of different running versions of the same service
+            (0 for stopped, 1 for running and 1+ for bouncing)
+          format: int32
+          type: integer
+        app_id:
+          description: ID of the desired version of a service instance
+          type: string
+        autoscaling_status:
+          description: HPA associated to this app
+          properties:
+            desired_replicas:
+              description: desired number of _instances as calculated by HPA
+              type: integer
+            last_scale_time:
+              description: timestamp of last autoscale
+              type: string
+            max_instances:
+              description: min_instances as specified in yelpsoa_configs
+              type: integer
+            metrics:
+              description: Current metrics
+              items:
+                $ref: '#/components/schemas/HPAMetric'
+              type: array
+            min_instances:
+              description: min_instances as specified in yelpsoa_configs
+              type: integer
+          type: object
+        backoff_seconds:
+          description: backoff in seconds before launching the next task
+          format: int32
+          type: integer
+        bounce_method:
+          description: Method to transit between new and old versions of a service
+          enum:
+          - brutal
+          - upthendown
+          - downthenup
+          - crossover
+          type: string
+        create_timestamp:
+          description: Unix timestamp when this app was created
+          format: float
+          type: number
+        deploy_status:
+          description: Deploy status of a Kubernetes service
+          enum:
+          - Running
+          - Deploying
+          - Stopped
+          - Delayed
+          - Waiting
+          - NotRunning
+          type: string
+        deploy_status_message:
+          description: Reason for the deploy status
+          type: string
+        desired_state:
+          description: Desired state of a service, for Kubernetes
+          enum:
+          - start
+          - stop
+          type: string
+        error_message:
+          description: Error message when a kubernetes object (Deployment/Statefulset)
+            cannot be found
+          type: string
+        expected_instance_count:
+          description: The number of desired instances of the service
+          format: int32
+          type: integer
+        namespace:
+          description: The namespace this app is running
+          type: string
+        pods:
+          description: Pods associated to this app
+          items:
+            $ref: '#/components/schemas/KubernetesPod'
+          type: array
+        replicasets:
+          description: ReplicaSets associated to this app
+          items:
+            $ref: '#/components/schemas/KubernetesReplicaSet'
+          type: array
+        running_instance_count:
+          description: The number of actual running instances of the service
+          format: int32
+          type: integer
+        smartstack:
+          $ref: '#/components/schemas/SmartstackStatus'
+          description: Status of the service in smartstack
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
+        evicted_count:
+          description: Number of pods with status reason "Evicted"
+          type: integer
+          format: int32
+      required:
+      - desired_state
+      - app_count
+      - bounce_method
+      type: object
+    InstanceStatusMarathon:
+      properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 2
+            maxItems: 2
+        app_count:
+          description: The number of different running versions of the same service
+            (0 for stopped, 1 for running and 1+ for bouncing)
+          format: int32
+          type: integer
+        app_statuses:
+          description: Statuses of each app of the service
+          items:
+            $ref: '#/components/schemas/MarathonAppStatus'
+          type: array
+        autoscaling_info:
+          $ref: '#/components/schemas/MarathonAutoscalingInfo'
+          description: Autoscaling information for the service
+        backoff_seconds:
+          description: backoff in seconds before launching the next task
+          format: int32
+          type: integer
+        bounce_method:
+          description: Method to transit between new and old versions of a service
+          enum:
+          - brutal
+          - upthendown
+          - downthenup
+          - crossover
+          type: string
+        deploy_status:
+          description: Deploy status of a marathon service
+          enum:
+          - Running
+          - Deploying
+          - Stopped
+          - Delayed
+          - Waiting
+          - Waiting for bounce
+          - NotRunning
+          type: string
+        desired_app_id:
+          description: ID of the desired version of a service instance
+          type: string
+        app_id:
+          description: ID of the current version of a service instance
+          type: string
+        desired_state:
+          description: Desired state of a service, for Marathon
+          enum:
+          - start
+          - stop
+          type: string
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
+        error_message:
+          description: Error message when a marathon job ID cannot be found
+          type: string
+        expected_instance_count:
+          description: The number of desired instances of the service
+          format: int32
+          type: integer
+        mesos:
+          $ref: '#/components/schemas/MarathonMesosStatus'
+          description: Status of the service in Mesos
+        running_instance_count:
+          description: The number of actual running instances of the service
+          format: int32
+          type: integer
+        smartstack:
+          $ref: '#/components/schemas/SmartstackStatus'
+          description: Status of the service in smartstack
+      required:
+      - desired_state
+      - app_count
+      - bounce_method
+      type: object
+    InstanceStatusTron:
+      properties:
+        action_command:
+          description: The command of the action
+          type: string
+        action_name:
+          description: The name of the action
+          type: string
+        action_raw_command:
+          description: The raw command of the action
+          type: string
+        action_start_time:
+          description: The start time of the action
+          type: string
+        action_state:
+          description: The state of the action
+          type: string
+        action_stderr:
+          description: The stderr command of the action
+          type: string
+        action_stdout:
+          description: The stdout command of the action
+          type: string
+        job_name:
+          description: The name of this job
+          type: string
+        job_schedule:
+          description: The job schedule of the job
+          type: string
+        job_status:
+          description: The status of the job
+          type: string
+        job_url:
+          description: The dashboard url of the job
+          type: string
+      required:
+      - job_name
+      - job_url
+      type: object
+    InstanceTask:
+      type: object
+    InstanceTasks:
+      description: List of tasks associated with instance
+      items:
+        $ref: '#/components/schemas/InstanceTask'
+      type: array
+    IntegerAndError:
+      properties:
+        error_message:
+          type: string
+        value:
+          format: int32
+          type: integer
+      type: object
+    KubernetesContainer:
+      properties:
+        name:
+          description: Name of the container
+          type: string
+        tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Stdout and stderr tail of the container
+      type: object
+    KubernetesPod:
+      properties:
+        containers:
+          items:
+            $ref: '#/components/schemas/KubernetesContainer'
+            description: List of containers in the pod
+          type: array
+        deployed_timestamp:
+          description: Time at which the pod was deployed
+          format: float
+          type: number
+        host:
+          description: name of the pod's host
+          nullable: true
+          type: string
+        message:
+          description: long message explaining the pod's state
+          nullable: true
+          type: string
+        name:
+          description: name of the pod in Kubernetes
+          type: string
+        phase:
+          nullable: true
+          description: The status of the pod
+          type: string
+        ready:
+          description: Whether or not the pod is ready (i.e. all containers up)
+          type: boolean
+        reason:
+          description: short message explaining the pod's state
+          nullable: true
+          type: string
+        events:
+          description: Kubernetes pod events
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesPodEvent'
+      type: object
+    KubernetesPodEvent:
+      type: object
+      properties:
+        message:
+          type: string
+        timeStamp:
+          type: string
+    KubernetesReplicaSet:
+      properties:
+        create_timestamp:
+          description: Time at which the replicaset was created
+          format: float
+          type: number
+        name:
+          description: name of the replicaset in Kubernetes
+          type: string
+        ready_replicas:
+          description: number of ready replicas for the replicaset
+          format: int32
+          type: integer
+        replicas:
+          description: number of desired replicas for the replicaset
+          format: int32
+          type: integer
+        git_sha:
+          description: Git sha of a service
+          type: string
+          nullable: true
+        config_sha:
+          description: Hash of configuration of this replicaset
+          type: string
+          nullable: true
+      type: object
+    MarathonAppStatus:
+      properties:
+        backoff_seconds:
+          description: Backoff in seconds before launching next task
+          format: int32
+          type: integer
+        create_timestamp:
+          description: Unix timestamp when this app was created
+          format: float
+          type: number
+        dashboard_url:
+          description: Marathon dashboard URL for this app
+          type: string
+        deploy_status:
+          description: Deploy status of this app
+          type: string
+        tasks:
+          description: Tasks associated to this app
+          items:
+            $ref: '#/components/schemas/MarathonTask'
+          type: array
+        tasks_healthy:
+          description: Number of healthy tasks for this app
+          format: int32
+          type: integer
+        tasks_running:
+          description: Number running tasks for this app
+          format: int32
+          type: integer
+        tasks_staged:
+          description: Number of staged tasks for this app
+          format: int32
+          type: integer
+        tasks_total:
+          description: Total number of tasks for this app
+          format: int32
+          type: integer
+        unused_offer_reason_counts:
+          description: Mapping of reason offer was refused to the number of times
+            that type of refusal was seen
+          type: object
+        unused_offers:
+          type: object
+      type: object
+    MarathonAutoscalingInfo:
+      properties:
+        current_instances:
+          description: The number of instances of the service currently running
+          format: int32
+          type: integer
+        current_utilization:
+          description: The current utilization of the instances' allocated resources
+          nullable: true
+          format: float
+          type: number
+        max_instances:
+          description: The maximum number of instances that the autoscaler will scale
+            to
+          format: int32
+          type: integer
+        min_instances:
+          description: The minimum number of instances that the autoscaler will scale
+            to
+          format: int32
+          type: integer
+        target_instances:
+          description: The autoscaler's current target number of instances of this
+            service to run
+          nullable: true
+          format: int32
+          type: integer
+      type: object
+    MarathonDashboard:
+      additionalProperties:
+        $ref: '#/components/schemas/MarathonDashboardCluster'
+      description: A list of Marathon service, instance, and shard url for one or
+        more clusters
+      type: object
+    MarathonDashboardCluster:
+      description: List of all the MarathonDashboardItems for a cluster
+      items:
+        $ref: '#/components/schemas/MarathonDashboardItem'
+      type: array
+    MarathonDashboardItem:
+      description: Marathon service, instance, and shard url
+      properties:
+        instance:
+          description: Instance name
+          type: string
+        service:
+          description: Service name
+          type: string
+        shard_url:
+          description: Marathon Shard URL
+          type: string
+      type: object
+    MarathonMesosNonrunningTask:
+      properties:
+        deployed_timestamp:
+          description: The unix timestamp at which the task was deployed
+          format: float
+          type: number
+        hostname:
+          description: Name of the Mesos agent on which this task is running
+          type: string
+        id:
+          description: The ID of the task in Mesos
+          type: string
+        state:
+          description: The current state of the task
+          type: string
+        tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Stdout and stderr tail of the task
+      type: object
+    MarathonMesosRunningTask:
+      properties:
+        cpu_shares:
+          $ref: '#/components/schemas/FloatAndError'
+          description: The portion of a CPU that the task can use
+        cpu_used_seconds:
+          $ref: '#/components/schemas/FloatAndError'
+          description: The number of seconds of CPU time the task has used
+        deployed_timestamp:
+          description: The unix timestamp at which the task was deployed
+          format: float
+          type: number
+        duration_seconds:
+          description: The duration over which the task has been running in seconds
+          format: int32
+          type: integer
+        hostname:
+          description: Name of the Mesos agent on which this task is running
+          type: string
+        id:
+          description: The ID of the task in Mesos
+          type: string
+        mem_limit:
+          $ref: '#/components/schemas/IntegerAndError'
+          description: The maximum amount of memory the task is allowed to use
+        rss:
+          $ref: '#/components/schemas/IntegerAndError'
+          description: The tasks's resident set size
+        tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Stdout and stderr tail of the task
+      type: object
+    MarathonMesosStatus:
+      properties:
+        error_message:
+          description: Error message when Mesos tasks cannot be queried
+          type: string
+        non_running_tasks:
+          description: Non-running tasks associated to this service
+          items:
+            $ref: '#/components/schemas/MarathonMesosNonrunningTask'
+          type: array
+        running_task_count:
+          description: The number of running Mesos tasks associated to this service
+          format: int32
+          type: integer
+        running_tasks:
+          description: Currently running tasks associated to this service
+          items:
+            $ref: '#/components/schemas/MarathonMesosRunningTask'
+          type: array
+      type: object
+    MarathonTask:
+      properties:
+        deployed_timestamp:
+          description: Time at which the task was deployed
+          format: float
+          type: number
+        host:
+          description: Name of the host on which the task is running
+          nullable: true
+          type: string
+        id:
+          description: ID of the task in Mesos
+          type: string
+        is_healthy:
+          description: Whether Marathon thinks the task is healthy
+          nullable: true
+          type: boolean
+        port:
+          description: Port on which the task is listening
+          format: int32
+          type: integer
+      type: object
+    MetaStatus:
+      description: Result of `paasta metastatus` command
+      properties:
+        exit_code:
+          description: Exit code from `paasta metastatus` command
+          type: integer
+        output:
+          description: Output from `paasta metastatus` command
+          type: string
+      type: object
+    Resource:
+      items:
+        $ref: '#/components/schemas/ResourceItem'
+      type: array
+    ResourceItem:
+      properties:
+        cpus:
+          $ref: '#/components/schemas/ResourceValue'
+        disk:
+          $ref: '#/components/schemas/ResourceValue'
+        groupings:
+          type: object
+        mem:
+          $ref: '#/components/schemas/ResourceValue'
+        gpus:
+          $ref: '#/components/schemas/ResourceValue'
+      type: object
+    ResourceValue:
+      properties:
+        free:
+          type: number
+        total:
+          type: number
+        used:
+          type: number
+      type: object
+    SmartstackBackend:
+      properties:
+        check_code:
+          description: Check code reported by HAProxy
+          type: string
+        check_duration:
+          description: Duration in ms of the last health check performed by HAProxy
+          format: int32
+          type: integer
+        check_status:
+          description: Status of last health check of the backend
+          type: string
+        has_associated_task:
+          description: Whether this backend has an associated task running
+          type: boolean
+        hostname:
+          description: Name of the host on which the backend is running
+          type: string
+        last_change:
+          description: Seconds since last change in backend status
+          format: int32
+          type: integer
+        port:
+          description: Port number on which the backend responds
+          format: int32
+          type: integer
+        status:
+          description: Status of the backend in HAProxy
+          type: string
+      type: object
+    SmartstackLocation:
+      properties:
+        backends:
+          description: Smartstack backends running in this location
+          items:
+            $ref: '#/components/schemas/SmartstackBackend'
+          type: array
+        name:
+          description: Name of the location
+          type: string
+        running_backends_count:
+          description: Number of running backends for the service in this location
+          format: int32
+          type: integer
+      type: object
+    SmartstackStatus:
+      properties:
+        expected_backends_per_location:
+          description: Number of backends expected to be present in each location
+          format: int32
+          type: integer
+        locations:
+          description: Locations the service is deployed
+          items:
+            $ref: '#/components/schemas/SmartstackLocation'
+          type: array
+        registration:
+          description: Registration name of the service in Smartstack
+          type: string
+      type: object
+    TaskTailLines:
+      properties:
+        error_message:
+          description: Error message when fetching tail lines fails
+          type: string
+        stderr:
+          description: The requested number of lines from the task's stderr
+          items:
+            type: string
+          type: array
+        stdout:
+          description: The requested number of lines from the task's stdout
+          items:
+            type: string
+          type: array
+      type: object
+paths:
+  /deploy_queue:
+    get:
+      operationId: deploy_queue
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeployQueue'
+          description: Contents of deploy queue
+      summary: Get deploy queue contents
+  /marathon_dashboard:
+    get:
+      operationId: marathon_dashboard
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarathonDashboard'
+          description: List of service instances and information on their Marathon
+            shard
+      summary: Get marathon service instances and their shards
+      tags:
+      - marathon_dashboard
+  /metastatus:
+    get:
+      operationId: metastatus
+      parameters:
+      - description: comma separated list of command arguments
+        in: query
+        name: cmd_args
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetaStatus'
+          description: Detailed metastatus
+        "500":
+          description: Metastatus failure
+      summary: Get metastatus
+  /resources/utilization:
+    get:
+      operationId: resources
+      parameters:
+      - description: comma separated list of keys to group by
+        in: query
+        name: groupings
+        required: false
+        schema:
+          items:
+            type: string
+          type: array
+        style: simple
+      - description: List of slave filters in format 'filter=attr_name:value1,value2&filter=attr2:value3,value4'.
+          Matches attr_name=(value1 OR value2) AND attr2=(value3 OR value4)
+        explode: true
+        in: query
+        name: filter
+        required: false
+        style: form
+        schema:
+          items:
+            pattern: (.*):(.*,)*(.*)
+            type: string
+          type: array
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+          description: Resources in the cluster, filtered and grouped by parameters
+        "400":
+          description: Poorly formated query parameters
+      summary: Get resources in the cluster
+      tags:
+      - resources
+  /service_autoscaler/pause:
+    delete:
+      operationId: delete_service_autoscaler_pause
+      responses:
+        "200":
+          description: Service autoscaler successfully unpaused
+        "500":
+          description: Unable to talk to zookeeper
+      summary: Unpause the autoscaler
+    get:
+      operationId: get_service_autoscaler_pause
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: The time until which the servcie autoscaler is paused for
+        "500":
+          description: Unable to talk to zookeeper
+      summary: Get autoscaling pause time
+    post:
+      operationId: update_service_autoscaler_pause
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                minutes:
+                  type: integer
+        required: true
+      responses:
+        "200":
+          description: Service autoscaler successfully paused
+        "500":
+          description: Unable to talk to zookeeper
+  /services:
+    get:
+      operationId: list_services_for_cluster
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  services:
+                    items:
+                      items: {}
+                      type: array
+                    type: array
+                type: object
+          description: Services and their instances on the current cluster
+      summary: List service names and service instance names on the current cluster
+      tags:
+      - service
+  /services/{service}:
+    get:
+      operationId: list_instances
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                properties:
+                  instances:
+                    items:
+                      type: string
+                    type: array
+                type: object
+          description: Instances of a service
+      summary: List instances of service_name
+      tags:
+      - service
+  /services/{service}/{instance}/autoscaler:
+    get:
+      operationId: get_autoscaler_count
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoscalerCountMsg'
+          description: Get desired instance count for a service instance
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get status of service_name.instance_name
+      tags:
+      - autoscaler
+    post:
+      operationId: update_autoscaler_count
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AutoscalerCountMsg'
+        required: true
+      responses:
+        "202":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoscalerCountMsg'
+          description: Set desired instance count for a service instance
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get status of service_name.instance_name
+      tags:
+      - autoscaler
+  /services/{service}/{instance}/delay:
+    get:
+      operationId: delay_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceDelay'
+          description: The service is delayed for these possible reasons
+        "204":
+          description: Could not find any reasons for a delay
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get the possible reasons for a deployment delay for a marathon service.instance
+      tags:
+      - service
+  /services/{service}/{instance}/state/{desired_state}:
+    post:
+      operationId: instance_set_state
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Desired state
+        in: path
+        name: desired_state
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: Result of instance state change
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Change state of service_name.instance_name
+      tags:
+      - service
+  /services/{service}/{instance}/status:
+    get:
+      operationId: status_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Include verbose status information
+        in: query
+        name: verbose
+        required: false
+        schema:
+          format: int32
+          type: integer
+      - description: Include Smartstack information
+        in: query
+        name: include_smartstack
+        required: false
+        schema:
+          type: boolean
+      - description: Include Envoy information
+        in: query
+        name: include_envoy
+        required: false
+        schema:
+          type: boolean
+      - description: Include Mesos information
+        in: query
+        name: include_mesos
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceStatus'
+          description: Detailed status of an instance
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get status of service_name.instance_name
+      tags:
+      - service
+  /services/{service}/{instance}/tasks:
+    get:
+      operationId: tasks_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: slave hostname to filter tasks by
+        in: query
+        name: slave_hostname
+        required: false
+        schema:
+          type: string
+      - description: Return slave and executor for task
+        in: query
+        name: verbose
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceTasks'
+          description: List of tasks associated with an instance
+        "400":
+          description: Bad request
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get mesos tasks of service_name.instance_name
+      tags:
+      - service
+  /services/{service}/{instance}/tasks/{task_id}:
+    get:
+      operationId: task_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: mesos task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          type: string
+      - description: Return slave and executor for task
+        in: query
+        name: verbose
+        required: false
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceTask'
+          description: Task associated with an instance with specified ID
+        "400":
+          description: Bad request
+        "404":
+          description: Task with ID not found
+        "500":
+          description: Instance failure
+      summary: Get mesos task of service_name.instance_name by task_id
+      tags:
+      - service
+  /version:
+    get:
+      operationId: showVersion
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Version of paasta_tools package
+      summary: Version of paasta_tools package

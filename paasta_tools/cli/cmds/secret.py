@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import os
 import re
 import sys
@@ -23,12 +24,28 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
+
+
+SECRET_NAME_REGEX = r"([A-Za-z0-9_-]*)"
+
+
+def check_secret_name(secret_name_arg: str):
+    pattern = re.compile(SECRET_NAME_REGEX)
+    if (
+        not secret_name_arg.startswith("-")
+        and not secret_name_arg.startswith("_")
+        and "".join(pattern.findall(secret_name_arg)) == secret_name_arg
+    ):
+        return secret_name_arg
+    raise argparse.ArgumentTypeError(
+        "--secret-name argument should only contain letters, numbers, "
+        "dashes and underscores characters and cannot start from latter two"
+    )
 
 
 def add_subparser(subparsers):
     secret_parser = subparsers.add_parser(
-        'secret',
+        "secret",
         help="Add/update PaaSTA service secrets",
         description=(
             "This script allows you to add secrets to your services "
@@ -38,41 +55,40 @@ def add_subparser(subparsers):
         ),
     )
     secret_parser.add_argument(
-        "action",
-        help="should be add/update",
-        choices=["add", "update", "decrypt"],
+        "action", help="should be add/update", choices=["add", "update", "decrypt"]
     )
     secret_parser.add_argument(
         "-n",
         "--secret-name",
+        type=check_secret_name,
         required=True,
         help="The name of the secret to create/update, "
-             "this is the name you will reference in your "
-             "services marathon/chronos yaml files and should "
-             "be unique per service.",
+        "this is the name you will reference in your "
+        "services yaml files and should "
+        "be unique per service.",
     )
 
     # Must choose valid service or act on a shared secret
     service_group = secret_parser.add_mutually_exclusive_group(required=True)
     service_group.add_argument(
-        '-s', '--service',
-        help='The name of the service on which you wish to act',
+        "-s", "--service", help="The name of the service on which you wish to act"
     ).completer = lazy_choices_completer(list_services)
     service_group.add_argument(
-        '--shared',
-        help='Act on a secret that can be shared by all services',
-        action='store_true',
+        "--shared",
+        help="Act on a secret that can be shared by all services",
+        action="store_true",
     )
 
     secret_parser.add_argument(
-        '-c', '--clusters',
+        "-c",
+        "--clusters",
         help="A comma-separated list of clusters to create secrets for. "
-             "Note: this is translated to ecosystems because Vault is run "
-             "at an ecosystem level. As a result you can only have different "
-             "secrets per ecosystem. (it is not possible for example to encrypt "
-             "a different value for norcal-prod vs nova-prod. "
-             "Defaults to all clusters in which the service runs. "
-             "For example: --clusters norcal-prod,nova-prod ",
+        "Note: this is translated to ecosystems because Vault is run "
+        "at an ecosystem level. As a result you can only have different "
+        "secrets per ecosystem. (it is not possible for example to encrypt "
+        "a different value for norcal-prod vs nova-prod. "
+        "Defaults to all clusters in which the service runs. "
+        "For example: --clusters norcal-prod,nova-prod ",
     ).completer = lazy_choices_completer(list_clusters)
     secret_parser.add_argument(
         "-p",
@@ -94,8 +110,8 @@ def add_subparser(subparsers):
 
 def secret_name_for_env(secret_name):
     secret_name = secret_name.upper()
-    valid_parts = re.findall(r'[a-zA-Z0-9_]+', secret_name)
-    return '_'.join(valid_parts)
+    valid_parts = re.findall(r"[a-zA-Z0-9_]+", secret_name)
+    return "_".join(valid_parts)
 
 
 def print_paasta_helper(secret_path, secret_name, is_shared):
@@ -117,9 +133,9 @@ def print_paasta_helper(secret_path, secret_name, is_shared):
         "for the yelp_servlib client library".format(
             secret_path,
             secret_name_for_env(secret_name),
-            'SHARED_' if is_shared else '',
+            "SHARED_" if is_shared else "",
             secret_name,
-        ),
+        )
     )
 
 
@@ -127,9 +143,11 @@ def get_plaintext_input(args):
     if args.stdin:
         plaintext = sys.stdin.buffer.read()
     elif args.plain_text:
-        plaintext = args.plain_text.encode('utf-8')
+        plaintext = args.plain_text.encode("utf-8")
     else:
-        print("Please enter the plaintext for the secret, press Ctrl-D when done.")
+        print(
+            "Please enter the plaintext for the secret, then enter a newline and Ctrl-D when done."
+        )
         lines = []
         while True:
             try:
@@ -137,7 +155,9 @@ def get_plaintext_input(args):
             except EOFError:
                 break
             lines.append(line)
-        plaintext = '\n'.join(lines).encode('utf-8')
+        plaintext = "\n".join(lines).encode("utf-8")
+        print("The secret as a Python string is:", repr(plaintext))
+        print("Please make sure this is correct.")
     return plaintext
 
 
@@ -147,19 +167,21 @@ def is_service_folder(soa_dir, service_name):
 
 def _get_secret_provider_for_service(service_name, cluster_names=None):
     if not is_service_folder(os.getcwd(), service_name):
-        paasta_print(
+        print(
+            "{} not found.\n"
             "You must run this tool from the root of your local yelpsoa checkout\n"
             "The tool modifies files in yelpsoa-configs that you must then commit\n"
-            "and push back to git.",
+            "and push back to git.".format(os.path.join(service_name, "service.yaml"))
         )
         sys.exit(1)
     system_paasta_config = load_system_paasta_config()
     secret_provider_kwargs = {
-        'vault_cluster_config': system_paasta_config.get_vault_cluster_config(),
+        "vault_cluster_config": system_paasta_config.get_vault_cluster_config()
     }
-    clusters = cluster_names.split(',') if cluster_names else list_clusters(
-        service=service_name,
-        soa_dir=os.getcwd(),
+    clusters = (
+        cluster_names.split(",")
+        if cluster_names
+        else list_clusters(service=service_name, soa_dir=os.getcwd())
     )
 
     return get_secret_provider(
@@ -179,23 +201,22 @@ def paasta_secret(args):
             sys.exit(1)
     else:
         service = args.service
-    secret_provider = _get_secret_provider_for_service(service, cluster_names=args.clusters)
+    secret_provider = _get_secret_provider_for_service(
+        service, cluster_names=args.clusters
+    )
     if args.action in ["add", "update"]:
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
         secret_provider.write_secret(
-            action=args.action,
-            secret_name=args.secret_name,
-            plaintext=plaintext,
+            action=args.action, secret_name=args.secret_name, plaintext=plaintext
         )
-        secret_path = os.path.join(secret_provider.secret_dir, f"{args.secret_name}.json")
+        secret_path = os.path.join(
+            secret_provider.secret_dir, f"{args.secret_name}.json"
+        )
         _log_audit(
-            action=f'{args.action}-secret',
-            action_details={
-                'secret_name': args.secret_name,
-                'clusters': args.clusters,
-            },
+            action=f"{args.action}-secret",
+            action_details={"secret_name": args.secret_name, "clusters": args.clusters},
             service=service,
         )
 
@@ -203,9 +224,9 @@ def paasta_secret(args):
     elif args.action == "decrypt":
         print(
             decrypt_secret(
-                secret_provider=secret_provider,
-                secret_name=args.secret_name,
-            ), end='',
+                secret_provider=secret_provider, secret_name=args.secret_name
+            ),
+            end="",
         )
     else:
         print("Unknown action")
@@ -214,9 +235,9 @@ def paasta_secret(args):
 
 def decrypt_secret(secret_provider, secret_name):
     if len(secret_provider.cluster_names) > 1:
-        paasta_print(
+        print(
             "Can only decrypt for one cluster at a time!\nFor example, try '-c norcal-devc'"
-            " to decrypt the secret for this service in norcal-devc.",
+            " to decrypt the secret for this service in norcal-devc."
         )
         sys.exit(1)
     return secret_provider.decrypt_secret(secret_name)

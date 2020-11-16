@@ -4,7 +4,7 @@ Resource Isolation in PaaSTA, Mesos and Docker
 
 PaaSTA instance definitions include fields that specify the required resources
 for your service. The reason for this is two-fold: firstly, so that whichever
-Mesos framework (Marathon, Chronos) can evaluate which Mesos agent making
+Mesos framework can evaluate which Mesos agent making
 offers have enough capacity to run the task (and pick one of the agents
 accordingly); secondly, so that tasks can be protected from especially noisy
 neighbours on a box. That is, if a task under-specifies the resources it
@@ -14,7 +14,7 @@ isolated effectively, preventing them from having a negative impact on its
 neighbours.
 
 This document is designed to give a more detailed review of how Mesos
-Frameworks such as Marathon and Chronos use these requirements to run tasks on
+Frameworks such as Marathon use these requirements to run tasks on
 different Mesos agents, and how these isolation mechanisms are implemented.
 
 Note: Knowing the details of these systems isn't a requirement of using PaaSTA;
@@ -50,7 +50,7 @@ the master's configuration - there may be particular priority given
 to some frameworks.
 
 At Yelp, we treat the frameworks we run (at the time of writing, Marathon and
-Chronos) equally. That means that frameworks *should* have offers distributed
+Tron) equally. That means that frameworks *should* have offers distributed
 between them evenly, and all tasks are considered equal.
 
 It is then up to the framework to decide what it wants to do with an offer.
@@ -75,7 +75,7 @@ master to run a task on the agent. The details of the 'acceptance' include a
 detail of the task to be run, and the 'executor' used to run the task.
 
 By default, PaaSTA uses the 'Docker' executor everywhere. This means that *all*
-tasks launched by Marathon and Chronos are done so with a Docker container.
+tasks launched by Marathon and Tron are done so with a Docker container.
 
 How Tasks are isolated from each other.
 ---------------------------------------

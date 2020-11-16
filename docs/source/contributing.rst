@@ -29,7 +29,7 @@ System Package Building / itests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA is distributed as a debian package. This package can be built and tested
-with ``make itest_trusty``. These tests make assertions about the
+with ``make itest_xenial``. These tests make assertions about the
 packaging implementation.
 
 
@@ -71,32 +71,6 @@ it is a little tricky.
   * ``eval "$(.tox/py27/bin/register-python-argcomplete ./tox/py27/bin/paasta)"``
 
 * There is a simple integration test. See the itest/ folder.
-
-Upgrading Forked Libraries
---------------------------
-We maintain forks of some of the libraries PaaSTA depends on, including marathon-python and chronos-python.
-If you wish to merge commits from the upstream library into our fork:
-
-* Add two remotes, one for Yelp's fork and one for upstream. For example, for ``chronos-python``, this would look like:
-
-  * ``git remote add upstream git@github.com:asher/chronos-python.git``
-  * ``git remote add yelp-fork git@github.com:Yelp/chronos-python.git``
-
-* Merge the necessary changes (if this is upstream, then merge upstream/master with yelp-fork/master). Take particular
-  care to ensure that setup.py is merged correctly, and contains the yelp specific release tag:
-
-  * ``git reset --hard yelp-fork/master``
-  * ``git merge upstream/master``
-
-* Edit ``setup.py`` of the library and update the ``version`` field.
-* Edit ``setup.py`` of paasta-tools to ensure the dependency version is correct.
-* Commit the change with a message noting the new version.
-* Tag the commit with the version. e.g. ``git tag v0.30.1-yelp1``
-* Push the commit upstream
-
-  * ``git push --tags yelp-fork master``
-
-* Jenkins will notice the new commits and build a new release. If this succeeds, Jenkins will push the new version of the package to pypi.
 
 Upgrading Components
 --------------------

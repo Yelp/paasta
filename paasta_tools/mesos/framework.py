@@ -33,27 +33,27 @@ class Framework:
 
     @property
     def id(self):
-        return self['id']
+        return self["id"]
 
     @property
     def name(self):
-        return self['name']
+        return self["name"]
 
     @property
     def hostname(self):
-        return self['hostname']
+        return self["hostname"]
 
     @property
     def active(self):
-        return self['active']
+        return self["active"]
 
     @property
     def task_count(self):
-        return len(self['tasks'])
+        return len(self["tasks"])
 
     @property
     def user(self):
-        return self['user']
+        return self["user"]
 
     @property
     def cpu_allocated(self):

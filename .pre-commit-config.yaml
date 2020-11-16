@@ -1,3 +1,4 @@
+exclude: ^paasta_tools/paastaapi
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.1.0
@@ -15,36 +16,41 @@ repos:
     -   id: requirements-txt-fixer
     -   id: fix-encoding-pragma
         args: [--remove]
--   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.7.7
-    hooks:
-    -   id: flake8
-        exclude: ^docs/source/conf.py$
+    -   id: pretty-format-json
+        args: [
+          '--autofix',
+          '--indent', '4',
+          '--no-sort-keys',
+        ]
 -   repo: https://github.com/asottile/reorder_python_imports
     rev: v1.4.0
     hooks:
     -   id: reorder-python-imports
         args: [--py3-plus]
+        additional_dependencies: [aspy.refactor_imports==0.5.3]
 -   repo: https://github.com/asottile/pyupgrade
     rev: v1.12.0
     hooks:
     -   id: pyupgrade
         args: [--py36-plus]
--   repo: https://github.com/asottile/add-trailing-comma
-    rev: v0.8.0
+-   repo: https://github.com/psf/black
+    rev: 19.10b0
     hooks:
-    -   id: add-trailing-comma
-        args: [--py36-plus]
+    -   id: black
+        language_version: python3.6
+        args: ['--target-version', 'py36']
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.7.7
+    hooks:
+    -   id: flake8
+        args: ['--ignore', 'E231']
+        exclude: ^docs/source/conf.py$
 -   repo: https://github.com/Yelp/detect-secrets
     rev: 0.9.1
     hooks:
     -   id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         exclude: .*tests/.*|.*yelp/testing/.*|\.pre-commit-config\.yaml
--   repo: https://github.com/pre-commit/mirrors-autopep8
-    rev: v1.4.3
-    hooks:
-    -   id: autopep8
 -   repo: local
     hooks:
     -   id: patch-enforce-autospec
@@ -53,3 +59,16 @@ repos:
         entry: paasta_tools/contrib/mock_patch_checker.py
         language: script
         files: ^tests/.*\.py$|^.*_itests/.*\.py
+    -   id: check-swagger-oapi-in-sync
+        name: check that swagger.json and oapi.yaml are in sync
+        description: we're migrating to oapi, please keep it in sync with swagger
+        entry: paasta_tools/contrib/check_swagger_oapi_sync.sh
+        language: script
+        pass_filenames: false
+        exclude: ^$
+        files: >
+            (?x)^(
+                paasta_tools/api/api_docs/swagger.json|
+                paasta_tools/api/api_docs/oapi.yaml|
+                paasta_tools/paastaapi
+            )

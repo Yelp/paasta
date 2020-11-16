@@ -18,13 +18,11 @@ import logging
 import sys
 import time
 
-from paasta_tools.utils import paasta_print
-
 debug = logging.debug
 
 
 def fatal(msg, code=1):
-    paasta_print(msg + "\n")
+    print(msg + "\n")
     logging.error(msg)
     sys.exit(code)
 
@@ -41,10 +39,10 @@ def duration(fn):
         try:
             return fn(*args, **kwargs)
         finally:
-            debug("duration: {}.{}: {:2.2f}s".format(
-                fn.__module__,
-                fn.__name__,
-                time.time() - start,
-            ))
+            debug(
+                "duration: {}.{}: {:2.2f}s".format(
+                    fn.__module__, fn.__name__, time.time() - start
+                )
+            )
 
     return timer

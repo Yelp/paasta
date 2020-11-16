@@ -1,7 +1,7 @@
-paasta_tools.api.api module
-===========================
+paasta\_tools.api.api module
+============================
 
 .. automodule:: paasta_tools.api.api
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

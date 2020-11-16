@@ -23,12 +23,11 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'cook-image',
+        "cook-image",
         description="Calls 'make cook-image' as part of the PaaSTA contract",
         help=(
             "'paasta cook-image' calls 'make cook-image' as part of the PaaSTA contract.\n\n"
@@ -39,18 +38,20 @@ def add_subparser(subparsers):
         epilog="This command assumes that the Makefile is in the current working directory.",
     )
     list_parser.add_argument(
-        '-s', '--service',
+        "-s",
+        "--service",
         help=(
-            'Build docker image for this service. Leading '
+            "Build docker image for this service. Leading "
             '"services-", as included in a Jenkins job name, '
-            'will be stripped.'
+            "will be stripped."
         ),
         required=True,
     )
     list_parser.add_argument(
-        '-y', '--yelpsoa-config-root',
-        dest='yelpsoa_config_root',
-        help='A directory from which yelpsoa-configs should be read from',
+        "-y",
+        "--yelpsoa-config-root",
+        dest="yelpsoa_config_root",
+        help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
     list_parser.set_defaults(command=paasta_cook_image)
@@ -60,52 +61,49 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     """Build a docker image"""
     if not service:
         service = args.service
-    if service.startswith('services-'):
-        service = service.split('services-', 1)[1]
+    if service.startswith("services-"):
+        service = service.split("services-", 1)[1]
     if not soa_dir:
         soa_dir = args.yelpsoa_config_root
     validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
-    default_tag = 'paasta-cook-image-{}-{}'.format(service, get_username())
-    tag = run_env.get('DOCKER_TAG', default_tag)
-    run_env['DOCKER_TAG'] = tag
+    default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
+    tag = run_env.get("DOCKER_TAG", default_tag)
+    run_env["DOCKER_TAG"] = tag
 
-    if not makefile_responds_to('cook-image'):
-        paasta_print(
-            'ERROR: local-run now requires a cook-image target to be present in the Makefile. See'
-            'http://paasta.readthedocs.io/en/latest/about/contract.html', file=sys.stderr,
+    if not makefile_responds_to("cook-image"):
+        print(
+            "ERROR: local-run now requires a cook-image target to be present in the Makefile. See"
+            "http://paasta.readthedocs.io/en/latest/about/contract.html",
+            file=sys.stderr,
         )
         return 1
 
     try:
-        cmd = 'make cook-image'
+        cmd = "make cook-image"
         returncode, output = _run(
             cmd,
             env=run_env,
             log=True,
-            component='build',
+            component="build",
             service=service,
-            loglevel='debug',
+            loglevel="debug",
         )
         if returncode != 0:
             _log(
                 service=service,
-                line='ERROR: make cook-image failed for %s.' % service,
-                component='build',
-                level='event',
+                line="ERROR: make cook-image failed for %s." % service,
+                component="build",
+                level="event",
             )
         else:
-            action_details = {
-                'tag': tag,
-            }
+            action_details = {"tag": tag}
             _log_audit(
-                action='cook-image',
-                action_details=action_details,
-                service=service,
+                action="cook-image", action_details=action_details, service=service
             )
         return returncode
 
     except KeyboardInterrupt:
-        paasta_print('\nProcess interrupted by the user. Cancelling.', file=sys.stderr)
+        print("\nProcess interrupted by the user. Cancelling.", file=sys.stderr)
         return 2

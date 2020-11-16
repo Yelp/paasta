@@ -1,0 +1,74 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Properties that can be set by automated processes for http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "patternProperties": {
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "disk": {
+                    "type": "number",
+                    "minimum": 128,
+                    "exclusiveMinimum": true
+                },
+                "mem": {
+                    "type": "number",
+                    "minimum": 32,
+                    "exclusiveMinimum": true
+                },
+                "sidecar_resource_requirements": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "hacheck": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "memory": {
+                                            "type": "string"
+                                        },
+                                        "ephemeral-storage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

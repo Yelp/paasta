@@ -4,7 +4,11 @@
 
 from typing import Any, Optional, List, Union
 from ..exceptions import InvalidChoiceError as InvalidChoiceError
-from .base import MarathonResource as MarathonResource, MarathonObject as MarathonObject, assert_valid_path as assert_valid_path
+from .base import (
+    MarathonResource as MarathonResource,
+    MarathonObject as MarathonObject,
+    assert_valid_path as assert_valid_path,
+)
 from .constraint import MarathonConstraint as MarathonConstraint
 from .container import MarathonContainer as MarathonContainer
 from .deployment import MarathonDeployment as MarathonDeployment
@@ -111,11 +115,7 @@ class MarathonApp(MarathonResource):
         gpus: Optional[Any] = ...,
         networks: Optional[Any] = ...,
     ) -> None: ...
-    def add_env(
-        self,
-        key,
-        value,
-    ): ...
+    def add_env(self, key, value): ...
 
 class MarathonHealthCheck(MarathonObject):
     command = ...  # type: Any
@@ -127,7 +127,19 @@ class MarathonHealthCheck(MarathonObject):
     protocol = ...  # type: Any
     timeout_seconds = ...  # type: Any
     ignore_http1xx = ...  # type: Any
-    def __init__(self, command: Optional[Any] = ..., grace_period_seconds: Optional[Any] = ..., interval_seconds: Optional[Any] = ..., max_consecutive_failures: Optional[Any] = ..., path: Optional[Any] = ..., port_index: Optional[Any] = ..., protocol: Optional[Any] = ..., timeout_seconds: Optional[Any] = ..., ignore_http1xx: Optional[Any] = ..., **kwargs) -> None: ...
+    def __init__(
+        self,
+        command: Optional[Any] = ...,
+        grace_period_seconds: Optional[Any] = ...,
+        interval_seconds: Optional[Any] = ...,
+        max_consecutive_failures: Optional[Any] = ...,
+        path: Optional[Any] = ...,
+        port_index: Optional[Any] = ...,
+        protocol: Optional[Any] = ...,
+        timeout_seconds: Optional[Any] = ...,
+        ignore_http1xx: Optional[Any] = ...,
+        **kwargs,
+    ) -> None: ...
 
 class MarathonTaskFailure(MarathonObject):
     DATETIME_FORMAT = ...  # type: str
@@ -140,12 +152,27 @@ class MarathonTaskFailure(MarathonObject):
     state = ...  # type: Any
     timestamp = ...  # type: Any
     version = ...  # type: Any
-    def __init__(self, app_id: Optional[Any] = ..., host: Optional[Any] = ..., message: Optional[Any] = ..., task_id: Optional[Any] = ..., instance_id: Optional[Any] = ..., slave_id: Optional[Any] = ..., state: Optional[Any] = ..., timestamp: Optional[Any] = ..., version: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        app_id: Optional[Any] = ...,
+        host: Optional[Any] = ...,
+        message: Optional[Any] = ...,
+        task_id: Optional[Any] = ...,
+        instance_id: Optional[Any] = ...,
+        slave_id: Optional[Any] = ...,
+        state: Optional[Any] = ...,
+        timestamp: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonUpgradeStrategy(MarathonObject):
     maximum_over_capacity = ...  # type: Any
     minimum_health_capacity = ...  # type: Any
-    def __init__(self, maximum_over_capacity: Optional[Any] = ..., minimum_health_capacity: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        maximum_over_capacity: Optional[Any] = ...,
+        minimum_health_capacity: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonUnreachableStrategy(MarathonObject):
     DISABLED = ...  # type: str
@@ -153,7 +180,13 @@ class MarathonUnreachableStrategy(MarathonObject):
     unreachable_expunge_after_seconds = ...  # type: Any
     inactive_after_seconds = ...  # type: Any
     expunge_after_seconds = ...  # type: Any
-    def __init__(self, unreachable_inactive_after_seconds: Optional[Any] = ..., unreachable_expunge_after_seconds: Optional[Any] = ..., inactive_after_seconds: Optional[Any] = ..., expunge_after_seconds: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        unreachable_inactive_after_seconds: Optional[Any] = ...,
+        unreachable_expunge_after_seconds: Optional[Any] = ...,
+        inactive_after_seconds: Optional[Any] = ...,
+        expunge_after_seconds: Optional[Any] = ...,
+    ) -> None: ...
     @classmethod
     def from_json(cls, attributes): ...
 
@@ -161,14 +194,24 @@ class MarathonAppVersionInfo(MarathonObject):
     DATETIME_FORMATS = ...  # type: Any
     last_scaling_at = ...  # type: Any
     last_config_change_at = ...  # type: Any
-    def __init__(self, last_scaling_at: Optional[Any] = ..., last_config_change_at: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        last_scaling_at: Optional[Any] = ...,
+        last_config_change_at: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonTaskStats(MarathonObject):
     started_after_last_scaling = ...  # type: Any
     with_latest_config = ...  # type: Any
     with_outdated_config = ...  # type: Any
     total_summary = ...  # type: Any
-    def __init__(self, started_after_last_scaling: Optional[Any] = ..., with_latest_config: Optional[Any] = ..., with_outdated_config: Optional[Any] = ..., total_summary: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        started_after_last_scaling: Optional[Any] = ...,
+        with_latest_config: Optional[Any] = ...,
+        with_outdated_config: Optional[Any] = ...,
+        total_summary: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonTaskStatsType(MarathonObject):
     stats = ...  # type: Any
@@ -177,19 +220,29 @@ class MarathonTaskStatsType(MarathonObject):
 class MarathonTaskStatsStats(MarathonObject):
     counts = ...  # type: Any
     life_time = ...  # type: Any
-    def __init__(self, counts: Optional[Any] = ..., life_time: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self, counts: Optional[Any] = ..., life_time: Optional[Any] = ...
+    ) -> None: ...
 
 class MarathonTaskStatsCounts(MarathonObject):
     staged = ...  # type: Any
     running = ...  # type: Any
     healthy = ...  # type: Any
     unhealthy = ...  # type: Any
-    def __init__(self, staged: Optional[Any] = ..., running: Optional[Any] = ..., healthy: Optional[Any] = ..., unhealthy: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        staged: Optional[Any] = ...,
+        running: Optional[Any] = ...,
+        healthy: Optional[Any] = ...,
+        unhealthy: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonTaskStatsLifeTime(MarathonObject):
     average_seconds = ...  # type: Any
     median_seconds = ...  # type: Any
-    def __init__(self, average_seconds: Optional[Any] = ..., median_seconds: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self, average_seconds: Optional[Any] = ..., median_seconds: Optional[Any] = ...
+    ) -> None: ...
 
 class ReadinessCheck(MarathonObject):
     name = ...  # type: Any
@@ -200,19 +253,39 @@ class ReadinessCheck(MarathonObject):
     http_status_codes_for_ready = ...  # type: Any
     preserve_last_response = ...  # type: Any
     timeout_seconds = ...  # type: Any
-    def __init__(self, name: Optional[Any] = ..., protocol: Optional[Any] = ..., path: Optional[Any] = ..., port_name: Optional[Any] = ..., interval_seconds: Optional[Any] = ..., http_status_codes_for_ready: Optional[Any] = ..., preserve_last_response: Optional[Any] = ..., timeout_seconds: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        name: Optional[Any] = ...,
+        protocol: Optional[Any] = ...,
+        path: Optional[Any] = ...,
+        port_name: Optional[Any] = ...,
+        interval_seconds: Optional[Any] = ...,
+        http_status_codes_for_ready: Optional[Any] = ...,
+        preserve_last_response: Optional[Any] = ...,
+        timeout_seconds: Optional[Any] = ...,
+    ) -> None: ...
 
 class PortDefinition(MarathonObject):
     port = ...  # type: Any
     protocol = ...  # type: Any
     name = ...  # type: Any
     labels = ...  # type: Any
-    def __init__(self, port: Optional[Any] = ..., protocol: Optional[Any] = ..., name: Optional[Any] = ..., labels: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        port: Optional[Any] = ...,
+        protocol: Optional[Any] = ...,
+        name: Optional[Any] = ...,
+        labels: Optional[Any] = ...,
+    ) -> None: ...
 
 class Residency(MarathonObject):
     relaunch_escalation_timeout_seconds = ...  # type: Any
     task_lost_behavior = ...  # type: Any
-    def __init__(self, relaunch_escalation_timeout_seconds: Optional[Any] = ..., task_lost_behavior: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        relaunch_escalation_timeout_seconds: Optional[Any] = ...,
+        task_lost_behavior: Optional[Any] = ...,
+    ) -> None: ...
 
 class Secret(MarathonObject):
     source = ...  # type: Any

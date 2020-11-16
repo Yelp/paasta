@@ -18,16 +18,14 @@ from paasta_tools.cli.cmds import get_latest_deployment
 
 
 def test_get_latest_deployment(capfd):
-    mock_args = MagicMock(
-        service='',
-        deploy_group='',
-        soa_dir='',
-    )
+    mock_args = MagicMock(service="", deploy_group="", soa_dir="")
     with patch(
-        'paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha',
-        return_value="FAKE_SHA", autospec=True,
+        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha",
+        return_value="FAKE_SHA",
+        autospec=True,
     ), patch(
-        'paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True,
+        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+        autospec=True,
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 0
         assert "FAKE_SHA" in capfd.readouterr()[0]
@@ -35,16 +33,18 @@ def test_get_latest_deployment(capfd):
 
 def test_get_latest_deployment_no_deployment_tag(capfd):
     mock_args = MagicMock(
-        service='fake_service',
-        deploy_group='fake_deploy_group',
-        soa_dir='',
+        service="fake_service", deploy_group="fake_deploy_group", soa_dir=""
     )
     with patch(
-        'paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha',
-        return_value=None, autospec=True,
+        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha",
+        return_value=None,
+        autospec=True,
     ), patch(
-        'paasta_tools.cli.cmds.get_latest_deployment.validate_service_name', autospec=True,
+        "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
+        autospec=True,
     ):
         assert get_latest_deployment.paasta_get_latest_deployment(mock_args) == 1
-        assert "A deployment could not be found for fake_deploy_group in fake_service" in \
-            capfd.readouterr()[1]
+        assert (
+            "A deployment could not be found for fake_deploy_group in fake_service"
+            in capfd.readouterr()[1]
+        )

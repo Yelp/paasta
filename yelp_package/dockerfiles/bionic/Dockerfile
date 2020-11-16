@@ -13,6 +13,11 @@
 # limitations under the License.
 
 FROM ubuntu:bionic
+
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ENV PIP_INDEX_URL=$PIP_INDEX_URL
+
+RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 # RUN echo "deb http://repos.mesosphere.com/ubuntu bionic main" > /etc/apt/sources.list.d/mesosphere.list && \
@@ -41,6 +46,8 @@ RUN apt-get update > /dev/null && \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
+RUN python -m pip install --upgrade pip==20.0.2
+RUN pip install virtualenv==16.0.0
 RUN cd /tmp && \
     wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
     gdebi -n dh-virtualenv*.deb && \

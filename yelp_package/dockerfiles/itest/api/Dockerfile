@@ -14,6 +14,11 @@
 
 FROM ubuntu:xenial
 
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ENV PIP_INDEX_URL=$PIP_INDEX_URL
+
+RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
+
 # Need Python 3.6
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
@@ -23,6 +28,7 @@ RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
         git \
+        curl \
         python3.6-dev \
         libffi-dev \
         libssl-dev \
@@ -33,12 +39,12 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.6
+RUN virtualenv /venv -ppython3.6 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 
-COPY yelp_package/dockerfiles/trusty/mesos-slave-secret /etc/
-COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/trusty/mesos-slave-secret /nail/etc/
+COPY yelp_package/dockerfiles/xenial/mesos-slave-secret /etc/
+COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/xenial/mesos-slave-secret /nail/etc/
 COPY yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
 
 ADD . /work/

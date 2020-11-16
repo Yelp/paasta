@@ -1,4 +1,4 @@
-version: '2'
+version: '2.4'
 volumes:
   ssh-data: {}
 services:
@@ -67,7 +67,6 @@ services:
     depends_on:
       - mesosmaster
       - itest_xenial
-      - chronos
       - registry
       - git
       - mesosslave
@@ -76,11 +75,6 @@ services:
       - marathon2
       - dynamodb
       - paasta_api
-  chronos:
-    ports:
-      - '8081:8081'
-    depends_on:
-      - zookeeper
   registry:
     image: registry:2
     ports:

@@ -15,12 +15,8 @@
 # limitations under the License.
 import asyncio
 import itertools
-from typing import Set
 
 from . import exceptions
-from paasta_tools.utils import paasta_print
-
-missing_slave: Set[str] = set()
 
 
 async def get_files_for_tasks(task_list, file_list, max_workers):
@@ -31,18 +27,17 @@ async def get_files_for_tasks(task_list, file_list, max_workers):
         try:
             fobj = await task.file(fname)
         except exceptions.SlaveDoesNotExist:
-            if task["id"] not in missing_slave:
-                paasta_print("{}:{}".format(task["id"], fname))
-                paasta_print("Slave no longer exists.")
-
-            missing_slave.add(task["id"])
+            if task is None:
+                print(f"(Unknown Task):{fname} (Slave no longer exists)")
+            else:
+                print(f"{task['id']}:{task_fname} (Slave no longer exists)")
             raise exceptions.SkipResult
 
         if await fobj.exists():
             return fobj
 
     elements = itertools.chain(
-        *[[(task, fname) for fname in file_list] for task in task_list],
+        *[[(task, fname) for fname in file_list] for task in task_list]
     )
 
     futures = [asyncio.ensure_future(process(element)) for element in elements]
@@ -60,7 +55,6 @@ async def get_files_for_tasks(task_list, file_list, max_workers):
     if no_files_found:
         raise exceptions.FileNotFoundForTaskException(
             "None of the tasks in {} contain the files in list {}".format(
-                ",".join([task["id"] for task in task_list]),
-                ",".join(file_list),
-            ),
+                ",".join([task["id"] for task in task_list]), ",".join(file_list)
+            )
         )

@@ -1,5 +1,5 @@
-paasta_tools.frameworks package
-===============================
+paasta\_tools.frameworks package
+================================
 
 Submodules
 ----------
@@ -16,6 +16,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.frameworks
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -105,7 +105,7 @@ Most services will want to use Jenkins to drive the deploy process. You can thin
     cook-image:
         docker build -t "$$DOCKER_TAG" .
 
-* yelpsoa-configs/<your service> MUST contain a deploy.yaml and SHOULD use paasta generate-pipeline to create Jenkins jobs based on that deploy.yaml
+* yelpsoa-configs/<your service> MUST contain a deploy.yaml and SHOULD use jenkins.yaml to create Jenkins pipelines based on that deploy.yaml.
 
 Manual Steps (Not Recommended)
 ------------------------------
@@ -123,4 +123,4 @@ used by Jenkins)
 * To deploy a service to a particular Marathon instance, the service’s git repo MUST have a specially-named branch
    * Use ``paasta mark-for-deployment`` for the format of the git ref
    * The SHA at the tip of this branch is used to locate a Docker image in the registry
-   * This Docker image is what will be deployed to the Marathon or Chronos
+   * This Docker image is what will be deployed to PaaSTA

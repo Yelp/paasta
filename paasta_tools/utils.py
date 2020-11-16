@@ -31,11 +31,14 @@ import re
 import shlex
 import signal
 import socket
+import ssl
 import sys
 import tempfile
 import threading
 import time
+import warnings
 from collections import OrderedDict
+from enum import Enum
 from fnmatch import fnmatch
 from functools import lru_cache
 from functools import wraps
@@ -65,9 +68,9 @@ from typing import Union
 
 import choice
 import dateutil.tz
+import ldap3
 import requests_cache
 import service_configuration_lib
-import yaml
 from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
@@ -80,46 +83,60 @@ import paasta_tools.cli.fsm
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
-SPACER = '.'
-INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
-PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
+SPACER = "."
+INFRA_ZK_PATH = "/nail/etc/zookeeper_discovery/infrastructure/"
+PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
+    "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
+)
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
-    'itest',
-    'itest-and-push-to-registry',
-    'security-check',
-    'performance-check',
-    'push-to-registry',
+    "itest",
+    "itest-and-push-to-registry",
+    "security-check",
+    "performance-check",
+    "push-to-registry",
 )
 # Default values for _log
-ANY_CLUSTER = 'N/A'
-ANY_INSTANCE = 'N/A'
-DEFAULT_LOGLEVEL = 'event'
-no_escape = re.compile(r'\x1B\[[0-9;]*[mK]')
+ANY_CLUSTER = "N/A"
+ANY_INSTANCE = "N/A"
+DEFAULT_LOGLEVEL = "event"
+no_escape = re.compile(r"\x1B\[[0-9;]*[mK]")
 
 # instead of the convention of using underscores in this scribe channel name,
 # the audit log uses dashes to prevent collisions with a service that might be
 # named 'audit_log'
-AUDIT_LOG_STREAM = 'stream_paasta-audit-log'
+AUDIT_LOG_STREAM = "stream_paasta-audit-log"
 
-DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
+DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = (
+    "http://{host:s}:{port:d}/;csv;norefresh;scope={scope:s}"
+)
 
 DEFAULT_CPU_PERIOD = 100000
 DEFAULT_CPU_BURST_ADD = 1
+
+DEFAULT_SOA_CONFIGS_GIT_URL = "sysgit.yelpcorp.com"
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
-    'marathon',
-    'chronos',
-    'paasta_native',
-    'adhoc',
-    'kubernetes',
-    'tron',
-    'flink',
+    "marathon",
+    "paasta_native",
+    "adhoc",
+    "kubernetes",
+    "tron",
+    "flink",
+    "cassandracluster",
+    "kafkacluster",
+    "nrtsearchservice",
 )
+
+
+class RollbackTypes(Enum):
+    AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
+    USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
 class TimeCacheEntry(TypedDict):
@@ -127,7 +144,7 @@ class TimeCacheEntry(TypedDict):
     fetch_time: float
 
 
-_CacheRetT = TypeVar('_CacheRetT')
+_CacheRetT = TypeVar("_CacheRetT")
 
 
 class time_cache:
@@ -137,26 +154,35 @@ class time_cache:
 
     def __call__(self, f: Callable[..., _CacheRetT]) -> Callable[..., _CacheRetT]:
         def cache(*args: Any, **kwargs: Any) -> _CacheRetT:
-            if 'ttl' in kwargs:
-                ttl = kwargs['ttl']
-                del kwargs['ttl']
+            if "ttl" in kwargs:
+                ttl = kwargs["ttl"]
+                del kwargs["ttl"]
             else:
                 ttl = self.ttl
             key = args
             for item in kwargs.items():
                 key += item
-            if (not ttl) or (key not in self.configs) or (time.time() - self.configs[key]['fetch_time'] > ttl):
-                self.configs[key] = {'data': f(*args, **kwargs), 'fetch_time': time.time()}
-            return self.configs[key]['data']
+            if (
+                (not ttl)
+                or (key not in self.configs)
+                or (time.time() - self.configs[key]["fetch_time"] > ttl)
+            ):
+                self.configs[key] = {
+                    "data": f(*args, **kwargs),
+                    "fetch_time": time.time(),
+                }
+            return self.configs[key]["data"]
+
         return cache
 
 
-_SortDictsT = TypeVar('_SortDictsT', bound=Mapping)
+_SortDictsT = TypeVar("_SortDictsT", bound=Mapping)
 
 
 def sort_dicts(dcts: Iterable[_SortDictsT]) -> List[_SortDictsT]:
     def key(dct: _SortDictsT) -> Tuple:
         return tuple(sorted(dct.items()))
+
     return sorted(dcts, key=key)
 
 
@@ -199,6 +225,20 @@ class AwsEbsVolume(VolumeWithMode):
 class PersistentVolume(VolumeWithMode):
     size: int
     container_path: str
+    storage_class_name: str
+
+
+class SecretVolumeItem(TypedDict, total=False):
+    key: str
+    path: str
+    mode: Union[str, int]
+
+
+class SecretVolume(TypedDict, total=False):
+    secret_name: str
+    container_path: str
+    default_mode: Union[str, int]
+    items: List[SecretVolumeItem]
 
 
 class InstanceConfigDict(TypedDict, total=False):
@@ -210,19 +250,17 @@ class InstanceConfigDict(TypedDict, total=False):
     args: List[str]
     cfs_period_us: float
     cpu_burst_add: float
-    ulimit: Dict[str, Dict[str, Any]]
     cap_add: List
     env: Dict[str, str]
-    docker_init: bool
     monitoring: Dict[str, str]
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
-    monitoring_blacklist: UnsafeDeployBlacklist
     pool: str
     persistent_volumes: List[PersistentVolume]
     role: str
     extra_volumes: List[DockerVolume]
     aws_ebs_volumes: List[AwsEbsVolume]
+    secret_volumes: List[SecretVolume]
     security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
@@ -265,14 +303,15 @@ def safe_deploy_whitelist(input: UnsafeDeployWhitelist) -> DeployWhitelist:
 
 
 # For mypy typing
-InstanceConfig_T = TypeVar('InstanceConfig_T', bound='InstanceConfig')
+InstanceConfig_T = TypeVar("InstanceConfig_T", bound="InstanceConfig")
 
 
 class InstanceConfig:
     config_filename_prefix: str
 
     def __init__(
-        self, cluster: str,
+        self,
+        cluster: str,
         instance: str,
         service: str,
         config_dict: InstanceConfigDict,
@@ -286,11 +325,16 @@ class InstanceConfig:
         self.service = service
         self.soa_dir = soa_dir
         self._job_id = compose_job_id(service, instance)
-        config_interpolation_keys = ('deploy_group',)
+        config_interpolation_keys = ("deploy_group",)
         interpolation_facts = self.__get_interpolation_facts()
         for key in config_interpolation_keys:
-            if key in self.config_dict and self.config_dict[key] is not None:  # type: ignore
-                self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)  # type: ignore
+            if (
+                key in self.config_dict
+                and self.config_dict[key] is not None  # type: ignore
+            ):
+                self.config_dict[key] = self.config_dict[key].format(  # type: ignore
+                    **interpolation_facts
+                )
 
     def __repr__(self) -> str:
         return "{!s}({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
@@ -305,9 +349,9 @@ class InstanceConfig:
 
     def __get_interpolation_facts(self) -> Dict[str, str]:
         return {
-            'cluster': self.cluster,
-            'instance': self.instance,
-            'service': self.service,
+            "cluster": self.cluster,
+            "instance": self.instance,
+            "service": self.service,
         }
 
     def get_cluster(self) -> str:
@@ -323,25 +367,31 @@ class InstanceConfig:
     def job_id(self) -> str:
         return self._job_id
 
-    def get_docker_registry(self) -> str:
-        return get_service_docker_registry(self.service, self.soa_dir)
+    def get_docker_registry(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> str:
+        return get_service_docker_registry(
+            self.service, self.soa_dir, system_config=system_paasta_config
+        )
 
     def get_branch(self) -> str:
-        return get_paasta_branch(cluster=self.get_cluster(), instance=self.get_instance())
+        return get_paasta_branch(
+            cluster=self.get_cluster(), instance=self.get_instance()
+        )
 
     def get_deploy_group(self) -> str:
-        return self.config_dict.get('deploy_group', self.get_branch())
+        return self.config_dict.get("deploy_group", self.get_branch())
 
     def get_team(self) -> str:
-        return self.config_dict.get('monitoring', {}).get('team', None)
+        return self.config_dict.get("monitoring", {}).get("team", None)
 
     def get_mem(self) -> float:
         """Gets the memory required from the service's configuration.
 
-        Defaults to 1024 (1G) if no value specified in the config.
+        Defaults to 4096 (4G) if no value specified in the config.
 
-        :returns: The amount of memory specified by the config, 1024 if not specified"""
-        mem = self.config_dict.get('mem', 1024)
+        :returns: The amount of memory specified by the config, 4096 if not specified"""
+        mem = self.config_dict.get("mem", 4096)
         return mem
 
     def get_mem_swap(self) -> str:
@@ -358,23 +408,23 @@ class InstanceConfig:
     def get_cpus(self) -> float:
         """Gets the number of cpus required from the service's configuration.
 
-        Defaults to .25 (1/4 of a cpu) if no value specified in the config.
+        Defaults to 1 cpu if no value specified in the config.
 
-        :returns: The number of cpus specified in the config, .25 if not specified"""
-        cpus = self.config_dict.get('cpus', .25)
+        :returns: The number of cpus specified in the config, 1 if not specified"""
+        cpus = self.config_dict.get("cpus", 1)
         return cpus
 
     def get_cpu_burst_add(self) -> float:
         """Returns the number of additional cpus a container is allowed to use.
         Defaults to DEFAULT_CPU_BURST_ADD"""
-        return self.config_dict.get('cpu_burst_add', DEFAULT_CPU_BURST_ADD)
+        return self.config_dict.get("cpu_burst_add", DEFAULT_CPU_BURST_ADD)
 
     def get_cpu_period(self) -> float:
         """The --cpu-period option to be passed to docker
         Comes from the cfs_period_us configuration option
 
         :returns: The number to be passed to the --cpu-period docker flag"""
-        return self.config_dict.get('cfs_period_us', DEFAULT_CPU_PERIOD)
+        return self.config_dict.get("cfs_period_us", DEFAULT_CPU_PERIOD)
 
     def get_cpu_quota(self) -> float:
         """Gets the --cpu-quota option to be passed to docker
@@ -386,29 +436,7 @@ class InstanceConfig:
         return (self.get_cpus() + cpu_burst_add) * self.get_cpu_period()
 
     def get_extra_docker_args(self) -> Dict[str, str]:
-        return self.config_dict.get('extra_docker_args', {})
-
-    def get_ulimit(self) -> Iterable[DockerParameter]:
-        """Get the --ulimit options to be passed to docker
-        Generated from the ulimit configuration option, which is a dictionary
-        of ulimit values. Each value is a dictionary itself, with the soft
-        limit stored under the 'soft' key and the optional hard limit stored
-        under the 'hard' key.
-
-        Example configuration: {'nofile': {soft: 1024, hard: 2048}, 'nice': {soft: 20}}
-
-        :returns: A generator of ulimit options to be passed as --ulimit flags"""
-        for key, val in sorted(self.config_dict.get('ulimit', {}).items()):
-            soft = val.get('soft')
-            hard = val.get('hard')
-            if soft is None:
-                raise InvalidInstanceConfig(
-                    f'soft limit missing in ulimit configuration for {key}.',
-                )
-            combined_val = '%i' % soft
-            if hard is not None:
-                combined_val += ':%i' % hard
-            yield {"key": "ulimit", "value": f"{key}={combined_val}"}
+        return self.config_dict.get("extra_docker_args", {})
 
     def get_cap_add(self) -> Iterable[DockerParameter]:
         """Get the --cap-add options to be passed to docker
@@ -418,7 +446,7 @@ class InstanceConfig:
         Example configuration: {'cap_add': ['IPC_LOCK', 'SYS_PTRACE']}
 
         :returns: A generator of cap_add options to be passed as --cap-add flags"""
-        for value in self.config_dict.get('cap_add', []):
+        for value in self.config_dict.get("cap_add", []):
             yield {"key": "cap-add", "value": f"{value}"}
 
     def get_cap_drop(self) -> Iterable[DockerParameter]:
@@ -427,14 +455,29 @@ class InstanceConfig:
         https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
         """
         caps = [
-            "SETPCAP", "MKNOD", "AUDIT_WRITE", "CHOWN", "NET_RAW", "DAC_OVERRIDE",
-            "FOWNER", "FSETID", "KILL", "SETGID", "SETUID", "NET_BIND_SERVICE",
-            "SYS_CHROOT", "SETFCAP",
+            "SETPCAP",
+            "MKNOD",
+            "AUDIT_WRITE",
+            "CHOWN",
+            "NET_RAW",
+            "DAC_OVERRIDE",
+            "FOWNER",
+            "FSETID",
+            "KILL",
+            "SETGID",
+            "SETUID",
+            "NET_BIND_SERVICE",
+            "SYS_CHROOT",
+            "SETFCAP",
         ]
         for cap in caps:
             yield {"key": "cap-drop", "value": cap}
 
-    def format_docker_parameters(self, with_labels: bool = True) -> List[DockerParameter]:
+    def format_docker_parameters(
+        self,
+        with_labels: bool = True,
+        system_paasta_config: Optional["SystemPaastaConfig"] = None,
+    ) -> List[DockerParameter]:
         """Formats extra flags for running docker.  Will be added in the format
         `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
         Note: values must be strings
@@ -446,36 +489,46 @@ class InstanceConfig:
             {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
             {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
         ]
+        if self.use_docker_disk_quota(system_paasta_config=system_paasta_config):
+            parameters.append(
+                {
+                    "key": "storage-opt",
+                    "value": f"size={int(self.get_disk() * 1024 * 1024)}",
+                }
+            )
         if with_labels:
-            parameters.extend([
-                {"key": "label", "value": "paasta_service=%s" % self.service},
-                {"key": "label", "value": "paasta_instance=%s" % self.instance},
-            ])
+            parameters.extend(
+                [
+                    {"key": "label", "value": "paasta_service=%s" % self.service},
+                    {"key": "label", "value": "paasta_instance=%s" % self.instance},
+                ]
+            )
         extra_docker_args = self.get_extra_docker_args()
         if extra_docker_args:
             for key, value in extra_docker_args.items():
-                parameters.extend([
-                    {"key": key, "value": value},
-                ])
-        parameters.extend(self.get_ulimit())
+                parameters.extend([{"key": key, "value": value}])
         parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
         parameters.extend(self.get_cap_drop())
         return parameters
 
+    def use_docker_disk_quota(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> bool:
+        if system_paasta_config is None:
+            system_paasta_config = load_system_paasta_config()
+        return system_paasta_config.get_enforce_disk_quota()
+
     def get_docker_init(self) -> Iterable[DockerParameter]:
-        if self.config_dict.get('docker_init', True) is True:
-            return [{'key': 'init', 'value': 'true'}]
-        else:
-            return []
+        return [{"key": "init", "value": "true"}]
 
     def get_disk(self, default: float = 1024) -> float:
-        """Gets the  amount of disk space required from the service's configuration.
+        """Gets the amount of disk space in MiB required from the service's configuration.
 
-        Defaults to 1024 (1G) if no value is specified in the config.
+        Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 1024 if not specified"""
-        disk = self.config_dict.get('disk', default)
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified"""
+        disk = self.config_dict.get("disk", default)
         return disk
 
     def get_gpus(self) -> Optional[int]:
@@ -484,7 +537,7 @@ class InstanceConfig:
         Default to None if no value is specified in the config.
 
         :returns: The number of gpus specified by the config, 0 if not specified"""
-        gpus = self.config_dict.get('gpus', None)
+        gpus = self.config_dict.get("gpus", None)
         return gpus
 
     def get_container_type(self) -> Optional[str]:
@@ -494,9 +547,9 @@ class InstanceConfig:
 
         :returns: Mesos containerizer type, DOCKER or MESOS"""
         if self.get_gpus() is not None:
-            container_type = 'MESOS'
+            container_type = "MESOS"
         else:
-            container_type = 'DOCKER'
+            container_type = "DOCKER"
         return container_type
 
     def get_cmd(self) -> Optional[Union[str, List[str]]]:
@@ -505,12 +558,14 @@ class InstanceConfig:
         Defaults to None if not specified in the config.
 
         :returns: A string specified in the config, None if not specified"""
-        return self.config_dict.get('cmd', None)
+        return self.config_dict.get("cmd", None)
 
     def get_instance_type(self) -> Optional[str]:
-        return getattr(self, 'config_filename_prefix', None)
+        return getattr(self, "config_filename_prefix", None)
 
-    def get_env_dictionary(self) -> Dict[str, str]:
+    def get_env_dictionary(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
         env = {
@@ -519,22 +574,35 @@ class InstanceConfig:
             "PAASTA_CLUSTER": self.cluster,
             "PAASTA_DEPLOY_GROUP": self.get_deploy_group(),
             "PAASTA_DOCKER_IMAGE": self.get_docker_image(),
+            "PAASTA_RESOURCE_CPUS": str(self.get_cpus()),
+            "PAASTA_RESOURCE_MEM": str(self.get_mem()),
+            "PAASTA_RESOURCE_DISK": str(self.get_disk()),
         }
+        if self.get_gpus() is not None:
+            env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
+        try:
+            env["PAASTA_GIT_SHA"] = get_git_sha_from_dockerurl(
+                self.get_docker_url(system_paasta_config=system_paasta_config)
+            )
+        except Exception:
+            pass
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
         instance_type = self.get_instance_type()
         if instance_type:
             env["PAASTA_INSTANCE_TYPE"] = instance_type
-        user_env = self.config_dict.get('env', {})
+        user_env = self.config_dict.get("env", {})
         env.update(user_env)
         return {str(k): str(v) for (k, v) in env.items()}
 
-    def get_env(self) -> Dict[str, str]:
+    def get_env(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
         """Basic get_env that simply returns the basic env, other classes
         might need to override this getter for more implementation-specific
         env getting"""
-        return self.get_env_dictionary()
+        return self.get_env_dictionary(system_paasta_config=system_paasta_config)
 
     def get_args(self) -> Optional[List[str]]:
         """Get the docker args specified in the service's configuration.
@@ -548,18 +616,20 @@ class InstanceConfig:
             ``[]`` if not specified and if cmd is not specified,
             otherwise None if not specified but cmd is specified"""
         if self.get_cmd() is None:
-            return self.config_dict.get('args', [])
+            return self.config_dict.get("args", [])
         else:
-            args = self.config_dict.get('args', None)
+            args = self.config_dict.get("args", None)
             if args is None:
                 return args
             else:
-                # TODO validation stuff like this should be moved into a check_* like in chronos tools
-                raise InvalidInstanceConfig('Instance configuration can specify cmd or args, but not both.')
+                # TODO validation stuff like this should be moved into a check_*
+                raise InvalidInstanceConfig(
+                    "Instance configuration can specify cmd or args, but not both."
+                )
 
     def get_monitoring(self) -> Dict[str, Any]:
         """Get monitoring overrides defined for the given instance"""
-        return self.config_dict.get('monitoring', {})
+        return self.config_dict.get("monitoring", {})
 
     def get_deploy_constraints(
         self,
@@ -572,59 +642,56 @@ class InstanceConfig:
         as a list of constraints.
         """
         return (
-            deploy_blacklist_to_constraints(blacklist) +
-            deploy_whitelist_to_constraints(whitelist) +
-            deploy_blacklist_to_constraints(system_deploy_blacklist) +
-            deploy_whitelist_to_constraints(system_deploy_whitelist)
+            deploy_blacklist_to_constraints(blacklist)
+            + deploy_whitelist_to_constraints(whitelist)
+            + deploy_blacklist_to_constraints(system_deploy_blacklist)
+            + deploy_whitelist_to_constraints(system_deploy_whitelist)
         )
 
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
-        return safe_deploy_blacklist(self.config_dict.get('deploy_blacklist', []))
+        return safe_deploy_blacklist(self.config_dict.get("deploy_blacklist", []))
 
     def get_deploy_whitelist(self) -> DeployWhitelist:
         """The deploy whitelist is a tuple of (location_type, [allowed value, allowed value, ...]).
         To have tasks scheduled on it, a host must be covered by the deploy whitelist (if present) and not excluded by
         the deploy blacklist."""
 
-        return safe_deploy_whitelist(self.config_dict.get('deploy_whitelist'))
-
-    def get_monitoring_blacklist(self, system_deploy_blacklist: DeployBlacklist) -> DeployBlacklist:
-        """The monitoring_blacklist is a list of tuples of (location type, location value), where the tuples indicate
-        which locations the user doesn't care to be monitored"""
-        return (
-            safe_deploy_blacklist(self.config_dict.get('monitoring_blacklist', [])) +
-            self.get_deploy_blacklist() +
-            system_deploy_blacklist
-        )
+        return safe_deploy_whitelist(self.config_dict.get("deploy_whitelist"))
 
     def get_docker_image(self) -> str:
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
         if self.branch_dict is not None:
-            return self.branch_dict['docker_image']
+            return self.branch_dict["docker_image"]
         else:
-            return ''
+            return ""
 
-    def get_docker_url(self) -> str:
+    def get_docker_url(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> str:
         """Compose the docker url.
         :returns: '<registry_uri>/<docker_image>'
         """
-        registry_uri = self.get_docker_registry()
+        registry_uri = self.get_docker_registry(
+            system_paasta_config=system_paasta_config
+        )
         docker_image = self.get_docker_image()
         if not docker_image:
-            raise NoDockerImageError('Docker url not available because there is no docker_image')
-        docker_url = f'{registry_uri}/{docker_image}'
+            raise NoDockerImageError(
+                "Docker url not available because there is no docker_image"
+            )
+        docker_url = f"{registry_uri}/{docker_image}"
         return docker_url
 
     def get_desired_state(self) -> str:
         """Get the desired state (either 'start' or 'stop') for a given service
         branch from a generated deployments.json file."""
         if self.branch_dict is not None:
-            return self.branch_dict['desired_state']
+            return self.branch_dict["desired_state"]
         else:
-            return 'start'
+            return "start"
 
     def get_force_bounce(self) -> Optional[str]:
         """Get the force_bounce token for a given service branch from a generated
@@ -634,7 +701,7 @@ class InstanceConfig:
         timestamp.
         """
         if self.branch_dict is not None:
-            return self.branch_dict['force_bounce']
+            return self.branch_dict["force_bounce"]
         else:
             return None
 
@@ -642,72 +709,125 @@ class InstanceConfig:
         cpus = self.get_cpus()
         if cpus is not None:
             if not isinstance(cpus, (float, int)):
-                return False, 'The specified cpus value "%s" is not a valid float or int.' % cpus
-        return True, ''
+                return (
+                    False,
+                    'The specified cpus value "%s" is not a valid float or int.' % cpus,
+                )
+        return True, ""
 
     def check_mem(self) -> Tuple[bool, str]:
         mem = self.get_mem()
         if mem is not None:
             if not isinstance(mem, (float, int)):
-                return False, 'The specified mem value "%s" is not a valid float or int.' % mem
-        return True, ''
+                return (
+                    False,
+                    'The specified mem value "%s" is not a valid float or int.' % mem,
+                )
+        return True, ""
 
     def check_disk(self) -> Tuple[bool, str]:
         disk = self.get_disk()
         if disk is not None:
             if not isinstance(disk, (float, int)):
-                return False, 'The specified disk value "%s" is not a valid float or int.' % disk
-        return True, ''
+                return (
+                    False,
+                    'The specified disk value "%s" is not a valid float or int.' % disk,
+                )
+        return True, ""
 
     def check_security(self) -> Tuple[bool, str]:
-        security = self.config_dict.get('security')
+        security = self.config_dict.get("security")
         if security is None:
-            return True, ''
+            return True, ""
 
-        outbound_firewall = security.get('outbound_firewall')
-        if outbound_firewall is None:
-            return True, ''
+        inbound_firewall = security.get("inbound_firewall")
+        outbound_firewall = security.get("outbound_firewall")
 
-        if outbound_firewall not in ('block', 'monitor'):
-            return False, 'Unrecognized outbound_firewall value "%s"' % outbound_firewall
+        if inbound_firewall is None and outbound_firewall is None:
+            return True, ""
 
-        unknown_keys = set(security.keys()) - {'outbound_firewall'}
+        if inbound_firewall is not None and inbound_firewall not in (
+            "allow",
+            "reject",
+        ):
+            return (
+                False,
+                'Unrecognized inbound_firewall value "%s"' % inbound_firewall,
+            )
+
+        if outbound_firewall is not None and outbound_firewall not in (
+            "block",
+            "monitor",
+        ):
+            return (
+                False,
+                'Unrecognized outbound_firewall value "%s"' % outbound_firewall,
+            )
+
+        unknown_keys = set(security.keys()) - {
+            "inbound_firewall",
+            "outbound_firewall",
+        }
         if unknown_keys:
-            return False, 'Unrecognized items in security dict of service config: "%s"' % ','.join(unknown_keys)
+            return (
+                False,
+                'Unrecognized items in security dict of service config: "%s"'
+                % ",".join(unknown_keys),
+            )
 
-        return True, ''
+        return True, ""
 
     def check_dependencies_reference(self) -> Tuple[bool, str]:
-        dependencies_reference = self.config_dict.get('dependencies_reference')
+        dependencies_reference = self.config_dict.get("dependencies_reference")
         if dependencies_reference is None:
-            return True, ''
+            return True, ""
 
-        dependencies = self.config_dict.get('dependencies')
+        dependencies = self.config_dict.get("dependencies")
         if dependencies is None:
-            return False, 'dependencies_reference "%s" declared but no dependencies found' % dependencies_reference
+            return (
+                False,
+                'dependencies_reference "%s" declared but no dependencies found'
+                % dependencies_reference,
+            )
 
         if dependencies_reference not in dependencies:
-            return False, 'dependencies_reference "%s" not found in dependencies dictionary' % dependencies_reference
+            return (
+                False,
+                'dependencies_reference "%s" not found in dependencies dictionary'
+                % dependencies_reference,
+            )
 
-        return True, ''
+        return True, ""
 
     def check(self, param: str) -> Tuple[bool, str]:
         check_methods = {
-            'cpus': self.check_cpus,
-            'mem': self.check_mem,
-            'security': self.check_security,
-            'dependencies_reference': self.check_dependencies_reference,
-            'deploy_group': self.check_deploy_group,
+            "cpus": self.check_cpus,
+            "mem": self.check_mem,
+            "security": self.check_security,
+            "dependencies_reference": self.check_dependencies_reference,
+            "deploy_group": self.check_deploy_group,
         }
         check_method = check_methods.get(param)
         if check_method is not None:
             return check_method()
         else:
-            return False, 'Your service config specifies "%s", an unsupported parameter.' % param
+            return (
+                False,
+                'Your service config specifies "%s", an unsupported parameter.' % param,
+            )
 
-    def validate(self) -> List[str]:
+    def validate(
+        self,
+        params: List[str] = [
+            "cpus",
+            "mem",
+            "security",
+            "dependencies_reference",
+            "deploy_group",
+        ],
+    ) -> List[str]:
         error_msgs = []
-        for param in ['cpus', 'mem', 'security', 'dependencies_reference', 'deploy_group']:
+        for param in params:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)
@@ -716,61 +836,67 @@ class InstanceConfig:
     def check_deploy_group(self) -> Tuple[bool, str]:
         deploy_group = self.get_deploy_group()
         if deploy_group is not None:
-            pipeline_deploy_groups = get_pipeline_deploy_groups(service=self.service, soa_dir=self.soa_dir)
+            pipeline_deploy_groups = get_pipeline_deploy_groups(
+                service=self.service, soa_dir=self.soa_dir
+            )
             if deploy_group not in pipeline_deploy_groups:
-                return False, f'deploy_group {deploy_group} is not in service {self.service} deploy.yaml'
-        return True, ''
+                return (
+                    False,
+                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but it is not deploy.yaml",
+                )  # noqa: E501
+        return True, ""
 
     def get_extra_volumes(self) -> List[DockerVolume]:
         """Extra volumes are a specially formatted list of dictionaries that should
         be bind mounted in a container The format of the dictionaries should
         conform to the `Mesos container volumes spec
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
-        return self.config_dict.get('extra_volumes', [])
+        return self.config_dict.get("extra_volumes", [])
 
     def get_aws_ebs_volumes(self) -> List[AwsEbsVolume]:
-        return self.config_dict.get('aws_ebs_volumes', [])
+        return self.config_dict.get("aws_ebs_volumes", [])
+
+    def get_secret_volumes(self) -> List[SecretVolume]:
+        return self.config_dict.get("secret_volumes", [])
 
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on.
         """
-        return self.config_dict.get('role')
+        return self.config_dict.get("role")
 
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
 
-        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint to Marathon/Chronos
-        application defined by this instance config.
+        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint or node selector.
 
         Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
 
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
-        return self.config_dict.get('pool', 'default')
+        return self.config_dict.get("pool", "default")
 
     def get_pool_constraints(self) -> List[Constraint]:
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
     def get_constraints(self) -> Optional[List[Constraint]]:
-        return stringify_constraints(self.config_dict.get('constraints', None))
+        return stringify_constraints(self.config_dict.get("constraints", None))
 
     def get_extra_constraints(self) -> List[Constraint]:
-        return stringify_constraints(self.config_dict.get('extra_constraints', []))
+        return stringify_constraints(self.config_dict.get("extra_constraints", []))
 
     def get_net(self) -> str:
         """
         :returns: the docker networking mode the container should be started with.
         """
-        return self.config_dict.get('net', 'bridge')
+        return self.config_dict.get("net", "bridge")
 
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
-        deduped = {v['containerPath'].rstrip('/') + v['hostPath'].rstrip('/'): v for v in volumes}.values()
-        return sort_dicts(deduped)
+        return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
-        return self.config_dict.get('persistent_volumes', [])
+        return self.config_dict.get("persistent_volumes", [])
 
     def get_dependencies_reference(self) -> Optional[str]:
         """Get the reference to an entry in dependencies.yaml
@@ -778,7 +904,7 @@ class InstanceConfig:
         Defaults to None if not specified in the config.
 
         :returns: A string specified in the config, None if not specified"""
-        return self.config_dict.get('dependencies_reference')
+        return self.config_dict.get("dependencies_reference")
 
     def get_dependencies(self) -> Optional[Dict]:
         """Get the contents of the dependencies_dict pointed to by the dependency_reference or
@@ -787,11 +913,27 @@ class InstanceConfig:
         Defaults to None if not specified in the config.
 
         :returns: A list of dictionaries specified in the dependencies_dict, None if not specified"""
-        dependencies = self.config_dict.get('dependencies')
+        dependencies = self.config_dict.get("dependencies")
         if not dependencies:
             return None
-        dependency_ref = self.get_dependencies_reference() or 'main'
+        dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
+
+    def get_inbound_firewall(self) -> Optional[str]:
+        """Return 'allow', 'reject', or None as configured in security->inbound_firewall
+        Defaults to None if not specified in the config
+
+        Setting this to a value other than `allow` is uncommon, as doing so will restrict the
+        availability of your service. The only other supported value is `reject` currently,
+        which will reject all remaining inbound traffic to the service port after all other rules.
+
+        This option exists primarily for sensitive services that wish to opt into this functionality.
+
+        :returns: A string specified in the config, None if not specified"""
+        security = self.config_dict.get("security")
+        if not security:
+            return None
+        return security.get("inbound_firewall")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
@@ -799,18 +941,20 @@ class InstanceConfig:
         Defaults to None if not specified in the config
 
         :returns: A string specified in the config, None if not specified"""
-        security = self.config_dict.get('security')
+        security = self.config_dict.get("security")
         if not security:
             return None
-        return security.get('outbound_firewall')
+        return security.get("outbound_firewall")
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
-            return self.config_dict == other.config_dict and \
-                self.branch_dict == other.branch_dict and \
-                self.cluster == other.cluster and \
-                self.instance == other.instance and \
-                self.service == other.service
+            return (
+                self.config_dict == other.config_dict
+                and self.branch_dict == other.branch_dict
+                and self.cluster == other.cluster
+                and self.instance == other.instance
+                and self.service == other.service
+            )
         else:
             return False
 
@@ -819,18 +963,25 @@ def stringify_constraint(usc: UnstringifiedConstraint) -> Constraint:
     return [str(x) for x in usc]
 
 
-def stringify_constraints(uscs: Optional[List[UnstringifiedConstraint]]) -> List[Constraint]:
+def stringify_constraints(
+    uscs: Optional[List[UnstringifiedConstraint]],
+) -> List[Constraint]:
     if uscs is None:
         return None
     return [stringify_constraint(usc) for usc in uscs]
 
 
 @time_cache(ttl=60)
-def validate_service_instance(service: str, instance: str, cluster: str, soa_dir: str) -> str:
+def validate_service_instance(
+    service: str, instance: str, cluster: str, soa_dir: str
+) -> str:
     possibilities: List[str] = []
     for instance_type in INSTANCE_TYPES:
         sis = get_service_instance_list(
-            service=service, cluster=cluster, instance_type=instance_type, soa_dir=soa_dir,
+            service=service,
+            cluster=cluster,
+            instance_type=instance_type,
+            soa_dir=soa_dir,
         )
         if (service, instance) in sis:
             return instance_type
@@ -839,12 +990,12 @@ def validate_service_instance(service: str, instance: str, cluster: str, soa_dir
         suggestions = suggest_possibilities(word=instance, possibilities=possibilities)
         raise NoConfigurationForServiceError(
             f"Error: {compose_job_id(service, instance)} doesn't look like it has been configured "
-            f"to run on the {cluster} cluster.{suggestions}",
+            f"to run on the {cluster} cluster.{suggestions}"
         )
 
 
-_ComposeRetT = TypeVar('_ComposeRetT')
-_ComposeInnerRetT = TypeVar('_ComposeInnerRetT')
+_ComposeRetT = TypeVar("_ComposeRetT")
+_ComposeInnerRetT = TypeVar("_ComposeInnerRetT")
 
 
 def compose(
@@ -853,22 +1004,24 @@ def compose(
 ) -> Callable[..., _ComposeRetT]:
     def composed(*args: Any, **kwargs: Any) -> _ComposeRetT:
         return func_one(func_two(*args, **kwargs))
+
     return composed
 
 
 class PaastaColors:
 
     """Collection of static variables and methods to assist in coloring text."""
+
     # ANSI color codes
-    BLUE = '\033[34m'
-    BOLD = '\033[1m'
-    CYAN = '\033[36m'
-    DEFAULT = '\033[0m'
-    GREEN = '\033[32m'
-    GREY = '\033[38;5;242m'
-    MAGENTA = '\033[35m'
-    RED = '\033[31m'
-    YELLOW = '\033[33m'
+    BLUE = "\033[34m"
+    BOLD = "\033[1m"
+    CYAN = "\033[36m"
+    DEFAULT = "\033[0m"
+    GREEN = "\033[32m"
+    GREY = "\033[38;5;242m"
+    MAGENTA = "\033[35m"
+    RED = "\033[31m"
+    YELLOW = "\033[33m"
 
     @staticmethod
     def bold(text: str) -> str:
@@ -949,97 +1102,103 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
-LOG_COMPONENTS = OrderedDict([
-    (
-        'build', {
-            'color': PaastaColors.blue,
-            'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-            'source_env': 'devc',
-        },
-    ),
-    (
-        'deploy', {
-            'color': PaastaColors.cyan,
-            'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
-            'additional_source_envs': ['devc'],
-        },
-    ),
-    (
-        'monitoring', {
-            'color': PaastaColors.green,
-            'help': 'Logs from Sensu checks for the service',
-        },
-    ),
-    (
-        'marathon', {
-            'color': PaastaColors.magenta,
-            'help': 'Logs from Marathon for the service',
-        },
-    ),
-    (
-        'chronos', {
-            'color': PaastaColors.red,
-            'help': 'Logs from Chronos for the service',
-        },
-    ),
-    (
-        'app_output', {
-            'color': compose(PaastaColors.yellow, PaastaColors.bold),
-            'help': 'Stderr and stdout of the actual process spawned by Mesos. '
-                    'Convenience alias for both the stdout and stderr components',
-        },
-    ),
-    (
-        'stdout', {
-            'color': PaastaColors.yellow,
-            'help': 'Stdout from the process spawned by Mesos.',
-        },
-    ),
-    (
-        'stderr', {
-            'color': PaastaColors.yellow,
-            'help': 'Stderr from the process spawned by Mesos.',
-        },
-    ),
-    (
-        'security', {
-            'color': PaastaColors.red,
-            'help': 'Logs from security-related services such as firewall monitoring',
-        },
-    ),
-    (
-        'oom', {
-            'color': PaastaColors.red,
-            'help': 'Kernel OOM events.',
-        },
-    ),
-    # I'm leaving these planned components here since they provide some hints
-    # about where we want to go. See PAASTA-78.
-    #
-    # But I'm commenting them out so they don't delude users into believing we
-    # can expose logs that we cannot actually expose. See PAASTA-927.
-    #
-    # ('app_request', {
-    #     'color': PaastaColors.bold,
-    #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
-    #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    # }),
-    # ('app_errors', {
-    #     'color': PaastaColors.red,
-    #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
-    #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    # }),
-    # ('lb_requests', {
-    #     'color': PaastaColors.bold,
-    #     'help': 'All requests from Smartstack haproxy',
-    #     'command': 'NA - TODO: SRV-1130',
-    # }),
-    # ('lb_errors', {
-    #     'color': PaastaColors.red,
-    #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
-    #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    # }),
-])
+LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
+    [
+        (
+            "build",
+            {
+                "color": PaastaColors.blue,
+                "help": "Jenkins build jobs output, like the itest, promotion, security checks, etc.",
+                "source_env": "devc",
+            },
+        ),
+        (
+            "deploy",
+            {
+                "color": PaastaColors.cyan,
+                "help": "Output from the paasta deploy code. (setup_marathon_job, bounces, etc)",
+                "additional_source_envs": ["devc"],
+            },
+        ),
+        (
+            "monitoring",
+            {
+                "color": PaastaColors.green,
+                "help": "Logs from Sensu checks for the service",
+            },
+        ),
+        (
+            "marathon",
+            {
+                "color": PaastaColors.magenta,
+                "help": "Logs from Marathon for the service",
+            },
+        ),
+        (
+            "app_output",
+            {
+                "color": compose(PaastaColors.yellow, PaastaColors.bold),
+                "help": "Stderr and stdout of the actual process spawned by Mesos. "
+                "Convenience alias for both the stdout and stderr components",
+            },
+        ),
+        (
+            "stdout",
+            {
+                "color": PaastaColors.yellow,
+                "help": "Stdout from the process spawned by Mesos.",
+            },
+        ),
+        (
+            "stderr",
+            {
+                "color": PaastaColors.yellow,
+                "help": "Stderr from the process spawned by Mesos.",
+            },
+        ),
+        (
+            "security",
+            {
+                "color": PaastaColors.red,
+                "help": "Logs from security-related services such as firewall monitoring",
+            },
+        ),
+        ("oom", {"color": PaastaColors.red, "help": "Kernel OOM events."}),
+        (
+            "task_lifecycle",
+            {
+                "color": PaastaColors.bold,
+                "help": "Logs that tell you about task startup, failures, healthchecks, etc.",
+            },
+        ),
+        # I'm leaving these planned components here since they provide some hints
+        # about where we want to go. See PAASTA-78.
+        #
+        # But I'm commenting them out so they don't delude users into believing we
+        # can expose logs that we cannot actually expose. See PAASTA-927.
+        #
+        # ('app_request', {
+        #     'color': PaastaColors.bold,
+        #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
+        #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
+        # }),
+        # ('app_errors', {
+        #     'color': PaastaColors.red,
+        #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
+        #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
+        # }),
+        # ('lb_requests', {
+        #     'color': PaastaColors.bold,
+        #     'help': 'All requests from Smartstack haproxy',
+        #     'command': 'NA - TODO: SRV-1130',
+        # }),
+        # ('lb_errors', {
+        #     'color': PaastaColors.red,
+        #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
+        #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
+        # }),
+    ]
+)
 
 
 class NoSuchLogComponent(Exception):
@@ -1057,28 +1216,36 @@ def get_git_url(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
-    url will be git@git.yelpcorp.com:services/test.
+    url will be git@github.yelpcorp.com:services/test.
 
     :param service: The service name to get a URL for
     :returns: A git url to the service's repository"""
     general_config = service_configuration_lib.read_service_configuration(
-        service,
-        soa_dir=soa_dir,
+        service, soa_dir=soa_dir
     )
-    default_location = 'git@git.yelpcorp.com:services/%s' % service
-    return general_config.get('git_url', default_location)
+    # TODO: PAASTA-16927: get this from system config `.git_config`
+    default_location = format_git_url(
+        "git", "github.yelpcorp.com", f"services/{service}"
+    )
+    return general_config.get("git_url", default_location)
+
+
+def format_git_url(git_user: str, git_server: str, repo_name: str) -> str:
+    return f"{git_user}@{git_server}:{repo_name}"
 
 
 def get_service_docker_registry(
     service: str,
     soa_dir: str = DEFAULT_SOA_DIR,
-    system_config: Optional['SystemPaastaConfig'] = None,
+    system_config: Optional["SystemPaastaConfig"] = None,
 ) -> str:
     if service is None:
         raise NotImplementedError('"None" is not a valid service')
-    service_configuration = service_configuration_lib.read_service_configuration(service, soa_dir)
+    service_configuration = service_configuration_lib.read_service_configuration(
+        service, soa_dir
+    )
     try:
-        return service_configuration['docker_registry']
+        return service_configuration["docker_registry"]
     except KeyError:
         if not system_config:
             system_config = load_system_paasta_config()
@@ -1133,15 +1300,17 @@ class LogWriter:
         raise NotImplementedError()
 
 
-_LogWriterTypeT = TypeVar('_LogWriterTypeT', bound=Type[LogWriter])
+_LogWriterTypeT = TypeVar("_LogWriterTypeT", bound=Type[LogWriter])
 
 
 def register_log_writer(name: str) -> Callable[[_LogWriterTypeT], _LogWriterTypeT]:
     """Returns a decorator that registers that log writer class at a given name
     so get_log_writer_class can find it."""
+
     def outer(log_writer_class: _LogWriterTypeT) -> _LogWriterTypeT:
         _log_writer_classes[name] = log_writer_class
         return log_writer_class
+
     return outer
 
 
@@ -1157,8 +1326,8 @@ def configure_log() -> None:
     """We will log to the yocalhost binded scribe."""
     log_writer_config = load_system_paasta_config().get_log_writer()
     global _log_writer
-    LogWriterClass = get_log_writer_class(log_writer_config['driver'])
-    _log_writer = LogWriterClass(**log_writer_config.get('options', {}))
+    LogWriterClass = get_log_writer_class(log_writer_config["driver"])
+    _log_writer = LogWriterClass(**log_writer_config.get("options", {}))
 
 
 def _log(
@@ -1211,7 +1380,7 @@ def _now() -> str:
 
 def remove_ansi_escape_sequences(line: str) -> str:
     """Removes ansi escape sequences from the given line."""
-    return no_escape.sub('', line)
+    return no_escape.sub("", line)
 
 
 def format_log_line(
@@ -1234,14 +1403,15 @@ def format_log_line(
     line = remove_ansi_escape_sequences(line.strip())
     message = json.dumps(
         {
-            'timestamp': timestamp,
-            'level': level,
-            'cluster': cluster,
-            'service': service,
-            'instance': instance,
-            'component': component,
-            'message': line,
-        }, sort_keys=True,
+            "timestamp": timestamp,
+            "level": level,
+            "cluster": cluster,
+            "service": service,
+            "instance": instance,
+            "component": component,
+            "message": line,
+        },
+        sort_keys=True,
     )
     return message
 
@@ -1274,83 +1444,117 @@ def format_audit_log_line(
 
     message = json.dumps(
         {
-            'timestamp': timestamp,
-            'cluster': cluster,
-            'service': service,
-            'instance': instance,
-            'user': user,
-            'host': host,
-            'action': action,
-            'action_details': action_details,
-        }, sort_keys=True,
+            "timestamp": timestamp,
+            "cluster": cluster,
+            "service": service,
+            "instance": instance,
+            "user": user,
+            "host": host,
+            "action": action,
+            "action_details": action_details,
+        },
+        sort_keys=True,
     )
     return message
 
 
 def get_log_name_for_service(service: str, prefix: str = None) -> str:
     if prefix:
-        return f'stream_paasta_{prefix}_{service}'
-    return 'stream_paasta_%s' % service
+        return f"stream_paasta_{prefix}_{service}"
+    return "stream_paasta_%s" % service
 
 
-@register_log_writer('scribe')
-class ScribeLogWriter(LogWriter):
-    def __init__(
-        self,
-        scribe_host: str = '169.254.255.254',
-        scribe_port: int = 1463,
-        scribe_disable: bool = False,
-        **kwargs: Any,
-    ) -> None:
-        self.clog = __import__('clog')
-        self.clog.config.configure(scribe_host=scribe_host, scribe_port=scribe_port, scribe_disable=scribe_disable)
+try:
+    import clog
 
-    def log(
-        self,
-        service: str,
-        line: str,
-        component: str,
-        level: str = DEFAULT_LOGLEVEL,
-        cluster: str = ANY_CLUSTER,
-        instance: str = ANY_INSTANCE,
-    ) -> None:
-        """This expects someone (currently the paasta cli main()) to have already
-        configured the log object. We'll just write things to it.
-        """
-        if level == 'event':
-            paasta_print(f"[service {service}] {line}", file=sys.stdout)
-        elif level == 'debug':
-            paasta_print(f"[service {service}] {line}", file=sys.stderr)
-        else:
-            raise NoSuchLogLevel
-        log_name = get_log_name_for_service(service)
-        formatted_line = format_log_line(level, cluster, service, instance, component, line)
-        self.clog.log_line(log_name, formatted_line)
+    # Somehow clog turns on DeprecationWarnings, so we need to disable them
+    # again after importing it.
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-    def log_audit(
-        self,
-        user: str,
-        host: str,
-        action: str,
-        action_details: dict = None,
-        service: str = None,
-        cluster: str = ANY_CLUSTER,
-        instance: str = ANY_INSTANCE,
-    ) -> None:
-        log_name = AUDIT_LOG_STREAM
-        formatted_line = format_audit_log_line(
-            user=user,
-            host=host,
-            action=action,
-            action_details=action_details,
-            service=service,
-            cluster=cluster,
-            instance=instance,
-        )
-        self.clog.log_line(log_name, formatted_line)
+    class CLogWriter(LogWriter):
+        def __init__(self, **kwargs: Any):
+            clog.config.configure(**kwargs)
+
+        def log(
+            self,
+            service: str,
+            line: str,
+            component: str,
+            level: str = DEFAULT_LOGLEVEL,
+            cluster: str = ANY_CLUSTER,
+            instance: str = ANY_INSTANCE,
+        ) -> None:
+            """This expects someone (currently the paasta cli main()) to have already
+            configured the log object. We'll just write things to it.
+            """
+            if level == "event":
+                print(f"[service {service}] {line}", file=sys.stdout)
+            elif level == "debug":
+                print(f"[service {service}] {line}", file=sys.stderr)
+            else:
+                raise NoSuchLogLevel
+            log_name = get_log_name_for_service(service)
+            formatted_line = format_log_line(
+                level, cluster, service, instance, component, line
+            )
+            clog.log_line(log_name, formatted_line)
+
+        def log_audit(
+            self,
+            user: str,
+            host: str,
+            action: str,
+            action_details: dict = None,
+            service: str = None,
+            cluster: str = ANY_CLUSTER,
+            instance: str = ANY_INSTANCE,
+        ) -> None:
+            log_name = AUDIT_LOG_STREAM
+            formatted_line = format_audit_log_line(
+                user=user,
+                host=host,
+                action=action,
+                action_details=action_details,
+                service=service,
+                cluster=cluster,
+                instance=instance,
+            )
+            clog.log_line(log_name, formatted_line)
+
+    @register_log_writer("monk")
+    class MonkLogWriter(CLogWriter):
+        def __init__(
+            self,
+            monk_host: str = "169.254.255.254",
+            monk_port: int = 1473,
+            monk_disable: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            super().__init__(
+                monk_host=monk_host, monk_port=monk_port, monk_disable=monk_disable,
+            )
+
+    @register_log_writer("scribe")
+    class ScribeLogWriter(CLogWriter):
+        def __init__(
+            self,
+            scribe_host: str = "169.254.255.254",
+            scribe_port: int = 1463,
+            scribe_disable: bool = False,
+            **kwargs: Any,
+        ) -> None:
+            super().__init__(
+                scribe_host=scribe_host,
+                scribe_port=scribe_port,
+                scribe_disable=scribe_disable,
+            )
 
 
-@register_log_writer('null')
+except ImportError:
+    warnings.warn("clog is unavailable")
+
+
+@register_log_writer("null")
 class NullLogWriter(LogWriter):
     """A LogWriter class that doesn't do anything. Primarily useful for integration tests where we don't care about
     logs."""
@@ -1390,13 +1594,13 @@ def _empty_context() -> Iterator[None]:
 _AnyIO = Union[io.IOBase, IO]
 
 
-@register_log_writer('file')
+@register_log_writer("file")
 class FileLogWriter(LogWriter):
     def __init__(
         self,
         path_format: str,
-        mode: str = 'a+',
-        line_delimiter: str = '\n',
+        mode: str = "a+",
+        line_delimiter: str = "\n",
         flock: bool = False,
     ) -> None:
         self.path_format = path_format
@@ -1411,7 +1615,9 @@ class FileLogWriter(LogWriter):
         else:
             return _empty_context()
 
-    def format_path(self, service: str, component: str, level: str, cluster: str, instance: str) -> str:
+    def format_path(
+        self, service: str, component: str, level: str, cluster: str, instance: str
+    ) -> str:
         return self.path_format.format(
             service=service,
             component=component,
@@ -1430,10 +1636,12 @@ class FileLogWriter(LogWriter):
         try:
             with io.FileIO(path, mode=self.mode, closefd=True) as f:
                 with self.maybe_flock(f):
-                    f.write(message.encode('UTF-8'))
+                    f.write(message.encode("UTF-8"))
         except IOError as e:
-            paasta_print(
-                "Could not log to {}: {}: {} -- would have logged: {}".format(path, type(e).__name__, str(e), message),
+            print(
+                "Could not log to {}: {}: {} -- would have logged: {}".format(
+                    path, type(e).__name__, str(e), message
+                ),
                 file=sys.stderr,
             )
 
@@ -1464,7 +1672,7 @@ class FileLogWriter(LogWriter):
         cluster: str = ANY_CLUSTER,
         instance: str = ANY_INSTANCE,
     ) -> None:
-        path = self.format_path(AUDIT_LOG_STREAM, '', '', cluster, instance)
+        path = self.format_path(AUDIT_LOG_STREAM, "", "", cluster, instance)
         formatted_line = format_audit_log_line(
             user=user,
             host=host,
@@ -1561,12 +1769,6 @@ class ResourcePoolSettings(TypedDict):
 PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
 
 
-class ChronosConfig(TypedDict, total=False):
-    user: str
-    password: str
-    url: List[str]
-
-
 class MarathonConfigDict(TypedDict, total=False):
     user: str
     password: str
@@ -1606,12 +1808,19 @@ class KubeCustomResourceDict(TypedDict, total=False):
     group: str
 
 
+class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
+    unaggregated_metrics: List[str]
+    summed_metric_to_group_keys: Dict[str, List[str]]
+    label_metric_to_label_key: Dict[str, List[str]]
+    label_renames: Dict[str, str]
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
-    api_ca_certificates: Dict[str, str]
     api_endpoints: Dict[str, str]
+    auth_certificate_ttl: str
+    auto_config_instance_types_enabled: Dict[str, bool]
     auto_hostname_unique_size: int
-    chronos_config: ChronosConfig
-    cluster: str
+    boost_regions: List[str]
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
     cluster_autoscaling_draining_enabled: bool
@@ -1619,29 +1828,45 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
+    cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
-    default_api_ca_certificate: str
+    default_push_groups: List
     deploy_blacklist: UnsafeDeployBlacklist
-    deploy_whitelist: UnsafeDeployWhitelist
-    deployd_big_bounce_rate: float
+    deployd_big_bounce_deadline: float
     deployd_log_level: str
     deployd_maintenance_polling_frequency: int
+    deployd_max_service_instance_failures: int
     deployd_metrics_provider: str
     deployd_number_workers: int
-    deployd_startup_bounce_rate: float
+    deployd_startup_bounce_deadline: float
     deployd_startup_oracle_enabled: bool
+    deployd_use_zk_queue: bool
     deployd_worker_failure_backoff_factor: int
+    deploy_whitelist: UnsafeDeployWhitelist
     disabled_watchers: List
-    docker_registry: str
     dockercfg_location: str
+    docker_registry: str
     enable_client_cert_auth: bool
     enable_nerve_readiness_check: bool
+    enable_envoy_readiness_check: bool
+    enforce_disk_quota: bool
+    envoy_admin_domain_name: str
+    envoy_admin_endpoint_format: str
+    envoy_nerve_readiness_check_script: List[str]
+    envoy_readiness_check_script: List[str]
     expected_slave_attributes: ExpectedSlaveAttributes
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
+    git_config: Dict
     hacheck_sidecar_image_url: str
+    hacheck_sidecar_volumes: List[DockerVolume]
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
+    ldap_host: str
+    ldap_reader_password: str
+    ldap_reader_username: str
+    ldap_search_base: str
+    ldap_search_ou: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -1650,8 +1875,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
-    nerve_readiness_check_script: str
+    nerve_readiness_check_script: List[str]
     paasta_native: PaastaNativeConfig
+    pdb_max_unavailable: Union[str, int]
+    pki_backend: str
+    pod_defaults: Dict[str, Any]
     previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
     register_marathon_services: bool
@@ -1662,6 +1890,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     security_check_command: str
     sensu_host: str
     sensu_port: int
+    service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
     synapse_haproxy_url_format: str
@@ -1669,32 +1898,46 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    use_mesos_healthchecks: bool
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
     zookeeper: str
 
 
-def load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+def load_system_paasta_config(
+    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR,
+) -> "SystemPaastaConfig":
     """
     Reads Paasta configs in specified directory in lexicographical order and deep merges
     the dictionaries (last file wins).
     """
     if not os.path.isdir(path):
-        raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError(
+            "Could not find system paasta configuration directory: %s" % path
+        )
 
     if not os.access(path, os.R_OK):
-        raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError(
+            "Could not read from system paasta configuration directory: %s" % path
+        )
 
     try:
-        file_stats = frozenset({(fn, os.stat(fn)) for fn in get_readable_files_in_glob(glob="*.json", path=path)})
+        file_stats = frozenset(
+            {
+                (fn, os.stat(fn))
+                for fn in get_readable_files_in_glob(glob="*.json", path=path)
+            }
+        )
         return parse_system_paasta_config(file_stats, path)
     except IOError as e:
-        raise PaastaNotConfiguredError(f"Could not load system paasta config file {e.filename}: {e.strerror}")
+        raise PaastaNotConfiguredError(
+            f"Could not load system paasta config file {e.filename}: {e.strerror}"
+        )
 
 
-def optionally_load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR) -> 'SystemPaastaConfig':
+def optionally_load_system_paasta_config(
+    path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR,
+) -> "SystemPaastaConfig":
     """
     Tries to load the system paasta config, but will return an empty configuration if not available,
     without raising.
@@ -1706,24 +1949,30 @@ def optionally_load_system_paasta_config(path: str = PATH_TO_SYSTEM_PAASTA_CONFI
 
 
 @lru_cache()
-def parse_system_paasta_config(file_stats: FrozenSet[Tuple[str, os.stat_result]], path: str) -> 'SystemPaastaConfig':
+def parse_system_paasta_config(
+    file_stats: FrozenSet[Tuple[str, os.stat_result]], path: str
+) -> "SystemPaastaConfig":
     """Pass in a dictionary of filename -> os.stat_result, and this returns the merged parsed configs"""
     config: SystemPaastaConfigDict = {}
     for filename, _ in file_stats:
         with open(filename) as f:
-            config = deep_merge_dictionaries(json.load(f), config, allow_duplicate_keys=False)
+            config = deep_merge_dictionaries(
+                json.load(f), config, allow_duplicate_keys=False
+            )
     return SystemPaastaConfig(config, path)
 
 
 class SystemPaastaConfig:
-
     def __init__(self, config: SystemPaastaConfigDict, directory: str) -> None:
         self.directory = directory
         self.config_dict = config
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, SystemPaastaConfig):
-            return self.directory == other.directory and self.config_dict == other.config_dict
+            return (
+                self.directory == other.directory
+                and self.config_dict == other.config_dict
+            )
         return False
 
     def __repr__(self) -> str:
@@ -1736,16 +1985,16 @@ class SystemPaastaConfig:
         :returns: The zk_hosts specified in the paasta configuration
         """
         try:
-            hosts = self.config_dict['zookeeper']
+            hosts = self.config_dict["zookeeper"]
         except KeyError:
             raise PaastaNotConfiguredError(
-                'Could not find zookeeper connection string in configuration directory: %s'
-                % self.directory,
+                "Could not find zookeeper connection string in configuration directory: %s"
+                % self.directory
             )
 
         # how do python strings not have a method for doing this
-        if hosts.startswith('zk://'):
-            return hosts[len('zk://'):]
+        if hosts.startswith("zk://"):
+            return hosts[len("zk://") :]
         return hosts
 
     def get_system_docker_registry(self) -> str:
@@ -1754,12 +2003,26 @@ class SystemPaastaConfig:
         :returns: The docker_registry specified in the paasta configuration
         """
         try:
-            return self.config_dict['docker_registry']
+            return self.config_dict["docker_registry"]
         except KeyError:
             raise PaastaNotConfiguredError(
-                'Could not find docker registry in configuration directory: %s'
-                % self.directory,
+                "Could not find docker registry in configuration directory: %s"
+                % self.directory
             )
+
+    def get_hacheck_sidecar_volumes(self) -> List[DockerVolume]:
+        """Get the hacheck sidecar volumes defined in this host's hacheck_sidecar_volumes config file.
+
+        :returns: The list of volumes specified in the paasta configuration
+        """
+        try:
+            volumes = self.config_dict["hacheck_sidecar_volumes"]
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                "Could not find hacheck_sidecar_volumes in configuration directory: %s"
+                % self.directory
+            )
+        return _reorder_docker_volumes(list(volumes))
 
     def get_volumes(self) -> Sequence[DockerVolume]:
         """Get the volumes defined in this host's volumes config file.
@@ -1767,9 +2030,11 @@ class SystemPaastaConfig:
         :returns: The list of volumes specified in the paasta configuration
         """
         try:
-            return self.config_dict['volumes']
+            return self.config_dict["volumes"]
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError(
+                "Could not find volumes in configuration directory: %s" % self.directory
+            )
 
     def get_cluster(self) -> str:
         """Get the cluster defined in this host's cluster config file.
@@ -1777,12 +2042,14 @@ class SystemPaastaConfig:
         :returns: The name of the cluster defined in the paasta configuration
         """
         try:
-            return self.config_dict['cluster']
+            return self.config_dict["cluster"]
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError(
+                "Could not find cluster in configuration directory: %s" % self.directory
+            )
 
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
-        return self.config_dict['dashboard_links']
+        return self.config_dict["dashboard_links"]
 
     def get_auto_hostname_unique_size(self) -> int:
         """
@@ -1792,31 +2059,77 @@ class SystemPaastaConfig:
 
         :returns: The integer size of a small service
         """
-        return self.config_dict.get('auto_hostname_unique_size', -1)
+        return self.config_dict.get("auto_hostname_unique_size", -1)
+
+    def get_auto_config_instance_types_enabled(self) -> Dict[str, bool]:
+        return self.config_dict.get("auto_config_instance_types_enabled", {})
 
     def get_api_endpoints(self) -> Mapping[str, str]:
-        return self.config_dict['api_endpoints']
-
-    def get_api_ca_certificates(self) -> Mapping[str, str]:
-        """ A mapping of cluster name to CA certificate for validating API server identity """
-        return self.config_dict.get('api_ca_certificates', {})
-
-    def get_default_api_ca_certificate(self) -> str:
-        """ A default CA certificate to fall back to if there is not a cluster mapped in
-        get_api_ca_certificates
-        """
-        return self.config_dict.get('default_api_ca_certificate', '/etc/paasta/pki/ca.crt')
+        return self.config_dict["api_endpoints"]
 
     def get_enable_client_cert_auth(self) -> bool:
         """
         If enabled present a client certificate from ~/.paasta/pki/<cluster>.crt and ~/.paasta/pki/<cluster>.key
         """
-        return self.config_dict.get('enable_client_cert_auth', True)
+        return self.config_dict.get("enable_client_cert_auth", True)
+
+    def get_enable_nerve_readiness_check(self) -> bool:
+        """
+        If enabled perform readiness checks on nerve
+        """
+        return self.config_dict.get("enable_nerve_readiness_check", True)
+
+    def get_enable_envoy_readiness_check(self) -> bool:
+        """
+        If enabled perform readiness checks on envoy
+        """
+        return self.config_dict.get("enable_envoy_readiness_check", False)
+
+    def get_nerve_readiness_check_script(self) -> List[str]:
+        return self.config_dict.get(
+            "nerve_readiness_check_script", ["/check_smartstack_up.sh"]
+        )
+
+    def get_envoy_readiness_check_script(self) -> List[str]:
+        return self.config_dict.get(
+            "envoy_readiness_check_script", ["/check_proxy_up.sh", "--enable-envoy"]
+        )
+
+    def get_envoy_nerve_readiness_check_script(self) -> List[str]:
+        return self.config_dict.get(
+            "envoy_nerve_readiness_check_script",
+            ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
+        )
+
+    def get_enforce_disk_quota(self) -> bool:
+        """
+        If enabled, add `--storage-opt size=SIZE` arg to `docker run` calls,
+        enforcing the disk quota as a result.
+
+        Please note that this should be enabled only for a suported environment
+        (which at the moment is only `overlay2` driver backed by `XFS`
+        filesystem mounted with `prjquota` option) otherwise Docker will fail
+        to start.
+        """
+        return self.config_dict.get("enforce_disk_quota", False)
+
+    def get_auth_certificate_ttl(self) -> str:
+        """
+        How long to request for ttl on auth certificates. Note that this maybe limited
+        by policy in Vault
+        """
+        return self.config_dict.get("auth_certificate_ttl", "11h")
+
+    def get_pki_backend(self) -> str:
+        """
+        The Vault pki backend to use for issueing certificates
+        """
+        return self.config_dict.get("pki_backend", "paastaca")
 
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
         template_path = os.path.join(fsm_path, "template")
-        return self.config_dict.get('fsm_template', template_path)
+        return self.config_dict.get("fsm_template", template_path)
 
     def get_log_writer(self) -> LogWriterConfig:
         """Get the log_writer configuration out of global paasta config
@@ -1824,9 +2137,12 @@ class SystemPaastaConfig:
         :returns: The log_writer dictionary.
         """
         try:
-            return self.config_dict['log_writer']
+            return self.config_dict["log_writer"]
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find log_writer in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError(
+                "Could not find log_writer in configuration directory: %s"
+                % self.directory
+            )
 
     def get_log_reader(self) -> LogReaderConfig:
         """Get the log_reader configuration out of global paasta config
@@ -1834,19 +2150,22 @@ class SystemPaastaConfig:
         :returns: the log_reader dictionary.
         """
         try:
-            return self.config_dict['log_reader']
+            return self.config_dict["log_reader"]
         except KeyError:
-            raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError(
+                "Could not find log_reader in configuration directory: %s"
+                % self.directory
+            )
 
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config
 
         :returns: A string identifying the metrics_provider
         """
-        deployd_metrics_provider = self.config_dict.get('deployd_metrics_provider')
+        deployd_metrics_provider = self.config_dict.get("deployd_metrics_provider")
         if deployd_metrics_provider is not None:
             return deployd_metrics_provider
-        return self.config_dict.get('metrics_provider')
+        return self.config_dict.get("metrics_provider")
 
     def get_deployd_worker_failure_backoff_factor(self) -> int:
         """Get the factor for calculating exponential backoff when a deployd worker
@@ -1854,7 +2173,7 @@ class SystemPaastaConfig:
 
         :returns: An integer
         """
-        return self.config_dict.get('deployd_worker_failure_backoff_factor', 30)
+        return self.config_dict.get("deployd_worker_failure_backoff_factor", 30)
 
     def get_deployd_maintenance_polling_frequency(self) -> int:
         """Get the frequency in seconds that the deployd maintenance watcher should
@@ -1862,7 +2181,7 @@ class SystemPaastaConfig:
 
         :returns: An integer
         """
-        return self.config_dict.get('deployd_maintenance_polling_frequency', 30)
+        return self.config_dict.get("deployd_maintenance_polling_frequency", 30)
 
     def get_deployd_startup_oracle_enabled(self) -> bool:
         """This controls whether deployd will add all services that need a bounce on
@@ -1871,126 +2190,133 @@ class SystemPaastaConfig:
 
         :returns: A boolean
         """
-        return self.config_dict.get('deployd_startup_oracle_enabled', True)
+        return self.config_dict.get("deployd_startup_oracle_enabled", True)
+
+    def get_deployd_max_service_instance_failures(self) -> int:
+        """Determines how many times a service instance entry in deployd's queue
+        can fail before it will be removed from the queue.
+
+        :returns: An integer
+        """
+        return self.config_dict.get("deployd_max_service_instance_failures", 20)
 
     def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.
 
         :returns: the sensu_host string, or localhost if not specified.
         """
-        return self.config_dict.get('sensu_host', 'localhost')
+        return self.config_dict.get("sensu_host", "localhost")
 
     def get_sensu_port(self) -> int:
         """Get the port that we should send sensu events to.
 
         :returns: the sensu_port value as an integer, or 3030 if not specified.
         """
-        return int(self.config_dict.get('sensu_port', 3030))
+        return int(self.config_dict.get("sensu_port", 3030))
 
     def get_dockercfg_location(self) -> str:
         """Get the location of the dockerfile, as a URI.
 
         :returns: the URI specified, or file:///root/.dockercfg if not specified.
         """
-        return self.config_dict.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
+        return self.config_dict.get("dockercfg_location", DEFAULT_DOCKERCFG_LOCATION)
 
     def get_synapse_port(self) -> int:
         """Get the port that haproxy-synapse exposes its status on. Defaults to 3212.
 
         :returns: the haproxy-synapse status port."""
-        return int(self.config_dict.get('synapse_port', 3212))
+        return int(self.config_dict.get("synapse_port", 3212))
 
     def get_default_synapse_host(self) -> str:
         """Get the default host we should interrogate for haproxy-synapse state.
 
         :returns: A hostname that is running haproxy-synapse."""
-        return self.config_dict.get('synapse_host', 'localhost')
+        return self.config_dict.get("synapse_host", "localhost")
 
     def get_synapse_haproxy_url_format(self) -> str:
         """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
         arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
 
         :returns: A format string for constructing the URL of haproxy-synapse's status page."""
-        return self.config_dict.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
+        return self.config_dict.get(
+            "synapse_haproxy_url_format", DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
+        )
+
+    def get_service_discovery_providers(self) -> Dict[str, Any]:
+        return self.config_dict.get("service_discovery_providers", {})
 
     def get_cluster_autoscaling_resources(self) -> IdToClusterAutoscalingResourcesDict:
-        return self.config_dict.get('cluster_autoscaling_resources', {})
+        return self.config_dict.get("cluster_autoscaling_resources", {})
 
     def get_cluster_autoscaling_draining_enabled(self) -> bool:
         """ Enable mesos maintenance mode and trigger draining of instances before the
         autoscaler terminates the instance.
 
         :returns A bool"""
-        return self.config_dict.get('cluster_autoscaling_draining_enabled', True)
+        return self.config_dict.get("cluster_autoscaling_draining_enabled", True)
 
     def get_cluster_autoscaler_max_increase(self) -> float:
         """ Set the maximum increase that the cluster autoscaler can make in each run
 
         :returns A float"""
-        return self.config_dict.get('cluster_autoscaler_max_increase', 0.2)
+        return self.config_dict.get("cluster_autoscaler_max_increase", 0.2)
 
     def get_cluster_autoscaler_max_decrease(self) -> float:
         """ Set the maximum decrease that the cluster autoscaler can make in each run
 
         :returns A float"""
-        return self.config_dict.get('cluster_autoscaler_max_decrease', 0.1)
+        return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
 
     def get_maintenance_resource_reservation_enabled(self) -> bool:
         """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
         *and* after tasks are killed in setup_marathon_job etc.
 
         :returns A bool"""
-        return self.config_dict.get('maintenance_resource_reservation_enabled', True)
+        return self.config_dict.get("maintenance_resource_reservation_enabled", True)
 
     def get_cluster_boost_enabled(self) -> bool:
         """ Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
 
         :returns A bool: True means cluster boost is enabled."""
-        return self.config_dict.get('cluster_boost_enabled', False)
+        return self.config_dict.get("cluster_boost_enabled", False)
 
     def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
-        return self.config_dict.get('resource_pool_settings', {})
+        return self.config_dict.get("resource_pool_settings", {})
 
     def get_cluster_fqdn_format(self) -> str:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
 
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
-        return self.config_dict.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
-
-    def get_chronos_config(self) -> ChronosConfig:
-        """Get the chronos config
-
-        :returns: The chronos config dictionary"""
-        return self.config_dict.get('chronos_config', {})
+        return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
 
     def get_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get('marathon_servers', [])
+        return self.config_dict.get("marathon_servers", [])
 
     def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get('previous_marathon_servers', [])
+        return self.config_dict.get("previous_marathon_servers", [])
 
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
 
         :returns: The local-run job config dictionary"""
-        return self.config_dict.get('local_run_config', {})
+        return self.config_dict.get("local_run_config", {})
 
     def get_remote_run_config(self) -> RemoteRunConfig:
         """Get the remote-run config
 
         :returns: The remote-run system_paasta_config dictionary"""
-        return self.config_dict.get('remote_run_config', {})
+        return self.config_dict.get("remote_run_config", {})
 
     def get_spark_run_config(self) -> SparkRunConfig:
         """Get the spark-run config
 
         :returns: The spark-run system_paasta_config dictionary"""
-        return self.config_dict.get('spark_run_config', {})
+        return self.config_dict.get("spark_run_config", {})
 
     def get_paasta_native_config(self) -> PaastaNativeConfig:
-        return self.config_dict.get('paasta_native', {})
+        return self.config_dict.get("paasta_native", {})
 
     def get_mesos_cli_config(self) -> Dict:
         """Get the config for mesos-cli
@@ -2003,7 +2329,7 @@ class SystemPaastaConfig:
         """Get the monitoring config
 
         :returns: the monitoring config dictionary"""
-        return self.config_dict.get('monitoring_config', {})
+        return self.config_dict.get("monitoring_config", {})
 
     def get_deploy_blacklist(self) -> DeployBlacklist:
         """Get global blacklist. This applies to all services
@@ -2020,12 +2346,12 @@ class SystemPaastaConfig:
         :returns: The whitelist
         """
 
-        return safe_deploy_whitelist(self.config_dict.get('deploy_whitelist'))
+        return safe_deploy_whitelist(self.config_dict.get("deploy_whitelist"))
 
     def get_expected_slave_attributes(self) -> ExpectedSlaveAttributes:
         """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
         calculating the default routing constraints."""
-        return self.config_dict.get('expected_slave_attributes')
+        return self.config_dict.get("expected_slave_attributes")
 
     def get_security_check_command(self) -> Optional[str]:
         """Get the script to be executed during the security-check build step
@@ -2041,102 +2367,161 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("deployd_number_workers", 4)
 
-    def get_deployd_big_bounce_rate(self) -> float:
-        """Get the number of deploys to do per minute when deployd starts
-        or determines it needs to bounce all services
+    def get_deployd_big_bounce_deadline(self) -> float:
+        """Get the amount of time in the future to set the deadline when enqueuing instances for SystemPaastaConfig
+        changes.
 
         :return: float
         """
 
-        return float(self.config_dict.get("deployd_big_bounce_rate", .1))
+        return float(
+            self.config_dict.get("deployd_big_bounce_deadline", 7 * 24 * 60 * 60)
+        )
 
-    def get_deployd_startup_bounce_rate(self) -> float:
-        """Get the number of deploys to do per minute when deployd starts
+    def get_deployd_startup_bounce_deadline(self) -> float:
+        """Get the amount of time in the future to set the deadline when enqueuing instances on deployd startup.
 
         :return: float
         """
 
-        return float(self.config_dict.get("deployd_startup_bounce_rate", .1))
+        return float(
+            self.config_dict.get("deployd_startup_bounce_deadline", 7 * 24 * 60 * 60)
+        )
 
     def get_deployd_log_level(self) -> str:
         """Get the log level for paasta-deployd
 
         :return: string name of python logging level, e.g. INFO, DEBUG etc.
         """
-        return self.config_dict.get("deployd_log_level", 'INFO')
+        return self.config_dict.get("deployd_log_level", "INFO")
 
-    def get_use_mesos_healthchecks(self) -> bool:
-        """Get a boolean indicating whether HTTP(S) healthchecks should
-        be driven by Mesos, rather than Marathon
-
-        :return: a bool, indicating whether paasta should use MESOS healthchecks.
-        """
-        return self.config_dict.get("use_mesos_healthchecks", False)
+    def get_deployd_use_zk_queue(self) -> bool:
+        return self.config_dict.get("deployd_use_zk_queue", True)
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
-        return self.config_dict.get('hacheck_sidecar_image_url', 'docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar')
-
-    def get_enable_nerve_readiness_check(self) -> bool:
-        """Enables a k8s readiness check on the Pod to ensure that all registrations
-        are UP on the local synapse haproxy"""
-        return self.config_dict.get('enable_nerve_readiness_check', True)
+        return self.config_dict.get(
+            "hacheck_sidecar_image_url",
+            "docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar",
+        )
 
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
-        return self.config_dict.get('register_k8s_pods', False)
+        return self.config_dict.get("register_k8s_pods", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
         """List of custom resources that should be synced by setup_kubernetes_cr """
-        return self.config_dict.get('kubernetes_custom_resources', [])
+        return self.config_dict.get("kubernetes_custom_resources", [])
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
-        return self.config_dict.get('kubernetes_use_hacheck_sidecar', True)
+        return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
 
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""
-        return self.config_dict.get('register_marathon_services', True)
+        return self.config_dict.get("register_marathon_services", True)
 
     def get_register_native_services(self) -> bool:
         """Enable registration of native paasta services in nerve"""
-        return self.config_dict.get('register_native_services', False)
-
-    def get_nerve_readiness_check_script(self) -> str:
-        """Script to check service is up in smartstack"""
-        return self.config_dict.get('nerve_readiness_check_script', '/check_smartstack_up.sh')
+        return self.config_dict.get("register_native_services", False)
 
     def get_taskproc(self) -> Dict:
-        return self.config_dict.get('taskproc', {})
+        return self.config_dict.get("taskproc", {})
 
     def get_disabled_watchers(self) -> List:
-        return self.config_dict.get('disabled_watchers', [])
+        return self.config_dict.get("disabled_watchers", [])
 
     def get_vault_environment(self) -> Optional[str]:
         """ Get the environment name for the vault cluster
         This must match the environment keys in the secret json files
         used by all services in this cluster"""
-        return self.config_dict.get('vault_environment')
+        return self.config_dict.get("vault_environment")
 
     def get_vault_cluster_config(self) -> dict:
         """ Get a map from paasta_cluster to vault ecosystem. We need
         this because not every ecosystem will have its own vault cluster"""
-        return self.config_dict.get('vault_cluster_map', {})
+        return self.config_dict.get("vault_cluster_map", {})
 
     def get_secret_provider_name(self) -> str:
         """ Get the name for the configured secret_provider, used to
         decrypt secrets"""
-        return self.config_dict.get('secret_provider', 'paasta_tools.secret_providers')
+        return self.config_dict.get("secret_provider", "paasta_tools.secret_providers")
 
     def get_slack_token(self) -> str:
         """ Get a slack token for slack notifications. Returns None if there is
         none available """
-        return self.config_dict.get('slack', {}).get('token', None)
+        return self.config_dict.get("slack", {}).get("token", None)
 
     def get_tron_config(self) -> dict:
-        return self.config_dict.get('tron', {})
+        return self.config_dict.get("tron", {})
 
     def get_clusters(self) -> Sequence[str]:
-        return self.config_dict.get('clusters', [])
+        return self.config_dict.get("clusters", [])
+
+    def get_envoy_admin_endpoint_format(self) -> str:
+        """ Get the format string for Envoy's admin interface. """
+        return self.config_dict.get(
+            "envoy_admin_endpoint_format", "http://{host:s}:{port:d}/{endpoint:s}"
+        )
+
+    def get_envoy_admin_port(self) -> int:
+        """ Get the port that Envoy's admin interface is listening on
+        from /etc/services. """
+        return socket.getservbyname(
+            self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
+        )
+
+    def get_pdb_max_unavailable(self) -> Union[str, int]:
+        return self.config_dict.get("pdb_max_unavailable", 0)
+
+    def get_boost_regions(self) -> List[str]:
+        return self.config_dict.get("boost_regions", [])
+
+    def get_pod_defaults(self) -> Dict[str, Any]:
+        return self.config_dict.get("pod_defaults", {})
+
+    def get_ldap_search_base(self) -> str:
+        return self.config_dict.get("ldap_search_base", None)
+
+    def get_ldap_search_ou(self) -> str:
+        return self.config_dict.get("ldap_search_ou", None)
+
+    def get_ldap_host(self) -> str:
+        return self.config_dict.get("ldap_host", None)
+
+    def get_ldap_reader_username(self) -> str:
+        return self.config_dict.get("ldap_reader_username", None)
+
+    def get_ldap_reader_password(self) -> str:
+        return self.config_dict.get("ldap_reader_password", None)
+
+    def get_default_push_groups(self) -> List:
+        return self.config_dict.get("default_push_groups", None)
+
+    def get_git_config(self) -> Dict:
+        """Gets git configuration. Includes repo names and their git servers.
+
+        :returns: the git config dict
+        """
+        return self.config_dict.get(
+            "git_config",
+            {
+                "git_user": "git",
+                "repos": {
+                    "yelpsoa-configs": {
+                        "repo_name": "yelpsoa-configs",
+                        "git_server": DEFAULT_SOA_CONFIGS_GIT_URL,
+                        "deploy_server": DEFAULT_SOA_CONFIGS_GIT_URL,
+                    },
+                },
+            },
+        )
+
+    def get_git_repo_config(self, repo_name: str) -> Dict:
+        """Gets the git configuration for a specific repo.
+
+        :returns: the git config dict for a specific repo.
+        """
+        return self.get_git_config().get("repos", {}).get(repo_name, {})
 
 
 def _run(
@@ -2163,27 +2548,29 @@ def _run(
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
-    output = []
+    output: List[str] = []
     if log:
-        service = kwargs['service']
-        component = kwargs['component']
-        cluster = kwargs.get('cluster', ANY_CLUSTER)
-        instance = kwargs.get('instance', ANY_INSTANCE)
-        loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
+        service = kwargs["service"]
+        component = kwargs["component"]
+        cluster = kwargs.get("cluster", ANY_CLUSTER)
+        instance = kwargs.get("instance", ANY_INSTANCE)
+        loglevel = kwargs.get("loglevel", DEFAULT_LOGLEVEL)
     try:
         if not isinstance(command, list):
             command = shlex.split(command)
-        popen_kwargs['stdout'] = PIPE
-        popen_kwargs['stderr'] = STDOUT
-        popen_kwargs['stdin'] = stdin
-        popen_kwargs['env'] = env
+        popen_kwargs["stdout"] = PIPE
+        popen_kwargs["stderr"] = STDOUT
+        popen_kwargs["stdin"] = stdin
+        popen_kwargs["env"] = env
         process = Popen(command, **popen_kwargs)
 
         if stdin_interrupt:
+
             def signal_handler(signum: int, frame: FrameType) -> None:
-                process.stdin.write("\n".encode('utf-8'))
+                process.stdin.write("\n".encode("utf-8"))
                 process.stdin.flush()
                 process.wait()
+
             signal.signal(signal.SIGINT, signal_handler)
             signal.signal(signal.SIGTERM, signal_handler)
 
@@ -2191,20 +2578,11 @@ def _run(
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, [process])
             proctimer.start()
-        for linebytes in iter(process.stdout.readline, b''):
-            line = linebytes.decode('utf-8', errors='replace').rstrip('\n')
-            linebytes = linebytes.strip(b'\n')
-            # additional indentation is for the paasta status command only
-            if stream:
-                if ('paasta_serviceinit status' in command):
-                    if 'instance: ' in line:
-                        paasta_print(b'  ' + linebytes)
-                    else:
-                        paasta_print(b'    ' + linebytes)
-                else:
-                    paasta_print(linebytes)
-            else:
-                output.append(line)
+
+        outfn: Any = print if stream else output.append
+        for linebytes in iter(process.stdout.readline, b""):
+            line = linebytes.decode("utf-8", errors="replace").rstrip("\n")
+            outfn(line)
 
             if log:
                 _log(
@@ -2222,13 +2600,13 @@ def _run(
         if log:
             _log(
                 service=service,
-                line=e.strerror.rstrip('\n'),
+                line=e.strerror.rstrip("\n"),
                 component=component,
                 level=loglevel,
                 cluster=cluster,
                 instance=instance,
             )
-        output.append(e.strerror.rstrip('\n'))
+        output.append(e.strerror.rstrip("\n"))
         returncode = e.errno
     except (KeyboardInterrupt, SystemExit):
         # need to clean up the timing thread here
@@ -2241,7 +2619,7 @@ def _run(
             proctimer.cancel()
     if returncode == -9:
         output.append(f"Command '{command}' timed out (longer than {timeout}s)")
-    return returncode, '\n'.join(output)
+    return returncode, "\n".join(output)
 
 
 def get_umask() -> int:
@@ -2252,11 +2630,13 @@ def get_umask() -> int:
 
 
 def get_user_agent() -> str:
-    user_agent = "PaaSTA Tools %s" % paasta_tools.__version__
-    if len(sys.argv) >= 1:
-        return user_agent + " " + os.path.basename(sys.argv[0])
+    base_name = os.path.basename(sys.argv[0])
+    if base_name == "gunicorn":
+        return f"{sys.argv[-1]} {paasta_tools.__version__}"
+    elif len(sys.argv) >= 1:
+        return f"{base_name} {paasta_tools.__version__}"
     else:
-        return user_agent
+        return f"PaaSTA Tools {paasta_tools.__version__}"
 
 
 @contextlib.contextmanager
@@ -2264,18 +2644,18 @@ def atomic_file_write(target_path: str) -> Iterator[IO]:
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
 
-    with tempfile.NamedTemporaryFile(
-        dir=dirname,
-        prefix=('.%s-' % basename),
-        delete=False,
-        mode='w',
-    ) as f:
-        temp_target_path = f.name
-        yield f
+    if target_path == "-":
+        yield sys.stdout
+    else:
+        with tempfile.NamedTemporaryFile(
+            dir=dirname, prefix=(".%s-" % basename), delete=False, mode="w"
+        ) as f:
+            temp_target_path = f.name
+            yield f
 
-    mode = 0o0666 & (~get_umask())
-    os.chmod(temp_target_path, mode)
-    os.rename(temp_target_path, target_path)
+        mode = 0o0666 & (~get_umask())
+        os.chmod(temp_target_path, mode)
+        os.rename(temp_target_path, target_path)
 
 
 class InvalidJobNameError(Exception):
@@ -2301,13 +2681,13 @@ def compose_job_id(
               if extra hash inputs are provided.
 
     """
-    composed = f'{name}{spacer}{instance}'
+    composed = f"{name}{spacer}{instance}"
     if git_hash and config_hash:
-        composed = f'{composed}{spacer}{git_hash}{spacer}{config_hash}'
+        composed = f"{composed}{spacer}{git_hash}{spacer}{config_hash}"
     elif git_hash or config_hash:
         raise InvalidJobNameError(
-            'invalid job id because git_hash (%s) and config_hash (%s) must '
-            'both be defined or neither can be defined' % (git_hash, config_hash),
+            "invalid job id because git_hash (%s) and config_hash (%s) must "
+            "both be defined or neither can be defined" % (git_hash, config_hash)
         )
     return composed
 
@@ -2328,7 +2708,7 @@ def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, 
         git_hash = decomposed[2]
         config_hash = decomposed[3]
     else:
-        raise InvalidJobNameError('invalid job id %s' % job_id)
+        raise InvalidJobNameError("invalid job id %s" % job_id)
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
@@ -2337,11 +2717,11 @@ def build_docker_image_name(service: str) -> str:
     will look for your images.
 
     :returns: a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
+    service's path in git. E.g. For github.yelpcorp.com:services/foo the
     docker image name is docker_registry/services-foo.
     """
     docker_registry_url = get_service_docker_registry(service)
-    name = f'{docker_registry_url}/services-{service}'
+    name = f"{docker_registry_url}/services-{service}"
     return name
 
 
@@ -2351,10 +2731,7 @@ def build_docker_tag(service: str, upstream_git_commit: str) -> str:
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
-    tag = '{}:paasta-{}'.format(
-        build_docker_image_name(service),
-        upstream_git_commit,
-    )
+    tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
     return tag
 
 
@@ -2371,20 +2748,22 @@ def check_docker_image(service: str, tag: str) -> bool:
     # image['RepoTags'] may be None
     # Fixed upstream but only in docker-py 2.
     # https://github.com/docker/docker-py/issues/1401
-    result = [image for image in images if docker_tag in (image['RepoTags'] or [])]
+    result = [image for image in images if docker_tag in (image["RepoTags"] or [])]
     if len(result) > 1:
-        raise ValueError(f'More than one docker image found with tag {docker_tag}\n{result}')
+        raise ValueError(
+            f"More than one docker image found with tag {docker_tag}\n{result}"
+        )
     return len(result) == 1
 
 
 def datetime_from_utc_to_local(utc_datetime: datetime.datetime) -> datetime.datetime:
-    return datetime_convert_timezone(utc_datetime, dateutil.tz.tzutc(), dateutil.tz.tzlocal())
+    return datetime_convert_timezone(
+        utc_datetime, dateutil.tz.tzutc(), dateutil.tz.tzlocal()
+    )
 
 
 def datetime_convert_timezone(
-    dt: datetime.datetime,
-    from_zone: datetime.tzinfo,
-    to_zone: datetime.tzinfo,
+    dt: datetime.datetime, from_zone: datetime.tzinfo, to_zone: datetime.tzinfo
 ) -> datetime.datetime:
     dt = dt.replace(tzinfo=from_zone)
     converted_datetime = dt.astimezone(to_zone)
@@ -2397,7 +2776,7 @@ def get_username() -> str:
     environment variable if present.
     http://stackoverflow.com/a/2899055
     """
-    return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
+    return os.environ.get("SUDO_USER", pwd.getpwuid(os.getuid())[0])
 
 
 def get_hostname() -> str:
@@ -2408,24 +2787,22 @@ def get_hostname() -> str:
 
 
 def get_soa_cluster_deploy_files(
-    service: str = None,
-    soa_dir: str = DEFAULT_SOA_DIR,
-    instance_type: str = None,
+    service: str = None, soa_dir: str = DEFAULT_SOA_DIR, instance_type: str = None
 ) -> Iterator[Tuple[str, str]]:
     if service is None:
-        service = '*'
+        service = "*"
     service_path = os.path.join(soa_dir, service)
 
-    valid_clusters = '|'.join(load_system_paasta_config().get_clusters())
+    valid_clusters = "|".join(load_system_paasta_config().get_clusters())
 
     if instance_type in INSTANCE_TYPES:
         instance_types = instance_type
     else:
-        instance_types = '|'.join(INSTANCE_TYPES)
+        instance_types = "|".join(INSTANCE_TYPES)
 
-    search_re = r'/.*/(' + instance_types + r')-(' + valid_clusters + r')\.yaml$'
+    search_re = r"/.*/(" + instance_types + r")-(" + valid_clusters + r")\.yaml$"
 
-    for yaml_file in glob.glob('%s/*.yaml' % service_path):
+    for yaml_file in glob.glob("%s/*.yaml" % service_path):
         try:
             with open(yaml_file):
                 cluster_re_match = re.search(search_re, yaml_file)
@@ -2436,20 +2813,20 @@ def get_soa_cluster_deploy_files(
             print(f"Error opening {yaml_file}: {err}")
 
 
-def list_clusters(service: str = None, soa_dir: str = DEFAULT_SOA_DIR, instance_type: str = None) -> List[str]:
+def list_clusters(
+    service: str = None, soa_dir: str = DEFAULT_SOA_DIR, instance_type: str = None
+) -> List[str]:
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
-    Includes every cluster that has a ``marathon-*.yaml`` or ``chronos-*.yaml`` file associated with it.
+    Includes every cluster that has a ``marathon-*.yaml`` or ``tron-*.yaml`` file associated with it.
 
     :param service: The service name. If unspecified, clusters running any service will be included.
     :returns: A sorted list of cluster names
     """
     clusters = set()
     for cluster, _ in get_soa_cluster_deploy_files(
-        service=service,
-        soa_dir=soa_dir,
-        instance_type=instance_type,
+        service=service, soa_dir=soa_dir, instance_type=instance_type
     ):
         clusters.add(cluster)
     return sorted(clusters)
@@ -2467,62 +2844,55 @@ def list_all_instances_for_service(
         clusters = list_clusters(service, soa_dir=soa_dir)
     for cluster in clusters:
         if cache:
-            si_list = get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir)
+            si_list = get_service_instance_list(
+                service, cluster, instance_type, soa_dir=soa_dir
+            )
         else:
-            si_list = get_service_instance_list_no_cache(service, cluster, instance_type, soa_dir=soa_dir)
+            si_list = get_service_instance_list_no_cache(
+                service, cluster, instance_type, soa_dir=soa_dir
+            )
         for service_instance in si_list:
             instances.add(service_instance[1])
     return instances
 
 
-def get_tron_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
+def filter_templates_from_config(config: Dict) -> Dict[str, Any]:
+    config = {
+        key: value for key, value in config.items() if not key.startswith("_")
+    }  # filter templates
+    return config or {}
+
+
+def read_service_instance_names(
+    service: str, instance_type: str, cluster: str, soa_dir: str
+) -> Collection[Tuple[str, str]]:
     instance_list = []
-    tron_config_content = service_configuration_lib.read_extra_service_information(
-        service,
-        conf_file,
-        soa_dir=soa_dir,
+    conf_file = f"{instance_type}-{cluster}"
+    config = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
     )
-    jobs = tron_config_content.get('jobs', [])
-    if isinstance(jobs, list):
-        jobs = [(job['name'], job) for job in jobs]
+    config = filter_templates_from_config(config)
+    if instance_type == "tron":
+        for job_name, job in config.items():
+            action_names = list(job.get("actions", {}).keys())
+            for name in action_names:
+                instance = f"{job_name}.{name}"
+                instance_list.append((service, instance))
     else:
-        jobs = jobs.items()
-
-    for job_name, job in jobs:
-        actions = job['actions']
-        if isinstance(actions, dict):
-            action_names = list(actions.keys())
-        else:
-            action_names = [action['name'] for action in actions]
-
-        for name in action_names:
-            instance = f"{job_name}.{name}"
-            instance_list.append((service, instance))
-    return instance_list
-
-
-def get_instance_list_from_yaml(service: str, conf_file: str, soa_dir: str) -> Collection[Tuple[str, str]]:
-    instance_list = []
-    instances = service_configuration_lib.read_extra_service_information(
-        service,
-        conf_file,
-        soa_dir=soa_dir,
-    )
-    for instance in instances:
-        if instance.startswith('_'):
-            log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
-        else:
+        for instance in config:
             instance_list.append((service, instance))
     return instance_list
 
 
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
-    return service_configuration.get('deploy', {}).get('pipeline', [])
+    return service_configuration.get("deploy", {}).get("pipeline", [])
 
 
-def get_pipeline_deploy_groups(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
-    pipeline_steps = [step['step'] for step in get_pipeline_config(service, soa_dir)]
+def get_pipeline_deploy_groups(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[str]:
+    pipeline_steps = [step["step"] for step in get_pipeline_config(service, soa_dir)]
     return [step for step in pipeline_steps if is_deploy_step(step)]
 
 
@@ -2536,7 +2906,7 @@ def get_service_instance_list_no_cache(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2551,20 +2921,14 @@ def get_service_instance_list_no_cache(
 
     instance_list: List[Tuple[str, str]] = []
     for srv_instance_type in instance_types:
-        conf_file = f"{srv_instance_type}-{cluster}"
-        log.debug(f"Enumerating all instances for config file: {soa_dir}/*/{conf_file}.yaml")
-        if srv_instance_type == 'tron':
-            instance_list.extend(
-                get_tron_instance_list_from_yaml(
-                    service=service, conf_file=conf_file, soa_dir=soa_dir,
-                ),
+        instance_list.extend(
+            read_service_instance_names(
+                service=service,
+                instance_type=srv_instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
             )
-        else:
-            instance_list.extend(
-                get_instance_list_from_yaml(
-                    service=service, conf_file=conf_file, soa_dir=soa_dir,
-                ),
-            )
+        )
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
@@ -2580,27 +2944,22 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
     return get_service_instance_list_no_cache(
-        service=service,
-        cluster=cluster,
-        instance_type=instance_type,
-        soa_dir=soa_dir,
+        service=service, cluster=cluster, instance_type=instance_type, soa_dir=soa_dir
     )
 
 
 def get_services_for_cluster(
-    cluster: str = None,
-    instance_type: str = None,
-    soa_dir: str = DEFAULT_SOA_DIR,
+    cluster: str = None, instance_type: str = None, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[Tuple[str, str]]:
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
@@ -2608,30 +2967,91 @@ def get_services_for_cluster(
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
-    log.debug("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
+    log.debug(
+        "Retrieving all service instance names from %s for cluster %s", rootdir, cluster
+    )
     instance_list: List[Tuple[str, str]] = []
     for srv_dir in os.listdir(rootdir):
-        service_instance_list = get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
-        for service_instance in service_instance_list:
-            service, instance = service_instance
-            if instance.startswith('_'):
-                log.debug(f"Ignoring {service}.{instance} as instance name begins with '_'.")
-            else:
-                instance_list.append(service_instance)
+        instance_list.extend(
+            get_service_instance_list(srv_dir, cluster, instance_type, soa_dir)
+        )
     return instance_list
 
 
-def parse_yaml_file(yaml_file: str) -> Any:
-    return yaml.safe_load(open(yaml_file))
+def load_service_instance_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, InstanceConfigDict]:
+    conf_file = f"{instance_type}-{cluster}"
+    user_configs = service_configuration_lib.read_extra_service_information(
+        service, conf_file, soa_dir=soa_dir, deepcopy=False,
+    )
+    user_configs = filter_templates_from_config(user_configs)
+    auto_configs = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    )
+    merged = {}
+    for instance_name, user_config in user_configs.items():
+        auto_config = auto_configs.get(instance_name, {})
+        merged[instance_name] = deep_merge_dictionaries(
+            overrides=user_config, defaults=auto_config,
+        )
+    return merged
+
+
+def load_service_instance_config(
+    service: str,
+    instance: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> InstanceConfigDict:
+    if instance.startswith("_"):
+        raise InvalidJobNameError(
+            f"Unable to load {instance_type} config for {service}.{instance} as instance name starts with '_'"
+        )
+    conf_file = f"{instance_type}-{cluster}"
+
+    # We pass deepcopy=False here and then do our own deepcopy of the subset of the data we actually care about. Without
+    # this optimization, any code that calls load_service_instance_config for every instance in a yaml file is ~O(n^2).
+    user_config = copy.deepcopy(
+        service_configuration_lib.read_extra_service_information(
+            service, conf_file, soa_dir=soa_dir, deepcopy=False
+        ).get(instance)
+    )
+    if user_config is None:
+        raise NoConfigurationForServiceError(
+            f"{instance} not found in config file {soa_dir}/{service}/{conf_file}.yaml."
+        )
+
+    auto_config = load_service_instance_auto_configs(
+        service, instance_type, cluster, soa_dir
+    ).get(instance, {})
+    return deep_merge_dictionaries(overrides=user_config, defaults=auto_config,)
+
+
+def load_service_instance_auto_configs(
+    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+) -> Dict[str, Dict[str, Any]]:
+    enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
+    conf_file = f"{instance_type}-{cluster}"
+    if enabled_types.get(instance_type):
+        return service_configuration_lib.read_extra_service_information(
+            service,
+            f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}",
+            soa_dir=soa_dir,
+            deepcopy=False,
+        )
+    else:
+        return {}
 
 
 def get_docker_host() -> str:
-    return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+    return os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
 
 
 def get_docker_client() -> Client:
     client_opts = kwargs_from_env(assert_hostname=False)
-    if 'base_url' in client_opts:
+    if "base_url" in client_opts:
         return Client(**client_opts)
     else:
         return Client(base_url=get_docker_host(), **client_opts)
@@ -2640,7 +3060,11 @@ def get_docker_client() -> Client:
 def get_running_mesos_docker_containers() -> List[Dict]:
     client = get_docker_client()
     running_containers = client.containers()
-    return [container for container in running_containers if "mesos-" in container["Names"][0]]
+    return [
+        container
+        for container in running_containers
+        if "mesos-" in container["Names"][0]
+    ]
 
 
 class TimeoutError(Exception):
@@ -2650,7 +3074,7 @@ class TimeoutError(Exception):
 class Timeout:
     # From http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
 
-    def __init__(self, seconds: int = 1, error_message: str = 'Timeout') -> None:
+    def __init__(self, seconds: int = 1, error_message: str = "Timeout") -> None:
         self.seconds = seconds
         self.error_message = error_message
 
@@ -2668,31 +3092,11 @@ class Timeout:
 
 def print_with_indent(line: str, indent: int = 2) -> None:
     """Print a line with a given indent level"""
-    paasta_print(" " * indent + line)
+    print(" " * indent + line)
 
 
 class NoDeploymentsAvailable(Exception):
     pass
-
-
-def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> 'DeploymentsJsonV1':
-    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV1(json.load(f)['v1'])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
-
-
-def load_v2_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> 'DeploymentsJsonV2':
-    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJsonV2(service=service, config_dict=json.load(f)['v2'])
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
 
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
@@ -2726,11 +3130,14 @@ class DeploymentsJsonV1:
         self.config_dict = config_dict
 
     def get_branch_dict(self, service: str, branch: str) -> BranchDictV1:
-        full_branch = f'{service}:paasta-{branch}'
+        full_branch = f"{service}:paasta-{branch}"
         return self.config_dict.get(full_branch, {})
 
     def __eq__(self, other: Any) -> bool:
-        return isinstance(other, DeploymentsJsonV1) and other.config_dict == self.config_dict
+        return (
+            isinstance(other, DeploymentsJsonV1)
+            and other.config_dict == self.config_dict
+        )
 
 
 class DeploymentsJsonV2:
@@ -2738,46 +3145,79 @@ class DeploymentsJsonV2:
         self.config_dict = config_dict
         self.service = service
 
-    def get_branch_dict(self, service: str, branch: str, deploy_group: str) -> BranchDictV2:
-        full_branch = f'{service}:{branch}'
+    def get_branch_dict(
+        self, service: str, branch: str, deploy_group: str
+    ) -> BranchDictV2:
+        full_branch = f"{service}:{branch}"
         branch_dict: BranchDictV2 = {
-            'docker_image': self.get_docker_image_for_deploy_group(deploy_group),
-            'git_sha': self.get_git_sha_for_deploy_group(deploy_group),
-            'desired_state': self.get_desired_state_for_branch(full_branch),
-            'force_bounce': self.get_force_bounce_for_branch(full_branch),
+            "docker_image": self.get_docker_image_for_deploy_group(deploy_group),
+            "git_sha": self.get_git_sha_for_deploy_group(deploy_group),
+            "desired_state": self.get_desired_state_for_branch(full_branch),
+            "force_bounce": self.get_force_bounce_for_branch(full_branch),
         }
         return branch_dict
 
     def get_deploy_groups(self) -> Collection[str]:
-        return self.config_dict['deployments'].keys()
+        return self.config_dict["deployments"].keys()
 
     def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict['deployments'][deploy_group]['docker_image']
+            return self.config_dict["deployments"][deploy_group]["docker_image"]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict['deployments'][deploy_group]['git_sha']
+            return self.config_dict["deployments"][deploy_group]["git_sha"]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
-            return self.config_dict['controls'][control_branch].get('desired_state', 'start')
+            return self.config_dict["controls"][control_branch].get(
+                "desired_state", "start"
+            )
         except KeyError:
             e = f"{self.service} not configured for {control_branch}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
 
     def get_force_bounce_for_branch(self, control_branch: str) -> str:
         try:
-            return self.config_dict['controls'][control_branch].get('force_bounce', None)
+            return self.config_dict["controls"][control_branch].get(
+                "force_bounce", None
+            )
         except KeyError:
             e = f"{self.service} not configured for {control_branch}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
+
+
+def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> Any:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            config_dict = json.load(f)
+            return (
+                DeploymentsJsonV1(config_dict["v1"])
+                if "v1" in config_dict
+                else DeploymentsJsonV2(service=service, config_dict=config_dict["v2"])
+            )
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
+
+
+def load_v2_deployments_json(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> DeploymentsJsonV2:
+    deployment_file = os.path.join(soa_dir, service, "deployments.json")
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJsonV2(service=service, config_dict=json.load(f)["v2"])
+    else:
+        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
+        raise NoDeploymentsAvailable(e)
 
 
 def get_paasta_branch(cluster: str, instance: str) -> str:
@@ -2785,27 +3225,27 @@ def get_paasta_branch(cluster: str, instance: str) -> str:
 
 
 def parse_timestamp(tstamp: str) -> datetime.datetime:
-    return datetime.datetime.strptime(tstamp, '%Y%m%dT%H%M%S')
+    return datetime.datetime.strptime(tstamp, "%Y%m%dT%H%M%S")
 
 
 def format_timestamp(dt: datetime.datetime = None) -> str:
     if dt is None:
         dt = datetime.datetime.utcnow()
-    return dt.strftime('%Y%m%dT%H%M%S')
+    return dt.strftime("%Y%m%dT%H%M%S")
 
 
 def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f'paasta-{identifier}-{timestamp}-{desired_state}'
+    return f"paasta-{identifier}-{timestamp}-{desired_state}"
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f'paasta-{cluster}.{instance}-{timestamp}-{desired_state}'
+    return f"paasta-{cluster}.{instance}-{timestamp}-{desired_state}"
 
 
 def format_tag(tag: str) -> str:
-    return 'refs/tags/%s' % tag
+    return "refs/tags/%s" % tag
 
 
 class NoDockerImageError(Exception):
@@ -2824,25 +3264,37 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
     """
     hasher = hashlib.md5()
     hasher.update(
-        json.dumps(config, sort_keys=True).encode('UTF-8') +
-        (force_bounce or '').encode('UTF-8'),
+        json.dumps(config, sort_keys=True).encode("UTF-8")
+        + (force_bounce or "").encode("UTF-8")
     )
     return "config%s" % hasher.hexdigest()[:8]
 
 
+def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
+    """ We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the sha.
+    """
+    parts = docker_url.split("/")
+    parts = parts[-1].split("-")
+    sha = parts[-1]
+    return sha if long else sha[:8]
+
+
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha
+    """ code_sha is hash extracted from docker url prefixed with "git", short
+    hash is used because it's embedded in marathon app names and there's length
+    limit.
     """
     try:
-        parts = docker_url.split('/')
-        parts = parts[-1].split('-')
-        return "git%s" % parts[-1][:8]
+        git_sha = get_git_sha_from_dockerurl(docker_url, long=False)
+        return "git%s" % git_sha
     except Exception:
-        return 'gitUNKNOWN'
+        return "gitUNKNOWN"
 
 
-def is_under_replicated(num_available: int, expected_count: int, crit_threshold: int) -> Tuple[bool, float]:
+def is_under_replicated(
+    num_available: int, expected_count: int, crit_threshold: int
+) -> Tuple[bool, float]:
     """Calculates if something is under replicated
 
     :param num_available: How many things are up
@@ -2851,7 +3303,7 @@ def is_under_replicated(num_available: int, expected_count: int, crit_threshold:
     :returns: Tuple of (bool, ratio)
     """
     if expected_count == 0:
-        ratio = 100.
+        ratio = 100.0
     else:
         ratio = (num_available / float(expected_count)) * 100
 
@@ -2861,11 +3313,12 @@ def is_under_replicated(num_available: int, expected_count: int, crit_threshold:
         return (False, ratio)
 
 
-def deploy_blacklist_to_constraints(deploy_blacklist: DeployBlacklist) -> List[Constraint]:
+def deploy_blacklist_to_constraints(
+    deploy_blacklist: DeployBlacklist,
+) -> List[Constraint]:
     """Converts a blacklist of locations into marathon appropriate constraints.
 
     https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#unlike-constraint
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -2877,20 +3330,21 @@ def deploy_blacklist_to_constraints(deploy_blacklist: DeployBlacklist) -> List[C
     return constraints
 
 
-def deploy_whitelist_to_constraints(deploy_whitelist: DeployWhitelist) -> List[Constraint]:
+def deploy_whitelist_to_constraints(
+    deploy_whitelist: DeployWhitelist,
+) -> List[Constraint]:
     """Converts a whitelist of locations into marathon appropriate constraints
 
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
-    https://github.com/Yelp/chronos/blob/master/docs/docs/api.md#like-constraint
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
     """
     if deploy_whitelist is not None:
         (region_type, regions) = deploy_whitelist
-        regionstr = '|'.join(regions)
+        regionstr = "|".join(regions)
 
-        return [[region_type, 'LIKE', regionstr]]
+        return [[region_type, "LIKE", regionstr]]
     return []
 
 
@@ -2899,7 +3353,9 @@ def terminal_len(text: str) -> int:
     return len(remove_ansi_escape_sequences(text))
 
 
-def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int = 2) -> List[str]:
+def format_table(
+    rows: Iterable[Union[str, Sequence[str]]], min_spacing: int = 2
+) -> List[str]:
     """Formats a table for use on the command line.
 
     :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string
@@ -2926,16 +3382,16 @@ def format_table(rows: Iterable[Union[str, Sequence[str]]], min_spacing: int = 2
             expanded_row = []
             for i, cell in enumerate(row):
                 if i == len(row) - 1:
-                    padding = ''
+                    padding = ""
                 else:
-                    padding = ' ' * (widths[i] - terminal_len(cell))
+                    padding = " " * (widths[i] - terminal_len(cell))
                 expanded_row.append(cell + padding)
             expanded_rows.append(expanded_row)
 
-    return [(' ' * min_spacing).join(r) for r in expanded_rows]
+    return [(" " * min_spacing).join(r) for r in expanded_rows]
 
 
-_DeepMergeT = TypeVar('_DeepMergeT', bound=Any)
+_DeepMergeT = TypeVar("_DeepMergeT", bound=Any)
 
 
 class DuplicateKeyError(Exception):
@@ -2943,9 +3399,7 @@ class DuplicateKeyError(Exception):
 
 
 def deep_merge_dictionaries(
-    overrides: _DeepMergeT,
-    defaults: _DeepMergeT,
-    allow_duplicate_keys: bool = True,
+    overrides: _DeepMergeT, defaults: _DeepMergeT, allow_duplicate_keys: bool = True
 ) -> _DeepMergeT:
     """
     Merges two dictionaries.
@@ -2966,7 +3420,9 @@ def deep_merge_dictionaries(
                     if allow_duplicate_keys:
                         result_dict[key] = value
                     else:
-                        raise DuplicateKeyError(f"defaults and overrides both have key {key}")
+                        raise DuplicateKeyError(
+                            f"defaults and overrides both have key {key}"
+                        )
     return result
 
 
@@ -2977,13 +3433,16 @@ class ZookeeperPool:
     manager over a large number of zookeeper calls without opening and closing a connection each time.
     GIL makes this 'safe'.
     """
+
     counter: int = 0
     zk: KazooClient = None
 
     @classmethod
     def __enter__(cls) -> KazooClient:
         if cls.zk is None:
-            cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
+            cls.zk = KazooClient(
+                hosts=load_system_paasta_config().get_zk_hosts(), read_only=True
+            )
             cls.zk.start()
         cls.counter = cls.counter + 1
         return cls.zk
@@ -3009,16 +3468,16 @@ def is_deploy_step(step: str) -> bool:
     Returns true if the given step deploys to an instancename
     Returns false if the step is a predefined step-type, e.g. itest or command-*
     """
-    return not ((step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith('command-')))
+    return not (
+        (step in DEPLOY_PIPELINE_NON_DEPLOY_STEPS) or (step.startswith("command-"))
+    )
 
 
-_UseRequestsCacheFuncT = TypeVar('_UseRequestsCacheFuncT', bound=Callable)
+_UseRequestsCacheFuncT = TypeVar("_UseRequestsCacheFuncT", bound=Callable)
 
 
 def use_requests_cache(
-    cache_name: str,
-    backend: str = 'memory',
-    **kwargs: Any,
+    cache_name: str, backend: str = "memory", **kwargs: Any
 ) -> Callable[[_UseRequestsCacheFuncT], _UseRequestsCacheFuncT]:
     def wrap(fun: _UseRequestsCacheFuncT) -> _UseRequestsCacheFuncT:
         def fun_with_cache(*args: Any, **kwargs: Any) -> Any:
@@ -3026,7 +3485,9 @@ def use_requests_cache(
             result = fun(*args, **kwargs)
             requests_cache.uninstall_cache()
             return result
+
         return cast(_UseRequestsCacheFuncT, fun_with_cache)
+
     return wrap
 
 
@@ -3044,21 +3505,20 @@ def mean(iterable: Collection[float]) -> float:
 
 def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
     if not sys.stdin.isatty():
-        paasta_print(
-            'No {choosing} specified and no TTY present to ask.'
-            'Please specify a {choosing} using the cli.'.format(choosing=choosing),
+        print(
+            "No {choosing} specified and no TTY present to ask."
+            "Please specify a {choosing} using the cli.".format(choosing=choosing),
             file=sys.stderr,
         )
         sys.exit(1)
 
     if not sequence:
-        paasta_print(
-            f'PaaSTA needs to pick a {choosing} but none were found.',
-            file=sys.stderr,
+        print(
+            f"PaaSTA needs to pick a {choosing} but none were found.", file=sys.stderr
         )
         sys.exit(1)
 
-    global_actions = [str('quit')]
+    global_actions = [str("quit")]
     choices = [(item, item) for item in sequence]
 
     if len(choices) == 1:
@@ -3066,15 +3526,15 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
 
     chooser = choice.Menu(choices=choices, global_actions=global_actions)
     chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
-        choosing=str(choosing),
+        choosing=str(choosing)
     )
     try:
         result = chooser.ask()
     except (KeyboardInterrupt, EOFError):
-        paasta_print('')
+        print("")
         sys.exit(1)
 
-    if isinstance(result, tuple) and result[1] == str('quit'):
+    if isinstance(result, tuple) and result[1] == str("quit"):
         sys.exit(1)
     else:
         return result
@@ -3084,43 +3544,12 @@ def to_bytes(obj: Any) -> bytes:
     if isinstance(obj, bytes):
         return obj
     elif isinstance(obj, str):
-        return obj.encode('UTF-8')
+        return obj.encode("UTF-8")
     else:
-        return str(obj).encode('UTF-8')
+        return str(obj).encode("UTF-8")
 
 
-TLS = threading.local()
-
-
-@contextlib.contextmanager
-def set_paasta_print_file(file: Any) -> Iterator[None]:
-    TLS.paasta_print_file = file
-    yield
-    TLS.paasta_print_file = None
-
-
-def paasta_print(*args: Any, **kwargs: Any) -> None:
-    f = kwargs.pop('file', sys.stdout)
-    f = getattr(TLS, 'paasta_print_file', f)
-    buf = getattr(f, 'buffer', None)
-    # Here we're assuming that the file object works with strings and its
-    # `buffer` works with bytes. So, if the file object doesn't have `buffer`,
-    # we output via the file object itself using strings.
-    obj_to_arg: Callable[[Any], Any]
-    if buf is not None:
-        f = buf
-        obj_to_arg = to_bytes
-    else:
-        def obj_to_arg(o: Any) -> str: return to_bytes(o).decode('UTF-8', errors="ignore")
-    end = obj_to_arg(kwargs.pop('end', '\n'))
-    sep = obj_to_arg(kwargs.pop('sep', ' '))
-    assert not kwargs, kwargs
-    to_print = sep.join(obj_to_arg(x) for x in args) + end
-    f.write(to_print)
-    f.flush()
-
-
-_TimeoutFuncRetType = TypeVar('_TimeoutFuncRetType')
+_TimeoutFuncRetType = TypeVar("_TimeoutFuncRetType")
 
 
 def timeout(
@@ -3129,7 +3558,10 @@ def timeout(
     use_signals: bool = True,
 ) -> Callable[[Callable[..., _TimeoutFuncRetType]], Callable[..., _TimeoutFuncRetType]]:
     if use_signals:
-        def decorate(func: Callable[..., _TimeoutFuncRetType]) -> Callable[..., _TimeoutFuncRetType]:
+
+        def decorate(
+            func: Callable[..., _TimeoutFuncRetType]
+        ) -> Callable[..., _TimeoutFuncRetType]:
             def _handle_timeout(signum: int, frame: FrameType) -> None:
                 raise TimeoutError(error_message)
 
@@ -3143,17 +3575,29 @@ def timeout(
                 return result
 
             return wraps(func)(wrapper)
+
     else:
-        def decorate(func: Callable[..., _TimeoutFuncRetType]) -> Callable[..., _TimeoutFuncRetType]:
+
+        def decorate(
+            func: Callable[..., _TimeoutFuncRetType]
+        ) -> Callable[..., _TimeoutFuncRetType]:
             # https://github.com/python/mypy/issues/797
             return _Timeout(func, seconds, error_message)  # type: ignore
+
     return decorate
 
 
 class _Timeout:
-    def __init__(self, function: Callable[..., _TimeoutFuncRetType], seconds: float, error_message: str) -> None:
+    def __init__(
+        self,
+        function: Callable[..., _TimeoutFuncRetType],
+        seconds: float,
+        error_message: str,
+    ) -> None:
         self.seconds = seconds
-        self.control: queue.Queue[Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]] = queue.Queue()
+        self.control: queue.Queue[
+            Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]
+        ] = queue.Queue()
         self.function = function
         self.error_message = error_message
 
@@ -3167,11 +3611,7 @@ class _Timeout:
             self.control.put((False, sys.exc_info()))
 
     def __call__(self, *args: Any, **kwargs: Any) -> _TimeoutFuncRetType:
-        self.func_thread = threading.Thread(
-            target=self.run,
-            args=args,
-            kwargs=kwargs,
-        )
+        self.func_thread = threading.Thread(target=self.run, args=args, kwargs=kwargs)
         self.func_thread.daemon = True
         self.timeout = self.seconds + time.time()
         self.func_thread.start()
@@ -3190,10 +3630,13 @@ class _Timeout:
         raise TimeoutError(self.error_message)
 
 
-def suggest_possibilities(word: str, possibilities: Iterable[str], max_suggestions: int = 3) -> str:
+def suggest_possibilities(
+    word: str, possibilities: Iterable[str], max_suggestions: int = 3
+) -> str:
     suggestions = cast(
-        List[str], difflib.get_close_matches(
-            word=word, possibilities=set(possibilities), n=max_suggestions,
+        List[str],
+        difflib.get_close_matches(
+            word=word, possibilities=set(possibilities), n=max_suggestions
         ),
     )
     if len(suggestions) == 1:
@@ -3214,15 +3657,50 @@ def get_possible_launched_by_user_variable_from_env() -> str:
 
 
 def load_all_configs(
-    cluster: str,
-    file_prefix: str,
-    soa_dir: str,
+    cluster: str, file_prefix: str, soa_dir: str
 ) -> Mapping[str, Mapping[str, Any]]:
     config_dicts = {}
     for service in os.listdir(soa_dir):
-        config_dicts[service] = service_configuration_lib.read_extra_service_information(
-            service,
-            f"{file_prefix}-{cluster}",
-            soa_dir=soa_dir,
+        config_dicts[
+            service
+        ] = service_configuration_lib.read_extra_service_information(
+            service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
         )
     return config_dicts
+
+
+def ldap_user_search(
+    cn: str,
+    search_base: str,
+    search_ou: str,
+    ldap_host: str,
+    username: str,
+    password: str,
+) -> Set[str]:
+    """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
+    tls_config = ldap3.Tls(
+        validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt"
+    )
+    server = ldap3.Server(ldap_host, use_ssl=True, tls=tls_config)
+    conn = ldap3.Connection(
+        server, user=username, password=password, raise_exceptions=True
+    )
+    conn.bind()
+
+    search_filter = f"(&(memberOf=CN={cn},{search_ou})(!(userAccountControl=514)))"
+    entries = conn.extend.standard.paged_search(
+        search_base=search_base,
+        search_scope=ldap3.SUBTREE,
+        search_filter=search_filter,
+        attributes=["sAMAccountName"],
+        paged_size=1000,
+        time_limit=10,
+    )
+    return {entry["attributes"]["sAMAccountName"] for entry in entries}
+
+
+def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
+    deduped = {
+        v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
+    }.values()
+    return sort_dicts(deduped)

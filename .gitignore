@@ -10,6 +10,10 @@ dist/
 .*.sw?
 .idea
 .vscode
+.create_cluster
+.tmp
+kind
+.kube
 paasta_tools.egg-info/
 docs/man/
 tags
@@ -31,6 +35,10 @@ paasta_itests/mesos-cli.json
 paasta_itests/fake_etc_paasta/chronos.json
 paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/bintray.json
+yelp_package/gopath
 .mypy_cache/
 debian/.debhelper
 example_cluster/paasta/docker_registry.json
+general_itests/fake_etc_paasta/clusters.json
+pip-wheel-metadata
+debian/debhelper-build-stamp

@@ -15,18 +15,17 @@
 import sys
 
 from paasta_tools.metrics.metastatus_lib import assert_quorum_size
-from paasta_tools.utils import paasta_print
 
 
 def check_mesos_quorum():
     result = assert_quorum_size()
     if result.healthy:
-        paasta_print("OK: " + result.message)
+        print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print(result.message)
+        print(result.message)
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_mesos_quorum()

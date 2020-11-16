@@ -39,15 +39,21 @@ log = logging.getLogger(__name__)
 
 def parse_args(argv) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Generates links from marathon instances to their respective web dashboard.',
+        description="Generates links from marathon instances to their respective web dashboard."
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="define a specific cluster to read from",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
@@ -55,21 +61,21 @@ def parse_args(argv) -> argparse.Namespace:
     return args
 
 
-Marathon_Dashboard_Item = TypedDict('Marathon_Dashboard_Item', {'service': str, 'instance': str, 'shard_url': str})
+Marathon_Dashboard_Item = TypedDict(
+    "Marathon_Dashboard_Item", {"service": str, "instance": str, "shard_url": str}
+)
 Marathon_Dashboard = Dict[str, List[Marathon_Dashboard_Item]]
 
 
 def create_marathon_dashboard(
-        cluster: str,
-        soa_dir: str = DEFAULT_SOA_DIR,
-        marathon_clients: MarathonClients = None,
-        system_paasta_config: SystemPaastaConfig = None,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    marathon_clients: MarathonClients = None,
+    system_paasta_config: SystemPaastaConfig = None,
 ) -> Marathon_Dashboard:
     try:
         instances: List = get_services_for_cluster(
-            cluster=cluster,
-            instance_type='marathon',
-            soa_dir=soa_dir,
+            cluster=cluster, instance_type="marathon", soa_dir=soa_dir
         )
     except FileNotFoundError:
         instances = []
@@ -78,23 +84,32 @@ def create_marathon_dashboard(
         system_paasta_config = load_system_paasta_config()
     marathon_servers = get_marathon_servers(system_paasta_config=system_paasta_config)
     if marathon_clients is None:
-        marathon_clients = get_marathon_clients(marathon_servers=marathon_servers, cached=False)
+        marathon_clients = get_marathon_clients(
+            marathon_servers=marathon_servers, cached=False
+        )
 
     dashboard_links = system_paasta_config.get_dashboard_links()
-    marathon_links = dashboard_links.get(cluster, {}).get('Marathon RO')
+    marathon_links = dashboard_links.get(cluster, {}).get("Marathon RO")
 
     # e.g. 'http://10.64.97.75:5052': 'http://marathon-norcal-prod.yelpcorp.com'
     shard_url_to_marathon_link_dict: Dict[str, str] = {}
     if isinstance(marathon_links, list):
         # Sanity check and log error if necessary
         if len(marathon_links) != len(marathon_servers.current):
-            log.error('len(marathon_links) != len(marathon_servers.current). This may be a cause of concern')
+            log.error(
+                "len(marathon_links) != len(marathon_servers.current). This may be a cause of concern"
+            )
         for shard_number, shard in enumerate(marathon_servers.current):
             shard_url_to_marathon_link_dict[shard.url[0]] = marathon_links[shard_number]
     elif isinstance(marathon_links, str):
         # In this case, the shard url will be the same for every service instance
-        static_shard_url = marathon_links.split(' ')[0]
-        return {cluster: [{'service': si[0], 'instance': si[1], 'shard_url': static_shard_url} for si in instances]}
+        static_shard_url = marathon_links.split(" ")[0]
+        return {
+            cluster: [
+                {"service": si[0], "instance": si[1], "shard_url": static_shard_url}
+                for si in instances
+            ]
+        }
 
     # Setup with service as key since will instantiate 1 PSCL per service
     service_instances_dict: Dict[str, Set[str]] = defaultdict(set)
@@ -104,21 +119,22 @@ def create_marathon_dashboard(
 
     for service, instance_set in service_instances_dict.items():
         pscl = PaastaServiceConfigLoader(
-            service=service,
-            soa_dir=soa_dir,
-            load_deployments=False,
+            service=service, soa_dir=soa_dir, load_deployments=False
         )
-        for marathon_service_config in pscl.instance_configs(cluster, MarathonServiceConfig):
+        for marathon_service_config in pscl.instance_configs(
+            cluster, MarathonServiceConfig
+        ):
             if marathon_service_config.get_instance() in instance_set:
-                client: MarathonClient = \
-                    marathon_clients.get_current_client_for_service(job_config=marathon_service_config)
+                client: MarathonClient = marathon_clients.get_current_client_for_service(
+                    job_config=marathon_service_config
+                )
                 ip_url: str = client.servers[0]
                 # Convert to a marathon link if possible else default to the originalIP address
                 shard_url: str = shard_url_to_marathon_link_dict.get(ip_url, ip_url)
                 service_info: Marathon_Dashboard_Item = {
-                    'service': service,
-                    'instance': marathon_service_config.get_instance(),
-                    'shard_url': shard_url,
+                    "service": service,
+                    "instance": marathon_service_config.get_instance(),
+                    "shard_url": shard_url,
                 }
                 dashboard[cluster].append(service_info)
     return dashboard
@@ -126,7 +142,9 @@ def create_marathon_dashboard(
 
 def main(argv=None) -> None:
     args = parse_args(argv)
-    dashboard: Marathon_Dashboard = create_marathon_dashboard(cluster=args.cluster, soa_dir=args.soa_dir)
+    dashboard: Marathon_Dashboard = create_marathon_dashboard(
+        cluster=args.cluster, soa_dir=args.soa_dir
+    )
     print(json.dumps(dashboard))
 
 

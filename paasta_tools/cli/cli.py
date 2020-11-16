@@ -16,15 +16,17 @@
 """A command line tool for viewing information from the PaaSTA stack."""
 import argparse
 import logging
+import os
+import subprocess
 import sys
+import warnings
 
 import argcomplete
-import pkg_resources
 
+import paasta_tools
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
-from paasta_tools.utils import paasta_print
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
@@ -33,9 +35,37 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        paasta_print("Argument parse error: %s" % message)
+        print("Argument parse error: %s" % message)
         self.print_help()
         sys.exit(1)
+
+
+def list_external_commands():
+    p = subprocess.check_output(["/bin/bash", "-p", "-c", "compgen -A command paasta-"])
+    lines = p.decode("utf-8").strip().split("\n")
+    return {l.replace("paasta-", "", 1) for l in lines}
+
+
+def calling_external_command():
+    if len(sys.argv) > 1:
+        return sys.argv[1] in list_external_commands()
+    else:
+        return False
+
+
+def get_command_help(command):
+    return f"(run 'paasta {command} -h' for usage)"
+
+
+def external_commands_items():
+    for command in list_external_commands():
+        command_help = get_command_help(command)
+        yield command, command_help
+
+
+def exec_subcommand(argv):
+    command = sys.argv[1]
+    os.execlp(f"paasta-{command}", *argv[1:])
 
 
 def add_subparser(command, subparsers):
@@ -49,8 +79,8 @@ def add_subparser(command, subparsers):
 
     :param command: a simple string - e.g. 'list'
     :param subparsers: an ArgumentParser object"""
-    module_name = 'paasta_tools.cli.cmds.%s' % command
-    add_subparser_fn = load_method(module_name, 'add_subparser')
+    module_name = "paasta_tools.cli.cmds.%s" % command
+    add_subparser_fn = load_method(module_name, "add_subparser")
     add_subparser_fn(subparsers)
 
 
@@ -73,22 +103,26 @@ def get_argparser():
 
     # http://stackoverflow.com/a/8521644/812183
     parser.add_argument(
-        '-V', '--version',
-        action='version',
-        version='paasta-tools {}'.format(
-            pkg_resources.get_distribution('paasta-tools').version,
-        ),
+        "-V",
+        "--version",
+        action="version",
+        version=f"paasta-tools {paasta_tools.__version__}",
     )
 
-    subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help", dest='command')
+    subparsers = parser.add_subparsers(
+        help="[-h, --help] for subcommand help", dest="command"
+    )
     subparsers.required = True
 
     # Adding a separate help subparser allows us to respond to "help" without --help
-    help_parser = subparsers.add_parser('help', add_help=False)
+    help_parser = subparsers.add_parser("help", add_help=False)
     help_parser.set_defaults(command=None)
 
     for command in sorted(paasta_commands_dir(cmds)):
         add_subparser(command, subparsers)
+
+    for command, command_help in external_commands_items():
+        subparsers.add_parser(command, help=command_help)
 
     return parser
 
@@ -112,6 +146,14 @@ def main(argv=None):
     Ensure we kill any child pids before we quit
     """
     logging.basicConfig()
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+    # if we are an external command, we need to exec out early.
+    # The reason we exec out early is so we don't bother trying to parse
+    # "foreign" arguments, which would cause a stack trace.
+    if calling_external_command():
+        exec_subcommand(sys.argv)
+
     try:
         args, parser = parse_args(argv)
         if args.command is None:
@@ -124,5 +166,5 @@ def main(argv=None):
     sys.exit(return_code)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

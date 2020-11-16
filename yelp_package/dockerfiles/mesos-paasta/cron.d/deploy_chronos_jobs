@@ -1,8 +1,0 @@
-SHELL=/bin/bash
-PATH=/venv/bin:/usr/local/bin:/usr/local/sbin:/nail/sys/bin:/usr/sbin:/usr/bin:/sbin:/bin
-* * * * * root (flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs
-* * * * * root (sleep 10; flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs
-* * * * * root (sleep 20; flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs
-* * * * * root (sleep 30; flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs
-* * * * * root (sleep 40; flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs
-* * * * * root (sleep 50; flock -n "/var/lock/cron_deploy_chronos_jobs.lock" bash -c "if am_i_mesos_leader; then deploy_chronos_jobs; fi") 2>&1 | logger -t cron_deploy_chronos_jobs

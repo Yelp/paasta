@@ -14,8 +14,15 @@
 
 FROM ubuntu:trusty
 
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ENV PIP_INDEX_URL=$PIP_INDEX_URL
+
+RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
+
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
+
+RUN printf 'Package: *\nPin: release o=UbuntuESM, n=trusty\nPin-Priority: never\n' > /etc/apt/preferences.d/ubuntu-esm-infra-trusty
 
 # Need Python 3.6
 RUN apt-get update > /dev/null && \
@@ -43,6 +50,7 @@ RUN apt-get update && cd /tmp && \
     gdebi -n dh-virtualenv*.deb && \
     rm dh-virtualenv_*.deb
 
+RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==15.1.0 tox-pip-extensions==1.2.1 tox==3.1.3
 
 ADD mesos-slave-secret /etc/mesos-slave-secret

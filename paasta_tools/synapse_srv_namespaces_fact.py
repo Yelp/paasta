@@ -26,16 +26,15 @@ This is nice to use as a facter fact for Synapse stuff!
 import sys
 
 from paasta_tools import marathon_tools
-from paasta_tools.utils import paasta_print
 
 
 def main():
     strings = []
     for full_name, config in marathon_tools.get_all_namespaces():
-        if 'proxy_port' in config:
-            strings.append('{}:{}'.format(full_name, config['proxy_port']))
+        if "proxy_port" in config:
+            strings.append("{}:{}".format(full_name, config["proxy_port"]))
     strings = sorted(strings)
-    paasta_print("synapse_srv_namespaces=" + ','.join(strings))
+    print("synapse_srv_namespaces=" + ",".join(strings))
     sys.exit(0)
 
 

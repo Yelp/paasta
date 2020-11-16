@@ -98,7 +98,7 @@ These are the keys that may exist in system configs:
 
     Example: ``"sensu_port": 3031``
 
-  * ``dockercfg_location``: A URI of a .dockercfg file, added to Marathon/Chronos configurations, to allow mesos slaves
+  * ``dockercfg_location``: A URI of a .dockercfg file, to allow mesos slaves
     to authenticate with the docker registry.
     Defaults to ``file:///root/.dockercfg``.
     While this must be set, this file can contain an empty JSON dictionary (``{}``) if your docker registry does not
@@ -114,7 +114,7 @@ These are the keys that may exist in system configs:
 
   * ``synapse_host``: The default host that paasta should interrogate for haproxy-synapse state.
     Defaults to ``localhost``.
-    Primarily used in `check_synapse_replication <generated/paasta_tools.monitoring.check_synapse_replication.html>`_.
+    Primarily used in `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_.
 
     Example: ``"synapse_host": 169.254.255.254``
 

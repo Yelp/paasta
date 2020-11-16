@@ -15,6 +15,8 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+import asyncio
+import datetime
 import logging
 import re
 import traceback
@@ -25,301 +27,626 @@ from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
+from typing import Tuple
 
 import a_sync
-import marathon
-from kubernetes.client import V1Pod
+import isodate
+from marathon import MarathonClient
+from marathon.models.app import MarathonApp
+from marathon.models.app import MarathonTask
 from pyramid.response import Response
 from pyramid.view import view_config
+from requests.exceptions import ReadTimeout
 
-from paasta_tools import chronos_tools
-from paasta_tools import flink_tools
-from paasta_tools import kubernetes_tools
+import paasta_tools.mesos.exceptions as mesos_exceptions
+from paasta_tools import envoy_tools
 from paasta_tools import marathon_tools
 from paasta_tools import paasta_remote_run
+from paasta_tools import smartstack_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
+from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.instance import kubernetes as pik
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.marathon_tools import get_short_task_id
+from paasta_tools.mesos.task import Task
+from paasta_tools.mesos_tools import (
+    get_cached_list_of_not_running_tasks_from_frameworks,
+)
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
-from paasta_tools.mesos_tools import get_running_tasks_from_frameworks
+from paasta_tools.mesos_tools import get_cpu_shares
+from paasta_tools.mesos_tools import get_first_status_timestamp
+from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import get_short_hostname_from_task
+from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.mesos_tools import get_tail_lines_for_mesos_task
 from paasta_tools.mesos_tools import get_task
 from paasta_tools.mesos_tools import get_tasks_from_app_id
+from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
-from paasta_tools.paasta_serviceinit import get_deployment_version
+from paasta_tools.utils import calculate_tail_lines
+from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
 log = logging.getLogger(__name__)
 
 
-def chronos_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: bool,
-) -> Mapping[str, Any]:
-    cstatus: Dict[str, Any] = {}
-    chronos_config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(chronos_config)
-    job_config = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=settings.cluster,
-        soa_dir=settings.soa_dir,
-    )
-    cstatus['desired_state'] = job_config.get_desired_state()
-    job_type = chronos_tools.get_job_type(job_config.config_dict)
-    if job_type == chronos_tools.JobType.Scheduled:
-        schedule_type = 'schedule'
-        schedule = job_config.get_schedule()
-        epsilon = job_config.get_epsilon()
-        time_zone = job_config.get_schedule_time_zone()
-        if time_zone == 'null' or time_zone is None:
-            time_zone = 'UTC'
-        cstatus['schedule'] = {}
-        cstatus['schedule']['schedule'] = schedule
-        cstatus['schedule']['epsilon'] = epsilon
-        cstatus['schedule']['time_zone'] = time_zone
-    elif job_type == chronos_tools.JobType.Dependent:
-        schedule_type = 'parents'
-        parents = job_config.get_parents()
-        cstatus['parents'] = parents
-    else:
-        schedule_type = 'unknown'
-    cstatus['schedule_type'] = schedule_type
-    cstatus['status'] = {}
-    if verbose:
-        running_task_count = len(
-            select_tasks_by_id(
-                a_sync.block(get_cached_list_of_running_tasks_from_frameworks),
-                job_config.get_job_name(),
-            ),
-        )
-        cstatus['status']['mesos_state'] = 'running' if running_task_count else 'not_running'
-    cstatus['status']['disabled_state'] = 'not_scheduled' if job_config.get_disabled() else 'scheduled'
-    cstatus['status']['chronos_state'] = chronos_tools.get_chronos_status_for_job(client, service, instance)
-    cstatus['command'] = job_config.get_cmd()
-    last_time, last_status = chronos_tools.get_status_last_run(job_config.config_dict)
-    if last_status == chronos_tools.LastRunState.Success:
-        last_status = 'success'
-    elif last_status == chronos_tools.LastRunState.Fail:
-        last_status = 'fail'
-    elif last_status == chronos_tools.LastRunState.NotRun:
-        last_status = 'not_run'
-    else:
-        last_status = ''
-    if last_status == 'not_run' or last_status == '':
-        last_time = 'never'
-    cstatus['last_status'] = {}
-    cstatus['last_status']['result'] = last_status
-    cstatus['last_status']['time'] = last_time
-
-    return cstatus
-
-
 def tron_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: bool,
+    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
 ) -> Mapping[str, Any]:
     status: Dict[str, Any] = {}
     client = tron_tools.get_tron_client()
-    short_job, action = instance.split('.')
+    short_job, action = instance.split(".")
     job = f"{service}.{short_job}"
-
     job_content = client.get_job_content(job=job)
-    latest_run_id = client.get_latest_job_run_id(job_content=job_content)
-    action_run = client.get_action_run(job=job, action=action, run_id=latest_run_id)
+
+    try:
+        latest_run_id = client.get_latest_job_run_id(job_content=job_content)
+        if latest_run_id is None:
+            action_run = {"state": "Hasn't run yet (no job run id found)"}
+        else:
+            action_run = client.get_action_run(
+                job=job, action=action, run_id=latest_run_id
+            )
+    except Exception as e:
+        action_run = {"state": f"Failed to get latest run info: {e}"}
 
     # job info
-    status['job_name'] = short_job
-    status['job_status'] = job_content['status']
-    status['job_schedule'] = '{} {}'.format(job_content['scheduler']['type'], job_content['scheduler']['value'])
-    status['job_url'] = tron_tools.get_tron_dashboard_for_cluster(settings.cluster) + f'#job/{job}'
+    status["job_name"] = short_job
+    status["job_status"] = job_content["status"]
+    status["job_schedule"] = "{} {}".format(
+        job_content["scheduler"]["type"], job_content["scheduler"]["value"]
+    )
+    status["job_url"] = (
+        tron_tools.get_tron_dashboard_for_cluster(settings.cluster) + f"#job/{job}"
+    )
 
     if action:
-        status['action_name'] = action
-    if action_run['state']:
-        status['action_state'] = action_run['state']
-    if action_run['start_time']:
-        status['action_start_time'] = action_run['start_time']
-    if action_run['raw_command']:
-        status['action_raw_command'] = action_run['raw_command']
-    if action_run['stdout']:
-        status['action_stdout'] = '\n'.join(action_run['stdout'])
-    if action_run['stderr']:
-        status['action_stderr'] = '\n'.join(action_run['stderr'])
-    if action_run['command']:
-        status['action_command'] = action_run['command']
+        status["action_name"] = action
+    if action_run.get("state"):
+        status["action_state"] = action_run["state"]
+    if action_run.get("start_time"):
+        status["action_start_time"] = action_run["start_time"]
+    if action_run.get("raw_command"):
+        status["action_raw_command"] = action_run["raw_command"]
+    if action_run.get("stdout"):
+        status["action_stdout"] = "\n".join(action_run["stdout"])
+    if action_run.get("stderr"):
+        status["action_stderr"] = "\n".join(action_run["stderr"])
+    if action_run.get("command"):
+        status["action_command"] = action_run["command"]
 
     return status
 
 
 def adhoc_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: bool,
+    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
 ) -> List[Dict[str, Any]]:
     status = []
     filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
     filtered.sort(key=lambda x: x.name)
     for f in filtered:
         launch_time, run_id = re.match(
-            r'paasta-remote [^\s]+ (\w+) (\w+)', f.name,
+            r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
         ).groups()
-        status.append({'launch_time': launch_time, 'run_id': run_id, 'framework_id': f.id})
-    return status
-
-
-def flink_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: bool,
-) -> Optional[Mapping[str, Any]]:
-    status: Optional[Mapping[str, Any]] = None
-    client = settings.kubernetes_client
-    if client is not None:
-        status = flink_tools.get_flink_config(
-            kube_client=client,
-            service=service,
-            instance=instance,
+        status.append(
+            {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
         )
     return status
-
-
-def kubernetes_instance_status(
-    instance_status: Mapping[str, Any],
-    service: str,
-    instance: str,
-    verbose: bool,
-) -> Mapping[str, Any]:
-    kstatus: Dict[str, Any] = {}
-    job_config = kubernetes_tools.load_kubernetes_service_config(
-        service, instance, settings.cluster, soa_dir=settings.soa_dir,
-    )
-    client = settings.kubernetes_client
-    if client is not None:
-        # bouncing status can be inferred from app_count, ref get_bouncing_status
-        pod_list = kubernetes_tools.pods_for_service_instance(job_config.service, job_config.instance, client)
-        active_shas = kubernetes_tools.get_active_shas_for_service(pod_list)
-        kstatus['app_count'] = max(
-            len(active_shas['config_sha']),
-            len(active_shas['git_sha']),
-        )
-        kstatus['desired_state'] = job_config.get_desired_state()
-        kstatus['bounce_method'] = kubernetes_tools.KUBE_DEPLOY_STATEGY_REVMAP[job_config.get_bounce_method()]
-        kubernetes_job_status(kstatus=kstatus, client=client, job_config=job_config, verbose=verbose, pod_list=pod_list)
-    return kstatus
-
-
-def kubernetes_job_status(
-    kstatus: MutableMapping[str, Any],
-    client: kubernetes_tools.KubeClient,
-    job_config: kubernetes_tools.KubernetesDeploymentConfig,
-    pod_list: Sequence[V1Pod],
-    verbose: bool,
-) -> None:
-    app_id = job_config.get_sanitised_deployment_name()
-    kstatus['app_id'] = app_id
-    if verbose is True:
-        kstatus['slaves'] = [
-            pod.spec.node_name
-            for pod in pod_list
-        ]
-    kstatus['expected_instance_count'] = job_config.get_instances()
-
-    app = kubernetes_tools.get_kubernetes_app_by_name(app_id, client)
-    deploy_status = kubernetes_tools.get_kubernetes_app_deploy_status(client, app, job_config.get_instances())
-    kstatus['deploy_status'] = kubernetes_tools.KubernetesDeployStatus.tostring(deploy_status)
-    kstatus['running_instance_count'] = app.status.ready_replicas if app.status.ready_replicas else 0
-
-
-def marathon_job_status(
-    mstatus: MutableMapping[str, Any],
-    client,
-    job_config,
-    verbose: bool,
-) -> None:
-    try:
-        app_id = job_config.format_marathon_app_dict()['id']
-    except NoDockerImageError:
-        error_msg = "Docker image is not in deployments.json."
-        mstatus['error_message'] = error_msg
-        return
-
-    mstatus['app_id'] = app_id
-    if verbose is True:
-        mstatus['slaves'] = list(
-            {a_sync.block(task.slave)['hostname'] for task in a_sync.block(get_running_tasks_from_frameworks, app_id)},
-        )
-    mstatus['expected_instance_count'] = job_config.get_instances()
-
-    try:
-        app = client.get_app(app_id)
-    except marathon.exceptions.NotFoundError:
-        mstatus['deploy_status'] = marathon_tools.MarathonDeployStatus.tostring(
-            marathon_tools.MarathonDeployStatus.NotRunning,
-        )
-        mstatus['running_instance_count'] = 0
-    else:
-        deploy_status = marathon_tools.get_marathon_app_deploy_status(client, app)
-        mstatus['deploy_status'] = marathon_tools.MarathonDeployStatus.tostring(deploy_status)
-        # by comparing running count with expected count, callers can figure
-        # out if the instance is in Healthy, Warning or Critical state.
-        mstatus['running_instance_count'] = app.tasks_running
-
-        if deploy_status == marathon_tools.MarathonDeployStatus.Delayed:
-            _, backoff_seconds = marathon_tools.get_app_queue_status(client, app_id)
-            mstatus['backoff_seconds'] = backoff_seconds
 
 
 def marathon_instance_status(
     instance_status: Mapping[str, Any],
     service: str,
     instance: str,
-    verbose: bool,
+    verbose: int,
+    include_smartstack: bool,
+    include_envoy: bool,
+    include_mesos: bool,
 ) -> Mapping[str, Any]:
     mstatus: Dict[str, Any] = {}
-    job_config = marathon_tools.load_marathon_service_config(
-        service, instance, settings.cluster, soa_dir=settings.soa_dir,
-    )
-    client = settings.marathon_clients.get_current_client_for_service(job_config)
-    apps = marathon_tools.get_matching_appids(service, instance, client)
 
-    # bouncing status can be inferred from app_count, ref get_bouncing_status
-    mstatus['app_count'] = len(apps)
-    mstatus['desired_state'] = job_config.get_desired_state()
-    mstatus['bounce_method'] = job_config.get_bounce_method()
-    marathon_job_status(mstatus, client, job_config, verbose)
+    job_config = marathon_tools.load_marathon_service_config(
+        service, instance, settings.cluster, soa_dir=settings.soa_dir
+    )
+    marathon_apps_with_clients = marathon_tools.get_marathon_apps_with_clients(
+        clients=settings.marathon_clients.get_all_clients_for_service(job_config),
+        embed_tasks=True,
+        service_name=service,
+    )
+    matching_apps_with_clients = marathon_tools.get_matching_apps_with_clients(
+        service, instance, marathon_apps_with_clients
+    )
+
+    mstatus.update(
+        marathon_job_status(
+            service, instance, job_config, matching_apps_with_clients, verbose
+        )
+    )
+
+    if include_smartstack or include_envoy:
+        service_namespace_config = marathon_tools.load_service_namespace_config(
+            service=service,
+            namespace=job_config.get_nerve_namespace(),
+            soa_dir=settings.soa_dir,
+        )
+        if "proxy_port" in service_namespace_config:
+            tasks = [
+                task for app, _ in matching_apps_with_clients for task in app.tasks
+            ]
+            if include_smartstack:
+                mstatus["smartstack"] = marathon_service_mesh_status(
+                    service,
+                    pik.ServiceMesh.SMARTSTACK,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
+            if include_envoy:
+                mstatus["envoy"] = marathon_service_mesh_status(
+                    service,
+                    pik.ServiceMesh.ENVOY,
+                    instance,
+                    job_config,
+                    service_namespace_config,
+                    tasks,
+                    should_return_individual_backends=verbose > 0,
+                )
+
+    if include_mesos:
+        mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
+
     return mstatus
 
 
-@view_config(route_name='service.instance.status', request_method='GET', renderer='json')
-def instance_status(request):
-    service = request.swagger_data.get('service')
-    instance = request.swagger_data.get('instance')
-    verbose = request.swagger_data.get('verbose', False)
+def get_active_shas_for_marathon_apps(
+    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
+) -> Set[Tuple[str, str]]:
+    ret = set()
+    for (app, client) in marathon_apps_with_clients:
+        git_sha = get_git_sha_from_dockerurl(app.container.docker.image, long=True)
+        _, _, _, config_sha = marathon_tools.deformat_job_id(app.id)
+        if config_sha.startswith("config"):
+            config_sha = config_sha[len("config") :]
+        ret.add((git_sha, config_sha))
+    return ret
 
-    instance_status: Dict[str, Any] = {}
-    instance_status['service'] = service
-    instance_status['instance'] = instance
+
+def marathon_job_status(
+    service: str,
+    instance: str,
+    job_config: marathon_tools.MarathonServiceConfig,
+    marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
+    verbose: int,
+) -> MutableMapping[str, Any]:
+    job_status_fields: MutableMapping[str, Any] = {
+        "app_statuses": [],
+        "app_count": len(marathon_apps_with_clients),
+        "desired_state": job_config.get_desired_state(),
+        "bounce_method": job_config.get_bounce_method(),
+        "expected_instance_count": job_config.get_instances(),
+        "active_shas": list(
+            get_active_shas_for_marathon_apps(marathon_apps_with_clients)
+        ),
+    }
 
     try:
-        instance_type = validate_service_instance(service, instance, settings.cluster, settings.soa_dir)
+        desired_app_id = job_config.format_marathon_app_dict()["id"]
+    except NoDockerImageError:
+        error_msg = "Docker image is not in deployments.json."
+        job_status_fields["error_message"] = error_msg
+        return job_status_fields
+
+    job_status_fields["desired_app_id"] = desired_app_id
+
+    deploy_status_for_desired_app = None
+    dashboard_links = get_marathon_dashboard_links(
+        settings.marathon_clients, settings.system_paasta_config
+    )
+    tasks_running = 0
+    for app, marathon_client in marathon_apps_with_clients:
+        deploy_status = marathon_tools.get_marathon_app_deploy_status(
+            marathon_client, app
+        )
+
+        app_status = marathon_app_status(
+            app,
+            marathon_client,
+            dashboard_links.get(marathon_client) if dashboard_links else None,
+            deploy_status,
+            list_tasks=verbose > 0,
+        )
+        job_status_fields["app_statuses"].append(app_status)
+
+        if app.id.lstrip("/") == desired_app_id.lstrip("/"):
+            deploy_status_for_desired_app = marathon_tools.MarathonDeployStatus.tostring(
+                deploy_status
+            )
+        tasks_running += app.tasks_running
+
+    job_status_fields["deploy_status"] = (
+        deploy_status_for_desired_app or "Waiting for bounce"
+    )
+    job_status_fields["running_instance_count"] = tasks_running
+
+    if verbose > 0:
+        autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
+        if autoscaling_info is not None:
+            autoscaling_info_dict = autoscaling_info._asdict()
+
+            for field in ("current_utilization", "target_instances"):
+                if autoscaling_info_dict[field] is None:
+                    del autoscaling_info_dict[field]
+
+            job_status_fields["autoscaling_info"] = autoscaling_info_dict
+
+    return job_status_fields
+
+
+def marathon_app_status(
+    app: MarathonApp,
+    marathon_client: MarathonClient,
+    dashboard_link: Optional[str],
+    deploy_status: int,
+    list_tasks: bool = False,
+) -> MutableMapping[str, Any]:
+    app_status = {
+        "tasks_running": app.tasks_running,
+        "tasks_healthy": app.tasks_healthy,
+        "tasks_staged": app.tasks_staged,
+        "tasks_total": app.instances,
+        "create_timestamp": isodate.parse_datetime(app.version).timestamp(),
+        "deploy_status": marathon_tools.MarathonDeployStatus.tostring(deploy_status),
+    }
+
+    app_queue = marathon_tools.get_app_queue(marathon_client, app.id)
+    if deploy_status == marathon_tools.MarathonDeployStatus.Delayed:
+        _, backoff_seconds = marathon_tools.get_app_queue_status_from_queue(app_queue)
+        app_status["backoff_seconds"] = backoff_seconds
+
+    unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
+    if unused_offers_summary is not None:
+        app_status["unused_offers"] = unused_offers_summary
+
+    if dashboard_link:
+        app_status["dashboard_url"] = "{}/ui/#/apps/%2F{}".format(
+            dashboard_link.rstrip("/"), app.id.lstrip("/")
+        )
+
+    if list_tasks is True:
+        app_status["tasks"] = []
+        for task in app.tasks:
+            app_status["tasks"].append(build_marathon_task_dict(task))
+
+    return app_status
+
+
+def build_marathon_task_dict(marathon_task: MarathonTask) -> MutableMapping[str, Any]:
+    task_dict = {
+        "id": get_short_task_id(marathon_task.id),
+        "host": marathon_task.host.split(".")[0],
+        "port": marathon_task.ports[0],
+        "deployed_timestamp": marathon_task.staged_at.timestamp(),
+    }
+
+    if marathon_task.health_check_results:
+        task_dict["is_healthy"] = marathon_tools.is_task_healthy(marathon_task)
+
+    return task_dict
+
+
+def _build_smartstack_location_dict_for_backends(
+    synapse_host: str,
+    registration: str,
+    tasks: Sequence[MarathonTask],
+    location: str,
+    should_return_individual_backends: bool,
+) -> MutableMapping[str, Any]:
+    sorted_smartstack_backends = sorted(
+        smartstack_tools.get_backends(
+            registration,
+            synapse_host=synapse_host,
+            synapse_port=settings.system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
+        ),
+        key=lambda backend: backend["status"],
+        reverse=True,  # put 'UP' backends above 'MAINT' backends
+    )
+    matched_smartstack_backends_and_tasks = smartstack_tools.match_backends_and_tasks(
+        sorted_smartstack_backends, tasks
+    )
+    return smartstack_tools.build_smartstack_location_dict(
+        location,
+        matched_smartstack_backends_and_tasks,
+        should_return_individual_backends,
+    )
+
+
+def _build_envoy_location_dict_for_backends(
+    envoy_host: str,
+    registration: str,
+    tasks: Sequence[MarathonTask],
+    location: str,
+    should_return_individual_backends: bool,
+) -> MutableMapping[str, Any]:
+    backends = envoy_tools.get_backends(
+        registration,
+        envoy_host=envoy_host,
+        envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
+        envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
+    )
+    sorted_envoy_backends = sorted(
+        [
+            backend[0]
+            for _, service_backends in backends.items()
+            for backend in service_backends
+        ],
+        key=lambda backend: backend["eds_health_status"],
+    )
+    casper_proxied_backends = {
+        (backend["address"], backend["port_value"])
+        for _, service_backends in backends.items()
+        for backend, is_casper_proxied_backend in service_backends
+        if is_casper_proxied_backend
+    }
+
+    matched_envoy_backends_and_tasks = envoy_tools.match_backends_and_tasks(
+        sorted_envoy_backends, tasks,
+    )
+
+    return envoy_tools.build_envoy_location_dict(
+        location,
+        matched_envoy_backends_and_tasks,
+        should_return_individual_backends,
+        casper_proxied_backends,
+    )
+
+
+def marathon_service_mesh_status(
+    service: str,
+    service_mesh: pik.ServiceMesh,
+    instance: str,
+    job_config: marathon_tools.MarathonServiceConfig,
+    service_namespace_config: ServiceNamespaceConfig,
+    tasks: Sequence[MarathonTask],
+    should_return_individual_backends: bool = False,
+) -> Mapping[str, Any]:
+    registration = job_config.get_registrations()[0]
+    discover_location_type = service_namespace_config.get_discover()
+
+    grouped_slaves = get_mesos_slaves_grouped_by_attribute(
+        slaves=get_slaves(), attribute=discover_location_type
+    )
+
+    # rebuild the dict, replacing the slave object with just their hostname
+    slave_hostname_by_location = {
+        attribute_value: [slave["hostname"] for slave in slaves]
+        for attribute_value, slaves in grouped_slaves.items()
+    }
+
+    expected_instance_count = marathon_tools.get_expected_instance_count_for_namespace(
+        service, instance, settings.cluster
+    )
+    expected_count_per_location = int(
+        expected_instance_count / len(slave_hostname_by_location)
+    )
+    service_mesh_status: MutableMapping[str, Any] = {
+        "registration": registration,
+        "expected_backends_per_location": expected_count_per_location,
+        "locations": [],
+    }
+
+    for location, hosts in slave_hostname_by_location.items():
+        if service_mesh == pik.ServiceMesh.SMARTSTACK:
+            service_mesh_status["locations"].append(
+                _build_smartstack_location_dict_for_backends(
+                    synapse_host=hosts[0],
+                    registration=registration,
+                    tasks=tasks,
+                    location=location,
+                    should_return_individual_backends=should_return_individual_backends,
+                )
+            )
+        elif service_mesh == pik.ServiceMesh.ENVOY:
+            service_mesh_status["locations"].append(
+                _build_envoy_location_dict_for_backends(
+                    envoy_host=hosts[0],
+                    registration=registration,
+                    tasks=tasks,
+                    location=location,
+                    should_return_individual_backends=should_return_individual_backends,
+                )
+            )
+
+    return service_mesh_status
+
+
+@a_sync.to_blocking
+async def marathon_mesos_status(
+    service: str, instance: str, verbose: int
+) -> MutableMapping[str, Any]:
+    mesos_status: MutableMapping[str, Any] = {}
+
+    job_id = marathon_tools.format_job_id(service, instance)
+    job_id_filter_string = f"{job_id}{marathon_tools.MESOS_TASK_SPACER}"
+
+    try:
+        running_and_active_tasks = select_tasks_by_id(
+            await get_cached_list_of_running_tasks_from_frameworks(),
+            job_id=job_id_filter_string,
+        )
+    except (ReadTimeout, asyncio.TimeoutError):
+        return {"error_message": "Talking to Mesos timed out. It may be overloaded."}
+
+    mesos_status["running_task_count"] = len(running_and_active_tasks)
+
+    if verbose > 0:
+        num_tail_lines = calculate_tail_lines(verbose)
+        running_task_dict_futures = []
+
+        for task in running_and_active_tasks:
+            running_task_dict_futures.append(
+                asyncio.ensure_future(get_mesos_running_task_dict(task, num_tail_lines))
+            )
+
+        non_running_tasks = select_tasks_by_id(
+            await get_cached_list_of_not_running_tasks_from_frameworks(),
+            job_id=job_id_filter_string,
+        )
+        non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task) or 0)
+        non_running_tasks = list(reversed(non_running_tasks[-10:]))
+        non_running_task_dict_futures = []
+        for task in non_running_tasks:
+            non_running_task_dict_futures.append(
+                asyncio.ensure_future(
+                    get_mesos_non_running_task_dict(task, num_tail_lines)
+                )
+            )
+
+        all_task_dict_futures = (
+            running_task_dict_futures + non_running_task_dict_futures
+        )
+        if len(all_task_dict_futures):
+            await asyncio.wait(all_task_dict_futures)
+
+        mesos_status["running_tasks"] = [
+            task_future.result() for task_future in running_task_dict_futures
+        ]
+        mesos_status["non_running_tasks"] = [
+            task_future.result() for task_future in non_running_task_dict_futures
+        ]
+
+    return mesos_status
+
+
+async def get_mesos_running_task_dict(
+    task: Task, num_tail_lines: int
+) -> MutableMapping[str, Any]:
+    short_hostname_future = asyncio.ensure_future(
+        results_or_unknown(get_short_hostname_from_task(task))
+    )
+    mem_limit_future = asyncio.ensure_future(_task_result_or_error(task.mem_limit()))
+    rss_future = asyncio.ensure_future(_task_result_or_error(task.rss()))
+    cpu_shares_future = asyncio.ensure_future(
+        _task_result_or_error(get_cpu_shares(task))
+    )
+    cpu_time_future = asyncio.ensure_future(_task_result_or_error(task.cpu_time()))
+
+    futures = [
+        short_hostname_future,
+        mem_limit_future,
+        rss_future,
+        cpu_shares_future,
+        cpu_time_future,
+    ]
+    if num_tail_lines > 0:
+        tail_lines_future = asyncio.ensure_future(
+            get_tail_lines_for_mesos_task(task, get_short_task_id, num_tail_lines)
+        )
+        futures.append(tail_lines_future)
+    else:
+        tail_lines_future = None
+
+    await asyncio.wait(futures)
+
+    task_dict = {
+        "id": get_short_task_id(task["id"]),
+        "hostname": short_hostname_future.result(),
+        "mem_limit": mem_limit_future.result(),
+        "rss": rss_future.result(),
+        "cpu_shares": cpu_shares_future.result(),
+        "cpu_used_seconds": cpu_time_future.result(),
+        "tail_lines": tail_lines_future.result() if tail_lines_future else {},
+    }
+
+    task_start_time = get_first_status_timestamp(task)
+    if task_start_time is not None:
+        task_dict["deployed_timestamp"] = task_start_time
+        current_time = int(datetime.datetime.now().strftime("%s"))
+        task_dict["duration_seconds"] = current_time - round(task_start_time)
+
+    return task_dict
+
+
+async def _task_result_or_error(future):
+    try:
+        return {"value": await future}
+    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
+        return {"error_message": "None"}
+    except TimeoutError:
+        return {"error_message": "Timed Out"}
+    except Exception:
+        return {"error_message": "Unknown"}
+
+
+async def get_mesos_non_running_task_dict(
+    task: Task, num_tail_lines: int
+) -> MutableMapping[str, Any]:
+    if num_tail_lines > 0:
+        tail_lines = await get_tail_lines_for_mesos_task(
+            task, get_short_task_id, num_tail_lines
+        )
+    else:
+        tail_lines = {}
+
+    task_dict = {
+        "id": get_short_task_id(task["id"]),
+        "hostname": await results_or_unknown(get_short_hostname_from_task(task)),
+        "state": task["state"],
+        "tail_lines": tail_lines,
+    }
+
+    task_start_time = get_first_status_timestamp(task)
+    if task_start_time is not None:
+        task_dict["deployed_timestamp"] = task_start_time
+
+    return task_dict
+
+
+@view_config(
+    route_name="service.instance.status", request_method="GET", renderer="json"
+)
+def instance_status(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    verbose = request.swagger_data.get("verbose") or 0
+    include_smartstack = request.swagger_data.get("include_smartstack")
+    if include_smartstack is None:
+        include_smartstack = True
+    include_envoy = request.swagger_data.get("include_envoy")
+    if include_envoy is None:
+        include_envoy = True
+    include_mesos = request.swagger_data.get("include_mesos")
+    if include_mesos is None:
+        include_mesos = True
+
+    instance_status: Dict[str, Any] = {}
+    instance_status["service"] = service
+    instance_status["instance"] = instance
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
     except NoConfigurationForServiceError:
-        error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+        error_message = (
+            "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+            % ".".join([settings.cluster, instance])
+        )
         raise ApiFailure(error_message, 404)
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    print(instance_type)
-    if instance_type != 'flink' and instance_type != 'tron':
+    if instance_type != "tron":
         try:
             actual_deployments = get_actual_deployments(service, settings.soa_dir)
         except Exception:
@@ -329,32 +656,51 @@ def instance_status(request):
         version = get_deployment_version(actual_deployments, settings.cluster, instance)
         # exit if the deployment key is not found
         if not version:
-            error_message = 'deployment key %s not found' % '.'.join([settings.cluster, instance])
+            error_message = (
+                "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
+                % ".".join([settings.cluster, instance])
+            )
             raise ApiFailure(error_message, 404)
 
-        instance_status['git_sha'] = version
+        instance_status["git_sha"] = version
     else:
-        instance_status['git_sha'] = ''
+        instance_status["git_sha"] = ""
 
     try:
-        if instance_type == 'marathon':
-            instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'chronos':
-            instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'adhoc':
-            instance_status['adhoc'] = adhoc_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'kubernetes':
-            instance_status['kubernetes'] = kubernetes_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'tron':
-            instance_status['tron'] = tron_instance_status(instance_status, service, instance, verbose)
-        elif instance_type == 'flink':
-            status = flink_instance_status(instance_status, service, instance, verbose)
-            if status is not None:
-                instance_status['flink'] = {'status': status}
-            else:
-                instance_status['flink'] = {}
+        if instance_type == "marathon":
+            instance_status["marathon"] = marathon_instance_status(
+                instance_status,
+                service,
+                instance,
+                verbose,
+                include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
+                include_mesos=include_mesos,
+            )
+        elif instance_type == "adhoc":
+            instance_status["adhoc"] = adhoc_instance_status(
+                instance_status, service, instance, verbose
+            )
+        elif pik.can_handle(instance_type):
+            instance_status.update(
+                pik.instance_status(
+                    service=service,
+                    instance=instance,
+                    verbose=verbose,
+                    include_smartstack=include_smartstack,
+                    include_envoy=include_envoy,
+                    instance_type=instance_type,
+                    settings=settings,
+                )
+            )
+        elif instance_type == "tron":
+            instance_status["tron"] = tron_instance_status(
+                instance_status, service, instance, verbose
+            )
         else:
-            error_message = f'Unknown instance_type {instance_type} of {service}.{instance}'
+            error_message = (
+                f"Unknown instance_type {instance_type} of {service}.{instance}"
+            )
             raise ApiFailure(error_message, 404)
     except Exception:
         error_message = traceback.format_exc()
@@ -363,17 +709,59 @@ def instance_status(request):
     return instance_status
 
 
-@view_config(route_name='service.instance.tasks.task', request_method='GET', renderer='json')
+@view_config(
+    route_name="service.instance.set_state", request_method="POST", renderer="json"
+)
+def instance_set_state(request,) -> None:
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    desired_state = request.swagger_data.get("desired_state")
+
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = "deployment key %s not found" % ".".join(
+            [settings.cluster, instance]
+        )
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    if pik.can_set_state(instance_type):
+        try:
+            pik.set_cr_desired_state(
+                kube_client=settings.kubernetes_client,
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
+                desired_state=desired_state,
+            )
+        except RuntimeError as e:
+            raise ApiFailure(e, 500)
+    else:
+        error_message = (
+            f"instance_type {instance_type} of {service}.{instance} doesn't "
+            "support set_state"
+        )
+        raise ApiFailure(error_message, 500)
+
+
+@view_config(
+    route_name="service.instance.tasks.task", request_method="GET", renderer="json"
+)
 def instance_task(request):
     status = instance_status(request)
-    task_id = request.swagger_data.get('task_id', None)
-    verbose = request.swagger_data.get('verbose', False)
+    task_id = request.swagger_data.get("task_id", None)
+    verbose = request.swagger_data.get("verbose", False)
     try:
-        mstatus = status['marathon']
+        mstatus = status["marathon"]
     except KeyError:
         raise ApiFailure("Only marathon tasks supported", 400)
     try:
-        task = a_sync.block(get_task, task_id, app_id=mstatus['app_id'])
+        task = a_sync.block(get_task, task_id, app_id=mstatus["app_id"])
     except TaskNotFound:
         raise ApiFailure(f"Task with id {task_id} not found", 404)
     except Exception:
@@ -385,31 +773,33 @@ def instance_task(request):
     return task._Task__items
 
 
-@view_config(route_name='service.instance.tasks', request_method='GET', renderer='json')
+@view_config(route_name="service.instance.tasks", request_method="GET", renderer="json")
 def instance_tasks(request):
     status = instance_status(request)
-    slave_hostname = request.swagger_data.get('slave_hostname', None)
-    verbose = request.swagger_data.get('verbose', False)
+    slave_hostname = request.swagger_data.get("slave_hostname", None)
+    verbose = request.swagger_data.get("verbose", False)
     try:
-        mstatus = status['marathon']
+        mstatus = status["marathon"]
     except KeyError:
         raise ApiFailure("Only marathon tasks supported", 400)
-    tasks = a_sync.block(get_tasks_from_app_id, mstatus['app_id'], slave_hostname=slave_hostname)
+    tasks = a_sync.block(
+        get_tasks_from_app_id, mstatus["desired_app_id"], slave_hostname=slave_hostname
+    )
     if verbose:
         tasks = [add_executor_info(task) for task in tasks]
         tasks = [add_slave_info(task) for task in tasks]
     return [task._Task__items for task in tasks]
 
 
-@view_config(route_name="service.instance.delay", request_method='GET', renderer='json')
+@view_config(route_name="service.instance.delay", request_method="GET", renderer="json")
 def instance_delay(request):
-    service = request.swagger_data.get('service')
-    instance = request.swagger_data.get('instance')
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
     job_config = marathon_tools.load_marathon_service_config(
-        service, instance, settings.cluster, soa_dir=settings.soa_dir,
+        service, instance, settings.cluster, soa_dir=settings.soa_dir
     )
     client = settings.marathon_clients.get_current_client_for_service(job_config)
-    app_id = job_config.format_marathon_app_dict()['id']
+    app_id = job_config.format_marathon_app_dict()["id"]
     app_queue = marathon_tools.get_app_queue(client, app_id)
     unused_offers_summary = marathon_tools.summarize_unused_offers(app_queue)
 
@@ -422,13 +812,34 @@ def instance_delay(request):
 
 
 def add_executor_info(task):
-    task._Task__items['executor'] = a_sync.block(task.executor).copy()
-    task._Task__items['executor'].pop('tasks', None)
-    task._Task__items['executor'].pop('completed_tasks', None)
-    task._Task__items['executor'].pop('queued_tasks', None)
+    task._Task__items["executor"] = a_sync.block(task.executor).copy()
+    task._Task__items["executor"].pop("tasks", None)
+    task._Task__items["executor"].pop("completed_tasks", None)
+    task._Task__items["executor"].pop("queued_tasks", None)
     return task
 
 
 def add_slave_info(task):
-    task._Task__items['slave'] = a_sync.block(task.slave)._MesosSlave__items.copy()
+    task._Task__items["slave"] = a_sync.block(task.slave)._MesosSlave__items.copy()
     return task
+
+
+def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
+    """Return a dict of marathon clients and their corresponding dashboard URLs"""
+    cluster = system_paasta_config.get_cluster()
+    try:
+        links = (
+            system_paasta_config.get_dashboard_links().get(cluster).get("Marathon RO")
+        )
+    except KeyError:
+        pass
+    if isinstance(links, list) and len(links) >= len(marathon_clients.current):
+        return {client: url for client, url in zip(marathon_clients.current, links)}
+    return None
+
+
+def get_deployment_version(
+    actual_deployments: Mapping[str, str], cluster: str, instance: str
+) -> Optional[str]:
+    key = ".".join((cluster, instance))
+    return actual_deployments[key][:8] if key in actual_deployments else None

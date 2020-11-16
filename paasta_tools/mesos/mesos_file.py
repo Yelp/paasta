@@ -152,7 +152,7 @@ class File:
 
             # This is not streaming and assumes small chunk sizes
             blob_lines = (last + blob).split("\n")
-            for line in blob_lines[:len(blob_lines) - 1]:
+            for line in blob_lines[: len(blob_lines) - 1]:
                 yield line
 
             last = blob_lines[-1]

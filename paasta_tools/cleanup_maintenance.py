@@ -37,14 +37,17 @@ log = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Cleans up forgotten maintenance cruft.')
-    parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+    parser = argparse.ArgumentParser(
+        description="Cleans up forgotten maintenance cruft."
     )
     parser.add_argument(
-        '--disable-reservation-cleanup', action='store_true',
-        dest="disable_reservation_cleanup", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
+    )
+    parser.add_argument(
+        "--disable-reservation-cleanup",
+        action="store_true",
+        dest="disable_reservation_cleanup",
+        default=False,
     )
     args = parser.parse_args()
     return args
@@ -53,7 +56,9 @@ def parse_args():
 def cleanup_forgotten_draining():
     """Clean up hosts forgotten draining"""
     log.debug("Cleaning up hosts forgotten draining")
-    hosts_forgotten_draining = get_hosts_forgotten_draining(grace=seconds_to_nanoseconds(10 * 60))
+    hosts_forgotten_draining = get_hosts_forgotten_draining(
+        grace=seconds_to_nanoseconds(10 * 60)
+    )
     if hosts_forgotten_draining:
         undrain(hostnames=hosts_forgotten_draining)
     else:
@@ -63,7 +68,9 @@ def cleanup_forgotten_draining():
 def cleanup_forgotten_down():
     """Clean up hosts forgotten down"""
     log.debug("Cleaning up hosts forgotten down")
-    hosts_forgotten_down = get_hosts_forgotten_down(grace=seconds_to_nanoseconds(10 * 60))
+    hosts_forgotten_down = get_hosts_forgotten_down(
+        grace=seconds_to_nanoseconds(10 * 60)
+    )
     if hosts_forgotten_down:
         up(hostnames=hosts_forgotten_down)
     else:
@@ -74,7 +81,7 @@ def unreserve_all_resources_on_non_draining_hosts():
     """Unreserve all resources on non-draining hosts"""
     log.debug("Unreserving all resources on non-draining hosts")
     slaves = get_slaves()
-    hostnames = [slave['hostname'] for slave in slaves]
+    hostnames = [slave["hostname"] for slave in slaves]
     draining_hosts = get_draining_hosts()
     non_draining_hosts = list(set(hostnames) - set(draining_hosts))
     if non_draining_hosts:

@@ -1,5 +1,5 @@
-paasta_tools.api.views package
-==============================
+paasta\_tools.api.views package
+===============================
 
 Submodules
 ----------
@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    paasta_tools.api.views.autoscaler
+   paasta_tools.api.views.deploy_queue
    paasta_tools.api.views.exception
    paasta_tools.api.views.instance
    paasta_tools.api.views.marathon_dashboard
@@ -20,6 +21,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.api.views
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

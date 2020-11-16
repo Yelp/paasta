@@ -1,5 +1,13 @@
 Feature: paasta_api
 
+  Scenario: paasta status for marathon instance via the API
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we run the marathon app "test-service.main" with "1" instances
+      And we wait for "test-service.main" to launch exactly 1 tasks
+     Then paasta status via the API for "test-service.main" should run successfully
+
   Scenario: instance GET shows the marathon status of service.instance
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
@@ -8,13 +16,6 @@ Feature: paasta_api
      And we wait for "test-service.main" to launch exactly 1 tasks
     Then instance GET should return app_count "1" and an expected number of running instances for "test-service.main"
      And instance GET should return error code "404" for "test-service.non-existent"
-
-  Scenario: instance GET shows the chronos status of service.instance
-    Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with the enabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with enabled chronos instance "testinstance"
-     When we run setup_chronos_job for service_instance "testservice.testinstance"
-    Then instance GET should return chronos desired_state "start" for "testservice.testinstance"
 
   Scenario: High disk usage
     Given a working paasta cluster

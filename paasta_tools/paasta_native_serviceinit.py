@@ -2,7 +2,6 @@ from paasta_tools.frameworks.native_scheduler import MESOS_TASK_SPACER
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import paasta_print
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
@@ -12,9 +11,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     # things for service.main and not service.main_foo
     task_id_prefix = "{}{}".format(compose_job_id(service, instance), MESOS_TASK_SPACER)
 
-    if command == 'status':
-        paasta_print(status_mesos_tasks_verbose(
-            job_id=task_id_prefix,
-            get_short_task_id=lambda x: x,
-            tail_lines=tail_lines,
-        ))
+    if command == "status":
+        print(
+            status_mesos_tasks_verbose(
+                job_id=task_id_prefix,
+                get_short_task_id=lambda x: x,
+                tail_lines=tail_lines,
+            )
+        )

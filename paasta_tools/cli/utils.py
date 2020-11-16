@@ -20,42 +20,45 @@ import os
 import pkgutil
 import random
 import re
+import socket
 import subprocess
-import sys
+from collections import defaultdict
 from shlex import quote
-from socket import gaierror
-from socket import gethostbyname_ex
 from typing import Callable
 from typing import Iterable
 from typing import List
+from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
 
 import ephemeral_port_reserve
-from bravado.exception import HTTPError
-from bravado.exception import HTTPNotFound
 from mypy_extensions import NamedArg
 
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
-from paasta_tools.api import client
-from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
+from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import paasta_print
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
@@ -114,14 +117,14 @@ def check_mark():
     """
     :return: string that can print a checkmark
     """
-    return PaastaColors.green('\u2713')
+    return PaastaColors.green("\u2713")
 
 
 def x_mark():
     """
     :return: string that can print an x-mark
     """
-    return PaastaColors.red('\u2717')
+    return PaastaColors.red("\u2717")
 
 
 def success(msg):
@@ -152,58 +155,56 @@ class PaastaCheckMessages:
 
     DEPLOY_YAML_MISSING = failure(
         "No deploy.yaml exists, so your service cannot be deployed.\n  "
-        "Push a deploy.yaml and run `paasta generate-pipeline`.\n  "
-        "More info:", "http://y/yelpsoa-configs",
+        "Please push a deploy.yaml.\n  "
+        "More info:",
+        "http://y/yelpsoa-configs",
     )
 
-    DEPLOY_SECURITY_FOUND = success("Found a security-check entry in your deploy pipeline")
+    DEPLOY_SECURITY_FOUND = success(
+        "Found a security-check entry in your deploy pipeline"
+    )
     DEPLOY_SECURITY_MISSING = failure(
         "No 'security-check' entry was found in your deploy.yaml.\n"
         "Please add a security-check entry *AFTER* the itest entry in deploy.yaml\n"
         "so your docker image can be checked against known security vulnerabilities.\n"
-        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.security_check.html",
-    )
-
-    DEPLOY_PERFORMANCE_FOUND = success("Found a performance-check entry in your deploy pipeline")
-    DEPLOY_PERFORMANCE_MISSING = failure(
-        "No 'performance-check' entry was found in your deploy.yaml.\n"
-        "Please add a performance-check entry *AFTER* the security-check entry in deploy.yaml\n"
-        "so your docker image can be checked for performance regressions.\n"
-        "More info:", "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.performance_check.html",
+        "More info:",
+        "http://paasta.readthedocs.io/en/latest/generated/paasta_tools.cli.cmds.security_check.html",
     )
 
     DOCKERFILE_FOUND = success("Found Dockerfile")
 
     DOCKERFILE_MISSING = failure(
-        "Dockerfile not found. Create a Dockerfile and try again.\n  "
-        "More info:", "http://y/paasta-runbook-dockerfile",
+        "Dockerfile not found. Create a Dockerfile and try again.\n  " "More info:",
+        "http://y/paasta-runbook-dockerfile",
     )
 
     DOCKERFILE_YELPCORP = success(
-        "Your Dockerfile pulls from the standard Yelp images.",
+        "Your Dockerfile pulls from the standard Yelp images."
     )
 
     DOCKERFILE_NOT_YELPCORP = failure(
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
         "using the local mirrors.\n"
-        "More info:", "http://y/base-docker-images",
+        "More info:",
+        "http://y/base-docker-images",
     )
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
-    CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
-
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
         "No Makefile available. Please make a Makefile that responds\n"
-        "to the proper targets. More info:", "http://paasta.readthedocs.io/en/latest/about/contract.html",
+        "to the proper targets. More info:",
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
-    MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make cook-image`")
+    MAKEFILE_RESPONDS_BUILD_IMAGE = success(
+        "The Makefile responds to `make cook-image`"
+    )
     MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL = failure(
         "The Makefile does not have a `make cook-image` target. local-run needs\n"
         "this and expects it to build your docker image. More info:",
@@ -235,27 +236,19 @@ class PaastaCheckMessages:
         "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
 
-    PIPELINE_FOUND = success("Jenkins build pipeline found")
-
-    PIPELINE_MISSING = failure(
-        "Jenkins build pipeline missing. Please run "
-        "'paasta generate-pipeline'\n"
-        "  More info:", "http://y/paasta-deploy",
-    )
-
-    SENSU_MONITORING_FOUND = success(
-        "monitoring.yaml found for Sensu monitoring",
-    )
+    SENSU_MONITORING_FOUND = success("monitoring.yaml found for Sensu monitoring")
 
     SENSU_MONITORING_MISSING = failure(
         "Your service is not using Sensu (monitoring.yaml).\n  "
         "Please setup a monitoring.yaml so we know where to send alerts.\n  "
-        "More info:", "http://y/monitoring-yaml",
+        "More info:",
+        "http://y/monitoring-yaml",
     )
 
     SENSU_TEAM_MISSING = failure(
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
-        "  More info:", "http://y/monitoring-yaml",
+        "  More info:",
+        "http://y/monitoring-yaml",
     )
 
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
@@ -263,7 +256,8 @@ class PaastaCheckMessages:
     SMARTSTACK_PORT_MISSING = failure(
         "Could not determine port. "
         "Ensure 'proxy_port' is set in smartstack.yaml.\n  "
-        "More info:", "http://y/smartstack-cep323",
+        "More info:",
+        "http://y/smartstack-cep323",
     )
 
     @staticmethod
@@ -279,27 +273,30 @@ class PaastaCheckMessages:
     @staticmethod
     def sensu_team_found(team_name):
         return success(
-            "Your service uses Sensu and team '%s' will get alerts." % team_name,
+            "Your service uses Sensu and team '%s' will get alerts." % team_name
         )
 
     @staticmethod
     def smartstack_port_found(instance, port):
         return success(
             "Instance '%s' of your service is using smartstack port %d "
-            "and will be automatically load balanced" % (instance, port),
+            "and will be automatically load balanced" % (instance, port)
         )
 
     @staticmethod
     def service_dir_found(service, soa_dir):
-        message = "yelpsoa-config directory for %s found in %s" \
-                  % (PaastaColors.cyan(service), soa_dir)
+        message = "yelpsoa-config directory for {} found in {}".format(
+            PaastaColors.cyan(service), soa_dir
+        )
         return success(message)
 
     @staticmethod
     def service_dir_missing(service, soa_dir):
-        message = "Failed to locate yelpsoa-config directory for %s in %s.\n" \
-                  "  Please follow the guide linked below to get boilerplate." \
-                  % (service, soa_dir)
+        message = (
+            "Failed to locate yelpsoa-config directory for %s in %s.\n"
+            "  Please follow the guide linked below to get boilerplate."
+            % (service, soa_dir)
+        )
         return failure(message, "http://y/paasta-deploy")
 
 
@@ -308,24 +305,30 @@ class NoSuchService(Exception):
     """Exception to be raised in the event that the service
     name can not be guessed.
     """
-    GUESS_ERROR_MSG = "Could not determine service name.\n" \
-                      "Please run this from the root of a copy " \
-                      "(git clone) of your service.\n" \
-                      "Alternatively, supply the %s name you wish to " \
-                      "inspect with the %s option." \
-                      % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
 
-    CHECK_ERROR_MSG = "not found.  Please provide a valid service name.\n" \
-                      "Ensure that a directory of the same name exists in %s."\
-                      % PaastaColors.green('/nail/etc/services')
+    GUESS_ERROR_MSG = (
+        "Could not determine service name.\n"
+        "Please run this from the root of a copy "
+        "(git clone) of your service.\n"
+        "Alternatively, supply the %s name you wish to "
+        "inspect with the %s option."
+        % (PaastaColors.cyan("SERVICE"), PaastaColors.cyan("-s"))
+    )
+
+    CHECK_ERROR_MSG = (
+        "not found.  Please provide a valid service name.\n"
+        "Ensure that a directory of the same name exists in %s."
+        % PaastaColors.green("/nail/etc/services")
+    )
 
     def __init__(self, service):
         self.service = service
 
     def __str__(self):
         if self.service:
-            return "SERVICE: %s %s" \
-                   % (PaastaColors.cyan(self.service), self.CHECK_ERROR_MSG)
+            return "SERVICE: {} {}".format(
+                PaastaColors.cyan(self.service), self.CHECK_ERROR_MSG
+            )
         else:
             return self.GUESS_ERROR_MSG
 
@@ -349,22 +352,24 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
     return True
 
 
-def list_paasta_services():
+def list_paasta_services(soa_dir: str = DEFAULT_SOA_DIR):
     """Returns a sorted list of services that happen to have at
-    least one service.instance (including Marathon and Chronos instances), which indicates it is on PaaSTA
+    least one service.instance, which indicates it is on PaaSTA
     """
     the_list = []
-    for service in list_services():
-        if list_all_instances_for_service(service):
+    for service in list_services(soa_dir):
+        if list_all_instances_for_service(service, soa_dir=soa_dir):
             the_list.append(service)
     return the_list
 
 
-def list_service_instances():
+def list_service_instances(soa_dir: str = DEFAULT_SOA_DIR):
     """Returns a sorted list of service<SPACER>instance names"""
     the_list = []
-    for service in list_services():
-        for instance in list_all_instances_for_service(service):
+    for service in list_services(soa_dir):
+        for instance in list_all_instances_for_service(
+            service=service, soa_dir=soa_dir
+        ):
             the_list.append(compose_job_id(service, instance))
     return the_list
 
@@ -387,20 +392,21 @@ def list_instances(**kwargs):
 
 
 def calculate_remote_masters(
-    cluster: str,
-    system_paasta_config: SystemPaastaConfig,
+    cluster: str, system_paasta_config: SystemPaastaConfig
 ) -> Tuple[List[str], str]:
     """Given a cluster, do a DNS lookup of that cluster (which
     happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
     """
 
-    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
+    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(
+        cluster=cluster
+    )
     try:
-        _, _, ips = gethostbyname_ex(cluster_fqdn)
+        _, _, ips = socket.gethostbyname_ex(cluster_fqdn)
         output = None
-    except gaierror as e:
-        output = f'ERROR while doing DNS lookup of {cluster_fqdn}:\n{e.strerror}\n '
+    except socket.gaierror as e:
+        output = f"ERROR while doing DNS lookup of {cluster_fqdn}:\n{e.strerror}\n "
         ips = []
     return (ips, output)
 
@@ -432,20 +438,17 @@ class NoMasterError(Exception):
     pass
 
 
-def connectable_master(
-    cluster: str,
-    system_paasta_config: SystemPaastaConfig,
-) -> str:
+def connectable_master(cluster: str, system_paasta_config: SystemPaastaConfig) -> str:
     masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
-        raise NoMasterError('ERROR: %s' % output)
+        raise NoMasterError("ERROR: %s" % output)
 
     random.shuffle(masters)
 
     master, output = find_connectable_master(masters)
     if not master:
         raise NoMasterError(
-            f'ERROR: could not find connectable master in cluster {cluster}\nOutput: {output}',
+            f"ERROR: could not find connectable master in cluster {cluster}\nOutput: {output}"
         )
 
     return master
@@ -456,92 +459,38 @@ def check_ssh_on_master(master, timeout=10):
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
-    check_command = 'ssh -A -n -o StrictHostKeyChecking=no %s /bin/true' % master
+    check_command = "ssh -A -n -o StrictHostKeyChecking=no %s /bin/true" % master
     rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
     if rc == 255:  # ssh error
-        reason = 'Return code was %d which probably means an ssh failure.' % rc
-        hint = 'HINT: Are you allowed to ssh to this machine %s?' % master
+        reason = "Return code was %d which probably means an ssh failure." % rc
+        hint = "HINT: Are you allowed to ssh to this machine %s?" % master
     if rc == 1:  # sudo error
-        reason = 'Return code was %d which probably means a sudo failure.' % rc
-        hint = 'HINT: Is your ssh agent forwarded? (ssh-add -l)'
+        reason = "Return code was %d which probably means a sudo failure." % rc
+        hint = "HINT: Is your ssh agent forwarded? (ssh-add -l)"
     if rc == -9:  # timeout error
-        reason = 'Return code was %d which probably means ssh took too long and timed out.' % rc
-        hint = 'HINT: Is there network latency? Try running somewhere closer to the cluster.'
-    else:  # unknown error
-        reason = 'Return code was %d which is an unknown failure.' % rc
-        hint = 'HINT: Talk to #paasta and pastebin this output'
-    output = ('ERROR cannot run check command %(check_command)s\n'
-              '%(reason)s\n'
-              '%(hint)s\n'
-              'Output from check command: %(output)s' %
-              {
-                  'check_command': check_command,
-                  'reason': reason,
-                  'hint': hint,
-                  'output': output,
-              })
-    return (False, output)
-
-
-def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, ssh_flags='', **kwargs):
-    """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
-    if 'verbose' in kwargs and kwargs['verbose'] > 0:
-        verbose_flag = ' '.join(['-v' for i in range(kwargs['verbose'])])
-        timeout = 960 if subcommand == 'status' else 240
-    else:
-        verbose_flag = ''
-        timeout = 240 if subcommand == 'status' else 60
-
-    if 'app_id' in kwargs and kwargs['app_id']:
-        app_id_flag = "--appid %s" % kwargs['app_id']
-    else:
-        app_id_flag = ''
-
-    if 'delta' in kwargs and kwargs['delta']:
-        delta_flag = "--delta %s" % kwargs['delta']
-    else:
-        delta_flag = ''
-
-    ssh_flags += ' -t' if stream else ' -n'
-    ssh_flags = ssh_flags.strip()
-
-    command_parts = [
-        f"ssh -A -o StrictHostKeyChecking=no {ssh_flags} {master} sudo paasta_serviceinit",
-        "-s %s" % service,
-        "-i %s" % instances,
-        verbose_flag,
-        app_id_flag,
-        delta_flag,
-        subcommand,
-    ]
-    command_without_empty_strings = [part for part in command_parts if part != '']
-    command = ' '.join(command_without_empty_strings)
-    log.debug("Running Command: %s" % command)
-    return_code, output = _run(command, timeout=timeout, stream=stream)
-    return return_code, output
-
-
-def execute_paasta_serviceinit_on_remote_master(
-    subcommand, cluster, service, instances, system_paasta_config,
-    stream=False, ignore_ssh_output=False, **kwargs,
-):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_serviceinit_status().
-    """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (255, str(e))
-
-    if ignore_ssh_output:
-        return run_paasta_serviceinit(
-            subcommand, master, service, instances, cluster, stream,
-            ssh_flags='-o LogLevel=QUIET', **kwargs,
+        reason = (
+            "Return code was %d which probably means ssh took too long and timed out."
+            % rc
         )
-    else:
-        return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
+        hint = "HINT: Is there network latency? Try running somewhere closer to the cluster."
+    else:  # unknown error
+        reason = "Return code was %d which is an unknown failure." % rc
+        hint = "HINT: Talk to #paasta and pastebin this output"
+    output = (
+        "ERROR cannot run check command %(check_command)s\n"
+        "%(reason)s\n"
+        "%(hint)s\n"
+        "Output from check command: %(output)s"
+        % {
+            "check_command": check_command,
+            "reason": reason,
+            "hint": hint,
+            "output": output,
+        }
+    )
+    return (False, output)
 
 
 def get_paasta_metastatus_cmd_args(
@@ -551,20 +500,17 @@ def get_paasta_metastatus_cmd_args(
     use_mesos_cache: bool = False,
 ) -> Tuple[Sequence[str], int]:
     if verbose > 0:
-        verbose_arg = ["-%s" % ('v' * verbose)]
+        verbose_arg = ["-%s" % ("v" * verbose)]
         timeout = 120
     else:
         verbose_arg = []
         timeout = 20
     autoscaling_arg = ["-a"] if autoscaling_info else []
     if autoscaling_arg and verbose < 2:
-        verbose_arg = ['-vv']
+        verbose_arg = ["-vv"]
     groupings_args = ["-g", *groupings] if groupings else []
     cache_arg = ["--use-mesos-cache"] if use_mesos_cache else []
-    cmd_args = [
-        *verbose_arg, *groupings_args,
-        *autoscaling_arg, *cache_arg,
-    ]
+    cmd_args = [*verbose_arg, *groupings_args, *autoscaling_arg, *cache_arg]
     return cmd_args, timeout
 
 
@@ -581,73 +527,40 @@ def run_paasta_metastatus(
         autoscaling_info=autoscaling_info,
         use_mesos_cache=use_mesos_cache,
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no {} sudo paasta_metastatus {}'.format(
-        master,
-        " ".join(cmd_args),
-    )).strip()
+    command = (
+        "ssh -A -n -o StrictHostKeyChecking=no {} sudo paasta_metastatus {}".format(
+            master, " ".join(cmd_args)
+        )
+    ).strip()
     return_code, output = _run(command, timeout=timeout)
     return return_code, output
 
 
-def execute_paasta_metastatus_on_remote_master(
-    cluster: str,
-    system_paasta_config: SystemPaastaConfig,
-    groupings: Sequence[str],
-    verbose: int,
-    autoscaling_info: bool = False,
-    use_mesos_cache: bool = False,
-) -> Tuple[int, str]:
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_metastatus().
-    """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (255, str(e))
-
-    return run_paasta_metastatus(
-        master, groupings, verbose, autoscaling_info, use_mesos_cache,
-    )
-
-
-def run_paasta_cluster_boost(
-    master,
-    action,
-    pool,
-    duration,
-    override,
-    boost,
-    verbose,
-):
+def run_paasta_cluster_boost(master, action, pool, duration, override, boost, verbose):
     timeout = 20
 
     verbose_flag: Optional[str]
     if verbose > 0:
-        verbose_flag = '-{}'.format('v' * verbose)
+        verbose_flag = "-{}".format("v" * verbose)
     else:
         verbose_flag = None
 
-    pool_flag = f'--pool {pool}'
-    duration_flag = f'--duration {duration}' if duration is not None else ''
-    boost_flag = f'--boost {boost}' if boost is not None else ''
-    override_flag = '--force' if override is not None else ''
+    pool_flag = f"--pool {pool}"
+    duration_flag = f"--duration {duration}" if duration is not None else ""
+    boost_flag = f"--boost {boost}" if boost is not None else ""
+    override_flag = "--force" if override is not None else ""
 
     cmd_args = " ".join(
         filter(
-            None, [
-                action,
-                pool_flag,
-                duration_flag,
-                boost_flag,
-                override_flag,
-                verbose_flag,
-            ],
-        ),
+            None,
+            [action, pool_flag, duration_flag, boost_flag, override_flag, verbose_flag],
+        )
     )
-    command = ('ssh -A -n -o StrictHostKeyChecking=no {} paasta_cluster_boost {}'.format(
-        master,
-        cmd_args,
-    )).strip()
+    command = (
+        "ssh -A -n -o StrictHostKeyChecking=no {} paasta_cluster_boost {}".format(
+            master, cmd_args
+        )
+    ).strip()
     return_code, output = _run(command, timeout=timeout)
     return return_code, output
 
@@ -671,6 +584,7 @@ def execute_paasta_cluster_boost_on_remote_master(
             master = connectable_master(cluster, system_paasta_config)
         except NoMasterError as e:
             result[cluster] = (255, str(e))
+            continue
 
         result[cluster] = run_paasta_cluster_boost(
             master=master,
@@ -683,16 +597,14 @@ def execute_paasta_cluster_boost_on_remote_master(
         )
 
         audit_details = {
-            'boost_action': action,
-            'pool': pool,
-            'duration': duration,
-            'override': override,
-            'boost': boost,
+            "boost_action": action,
+            "pool": pool,
+            "duration": duration,
+            "override": override,
+            "boost": boost,
         }
         _log_audit(
-            action='cluster-boost',
-            action_details=audit_details,
-            cluster=cluster,
+            action="cluster-boost", action_details=audit_details, cluster=cluster
         )
 
     aggregated_code = 0
@@ -706,39 +618,14 @@ def execute_paasta_cluster_boost_on_remote_master(
     return (aggregated_code, aggregated_output)
 
 
-def run_chronos_rerun(master, service, instancename, **kwargs):
-    timeout = 60
-    verbose_flags = '-v ' * kwargs['verbose']
-    run_all_related_jobs_flag = '--run-all-related-jobs ' if kwargs.get('run_all_related_jobs', False) else ''
-    force_disabled_flag = '--force-disabled ' if kwargs.get('force_disabled', False) else ''
-    command = 'ssh -A -n -o StrictHostKeyChecking=no {} \'sudo chronos_rerun {}{}{}"{} {}" "{}"\''.format(
-        master,
-        run_all_related_jobs_flag,
-        force_disabled_flag,
-        verbose_flags,
-        service,
-        instancename,
-        kwargs['execution_date'],
-    )
-    return _run(command, timeout=timeout)
-
-
-def execute_chronos_rerun_on_remote_master(service, instancename, cluster, system_paasta_config, **kwargs):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_chronos_rerun().
-    """
-    try:
-        return run_chronos_rerun(
-            connectable_master(cluster, system_paasta_config),
-            service, instancename, **kwargs,
-        )
-    except NoMasterError as e:
-        return (-1, str(e))
-
-
 def run_on_master(
-    cluster, system_paasta_config, cmd_parts,
-    timeout=None, err_code=-1, graceful_exit=False, stdin=None,
+    cluster,
+    system_paasta_config,
+    cmd_parts,
+    timeout=None,
+    err_code=-1,
+    graceful_exit=False,
+    stdin=None,
 ):
     """Find connectable master for :cluster: and :system_paasta_config: args and
     invoke command from :cmd_parts:, wrapping it in ssh call.
@@ -767,24 +654,35 @@ def run_on_master(
         # 2. wait for stdin with timeout in a loop, exit when original process finished
         # 3. kill original process if loop finished (something on stdin)
         cmd_parts.append(
-            '& p=$!; ' +
-            'while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; ' +
-            'kill $p; wait',
+            "& p=$!; "
+            + "while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; "
+            + "kill $p; wait"
         )
         stdin = subprocess.PIPE
         stdin_interrupt = True
-        popen_kwargs = {'preexec_fn': os.setsid}
+        popen_kwargs = {"preexec_fn": os.setsid}
     else:
         stdin_interrupt = False
         popen_kwargs = {}
 
-    cmd_parts = ['ssh', '-q', '-t', '-t', '-A', master, "sudo /bin/bash -c %s" % quote(' '.join(cmd_parts))]
+    cmd_parts = [
+        "ssh",
+        "-q",
+        "-t",
+        "-t",
+        "-A",
+        master,
+        "sudo /bin/bash -c %s" % quote(" ".join(cmd_parts)),
+    ]
 
-    log.debug("Running %s" % ' '.join(cmd_parts))
+    log.debug("Running %s" % " ".join(cmd_parts))
 
     return _run(
-        cmd_parts, timeout=timeout, stream=True,
-        stdin=stdin, stdin_interrupt=stdin_interrupt,
+        cmd_parts,
+        timeout=timeout,
+        stream=True,
+        stdin=stdin,
+        stdin_interrupt=stdin_interrupt,
         popen_kwargs=popen_kwargs,
     )
 
@@ -793,6 +691,7 @@ def lazy_choices_completer(list_func):
     def inner(prefix, **kwargs):
         options = list_func(**kwargs)
         return [o for o in options if o.startswith(prefix)]
+
     return inner
 
 
@@ -802,7 +701,7 @@ def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     try:
         validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
-        paasta_print(service_not_found)
+        print(service_not_found)
         exit(1)
     return service
 
@@ -811,10 +710,110 @@ def get_jenkins_build_output_url():
     """Returns the URL for Jenkins job's output.
     Returns None if it's not available.
     """
-    build_output = os.environ.get('BUILD_URL')
+    build_output = os.environ.get("BUILD_URL")
     if build_output:
-        build_output = build_output + 'console'
+        build_output = build_output + "console"
     return build_output
+
+
+InstanceListerSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(Optional[str], "cluster"),
+        NamedArg(str, "instance_type"),
+        NamedArg(str, "soa_dir"),
+    ],
+    List[Tuple[str, str]],
+]
+
+InstanceLoaderSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(str, "instance"),
+        NamedArg(str, "cluster"),
+        NamedArg(bool, "load_deployments"),
+        NamedArg(str, "soa_dir"),
+    ],
+    InstanceConfig,
+]
+
+LongRunningServiceListerSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(Optional[str], "cluster"),
+        NamedArg(str, "instance_type"),
+        NamedArg(str, "soa_dir"),
+    ],
+    List[Tuple[str, str]],
+]
+
+LongRunningServiceLoaderSig = Callable[
+    [
+        NamedArg(str, "service"),
+        NamedArg(str, "instance"),
+        NamedArg(str, "cluster"),
+        NamedArg(bool, "load_deployments"),
+        NamedArg(str, "soa_dir"),
+    ],
+    LongRunningServiceConfig,
+]
+
+
+class InstanceTypeHandler(NamedTuple):
+    lister: InstanceListerSig
+    loader: InstanceLoaderSig
+
+
+class LongRunningInstanceTypeHandler(NamedTuple):
+    lister: LongRunningServiceListerSig
+    loader: LongRunningServiceLoaderSig
+
+
+INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
+    lambda: InstanceTypeHandler(None, None),
+    marathon=InstanceTypeHandler(
+        get_service_instance_list, load_marathon_service_config
+    ),
+    adhoc=InstanceTypeHandler(get_service_instance_list, load_adhoc_job_config),
+    kubernetes=InstanceTypeHandler(
+        get_service_instance_list, load_kubernetes_service_config
+    ),
+    tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
+    flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
+    cassandracluster=InstanceTypeHandler(
+        get_service_instance_list, load_cassandracluster_instance_config
+    ),
+    kafkacluster=InstanceTypeHandler(
+        get_service_instance_list, load_kafkacluster_instance_config
+    ),
+    nrtsearchservice=InstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchservice_instance_config
+    ),
+)
+
+LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
+    str, LongRunningInstanceTypeHandler
+] = defaultdict(
+    lambda: LongRunningInstanceTypeHandler(None, None),
+    marathon=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_marathon_service_config
+    ),
+    kubernetes=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_kubernetes_service_config
+    ),
+    flink=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_flink_instance_config
+    ),
+    cassandracluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_cassandracluster_instance_config
+    ),
+    kafkacluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_kafkacluster_instance_config
+    ),
+    nrtsearchservice=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchservice_instance_config
+    ),
+)
 
 
 def get_instance_config(
@@ -826,43 +825,20 @@ def get_instance_config(
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
     """ Returns the InstanceConfig object for whatever type of instance
-    it is. (chronos or marathon) """
+    it is. (marathon) """
     if instance_type is None:
         instance_type = validate_service_instance(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
+            service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
         )
 
-    instance_config_load_function: Callable[
-        [
-            NamedArg(str, 'service'),
-            NamedArg(str, 'instance'),
-            NamedArg(str, 'cluster'),
-            NamedArg(bool, 'load_deployments'),
-            NamedArg(str, 'soa_dir'),
-        ],
-        InstanceConfig,
-    ]
-    if instance_type == 'marathon':
-        instance_config_load_function = load_marathon_service_config
-    elif instance_type == 'chronos':
-        instance_config_load_function = load_chronos_job_config
-    elif instance_type == 'adhoc':
-        instance_config_load_function = load_adhoc_job_config
-    elif instance_type == 'kubernetes':
-        instance_config_load_function = load_kubernetes_service_config
-    elif instance_type == 'tron':
-        instance_config_load_function = load_tron_instance_config
-    elif instance_type == 'flink':
-        instance_config_load_function = load_flink_instance_config
-    else:
+    instance_config_loader = INSTANCE_TYPE_HANDLERS[instance_type].loader
+    if instance_config_loader is None:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
-            % (instance, instance_type),
+            % (instance, instance_type)
         )
-    return instance_config_load_function(
+
+    return instance_config_loader(
         service=service,
         instance=instance,
         cluster=cluster,
@@ -873,29 +849,32 @@ def get_instance_config(
 
 def extract_tags(paasta_tag):
     """Returns a dictionary containing information from a git tag"""
-    regex = r'^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$'
+    regex = r"^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$"
     regex_match = re.match(regex, paasta_tag)
     return regex_match.groupdict() if regex_match else {}
 
 
 def list_deploy_groups(
-    service: Optional[str],
-    soa_dir: str = DEFAULT_SOA_DIR,
-    parsed_args=None,
-    **kwargs,
+    service: Optional[str], soa_dir: str = DEFAULT_SOA_DIR, parsed_args=None, **kwargs
 ) -> Set:
-    return set(filter(
-        None,
-        {config.get_deploy_group() for config in get_instance_configs_for_service(
-            service=service if service is not None else parsed_args.service or guess_service_name(),
-            soa_dir=soa_dir,
-        )},
-    ))
+    return set(
+        filter(
+            None,
+            {
+                config.get_deploy_group()
+                for config in get_instance_configs_for_service(
+                    service=service
+                    if service is not None
+                    else parsed_args.service or guess_service_name(),
+                    soa_dir=soa_dir,
+                )
+            },
+        )
+    )
 
 
 def validate_given_deploy_groups(
-    all_deploy_groups: Sequence[str],
-    args_deploy_groups: Sequence[str],
+    all_deploy_groups: Sequence[str], args_deploy_groups: Sequence[str]
 ) -> Tuple[Set[str], Set[str]]:
     """Given two lists of deploy groups, return the intersection and difference between them.
 
@@ -926,19 +905,17 @@ def short_to_full_git_sha(short, refs):
 
 
 def validate_short_git_sha(value):
-    pattern = re.compile('[a-f0-9]{4,40}')
+    pattern = re.compile("[a-f0-9]{4,40}")
     if not pattern.match(value):
-        raise argparse.ArgumentTypeError(
-            "%s is not a valid git sha" % value,
-        )
+        raise argparse.ArgumentTypeError("%s is not a valid git sha" % value)
     return value
 
 
 def validate_full_git_sha(value):
-    pattern = re.compile('[a-f0-9]{40}')
+    pattern = re.compile("[a-f0-9]{40}")
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a full git sha, and PaaSTA needs the full sha" % value,
+            "%s is not a full git sha, and PaaSTA needs the full sha" % value
         )
     return value
 
@@ -952,8 +929,8 @@ def validate_git_sha(sha, git_url):
         commits = short_to_full_git_sha(short=sha, refs=refs)
         if len(commits) != 1:
             raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1." %
-                (sha, len(commits)),
+                "%s matched %d git shas (with refs pointing at them). Must match exactly 1."
+                % (sha, len(commits))
             )
         return commits[0]
 
@@ -969,51 +946,44 @@ def get_subparser(subparsers, function, command, help_text, description):
         ),
     )
     new_parser.add_argument(
-        '-s', '--service',
-        help='The name of the service you wish to inspect',
+        "-s",
+        "--service",
+        help="The name of the service you wish to inspect",
         required=True,
     ).completer = lazy_choices_completer(list_services)
     new_parser.add_argument(
-        '-c', '--cluster',
+        "-c",
+        "--cluster",
         help="Cluster on which the service is running"
-             "For example: --cluster norcal-prod",
+        "For example: --cluster norcal-prod",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     new_parser.add_argument(
-        '-i', '--instance',
-        help="The instance that you wish to inspect"
-             "For example: --instance main",
+        "-i",
+        "--instance",
+        help="The instance that you wish to inspect" "For example: --instance main",
         required=True,
-        default='main',
+        default="main",
     )  # No completer because we need to know service first and we can't until some other stuff has happened
     new_parser.add_argument(
-        '-H', '--host',
+        "-H",
+        "--host",
         dest="host",
         default=None,
         help="Specify a specific host on which to run. Defaults to"
-             " one that is running the service chosen at random",
+        " one that is running the service chosen at random",
     )
     new_parser.add_argument(
-        '-m', '--mesos-id',
+        "-m",
+        "--mesos-id",
         dest="mesos_id",
         default=None,
         help="A specific mesos task ID, must match a task "
-             "running on the specified host. If not specified we "
-             "will pick a task at random",
+        "running on the specified host. If not specified we "
+        "will pick a task at random",
     )
     new_parser.set_defaults(command=function)
     return new_parser
-
-
-def get_status_for_instance(cluster, service, instance):
-    api = client.get_paasta_api_client(cluster=cluster)
-    if not api:
-        sys.exit(1)
-    status = api.service.status_instance(service=service, instance=instance).result()
-    if not status.marathon:
-        log.error("Not a marathon service, exiting")
-        sys.exit(1)
-    return status
 
 
 def pick_slave_from_status(status, host=None):
@@ -1027,156 +997,43 @@ def pick_slave_from_status(status, host=None):
 def get_instance_configs_for_service(
     service: str,
     soa_dir: str,
-    type_filter: Optional[Sequence[str]] = None,
+    type_filter: Optional[Iterable[str]] = None,
+    clusters: Optional[Sequence[str]] = None,
+    instances: Optional[Sequence[str]] = None,
 ) -> Iterable[InstanceConfig]:
-    for cluster in list_clusters(
-        service=service,
-        soa_dir=soa_dir,
-    ):
-        if type_filter is None:
-            type_filter = ['marathon', 'chronos', 'adhoc', 'kubernetes', 'tron', 'flink']
-        if 'marathon' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='marathon',
-                soa_dir=soa_dir,
-            ):
-                yield load_marathon_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if 'chronos' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='chronos',
-                soa_dir=soa_dir,
-            ):
-                yield load_chronos_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if 'adhoc' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='adhoc',
-                soa_dir=soa_dir,
-            ):
-                yield load_adhoc_job_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if 'kubernetes' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='kubernetes',
-                soa_dir=soa_dir,
-            ):
-                yield load_kubernetes_service_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if 'tron' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='tron',
-                soa_dir=soa_dir,
-            ):
-                yield load_tron_instance_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
-        if 'flink' in type_filter:
-            for _, instance in get_service_instance_list(
-                service=service,
-                cluster=cluster,
-                instance_type='flink',
-                soa_dir=soa_dir,
-            ):
-                yield load_flink_instance_config(
-                    service=service,
-                    instance=instance,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                    load_deployments=False,
-                )
+    if not clusters:
+        clusters = list_clusters(service=service, soa_dir=soa_dir)
 
+    if type_filter is None:
+        type_filter = INSTANCE_TYPE_HANDLERS.keys()
 
-class PaastaTaskNotFound(Exception):
-    pass
+    for cluster in list_clusters(service=service, soa_dir=soa_dir):
+        for instance_type, instance_handlers in INSTANCE_TYPE_HANDLERS.items():
+            if instance_type not in type_filter:
+                continue
 
+            instance_lister, instance_loader = instance_handlers
 
-def get_task_from_instance(cluster, service, instance, slave_hostname=None, task_id=None, verbose=True):
-    api = client.get_paasta_api_client(cluster=cluster)
-    if not api:
-        log.error(f"Could not get API client for cluster {cluster}")
-        raise PaastaTaskNotFound
-    if task_id:
-        log.warning("Specifying a task_id, so ignoring hostname if specified")
-        task = api.service.task_instance(
-            service=service,
-            instance=instance,
-            verbose=True,
-            task_id=task_id,
-        ).result()
-        return task
-    try:
-        if task_id:
-            log.warning("Specifying a task_id, so ignoring hostname if specified")
-            task = api.service.task_instance(
+            for _, instance in instance_lister(
                 service=service,
-                instance=instance,
-                verbose=True,
-                task_id=task_id,
-            ).result()
-            return task
-        tasks = api.service.tasks_instance(
-            service=service,
-            instance=instance,
-            verbose=True,
-            slave_hostname=slave_hostname,
-        ).result()
-    except HTTPNotFound:
-        log.error("Cannot find instance {}, for service {}, in cluster {}".format(
-            instance,
-            service,
-            cluster,
-        ))
-        raise PaastaTaskNotFound
-    except HTTPError as e:
-        log.error("Problem with API call to find task details")
-        log.error(e.response.text)
-        raise PaastaTaskNotFound
-    if not tasks:
-        log.error("Cannot find any tasks on host: {} or with task_id: {}".format(
-            slave_hostname,
-            task_id,
-        ))
-        raise PaastaTaskNotFound
-    return tasks[0]
+                cluster=cluster,
+                soa_dir=soa_dir,
+                instance_type=instance_type,
+            ):
+                if instances and instance not in instances:
+                    continue
+
+                yield instance_loader(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
 
 
 def get_container_name(task):
-    container_name = "mesos-{}".format(task.executor['container'])
+    container_name = "mesos-{}".format(task.executor["container"])
     return container_name
 
 
@@ -1186,7 +1043,28 @@ def pick_random_port(service_name):
     Tries to return the same port for the same service each time, when
     possible.
     """
-    hash_key = f'{service_name},{getpass.getuser()}'.encode('utf8')
+    hash_key = f"{service_name},{getpass.getuser()}".encode("utf8")
     hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
     preferred_port = 33000 + (hash_number % 25000)
-    return ephemeral_port_reserve.reserve('0.0.0.0', preferred_port)
+    return ephemeral_port_reserve.reserve("0.0.0.0", preferred_port)
+
+
+def trigger_deploys(
+    service: str, system_config: Optional["SystemPaastaConfig"] = None,
+) -> None:
+    """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
+    service that listens for a service string and then generates a service deployment"""
+    logline = f"Notifying soa-configs primary to generate a deployment for {service}"
+    _log(service=service, line=logline, component="deploy", level="event")
+    if not system_config:
+        system_config = load_system_paasta_config()
+    server = system_config.get_git_repo_config("yelpsoa-configs").get(
+        "deploy_server", DEFAULT_SOA_CONFIGS_GIT_URL,
+    )
+
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        client.connect((server, 5049))
+        client.send(f"{service}\n".encode("utf-8"))
+    finally:
+        client.close()

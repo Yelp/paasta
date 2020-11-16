@@ -29,25 +29,39 @@ Command line options:
 import argparse
 import sys
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Lists kubernetes instances for a service.',
+        description="Lists kubernetes instances for a service."
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="define a specific cluster to read from",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
+    )
+    parser.add_argument(
+        "--sanitise",
+        action="store_true",
+        help=(
+            "Whether or not to sanitise service instance names before displaying "
+            "them. Kubernets apps created by PaaSTA use sanitised names."
+        ),
     )
     args = parser.parse_args()
     return args
@@ -58,14 +72,16 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     instances = get_services_for_cluster(
-        cluster=cluster,
-        instance_type='kubernetes',
-        soa_dir=soa_dir,
+        cluster=cluster, instance_type="kubernetes", soa_dir=soa_dir
     )
     service_instances = []
     for name, instance in instances:
-        service_instances.append(compose_job_id(name, instance))
-    paasta_print('\n'.join(service_instances))
+        if args.sanitise:
+            app_name = kubernetes_tools.get_kubernetes_app_name(name, instance)
+        else:
+            app_name = compose_job_id(name, instance)
+        service_instances.append(app_name)
+    print("\n".join(service_instances))
     sys.exit(0)
 
 

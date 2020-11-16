@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-import os
 import socket
 import sys
 from collections import defaultdict
@@ -24,33 +23,31 @@ import choice
 
 from paasta_tools import remote_git
 from paasta_tools import utils
-from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.cli.utils import run_on_master
+from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.flink_tools import FlinkDeploymentConfig
-from paasta_tools.flink_tools import set_flink_desired_state
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import paasta_print
 from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
-        ('start', 'start or restart', 'Start or restart', paasta_start),
-        ('restart', 'start or restart', 'Start or restart', paasta_start),
-        ('stop', 'stop', 'Stop', paasta_stop),
+        ("start", "start or restart", "Start or restart", paasta_start),
+        ("restart", "start or restart", "Start or restart", paasta_start),
+        ("stop", "stop", "Stop", paasta_stop),
     ]:
         status_parser = subparsers.add_parser(
             command,
             help="%ss a PaaSTA service in a graceful way." % upper,
             description=(
-                "%ss a PaaSTA service in a graceful way. This uses the Git control plane." % upper
+                "%ss a PaaSTA service in a graceful way. This uses the Git control plane."
+                % upper
             ),
             epilog=(
                 "This command uses Git, and assumes access and authorization to the Git repo "
@@ -59,7 +56,8 @@ def add_subparser(subparsers):
         )
         add_instance_filter_arguments(status_parser, verb=lower)
         status_parser.add_argument(
-            '-d', '--soa-dir',
+            "-d",
+            "--soa-dir",
             dest="soa_dir",
             metavar="SOA_DIR",
             default=DEFAULT_SOA_DIR,
@@ -69,7 +67,7 @@ def add_subparser(subparsers):
 
 
 def format_tag(branch, force_bounce, desired_state):
-    return f'refs/tags/paasta-{branch}-{force_bounce}-{desired_state}'
+    return f"refs/tags/paasta-{branch}-{force_bounce}-{desired_state}"
 
 
 def make_mutate_refs_func(service_config, force_bounce, desired_state):
@@ -82,12 +80,15 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
     to sha and returns a modified version of that dictionary. send_pack will
     then diff what is returned versus what was passed in, and inform the remote
     git repo of our desires."""
+
     def mutate_refs(refs):
         deploy_group = service_config.get_deploy_group()
         (_, head_sha) = get_latest_deployment_tag(refs, deploy_group)
-        refs[format_tag(service_config.get_branch(), force_bounce, desired_state)] = \
-            head_sha
+        refs[
+            format_tag(service_config.get_branch(), force_bounce, desired_state)
+        ] = head_sha
         return refs
+
     return mutate_refs
 
 
@@ -95,15 +96,18 @@ def log_event(service_config, desired_state):
     user = utils.get_username()
     host = socket.getfqdn()
     line = "Issued request to change state of {} (an instance of {}) to '{}' by {}@{}".format(
-        service_config.get_instance(), service_config.get_service(),
-        desired_state, user, host,
+        service_config.get_instance(),
+        service_config.get_service(),
+        desired_state,
+        user,
+        host,
     )
     utils._log(
         service=service_config.get_service(),
-        level='event',
+        level="event",
         cluster=service_config.get_cluster(),
         instance=service_config.get_instance(),
-        component='deploy',
+        component="deploy",
         line=line,
     )
 
@@ -121,62 +125,52 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
         force_bounce=force_bounce,
         desired_state=desired_state,
     )
-    remote_git.create_remote_refs(utils.get_git_url(service_config.get_service()), ref_mutator)
-    log_event(
-        service_config=service_config,
-        desired_state=desired_state,
-    )
+    git_url = utils.get_git_url(service_config.get_service())
+    remote_git.create_remote_refs(git_url, ref_mutator)
+    if "yelpcorp.com" in git_url:
+        trigger_deploys(service_config.get_service())
+    log_event(service_config=service_config, desired_state=desired_state)
 
 
 def print_marathon_message(desired_state):
     if desired_state == "start":
-        paasta_print(
+        print(
             "This service will soon be gracefully started/restarted, replacing old instances according "
-            "to the bounce method chosen in soa-configs. ",
+            "to the bounce method chosen in soa-configs. "
         )
     elif desired_state == "stop":
-        paasta_print(
+        print(
             "This service will be gracefully stopped soon. It will be started back up again on the next deploy.\n"
             "To stop this service permanently. Set this in the soa-configs definition:\n"
             "\n"
-            "    instances: 0\n",
-        )
-
-
-def print_chronos_message(desired_state):
-    if desired_state == "start":
-        paasta_print(
-            "'Start' will tell Chronos to start scheduling the job. "
-            "If you need the job to start regardless of the schedule, use 'paasta emergency-start'.",
-        )
-    elif desired_state == "stop":
-        paasta_print(
-            "'Stop' for a Chronos job will cause the job to be disabled until the "
-            "next deploy or a 'start' command is issued.",
+            "    instances: 0\n"
         )
 
 
 def print_flink_message(desired_state):
     if desired_state == "start":
-        paasta_print("'Start' will tell Flink operator to start the cluster.")
+        print("'Start' will tell Flink operator to start the cluster.")
     elif desired_state == "stop":
-        paasta_print(
+        print(
             "'Stop' will put Flink cluster in stopping mode, it may"
-            "take some time before shutdown is completed.",
+            "take some time before shutdown is completed."
         )
 
 
 def confirm_to_continue(cluster_service_instances, desired_state):
-    paasta_print(f'You are about to {desired_state} the following instances:')
-    paasta_print("Either --instances or --clusters not specified. Asking for confirmation.")
+    print(f"You are about to {desired_state} the following instances:")
+    print("Either --instances or --clusters not specified. Asking for confirmation.")
     i_count = 0
     for cluster, services_instances in cluster_service_instances:
         for service, instances in services_instances.items():
             for instance in instances.keys():
-                paasta_print(f'cluster = {cluster}, instance = {instance}')
+                print(f"cluster = {cluster}, instance = {instance}")
                 i_count += 1
     if sys.stdin.isatty():
-        return choice.Binary(f'Are you sure you want to {desired_state} these {i_count} instances?', False).ask()
+        return choice.Binary(
+            f"Are you sure you want to {desired_state} these {i_count} instances?",
+            False,
+        ).ask()
     return True
 
 
@@ -185,7 +179,9 @@ REMOTE_REFS: Dict[str, List[str]] = {}
 
 def get_remote_refs(service, soa_dir):
     if service not in REMOTE_REFS:
-        REMOTE_REFS[service] = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
+        REMOTE_REFS[service] = remote_git.list_remote_refs(
+            utils.get_git_url(service, soa_dir)
+        )
     return REMOTE_REFS[service]
 
 
@@ -197,34 +193,37 @@ def paasta_start_or_stop(args, desired_state):
     if len(pargs) == 0:
         return 1
 
-    affected_services = {s for service_list in pargs.values() for s in service_list.keys()}
+    affected_services = {
+        s for service_list in pargs.values() for s in service_list.keys()
+    }
     if len(affected_services) > 1:
-        paasta_print(PaastaColors.red("Warning: trying to start/stop/restart multiple services:"))
+        print(
+            PaastaColors.red("Warning: trying to start/stop/restart multiple services:")
+        )
 
         for cluster, services_instances in pargs.items():
-            paasta_print("Cluster %s:" % cluster)
+            print("Cluster %s:" % cluster)
             for service, instances in services_instances.items():
-                paasta_print("    Service %s:" % service)
-                paasta_print("        Instances %s" % ",".join(instances.keys()))
+                print("    Service %s:" % service)
+                print("        Instances %s" % ",".join(instances.keys()))
 
         if sys.stdin.isatty():
-            confirm = choice.Binary('Are you sure you want to continue?', False).ask()
+            confirm = choice.Binary("Are you sure you want to continue?", False).ask()
         else:
             confirm = False
         if not confirm:
-            paasta_print()
-            paasta_print("exiting")
+            print()
+            print("exiting")
             return 1
 
     invalid_deploy_groups = []
     marathon_message_printed = False
-    chronos_message_printed = False
     affected_flinks = []
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
-            paasta_print()
-            paasta_print("exiting")
+            print()
+            print("exiting")
             return 1
 
     for cluster, services_instances in pargs.items():
@@ -251,7 +250,7 @@ def paasta_start_or_stop(args, desired_state):
                         "Try again from somewhere where the git server can be reached, "
                         "like your developer environment."
                     ) % str(e)
-                    paasta_print(msg)
+                    print(msg)
                     return 1
 
                 deploy_group = service_config.get_deploy_group()
@@ -261,12 +260,12 @@ def paasta_start_or_stop(args, desired_state):
                     invalid_deploy_groups.append(deploy_group)
                 else:
                     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-                    if isinstance(service_config, MarathonServiceConfig) and not marathon_message_printed:
+                    if (
+                        isinstance(service_config, MarathonServiceConfig)
+                        and not marathon_message_printed
+                    ):
                         print_marathon_message(desired_state)
                         marathon_message_printed = True
-                    elif isinstance(service_config, ChronosJobConfig) and not chronos_message_printed:
-                        print_chronos_message(desired_state)
-                        chronos_message_printed = True
 
                     issue_state_change_for_service(
                         service_config=service_config,
@@ -276,52 +275,48 @@ def paasta_start_or_stop(args, desired_state):
 
     return_val = 0
 
+    # TODO: Refactor to discover if set_state is available for given
+    #       instance_type in API
     if affected_flinks:
-        if os.environ.get('ON_PAASTA_MASTER'):
-            print_flink_message(desired_state)
-            kube_client = KubeClient()
-            for service_config in affected_flinks:
-                set_flink_desired_state(
-                    kube_client=kube_client,
-                    service=service_config.service,
-                    instance=service_config.instance,
-                    desired_state=dict(start='running', stop='stopped')[desired_state],
-                )
-        else:
-            csi = defaultdict(lambda: defaultdict(list))
-            for service_config in affected_flinks:
-                csi[service_config.cluster][service_config.service].append(service_config.instance)
+        print_flink_message(desired_state)
+        csi = defaultdict(lambda: defaultdict(list))
+        for service_config in affected_flinks:
+            csi[service_config.cluster][service_config.service].append(
+                service_config.instance
+            )
 
-            system_paasta_config = load_system_paasta_config()
-            for cluster, services_instances in csi.items():
-                for service, instances in services_instances.items():
-                    cmd_parts = [
-                        'ON_PAASTA_MASTER=1',
-                        'paasta',
-                        desired_state,
-                        '-c', cluster,
-                        '-s', service,
-                        '-i', ','.join(instances),
-                    ]
-                    return_val, _ = run_on_master(
-                        cluster=cluster,
-                        system_paasta_config=system_paasta_config,
-                        cmd_parts=cmd_parts,
-                        graceful_exit=True,
-                    )
+        system_paasta_config = load_system_paasta_config()
+        for cluster, services_instances in csi.items():
+            client = get_paasta_oapi_client(cluster, system_paasta_config)
+            if not client:
+                print("Cannot get a paasta-api client")
+                exit(1)
+
+            for service, instances in services_instances.items():
+                for instance in instances:
+                    try:
+                        client.service.instance_set_state(
+                            service=service,
+                            instance=instance,
+                            desired_state=desired_state,
+                        )
+                    except client.api_error as exc:
+                        print(exc.reason)
+                        return exc.status
+
+                return_val = 0
 
     if invalid_deploy_groups:
-        paasta_print("No branches found for %s in %s." %
-                     (", ".join(invalid_deploy_groups), remote_refs))
-        paasta_print("Has %s been deployed there yet?" % service)
+        print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")
+        print(f"Has {service} been deployed there yet?")
         return_val = 1
 
     return return_val
 
 
 def paasta_start(args):
-    return paasta_start_or_stop(args, 'start')
+    return paasta_start_or_stop(args, "start")
 
 
 def paasta_stop(args):
-    return paasta_start_or_stop(args, 'stop')
+    return paasta_start_or_stop(args, "stop")

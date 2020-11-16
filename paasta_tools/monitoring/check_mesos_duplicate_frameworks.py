@@ -20,37 +20,40 @@ from a_sync import block
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.metrics.metastatus_lib import assert_no_duplicate_frameworks
-from paasta_tools.utils import paasta_print
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '--check', '-C', dest='check', type=str, default='',
-        help='Comma separated list of frameworks to check for duplicates',
+        "--check",
+        "-C",
+        dest="check",
+        type=str,
+        default="",
+        help="Comma separated list of frameworks to check for duplicates",
     )
     return parser.parse_args()
 
 
 def check_mesos_no_duplicate_frameworks() -> None:
     options = parse_args()
-    check = options.check.split(',')
+    check = options.check.split(",")
     master = get_mesos_master()
     try:
         state = block(master.state)
     except MasterNotAvailableException as e:
-        paasta_print("CRITICAL: %s" % e.args[0])
+        print("CRITICAL: %s" % e.args[0])
         sys.exit(2)
 
     result = assert_no_duplicate_frameworks(state, check)
     if result.healthy:
-        paasta_print("OK: " + result.message)
+        print("OK: " + result.message)
         sys.exit(0)
     else:
-        paasta_print(result.message)
+        print(result.message)
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     check_mesos_no_duplicate_frameworks()

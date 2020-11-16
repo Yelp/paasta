@@ -33,17 +33,17 @@ def syslog_to_paasta_log(data, cluster):
     if iptables_log is None:
         return
 
-    service, instance = lookup_service_instance_by_ip(iptables_log['SRC'])
+    service, instance = lookup_service_instance_by_ip(iptables_log["SRC"])
     if service is None or instance is None:
         return
 
     # prepend hostname
-    log_line = iptables_log['hostname'] + ': ' + iptables_log['message']
+    log_line = iptables_log["hostname"] + ": " + iptables_log["message"]
 
     _log(
         service=service,
-        component='security',
-        level='debug',
+        component="security",
+        level="debug",
         cluster=cluster,
         instance=instance,
         line=log_line,
@@ -57,27 +57,27 @@ def parse_syslog(data):
     except UnicodeDecodeError:
         return None
 
-    if not full_message.startswith('kernel: ['):
+    if not full_message.startswith("kernel: ["):
         # Not a kernel message
         return None
 
-    close_bracket = full_message.find(']')
+    close_bracket = full_message.find("]")
     if close_bracket == -1:
         return None
 
-    iptables_message = full_message[close_bracket + 1:].strip()
-    parts = iptables_message.split(' ')
+    iptables_message = full_message[close_bracket + 1 :].strip()
+    parts = iptables_message.split(" ")
 
     # parts[0] is the log-prefix
     # parts[1..] is either KEY=VALUE or just KEY
-    if not parts[1].startswith('IN='):
+    if not parts[1].startswith("IN="):
         # not an iptables message
         return None
 
-    fields = {k: v for k, _, v in (field.partition('=') for field in parts[1:])}
+    fields = {k: v for k, _, v in (field.partition("=") for field in parts[1:])}
 
-    fields['hostname'] = parsed_data.hostname
-    fields['message'] = iptables_message
+    fields["hostname"] = parsed_data.hostname
+    fields["message"] = iptables_message
     return fields
 
 
@@ -85,19 +85,30 @@ def lookup_service_instance_by_ip(ip_lookup):
     for service, instance, mac, ip in services_running_here():
         if ip == ip_lookup:
             return (service, instance)
-    log.info(f'Unable to find container for ip {ip_lookup}')
+    log.info(f"Unable to find container for ip {ip_lookup}")
     return (None, None)
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description='Adapts iptables syslog messages into scribe')
-    parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+    parser = argparse.ArgumentParser(
+        description="Adapts iptables syslog messages into scribe"
     )
-    parser.add_argument('-l', '--listen-host', help='Default %(default)s', default='127.0.0.1')
-    parser.add_argument('-p', '--listen-port', type=int, help='Default %(default)s', default=1516)
-    parser.add_argument('-w', '--num-workers', type=int, help='Default %(default)s', default=DEFAULT_NUM_WORKERS)
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
+    )
+    parser.add_argument(
+        "-l", "--listen-host", help="Default %(default)s", default="127.0.0.1"
+    )
+    parser.add_argument(
+        "-p", "--listen-port", type=int, help="Default %(default)s", default=1516
+    )
+    parser.add_argument(
+        "-w",
+        "--num-workers",
+        type=int,
+        help="Default %(default)s",
+        default=DEFAULT_NUM_WORKERS,
+    )
     args = parser.parse_args(argv)
     return args
 
@@ -136,6 +147,8 @@ def main(argv=None):
             run_server(args.listen_host, args.listen_port)
 
     # propagate SIGTERM to all my children then exit
-    signal.signal(signal.SIGTERM, lambda signum, _: os.killpg(os.getpid(), signum) or sys.exit(1))
+    signal.signal(
+        signal.SIGTERM, lambda signum, _: os.killpg(os.getpid(), signum) or sys.exit(1)
+    )
 
     run_server(args.listen_host, args.listen_port)

@@ -14,12 +14,11 @@
 # limitations under the License.
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import paasta_print
 
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'list-clusters',
+        "list-clusters",
         help="Display a list of all PaaSTA clusters",
         description=(
             "'paasta list' inspects all of the PaaSTA services declared in the soa-configs "
@@ -28,7 +27,8 @@ def add_subparser(subparsers):
         ),
     )
     list_parser.add_argument(
-        '-d', '--soa-dir',
+        "-d",
+        "--soa-dir",
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
@@ -39,4 +39,4 @@ def add_subparser(subparsers):
 
 def paasta_list_clusters(args, **kwargs):
     for cluster in list_clusters(soa_dir=args.soa_dir):
-        paasta_print(cluster)
+        print(cluster)

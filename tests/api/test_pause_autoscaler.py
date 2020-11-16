@@ -19,36 +19,29 @@ from paasta_tools.api.views import pause_autoscaler
 
 def test_get_service_autoscaler_pause():
     with mock.patch(
-        'paasta_tools.utils.KazooClient',
-        autospec=True,
+        "paasta_tools.utils.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
-        'paasta_tools.utils.load_system_paasta_config',
-        autospec=True,
+        "paasta_tools.utils.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
-        mock_zk_get = mock.Mock(return_value=(b'100', None))
+        mock_zk_get = mock.Mock(return_value=(b"100", None))
         mock_zk.return_value = mock.Mock(get=mock_zk_get)
 
         response = pause_autoscaler.get_service_autoscaler_pause(request)
-        mock_zk_get.assert_called_once_with('/autoscaling/paused')
-        assert response == '100'
+        mock_zk_get.assert_called_once_with("/autoscaling/paused")
+        assert response == "100"
 
 
 def test_update_autoscaler_pause():
     with mock.patch(
-        'paasta_tools.utils.KazooClient',
-        autospec=True,
+        "paasta_tools.utils.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
-        'paasta_tools.api.views.pause_autoscaler.time',
-        autospec=True,
+        "paasta_tools.api.views.pause_autoscaler.time", autospec=True
     ) as mock_time, mock.patch(
-        'paasta_tools.utils.load_system_paasta_config',
-        autospec=True,
+        "paasta_tools.utils.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
-        request.swagger_data = {
-            'json_body': {'minutes': 100},
-        }
+        request.swagger_data = {"json_body": {"minutes": 100}}
         mock_zk_set = mock.Mock()
         mock_zk_ensure = mock.Mock()
         mock_zk.return_value = mock.Mock(set=mock_zk_set, ensure_path=mock_zk_ensure)
@@ -56,21 +49,18 @@ def test_update_autoscaler_pause():
         mock_time.time = mock.Mock(return_value=0)
 
         response = pause_autoscaler.update_service_autoscaler_pause(request)
-        mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
-        mock_zk_set.assert_called_once_with('/autoscaling/paused', b'6000')
+        assert mock_zk_ensure.call_count == 1
+        mock_zk_set.assert_called_once_with("/autoscaling/paused", b"6000")
         assert response is None
 
 
 def test_delete_autoscaler_pause():
     with mock.patch(
-        'paasta_tools.utils.KazooClient',
-        autospec=True,
+        "paasta_tools.utils.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
-        'paasta_tools.api.views.pause_autoscaler.time',
-        autospec=True,
+        "paasta_tools.api.views.pause_autoscaler.time", autospec=True
     ) as mock_time, mock.patch(
-        'paasta_tools.utils.load_system_paasta_config',
-        autospec=True,
+        "paasta_tools.utils.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
         mock_zk_del = mock.Mock()
@@ -80,6 +70,6 @@ def test_delete_autoscaler_pause():
         mock_time.time = mock.Mock(return_value=0)
 
         response = pause_autoscaler.delete_service_autoscaler_pause(request)
-        mock_zk_ensure.assert_called_once_with('/autoscaling/paused')
-        mock_zk_del.assert_called_once_with('/autoscaling/paused')
+        assert mock_zk_ensure.call_count == 1
+        mock_zk_del.assert_called_once_with("/autoscaling/paused")
         assert response is None

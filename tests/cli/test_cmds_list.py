@@ -16,11 +16,11 @@ import mock
 from paasta_tools.cli.cmds.list import paasta_list
 
 
-@mock.patch('paasta_tools.cli.cmds.list.list_services', autospec=True)
+@mock.patch("paasta_tools.cli.cmds.list.list_services", autospec=True)
 def test_list_paasta_list(mock_list_services, capfd):
     """ paasta_list print each service returned by get_services """
 
-    mock_services = ['service_1', 'service_2']
+    mock_services = ["service_1", "service_2"]
 
     mock_list_services.return_value = mock_services
     args = mock.MagicMock()
@@ -28,14 +28,14 @@ def test_list_paasta_list(mock_list_services, capfd):
     paasta_list(args)
 
     output, _ = capfd.readouterr()
-    assert output == 'service_1\nservice_2\n'
+    assert output == "service_1\nservice_2\n"
 
 
-@mock.patch('paasta_tools.cli.cmds.list.list_service_instances', autospec=True)
+@mock.patch("paasta_tools.cli.cmds.list.list_service_instances", autospec=True)
 def test_list_paasta_list_instances(mock_list_service_instances, capfd):
     """ paasta_list print each service.instance """
 
-    mock_services = ['service_1.main', 'service_2.canary']
+    mock_services = ["service_1.main", "service_2.canary"]
 
     mock_list_service_instances.return_value = mock_services
     args = mock.MagicMock()
@@ -43,4 +43,4 @@ def test_list_paasta_list_instances(mock_list_service_instances, capfd):
     paasta_list(args)
 
     output, _ = capfd.readouterr()
-    assert output == 'service_1.main\nservice_2.canary\n'
+    assert output == "service_1.main\nservice_2.canary\n"

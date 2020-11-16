@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.85.10
+RELEASE=0.97.33
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw -e PIP_INDEX_URL=$(PIP_INDEX_URL) yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -35,7 +35,7 @@ endif
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "yelp/paastatools_$*_container" || true
-	cd dockerfiles/$*/ && docker build -t "yelp/paastatools_$*_container" .
+	cd dockerfiles/$*/ && docker build --build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) -t "yelp/paastatools_$*_container" .
 	if [ "$$TRAVIS_BRANCH" = "master" -a \
 	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
 	     "$$DOCKER_USERNAME" != "" ]; then \
@@ -46,7 +46,28 @@ build_%_docker:
 itest_%: package_$$* bintray_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-package_%: build_$$*_docker
+PTG_VERSION=0.0.12
+PTG_SUM=1fa3f94fe5dd00059186404c2e2717625808c1cdefd90bd551f16b6e72018640
+ifeq ($(PAASTA_ENV),YELP)
+	PTG_SANITY=monk
+else
+	PTG_SANITY=http
+endif
+
+go_entrypoint:
+	rm -rf gopath && \
+	mkdir -p gopath && \
+	cd gopath && \
+	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip && \
+	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) && \
+	unzip v$(PTG_VERSION).zip && \
+	cd paasta-tools-go-$(PTG_VERSION) && \
+	PAASTA_VERSION=$(RELEASE) make paasta_go && \
+	./paasta_go -version | grep "paasta-tools-go version: $(PTG_VERSION)" && \
+	./paasta_go -version | grep "initializers.*$(PTG_SANITY)" && \
+	mv ./paasta_go ../
+
+package_%: build_$$*_docker go_entrypoint
 	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
@@ -56,11 +77,10 @@ package_%: build_$$*_docker
 
 	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
+	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
-	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
-
 
 DATE := $(shell date +'%Y-%m-%d' -d "`dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`")
 PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
@@ -83,7 +103,7 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
 # Follow the instructions to generate a github api token
 release:
 	dch -v $(RELEASE) --distribution xenial --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
-	sed -i -e "s/__version__ = .*/__version__ = '$(VERSION)'/" ../paasta_tools/__init__.py
+	sed -i -e "s/__version__ = .*/__version__ = \"$(VERSION)\"/" ../paasta_tools/__init__.py
 	@echo "$(RELEASE) has the changelog set."
 	github_changelog_generator -u Yelp -p paasta --since-tag v0.72.0 --max-issues=100 --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!! || true
 	cd .. && make docs || true

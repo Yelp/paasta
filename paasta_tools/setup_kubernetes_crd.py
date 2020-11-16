@@ -31,6 +31,7 @@ from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -38,25 +39,31 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Creates/updates kubernetes CRDs.')
+    parser = argparse.ArgumentParser(description="Creates/updates kubernetes CRDs.")
     parser.add_argument(
-        'service_list', nargs='+',
+        "service_list",
+        nargs="+",
         help="The list of services to create or update CRDs for",
         metavar="SERVICE",
     )
     parser.add_argument(
-        '-c', '--cluster', dest="cluster", metavar="CLUSTER",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        metavar="CLUSTER",
         default=None,
         help="Kubernetes cluster name",
     )
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
     return args
@@ -88,66 +95,68 @@ def main() -> None:
 
 
 def setup_kube_crd(
-        kube_client: KubeClient,
-        cluster: str,
-        services: Sequence[str],
-        soa_dir: str = DEFAULT_SOA_DIR,
+    kube_client: KubeClient,
+    cluster: str,
+    services: Sequence[str],
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector="yelp.com/paasta_service",
+        label_selector=paasta_prefixed("service")
     )
 
     success = True
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
-            service, f'crd-{cluster}', soa_dir=soa_dir,
+            service, f"crd-{cluster}", soa_dir=soa_dir
         )
         if not crd_config:
             log.info("nothing to deploy")
             continue
 
-        metadata = crd_config.get('metadata', {})
-        if 'labels' not in metadata:
-            metadata['labels'] = {}
-        metadata['labels']['yelp.com/paasta_service'] = service
+        metadata = crd_config.get("metadata", {})
+        if "labels" not in metadata:
+            metadata["labels"] = {}
+        metadata["labels"]["yelp.com/paasta_service"] = service
+        metadata["labels"][paasta_prefixed("service")] = service
         desired_crd = V1beta1CustomResourceDefinition(
-            api_version=crd_config.get('apiVersion'),
-            kind=crd_config.get('kind'),
+            api_version=crd_config.get("apiVersion"),
+            kind=crd_config.get("kind"),
             metadata=metadata,
-            spec=crd_config.get('spec'),
+            spec=crd_config.get("spec"),
         )
 
         existing_crd = None
         for crd in existing_crds.items:
-            if crd.metadata.name == desired_crd.metadata['name']:
+            if crd.metadata.name == desired_crd.metadata["name"]:
                 existing_crd = crd
                 break
 
         try:
             if existing_crd:
-                desired_crd.metadata['resourceVersion'] = existing_crd.metadata.resource_version
+                desired_crd.metadata[
+                    "resourceVersion"
+                ] = existing_crd.metadata.resource_version
                 kube_client.apiextensions.replace_custom_resource_definition(
-                    name=desired_crd.metadata['name'],
-                    body=desired_crd,
+                    name=desired_crd.metadata["name"], body=desired_crd
                 )
             else:
                 try:
                     kube_client.apiextensions.create_custom_resource_definition(
-                        body=desired_crd,
+                        body=desired_crd
                     )
                 except ValueError as err:
                     # TODO: kubernetes server will sometimes reply with conditions:null,
                     # figure out how to deal with this correctly, for more details:
                     # https://github.com/kubernetes/kubernetes/pull/64996
-                    if '`conditions`, must not be `None`' in str(err):
+                    if "`conditions`, must not be `None`" in str(err):
                         pass
                     else:
                         raise err
-            log.info(f"deployed {existing_crd.metadata.name} for {cluster}:{service}")
+            log.info(f"deployed {desired_crd.metadata['name']} for {cluster}:{service}")
         except ApiException as exc:
             log.error(
                 f"error deploying crd for {cluster}:{service}, "
-                f"status: {exc.status}, reason: {exc.reason}",
+                f"status: {exc.status}, reason: {exc.reason}"
             )
             log.debug(exc.body)
             success = False

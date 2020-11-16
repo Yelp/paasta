@@ -23,17 +23,16 @@ from paasta_tools.frameworks.native_scheduler import LIVE_TASK_STATES
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.frameworks.native_service_config import TaskInfo
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
-from paasta_tools.utils import paasta_print
 
 
 class AdhocScheduler(NativeScheduler):
     def __init__(self, *args, **kwargs):
-        self.dry_run = kwargs.pop('dry_run')
+        self.dry_run = kwargs.pop("dry_run")
 
-        if kwargs.get('service_config_overrides') is None:
-            kwargs['service_config_overrides'] = {}
-        kwargs['service_config_overrides'].setdefault('instances', 1)
-        self.finished_countdown = kwargs['service_config_overrides']['instances']
+        if kwargs.get("service_config_overrides") is None:
+            kwargs["service_config_overrides"] = {}
+        kwargs["service_config_overrides"].setdefault("instances", 1)
+        self.finished_countdown = kwargs["service_config_overrides"]["instances"]
 
         super().__init__(*args, **kwargs)
 
@@ -44,7 +43,7 @@ class AdhocScheduler(NativeScheduler):
     def statusUpdate(self, driver: MesosSchedulerDriver, update: Dict):
         super().statusUpdate(driver, update)
 
-        if update['state'] not in LIVE_TASK_STATES:
+        if update["state"] not in LIVE_TASK_STATES:
             self.finished_countdown -= 1
 
         # Stop if task ran and finished
@@ -52,22 +51,17 @@ class AdhocScheduler(NativeScheduler):
             driver.stop()
 
     def tasks_and_state_for_offer(
-        self,
-        driver: MesosSchedulerDriver,
-        offer,
-        state: ConstraintState,
+        self, driver: MesosSchedulerDriver, offer, state: ConstraintState
     ) -> Tuple[List[TaskInfo], ConstraintState]:
         # In dry run satisfy exit-conditions after we got the offer
         if self.dry_run or self.need_to_stop():
             if self.dry_run:
-                tasks, _ = super(). \
-                    tasks_and_state_for_offer(driver, offer, state)
-                paasta_print("Would have launched: ", tasks)
+                tasks, _ = super().tasks_and_state_for_offer(driver, offer, state)
+                print("Would have launched: ", tasks)
             driver.stop()
             return [], state
 
-        return super(). \
-            tasks_and_state_for_offer(driver, offer, state)
+        return super().tasks_and_state_for_offer(driver, offer, state)
 
     def kill_tasks_if_necessary(self, *args, **kwargs):
         return

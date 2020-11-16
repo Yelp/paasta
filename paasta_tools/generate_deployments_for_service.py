@@ -25,7 +25,7 @@ For example, if the service paasta_test has an instance called main with no
 deploy group in its configuration in the hab cluster, then this script
 will create a key/value pair of 'paasta_test:paasta-hab.main': 'services-paasta_test:paasta-SHA',
 where SHA is the current SHA at the tip of the branch named hab in
-git@git.yelpcorp.com:services/paasta_test.git. If main had a deploy_group key with
+git@github.yelpcorp.com:services/paasta_test.git. If main had a deploy_group key with
 a value of 'master', the key would be paasta_test:master instead, and the SHA
 would be the SHA at the tip of master.
 
@@ -38,12 +38,14 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
 import re
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Tuple
 
 from mypy_extensions import TypedDict
@@ -55,69 +57,51 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 
 log = logging.getLogger(__name__)
-TARGET_FILE = 'deployments.json'
+TARGET_FILE = "deployments.json"
 
 
 V1_Mapping = TypedDict(
-    'V1_Mapping',
-    {
-        "docker_image": str,
-        "desired_state": str,
-        "force_bounce": str,
-    },
+    "V1_Mapping", {"docker_image": str, "desired_state": str, "force_bounce": str}
 )
-V2_Deployment = TypedDict(
-    'V2_Deployment',
-    {
-        'docker_image': str,
-        'git_sha': str,
-    },
-)
-V2_Control = TypedDict(
-    'V2_Control',
-    {
-        'desired_state': str,
-        'force_bounce': str,
-    },
-)
+V2_Deployment = TypedDict("V2_Deployment", {"docker_image": str, "git_sha": str})
+V2_Control = TypedDict("V2_Control", {"desired_state": str, "force_bounce": str})
 V2_Mappings = TypedDict(
-    'V2_Mappings',
-    {
-        'deployments': Dict[str, V2_Deployment],
-        'controls': Dict[str, V2_Control],
-    },
+    "V2_Mappings",
+    {"deployments": Dict[str, V2_Deployment], "controls": Dict[str, V2_Control]},
 )
 
 
 DeploymentsDict = TypedDict(
-    'DeploymentsDict',
-    {
-        'v1': Dict[str, V1_Mapping],
-        'v2': V2_Mappings,
-    },
+    "DeploymentsDict", {"v1": Dict[str, V1_Mapping], "v2": V2_Mappings}
 )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Creates marathon jobs.')
+    parser = argparse.ArgumentParser(description="Creates marathon jobs.")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        dest="verbose", default=False,
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     parser.add_argument(
-        '-s', '--service', required=True,
+        "-s",
+        "--service",
+        required=True,
         help="Service name to make the deployments.json for",
     )
     args = parser.parse_args()
     return args
 
 
-def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[str, str]:
+def get_latest_deployment_tag(
+    refs: Dict[str, str], deploy_group: str
+) -> Tuple[str, str]:
     """Gets the latest deployment tag and sha for the specified deploy_group
 
     :param refs: A dictionary mapping git refs to shas
@@ -129,7 +113,7 @@ def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[
     most_recent_dtime = None
     most_recent_ref = None
     most_recent_sha = None
-    pattern = re.compile(r'^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$' % deploy_group)
+    pattern = re.compile(r"^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$" % deploy_group)
 
     for ref_name, sha in refs.items():
         match = pattern.match(ref_name)
@@ -143,8 +127,7 @@ def get_latest_deployment_tag(refs: Dict[str, str], deploy_group: str) -> Tuple[
 
 
 def get_deploy_group_mappings(
-    soa_dir: str,
-    service: str,
+    soa_dir: str, service: str
 ) -> Tuple[Dict[str, V1_Mapping], V2_Mappings]:
     """Gets mappings from service:deploy_group to services-service:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
@@ -163,59 +146,64 @@ def get_deploy_group_mappings(
       have not changed.
     """
     mappings: Dict[str, V1_Mapping] = {}
-    v2_mappings: V2_Mappings = {'deployments': {}, 'controls': {}}
+    v2_mappings: V2_Mappings = {"deployments": {}, "controls": {}}
+    git_url = get_git_url(service=service, soa_dir=soa_dir)
 
-    service_configs = get_instance_configs_for_service(
-        soa_dir=soa_dir,
-        service=service,
-    )
+    # Most of the time of this function is in two parts:
+    # 1. getting remote refs from git. (Mostly IO, just waiting for git to get back to us.)
+    # 2. loading instance configs. (Mostly CPU, copy.deepcopying yaml over and over again)
+    # Let's do these two things in parallel.
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    remote_refs_future = executor.submit(remote_git.list_remote_refs, git_url)
+
+    service_configs = get_instance_configs_for_service(soa_dir=soa_dir, service=service)
 
     deploy_group_branch_mappings = {
-        config.get_branch(): config.get_deploy_group()
-        for config in service_configs
+        config.get_branch(): config.get_deploy_group() for config in service_configs
     }
     if not deploy_group_branch_mappings:
-        log.info('Service %s has no valid deploy groups. Skipping.', service)
+        log.info("Service %s has no valid deploy groups. Skipping.", service)
         return mappings, v2_mappings
 
-    git_url = get_git_url(
-        service=service,
-        soa_dir=soa_dir,
-    )
-    remote_refs = remote_git.list_remote_refs(git_url)
+    remote_refs = remote_refs_future.result()
+
+    tag_by_deploy_group = {
+        dg: get_latest_deployment_tag(remote_refs, dg)
+        for dg in set(deploy_group_branch_mappings.values())
+    }
+    state_by_branch_and_sha = get_desired_state_by_branch_and_sha(remote_refs)
 
     for control_branch, deploy_group in deploy_group_branch_mappings.items():
-        (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+        (deploy_ref_name, deploy_ref_sha) = tag_by_deploy_group[deploy_group]
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
-            control_branch_alias = f'{service}:paasta-{control_branch}'
-            control_branch_alias_v2 = f'{service}:{control_branch}'
+            control_branch_alias = f"{service}:paasta-{control_branch}"
+            control_branch_alias_v2 = f"{service}:{control_branch}"
             docker_image = build_docker_image_name(service, commit_sha)
-            desired_state, force_bounce = get_desired_state(
-                branch=control_branch,
-                remote_refs=remote_refs,
-                deploy_group=deploy_group,
+            desired_state, force_bounce = state_by_branch_and_sha.get(
+                (control_branch, deploy_ref_sha), ("start", None)
             )
-            log.info('Mapping %s to docker image %s', control_branch, docker_image)
+            log.info("Mapping %s to docker image %s", control_branch, docker_image)
 
-            v2_mappings['deployments'][deploy_group] = {
-                'docker_image': docker_image,
-                'git_sha': commit_sha,
+            v2_mappings["deployments"][deploy_group] = {
+                "docker_image": docker_image,
+                "git_sha": commit_sha,
             }
             mappings[control_branch_alias] = {
-                'docker_image': docker_image,
-                'desired_state': desired_state,
-                'force_bounce': force_bounce,
+                "docker_image": docker_image,
+                "desired_state": desired_state,
+                "force_bounce": force_bounce,
             }
-            v2_mappings['controls'][control_branch_alias_v2] = {
-                'desired_state': desired_state,
-                'force_bounce': force_bounce,
+            v2_mappings["controls"][control_branch_alias_v2] = {
+                "desired_state": desired_state,
+                "force_bounce": force_bounce,
             }
     return mappings, v2_mappings
 
 
 def build_docker_image_name(service: str, sha: str) -> str:
-    return f'services-{service}:paasta-{sha}'
+    return f"services-{service}:paasta-{sha}"
 
 
 def get_service_from_docker_image(image_name: str) -> str:
@@ -225,57 +213,48 @@ def get_service_from_docker_image(image_name: str) -> str:
     An image name has the full path, including the registry. Like:
     docker-paasta.yelpcorp.com:443/services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6
     """
-    matches = re.search('.*/services-(.*?):paasta-.*?', image_name)
+    matches = re.search(".*/services-(.*?):paasta-.*?", image_name)
     return matches.group(1)
 
 
-def get_desired_state(branch: str, remote_refs: Dict[str, str], deploy_group: str) -> Tuple[str, Any]:
-    """Gets the desired state (start or stop) from the given repo, as well as
-    an arbitrary value (which may be None) that will change when a restart is
-    desired.
-    """
-    # (?:paasta-){1,2} supports a previous mistake where some tags would be called
-    # paasta-paasta-cluster.instance
-    tag_pattern = r'^refs/tags/(?:paasta-){0,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
+def get_desired_state_by_branch_and_sha(
+    remote_refs: Dict[str, str]
+) -> Dict[Tuple[str, str], Tuple[str, Any]]:
+    tag_pattern = r"^refs/tags/(?:paasta-){0,2}(?P<branch>[a-zA-Z0-9-_.]+)-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$"
 
-    states = []
-    (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
+    states_by_branch_and_sha: Dict[Tuple[str, str], List[Tuple[str, Any]]] = {}
 
     for ref_name, sha in remote_refs.items():
-        if sha == head_sha:
-            match = re.match(tag_pattern, ref_name)
-            if match:
-                gd = match.groupdict()
-                states.append((gd['state'], gd['force_bounce']))
+        match = re.match(tag_pattern, ref_name)
+        if match:
+            gd = match.groupdict()
+            states_by_branch_and_sha.setdefault((gd["branch"], sha), []).append(
+                (gd["state"], gd["force_bounce"])
+            )
 
-    if states:
-        # there may be more than one that matches, so take the one that sorts
-        # last by the force_bounce key.
-        sorted_states = sorted(states, key=lambda x: x[1])
-        return sorted_states[-1]
-    else:
-        return ('start', None)
+    return {
+        (branch, sha): sorted(states, key=lambda x: x[1])[-1]
+        for ((branch, sha), states) in states_by_branch_and_sha.items()
+    }
 
 
 def get_deployments_dict_from_deploy_group_mappings(
-    deploy_group_mappings: Dict[str, V1_Mapping],
-    v2_deploy_group_mappings: V2_Mappings,
+    deploy_group_mappings: Dict[str, V1_Mapping], v2_deploy_group_mappings: V2_Mappings
 ) -> DeploymentsDict:
-    return {'v1': deploy_group_mappings, 'v2': v2_deploy_group_mappings}
+    return {"v1": deploy_group_mappings, "v2": v2_deploy_group_mappings}
 
 
 def generate_deployments_for_service(service: str, soa_dir: str) -> None:
     try:
-        with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as oldf:
+        with open(os.path.join(soa_dir, service, TARGET_FILE), "r") as oldf:
             old_deployments_dict = json.load(oldf)
     except (IOError, ValueError):
         old_deployments_dict = {}
-    mappings, v2_mappings = get_deploy_group_mappings(
-        soa_dir=soa_dir,
-        service=service,
-    )
+    mappings, v2_mappings = get_deploy_group_mappings(soa_dir=soa_dir, service=service)
 
-    deployments_dict = get_deployments_dict_from_deploy_group_mappings(mappings, v2_mappings)
+    deployments_dict = get_deployments_dict_from_deploy_group_mappings(
+        mappings, v2_mappings
+    )
     if deployments_dict != old_deployments_dict:
         with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as newf:
             json.dump(deployments_dict, newf)

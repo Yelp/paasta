@@ -1,5 +1,5 @@
-paasta_tools.tron package
-=========================
+paasta\_tools.tron package
+==========================
 
 Submodules
 ----------
@@ -14,6 +14,6 @@ Module contents
 ---------------
 
 .. automodule:: paasta_tools.tron
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

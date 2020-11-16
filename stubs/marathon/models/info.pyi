@@ -16,7 +16,19 @@ class MarathonInfo(MarathonResource):
     elected = ...  # type: Any
     zookeeper_config = ...  # type: Any
     buildref = ...  # type: Any
-    def __init__(self, event_subscriber: Optional[Any] = ..., framework_id: Optional[Any] = ..., http_config: Optional[Any] = ..., leader: Optional[Any] = ..., marathon_config: Optional[Any] = ..., name: Optional[Any] = ..., version: Optional[Any] = ..., elected: Optional[Any] = ..., zookeeper_config: Optional[Any] = ..., buildref: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        event_subscriber: Optional[Any] = ...,
+        framework_id: Optional[Any] = ...,
+        http_config: Optional[Any] = ...,
+        leader: Optional[Any] = ...,
+        marathon_config: Optional[Any] = ...,
+        name: Optional[Any] = ...,
+        version: Optional[Any] = ...,
+        elected: Optional[Any] = ...,
+        zookeeper_config: Optional[Any] = ...,
+        buildref: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonConfig(MarathonObject):
     checkpoint = ...  # type: Any
@@ -37,7 +49,30 @@ class MarathonConfig(MarathonObject):
     task_launch_timeout = ...  # type: Any
     task_reservation_timeout = ...  # type: Any
     marathon_store_timeout = ...  # type: Any
-    def __init__(self, checkpoint: Optional[Any] = ..., executor: Optional[Any] = ..., failover_timeout: Optional[Any] = ..., framework_name: Optional[Any] = ..., ha: Optional[Any] = ..., hostname: Optional[Any] = ..., leader_proxy_connection_timeout_ms: Optional[Any] = ..., leader_proxy_read_timeout_ms: Optional[Any] = ..., local_port_min: Optional[Any] = ..., local_port_max: Optional[Any] = ..., master: Optional[Any] = ..., mesos_leader_ui_url: Optional[Any] = ..., mesos_role: Optional[Any] = ..., mesos_user: Optional[Any] = ..., webui_url: Optional[Any] = ..., reconciliation_initial_delay: Optional[Any] = ..., reconciliation_interval: Optional[Any] = ..., task_launch_timeout: Optional[Any] = ..., marathon_store_timeout: Optional[Any] = ..., task_reservation_timeout: Optional[Any] = ..., features: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        checkpoint: Optional[Any] = ...,
+        executor: Optional[Any] = ...,
+        failover_timeout: Optional[Any] = ...,
+        framework_name: Optional[Any] = ...,
+        ha: Optional[Any] = ...,
+        hostname: Optional[Any] = ...,
+        leader_proxy_connection_timeout_ms: Optional[Any] = ...,
+        leader_proxy_read_timeout_ms: Optional[Any] = ...,
+        local_port_min: Optional[Any] = ...,
+        local_port_max: Optional[Any] = ...,
+        master: Optional[Any] = ...,
+        mesos_leader_ui_url: Optional[Any] = ...,
+        mesos_role: Optional[Any] = ...,
+        mesos_user: Optional[Any] = ...,
+        webui_url: Optional[Any] = ...,
+        reconciliation_initial_delay: Optional[Any] = ...,
+        reconciliation_interval: Optional[Any] = ...,
+        task_launch_timeout: Optional[Any] = ...,
+        marathon_store_timeout: Optional[Any] = ...,
+        task_reservation_timeout: Optional[Any] = ...,
+        features: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonZooKeeperConfig(MarathonObject):
     zk = ...  # type: Any
@@ -49,15 +84,33 @@ class MarathonZooKeeperConfig(MarathonObject):
     zk_connection_timeout = ...  # type: Any
     zk_future_timeout = ...  # type: Any
     zk_session_timeout = ...  # type: Any
-    def __init__(self, zk: Optional[Any] = ..., zk_future_timeout: Optional[Any] = ..., zk_hosts: Optional[Any] = ..., zk_max_versions: Optional[Any] = ..., zk_path: Optional[Any] = ..., zk_session_timeout: Optional[Any] = ..., zk_state: Optional[Any] = ..., zk_timeout: Optional[Any] = ..., zk_connection_timeout: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        zk: Optional[Any] = ...,
+        zk_future_timeout: Optional[Any] = ...,
+        zk_hosts: Optional[Any] = ...,
+        zk_max_versions: Optional[Any] = ...,
+        zk_path: Optional[Any] = ...,
+        zk_session_timeout: Optional[Any] = ...,
+        zk_state: Optional[Any] = ...,
+        zk_timeout: Optional[Any] = ...,
+        zk_connection_timeout: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonHttpConfig(MarathonObject):
     assets_path = ...  # type: Any
     http_port = ...  # type: Any
     https_port = ...  # type: Any
-    def __init__(self, assets_path: Optional[Any] = ..., http_port: Optional[Any] = ..., https_port: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self,
+        assets_path: Optional[Any] = ...,
+        http_port: Optional[Any] = ...,
+        https_port: Optional[Any] = ...,
+    ) -> None: ...
 
 class MarathonEventSubscriber(MarathonObject):
     type = ...  # type: Any
     http_endpoints = ...  # type: Any
-    def __init__(self, type: Optional[Any] = ..., http_endpoints: Optional[Any] = ...) -> None: ...
+    def __init__(
+        self, type: Optional[Any] = ..., http_endpoints: Optional[Any] = ...
+    ) -> None: ...

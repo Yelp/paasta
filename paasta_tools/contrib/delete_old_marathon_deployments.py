@@ -29,15 +29,21 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-a', '--age', dest='age', type=timedelta_type, default='1h',
+        "-a",
+        "--age",
+        dest="age",
+        type=timedelta_type,
+        default="1h",
         help="Max age of a Marathon deployment before it is stopped."
         "Any pytimeparse unit is supported",
     )
     parser.add_argument(
-        '-n', '--dry-run', action="store_true",
+        "-n",
+        "--dry-run",
+        action="store_true",
         help="Don't actually stop any Marathon deployments",
     )
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument("-v", "--verbose", action="store_true")
     options = parser.parse_args()
     return options
 
@@ -64,13 +70,19 @@ def delete_deployment_if_too_old(client, deployment, max_date, dry_run):
     age = now() - started_at
     if started_at < max_date:
         if dry_run is True:
-            log.warning(f"Would delete {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
+            log.warning(
+                f"Would delete {deployment.id} for {deployment.affected_apps[0]} as it is {age} old"
+            )
         else:
-            log.warning(f"Deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
+            log.warning(
+                f"Deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old"
+            )
             client.delete_deployment(deployment_id=deployment.id, force=False)
     else:
         if dry_run is True:
-            log.warning(f"NOT deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old")
+            log.warning(
+                f"NOT deleting {deployment.id} for {deployment.affected_apps[0]} as it is {age} old"
+            )
 
 
 def main():

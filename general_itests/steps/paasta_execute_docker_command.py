@@ -18,19 +18,18 @@ from docker.errors import APIError
 
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_client
-from paasta_tools.utils import paasta_print
 
 
-@given('Docker is available')
+@given("Docker is available")
 def docker_is_available(context):
     docker_client = get_docker_client()
     assert docker_client.ping()
     context.docker_client = docker_client
 
 
-@given('a running docker container with task id {task_id} and image {image_name}')
+@given("a running docker container with task id {task_id} and image {image_name}")
 def create_docker_container(context, task_id, image_name):
-    container_name = 'paasta-itest-execute-in-containers'
+    container_name = "paasta-itest-execute-in-containers"
     try:
         context.docker_client.remove_container(container_name, force=True)
     except APIError:
@@ -39,36 +38,40 @@ def create_docker_container(context, task_id, image_name):
     container = context.docker_client.create_container(
         name=container_name,
         image=image_name,
-        command='/bin/sleep infinity',
-        environment={'MESOS_TASK_ID': task_id},
+        command="/bin/sleep infinity",
+        environment={"MESOS_TASK_ID": task_id},
     )
-    context.docker_client.start(container=container.get('Id'))
-    context.running_container_id = container.get('Id')
+    context.docker_client.start(container=container.get("Id"))
+    context.running_container_id = container.get("Id")
 
 
-@when('we paasta_execute_docker_command a command with exit code {code} in container with task id {task_id}')
+@when(
+    "we paasta_execute_docker_command a command with exit code {code} in container with task id {task_id}"
+)
 def run_command_in_container(context, code, task_id):
     cmd = f'../paasta_tools/paasta_execute_docker_command.py -i {task_id} -c "exit {code}"'
-    paasta_print('Running cmd %s' % cmd)
+    print("Running cmd %s" % cmd)
     exit_code, output = _run(cmd)
-    paasta_print(f'Got exitcode {exit_code} with output:\n{output}')
+    print(f"Got exitcode {exit_code} with output:\n{output}")
     context.return_code = exit_code
 
 
-@then('the exit code is {code}')
+@then("the exit code is {code}")
 def paasta_execute_docker_command_result(context, code):
     assert int(code) == int(context.return_code)
 
 
-@then('the docker container has at most {num} exec instances')
+@then("the docker container has at most {num} exec instances")
 def check_container_exec_instances(context, num):
     """Modern docker versions remove ExecIDs after they finished, but older
     docker versions leave ExecIDs behind. This test is for asserting that
     the ExecIDs are cleaned up one way or another"""
-    container_info = context.docker_client.inspect_container(context.running_container_id)
-    if container_info['ExecIDs'] is None:
+    container_info = context.docker_client.inspect_container(
+        context.running_container_id
+    )
+    if container_info["ExecIDs"] is None:
         execs = []
     else:
-        execs = container_info['ExecIDs']
-    paasta_print('Container info:\n%s' % container_info)
+        execs = container_info["ExecIDs"]
+    print("Container info:\n%s" % container_info)
     assert len(execs) <= int(num)

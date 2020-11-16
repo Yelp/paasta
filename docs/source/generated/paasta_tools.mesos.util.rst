@@ -1,7 +1,7 @@
-paasta_tools.mesos.util module
-==============================
+paasta\_tools.mesos.util module
+===============================
 
 .. automodule:: paasta_tools.mesos.util
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

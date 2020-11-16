@@ -24,12 +24,14 @@ def _make_determine_wants_func(ref_mutator):
     """Returns a safer version of ref_mutator, suitable for passing as the
     determine_wants argument to dulwich's send_pack method. The returned
     function will not delete or modify any existing refs."""
+
     def determine_wants(old_refs):
-        refs = {k.decode('UTF-8'): v.decode('UTF-8') for k, v in old_refs.items()}
+        refs = {k.decode("UTF-8"): v.decode("UTF-8") for k, v in old_refs.items()}
         new_refs = ref_mutator(refs)
-        new_refs = {k.encode('UTF-8'): v.encode('UTF-8') for k, v in new_refs.items()}
+        new_refs = {k.encode("UTF-8"): v.encode("UTF-8") for k, v in new_refs.items()}
         new_refs.update(old_refs)  # Make sure we don't delete/modify anything.
         return new_refs
+
     return determine_wants
 
 
@@ -41,10 +43,12 @@ def make_force_push_mutate_refs_func(targets, sha):
     :param targets: List of branches/tags to point at the input sha
     :param sha: The git sha to point the branches/tags at
     :returns: A function to do the ref manipulation that a dulwich client can use"""
+
     def mutate_refs(refs):
         for target in targets:
-            refs[target.encode('UTF-8')] = sha.encode('UTF-8')
+            refs[target.encode("UTF-8")] = sha.encode("UTF-8")
         return refs
+
     return mutate_refs
 
 
@@ -88,7 +92,7 @@ def list_remote_refs(git_url):
     client, path = dulwich.client.get_transport_and_path(git_url)
     try:
         refs = client.fetch_pack(path, lambda refs: [], None, lambda data: None)
-        return {k.decode('UTF-8'): v.decode('UTF-8') for k, v in refs.items()}
+        return {k.decode("UTF-8"): v.decode("UTF-8") for k, v in refs.items()}
     except dulwich.errors.HangupException as e:
         raise LSRemoteException(f"Unable to fetch remote refs from {git_url}: {e}")
 
@@ -103,15 +107,21 @@ def get_authors(git_url, from_sha, to_sha):
     git_server = matches.group("git_server")
     git_repo = matches.group("git_repo")
     if git_server is None:
-        return 1, f"could not understand the git server in {git_url} for authors detection"
-    if git_repo is None:
-        return 1, f"could not understand the git repo in {git_url} for authors detection"
-
-    if "yelpcorp.com" in git_server:
-        ssh_command = f"ssh {git_server} authors-of-changeset {git_repo} {from_sha} {to_sha}"
-        return _run(
-            command=ssh_command,
-            timeout=5.0,
+        return (
+            1,
+            f"could not understand the git server in {git_url} for authors detection",
         )
+    if git_repo is None:
+        return (
+            1,
+            f"could not understand the git repo in {git_url} for authors detection",
+        )
+
+    if "git.yelpcorp.com" in git_server:
+        ssh_command = (
+            f"ssh {git_server} authors-of-changeset {git_repo} {from_sha} {to_sha}"
+        )
+        return _run(command=ssh_command, timeout=5.0)
     else:
+        # TODO: PAASTA-16927: support getting authors for services on GHE
         return 1, f"Fetching authors not supported for {git_server}"

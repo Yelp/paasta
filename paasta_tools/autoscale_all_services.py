@@ -20,19 +20,23 @@ from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Autoscales marathon jobs')
+    parser = argparse.ArgumentParser(description="Autoscales marathon jobs")
     parser.add_argument(
-        '-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     parser.add_argument(
-        '-v', '--verbose', action='store_true',
-        help="Increase logging verboseness",
+        "-v", "--verbose", action="store_true", help="Increase logging verboseness"
     )
     parser.add_argument(
-        'services', type=str, nargs='*',
-        help='name of services to scale (optional defaults to all autoscaling enabled services)',
+        "services",
+        type=str,
+        nargs="*",
+        help="name of services to scale (optional defaults to all autoscaling enabled services)",
     )
     args = parser.parse_args()
     return args
@@ -47,5 +51,5 @@ def main():
     autoscale_services(soa_dir=args.soa_dir, services=args.services)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
