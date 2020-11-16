@@ -191,6 +191,13 @@ def pick_spark_ui_port(service, instance):
     return preferred_port
 
 
+def get_smart_paasta_instance_name():
+    if os.environ.get("TRON_JOB_NAMESPACE"):
+        tron_job = os.environ.get("TRON_JOB_NAME")
+        tron_action = os.environ.get("TRON_ACTION")
+        return f"{tron_job}.{tron_action}"
+
+
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = "tron"
 
@@ -235,6 +242,7 @@ class TronActionConfig(InstanceConfig):
         aws_creds = get_aws_credentials(
             aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml")
         )
+        paasta_instance = get_smart_paasta_instance_name() or self.get_instance()
         self._spark_config_dict = get_spark_conf(
             cluster_manager=self.get_spark_cluster_manager(),
             spark_app_base_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
