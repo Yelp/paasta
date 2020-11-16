@@ -768,7 +768,7 @@ def paasta_spark_run(args):
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
     needs_docker_cfg = not args.build and not args.image
     user_spark_opts = _parse_user_spark_args(args.spark_args)
-
+    paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
         cluster_manager="mesos",
         spark_app_base_name=app_base_name,
@@ -777,7 +777,7 @@ def paasta_spark_run(args):
         paasta_cluster=args.cluster,
         paasta_pool=args.pool,
         paasta_service=args.service,
-        paasta_instance=args.instance,
+        paasta_instance=paasta_instance,
         extra_volumes=volumes,
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
