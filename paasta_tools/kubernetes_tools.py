@@ -509,7 +509,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                 )
             elif metric_name in {"http", "uwsgi"}:
-                if "dimensions" not in value:
+                if (
+                    "dimensions" not in value
+                    and not load_system_paasta_config().get_hpa_always_uses_external_for_signalfx()
+                ):
                     metrics.append(
                         V2beta1MetricSpec(
                             type="Pods",
@@ -533,12 +536,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             ),
                         )
                     )
-                    filters = " and ".join(
-                        f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
-                    )
+                    dimensions = value.get("dimensions", {})
+                    if dimensions:
+                        filters = ", filter=" + (
+                            " and ".join(
+                                f'filter("{k}", "{v}")' for k, v in dimensions.items()
+                            )
+                        )
+                    else:
+                        filters = ""
                     annotations[
                         f"signalfx.com.external.metric/{namespaced_metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
+                    ] = f'data("{metric_name}"{filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
             else:
                 namespaced_metric_name = self.namespace_external_metric_name(
                     metric_name
@@ -621,6 +630,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if (
                 autoscaling_params.get("forecast_policy") == "moving_average"
                 or "offset" in autoscaling_params
+                or load_system_paasta_config().get_hpa_always_uses_external_for_signalfx()
             ):
                 hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
                 signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
