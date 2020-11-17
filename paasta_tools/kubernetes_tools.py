@@ -108,6 +108,7 @@ from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools import redcache
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
@@ -2165,6 +2166,7 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
+@redcache.d(skip=1)
 def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 

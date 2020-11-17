@@ -18,6 +18,7 @@ dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
 graphviz
 gunicorn
+hiredis
 humanfriendly
 humanize >= 0.5.1
 inotify >= 0.2.8
@@ -44,6 +45,7 @@ python-dateutil >= 2.4.0
 python-iptables
 pytimeparse >= 1.1.0
 pytz >= 2014.10
+redis
 requests >= 2.18.4
 requests-cache >= 0.4.10,<= 0.5.0
 retry

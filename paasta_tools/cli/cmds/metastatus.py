@@ -16,6 +16,7 @@ from typing import Sequence
 from typing import Tuple
 
 from paasta_tools import paastaapi
+from paasta_tools import redcache
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.utils import get_paasta_metastatus_cmd_args
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -112,6 +113,12 @@ def add_subparser(subparsers,) -> None:
     status_parser.set_defaults(command=paasta_metastatus)
 
 
+@redcache.d(
+    res=120,
+    selector=lambda *_, **kwds: [
+        item for item in kwds.items() if item[0] != "system_paasta_config"
+    ],
+)
 def paasta_metastatus_on_api_endpoint(
     cluster: str,
     system_paasta_config: SystemPaastaConfig,

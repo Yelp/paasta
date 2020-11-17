@@ -31,6 +31,7 @@ future==0.16.0
 google-auth==1.2.0
 graphviz==0.8.2
 gunicorn==19.8.1
+hiredis==0.2.0
 humanfriendly==4.18
 humanize==0.5.1
 hupper==1.0
@@ -81,6 +82,7 @@ python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
 pyyaml==5.1
+redis==3.4.1
 repoze.lru==0.6
 requests==2.21.0
 requests-cache==0.4.10
