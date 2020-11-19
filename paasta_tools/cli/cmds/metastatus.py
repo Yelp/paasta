@@ -28,9 +28,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 
-redcache.setup()
-
-
 def add_subparser(subparsers,) -> None:
     status_parser = subparsers.add_parser(
         "metastatus",
@@ -214,6 +211,7 @@ def paasta_metastatus(args,) -> int:
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()
+    redcache.setup()
 
     all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
