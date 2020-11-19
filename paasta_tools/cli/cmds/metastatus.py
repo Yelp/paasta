@@ -28,6 +28,9 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 
+redcache.setup()
+
+
 def add_subparser(subparsers,) -> None:
     status_parser = subparsers.add_parser(
         "metastatus",
@@ -114,12 +117,13 @@ def add_subparser(subparsers,) -> None:
 
 
 @redcache.d(
-    res=120,
-    selector=lambda *_, **kwds: [
-        item for item in kwds.items() if item[0] != "system_paasta_config"
-    ],
+    resolution=120,
+    selector=lambda **k: filter(
+        lambda item: item[0] != "system_paasta_config", k.items()
+    ),
 )
 def paasta_metastatus_on_api_endpoint(
+    *,
     cluster: str,
     system_paasta_config: SystemPaastaConfig,
     groupings: Sequence[str],

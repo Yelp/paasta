@@ -2166,8 +2166,12 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-@redcache.d(skip=1)
-def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence[V1Pod]:
+@redcache.d(
+    selector=lambda **k: filter(lambda item: item[0] != "kube_client", k.items())
+)
+def get_all_pods(
+    *, kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
 
@@ -2175,7 +2179,7 @@ def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence
 def get_all_pods_cached(
     kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
-    pods: Sequence[V1Pod] = get_all_pods(kube_client, namespace)
+    pods: Sequence[V1Pod] = get_all_pods(kube_client=kube_client, namespace=namespace)
     return pods
 
 

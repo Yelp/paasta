@@ -1,3 +1,4 @@
+import hashlib
 import pickle
 import time
 from functools import wraps
@@ -7,27 +8,32 @@ from redis.client import Redis
 cache_server: Redis = None
 
 
-def hashable(data):
-    if isinstance(data, dict):
-        return frozenset((key, hashable(val)) for key, val in data.items())
+def digest(hasher, data):
+    if isinstance(data, (str, int, float)):
+        hasher.update(str(data).encode("utf-8"))
+    elif isinstance(data, dict):
+        for key, val in data.items():
+            hasher.update(str(key).encode("utf-8"))
+            digest(hasher, val)
     elif "__iter__" in dir(data):
-        return tuple(hashable(item) for item in data)
-    elif "__hash__" in dir(data):
-        return data
+        for item in data:
+            digest(hasher, item)
     else:
-        raise f"{type(data)}({data!r}) is not hashable"
+        raise f"can't digest {type(data)}: {data!r}"
 
 
-def d(res=60, selector=lambda *args, **kwds: (args, kwds)):
+def d(resolution=60, selector=lambda *args, **kwds: (args, kwds)):
     def dd(f):
         @wraps(f)
         def wrapper(*args, **kwds):
             if cache_server is None:
                 return f(*args, **kwds)
 
-            data_hash = hash(hashable(selector(args, kwds)))
+            hasher = hashlib.md5()
+            digest(hasher, selector(*args, **kwds))
+            data_hash = hasher.hexdigest()
             ts = int(time.time())
-            ts_res = ts - ts % res
+            ts_res = ts - ts % resolution
             key = f"{f.__module__}.{f.__name__}:{ts_res}:{data_hash}"
 
             # check if key exists
@@ -35,7 +41,6 @@ def d(res=60, selector=lambda *args, **kwds: (args, kwds)):
             if exists is None:
                 # try grabbing a lock for the key
                 if cache_server.set(key, pickle.dumps(dict(ts=ts)), nx=True):
-                    print("updating cache")
                     val = f(*args, **kwds)
                     # set the value for others
                     cache_server.set(key, pickle.dumps(dict(ts=ts, val=val)))
@@ -44,8 +49,9 @@ def d(res=60, selector=lambda *args, **kwds: (args, kwds)):
                     # re-fetch the key locked by somebody else
                     exists = cache_server.get(key)
 
-            # re-fetch in a loop until `val` shows up
-            while time.time() < ts_res + res:
+            # re-fetch in a loop until `val` shows up, but only wait
+            # for 20% of resolution time
+            while time.time() < ts + resolution / 5.0:
                 exists = pickle.loads(exists)
                 if "val" in exists:
                     return exists["val"]
@@ -62,4 +68,4 @@ def d(res=60, selector=lambda *args, **kwds: (args, kwds)):
 
 def setup():
     global cache_server
-    cache_server = Redis(host="localhost", port=6379)
+    cache_server = Redis(host="dev54-uswest1adevc.dev.yelpcorp.com", port=6379)
