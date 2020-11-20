@@ -106,7 +106,49 @@ def add_subparser(command, subparsers):
     add_subparser_fn(subparsers)
 
 
-def get_argparser():
+PAASTA_SUBCOMMANDS = {
+    "autoscale": "autoscale",
+    "boost": "boost",
+    "check": "check",
+    "cook-image": "cook_image",
+    "get-docker-image": "get_docker_image",
+    "get-latest-deployment": "get_latest_deployment",
+    "info": "info",
+    "itest": "itest",
+    "list-clusters": "list_clusters",
+    "list-deploy-queue": "list_deploy_queue",
+    "list": "list",
+    "local-run": "local_run",
+    "logs": "logs",
+    "mark-for-deployment": "mark_for_deployment",
+    "metastatus": "metastatus",
+    "pauise_service_autoscaler": "pauise_service_autoscaler",
+    "performance-check": "performance_check",
+    "push-to-registry": "push_to_registry",
+    "remote-run": "remote_run",
+    "rollback": "rollback",
+    "secret": "secret",
+    "security-check": "security_check",
+    "spark-run": "spark_run",
+    "start": "start_stop_restart",
+    "stop": "start_stop_restart",
+    "restart": "start_stop_restart",
+    "status": "status",
+    "sysdig": "sysdig",
+    "validate": "validate",
+    "wait-for-deployment": "wait_for_deployment",
+}
+
+
+def get_argparser(commands=None):
+    """Create and return argument parser for a set of subcommands.
+
+    :param commands: Union[None, List[str]] If `commands` argument is `None`,
+    add full parsers for all subcommands, if `commands` is empty list -
+    add thin parsers for all subcommands, otherwise - add full parsers for
+    subcommands in the argument.
+    """
+
     parser = PrintsHelpOnErrorArgumentParser(
         description=(
             "The PaaSTA command line tool. The 'paasta' command is the entry point "
@@ -140,8 +182,15 @@ def get_argparser():
     help_parser = subparsers.add_parser("help", add_help=False)
     help_parser.set_defaults(command=None)
 
-    for command in sorted(modules_in_pkg(cmds)):
-        add_subparser(command, subparsers)
+    if commands is None:
+        for command in sorted(modules_in_pkg(cmds)):
+            add_subparser(command, subparsers)
+    elif commands:
+        for command in commands:
+            add_subparser(PAASTA_SUBCOMMANDS[command], subparsers)
+    else:
+        for command in PAASTA_SUBCOMMANDS.keys():
+            subparsers.add_parser(command, add_help=False)
 
     for command, command_help in external_commands_items():
         subparsers.add_parser(command, help=command_help)
@@ -155,9 +204,12 @@ def parse_args(argv):
     :return: an argparse.Namespace object mapping parameter names to the inputs
              from sys.argv
     """
-    parser = get_argparser()
-    argcomplete.autocomplete(parser)
+    parser = get_argparser(commands=[])
+    args, _ = parser.parse_known_args(argv)
+    if args.command:
+        parser = get_argparser(commands=[args.command])
 
+    argcomplete.autocomplete(parser)
     return parser.parse_args(argv), parser
 
 
