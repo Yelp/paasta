@@ -17,6 +17,7 @@
 import argparse
 import logging
 import os
+import pkgutil
 import subprocess
 import sys
 import warnings
@@ -25,8 +26,29 @@ import argcomplete
 
 import paasta_tools
 from paasta_tools.cli import cmds
-from paasta_tools.cli.utils import load_method
-from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
+
+
+def load_method(module_name, method_name):
+    """Return a function given a module and method name.
+
+    :param module_name: a string
+    :param method_name: a string
+    :return: a function
+    """
+    module = __import__(module_name, fromlist=[method_name])
+    method = getattr(module, method_name)
+    return method
+
+
+def modules_in_pkg(pkg):
+    """Return the list of modules in a python package (a module with a
+    __init__.py file.)
+
+    :return: a list of strings such as `['list', 'check']` that correspond to
+             the module names in the package.
+    """
+    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
+        yield module_name
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
@@ -118,7 +140,7 @@ def get_argparser():
     help_parser = subparsers.add_parser("help", add_help=False)
     help_parser.set_defaults(command=None)
 
-    for command in sorted(paasta_commands_dir(cmds)):
+    for command in sorted(modules_in_pkg(cmds)):
         add_subparser(command, subparsers)
 
     for command, command_help in external_commands_items():
