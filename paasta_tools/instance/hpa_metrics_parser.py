@@ -48,41 +48,41 @@ class HPAMetricsParser:
         return status
 
     def parse_external_metric(self, metric_spec, status: HPAMetricsDict):
-        status["name"] = metric_spec.metric_name
+        status["name"] = metric_spec.metric.name
         status["target_value"] = (
-            metric_spec.target_average_value
-            if getattr(metric_spec, "target_average_value")
-            else metric_spec.target_value
+            metric_spec.target.average_value
+            if getattr(metric_spec.target, "average_value")
+            else metric_spec.target.value
         )
 
     def parse_external_metric_current(self, metric_spec, status: HPAMetricsDict):
-        status["name"] = metric_spec.metric_name
+        status["name"] = metric_spec.metric.name
         status["current_value"] = (
-            metric_spec.current_average_value
-            if getattr(metric_spec, "current_average_value")
-            else metric_spec.current_value
+            metric_spec.current.average_value
+            if getattr(metric_spec.current, "average_value")
+            else metric_spec.current.value
         )
 
     def parse_pod_metric(self, metric_spec, status: HPAMetricsDict):
-        status["name"] = metric_spec.metric_name
-        status["target_value"] = metric_spec.target_average_value
+        status["name"] = metric_spec.metric.name
+        status["target_value"] = metric_spec.target.average_value
 
     def parse_pod_metric_current(self, metric_spec, status: HPAMetricsDict):
-        status["name"] = metric_spec.metric_name
-        status["current_value"] = metric_spec.current_average_value
+        status["name"] = metric_spec.metric.name
+        status["current_value"] = metric_spec.current.average_value
 
     def parse_resource_metric(self, metric_spec, status: HPAMetricsDict):
         status["name"] = metric_spec.name
         status["target_value"] = (
-            metric_spec.target_average_value
-            if getattr(metric_spec, "target_average_value")
-            else metric_spec.target_average_utilization
+            metric_spec.target.average_value
+            if getattr(metric_spec.target, "average_value")
+            else metric_spec.target.average_utilization
         )
 
     def parse_resource_metric_current(self, metric_spec, status: HPAMetricsDict):
         status["name"] = metric_spec.name
         status["current_value"] = (
-            metric_spec.current_average_value
-            if getattr(metric_spec, "current_average_value")
-            else metric_spec.current_average_utilization
+            metric_spec.current.average_value
+            if getattr(metric_spec.current, "average_value")
+            else metric_spec.current.average_utilization
         )
