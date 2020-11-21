@@ -7,23 +7,6 @@ main2:
   env:
     FOO: BAR
   deploy_group: fake_deploy_group
-  horizontal_autoscaling:
-      max_replicas: 100
-      min_replicas: 1
-      cpu:
-          target_average_value: 0.7
-      memory:
-          target_average_value: 0.7
-      uwsgi:
-          target_average_value: 4
-      http:
-          target_average_value: 6
-          dimensions:
-              d1: "1"
-              d2: "2"
-      fake-external:
-          target_value: 55
-          signalflow_metrics_query: "data(\"fake-external\").publish"
   sidecar_resource_requirements:
     hacheck:
       limits:
