@@ -49,13 +49,15 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
-from kubernetes.client import V2beta1CrossVersionObjectReference
-from kubernetes.client import V2beta1ExternalMetricSource
-from kubernetes.client import V2beta1HorizontalPodAutoscaler
-from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta1MetricSpec
-from kubernetes.client import V2beta1PodsMetricSource
-from kubernetes.client import V2beta1ResourceMetricSource
+from kubernetes.client import V2beta2CrossVersionObjectReference
+from kubernetes.client import V2beta2ExternalMetricSource
+from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta2MetricIdentifier
+from kubernetes.client import V2beta2MetricSpec
+from kubernetes.client import V2beta2MetricTarget
+from kubernetes.client import V2beta2PodsMetricSource
+from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools import kubernetes_tools
@@ -1570,23 +1572,26 @@ class TestKubernetesDeploymentConfig:
             mock_config, "fake_name", "cluster"
         )
         annotations: Dict[Any, Any] = {}
-        expected_res = V2beta1HorizontalPodAutoscaler(
+        expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name", namespace="paasta", annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="Resource",
-                        resource=V2beta1ResourceMetricSource(
-                            name="cpu", target_average_utilization=50.0
+                        resource=V2beta2ResourceMetricSource(
+                            name="cpu",
+                            target=V2beta2MetricTarget(
+                                type="Utilization", average_utilization=50.0,
+                            ),
                         ),
                     )
                 ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
@@ -1613,27 +1618,31 @@ class TestKubernetesDeploymentConfig:
             mock_config, "fake_name", "cluster"
         )
         annotations = {"signalfx.com.custom.metrics": ""}
-        expected_res = V2beta1HorizontalPodAutoscaler(
+        expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name", namespace="paasta", annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name="http",
-                            target_average_value=0.5,
-                            selector=V1LabelSelector(
-                                match_labels={"paasta_cluster": "cluster"}
+                        pods=V2beta2PodsMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="http",
+                                selector=V1LabelSelector(
+                                    match_labels={"paasta_cluster": "cluster"}
+                                ),
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="AverageValue", average_value=0.5,
                             ),
                         ),
                     )
                 ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
@@ -1660,27 +1669,31 @@ class TestKubernetesDeploymentConfig:
         )
 
         annotations = {"signalfx.com.custom.metrics": ""}
-        expected_res = V2beta1HorizontalPodAutoscaler(
+        expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name", namespace="paasta", annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name="uwsgi",
-                            target_average_value=0.5,
-                            selector=V1LabelSelector(
-                                match_labels={"paasta_cluster": "cluster"}
+                        pods=V2beta2PodsMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="uwsgi",
+                                selector=V1LabelSelector(
+                                    match_labels={"paasta_cluster": "cluster"}
+                                ),
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="AverageValue", average_value=0.5,
                             ),
                         ),
                     )
                 ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
@@ -1711,7 +1724,7 @@ class TestKubernetesDeploymentConfig:
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name", "cluster"
         )
-        expected_res = V2beta1HorizontalPodAutoscaler(
+        expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name="fake_name",
@@ -1721,18 +1734,21 @@ class TestKubernetesDeploymentConfig:
                     "signalfx.com.external.metric/service-instance-uwsgi": mock.ANY,
                 },
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="External",
-                        external=V2beta1ExternalMetricSource(
-                            metric_name="service-instance-uwsgi", target_value=1,
+                        external=V2beta2ExternalMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="service-instance-uwsgi",
+                            ),
+                            target=V2beta2MetricTarget(type="Value", value=1,),
                         ),
                     )
                 ],
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
                 ),
             ),
@@ -3039,7 +3055,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config3836dd19"
+            == "config33f02c03"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
