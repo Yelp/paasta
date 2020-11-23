@@ -1,0 +1,56 @@
+---
+name: paasta-ci
+on: [push]
+jobs:
+  tests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: tox -i https://pypi.python.org/simple -e py36-linux,docs,mypy,tests
+  general_itests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: tox -i https://pypi.python.org/simple -e general_itests
+  paasta_itests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: tox -i https://pypi.python.org/simple -e paasta_itests
+  example_cluster:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: tox -i https://pypi.python.org/simple -e example_cluster
+  k8s_itests:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - run: make k8s_itests
+  build_debs:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        dist: [trusty, xenial, bionic, focal]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+      - run: make itest_${{ matrix.dist }}
