@@ -122,7 +122,7 @@ PAASTA_SUBCOMMANDS = {
     "logs": "logs",
     "mark-for-deployment": "mark_for_deployment",
     "metastatus": "metastatus",
-    "pauise_service_autoscaler": "pauise_service_autoscaler",
+    "pause_service_autoscaler": "pause_service_autoscaler",
     "performance-check": "performance_check",
     "push-to-registry": "push_to_registry",
     "remote-run": "remote_run",
