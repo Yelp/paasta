@@ -1614,9 +1614,16 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            return_value=mock.Mock(
+                get_hpa_always_uses_external_for_signalfx=lambda: False
+            ),
+            autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster"
+            )
         annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1664,9 +1671,16 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            return_value=mock.Mock(
+                get_hpa_always_uses_external_for_signalfx=lambda: False
+            ),
+            autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster"
+            )
 
         annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
