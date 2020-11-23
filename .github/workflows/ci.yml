@@ -5,6 +5,7 @@ jobs:
   tox:
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         toxenv:
           - py36-linux,docs,mypy,tests
@@ -30,6 +31,7 @@ jobs:
   build_debs:
     runs-on: ubuntu-20.04
     strategy:
+      fail-fast: false
       matrix:
         dist: [trusty, xenial, bionic, focal]
     steps:
