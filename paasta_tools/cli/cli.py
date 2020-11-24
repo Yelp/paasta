@@ -205,6 +205,8 @@ def parse_args(argv):
              from sys.argv
     """
     parser = get_argparser(commands=[])
+    argcomplete.autocomplete(parser)
+
     args, _ = parser.parse_known_args(argv)
     if args.command:
         parser = get_argparser(commands=[args.command])
