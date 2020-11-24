@@ -1,3 +1,10 @@
+paasta-tools (0.97.36) xenial; urgency=medium
+
+  * 0.97.36 tagged with 'make release'
+    Commit: Bump slo_transcoder to get PEOBS-1953 fix
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Nov 2020 11:42:16 -0800
+
 paasta-tools (0.97.35) xenial; urgency=medium
 
   * 0.97.35 tagged with 'make release'
