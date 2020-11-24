@@ -27,6 +27,7 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.6
+      - run: python -m pip install --upgrade pip virtualenv
       - run: curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && chmod +x kubectl && sudo mv kubectl /usr/local/bin/
       - run: make k8s_itests
   build_debs:
