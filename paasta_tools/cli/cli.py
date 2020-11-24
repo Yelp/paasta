@@ -21,6 +21,9 @@ import pkgutil
 import subprocess
 import sys
 import warnings
+from typing import Any
+from typing import List
+from typing import Tuple
 
 import argcomplete
 
@@ -73,16 +76,6 @@ def calling_external_command():
         return sys.argv[1] in list_external_commands()
     else:
         return False
-
-
-def get_command_help(command):
-    return f"(run 'paasta {command} -h' for usage)"
-
-
-def external_commands_items():
-    for command in list_external_commands():
-        command_help = get_command_help(command)
-        yield command, command_help
 
 
 def exec_subcommand(argv):
@@ -173,27 +166,43 @@ def get_argparser(commands=None):
         version=f"paasta-tools {paasta_tools.__version__}",
     )
 
-    subparsers = parser.add_subparsers(
-        help="[-h, --help] for subcommand help", dest="command"
-    )
+    subparsers = parser.add_subparsers(dest="command", metavar="")
     subparsers.required = True
 
     # Adding a separate help subparser allows us to respond to "help" without --help
-    help_parser = subparsers.add_parser("help", add_help=False)
+    help_parser = subparsers.add_parser(
+        "help", help=f"run `paasta <subcommand> -h` for help"
+    )
     help_parser.set_defaults(command=None)
 
+    # Build a list of subcommands to add them in alphabetical order later
+    command_choices: List[Tuple[str, Any]] = []
     if commands is None:
         for command in sorted(modules_in_pkg(cmds)):
-            add_subparser(command, subparsers)
+            command_choices.append(
+                (command, (add_subparser, [command, subparsers], {}))
+            )
     elif commands:
         for command in commands:
-            add_subparser(PAASTA_SUBCOMMANDS[command], subparsers)
+            command_choices.append(
+                (
+                    command,
+                    (add_subparser, [PAASTA_SUBCOMMANDS[command], subparsers], {}),
+                )
+            )
     else:
         for command in PAASTA_SUBCOMMANDS.keys():
-            subparsers.add_parser(command, add_help=False)
+            command_choices.append(
+                (command, (subparsers.add_parser, [command], dict(help="")))
+            )
 
-    for command, command_help in external_commands_items():
-        subparsers.add_parser(command, help=command_help)
+    for command in list_external_commands():
+        command_choices.append(
+            (command, (subparsers.add_parser, [command], dict(help="")))
+        )
+
+    for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):
+        fn(*args, **kwds)
 
     return parser
 
