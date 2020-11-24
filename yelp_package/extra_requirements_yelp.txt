@@ -10,7 +10,7 @@ monk==1.1.1
 python-jsonschema-objects==0.3.1
 scribereader==0.10.0
 signalform-tools==0.0.16
-slo-transcoder==3.2.3
+slo-transcoder==3.3.0
 smmap2==2.0.3
 sticht[yelp_internal]==1.1.12
 vault-tools==0.7.34
