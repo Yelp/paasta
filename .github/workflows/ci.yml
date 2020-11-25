@@ -1,6 +1,6 @@
 ---
 name: paasta-ci
-on: [push]
+on: [push, release]
 jobs:
   tox:
     runs-on: ubuntu-20.04
@@ -47,3 +47,24 @@ jobs:
           python-version: 3.6
       - run: sudo apt-get install -yq devscripts
       - run: make itest_${{ matrix.dist }}
+      - run: "echo -n ::set-output name=package_name::; echo ./dist/paasta-tools_*.deb"
+        id: get_package_name
+      - run: "echo -n ::set-output name=version::; dpkg-parsechangelog -l./debian/changelog | sed -n 's/^Version: //p'"
+        id: get_version
+      - name: Upload deb package to Bintray
+        if: github.event_name == 'release'
+        uses: bpicode/github-action-upload-bintray@master
+        with:
+          file: ${{ steps.get_package_name.outputs.package_name }}
+          api_user: yelptravis
+          api_key: ${{ secrets.BINTRAY_API_KEY }}
+          repository_user: yelp
+          repository: paasta
+          package: paasta-tools
+          version: ${{ steps.get_version.outputs.version }}
+          upload_path: dists/${{ matrix.dist }}/main
+          publish: 1
+          calculate_metadata: true
+          deb_distribution: ${{ matrix.dist }}
+          deb_component: main
+          deb_architecture: amd64
