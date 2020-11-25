@@ -184,6 +184,9 @@ def get_argparser(commands=None):
             )
     elif commands:
         for command in commands:
+            if command not in PAASTA_SUBCOMMANDS:
+                # could be external subcommand
+                continue
             command_choices.append(
                 (
                     command,
@@ -201,7 +204,7 @@ def get_argparser(commands=None):
 
     for command in list_external_commands():
         command_choices.append(
-            (command, (subparsers.add_parser, [command], dict(help="", add_help=False)))
+            (command, (subparsers.add_parser, [command], dict(help="")))
         )
 
     for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):

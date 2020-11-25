@@ -1,3 +1,10 @@
+paasta-tools (0.97.39) xenial; urgency=medium
+
+  * 0.97.39 tagged with 'make release'
+    Commit: Released 0.97.38 via make release
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 07:03:18 -0800
+
 paasta-tools (0.97.38) xenial; urgency=medium
 
   * 0.97.38 tagged with 'make release'
