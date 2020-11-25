@@ -60,7 +60,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        print("Argument parse error: %s" % message)
+        print(f"Argument parse error: {message}\n")
         self.print_help()
         sys.exit(1)
 
@@ -193,12 +193,15 @@ def get_argparser(commands=None):
     else:
         for command in PAASTA_SUBCOMMANDS.keys():
             command_choices.append(
-                (command, (subparsers.add_parser, [command], dict(help="")))
+                (
+                    command,
+                    (subparsers.add_parser, [command], dict(help="", add_help=False)),
+                )
             )
 
     for command in list_external_commands():
         command_choices.append(
-            (command, (subparsers.add_parser, [command], dict(help="")))
+            (command, (subparsers.add_parser, [command], dict(help="", add_help=False)))
         )
 
     for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):
