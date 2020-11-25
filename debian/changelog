@@ -1,3 +1,10 @@
+paasta-tools (0.97.38) xenial; urgency=medium
+
+  * 0.97.38 tagged with 'make release'
+    Commit: fix help message for subcommands
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 06:42:27 -0800
+
 paasta-tools (0.97.37) xenial; urgency=medium
 
   * 0.97.37 tagged with 'make release'
