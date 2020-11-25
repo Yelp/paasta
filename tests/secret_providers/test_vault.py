@@ -6,11 +6,11 @@ from paasta_tools.secret_providers.vault import SecretProvider
 
 
 @fixture
-def mock_secret_provider(ecosystems=["devc"]):
+def mock_secret_provider():
     with mock.patch(
         "paasta_tools.secret_providers.vault.SecretProvider.get_vault_ecosystems_for_clusters",
         autospec=True,
-        return_value=ecosystems,
+        return_value=["devc"],
     ), mock.patch(
         "paasta_tools.secret_providers.vault.get_vault_client", autospec=True
     ):
