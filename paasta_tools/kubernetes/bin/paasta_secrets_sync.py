@@ -147,53 +147,56 @@ def sync_secrets(
                 secret = secret_file_path.name.replace(".json", "")
                 with open(secret_file_path, "r") as secret_file:
                     secret_data = json.load(secret_file)
-                secret_signature = secret_provider.get_secret_signature_from_data(
-                    secret_data
-                )
-                if secret_signature:
-                    kubernetes_secret_signature = get_kubernetes_secret_signature(
-                        kube_client=kube_client, secret=secret, service=service
+                try:
+                    secret_signature = secret_provider.get_secret_signature_from_data(
+                        secret_data
                     )
-                    if not kubernetes_secret_signature:
-                        log.info(f"{secret} for {service} not found, creating")
-                        try:
-                            create_secret(
+                    if secret_signature:
+                        kubernetes_secret_signature = get_kubernetes_secret_signature(
+                            kube_client=kube_client, secret=secret, service=service
+                        )
+                        if not kubernetes_secret_signature:
+                            log.info(f"{secret} for {service} not found, creating")
+                            try:
+                                create_secret(
+                                    kube_client=kube_client,
+                                    secret=secret,
+                                    service=service,
+                                    secret_provider=secret_provider,
+                                )
+                            except ApiException as e:
+                                if e.status == 409:
+                                    log.warning(
+                                        f"Secret {secret} for {service} already exists"
+                                    )
+                                else:
+                                    raise
+                            create_kubernetes_secret_signature(
+                                kube_client=kube_client,
+                                secret=secret,
+                                service=service,
+                                secret_signature=secret_signature,
+                            )
+                        elif secret_signature != kubernetes_secret_signature:
+                            log.info(
+                                f"{secret} for {service} needs updating as signature changed"
+                            )
+                            update_secret(
                                 kube_client=kube_client,
                                 secret=secret,
                                 service=service,
                                 secret_provider=secret_provider,
                             )
-                        except ApiException as e:
-                            if e.status == 409:
-                                log.warning(
-                                    f"Secret {secret} for {service} already exists"
-                                )
-                            else:
-                                raise
-                        create_kubernetes_secret_signature(
-                            kube_client=kube_client,
-                            secret=secret,
-                            service=service,
-                            secret_signature=secret_signature,
-                        )
-                    elif secret_signature != kubernetes_secret_signature:
-                        log.info(
-                            f"{secret} for {service} needs updating as signature changed"
-                        )
-                        update_secret(
-                            kube_client=kube_client,
-                            secret=secret,
-                            service=service,
-                            secret_provider=secret_provider,
-                        )
-                        update_kubernetes_secret_signature(
-                            kube_client=kube_client,
-                            secret=secret,
-                            service=service,
-                            secret_signature=secret_signature,
-                        )
-                    else:
-                        log.info(f"{secret} for {service} up to date")
+                            update_kubernetes_secret_signature(
+                                kube_client=kube_client,
+                                secret=secret,
+                                service=service,
+                                secret_signature=secret_signature,
+                            )
+                        else:
+                            log.info(f"{secret} for {service} up to date")
+                except Exception:
+                    log.exception(f"Could not update {secret} for {service}:")
     return True
 
 
