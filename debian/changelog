@@ -1,3 +1,27 @@
+paasta-tools (0.97.37) xenial; urgency=medium
+
+  * 0.97.37 tagged with 'make release'
+    Commit: Squashed commit of the following:  commit
+    e2a13e8e36264a2355bb747c9142f67b42313d11 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 07:27:29 2020 -0800
+    actually fix completion test  commit
+    a7a260eae37c9177ce47df115c9533bb679feeb1 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 04:04:29 2020 -0800
+    simplify paasta -h message, show subcommand choices in alphabetical
+    order  commit 33b116ab4f6153e417fbe02cb10ee67092f71cfe Author:
+    Maksym Melnychok <maksym@yelp.com> Date:   Tue Nov 24 03:10:24 2020 -
+    0800      fix tab completion  commit
+    65687242e81084b584e8dcafd019b00d90769f01 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Mon Nov 23 03:41:30 2020 -0800      fix
+    typo  commit 7834280a79873cbd00b5e77f74ecdff99f207d64 Author: Maksym
+    Melnychok <maksym@yelp.com> Date:   Fri Nov 20 12:37:02 2020 -0800
+    only load required subcommmand instead of all of them  commit
+    511883fcfcebe4b5e0fd378b2679687ba78c780a Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Fri Nov 20 11:41:19 2020 -0800      move
+    modules_in_pkg and load_method into cli.py as it"s the only callsite
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 00:46:29 -0800
+
 paasta-tools (0.97.36) xenial; urgency=medium
 
   * 0.97.36 tagged with 'make release'
