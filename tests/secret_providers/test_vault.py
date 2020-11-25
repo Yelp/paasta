@@ -6,11 +6,11 @@ from paasta_tools.secret_providers.vault import SecretProvider
 
 
 @fixture
-def mock_secret_provider():
+def mock_secret_provider(ecosystems=["devc"]):
     with mock.patch(
         "paasta_tools.secret_providers.vault.SecretProvider.get_vault_ecosystems_for_clusters",
         autospec=True,
-        return_value=["devc"],
+        return_value=ecosystems,
     ), mock.patch(
         "paasta_tools.secret_providers.vault.get_vault_client", autospec=True
     ):
@@ -148,6 +148,22 @@ def test_get_secret_signature_from_data(mock_secret_provider):
                 {"environments": {"devc": {"signature": "abc"}}}
             )
             == "abc"
+        )
+
+
+def test_get_secret_signature_from_data_missing(mock_secret_provider):
+    mock_secret_provider.cluster_names = ["mesosstage", "devc", "prod"]
+    mock_secret_provider.vault_cluster_config = {
+        "mesosstage": "devc",
+        "devc": "devc",
+        "prod": "prod",
+    }
+    with mock.patch(
+        "paasta_tools.secret_providers.vault.get_plaintext", autospec=False
+    ):
+        # Should not raise errors
+        assert not mock_secret_provider.get_secret_signature_from_data(
+            {"environments": {"westeros": {}}}
         )
 
 
