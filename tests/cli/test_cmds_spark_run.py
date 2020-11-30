@@ -634,7 +634,9 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
 def test_paasta_spark_run(
+    mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
     mock_parse_user_spark_args,
@@ -690,7 +692,7 @@ def test_paasta_spark_run(
         paasta_cluster="test-cluster",
         paasta_pool="test-pool",
         paasta_service="test-service",
-        paasta_instance="test-instance",
+        paasta_instance=mock_get_smart_paasta_instance_name.return_value,
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,

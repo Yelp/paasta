@@ -17,16 +17,41 @@
 import argparse
 import logging
 import os
+import pkgutil
 import subprocess
 import sys
 import warnings
+from typing import Any
+from typing import List
+from typing import Tuple
 
 import argcomplete
 
 import paasta_tools
 from paasta_tools.cli import cmds
-from paasta_tools.cli.utils import load_method
-from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
+
+
+def load_method(module_name, method_name):
+    """Return a function given a module and method name.
+
+    :param module_name: a string
+    :param method_name: a string
+    :return: a function
+    """
+    module = __import__(module_name, fromlist=[method_name])
+    method = getattr(module, method_name)
+    return method
+
+
+def modules_in_pkg(pkg):
+    """Return the list of modules in a python package (a module with a
+    __init__.py file.)
+
+    :return: a list of strings such as `['list', 'check']` that correspond to
+             the module names in the package.
+    """
+    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
+        yield module_name
 
 
 class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
@@ -35,7 +60,7 @@ class PrintsHelpOnErrorArgumentParser(argparse.ArgumentParser):
     is way too terse"""
 
     def error(self, message):
-        print("Argument parse error: %s" % message)
+        print(f"Argument parse error: {message}\n")
         self.print_help()
         sys.exit(1)
 
@@ -51,16 +76,6 @@ def calling_external_command():
         return sys.argv[1] in list_external_commands()
     else:
         return False
-
-
-def get_command_help(command):
-    return f"(run 'paasta {command} -h' for usage)"
-
-
-def external_commands_items():
-    for command in list_external_commands():
-        command_help = get_command_help(command)
-        yield command, command_help
 
 
 def exec_subcommand(argv):
@@ -84,7 +99,49 @@ def add_subparser(command, subparsers):
     add_subparser_fn(subparsers)
 
 
-def get_argparser():
+PAASTA_SUBCOMMANDS = {
+    "autoscale": "autoscale",
+    "boost": "boost",
+    "check": "check",
+    "cook-image": "cook_image",
+    "get-docker-image": "get_docker_image",
+    "get-latest-deployment": "get_latest_deployment",
+    "info": "info",
+    "itest": "itest",
+    "list-clusters": "list_clusters",
+    "list-deploy-queue": "list_deploy_queue",
+    "list": "list",
+    "local-run": "local_run",
+    "logs": "logs",
+    "mark-for-deployment": "mark_for_deployment",
+    "metastatus": "metastatus",
+    "pause_service_autoscaler": "pause_service_autoscaler",
+    "performance-check": "performance_check",
+    "push-to-registry": "push_to_registry",
+    "remote-run": "remote_run",
+    "rollback": "rollback",
+    "secret": "secret",
+    "security-check": "security_check",
+    "spark-run": "spark_run",
+    "start": "start_stop_restart",
+    "stop": "start_stop_restart",
+    "restart": "start_stop_restart",
+    "status": "status",
+    "sysdig": "sysdig",
+    "validate": "validate",
+    "wait-for-deployment": "wait_for_deployment",
+}
+
+
+def get_argparser(commands=None):
+    """Create and return argument parser for a set of subcommands.
+
+    :param commands: Union[None, List[str]] If `commands` argument is `None`,
+    add full parsers for all subcommands, if `commands` is empty list -
+    add thin parsers for all subcommands, otherwise - add full parsers for
+    subcommands in the argument.
+    """
+
     parser = PrintsHelpOnErrorArgumentParser(
         description=(
             "The PaaSTA command line tool. The 'paasta' command is the entry point "
@@ -109,20 +166,49 @@ def get_argparser():
         version=f"paasta-tools {paasta_tools.__version__}",
     )
 
-    subparsers = parser.add_subparsers(
-        help="[-h, --help] for subcommand help", dest="command"
-    )
+    subparsers = parser.add_subparsers(dest="command", metavar="")
     subparsers.required = True
 
     # Adding a separate help subparser allows us to respond to "help" without --help
-    help_parser = subparsers.add_parser("help", add_help=False)
+    help_parser = subparsers.add_parser(
+        "help", help=f"run `paasta <subcommand> -h` for help"
+    )
     help_parser.set_defaults(command=None)
 
-    for command in sorted(paasta_commands_dir(cmds)):
-        add_subparser(command, subparsers)
+    # Build a list of subcommands to add them in alphabetical order later
+    command_choices: List[Tuple[str, Any]] = []
+    if commands is None:
+        for command in sorted(modules_in_pkg(cmds)):
+            command_choices.append(
+                (command, (add_subparser, [command, subparsers], {}))
+            )
+    elif commands:
+        for command in commands:
+            if command not in PAASTA_SUBCOMMANDS:
+                # could be external subcommand
+                continue
+            command_choices.append(
+                (
+                    command,
+                    (add_subparser, [PAASTA_SUBCOMMANDS[command], subparsers], {}),
+                )
+            )
+    else:
+        for command in PAASTA_SUBCOMMANDS.keys():
+            command_choices.append(
+                (
+                    command,
+                    (subparsers.add_parser, [command], dict(help="", add_help=False)),
+                )
+            )
 
-    for command, command_help in external_commands_items():
-        subparsers.add_parser(command, help=command_help)
+    for command in list_external_commands():
+        command_choices.append(
+            (command, (subparsers.add_parser, [command], dict(help="")))
+        )
+
+    for (_, (fn, args, kwds)) in sorted(command_choices, key=lambda e: e[0]):
+        fn(*args, **kwds)
 
     return parser
 
@@ -133,9 +219,14 @@ def parse_args(argv):
     :return: an argparse.Namespace object mapping parameter names to the inputs
              from sys.argv
     """
-    parser = get_argparser()
+    parser = get_argparser(commands=[])
     argcomplete.autocomplete(parser)
 
+    args, _ = parser.parse_known_args(argv)
+    if args.command:
+        parser = get_argparser(commands=[args.command])
+
+    argcomplete.autocomplete(parser)
     return parser.parse_args(argv), parser
 
 

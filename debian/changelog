@@ -1,3 +1,90 @@
+paasta-tools (0.97.39) xenial; urgency=medium
+
+  * 0.97.39 tagged with 'make release'
+    Commit: Released 0.97.38 via make release
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 07:03:18 -0800
+
+paasta-tools (0.97.38) xenial; urgency=medium
+
+  * 0.97.38 tagged with 'make release'
+    Commit: fix help message for subcommands
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 06:42:27 -0800
+
+paasta-tools (0.97.37) xenial; urgency=medium
+
+  * 0.97.37 tagged with 'make release'
+    Commit: Squashed commit of the following:  commit
+    e2a13e8e36264a2355bb747c9142f67b42313d11 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 07:27:29 2020 -0800
+    actually fix completion test  commit
+    a7a260eae37c9177ce47df115c9533bb679feeb1 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 04:04:29 2020 -0800
+    simplify paasta -h message, show subcommand choices in alphabetical
+    order  commit 33b116ab4f6153e417fbe02cb10ee67092f71cfe Author:
+    Maksym Melnychok <maksym@yelp.com> Date:   Tue Nov 24 03:10:24 2020 -
+    0800      fix tab completion  commit
+    65687242e81084b584e8dcafd019b00d90769f01 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Mon Nov 23 03:41:30 2020 -0800      fix
+    typo  commit 7834280a79873cbd00b5e77f74ecdff99f207d64 Author: Maksym
+    Melnychok <maksym@yelp.com> Date:   Fri Nov 20 12:37:02 2020 -0800
+    only load required subcommmand instead of all of them  commit
+    511883fcfcebe4b5e0fd378b2679687ba78c780a Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Fri Nov 20 11:41:19 2020 -0800      move
+    modules_in_pkg and load_method into cli.py as it"s the only callsite
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 00:46:29 -0800
+
+paasta-tools (0.97.36) xenial; urgency=medium
+
+  * 0.97.36 tagged with 'make release'
+    Commit: Bump slo_transcoder to get PEOBS-1953 fix
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Nov 2020 11:42:16 -0800
+
+paasta-tools (0.97.35) xenial; urgency=medium
+
+  * 0.97.35 tagged with 'make release'
+    Commit: Merge pull request #2972 from Yelp/PAASTA-16974-v2beta2-
+    again  Update to v2beta2 API for HPA, try #2
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 20 Nov 2020 11:27:26 -0800
+
+paasta-tools (0.97.34) xenial; urgency=medium
+
+  * 0.97.34 tagged with 'make release'
+    Commit: Merge pull request #2976 from
+    talalryz/u/talal/fix_broken_spark_run_test  U/talal/fix broken spark
+    run test
+
+ -- Charles Wan <kawaiwan@yelp.com>  Mon, 16 Nov 2020 16:29:09 -0800
+
+paasta-tools (0.97.33) xenial; urgency=medium
+
+  * 0.97.33 tagged with 'make release'
+    Commit: Merge pull request #2965 from Yelp/PAASTA-17064-exit-1  Only
+    exit non-zero if there is a critical failure for replication scr…
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 13 Nov 2020 11:30:00 -0800
+
+paasta-tools (0.97.32) xenial; urgency=medium
+
+  * 0.97.32 tagged with 'make release'
+    Commit: Merge pull request #2974 from Yelp/PAASTA-17054-metastatus-
+    timing  Improve metastatus performance by pulling all pods at once &
+    caching
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 13 Nov 2020 09:38:19 -0800
+
+paasta-tools (0.97.31) xenial; urgency=medium
+
+  * 0.97.31 tagged with 'make release'
+    Commit: Merge pull request #2971 from Yelp/u/kawaiwan/revert-v2beta2-
+    hpa-api  Revert Yelp/paasta#2970
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 10 Nov 2020 19:24:55 -0800
+
 paasta-tools (0.97.30) xenial; urgency=medium
 
   * 0.97.30 tagged with 'make release'

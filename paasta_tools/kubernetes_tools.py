@@ -98,6 +98,7 @@ from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
@@ -105,6 +106,7 @@ from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
+from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
@@ -187,8 +189,27 @@ load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation
 desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
 desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
 
-max(desired_instances / current_replicas, 0).publish()
+(desired_instances / current_replicas).above(0).publish()
 """
+
+
+# conditions is None when creating a new HPA, but the client raises an error in that case.
+# For detail, https://github.com/kubernetes-client/python/issues/553
+# This hack should be removed when the issue got fixed.
+# This is no better way to work around rn.
+class MonkeyPatchAutoScalingConditions(V2beta2HorizontalPodAutoscalerStatus):
+    @property
+    def conditions(self) -> Sequence[V2beta2HorizontalPodAutoscalerCondition]:
+        return super().conditions()
+
+    @conditions.setter
+    def conditions(
+        self, conditions: Optional[Sequence[V2beta2HorizontalPodAutoscalerCondition]]
+    ) -> None:
+        self._conditions = list() if conditions is None else conditions
+
+
+models.V2beta2HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):
@@ -2175,6 +2196,14 @@ def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
 
+@time_cache(ttl=300)
+def get_all_pods_cached(
+    kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[V1Pod]:
+    pods: Sequence[V1Pod] = get_all_pods(kube_client, namespace)
+    return pods
+
+
 def filter_pods_by_service_instance(
     pod_list: Sequence[V1Pod], service: str, instance: str
 ) -> Sequence[V1Pod]:
@@ -2263,6 +2292,12 @@ def get_active_shas_for_service(
 
 def get_all_nodes(kube_client: KubeClient,) -> Sequence[V1Node]:
     return kube_client.core.list_node().items
+
+
+@time_cache(ttl=300)
+def get_all_nodes_cached(kube_client: KubeClient) -> Sequence[V1Node]:
+    nodes: Sequence[V1Node] = get_all_nodes(kube_client)
+    return nodes
 
 
 def filter_nodes_by_blacklist(
