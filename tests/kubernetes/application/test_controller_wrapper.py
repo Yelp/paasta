@@ -278,7 +278,7 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
     mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
         body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", "faasta"
+            "fake_name", "cluster", mock_client, namespace="faasta",
         ),
         pretty=True,
     )
@@ -331,7 +331,7 @@ def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
         namespace="faasta",
         name="fake_name",
         body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", "faasta"
+            "fake_name", "cluster", mock_client, namespace="faasta",
         ),
         pretty=True,
     )
