@@ -242,17 +242,8 @@ def test_load_kubernetes_service_config():
 
 class TestKubernetesDeploymentConfig:
     def setup_method(self, method):
-        hpa_config = {
-            "min_replicas": 1,
-            "max_replicas": 3,
-            "cpu": {"target_average_value": 0.7},
-            "memory": {"target_average_value": 0.7},
-            "uwsgi": {"target_average_value": 0.7},
-            "http": {"target_average_value": 0.7, "dimensions": {"any": "random"}},
-            "external": {"target_value": 0.7, "signalflow_metrics_query": "fake_query"},
-        }
         mock_config_dict = KubernetesDeploymentConfigDict(
-            bounce_method="crossover", instances=3, horizontal_autoscaling=hpa_config,
+            bounce_method="crossover", instances=3,
         )
         self.deployment = KubernetesDeploymentConfig(
             service="kurupt",
@@ -1338,7 +1329,6 @@ class TestKubernetesDeploymentConfig:
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',
                     "paasta.yelp.com/routable_ip": routable_ip,
-                    "hpa": '{"http": {"any": "random"}, "uwsgi": {}}',
                     "iam.amazonaws.com/role": "",
                 },
             ),
@@ -1562,108 +1552,6 @@ class TestKubernetesDeploymentConfig:
                 name="kurupt-fm",
             )
 
-    def test_get_hpa_metric_spec(self):
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "horizontal_autoscaling": {
-                    "min_replicas": 1,
-                    "max_replicas": 3,
-                    "cpu": {"target_average_value": 0.7},
-                    "memory": {"target_average_value": 0.7},
-                    "uwsgi": {"target_average_value": 0.7},
-                    "http": {
-                        "target_average_value": 0.7,
-                        "dimensions": {"any": "random"},
-                    },
-                    "external": {
-                        "target_value": 0.7,
-                        "signalflow_metrics_query": "fake_query",
-                    },
-                }
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
-        )
-        annotations = {
-            "signalfx.com.custom.metrics": "",
-            "signalfx.com.external.metric/service-instance-external": "fake_query",
-            "signalfx.com.external.metric/service-instance-http": 'data("http", filter=filter("any", "random")).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()',
-        }
-        expected_res = V2beta2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations=annotations
-            ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="cpu",
-                            target=V2beta2MetricTarget(
-                                type="Utilization", average_utilization=70,
-                            ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="memory",
-                            target=V2beta2MetricTarget(
-                                type="Utilization", average_utilization=70,
-                            ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="Pods",
-                        pods=V2beta2PodsMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="uwsgi",
-                                selector=V1LabelSelector(
-                                    match_labels={"paasta_cluster": "cluster"}
-                                ),
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="AverageValue", average_value=0.7,
-                            ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="service-instance-http",
-                            ),
-                            target=V2beta2MetricTarget(type="Value", value=0.7,),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="service-instance-external",
-                            ),
-                            target=V2beta2MetricTarget(type="Value", value=0.7,),
-                        ),
-                    ),
-                ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
-                ),
-            ),
-        )
-        assert expected_res == return_value
-
     def test_get_autoscaling_metric_spec_mesos_cpu(self):
         # with cpu
         config_dict = KubernetesDeploymentConfigDict(
@@ -1726,9 +1614,16 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            return_value=mock.Mock(
+                get_hpa_always_uses_external_for_signalfx=lambda: False
+            ),
+            autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster"
+            )
         annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1776,9 +1671,16 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            return_value=mock.Mock(
+                get_hpa_always_uses_external_for_signalfx=lambda: False
+            ),
+            autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster"
+            )
 
         annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(

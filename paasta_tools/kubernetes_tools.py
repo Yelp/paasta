@@ -293,7 +293,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     autoscaling: AutoscalingParamsDict
-    horizontal_autoscaling: Dict[str, Any]
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
@@ -487,108 +486,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             defaults=default_params,
         )
 
-    def get_hpa_metric_spec(
-        self, name: str, cluster: str, namespace: str = "paasta"
-    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
-        hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config.get("min_replicas", 1)
-        max_replicas = hpa_config["max_replicas"]
-        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        annotations = {"signalfx.com.custom.metrics": ""}
-        metrics = []
-        for metric_name, value in hpa_config.items():
-            if metric_name in {"min_replicas", "max_replicas"}:
-                continue
-            if metric_name in {"cpu", "memory"}:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name=metric_name,
-                            target=V2beta2MetricTarget(
-                                type="Utilization",
-                                average_utilization=int(
-                                    value["target_average_value"] * 100
-                                ),
-                            ),
-                        ),
-                    )
-                )
-            elif metric_name in {"http", "uwsgi"}:
-                if "dimensions" not in value:
-                    metrics.append(
-                        V2beta2MetricSpec(
-                            type="Pods",
-                            pods=V2beta2PodsMetricSource(
-                                metric=V2beta2MetricIdentifier(
-                                    name=metric_name, selector=selector,
-                                ),
-                                target=V2beta2MetricTarget(
-                                    type="AverageValue",
-                                    average_value=value["target_average_value"],
-                                ),
-                            ),
-                        )
-                    )
-                else:
-                    namespaced_metric_name = self.namespace_external_metric_name(
-                        metric_name
-                    )
-                    metrics.append(
-                        V2beta2MetricSpec(
-                            type="External",
-                            external=V2beta2ExternalMetricSource(
-                                metric=V2beta2MetricIdentifier(
-                                    name=namespaced_metric_name,
-                                ),
-                                target=V2beta2MetricTarget(
-                                    type="Value", value=value["target_average_value"],
-                                ),
-                            ),
-                        )
-                    )
-                    filters = " and ".join(
-                        f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
-                    )
-                    annotations[
-                        f"signalfx.com.external.metric/{namespaced_metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
-            else:
-                namespaced_metric_name = self.namespace_external_metric_name(
-                    metric_name
-                )
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=namespaced_metric_name,
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value", value=value["target_value"],
-                            ),
-                        ),
-                    )
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{namespaced_metric_name}"
-                ] = value["signalflow_metrics_query"]
-
-        return V2beta2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=annotations
-            ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
-                max_replicas=max_replicas,
-                min_replicas=min_replicas,
-                metrics=metrics,
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name=name
-                ),
-            ),
-        )
-
     def namespace_external_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}"
 
@@ -603,10 +500,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if not self.is_autoscaling_enabled():
             return None
-
-        # use new autoscaling configuration if it exists.
-        if "horizontal_autoscaling" in self.config_dict:
-            return self.get_hpa_metric_spec(name, cluster, namespace)
 
         autoscaling_params = self.get_autoscaling_params()
         if autoscaling_params["decision_policy"] == "bespoke":
@@ -642,6 +535,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if (
                 autoscaling_params.get("forecast_policy") == "moving_average"
                 or "offset" in autoscaling_params
+                or load_system_paasta_config().get_hpa_always_uses_external_for_signalfx()
             ):
                 hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
                 signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
@@ -1210,18 +1104,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
     def get_min_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "min_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get("min_replicas", 1),
-        )
+        return self.config_dict.get("min_instances", 1,)
 
     def get_max_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "max_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get(
-                "max_replicas", None
-            ),
-        )
+        return self.config_dict.get("max_instances", None,)
 
     def set_autoscaled_instances(
         self, instance_count: int, kube_client: KubeClient
@@ -1405,18 +1291,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # metrics from these pods
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
-        # If legacy autoscaling is not configured
-        if "autoscaling" not in self.config_dict:
-            for metric_name in ["http", "uwsgi"]:
-                hpa_config = self.config_dict.get("horizontal_autoscaling", {})
-                if metric_name in hpa_config:
-                    if "hpa" not in annotations:
-                        annotations["hpa"] = {}
-                    annotations["hpa"][metric_name] = hpa_config[metric_name].get(
-                        "dimensions", {}
-                    )
-            if "hpa" in annotations:
-                annotations["hpa"] = json.dumps(annotations["hpa"])
 
         pod_spec_kwargs = {}
         pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())

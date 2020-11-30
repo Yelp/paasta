@@ -1860,6 +1860,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
+    hpa_always_uses_external_for_signalfx: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -2522,6 +2523,9 @@ class SystemPaastaConfig:
         :returns: the git config dict for a specific repo.
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
+
+    def get_hpa_always_uses_external_for_signalfx(self) -> bool:
+        return self.config_dict.get("hpa_always_uses_external_for_signalfx", False)
 
 
 def _run(
