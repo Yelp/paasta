@@ -147,6 +147,7 @@ do
 done
 
 # Tab completion tests
+echo Testing tab completion
 "$(dirname "$0")/tab_complete.sh"
 
 

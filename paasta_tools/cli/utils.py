@@ -17,7 +17,6 @@ import getpass
 import hashlib
 import logging
 import os
-import pkgutil
 import random
 import re
 import socket
@@ -64,29 +63,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
-
-
-def load_method(module_name, method_name):
-    """Return a function given a module and method name.
-
-    :param module_name: a string
-    :param method_name: a string
-    :return: a function
-    """
-    module = __import__(module_name, fromlist=[method_name])
-    method = getattr(module, method_name)
-    return method
-
-
-def modules_in_pkg(pkg):
-    """Return the list of modules in a python package (a module with a
-    __init__.py file.)
-
-    :return: a list of strings such as `['list', 'check']` that correspond to
-             the module names in the package.
-    """
-    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
-        yield module_name
 
 
 def is_file_in_dir(file_name, path):

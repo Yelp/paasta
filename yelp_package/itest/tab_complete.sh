@@ -36,7 +36,7 @@ tab_complete_fail() {
 # This test will need to be modified if we add any new subcommands that start with
 # with the provided pre_typed:
 pre_typed='st'
-expected=`echo -e "start\vstop\vstatus"`
+expected=`echo -e "start\vstatus\vstop"`
 # We feed the special env variables available at tab completion time
 # to the paasta command to make it return back the tab completion output to
 # fd 8, which we redirect to 1 so we can capture it
