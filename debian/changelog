@@ -1,3 +1,10 @@
+paasta-tools (0.97.40) xenial; urgency=medium
+
+  * 0.97.40 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17091"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 30 Nov 2020 14:26:38 -0800
+
 paasta-tools (0.97.39) xenial; urgency=medium
 
   * 0.97.39 tagged with 'make release'
