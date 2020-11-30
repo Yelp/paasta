@@ -105,6 +105,16 @@ def add_subparser(subparsers):
         default=False,
         help="Optionally pass the plaintext from stdin",
     )
+    secret_parser.add_argument(
+        "--cross_environment",
+        required=False,
+        type=str,
+        help=(
+            "Provide motivation in case the same value is being duplicated "
+            "across multiple runtime environments when adding or updating a secret"
+        ),
+        metavar="MOTIVATION",
+    )
     secret_parser.set_defaults(command=paasta_secret)
 
 
@@ -209,7 +219,10 @@ def paasta_secret(args):
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
         secret_provider.write_secret(
-            action=args.action, secret_name=args.secret_name, plaintext=plaintext
+            action=args.action,
+            secret_name=args.secret_name,
+            plaintext=plaintext,
+            cross_environment_motivation=args.cross_environment,
         )
         secret_path = os.path.join(
             secret_provider.secret_dir, f"{args.secret_name}.json"

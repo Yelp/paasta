@@ -152,6 +152,7 @@ def test_paasta_secret():
             service="middleearth",
             clusters="mesosstage",
             shared=False,
+            cross_environment="because ...",
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -161,6 +162,7 @@ def test_paasta_secret():
             action="add",
             secret_name="theonering",
             plaintext=mock_get_plaintext_input.return_value,
+            cross_environment_motivation="because ...",
         )
         mock_log_audit.assert_called_with(
             action="add-secret",
@@ -174,6 +176,7 @@ def test_paasta_secret():
             service="middleearth",
             clusters="mesosstage",
             shared=False,
+            cross_environment=None,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -183,6 +186,7 @@ def test_paasta_secret():
             action="update",
             secret_name="theonering",
             plaintext=mock_get_plaintext_input.return_value,
+            cross_environment_motivation=None,
         )
         mock_log_audit.assert_called_with(
             action="update-secret",
