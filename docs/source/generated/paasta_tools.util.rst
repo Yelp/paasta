@@ -7,6 +7,7 @@ Submodules
 .. toctree::
 
    paasta_tools.util.configs
+   paasta_tools.util.timeout
 
 Module contents
 ---------------

@@ -19,7 +19,7 @@ import yaml
 
 from paasta_tools import firewall
 from paasta_tools import firewall_update
-from paasta_tools.utils import TimeoutError
+from paasta_tools.util.timeout import TimeoutError
 
 
 def test_parse_args_daemon():

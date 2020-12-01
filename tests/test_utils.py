@@ -27,6 +27,7 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.util.timeout import TimeoutError
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -2559,15 +2560,13 @@ def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
 
 
 @mock.patch(
-    "paasta_tools.utils.Timeout",
-    autospec=True,
-    side_effect=utils.TimeoutError("Oh noes"),
+    "paasta_tools.utils.Timeout", autospec=True, side_effect=TimeoutError("Oh noes"),
 )
 @mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
 def test_timed_flock_timeout(mock_flock, mock_timeout, tmpdir):
     my_file = tmpdir.join("my-file")
     with open(str(my_file), "w") as f:
-        with pytest.raises(utils.TimeoutError):
+        with pytest.raises(TimeoutError):
             with utils.timed_flock(f):
                 assert False  # pragma: no cover
         assert mock_flock.mock_calls == []

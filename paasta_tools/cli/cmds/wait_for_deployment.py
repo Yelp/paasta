@@ -29,12 +29,12 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.remote_git import LSRemoteException
+from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import TimeoutError
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds

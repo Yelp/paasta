@@ -16,8 +16,8 @@ import re
 import dulwich.client
 import dulwich.errors
 
+from paasta_tools.util.timeout import timeout
 from paasta_tools.utils import _run
-from paasta_tools.utils import timeout
 
 
 def _make_determine_wants_func(ref_mutator):

@@ -25,7 +25,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.marathon_tools import app_has_tasks
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import timeout
+from paasta_tools.util.timeout import timeout
 
 
 def update_context_marathon_config(context):

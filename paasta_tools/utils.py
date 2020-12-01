@@ -26,7 +26,6 @@ import logging
 import math
 import os
 import pwd
-import queue
 import re
 import shlex
 import signal
@@ -40,7 +39,6 @@ from collections import OrderedDict
 from enum import Enum
 from fnmatch import fnmatch
 from functools import lru_cache
-from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
@@ -76,6 +74,7 @@ from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
+from paasta_tools.util.timeout import Timeout
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -3073,29 +3072,6 @@ def get_running_mesos_docker_containers() -> List[Dict]:
     ]
 
 
-class TimeoutError(Exception):
-    pass
-
-
-class Timeout:
-    # From http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
-
-    def __init__(self, seconds: int = 1, error_message: str = "Timeout") -> None:
-        self.seconds = seconds
-        self.error_message = error_message
-
-    def handle_timeout(self, signum: int, frame: FrameType) -> None:
-        raise TimeoutError(self.error_message)
-
-    def __enter__(self) -> None:
-        self.old_handler = signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(self.seconds)
-
-    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, self.old_handler)
-
-
 def print_with_indent(line: str, indent: int = 2) -> None:
     """Print a line with a given indent level"""
     print(" " * indent + line)
@@ -3553,87 +3529,6 @@ def to_bytes(obj: Any) -> bytes:
         return obj.encode("UTF-8")
     else:
         return str(obj).encode("UTF-8")
-
-
-_TimeoutFuncRetType = TypeVar("_TimeoutFuncRetType")
-
-
-def timeout(
-    seconds: int = 10,
-    error_message: str = os.strerror(errno.ETIME),
-    use_signals: bool = True,
-) -> Callable[[Callable[..., _TimeoutFuncRetType]], Callable[..., _TimeoutFuncRetType]]:
-    if use_signals:
-
-        def decorate(
-            func: Callable[..., _TimeoutFuncRetType]
-        ) -> Callable[..., _TimeoutFuncRetType]:
-            def _handle_timeout(signum: int, frame: FrameType) -> None:
-                raise TimeoutError(error_message)
-
-            def wrapper(*args: Any, **kwargs: Any) -> _TimeoutFuncRetType:
-                signal.signal(signal.SIGALRM, _handle_timeout)
-                signal.alarm(seconds)
-                try:
-                    result = func(*args, **kwargs)
-                finally:
-                    signal.alarm(0)
-                return result
-
-            return wraps(func)(wrapper)
-
-    else:
-
-        def decorate(
-            func: Callable[..., _TimeoutFuncRetType]
-        ) -> Callable[..., _TimeoutFuncRetType]:
-            # https://github.com/python/mypy/issues/797
-            return _Timeout(func, seconds, error_message)  # type: ignore
-
-    return decorate
-
-
-class _Timeout:
-    def __init__(
-        self,
-        function: Callable[..., _TimeoutFuncRetType],
-        seconds: float,
-        error_message: str,
-    ) -> None:
-        self.seconds = seconds
-        self.control: queue.Queue[
-            Tuple[bool, Union[_TimeoutFuncRetType, Tuple]]
-        ] = queue.Queue()
-        self.function = function
-        self.error_message = error_message
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        # Try and put the result of the function into the q
-        # if an exception occurs then we put the exc_info instead
-        # so that it can be raised in the main thread.
-        try:
-            self.control.put((True, self.function(*args, **kwargs)))
-        except Exception:
-            self.control.put((False, sys.exc_info()))
-
-    def __call__(self, *args: Any, **kwargs: Any) -> _TimeoutFuncRetType:
-        self.func_thread = threading.Thread(target=self.run, args=args, kwargs=kwargs)
-        self.func_thread.daemon = True
-        self.timeout = self.seconds + time.time()
-        self.func_thread.start()
-        return self.get_and_raise()
-
-    def get_and_raise(self) -> _TimeoutFuncRetType:
-        while not self.timeout < time.time():
-            time.sleep(0.01)
-            if not self.func_thread.is_alive():
-                ret = self.control.get()
-                if ret[0]:
-                    return cast(_TimeoutFuncRetType, ret[1])
-                else:
-                    _, e, tb = cast(Tuple, ret[1])
-                    raise e.with_traceback(tb)
-        raise TimeoutError(self.error_message)
 
 
 def suggest_possibilities(

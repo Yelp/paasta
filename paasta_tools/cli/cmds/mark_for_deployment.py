@@ -62,6 +62,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
+from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -73,7 +74,6 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
-from paasta_tools.utils import TimeoutError
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds

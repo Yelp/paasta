@@ -26,6 +26,7 @@ from paasta_tools import mesos
 from paasta_tools import mesos_tools
 from paasta_tools import utils
 from paasta_tools.marathon_tools import format_job_id
+from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import PaastaColors
 
 
@@ -500,7 +501,7 @@ def test_zip_tasks_verbose_output(test_case):
         ["a_task", None, None, 10, mesos.exceptions.SlaveDoesNotExist],
         ["a_task", None, None, 10, mesos.exceptions.TaskNotFoundException],
         ["a_task", None, None, 10, mesos.exceptions.FileNotFoundForTaskException],
-        ["a_task", None, None, 10, utils.TimeoutError],
+        ["a_task", None, None, 10, TimeoutError],
     ],
 )
 async def test_format_stdstreams_tail_for_task(test_case,):

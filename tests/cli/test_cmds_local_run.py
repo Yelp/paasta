@@ -35,10 +35,10 @@ from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import TimeoutError
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)

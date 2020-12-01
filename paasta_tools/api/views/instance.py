@@ -68,11 +68,11 @@ from paasta_tools.mesos_tools import get_tasks_from_app_id
 from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
+from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)

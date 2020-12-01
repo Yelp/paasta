@@ -27,7 +27,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
-from paasta_tools.utils import TimeoutError
+from paasta_tools.util.timeout import TimeoutError
 
 
 class fake_args:
