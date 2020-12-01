@@ -4,10 +4,10 @@ import mock
 import pytest
 
 from paasta_tools import tron_tools
+from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import NoDeploymentsAvailable
 
 
 class TestTronConfig:

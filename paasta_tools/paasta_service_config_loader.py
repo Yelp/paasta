@@ -20,14 +20,15 @@ from typing import Type
 
 from service_configuration_lib import read_service_configuration
 
+from paasta_tools import deployment
 from paasta_tools import utils
+from paasta_tools.deployment import load_v2_deployments_json
+from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_service_instance_configs
-from paasta_tools.utils import load_v2_deployments_json
-from paasta_tools.utils import NoDeploymentsAvailable
 
 
 log = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class PaastaServiceConfigLoader:
 
     _framework_configs: Dict[Tuple[str, type], Dict[str, utils.InstanceConfigDict]]
     _clusters: List[str]
-    _deployments_json: utils.DeploymentsJsonV2
+    _deployments_json: deployment.DeploymentsJsonV2
 
     def __init__(
         self,

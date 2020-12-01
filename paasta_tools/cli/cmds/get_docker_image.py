@@ -18,7 +18,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import validate_service_name
-from paasta_tools.deployment_utils import load_v2_deployments_json
+from paasta_tools.deployment import load_v2_deployments_json
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_docker_registry
 from paasta_tools.utils import list_services

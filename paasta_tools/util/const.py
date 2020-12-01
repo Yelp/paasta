@@ -1,0 +1,3 @@
+import service_configuration_lib
+
+DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR

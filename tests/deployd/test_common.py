@@ -13,11 +13,11 @@ from paasta_tools.deployd.common import get_service_instances_needing_update
 from paasta_tools.deployd.common import PaastaQueue
 from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
+from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
 

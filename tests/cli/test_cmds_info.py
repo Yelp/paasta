@@ -15,8 +15,8 @@ import mock
 
 from paasta_tools.cli.cmds import info
 from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import NoDeploymentsAvailable
 
 
 def test_get_service_info():

@@ -14,7 +14,7 @@
 import mock
 
 from paasta_tools import adhoc_tools
-from paasta_tools.utils import DeploymentsJsonV2
+from paasta_tools.deployment import DeploymentsJsonV2
 from paasta_tools.utils import NoConfigurationForServiceError
 
 

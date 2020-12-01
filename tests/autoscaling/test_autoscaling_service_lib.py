@@ -26,7 +26,7 @@ from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paus
 from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
-from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.deployment import NoDeploymentsAvailable
 
 
 def test_get_zookeeper_instances():

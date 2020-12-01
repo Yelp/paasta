@@ -27,6 +27,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
+from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -41,7 +42,6 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
 
 log = logging.getLogger(__name__)

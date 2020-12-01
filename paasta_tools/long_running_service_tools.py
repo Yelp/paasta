@@ -9,7 +9,7 @@ from typing import Tuple
 import service_configuration_lib
 from mypy_extensions import TypedDict
 
-from paasta_tools.utils import BranchDictV2
+from paasta_tools.deployment import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR

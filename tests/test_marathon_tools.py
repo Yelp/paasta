@@ -25,13 +25,13 @@ from pytest import raises
 from paasta_tools import long_running_service_tools
 from paasta_tools import marathon_tools
 from paasta_tools.cli.cmds.status import desired_state_human
+from paasta_tools.deployment import BranchDictV2
+from paasta_tools.deployment import DeploymentsJsonV2
 from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
 from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import SystemPaastaConfig
 

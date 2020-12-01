@@ -7,11 +7,12 @@ from typing import Optional
 
 from mypy_extensions import TypedDict
 
+from paasta_tools.deployment import BranchDictV2
+from paasta_tools.deployment import load_v2_deployments_json
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint  # noqa, imported for typing.
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -19,7 +20,6 @@ from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import load_service_instance_config
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import SystemPaastaConfig
 
 

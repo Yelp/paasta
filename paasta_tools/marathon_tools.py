@@ -49,6 +49,8 @@ from marathon.models.app import MarathonTask
 from marathon.models.queue import MarathonQueueItem
 from mypy_extensions import TypedDict
 
+from paasta_tools.deployment import BranchDictV2
+from paasta_tools.deployment import load_v2_deployments_json
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
@@ -64,7 +66,6 @@ from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.util.cache import time_cache
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
-from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
 from paasta_tools.utils import decompose_job_id
@@ -76,7 +77,6 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import MarathonConfigDict
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError

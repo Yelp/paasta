@@ -52,7 +52,7 @@ Submodules
    paasta_tools.clusterman
    paasta_tools.config_utils
    paasta_tools.delete_kubernetes_deployments
-   paasta_tools.deployment_utils
+   paasta_tools.deployment
    paasta_tools.docker_wrapper
    paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib

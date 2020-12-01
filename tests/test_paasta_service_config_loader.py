@@ -15,10 +15,10 @@ from mock import patch
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.adhoc_tools import load_adhoc_job_config
+from paasta_tools.deployment import DeploymentsJsonV2
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import DeploymentsJsonV2
 
 
 TEST_SERVICE_NAME = "example_happyhour"

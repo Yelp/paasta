@@ -1175,39 +1175,6 @@ def test_color_text_nested():
     assert actual == expected
 
 
-def test_DeploymentsJson_read():
-    file_mock = mock.mock_open()
-    fake_dir = "/var/dir_of_fake"
-    fake_path = "/var/dir_of_fake/fake_service/deployments.json"
-    fake_json = {
-        "v1": {
-            "no_srv:blaster": {
-                "docker_image": "test_rocker:9.9",
-                "desired_state": "start",
-                "force_bounce": None,
-            },
-            "dont_care:about": {
-                "docker_image": "this:guy",
-                "desired_state": "stop",
-                "force_bounce": "12345",
-            },
-        }
-    }
-    with mock.patch(
-        "builtins.open", file_mock, autospec=None
-    ) as open_patch, mock.patch(
-        "json.load", autospec=True, return_value=fake_json
-    ) as json_patch, mock.patch(
-        "paasta_tools.utils.os.path.isfile", autospec=True, return_value=True
-    ):
-        actual = utils.load_deployments_json("fake_service", fake_dir)
-        open_patch.assert_called_once_with(fake_path)
-        json_patch.assert_called_once_with(
-            file_mock.return_value.__enter__.return_value
-        )
-        assert actual == utils.DeploymentsJsonV1(fake_json["v1"])  # type: ignore
-
-
 def test_get_running_mesos_docker_containers():
 
     fake_container_data = [
