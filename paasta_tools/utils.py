@@ -31,7 +31,6 @@ import re
 import shlex
 import signal
 import socket
-import ssl
 import sys
 import tempfile
 import threading
@@ -68,7 +67,6 @@ from typing import Union
 
 import choice
 import dateutil.tz
-import ldap3
 import requests_cache
 import service_configuration_lib
 from docker import Client
@@ -3675,36 +3673,6 @@ def load_all_configs(
             service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
         )
     return config_dicts
-
-
-def ldap_user_search(
-    cn: str,
-    search_base: str,
-    search_ou: str,
-    ldap_host: str,
-    username: str,
-    password: str,
-) -> Set[str]:
-    """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
-    tls_config = ldap3.Tls(
-        validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt"
-    )
-    server = ldap3.Server(ldap_host, use_ssl=True, tls=tls_config)
-    conn = ldap3.Connection(
-        server, user=username, password=password, raise_exceptions=True
-    )
-    conn.bind()
-
-    search_filter = f"(&(memberOf=CN={cn},{search_ou})(!(userAccountControl=514)))"
-    entries = conn.extend.standard.paged_search(
-        search_base=search_base,
-        search_scope=ldap3.SUBTREE,
-        search_filter=search_filter,
-        attributes=["sAMAccountName"],
-        paged_size=1000,
-        time_limit=10,
-    )
-    return {entry["attributes"]["sAMAccountName"] for entry in entries}
 
 
 def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:

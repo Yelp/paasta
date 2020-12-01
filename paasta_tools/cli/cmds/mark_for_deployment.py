@@ -21,6 +21,7 @@ import logging
 import math
 import os
 import socket
+import ssl
 import sys
 import time
 import traceback
@@ -34,8 +35,10 @@ from typing import Dict
 from typing import Iterator
 from typing import Mapping
 from typing import Optional
+from typing import Set
 
 import humanize
+import ldap3
 import progressbar
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
@@ -66,7 +69,6 @@ from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import get_username
-from paasta_tools.utils import ldap_user_search
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -79,6 +81,36 @@ DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 
 log = logging.getLogger(__name__)
+
+
+def ldap_user_search(
+    cn: str,
+    search_base: str,
+    search_ou: str,
+    ldap_host: str,
+    username: str,
+    password: str,
+) -> Set[str]:
+    """Connects to LDAP and raises a subclass of LDAPOperationResult when it fails"""
+    tls_config = ldap3.Tls(
+        validate=ssl.CERT_REQUIRED, ca_certs_file="/etc/ssl/certs/ca-certificates.crt"
+    )
+    server = ldap3.Server(ldap_host, use_ssl=True, tls=tls_config)
+    conn = ldap3.Connection(
+        server, user=username, password=password, raise_exceptions=True
+    )
+    conn.bind()
+
+    search_filter = f"(&(memberOf=CN={cn},{search_ou})(!(userAccountControl=514)))"
+    entries = conn.extend.standard.paged_search(
+        search_base=search_base,
+        search_scope=ldap3.SUBTREE,
+        search_filter=search_filter,
+        attributes=["sAMAccountName"],
+        paged_size=1000,
+        time_limit=10,
+    )
+    return {entry["attributes"]["sAMAccountName"] for entry in entries}
 
 
 def add_subparser(subparsers):
