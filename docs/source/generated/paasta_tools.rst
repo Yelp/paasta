@@ -20,6 +20,7 @@ Subpackages
    paasta_tools.paastaapi
    paasta_tools.secret_providers
    paasta_tools.tron
+   paasta_tools.util
 
 Submodules
 ----------
