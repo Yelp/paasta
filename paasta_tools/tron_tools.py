@@ -55,7 +55,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.utils import time_cache
+from paasta_tools.util.cache import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str

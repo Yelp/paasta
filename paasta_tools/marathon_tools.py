@@ -62,11 +62,12 @@ from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import mesos_services_running_here
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_hashes
+from paasta_tools.util.cache import time_cache
+from paasta_tools.util.deep_merge import deep_merge_dictionaries
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import Constraint
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import DockerVolume
@@ -80,7 +81,6 @@ from paasta_tools.utils import MarathonConfigDict
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import ZookeeperPool
 
 

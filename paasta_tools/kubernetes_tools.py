@@ -124,10 +124,11 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.util.cache import time_cache
+from paasta_tools.util.deep_merge import deep_merge_dictionaries
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -142,7 +143,6 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import VolumeWithMode
 
 

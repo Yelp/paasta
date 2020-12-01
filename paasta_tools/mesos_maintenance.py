@@ -35,8 +35,8 @@ from paasta_tools.mesos_tools import get_mesos_config_path
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+from paasta_tools.util.cache import time_cache
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import time_cache
 from paasta_tools.utils import to_bytes
 
 

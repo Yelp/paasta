@@ -31,7 +31,6 @@ import socket
 import sys
 import tempfile
 import threading
-import time
 import warnings
 from collections import OrderedDict
 from enum import Enum
@@ -72,6 +71,8 @@ from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
+from paasta_tools.util.cache import time_cache
+from paasta_tools.util.deep_merge import deep_merge_dictionaries
 from paasta_tools.util.lock import _AnyIO
 from paasta_tools.util.lock import flock
 from paasta_tools.util.timeout import _timeout
@@ -134,43 +135,6 @@ INSTANCE_TYPES = (
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
-
-
-class TimeCacheEntry(TypedDict):
-    data: Any
-    fetch_time: float
-
-
-_CacheRetT = TypeVar("_CacheRetT")
-
-
-class time_cache:
-    def __init__(self, ttl: float = 0) -> None:
-        self.configs: Dict[Tuple, TimeCacheEntry] = {}
-        self.ttl = ttl
-
-    def __call__(self, f: Callable[..., _CacheRetT]) -> Callable[..., _CacheRetT]:
-        def cache(*args: Any, **kwargs: Any) -> _CacheRetT:
-            if "ttl" in kwargs:
-                ttl = kwargs["ttl"]
-                del kwargs["ttl"]
-            else:
-                ttl = self.ttl
-            key = args
-            for item in kwargs.items():
-                key += item
-            if (
-                (not ttl)
-                or (key not in self.configs)
-                or (time.time() - self.configs[key]["fetch_time"] > ttl)
-            ):
-                self.configs[key] = {
-                    "data": f(*args, **kwargs),
-                    "fetch_time": time.time(),
-                }
-            return self.configs[key]["data"]
-
-        return cache
 
 
 _SortDictsT = TypeVar("_SortDictsT", bound=Mapping)
@@ -3328,41 +3292,6 @@ def format_table(
             expanded_rows.append(expanded_row)
 
     return [(" " * min_spacing).join(r) for r in expanded_rows]
-
-
-_DeepMergeT = TypeVar("_DeepMergeT", bound=Any)
-
-
-class DuplicateKeyError(Exception):
-    pass
-
-
-def deep_merge_dictionaries(
-    overrides: _DeepMergeT, defaults: _DeepMergeT, allow_duplicate_keys: bool = True
-) -> _DeepMergeT:
-    """
-    Merges two dictionaries.
-    """
-    result = copy.deepcopy(defaults)
-    stack: List[Tuple[Dict, Dict]] = [(overrides, result)]
-    while stack:
-        source_dict, result_dict = stack.pop()
-        for key, value in source_dict.items():
-            try:
-                child = result_dict[key]
-            except KeyError:
-                result_dict[key] = value
-            else:
-                if isinstance(value, dict) and isinstance(child, dict):
-                    stack.append((value, child))
-                else:
-                    if allow_duplicate_keys:
-                        result_dict[key] = value
-                    else:
-                        raise DuplicateKeyError(
-                            f"defaults and overrides both have key {key}"
-                        )
-    return result
 
 
 class ZookeeperPool:

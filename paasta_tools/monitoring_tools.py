@@ -33,12 +33,12 @@ import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.util.cache import time_cache
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import time_cache
 
 
 class ReplicationChecker(abc.ABC):

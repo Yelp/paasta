@@ -26,6 +26,7 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.util.deep_merge import DuplicateKeyError
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -386,7 +387,7 @@ def test_load_system_paasta_config_duplicate_keys_errors():
         autospec=True,
         side_effect=[fake_file_a, fake_file_b],
     ):
-        with raises(utils.DuplicateKeyError):
+        with raises(DuplicateKeyError):
             utils.load_system_paasta_config(path="/some/fake/dir")
 
 
@@ -2423,13 +2424,13 @@ def test_deep_merge_dictionaries_no_duplicate_keys_allowed():
     overrides2 = {"a": "override"}
     defaults2 = {"a": "default"}
 
-    with raises(utils.DuplicateKeyError):
+    with raises(DuplicateKeyError):
         utils.deep_merge_dictionaries(overrides2, defaults2, allow_duplicate_keys=False)
 
     overrides = {"nested": {"a": "override"}}
     defaults = {"nested": {"a": "default"}}
 
-    with raises(utils.DuplicateKeyError):
+    with raises(DuplicateKeyError):
         utils.deep_merge_dictionaries(overrides, defaults, allow_duplicate_keys=False)
 
 
