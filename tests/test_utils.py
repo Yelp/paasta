@@ -16,7 +16,6 @@ import json
 import os
 import stat
 import sys
-import time
 import warnings
 from typing import Any
 from typing import Dict
@@ -27,7 +26,6 @@ import pytest
 from pytest import raises
 
 from paasta_tools import utils
-from paasta_tools.util.timeout import TimeoutError
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -1288,7 +1286,11 @@ class TestInstanceConfig:
                 },
             )
         )
-        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
+        expect = (
+            "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {},"
+            " {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', "
+            "'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
+        )
         assert actual == expect
 
     def test_get_monitoring(self):
@@ -2275,7 +2277,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock(self):
         """Make sure we flock and unflock when flock=True"""
-        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
+        with mock.patch("paasta_tools.util.lock.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=True)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
@@ -2290,7 +2292,7 @@ class TestFileLogWriter:
 
     def test_maybe_flock_flock_false(self):
         """Make sure we don't flock/unflock when flock=False"""
-        with mock.patch("paasta_tools.utils.fcntl", autospec=True) as mock_fcntl:
+        with mock.patch("paasta_tools.util.lock.fcntl", autospec=True) as mock_fcntl:
             fw = utils.FileLogWriter("/dev/null", flock=False)
             mock_file = mock.Mock()
             with fw.maybe_flock(mock_file):
@@ -2533,57 +2535,6 @@ def test_get_code_sha_from_dockerurl():
 
     # Useful mostly for integration tests, where we run busybox a lot.
     assert utils.get_code_sha_from_dockerurl("docker.io/busybox") == "gitbusybox"
-
-
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_flock(mock_flock, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.flock(f):
-            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
-            mock_flock.reset_mock()
-
-        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
-
-
-@mock.patch("paasta_tools.utils.Timeout", autospec=True)
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_ok(mock_flock, mock_timeout, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.timed_flock(f, seconds=mock.sentinel.seconds):
-            mock_timeout.assert_called_once_with(seconds=mock.sentinel.seconds)
-            mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_EX)
-            mock_flock.reset_mock()
-
-        mock_flock.assert_called_once_with(f.fileno(), utils.fcntl.LOCK_UN)
-
-
-@mock.patch(
-    "paasta_tools.utils.Timeout", autospec=True, side_effect=TimeoutError("Oh noes"),
-)
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_timeout(mock_flock, mock_timeout, tmpdir):
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with pytest.raises(TimeoutError):
-            with utils.timed_flock(f):
-                assert False  # pragma: no cover
-        assert mock_flock.mock_calls == []
-
-
-@mock.patch("paasta_tools.utils.fcntl.flock", autospec=True, wraps=utils.fcntl.flock)
-def test_timed_flock_inner_timeout_ok(mock_flock, tmpdir):
-    # Doing something slow inside the 'with' context of timed_flock doesn't cause a timeout
-    # (the timeout should only apply to the flock operation itself)
-    my_file = tmpdir.join("my-file")
-    with open(str(my_file), "w") as f:
-        with utils.timed_flock(f, seconds=1):
-            time.true_slow_sleep(0.1)  # type: ignore
-        assert mock_flock.mock_calls == [
-            mock.call(f.fileno(), utils.fcntl.LOCK_EX),
-            mock.call(f.fileno(), utils.fcntl.LOCK_UN),
-        ]
 
 
 def test_suggest_possibilities_none():

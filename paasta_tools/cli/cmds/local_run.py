@@ -41,6 +41,7 @@ from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.tron_tools import parse_time_variables
+from paasta_tools.util.lock import timed_flock
 from paasta_tools.util.timeout import Timeout
 from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import _run
@@ -57,7 +58,6 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import timed_flock
 from paasta_tools.utils import validate_service_instance
 
 

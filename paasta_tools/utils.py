@@ -15,8 +15,6 @@ import contextlib
 import copy
 import datetime
 import difflib
-import errno
-import fcntl
 import getpass
 import glob
 import hashlib
@@ -74,7 +72,9 @@ from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
-from paasta_tools.util.timeout import Timeout
+from paasta_tools.util.lock import _AnyIO
+from paasta_tools.util.lock import flock
+from paasta_tools.util.timeout import _timeout
 
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -1588,9 +1588,6 @@ def _empty_context() -> Iterator[None]:
     yield
 
 
-_AnyIO = Union[io.IOBase, IO]
-
-
 @register_log_writer("file")
 class FileLogWriter(LogWriter):
     def __init__(
@@ -1683,46 +1680,6 @@ class FileLogWriter(LogWriter):
         to_write = f"{formatted_line}{self.line_delimiter}"
 
         self._log_message(path, to_write)
-
-
-@contextlib.contextmanager
-def flock(fd: _AnyIO) -> Iterator[None]:
-    try:
-        fcntl.flock(fd.fileno(), fcntl.LOCK_EX)
-        yield
-    finally:
-        fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
-
-
-@contextlib.contextmanager
-def timed_flock(fd: _AnyIO, seconds: int = 1) -> Iterator[None]:
-    """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
-    raise a TimeoutError if `seconds` elapses before the flock can be obtained
-    """
-    # We don't want to wrap the user code in the timeout, just the flock grab
-    flock_context = flock(fd)
-    with Timeout(seconds=seconds):
-        flock_context.__enter__()
-    try:
-        yield
-    finally:
-        flock_context.__exit__(*sys.exc_info())
-
-
-def _timeout(process: Popen) -> None:
-    """Helper function for _run. It terminates the process.
-    Doesn't raise OSError, if we try to terminate a non-existing
-    process as there can be a very small window between poll() and kill()
-    """
-    if process.poll() is None:
-        try:
-            # sending SIGKILL to the process
-            process.kill()
-        except OSError as e:
-            # No such process error
-            # The process could have been terminated meanwhile
-            if e.errno != errno.ESRCH:
-                raise
 
 
 class PaastaNotConfiguredError(Exception):

@@ -13,10 +13,10 @@ from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import marathon_services_running_here
+from paasta_tools.util.lock import timed_flock
 from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import timed_flock
 
 
 INBOUND_PRIVATE_IP_RANGES = (

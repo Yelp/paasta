@@ -6,6 +6,7 @@ import sys
 import threading
 import time
 from functools import wraps
+from subprocess import Popen
 from types import FrameType
 from typing import Any
 from typing import Callable
@@ -116,3 +117,19 @@ class Timeout:
     def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, self.old_handler)
+
+
+def _timeout(process: Popen) -> None:
+    """Helper function for _run. It terminates the process.
+    Doesn't raise OSError, if we try to terminate a non-existing
+    process as there can be a very small window between poll() and kill()
+    """
+    if process.poll() is None:
+        try:
+            # sending SIGKILL to the process
+            process.kill()
+        except OSError as e:
+            # No such process error
+            # The process could have been terminated meanwhile
+            if e.errno != errno.ESRCH:
+                raise
