@@ -1,3 +1,10 @@
+paasta-tools (0.97.41) xenial; urgency=medium
+
+  * 0.97.41 tagged with 'make release'
+    Commit: Use -1 to get the last element of list (#2985)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Thu, 03 Dec 2020 03:29:21 -0800
+
 paasta-tools (0.97.40) xenial; urgency=medium
 
   * 0.97.40 tagged with 'make release'
