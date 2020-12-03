@@ -149,7 +149,7 @@ class SecretProvider(BaseSecretProvider):
 
     def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         ecosystem = self.ecosystems[0]
-        if data["environments"][ecosystem]:
+        if data["environments"].get(ecosystem):
             return data["environments"][ecosystem]["signature"]
         else:
             return None

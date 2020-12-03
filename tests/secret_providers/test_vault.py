@@ -151,6 +151,22 @@ def test_get_secret_signature_from_data(mock_secret_provider):
         )
 
 
+def test_get_secret_signature_from_data_missing(mock_secret_provider):
+    mock_secret_provider.cluster_names = ["mesosstage", "devc", "prod"]
+    mock_secret_provider.vault_cluster_config = {
+        "mesosstage": "devc",
+        "devc": "devc",
+        "prod": "prod",
+    }
+    with mock.patch(
+        "paasta_tools.secret_providers.vault.get_plaintext", autospec=False
+    ):
+        # Should not raise errors
+        assert not mock_secret_provider.get_secret_signature_from_data(
+            {"environments": {"westeros": {}}}
+        )
+
+
 def test_renew_issue_cert(mock_secret_provider):
     with mock.patch(
         "paasta_tools.secret_providers.vault.do_renew", autospec=True
