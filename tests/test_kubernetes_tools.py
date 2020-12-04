@@ -1897,8 +1897,9 @@ class TestKubernetesDeploymentConfig:
         ) as mock_load_system_config:
             mock_load_system_config.side_effect = None
             mock_load_system_config.return_value = mock.Mock(
-                get_supported_storage_classes=mock.Mock(return_value=["ebs", "ebs-slow", "ebs-retain"]),
-                get_register_k8s_pods=mock.Mock(return_value=False),
+                get_supported_storage_classes=mock.Mock(
+                    return_value=["ebs", "ebs-slow", "ebs-retain"]
+                ),
             )
             pv = PersistentVolume(
                 storage_class_name=storage_class_name,
