@@ -134,6 +134,7 @@ from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
+from paasta_tools.utils import get_supported_storage_classes
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -168,7 +169,6 @@ DISCOVERY_ATTRIBUTES = {
     "pool",
     "hostname",
 }
-SUPPORTED_STORAGE_CLASSES = {"ebs", "ebs-slow", "ebs-retain"}
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 
@@ -1145,8 +1145,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_storage_class_name(self, volume: PersistentVolume) -> str:
+        supported_storage_classes = get_supported_storage_classes()
         storage_class_name = volume.get("storage_class_name", "ebs")
-        if storage_class_name not in SUPPORTED_STORAGE_CLASSES:
+        if storage_class_name not in supported_storage_classes:
             log.warning(f"storage class {storage_class_name} is not supported")
             storage_class_name = "ebs"
         return storage_class_name
