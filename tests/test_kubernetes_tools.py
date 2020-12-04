@@ -1892,13 +1892,21 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize("storage_class_name", ["ebs", "ebs-slow", "ebs-retain"])
     def test_get_storage_class_name_correct(self, storage_class_name):
-        pv = PersistentVolume(
-            storage_class_name=storage_class_name,
-            size=1000,
-            container_path="/dev/null",
-            mode="rw",
-        )
-        assert self.deployment.get_storage_class_name(pv) == storage_class_name
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+        ) as mock_load_system_config:
+            mock_load_system_config.side_effect = None
+            mock_load_system_config.return_value = mock.Mock(
+                get_supported_storage_classes=mock.Mock(return_value=["ebs", "ebs-slow", "ebs-retain"]),
+                get_register_k8s_pods=mock.Mock(return_value=False),
+            )
+            pv = PersistentVolume(
+                storage_class_name=storage_class_name,
+                size=1000,
+                container_path="/dev/null",
+                mode="rw",
+            )
+            assert self.deployment.get_storage_class_name(pv) == storage_class_name
 
     def test_get_persistent_volume_name(self):
         pv_name = self.deployment.get_persistent_volume_name(
