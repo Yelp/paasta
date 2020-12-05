@@ -170,6 +170,7 @@ DISCOVERY_ATTRIBUTES = {
 }
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
+DEFAULT_STORAGE_CLASS_NAME = "ebs"
 
 # This Signaflow attempts to recreate the behavior of the legacy autoscaler,
 # which averages the number of instances needed to handle the current (or
@@ -1144,12 +1145,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_storage_class_name(self, volume: PersistentVolume) -> str:
-        system_paasta_config = load_system_paasta_config()
-        supported_storage_classes = system_paasta_config.get_supported_storage_classes()
-        storage_class_name = volume.get("storage_class_name", "ebs")
-        if storage_class_name not in supported_storage_classes:
-            log.warning(f"storage class {storage_class_name} is not supported")
-            storage_class_name = "ebs"
+        try:
+            system_paasta_config = load_system_paasta_config()
+            supported_storage_classes = (
+                system_paasta_config.get_supported_storage_classes()
+            )
+            storage_class_name = volume.get("storage_class_name", "ebs")
+            if storage_class_name not in supported_storage_classes:
+                log.warning(f"storage class {storage_class_name} is not supported")
+                storage_class_name = DEFAULT_STORAGE_CLASS_NAME
+        except (PaastaNotConfiguredError):
+            log.warning("No PaaSTA configuration was found, returning default value")
+            storage_class_name = DEFAULT_STORAGE_CLASS_NAME
         return storage_class_name
 
     def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
