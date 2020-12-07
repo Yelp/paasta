@@ -20,8 +20,8 @@ from typing import Optional
 from paasta_tools import utils
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.marathon_tools import MarathonClients
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 soa_dir: str = os.environ.get("PAASTA_API_SOA_DIR", DEFAULT_SOA_DIR)
 

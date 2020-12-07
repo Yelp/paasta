@@ -4,8 +4,8 @@ import logging
 import yelp_meteorite
 
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

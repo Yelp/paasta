@@ -34,11 +34,11 @@ import service_configuration_lib
 
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.util.cache import time_cache
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import PaastaNotConfiguredError
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import is_under_replicated
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaNotConfiguredError
 
 
 class ReplicationChecker(abc.ABC):

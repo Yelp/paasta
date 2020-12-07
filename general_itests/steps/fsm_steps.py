@@ -22,7 +22,7 @@ from behave import when
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.cli.fsm_cmd import paasta_fsm
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @given("a fake yelpsoa-config-root with an existing service")

@@ -40,12 +40,12 @@ from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig_T
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SPACER
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import InstanceConfig_T
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.const import SPACER
 
 try:
     import yelp_meteorite

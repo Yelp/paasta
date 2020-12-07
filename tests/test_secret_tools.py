@@ -23,7 +23,7 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 def test_is_secret_ref():

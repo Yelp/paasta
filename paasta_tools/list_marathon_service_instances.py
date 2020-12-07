@@ -37,11 +37,11 @@ from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import get_num_at_risk_tasks
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.mesos_maintenance import get_draining_hosts
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import long_job_id_to_short_job_id
 from paasta_tools.utils import _log
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import long_job_id_to_short_job_id
 from paasta_tools.utils import use_requests_cache
 
 

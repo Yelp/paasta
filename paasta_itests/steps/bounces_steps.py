@@ -220,7 +220,7 @@ def when_setup_service_initiated(context):
         autospec=True,
         return_value="newapp",
     ), mock.patch(
-        "paasta_tools.utils.InstanceConfig.get_docker_url",
+        "paasta_tools.util.config_loading.InstanceConfig.get_docker_url",
         autospec=True,
         return_value="busybox",
     ), mock.patch(

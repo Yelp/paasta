@@ -16,7 +16,7 @@ import pytest
 
 from paasta_tools import setup_kubernetes_cr
 from paasta_tools.kubernetes_tools import KubeCustomResource
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 def test_main():

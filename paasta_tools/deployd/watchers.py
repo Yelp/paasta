@@ -29,12 +29,12 @@ from paasta_tools.marathon_tools import deformat_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_maintenance import get_draining_hosts
-from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import list_all_instances_for_service
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import list_all_instances_for_service
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import AUTO_SOACONFIG_SUBDIR
+from paasta_tools.util.const import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
 class PaastaWatcher(PaastaThread):

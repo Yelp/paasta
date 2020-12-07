@@ -2,17 +2,17 @@ import mock
 import pytest
 from addict import Dict
 
-from paasta_tools import utils
 from paasta_tools.frameworks import adhoc_scheduler
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.frameworks.native_service_config import UnknownNativeServiceError
 from paasta_tools.frameworks.task_store import DictTaskStore
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @pytest.fixture
 def system_paasta_config():
-    return utils.SystemPaastaConfig(
+    return SystemPaastaConfig(
         {"docker_registry": "fake", "volumes": []}, "/fake/system/configs"
     )
 
@@ -119,7 +119,7 @@ class TestAdhocScheduler:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ):
@@ -211,7 +211,7 @@ class TestAdhocScheduler:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ):

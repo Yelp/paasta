@@ -15,7 +15,7 @@ import mock
 
 from paasta_tools import adhoc_tools
 from paasta_tools.deployment import DeploymentsJsonV2
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 
 
 def test_get_default_interactive_config():

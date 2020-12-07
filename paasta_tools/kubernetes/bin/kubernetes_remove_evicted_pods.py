@@ -33,7 +33,7 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.monitoring_tools import send_event
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 log = logging.getLogger(__name__)

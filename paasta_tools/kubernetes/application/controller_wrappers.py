@@ -26,7 +26,7 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_stateful_set
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 
 class Application(ABC):

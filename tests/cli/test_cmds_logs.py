@@ -1108,7 +1108,7 @@ def test_prefix():
 
 def test_get_log_reader():
     mock_system_paasta_config = mock.Mock(
-        autospec="paasta_tools.utils.SystemPaastaConfig"
+        autospec="paasta_tools.util.config_loading.SystemPaastaConfig"
     )
     mock_system_paasta_config.get_log_reader.return_value = {
         "driver": "scribereader",

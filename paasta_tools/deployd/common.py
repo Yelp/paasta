@@ -26,7 +26,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.metrics.metrics_lib import TimerProtocol
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 
 class BounceTimers(NamedTuple):

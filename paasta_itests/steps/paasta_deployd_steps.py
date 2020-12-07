@@ -19,8 +19,8 @@ from steps.setup_steps import modify_configs
 from paasta_tools.deployd.master import DEAD_DEPLOYD_WORKER_MESSAGE
 from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.names import decompose_job_id
 from paasta_tools.utils import ZookeeperPool
 
 

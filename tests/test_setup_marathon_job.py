@@ -36,9 +36,9 @@ from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import NoDockerImageError
+from paasta_tools.util.config_loading import NoDockerImageError
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import decompose_job_id
 
 
 class TestSetupMarathonJob:

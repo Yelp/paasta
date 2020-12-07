@@ -17,7 +17,7 @@ from zake.fake_client import FakeClient
 from paasta_tools.api import settings
 from paasta_tools.api.views import deploy_queue
 from paasta_tools.deployd.common import ServiceInstance
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @mock.patch("paasta_tools.api.views.deploy_queue.KazooClient", autospec=True)

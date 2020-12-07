@@ -11,7 +11,7 @@ from typing import Union
 
 from typing_extensions import Protocol
 
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

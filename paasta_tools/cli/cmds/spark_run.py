@@ -31,18 +31,18 @@ from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import NoDockerImageError
+from paasta_tools.util.config_loading import PaastaNotConfiguredError
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import NoConfigurationForServiceError
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _run
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import SystemPaastaConfig
 
 
 DEFAULT_AWS_REGION = "us-west-2"

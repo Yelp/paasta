@@ -19,12 +19,12 @@ from paasta_tools import paastaapi
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.utils import get_paasta_metastatus_cmd_args
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import SystemPaastaConfig
 
 
 def add_subparser(subparsers,) -> None:

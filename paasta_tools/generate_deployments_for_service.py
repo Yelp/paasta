@@ -52,8 +52,8 @@ from mypy_extensions import TypedDict
 
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import atomic_file_write
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 
 log = logging.getLogger(__name__)

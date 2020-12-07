@@ -17,7 +17,7 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
 clusterman_metrics, __ = get_clusterman_metrics()

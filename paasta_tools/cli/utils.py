@@ -46,21 +46,21 @@ from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
+from paasta_tools.util.config_loading import get_service_instance_list
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import list_all_instances_for_service
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_loading import validate_service_instance
+from paasta_tools.util.const import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import list_all_instances_for_service
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
 

@@ -22,10 +22,11 @@ from behave import when
 from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
-from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_oapi_client_by_url
 from paasta_tools.frameworks import native_scheduler
-from paasta_tools.utils import decompose_job_id
+from paasta_tools.util.config_loading import get_paasta_branch
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.names import decompose_job_id
 
 
 def _get_marathon_connection_string(service="marathon"):
@@ -38,7 +39,7 @@ def _get_zookeeper_connection_string(chroot):
 
 def setup_system_paasta_config():
     zk_connection_string = _get_zookeeper_connection_string("mesos-testcluster")
-    system_paasta_config = utils.SystemPaastaConfig(
+    system_paasta_config = SystemPaastaConfig(
         {
             "cluster": "testcluster",
             "deployd_log_level": "DEBUG",
@@ -334,7 +335,7 @@ def write_soa_dir_deployments(context, service, disabled, csv_instances, image):
                 {
                     "v1": {
                         "{}:paasta-{}".format(
-                            service, utils.get_paasta_branch(context.cluster, instance)
+                            service, get_paasta_branch(context.cluster, instance)
                         ): {"docker_image": image, "desired_state": desired_state}
                         for instance in csv_instances.split(",")
                     },

@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 def time_to_feel_bad(*args, **kwarg):

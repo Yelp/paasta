@@ -17,7 +17,7 @@ import pytest
 
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
-from paasta_tools.utils import compose_job_id
+from paasta_tools.util.names import compose_job_id
 
 
 class TestMonitoring_Tools:

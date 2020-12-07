@@ -12,9 +12,9 @@ from http.client import HTTPConnection
 import requests
 import ruamel.yaml as yaml
 
-from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
-from paasta_tools.utils import load_system_paasta_config
 
 requests_log = logging.getLogger("requests.packages.urllib3")
 logging.basicConfig(level=logging.INFO)

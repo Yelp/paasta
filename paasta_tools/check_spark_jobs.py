@@ -13,8 +13,8 @@ import requests
 
 from paasta_tools import mesos_tools
 from paasta_tools.monitoring_tools import send_event
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import list_services
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 logger = logging.getLogger(__name__)

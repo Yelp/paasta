@@ -22,9 +22,9 @@ from pysensu_yelp import Status
 from paasta_tools import monitoring_tools
 from paasta_tools.cli.cmds.logs import scribe_env_to_locations
 from paasta_tools.cli.utils import get_instance_config
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 try:
     from scribereader import scribereader

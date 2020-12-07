@@ -61,13 +61,13 @@ from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import mean
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
 

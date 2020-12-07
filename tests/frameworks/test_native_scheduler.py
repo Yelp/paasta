@@ -2,17 +2,17 @@ import mock
 import pytest
 from addict import Dict
 
-from paasta_tools import utils
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.frameworks.native_scheduler import TASK_KILLED
 from paasta_tools.frameworks.native_scheduler import TASK_RUNNING
 from paasta_tools.frameworks.native_service_config import NativeServiceConfig
 from paasta_tools.frameworks.task_store import DictTaskStore
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @pytest.fixture
 def system_paasta_config():
-    return utils.SystemPaastaConfig(
+    return SystemPaastaConfig(
         {"docker_registry": "fake", "volumes": [], "dockercfg_location": "/foo/bar"},
         "/fake/system/configs",
     )
@@ -84,7 +84,7 @@ class TestNativeScheduler:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ):
@@ -220,7 +220,7 @@ class TestNativeScheduler:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ):
@@ -312,11 +312,11 @@ class TestNativeServiceConfig:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=True,
         ):
@@ -466,7 +466,7 @@ class TestNativeServiceConfig:
         # launch a task
         offer = make_fake_offer(port_begin=31337, port_end=31337)
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             autospec=True,
             return_value=system_paasta_config,
         ):

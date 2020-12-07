@@ -30,9 +30,9 @@ import argparse
 import sys
 
 from paasta_tools import kubernetes_tools
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
 
 
 def parse_args():

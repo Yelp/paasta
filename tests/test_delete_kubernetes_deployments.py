@@ -3,7 +3,7 @@ from pytest import raises
 
 from paasta_tools.delete_kubernetes_deployments import get_deployment_names_from_list
 from paasta_tools.delete_kubernetes_deployments import main
-from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.util.names import InvalidJobNameError
 
 
 def test_main():

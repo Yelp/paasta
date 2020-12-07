@@ -12,8 +12,8 @@ import ruamel.yaml as yaml
 from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.cli.cmds.validate import validate_schema
-from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.const import AUTO_SOACONFIG_SUBDIR
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 log = logging.getLogger(__name__)

@@ -35,10 +35,10 @@ from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 from paasta_tools.util.timeout import TimeoutError
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import SystemPaastaConfig
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
@@ -645,7 +645,7 @@ def test_configure_and_run_docker_container_respects_docker_sha(system_paasta_co
     ) as mock_run_docker_container, mock.patch(
         "paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True
     ) as mock_get_default_interactive_config, mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.util.config_loading.get_service_docker_registry",
         autospec=True,
         return_value="fake_registry",
     ):

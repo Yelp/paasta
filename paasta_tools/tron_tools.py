@@ -45,18 +45,18 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DockerParameter
-from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.config_types import DockerParameter
+from paasta_tools.util.config_types import DockerVolume
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import InvalidInstanceConfig
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
 from paasta_tools.deployment import load_v2_deployments_json
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.util.cache import time_cache
-from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.util.config_loading import filter_templates_from_config
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 

@@ -37,11 +37,11 @@ from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import validate_complete_config
-from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import list_all_instances_for_service
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import get_service_instance_list
+from paasta_tools.util.config_loading import list_all_instances_for_service
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 
 SCHEMA_VALID = success("Successfully validated schema")

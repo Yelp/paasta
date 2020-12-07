@@ -55,9 +55,7 @@ def test_is_hostname_local_works(mock_gethostname, mock_getfqdn):
     assert paasta_maintenance.is_hostname_local("something_different") is False
 
 
-@mock.patch(
-    "paasta_tools.paasta_maintenance.utils.load_system_paasta_config", autospec=True
-)
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 def test_are_local_tasks_in_danger_fails_safe_with_false(
     mock_load_system_paasta_config,
 ):
@@ -69,9 +67,7 @@ def test_are_local_tasks_in_danger_fails_safe_with_false(
     assert paasta_maintenance.are_local_tasks_in_danger() is False
 
 
-@mock.patch(
-    "paasta_tools.paasta_maintenance.utils.load_system_paasta_config", autospec=True
-)
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @mock.patch(
     "paasta_tools.paasta_maintenance.marathon_services_running_here", autospec=True
 )
@@ -82,9 +78,7 @@ def test_are_local_tasks_in_danger_is_false_with_nothing_running(
     assert paasta_maintenance.are_local_tasks_in_danger() is False
 
 
-@mock.patch(
-    "paasta_tools.paasta_maintenance.utils.load_system_paasta_config", autospec=True
-)
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @mock.patch(
     "paasta_tools.paasta_maintenance.marathon_services_running_here", autospec=True
 )
@@ -102,9 +96,7 @@ def test_are_local_tasks_in_danger_is_false_with_an_unhealthy_service(
     mock_is_healthy_in_haproxy.assert_called_once_with(42, mock.ANY)
 
 
-@mock.patch(
-    "paasta_tools.paasta_maintenance.utils.load_system_paasta_config", autospec=True
-)
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @mock.patch(
     "paasta_tools.paasta_maintenance.marathon_services_running_here", autospec=True
 )

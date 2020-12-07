@@ -10,4 +10,4 @@ from paasta_tools.firewall import DEFAULT_SYNAPSE_SERVICE_DIR
 from paasta_tools.firewall import firewall_flock
 from paasta_tools.firewall import prepare_new_container
 from paasta_tools.mac_address import reserve_unique_mac_address
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.const import DEFAULT_SOA_DIR

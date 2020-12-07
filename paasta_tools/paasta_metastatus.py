@@ -49,8 +49,8 @@ from paasta_tools.metrics.metastatus_lib import _KeyFuncRetT
 from paasta_tools.metrics.metastatus_lib import HealthCheckResult
 from paasta_tools.metrics.metastatus_lib import ResourceUtilization
 from paasta_tools.metrics.metastatus_lib import ResourceUtilizationDict
+from paasta_tools.util.config_loading import load_system_paasta_config
 from paasta_tools.utils import format_table
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 

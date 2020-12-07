@@ -14,8 +14,8 @@
 from behave import then
 
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.names import decompose_job_id
 
 
 @then(

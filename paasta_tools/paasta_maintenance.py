@@ -21,7 +21,6 @@ from socket import gethostbyname
 from socket import gethostname
 
 from paasta_tools import mesos_maintenance
-from paasta_tools import utils
 from paasta_tools.marathon_tools import get_expected_instance_count_for_namespace
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import marathon_services_running_here
@@ -30,6 +29,11 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import load_smartstack_info_for_service
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import decompose_job_id
+from paasta_tools.utils import is_under_replicated
+
 
 log = logging.getLogger(__name__)
 
@@ -138,7 +142,7 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
     marathon_service_config = load_marathon_service_config(
         service=service, instance=instance, cluster=cluster, load_deployments=False
     )
-    reg_svc, reg_namespace, _, __ = utils.decompose_job_id(
+    reg_svc, reg_namespace, _, __ = decompose_job_id(
         marathon_service_config.get_registrations()
     )
     # We only actually care about the replication of where we're registering
@@ -155,7 +159,7 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
     )
     expected_count_per_location = int(expected_count / len(smartstack_replication_info))
 
-    synapse_name = utils.compose_job_id(service, namespace)
+    synapse_name = compose_job_id(service, namespace)
     local_replication = get_replication_for_services(
         synapse_host=system_paasta_config.get_default_synapse_host(),
         synapse_port=system_paasta_config.get_synapse_port(),
@@ -163,7 +167,7 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
         services=[synapse_name],
     )
     num_available = local_replication.get(synapse_name, 0)
-    under_replicated, ratio = utils.is_under_replicated(
+    under_replicated, ratio = is_under_replicated(
         num_available, expected_count_per_location, crit_threshold
     )
     log.info(
@@ -175,7 +179,7 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
 
 def are_local_tasks_in_danger():
     try:
-        system_paasta_config = utils.load_system_paasta_config()
+        system_paasta_config = load_system_paasta_config()
         local_services = marathon_services_running_here()
         local_backends = get_backends(
             service=None,

@@ -28,12 +28,12 @@ from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
+from paasta_tools.util.config_loading import build_docker_tag
+from paasta_tools.util.config_loading import get_service_docker_registry
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
-from paasta_tools.utils import build_docker_tag
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_service_docker_registry
 
 
 def add_subparser(subparsers):

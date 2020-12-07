@@ -18,9 +18,9 @@ from paasta_tools.kubernetes_tools import get_all_kubernetes_services_running_he
 from paasta_tools.marathon_tools import marathon_services_running_here
 from paasta_tools.mesos_tools import MesosSlaveConnectionError
 from paasta_tools.tron_tools import tron_jobs_running_here
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
 
 
 def broadcast_log_all_services_running_here(line: str, soa_dir=DEFAULT_SOA_DIR) -> None:

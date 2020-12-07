@@ -127,23 +127,23 @@ from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.util.cache import time_cache
+from paasta_tools.util.config_loading import get_git_sha_from_dockerurl
+from paasta_tools.util.config_loading import load_service_instance_config
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import PaastaNotConfiguredError
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import AwsEbsVolume
+from paasta_tools.util.config_types import DeployBlacklist
+from paasta_tools.util.config_types import DeployWhitelist
+from paasta_tools.util.config_types import DockerVolume
+from paasta_tools.util.config_types import PersistentVolume
+from paasta_tools.util.config_types import SecretVolume
+from paasta_tools.util.config_types import VolumeWithMode
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
-from paasta_tools.utils import AwsEbsVolume
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeployBlacklist
-from paasta_tools.utils import DeployWhitelist
-from paasta_tools.utils import DockerVolume
+from paasta_tools.util.names import decompose_job_id
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_git_sha_from_dockerurl
-from paasta_tools.utils import load_service_instance_config
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import PersistentVolume
-from paasta_tools.utils import SecretVolume
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import VolumeWithMode
 
 
 log = logging.getLogger(__name__)
@@ -275,14 +275,14 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
 
 KubeContainerResourceRequest = TypedDict(
     "KubeContainerResourceRequest",
-    {"cpu": float, "memory": str, "ephemeral-storage": str,},
+    {"cpu": float, "memory": str, "ephemeral-storage": str},
     total=False,
 )
 
 
 SidecarResourceRequirements = TypedDict(
     "SidecarResourceRequirements",
-    {"requests": KubeContainerResourceRequest, "limits": KubeContainerResourceRequest,},
+    {"requests": KubeContainerResourceRequest, "limits": KubeContainerResourceRequest},
     total=False,
 )
 

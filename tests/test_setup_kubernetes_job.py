@@ -13,7 +13,7 @@ from paasta_tools.setup_kubernetes_job import create_application_object
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 
 
 def test_parse_args():

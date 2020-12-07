@@ -48,13 +48,13 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.frameworks.native_service_config import load_paasta_native_job_config
 from paasta_tools.mesos_tools import get_all_frameworks
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.config_loading import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import validate_service_instance
+from paasta_tools.util.config_loading import validate_service_instance
 
 MESOS_TASK_SPACER = "."
 TASKPROC_OFFER_TIMEOUT_RAW = "Failed due to offer timeout"

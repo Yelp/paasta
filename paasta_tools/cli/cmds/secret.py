@@ -20,10 +20,10 @@ import sys
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
 from paasta_tools.utils import _log_audit
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 
 
 SECRET_NAME_REGEX = r"([A-Za-z0-9_-]*)"

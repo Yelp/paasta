@@ -7,7 +7,7 @@ from paasta_tools import tron_tools
 from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
-from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.util.config_loading import InvalidInstanceConfig
 
 
 class TestTronConfig:
@@ -154,7 +154,8 @@ class TestTronActionConfig:
         monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
         action_config.config_dict["executor"] = executor
         with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
+            "paasta_tools.util.config_loading.get_service_docker_registry",
+            autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
         ), mock.patch(
@@ -188,7 +189,8 @@ class TestTronActionConfig:
             "get_spark_config_dict",
             return_value={"spark.master": "mesos://host:port"},
         ), mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
+            "paasta_tools.util.config_loading.get_service_docker_registry",
+            autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
         ), mock.patch(
@@ -419,7 +421,9 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop"},
         }
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_all_actions(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "paasta",
@@ -438,7 +442,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 3
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_invalid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
@@ -455,7 +461,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
@@ -472,7 +480,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_invalid_action_deploy_group(
         self, mock_get_pipeline_deploy_groups
     ):
@@ -495,7 +505,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 1
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_action_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
@@ -514,7 +526,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_monitoring(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
@@ -528,7 +542,9 @@ class TestTronJobConfig:
         errors = job_config.validate()
         assert len(errors) == 0
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_monitoring_without_team(self, mock_get_pipeline_deploy_groups):
         job_dict = {
             "node": "batch_server",
@@ -543,7 +559,9 @@ class TestTronJobConfig:
         assert errors == []
         assert job_config.get_monitoring()["team"] == "default_team"
 
-    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch(
+        "paasta_tools.util.config_loading.get_pipeline_deploy_groups", autospec=True
+    )
     def test_validate_monitoring_with_invalid_team(
         self, mock_get_pipeline_deploy_groups
     ):
@@ -705,7 +723,7 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ):
@@ -766,7 +784,7 @@ class TestTronTools:
         )
 
         with mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ):
@@ -892,7 +910,7 @@ class TestTronTools:
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch.object(action_config, "get_env", return_value={}), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch.object(

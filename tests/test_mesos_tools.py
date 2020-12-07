@@ -24,8 +24,8 @@ from pytest import raises
 
 from paasta_tools import mesos
 from paasta_tools import mesos_tools
-from paasta_tools import utils
 from paasta_tools.marathon_tools import format_job_id
+from paasta_tools.util.config_loading import sort_dicts
 from paasta_tools.util.timeout import TimeoutError
 from paasta_tools.utils import PaastaColors
 
@@ -629,9 +629,7 @@ async def test_get_mesos_task_count_by_slave():
                 )
             },
         ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
+        assert len(ret) == len(expected) and sort_dicts(ret) == sort_dicts(expected)
         ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state, pool=None
         )
@@ -653,9 +651,7 @@ async def test_get_mesos_task_count_by_slave():
                 )
             },
         ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
+        assert len(ret) == len(expected) and sort_dicts(ret) == sort_dicts(expected)
 
         # test slaves_list override
         mock_task2 = mock.Mock()
@@ -700,9 +696,7 @@ async def test_get_mesos_task_count_by_slave():
                 )
             },
         ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
+        assert len(ret) == len(expected) and sort_dicts(ret) == sort_dicts(expected)
 
         # test SlaveDoesNotExist exception handling
         mock_task2.__getitem__ = mock.Mock(side_effect="fakeid")
@@ -752,9 +746,7 @@ async def test_get_mesos_task_count_by_slave():
                 )
             },
         ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
+        assert len(ret) == len(expected) and sort_dicts(ret) == sort_dicts(expected)
 
 
 def test_get_count_running_tasks_on_slave():

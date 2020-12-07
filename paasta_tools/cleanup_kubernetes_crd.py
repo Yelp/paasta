@@ -32,8 +32,8 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
 

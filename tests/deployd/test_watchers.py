@@ -6,7 +6,7 @@ from pytest import raises
 from requests.exceptions import RequestException
 
 from paasta_tools.deployd.common import ServiceInstance
-from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
+from paasta_tools.util.const import AUTO_SOACONFIG_SUBDIR
 
 
 class FakePyinotify:  # pragma: no cover

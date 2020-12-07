@@ -17,12 +17,12 @@ import os
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.util.config_loading import build_docker_tag
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
-from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import check_docker_image
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import list_services
 
 
 def add_subparser(subparsers):

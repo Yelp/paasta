@@ -20,7 +20,7 @@ import time
 import a_sync
 
 from paasta_tools.mesos_tools import get_mesos_master
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 
 OUTPUT_FORMAT = "{:<30}  {:<8}  {:<20}  {:<27}  {}"

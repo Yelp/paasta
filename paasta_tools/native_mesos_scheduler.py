@@ -14,11 +14,11 @@ from paasta_tools.frameworks.native_scheduler import load_paasta_native_job_conf
 from paasta_tools.frameworks.native_scheduler import NativeScheduler
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import PaastaNotConfiguredError
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import decompose_job_id
 
 
 def parse_args(argv):

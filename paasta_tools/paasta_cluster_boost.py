@@ -17,7 +17,7 @@ import logging
 import sys
 
 from paasta_tools.autoscaling import load_boost
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

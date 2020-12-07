@@ -79,16 +79,16 @@ from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.mesos_maintenance import get_draining_hosts
 from paasta_tools.mesos_maintenance import reserve_all_resources
+from paasta_tools.util.config_loading import InvalidInstanceConfig
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import NoDockerImageError
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import NoConfigurationForServiceError
+from paasta_tools.util.const import SPACER
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import decompose_job_id
+from paasta_tools.util.names import InvalidJobNameError
 from paasta_tools.utils import _log
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import SPACER
-from paasta_tools.utils import SystemPaastaConfig
 
 try:
     import yelp_meteorite

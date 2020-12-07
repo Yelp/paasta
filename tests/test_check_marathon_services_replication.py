@@ -19,7 +19,7 @@ import mock
 import pytest
 
 from paasta_tools import check_marathon_services_replication
-from paasta_tools.utils import compose_job_id
+from paasta_tools.util.names import compose_job_id
 
 check_marathon_services_replication.log = mock.Mock()
 

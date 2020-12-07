@@ -36,9 +36,9 @@ from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
+from paasta_tools.util.config_loading import NoDockerImageError
+from paasta_tools.util.config_loading import SystemPaastaConfig
 from paasta_tools.util.timeout import TimeoutError
-from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import SystemPaastaConfig
 
 
 @pytest.mark.parametrize("include_mesos", [False, True])

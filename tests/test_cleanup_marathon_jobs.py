@@ -16,7 +16,7 @@ import mock
 from pytest import raises
 
 from paasta_tools import cleanup_marathon_jobs
-from paasta_tools import utils
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 class TestCleanupMarathonJobs:
@@ -24,7 +24,7 @@ class TestCleanupMarathonJobs:
     cleanup_marathon_jobs.log = mock.Mock()
     fake_docker_registry = "http://del.icio.us/"
     fake_cluster = "fake_test_cluster"
-    fake_system_config = utils.SystemPaastaConfig(
+    fake_system_config = SystemPaastaConfig(
         {
             "marathon_servers": [
                 {"url": "http://mess_url", "user": "namnin", "password": "pass_nememim"}

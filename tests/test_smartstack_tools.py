@@ -25,7 +25,7 @@ from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.smartstack_tools import match_backends_and_tasks
-from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
+from paasta_tools.util.const import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
 def test_load_smartstack_info_for_service(system_paasta_config):

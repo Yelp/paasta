@@ -43,11 +43,11 @@ from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.monitoring_tools import ReplicationChecker
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeployBlacklist
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import DeployBlacklist
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import SystemPaastaConfig
 
 
 class HaproxyBackend(TypedDict, total=False):
@@ -634,7 +634,7 @@ class MesosSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
     :Example:
 
     >>> from paasta_tools.mesos_tools import get_slaves
-    >>> from paasta_tools.utils import load_system_paasta_config
+    >>> from paasta_tools.util.config_loading import load_system_paasta_config
     >>> from paasta_tools.marathon_tools import load_marathon_service_config
     >>> from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
     >>>

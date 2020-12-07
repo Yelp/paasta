@@ -155,7 +155,7 @@ def test_push_to_registry_does_not_override_existing_image(
     assert not mock_log_audit.called
 
 
-@patch("paasta_tools.utils.load_system_paasta_config", autospec=True)
+@patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry",
     autospec=True,

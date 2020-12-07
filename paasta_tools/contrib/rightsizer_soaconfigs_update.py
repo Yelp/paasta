@@ -4,9 +4,9 @@ from collections import defaultdict
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
-from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
-from paasta_tools.utils import load_system_paasta_config
 
 NULL = "null"
 

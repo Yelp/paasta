@@ -20,12 +20,13 @@ from requests.exceptions import ConnectionError
 from requests.exceptions import RequestException
 
 from paasta_tools import bounce_lib
-from paasta_tools import utils
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
 class TestBounceLib:
     def fake_system_paasta_config(self):
-        return utils.SystemPaastaConfig({"synapse_port": 123456}, "/fake/configs")
+        return SystemPaastaConfig({"synapse_port": 123456}, "/fake/configs")
 
     def test_bounce_lock(self):
         import fcntl
@@ -466,7 +467,7 @@ class TestBounceLib:
             get_registered_marathon_tasks_patch.assert_called_once_with(
                 "fake_host1",
                 123456,
-                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+                DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 "service.namespace",
                 tasks,
             )

@@ -18,8 +18,8 @@ PaaSTA service list (instances) etc.
 from pyramid.view import view_config
 
 from paasta_tools.api import settings
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import list_all_instances_for_service
 
 
 @view_config(route_name="service.list", request_method="GET", renderer="json")

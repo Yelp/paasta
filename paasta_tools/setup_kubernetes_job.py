@@ -37,12 +37,12 @@ from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import SPACER
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_types import NoConfigurationForServiceError
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.const import SPACER
+from paasta_tools.util.names import decompose_job_id
+from paasta_tools.util.names import InvalidJobNameError
 
 log = logging.getLogger(__name__)
 

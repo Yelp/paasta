@@ -32,7 +32,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import request_logger
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 try:
     import clog

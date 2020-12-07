@@ -21,9 +21,9 @@ from paasta_tools.deployment import load_v2_deployments_json
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.util.config_loading import load_service_instance_config
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import load_service_instance_config
 
 
 class KafkaClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):

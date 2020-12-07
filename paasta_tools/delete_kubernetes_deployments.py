@@ -27,9 +27,9 @@ from paasta_tools.kubernetes_tools import delete_deployment
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import SPACER
+from paasta_tools.util.config_loading import InvalidJobNameError
+from paasta_tools.util.const import SPACER
+from paasta_tools.util.names import decompose_job_id
 
 log = logging.getLogger(__name__)
 

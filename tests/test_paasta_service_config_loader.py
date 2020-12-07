@@ -74,7 +74,7 @@ def deployment_json():
 
 
 def marathon_cluster_config():
-    """Return a sample dict to mock paasta_tools.utils.load_service_instance_configs"""
+    """Return a sample dict to mock paasta_tools.util.config_loading.load_service_instance_configs"""
     return {
         "main": {
             "instances": 3,

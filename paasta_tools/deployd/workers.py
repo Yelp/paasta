@@ -13,8 +13,8 @@ from paasta_tools.deployd.common import PaastaThread
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.metrics.metrics_lib import BaseMetrics
 from paasta_tools.setup_marathon_job import deploy_marathon_service
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 class BounceResults(NamedTuple):

@@ -28,8 +28,8 @@ from paasta_tools.list_marathon_service_instances import (
 )
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.metrics.metrics_lib import get_metrics_interface
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
 # Broken out into a constant so that we don't get drift between this and the code in paasta_deployd_steps.py that

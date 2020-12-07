@@ -16,7 +16,7 @@ from pyramid import testing
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.marathon_dashboard import marathon_dashboard
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 def test_list_instances():

@@ -28,10 +28,10 @@ from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import get_services_for_cluster
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 log = logging.getLogger(__name__)

@@ -63,19 +63,19 @@ from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.tron_tools import TronActionConfig
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.config_loading import get_soa_cluster_deploy_files
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import list_all_instances_for_service
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
 from paasta_tools.utils import format_table
-from paasta_tools.utils import get_soa_cluster_deploy_files
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
-from paasta_tools.utils import list_all_instances_for_service
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SystemPaastaConfig
 
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,

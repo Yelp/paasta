@@ -15,14 +15,14 @@ import mock
 import pytest
 
 import paasta_tools.instance.kubernetes as pik
-from paasta_tools import utils
+from paasta_tools.util.const import INSTANCE_TYPES
 
 
 def test_instance_types_integrity():
     for it in pik.INSTANCE_TYPES:
-        assert it in utils.INSTANCE_TYPES
+        assert it in INSTANCE_TYPES
     for it in pik.INSTANCE_TYPES_WITH_SET_STATE:
-        assert it in utils.INSTANCE_TYPES
+        assert it in INSTANCE_TYPES
 
 
 def instance_status_kwargs():

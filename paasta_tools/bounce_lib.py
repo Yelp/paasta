@@ -49,10 +49,10 @@ from requests.exceptions import RequestException
 from paasta_tools import marathon_tools
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
 from paasta_tools.smartstack_tools import get_registered_marathon_tasks
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.names import compose_job_id
 from paasta_tools.util.timeout import timeout
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
 
 
 log = logging.getLogger(__name__)

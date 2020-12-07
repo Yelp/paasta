@@ -10,16 +10,16 @@ import service_configuration_lib
 from mypy_extensions import TypedDict
 
 from paasta_tools.deployment import BranchDictV2
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DeployBlacklist
-from paasta_tools.utils import DeployWhitelist
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import InstanceConfigDict
-from paasta_tools.utils import InvalidInstanceConfig
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import InvalidInstanceConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import DeployBlacklist
+from paasta_tools.util.config_types import DeployWhitelist
+from paasta_tools.util.config_types import InstanceConfigDict
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
+from paasta_tools.util.names import decompose_job_id
+from paasta_tools.util.names import InvalidJobNameError
 
 log = logging.getLogger(__name__)
 logging.getLogger("marathon").setLevel(logging.WARNING)

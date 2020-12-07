@@ -114,12 +114,12 @@ from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.utils import AwsEbsVolume
-from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import PersistentVolume
-from paasta_tools.utils import SecretVolume
-from paasta_tools.utils import SecretVolumeItem
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import AwsEbsVolume
+from paasta_tools.util.config_types import DockerVolume
+from paasta_tools.util.config_types import PersistentVolume
+from paasta_tools.util.config_types import SecretVolume
+from paasta_tools.util.config_types import SecretVolumeItem
 
 
 def test_force_delete_pods():
@@ -3058,7 +3058,7 @@ def test_warning_big_bounce():
     )
 
     with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.config_loading.load_system_paasta_config",
         return_value=SystemPaastaConfig(
             {
                 "volumes": [],

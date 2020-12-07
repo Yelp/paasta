@@ -14,7 +14,7 @@
 import mock
 
 from paasta_tools.cli.cmds import metastatus
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @mock.patch("paasta_tools.cli.cmds.metastatus.load_system_paasta_config", autospec=True)

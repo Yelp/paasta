@@ -31,9 +31,9 @@ from paasta_tools.marathon_tools import FormattedMarathonAppDict
 from paasta_tools.marathon_tools import MarathonContainerInfo
 from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DockerVolume
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
+from paasta_tools.util.config_types import DockerVolume
+from paasta_tools.util.names import compose_job_id
 
 
 class TestMarathonTools:
@@ -1101,7 +1101,7 @@ class TestMarathonTools:
             },
         )
         with mock.patch(
-            "paasta_tools.utils.InstanceConfig.get_docker_url",
+            "paasta_tools.util.config_loading.InstanceConfig.get_docker_url",
             autospec=True,
             return_value=fake_url,
         ), mock.patch(
@@ -1109,7 +1109,7 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_service_namespace_config,
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=True,
         ), mock.patch(
@@ -1792,11 +1792,11 @@ class TestMarathonTools:
             autospec=True,
             return_value=fake_system_paasta_config,
         ) as load_system_paasta_config_patch, mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.utils.InstanceConfig.get_docker_url",
+            "paasta_tools.util.config_loading.InstanceConfig.get_docker_url",
             autospec=True,
             return_value=fake_url,
         ), mock.patch(
@@ -2346,7 +2346,7 @@ class TestMarathonServiceConfig:
         )
 
         with mock.patch(
-            "paasta_tools.utils.load_system_paasta_config",
+            "paasta_tools.util.config_loading.load_system_paasta_config",
             return_value=SystemPaastaConfig(
                 {
                     "volumes": [],
@@ -2402,7 +2402,7 @@ def test_format_marathon_app_dict_no_smartstack():
         return_value=fake_service_namespace_config,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.util.config_loading.get_service_docker_registry",
         return_value=fake_docker_registry,
         autospec=True,
     ), mock.patch(
@@ -2410,7 +2410,7 @@ def test_format_marathon_app_dict_no_smartstack():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
         autospec=True,
         return_value=True,
     ), mock.patch(
@@ -2504,7 +2504,7 @@ def test_format_marathon_app_dict_with_smartstack():
         return_value=fake_service_namespace_config,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.util.config_loading.get_service_docker_registry",
         return_value=fake_docker_registry,
         autospec=True,
     ), mock.patch(
@@ -2512,7 +2512,7 @@ def test_format_marathon_app_dict_with_smartstack():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
         autospec=True,
         return_value=True,
     ), mock.patch(
@@ -2678,7 +2678,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         return_value=fake_service_namespace_config,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.get_service_docker_registry",
+        "paasta_tools.util.config_loading.get_service_docker_registry",
         return_value=fake_docker_registry,
         autospec=True,
     ), mock.patch(
@@ -2686,7 +2686,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+        "paasta_tools.util.config_loading.InstanceConfig.use_docker_disk_quota",
         autospec=True,
         return_value=True,
     ), mock.patch(

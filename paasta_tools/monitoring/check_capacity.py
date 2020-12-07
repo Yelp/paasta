@@ -18,7 +18,7 @@ import sys
 from collections import defaultdict
 
 from paasta_tools.api.client import get_paasta_oapi_client
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.util.config_loading import load_system_paasta_config
 
 
 def parse_capacity_check_options():

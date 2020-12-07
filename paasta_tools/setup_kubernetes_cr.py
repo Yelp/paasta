@@ -43,11 +43,11 @@ from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_custom_resource
-from paasta_tools.util.configs import load_all_configs
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.config_loading import get_git_sha_from_dockerurl
+from paasta_tools.util.config_loading import load_all_configs
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_git_sha_from_dockerurl
-from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 

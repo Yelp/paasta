@@ -18,8 +18,8 @@ import requests
 from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.util.timeout import timeout
-from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):

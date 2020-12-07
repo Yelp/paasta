@@ -21,14 +21,16 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import deployment
-from paasta_tools import utils
+from paasta_tools.deployment import BranchDictV2
 from paasta_tools.deployment import load_v2_deployments_json
 from paasta_tools.deployment import NoDeploymentsAvailable
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import InstanceConfig_T
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import load_service_instance_configs
+from paasta_tools.util.config_types import InstanceConfigDict
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InstanceConfig_T
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import load_service_instance_configs
 
 
 log = logging.getLogger(__name__)
@@ -42,7 +44,7 @@ class PaastaServiceConfigLoader:
     :Example:
 
     >>> from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-    >>> from paasta_tools.utils import DEFAULT_SOA_DIR
+    >>> from paasta_tools.util.const import DEFAULT_SOA_DIR
     >>>
     >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
@@ -60,7 +62,7 @@ class PaastaServiceConfigLoader:
     >>>
     """
 
-    _framework_configs: Dict[Tuple[str, type], Dict[str, utils.InstanceConfigDict]]
+    _framework_configs: Dict[Tuple[str, type], Dict[str, InstanceConfigDict]]
     _clusters: List[str]
     _deployments_json: deployment.DeploymentsJsonV2
 
@@ -95,7 +97,7 @@ class PaastaServiceConfigLoader:
         """Returns an iterator that yields instance names as strings.
 
         :param cluster: The cluster name
-        :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
+        :param instance_type: One of paasta_tools.util.const.INSTANCE_TYPES
         :returns: an iterator that yields instance names
         """
         if (cluster, instance_type_class) not in self._framework_configs:
@@ -109,7 +111,7 @@ class PaastaServiceConfigLoader:
         """Returns an iterator that yields InstanceConfig objects.
 
         :param cluster: The cluster name
-        :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
+        :param instance_type: One of paasta_tools.util.const.INSTANCE_TYPES
         :returns: an iterator that yields instances of MarathonServiceConfig, etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type
         """
@@ -142,8 +144,8 @@ class PaastaServiceConfigLoader:
         self._framework_configs[(cluster, instance_type_class)] = instances
 
     def _get_branch_dict(
-        self, cluster: str, instance: str, config: utils.InstanceConfig
-    ) -> utils.BranchDictV2:
+        self, cluster: str, instance: str, config: InstanceConfig
+    ) -> BranchDictV2:
         if self._deployments_json is None:
             self._deployments_json = load_v2_deployments_json(
                 self._service, soa_dir=self._soa_dir
@@ -155,9 +157,7 @@ class PaastaServiceConfigLoader:
             self._service, branch, deploy_group
         )
 
-    def _get_merged_config(
-        self, config: utils.InstanceConfigDict
-    ) -> utils.InstanceConfigDict:
+    def _get_merged_config(self, config: InstanceConfigDict) -> InstanceConfigDict:
         if self._general_config is None:
             self._general_config = read_service_configuration(
                 service_name=self._service, soa_dir=self._soa_dir
@@ -168,7 +168,7 @@ class PaastaServiceConfigLoader:
         self,
         cluster: str,
         instance: str,
-        config: utils.InstanceConfigDict,
+        config: InstanceConfigDict,
         config_class: Type[InstanceConfig_T],
     ) -> InstanceConfig_T:
         """Create a service instance's configuration for marathon.

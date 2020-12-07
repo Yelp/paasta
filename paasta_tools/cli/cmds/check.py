@@ -30,15 +30,15 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.util.config_loading import get_pipeline_config
+from paasta_tools.util.config_loading import get_pipeline_deploy_groups
+from paasta_tools.util.config_loading import get_service_instance_list
+from paasta_tools.util.config_loading import list_clusters
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.const import INSTANCE_TYPES
 from paasta_tools.utils import _run
-from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
-from paasta_tools.utils import get_pipeline_config
-from paasta_tools.utils import get_pipeline_deploy_groups
-from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import INSTANCE_TYPES
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import list_services
 from paasta_tools.utils import PaastaColors
 
 

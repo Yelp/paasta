@@ -17,7 +17,7 @@ import mock
 from paasta_tools import marathon_dashboard
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @mock.patch("paasta_tools.marathon_dashboard.load_system_paasta_config", autospec=True)

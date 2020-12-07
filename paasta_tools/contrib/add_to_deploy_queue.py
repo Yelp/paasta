@@ -21,10 +21,10 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployd.queue import ZKDelayDeadlineQueue
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import validate_service_instance
+from paasta_tools.util.config_types import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import validate_service_instance
 
 
 def parse_args(default_bounce_by_delay_secs):

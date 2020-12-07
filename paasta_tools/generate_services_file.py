@@ -27,9 +27,9 @@ import yaml
 
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import compose_job_id
 from paasta_tools.utils import atomic_file_write
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 YOCALHOST = "169.254.255.254"

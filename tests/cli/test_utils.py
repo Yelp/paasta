@@ -23,7 +23,7 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @patch("socket.gethostbyname_ex", autospec=True)

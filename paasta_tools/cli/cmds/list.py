@@ -16,8 +16,8 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.utils import list_paasta_services
 from paasta_tools.cli.utils import list_service_instances
-from paasta_tools.utils import list_services
-from paasta_tools.utils import SPACER
+from paasta_tools.util.config_loading import list_services
+from paasta_tools.util.const import SPACER
 
 
 def add_subparser(subparsers):

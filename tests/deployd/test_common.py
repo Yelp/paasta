@@ -16,9 +16,9 @@ from paasta_tools.deployd.common import ServiceInstance
 from paasta_tools.deployment import NoDeploymentsAvailable
 from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
-from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InvalidJobNameError
-from paasta_tools.utils import NoDockerImageError
+from paasta_tools.util.config_loading import NoDockerImageError
+from paasta_tools.util.const import DEFAULT_SOA_DIR
+from paasta_tools.util.names import InvalidJobNameError
 
 
 class TestPaastaThread(unittest.TestCase):

@@ -23,8 +23,8 @@ from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
-from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import InstanceConfig
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 @mock.patch("paasta_tools.cli.cmds.spark_run.os.geteuid", autospec=True)

@@ -29,7 +29,7 @@ import sys
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.marathon_tools import get_marathon_services_running_here_for_nerve
 from paasta_tools.marathon_tools import get_puppet_services_running_here_for_nerve
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.util.const import DEFAULT_SOA_DIR
 
 
 def parse_args(argv):

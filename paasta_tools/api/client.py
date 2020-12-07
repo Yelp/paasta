@@ -28,8 +28,8 @@ from dataclasses import dataclass
 import paasta_tools.paastaapi.apis as paastaapis
 from paasta_tools import paastaapi
 from paasta_tools.secret_tools import get_secret_provider
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.util.config_loading import load_system_paasta_config
+from paasta_tools.util.config_loading import SystemPaastaConfig
 
 
 log = logging.getLogger(__name__)
