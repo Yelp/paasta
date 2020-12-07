@@ -1150,12 +1150,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             supported_storage_classes = (
                 system_paasta_config.get_supported_storage_classes()
             )
-            storage_class_name = volume.get("storage_class_name", "ebs")
-            if storage_class_name not in supported_storage_classes:
-                log.warning(f"storage class {storage_class_name} is not supported")
-                storage_class_name = DEFAULT_STORAGE_CLASS_NAME
         except (PaastaNotConfiguredError):
             log.warning("No PaaSTA configuration was found, returning default value")
+        storage_class_name = volume.get("storage_class_name", "ebs")
+        if storage_class_name not in supported_storage_classes:
+            log.warning(f"storage class {storage_class_name} is not supported")
             storage_class_name = DEFAULT_STORAGE_CLASS_NAME
         return storage_class_name
 
