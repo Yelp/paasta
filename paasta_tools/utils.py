@@ -2544,7 +2544,7 @@ setpoint = {setpoint}
 moving_average_window = '{moving_average_window_seconds}s'
 filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
 
-current_replicas = data('kube_hpa_status_current_replicas', filter=filters, extrapolation="last_value").sum(by=['paasta_cluster'])
+current_replicas = data('kube_deployment_spec_replicas', filter=filters, extrapolation="last_value").sum(by=['paasta_cluster'])
 load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation="last_value", maxExtrapolations=10).below(1, clamp=True)
 
 desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
