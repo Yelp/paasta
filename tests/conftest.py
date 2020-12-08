@@ -1,8 +1,13 @@
+import os
 import time
 
 import pytest
 
-from paasta_tools.util.config_loading import SystemPaastaConfig
+# Make unmocked calls to load_system_paasta_configs fail in test context
+os.environ["PAASTA_SYSTEM_CONFIG_DIR"] = "/see-conftest-py"
+
+
+from paasta_tools.util.config_loading import SystemPaastaConfig  # noqa: E402
 
 
 def time_to_feel_bad(*args, **kwarg):

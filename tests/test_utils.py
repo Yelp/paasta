@@ -331,8 +331,9 @@ def test_build_docker_tag(mock_build_docker_image_name):
     assert actual == expected
 
 
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.util.config_loading.build_docker_image_name", autospec=True)
-def test_check_docker_image_false(mock_build_docker_image_name):
+def test_check_docker_image_false(mock_build_docker_image_name, _):
     mock_build_docker_image_name.return_value = "fake-registry/services-foo"
     fake_app = "fake_app"
     fake_commit = "fake_commit"
@@ -354,8 +355,9 @@ def test_check_docker_image_false(mock_build_docker_image_name):
         assert utils.check_docker_image("test_service", "tag2") is False
 
 
+@mock.patch("paasta_tools.util.config_loading.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.util.config_loading.build_docker_image_name", autospec=True)
-def test_check_docker_image_true(mock_build_docker_image_name):
+def test_check_docker_image_true(mock_build_docker_image_name, _):
     fake_app = "fake_app"
     fake_commit = "fake_commit"
     mock_build_docker_image_name.return_value = "fake-registry/services-foo"

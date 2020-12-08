@@ -1186,6 +1186,8 @@ def test_autoscale_services_ignores_non_deployed_services():
         side_effect=NoDeploymentsAvailable,
     ), mock.patch(
         "paasta_tools.util.zk.load_system_paasta_config", autospec=True,
+    ), mock.patch(
+        "paasta_tools.util.config_loading.load_system_paasta_config", autospec=True,
     ):
         configs = autoscaling_service_lib.get_configs_of_services_to_scale(
             cluster="fake_cluster", services=["fake-service"]
