@@ -1,3 +1,12 @@
+paasta-tools (0.97.43) xenial; urgency=medium
+
+  * 0.97.43 tagged with 'make release'
+    Commit: Merge pull request #2986 from Yelp/u/lrudolph/PAASTA-
+    17168_read_supported_storage_classes_from_puppet  Read supported
+    storage classes from system_paasta_config
+
+ -- Lennart Rudolph <lrudolph@yelp.com>  Mon, 07 Dec 2020 17:20:44 -0800
+
 paasta-tools (0.97.42) xenial; urgency=medium
 
   * 0.97.42 tagged with 'make release'
