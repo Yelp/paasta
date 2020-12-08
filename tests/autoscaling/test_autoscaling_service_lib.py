@@ -38,9 +38,9 @@ def test_get_zookeeper_instances():
         branch_dict=None,
     )
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         mock_zk_get = mock.Mock(return_value=(7, None))
         mock_zk_client.return_value = mock.Mock(get=mock_zk_get)
@@ -50,9 +50,9 @@ def test_get_zookeeper_instances():
 
 def test_zookeeper_pool():
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         zk_client = mock.Mock()
         mock_zk_client.return_value = zk_client
@@ -73,9 +73,9 @@ def test_get_zookeeper_instances_defaults_to_max_instances_when_no_zk_node():
         branch_dict=None,
     )
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         mock_zk_client.return_value = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
         assert fake_marathon_config.get_instances() == 10
@@ -90,9 +90,9 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
         branch_dict=None,
     )
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         mock_zk_client.return_value = mock.Mock(get=mock.Mock(return_value=(15, None)))
         assert fake_marathon_config.get_instances() == 10
@@ -104,9 +104,9 @@ def test_update_instances_for_marathon_service():
     with mock.patch(
         "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True
     ) as mock_load_marathon_service_config, mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
         mock_zk_client.return_value = zk_client
@@ -153,7 +153,7 @@ def test_threshold_decision_policy():
     with mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.datetime", autospec=True
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
@@ -200,11 +200,11 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
     fake_marathon_tasks = [mock.Mock(id="fake-service.fake-instance")]
 
     with mock.patch(
-        "paasta_tools.utils.KazooClient",
+        "paasta_tools.util.zk.KazooClient",
         autospec=True,
         return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError)),
     ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
@@ -286,7 +286,7 @@ def test_mesos_cpu_metrics_provider():
     }
 
     with mock.patch(
-        "paasta_tools.utils.KazooClient",
+        "paasta_tools.util.zk.KazooClient",
         autospec=True,
         return_value=mock.Mock(
             get=mock.Mock(
@@ -299,7 +299,7 @@ def test_mesos_cpu_metrics_provider():
     ) as mock_zk_client, mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.datetime", autospec=True
     ) as mock_datetime, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
@@ -489,7 +489,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
     fake_marathon_tasks = [mock.Mock(id="fake-service.fake-instance")]
     zookeeper_get_payload = {"cpu_last_time": "0", "cpu_data": ""}
     with mock.patch(
-        "paasta_tools.utils.KazooClient",
+        "paasta_tools.util.zk.KazooClient",
         autospec=True,
         return_value=mock.Mock(
             get=mock.Mock(
@@ -500,7 +500,7 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
             )
         ),
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ):
@@ -968,7 +968,7 @@ def test_autoscale_services_happy_path():
         autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock()),
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ), mock.patch(
@@ -976,7 +976,7 @@ def test_autoscale_services_happy_path():
         autospec=True,
         return_value=[fake_marathon_service_config],
     ), mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ), mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.create_autoscaling_lock",
         autospec=True,
@@ -1032,7 +1032,7 @@ def test_autoscale_services_not_healthy():
         autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock()),
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ), mock.patch(
@@ -1040,7 +1040,7 @@ def test_autoscale_services_not_healthy():
         autospec=True,
         return_value=[fake_marathon_service_config],
     ), mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ), mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.create_autoscaling_lock",
         autospec=True,
@@ -1155,7 +1155,7 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
         autospec=True,
         return_value=mock.Mock(get_cluster=mock.Mock()),
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.zk.load_system_paasta_config",
         autospec=True,
         return_value=mock.Mock(get_zk_hosts=mock.Mock()),
     ), mock.patch(
@@ -1169,7 +1169,7 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
         "paasta_tools.autoscaling.autoscaling_service_lib.autoscaling_is_paused",
         autospec=True,
     ) as mock_paused, mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ), mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.create_autoscaling_lock",
         autospec=True,
@@ -1185,7 +1185,7 @@ def test_autoscale_services_ignores_non_deployed_services():
         autospec=True,
         side_effect=NoDeploymentsAvailable,
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True,
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True,
     ):
         configs = autoscaling_service_lib.get_configs_of_services_to_scale(
             cluster="fake_cluster", services=["fake-service"]
@@ -1210,11 +1210,11 @@ def test_humanize_error_equal():
 
 def test_autoscaling_is_paused():
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.time", autospec=True
     ) as mock_time, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
 
         # Pausing expired 100 seconds ago

@@ -2625,7 +2625,7 @@ def test_format_marathon_app_dict_utilizes_net():
         return_value=fake_job_id,
         autospec=True,
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.util.config_loading.load_system_paasta_config",
         return_value=fake_system_paasta_config,
         autospec=True,
     ), mock.patch(

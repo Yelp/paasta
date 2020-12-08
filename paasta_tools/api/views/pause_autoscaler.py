@@ -22,7 +22,7 @@ from pyramid.view import view_config
 
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
-from paasta_tools.utils import ZookeeperPool
+from paasta_tools.util.zk import ZookeeperPool
 
 
 @view_config(

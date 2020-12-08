@@ -57,7 +57,6 @@ import requests_cache
 import service_configuration_lib
 from docker import Client
 from docker.utils import kwargs_from_env
-from kazoo.client import KazooClient
 
 import paasta_tools.cli.fsm
 from paasta_tools.util.config_loading import build_docker_image_name
@@ -1068,36 +1067,6 @@ def format_table(
             expanded_rows.append(expanded_row)
 
     return [(" " * min_spacing).join(r) for r in expanded_rows]
-
-
-class ZookeeperPool:
-    """
-    A context manager that shares the same KazooClient with its children. The first nested context manager
-    creates and deletes the client and shares it with any of its children. This allows to place a context
-    manager over a large number of zookeeper calls without opening and closing a connection each time.
-    GIL makes this 'safe'.
-    """
-
-    counter: int = 0
-    zk: KazooClient = None
-
-    @classmethod
-    def __enter__(cls) -> KazooClient:
-        if cls.zk is None:
-            cls.zk = KazooClient(
-                hosts=load_system_paasta_config().get_zk_hosts(), read_only=True
-            )
-            cls.zk.start()
-        cls.counter = cls.counter + 1
-        return cls.zk
-
-    @classmethod
-    def __exit__(cls, *args: Any, **kwargs: Any) -> None:
-        cls.counter = cls.counter - 1
-        if cls.counter == 0:
-            cls.zk.stop()
-            cls.zk.close()
-            cls.zk = None
 
 
 def calculate_tail_lines(verbose_level: int) -> int:

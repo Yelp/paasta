@@ -19,9 +19,9 @@ from paasta_tools.api.views import pause_autoscaler
 
 def test_get_service_autoscaler_pause():
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
         mock_zk_get = mock.Mock(return_value=(b"100", None))
@@ -34,11 +34,11 @@ def test_get_service_autoscaler_pause():
 
 def test_update_autoscaler_pause():
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
         "paasta_tools.api.views.pause_autoscaler.time", autospec=True
     ) as mock_time, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
         request.swagger_data = {"json_body": {"minutes": 100}}
@@ -56,11 +56,11 @@ def test_update_autoscaler_pause():
 
 def test_delete_autoscaler_pause():
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_zk, mock.patch(
         "paasta_tools.api.views.pause_autoscaler.time", autospec=True
     ) as mock_time, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
         request = testing.DummyRequest()
         mock_zk_del = mock.Mock()

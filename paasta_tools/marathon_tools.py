@@ -79,9 +79,9 @@ from paasta_tools.util.const import DEFAULT_SOA_DIR
 from paasta_tools.util.deep_merge import deep_merge_dictionaries
 from paasta_tools.util.names import compose_job_id
 from paasta_tools.util.names import decompose_job_id
+from paasta_tools.util.zk import ZookeeperPool
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_user_agent
-from paasta_tools.utils import ZookeeperPool
 
 
 # Marathon creates Mesos tasks with an id composed of the app's full name, a

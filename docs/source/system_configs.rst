@@ -17,7 +17,7 @@ are overlapping keys in different files the last file will win.
 If a file has permissions that prevent us from reading it, then that file will be ignored.
 This is useful for credentials that only some users or scripts need access to.
 
-See `load_system_paasta_config <generated/paasta_tools.utils.html#paasta_tools.utils.load_system_paasta_config>`_ for
+See `load_system_paasta_config <generated/paasta_tools.utils.html#paasta_tools.util.config_loading.load_system_paasta_config>`_ for
 more details on how system configs are loaded.
 
 

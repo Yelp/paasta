@@ -21,7 +21,7 @@ from paasta_tools.marathon_tools import list_all_marathon_app_ids
 from paasta_tools.marathon_tools import load_marathon_service_config_no_cache
 from paasta_tools.util.config_loading import SystemPaastaConfig
 from paasta_tools.util.names import decompose_job_id
-from paasta_tools.utils import ZookeeperPool
+from paasta_tools.util.zk import ZookeeperPool
 
 
 @given("paasta-deployd is running")

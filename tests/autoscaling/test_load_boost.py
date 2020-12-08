@@ -25,9 +25,9 @@ TEST_CURRENT_TIME = datetime(2020, 2, 14)
 @contextmanager
 def patch_zk_client(mock_values=None):
     with mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
+        "paasta_tools.util.zk.KazooClient", autospec=True
     ) as mock_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
+        "paasta_tools.util.zk.load_system_paasta_config", autospec=True
     ):
 
         def mock_get(key):

@@ -14,6 +14,7 @@ Submodules
    paasta_tools.util.lock
    paasta_tools.util.names
    paasta_tools.util.timeout
+   paasta_tools.util.zk
 
 Module contents
 ---------------

@@ -681,7 +681,9 @@ class TestTronTools:
         )
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True):
+        ), mock.patch(
+            "paasta_tools.util.config_loading.load_system_paasta_config", autospec=True
+        ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "mesos"
 
