@@ -1152,6 +1152,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         except (PaastaNotConfiguredError):
             log.warning("No PaaSTA configuration was found, returning default value")
+            supported_storage_classes = []
         storage_class_name = volume.get("storage_class_name", "ebs")
         if storage_class_name not in supported_storage_classes:
             log.warning(f"storage class {storage_class_name} is not supported")
