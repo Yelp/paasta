@@ -1894,6 +1894,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
+    supported_storage_classes: Sequence[str]
     synapse_haproxy_url_format: str
     synapse_host: str
     synapse_port: int
@@ -2457,6 +2458,9 @@ class SystemPaastaConfig:
 
     def get_clusters(self) -> Sequence[str]:
         return self.config_dict.get("clusters", [])
+
+    def get_supported_storage_classes(self) -> Sequence[str]:
+        return self.config_dict.get("supported_storage_classes", [])
 
     def get_envoy_admin_endpoint_format(self) -> str:
         """ Get the format string for Envoy's admin interface. """
