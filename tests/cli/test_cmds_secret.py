@@ -152,7 +152,7 @@ def test_paasta_secret():
             service="middleearth",
             clusters="mesosstage",
             shared=False,
-            cross_environment="because ...",
+            cross_env_motivation="because ...",
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
@@ -176,7 +176,7 @@ def test_paasta_secret():
             service="middleearth",
             clusters="mesosstage",
             shared=False,
-            cross_environment=None,
+            cross_env_motivation=None,
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(

@@ -106,7 +106,7 @@ def add_subparser(subparsers):
         help="Optionally pass the plaintext from stdin",
     )
     secret_parser.add_argument(
-        "--cross_environment",
+        "--cross-env-motivation",
         required=False,
         type=str,
         help=(
@@ -222,7 +222,7 @@ def paasta_secret(args):
             action=args.action,
             secret_name=args.secret_name,
             plaintext=plaintext,
-            cross_environment_motivation=args.cross_environment,
+            cross_environment_motivation=args.cross_env_motivation,
         )
         secret_path = os.path.join(
             secret_provider.secret_dir, f"{args.secret_name}.json"
