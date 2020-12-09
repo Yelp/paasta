@@ -29,7 +29,13 @@ class BaseSecretProvider:
     ) -> Dict[str, str]:
         raise NotImplementedError
 
-    def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:
+    def write_secret(
+        self,
+        action: str,
+        secret_name: str,
+        plaintext: bytes,
+        cross_environment_motivation: Optional[str] = None,
+    ) -> None:
         raise NotImplementedError
 
     def decrypt_secret(self, secret_name: str) -> str:

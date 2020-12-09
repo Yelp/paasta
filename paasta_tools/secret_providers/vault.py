@@ -106,7 +106,13 @@ class SecretProvider(BaseSecretProvider):
             )
             raise
 
-    def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:
+    def write_secret(
+        self,
+        action: str,
+        secret_name: str,
+        plaintext: bytes,
+        cross_environment_motivation: Optional[str] = None,
+    ) -> None:
         with TempGpgKeyring(overwrite=True):
             for ecosystem in self.ecosystems:
                 client = self.clients[ecosystem]
@@ -119,6 +125,7 @@ class SecretProvider(BaseSecretProvider):
                     plaintext=plaintext,
                     service_name=self.service_name,
                     transit_key=self.encryption_key,
+                    cross_environment_motivation=cross_environment_motivation,
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:

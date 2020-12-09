@@ -73,7 +73,10 @@ def test_write_secret(mock_secret_provider):
         "paasta_tools.secret_providers.vault.encrypt_secret", autospec=False
     ) as mock_encrypt_secret:
         mock_secret_provider.write_secret(
-            action="add", secret_name="mysecret", plaintext=b"SECRETSQUIRREL"
+            action="add",
+            secret_name="mysecret",
+            plaintext=b"SECRETSQUIRREL",
+            cross_environment_motivation="because ...",
         )
         mock_encrypt_secret.assert_called_with(
             client=mock_secret_provider.clients["devc"],
@@ -84,6 +87,7 @@ def test_write_secret(mock_secret_provider):
             service_name="universe",
             soa_dir="/nail/blah",
             transit_key="paasta",
+            cross_environment_motivation="because ...",
         )
 
         mock_secret_provider.encryption_key = "special-key"
@@ -99,6 +103,7 @@ def test_write_secret(mock_secret_provider):
             service_name="universe",
             soa_dir="/nail/blah",
             transit_key="special-key",
+            cross_environment_motivation=None,
         )
 
 
