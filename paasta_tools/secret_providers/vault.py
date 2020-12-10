@@ -11,7 +11,7 @@ try:
     from vault_tools.paasta_secret import get_vault_client
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
-    from vault_tools.cert_tools import do_renew
+    from vault_tools.cert_tools import do_cert_renew
     import hvac
 except ImportError:
 
@@ -26,7 +26,7 @@ except ImportError:
     def encrypt_secret(*args: Any, **kwargs: Any) -> None:
         return None
 
-    def do_renew(*args: Any, **kwargs: Any) -> None:
+    def do_cert_renew(*args: Any, **kwargs: Any) -> None:
         return None
 
 
@@ -165,7 +165,7 @@ class SecretProvider(BaseSecretProvider):
         client = self.clients[self.ecosystems[0]]
         user = getpass.getuser()
         pki_dir = os.path.expanduser("~/.paasta/pki")
-        do_renew(
+        do_cert_renew(
             client=client,
             pki_backend=pki_backend,
             role=user,
