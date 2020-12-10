@@ -1,3 +1,11 @@
+paasta-tools (0.97.45) xenial; urgency=medium
+
+  * 0.97.45 tagged with 'make release'
+    Commit: Merge pull request #2989 from Yelp/u/mpiano/SECPLAT-236_fix
+    fix vault secret provider (s/do_renew/do_cert_renew)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 10 Dec 2020 07:33:24 -0800
+
 paasta-tools (0.97.44) xenial; urgency=medium
 
   * 0.97.44 tagged with 'make release'
