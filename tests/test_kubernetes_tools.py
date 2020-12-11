@@ -1714,7 +1714,16 @@ class TestKubernetesDeploymentConfig:
         )
         assert expected_res == return_value
 
-    def test_get_autoscaling_metric_spec_offset_and_averaging(self):
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+        ),
+    )
+    def test_get_autoscaling_metric_spec_offset_and_averaging(
+        self, fake_system_paasta_config
+    ):
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
