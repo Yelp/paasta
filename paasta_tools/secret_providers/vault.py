@@ -86,6 +86,7 @@ class SecretProvider(BaseSecretProvider):
                 cache_dir=None,
                 cache_key=None,
                 context=self.service_name,
+                rescue_failures=False,
             ).decode("utf-8")
             secret_environment[k] = secret
         return secret_environment
@@ -139,6 +140,7 @@ class SecretProvider(BaseSecretProvider):
             cache_key=None,
             cache_dir=None,
             context=self.service_name,
+            rescue_failures=False,
         ).decode("utf-8")
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
@@ -152,6 +154,7 @@ class SecretProvider(BaseSecretProvider):
             cache_key=None,
             cache_dir=None,
             context=self.service_name,
+            rescue_failures=False,
         )
 
     def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:

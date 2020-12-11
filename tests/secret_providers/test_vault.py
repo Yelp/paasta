@@ -121,6 +121,7 @@ def test_decrypt_secret(mock_secret_provider):
             cache_key=None,
             cache_dir=None,
             context="universe",
+            rescue_failures=False,
         )
 
 
@@ -138,6 +139,7 @@ def test_decrypt_secret_raw(mock_secret_provider):
             cache_key=None,
             cache_dir=None,
             context="universe",
+            rescue_failures=False,
         )
 
 
