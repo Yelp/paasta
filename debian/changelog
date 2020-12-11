@@ -1,3 +1,11 @@
+paasta-tools (0.97.46) xenial; urgency=medium
+
+  * 0.97.46 tagged with 'make release'
+    Commit: Merge pull request #2993 from Yelp/u/mpiano/SECPLAT-236_fix2
+    set rescue_failures parameter in Vault provider decryption
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 11 Dec 2020 03:10:12 -0800
+
 paasta-tools (0.97.45) xenial; urgency=medium
 
   * 0.97.45 tagged with 'make release'
