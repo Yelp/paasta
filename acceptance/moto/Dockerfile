@@ -22,7 +22,7 @@ RUN  python3 -m ensurepip && \
      #
      # We can unpin boto3 and botocore once botocore fixes its pin
      # (see https://github.com/boto/botocore/commit/e87e7a745fd972815b235a9ee685232745aa94f9)
-     pip3 install botocore==1.14.11 boto3==1.11.11 "moto[server]"
+     pip3 install cryptography==3.2.1 botocore==1.14.11 boto3==1.11.11 "moto[server]"
 
 ENTRYPOINT ["/usr/bin/moto_server", "-H", "0.0.0.0"]
 
