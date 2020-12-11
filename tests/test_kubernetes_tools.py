@@ -241,6 +241,13 @@ def test_load_kubernetes_service_config():
 
 
 class TestKubernetesDeploymentConfig:
+    @pytest.fixture(autouse=True)
+    def mock_load_kube_config(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True,
+        ) as m:
+            yield m
+
     def setup_method(self, method):
         mock_config_dict = KubernetesDeploymentConfigDict(
             bounce_method="crossover", instances=3,
@@ -253,6 +260,19 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
             soa_dir="/nail/blah",
         )
+
+    # TODO: remove once hpa scaling policy patch is removed
+    def patch_expected_autoscaling_spec(self, obj, deployment, max_replicas=3):
+        """Currently, HPA scaling policies are monkey-patched onto the HPA
+        OpenAPI objects. This function does the same thing so that any assertions
+        we do will pass.
+        """
+        if isinstance(obj, V2beta2HorizontalPodAutoscaler):
+            obj = KubeClient().jsonify(obj)
+            obj["spec"]["behavior"] = deployment.get_autoscaling_scaling_policy(
+                max_replicas,
+            )
+        return obj
 
     def test_copy(self):
         assert self.deployment.copy() == self.deployment
@@ -1569,7 +1589,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1596,7 +1616,10 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
-        assert expected_res == return_value
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
 
     def test_get_autoscaling_metric_spec_http(self):
         # with http
@@ -1622,7 +1645,7 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
         ):
             return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-                mock_config, "fake_name", "cluster"
+                mock_config, "fake_name", "cluster", KubeClient(),
             )
         annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1654,7 +1677,10 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
-        assert expected_res == return_value
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
 
     def test_get_autoscaling_metric_spec_uwsgi(self):
         config_dict = KubernetesDeploymentConfigDict(
@@ -1679,7 +1705,7 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
         ):
             return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-                mock_config, "fake_name", "cluster"
+                mock_config, "fake_name", "cluster", KubeClient(),
             )
 
         annotations = {"signalfx.com.custom.metrics": ""}
@@ -1712,7 +1738,10 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
-        assert expected_res == return_value
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
@@ -1745,7 +1774,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1754,7 +1783,15 @@ class TestKubernetesDeploymentConfig:
                 namespace="paasta",
                 annotations={
                     "signalfx.com.custom.metrics": "",
-                    "signalfx.com.external.metric/service-instance-uwsgi": mock.ANY,
+                    "signalfx.com.external.metric/service-instance-uwsgi": kubernetes_tools.LEGACY_AUTOSCALING_SIGNALFLOW.format(
+                        setpoint=0.5,
+                        offset=0.1,
+                        moving_average_window_seconds=300,
+                        paasta_service="service",
+                        paasta_instance="instance",
+                        paasta_cluster="cluster",
+                        signalfx_metric_name="uwsgi",
+                    ),
                 },
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
@@ -1777,7 +1814,10 @@ class TestKubernetesDeploymentConfig:
             ),
         )
 
-        assert expected_res == return_value
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
 
     def test_get_autoscaling_metric_spec_bespoke(self):
         config_dict = KubernetesDeploymentConfigDict(
@@ -1795,7 +1835,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster"
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         expected_res = None
         assert expected_res == return_value

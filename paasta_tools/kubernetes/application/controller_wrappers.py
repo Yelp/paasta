@@ -277,6 +277,7 @@ class DeploymentWrapper(Application):
         desired_hpa_spec = self.soa_config.get_autoscaling_metric_spec(
             name=self.item.metadata.name,
             cluster=self.soa_config.cluster,
+            kube_client=kube_client,
             namespace=self.item.metadata.namespace,
         )
 
