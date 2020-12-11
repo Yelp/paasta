@@ -3,7 +3,7 @@ DOCKER_IMAGE ?= docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar
 all: docker_image push
 
 uwsgi_exporter:
-	git clone https://github.com/timonwong/uwsgi_exporter
+	git clone --branch v1.0.0 https://github.com/timonwong/uwsgi_exporter
 
 uwsgi_exporter/uwsgi_exporter: uwsgi_exporter
 	make -C uwsgi_exporter
