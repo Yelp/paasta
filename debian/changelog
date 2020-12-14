@@ -1,3 +1,12 @@
+paasta-tools (0.97.47) xenial; urgency=medium
+
+  * 0.97.47 tagged with 'make release'
+    Commit: Merge pull request #2987 from Yelp/u/gabrielv/PAASTA-17119-
+    replace-hpa-metric  PAASTA-17119 Replace
+    kube_hpa_status_current_replicas uwsgi hpa metric
+
+ -- gabrielv <gabrielv@yelp.com>  Mon, 14 Dec 2020 08:35:46 -0800
+
 paasta-tools (0.97.46) xenial; urgency=medium
 
   * 0.97.46 tagged with 'make release'
