@@ -388,8 +388,12 @@
                             },
                             "mode": {
                                 "type": "string"
+                            },
+                            "storage_class_name": {
+                                "type": "string"
                             }
-                        }
+                        },
+                        "additionalProperties": false
                     },
                     "uniqueItems": true
                 },
