@@ -1,3 +1,13 @@
+paasta-tools (0.97.49) xenial; urgency=medium
+
+  * 0.97.49 tagged with 'make release'
+    Commit: Revert "Remove 0/0 replicasets before counting active SHAs,
+    so that wait-for-deployment doesn"t wait for 0/0 replicasets to
+    disappear. PAASTA-17186"  This reverts commit
+    7adfde786ee98830bef815b35317c5d2e104f08e.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 14 Dec 2020 14:21:41 -0800
+
 paasta-tools (0.97.48) xenial; urgency=medium
 
   * 0.97.48 tagged with 'make release'
