@@ -1783,15 +1783,7 @@ class TestKubernetesDeploymentConfig:
                 namespace="paasta",
                 annotations={
                     "signalfx.com.custom.metrics": "",
-                    "signalfx.com.external.metric/service-instance-uwsgi": kubernetes_tools.LEGACY_AUTOSCALING_SIGNALFLOW.format(
-                        setpoint=0.5,
-                        offset=0.1,
-                        moving_average_window_seconds=300,
-                        paasta_service="service",
-                        paasta_instance="instance",
-                        paasta_cluster="cluster",
-                        signalfx_metric_name="uwsgi",
-                    ),
+                    "signalfx.com.external.metric/service-instance-uwsgi": "fake_signalflow_query",
                 },
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
