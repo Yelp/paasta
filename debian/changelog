@@ -1,3 +1,10 @@
+paasta-tools (0.97.48) xenial; urgency=medium
+
+  * 0.97.48 tagged with 'make release'
+    Commit: Merge branch "u/krall/float_timeout"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 14 Dec 2020 14:08:38 -0800
+
 paasta-tools (0.97.47) xenial; urgency=medium
 
   * 0.97.47 tagged with 'make release'
