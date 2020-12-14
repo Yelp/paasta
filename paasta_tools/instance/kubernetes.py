@@ -448,7 +448,9 @@ def kubernetes_status(
     )
     # For the purpose of active_shas/app_count, don't count replicasets that are at 0/0.
     actually_running_replicasets = [
-        rs for rs in replicaset_list if rs.replicas == 0 and rs.ready_replicas == 0
+        rs
+        for rs in replicaset_list
+        if not (rs.replicas == 0 and rs.ready_replicas == 0)
     ]
     active_shas = kubernetes_tools.get_active_shas_for_service(
         [app, *pod_list, *actually_running_replicasets]
