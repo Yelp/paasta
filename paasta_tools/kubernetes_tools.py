@@ -724,6 +724,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_namespace_config: ServiceNamespaceConfig,
         hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
+        return self.get_hacheck_sidecar_container(
+            system_paasta_config, service_namespace_config, hacheck_sidecar_volumes,
+        )
+
+    def get_hacheck_sidecar_container(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        service_namespace_config: ServiceNamespaceConfig,
+        hacheck_sidecar_volumes: Sequence[DockerVolume],
+    ) -> Sequence[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -746,6 +756,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         sidecars = []
         if service_namespace_config.is_in_smartstack():
+
             sidecars.append(
                 V1Container(
                     image=system_paasta_config.get_hacheck_sidecar_image_url(),
