@@ -224,3 +224,18 @@ def test_can_handle():
         assert pik.can_handle(it)
 
     assert not pik.can_handle("marathon")
+
+
+def test_filter_actually_running_replicasets():
+    replicaset_list = [
+        mock.Mock(replicas=5, ready_replicas=5),
+        mock.Mock(replicas=5, ready_replicas=0),
+        mock.Mock(replicas=0, ready_replicas=0),
+        mock.Mock(replicas=0, ready_replicas=5),
+    ]
+    expected = [
+        replicaset_list[0],
+        replicaset_list[1],
+        replicaset_list[3],
+    ]
+    assert pik.filter_actually_running_replicasets(replicaset_list) == expected

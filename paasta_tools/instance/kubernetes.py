@@ -406,6 +406,16 @@ def cr_status(
     return status
 
 
+def filter_actually_running_replicasets(
+    replicaset_list: Sequence[V1ReplicaSet],
+) -> List[V1ReplicaSet]:
+    return [
+        rs
+        for rs in replicaset_list
+        if not (rs.replicas == 0 and rs.ready_replicas == 0)
+    ]
+
+
 def kubernetes_status(
     service: str,
     instance: str,
@@ -447,11 +457,7 @@ def kubernetes_status(
         namespace=job_config.get_kubernetes_namespace(),
     )
     # For the purpose of active_shas/app_count, don't count replicasets that are at 0/0.
-    actually_running_replicasets = [
-        rs
-        for rs in replicaset_list
-        if not (rs.replicas == 0 and rs.ready_replicas == 0)
-    ]
+    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
     active_shas = kubernetes_tools.get_active_shas_for_service(
         [app, *pod_list, *actually_running_replicasets]
     )
