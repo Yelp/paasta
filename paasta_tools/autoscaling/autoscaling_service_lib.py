@@ -44,9 +44,9 @@ from paasta_tools.bounce_lib import filter_tasks_in_smartstack
 from paasta_tools.bounce_lib import LockHeldException
 from paasta_tools.bounce_lib import LockTimeout
 from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
-from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_apps_with_clients

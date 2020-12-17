@@ -118,7 +118,6 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -272,7 +271,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    autoscaling: AutoscalingParamsDict
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
@@ -463,17 +461,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "If service instance defines an EBS volume it must use a downthenup bounce_method"
             )
         return bounce_method
-
-    def get_autoscaling_params(self) -> AutoscalingParamsDict:
-        default_params: AutoscalingParamsDict = {
-            "metrics_provider": "mesos_cpu",
-            "decision_policy": "proportional",
-            "setpoint": 0.8,
-        }
-        return deep_merge_dictionaries(
-            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
-            defaults=default_params,
-        )
 
     # TODO: move the default scaling policy to system paasta configs
     def get_autoscaling_scaling_policy(self, max_replicas: int) -> Dict:
