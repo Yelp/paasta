@@ -1831,6 +1831,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
+    default_should_run_uwsgi_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -1901,6 +1902,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
+    uwsgi_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2555,6 +2557,16 @@ desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_ave
         return self.config_dict.get(
             "legacy_autoscaling_signalflow", default_legacy_autoscaling_signalflow
         )
+
+    def get_uwsgi_exporter_sidecar_image_url(self) -> str:
+        """Get the docker image URL for the uwsgi_exporter sidecar container"""
+        return self.config_dict.get(
+            "uwsgi_exporter_sidecar_image_url",
+            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.0.0",
+        )
+
+    def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
+        return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
 
 
 def _run(

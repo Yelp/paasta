@@ -157,6 +157,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
+UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 KUBERNETES_NAMESPACE = "paasta"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
@@ -711,16 +712,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_namespace_config: ServiceNamespaceConfig,
         hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
-        return self.get_hacheck_sidecar_container(
+        hacheck_container = self.get_hacheck_sidecar_container(
             system_paasta_config, service_namespace_config, hacheck_sidecar_volumes,
         )
+        uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
+            system_paasta_config
+        )
+
+        sidecars = []
+        if hacheck_container:
+            sidecars.append(hacheck_container)
+        if uwsgi_exporter_container:
+            sidecars.append(uwsgi_exporter_container)
+        return sidecars
 
     def get_hacheck_sidecar_container(
         self,
         system_paasta_config: SystemPaastaConfig,
         service_namespace_config: ServiceNamespaceConfig,
         hacheck_sidecar_volumes: Sequence[DockerVolume],
-    ) -> Sequence[V1Container]:
+    ) -> Optional[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -741,37 +752,61 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             readiness_probe = None
 
-        sidecars = []
         if service_namespace_config.is_in_smartstack():
-
-            sidecars.append(
-                V1Container(
-                    image=system_paasta_config.get_hacheck_sidecar_image_url(),
-                    lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
-                            _exec=V1ExecAction(
-                                command=[
-                                    "/bin/sh",
-                                    "-c",
-                                    f"/usr/bin/hadown {registrations}; sleep 31",
-                                ]
-                            )
+            return V1Container(
+                image=system_paasta_config.get_hacheck_sidecar_image_url(),
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                f"/usr/bin/hadown {registrations}; sleep 31",
+                            ]
                         )
-                    ),
-                    resources=self.get_sidecar_resource_requirements("hacheck"),
-                    name=HACHECK_POD_NAME,
-                    env=self.get_kubernetes_environment(),
-                    ports=[V1ContainerPort(container_port=6666)],
-                    readiness_probe=readiness_probe,
-                    volume_mounts=self.get_volume_mounts(
-                        docker_volumes=hacheck_sidecar_volumes,
-                        aws_ebs_volumes=[],
-                        persistent_volumes=[],
-                        secret_volumes=[],
-                    ),
-                )
+                    )
+                ),
+                resources=self.get_sidecar_resource_requirements("hacheck"),
+                name=HACHECK_POD_NAME,
+                env=self.get_kubernetes_environment(),
+                ports=[V1ContainerPort(container_port=6666)],
+                readiness_probe=readiness_probe,
+                volume_mounts=self.get_volume_mounts(
+                    docker_volumes=hacheck_sidecar_volumes,
+                    aws_ebs_volumes=[],
+                    persistent_volumes=[],
+                    secret_volumes=[],
+                ),
             )
-        return sidecars
+        return None
+
+    def get_uwsgi_exporter_sidecar_container(
+        self, system_paasta_config: SystemPaastaConfig,
+    ) -> Optional[V1Container]:
+
+        if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
+            return V1Container(
+                image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
+                resources=self.get_sidecar_resource_requirements("uwsgi_exporter"),
+                name=UWSGI_EXPORTER_POD_NAME,
+                env=self.get_kubernetes_environment(),
+                ports=[V1ContainerPort(container_port=9117)],
+            )
+
+        return None
+
+    def should_run_uwsgi_exporter_sidecar(
+        self, system_paasta_config: SystemPaastaConfig,
+    ) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            if autoscaling_params["metrics_provider"] == "uwsgi":
+                if autoscaling_params.get(
+                    "use_prometheus",
+                    system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                ):
+                    return True
+        return False
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}

@@ -36,6 +36,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     forecast_policy: Optional[str]
     offset: Optional[float]
     moving_average_window_seconds: Optional[int]
+    use_prometheus: bool
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):

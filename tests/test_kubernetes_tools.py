@@ -661,6 +661,84 @@ class TestKubernetesDeploymentConfig:
             requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
 
+    def test_get_uwsgi_exporter_sidecar_container_should_run(self):
+        system_paasta_config = mock.Mock(
+            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
+                return_value="uwsgi_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_uwsgi_exporter_sidecar", return_value=True
+        ):
+            ret = self.deployment.get_uwsgi_exporter_sidecar_container(
+                system_paasta_config
+            )
+            assert ret is not None
+            assert ret.image == "uwsgi_exporter_image"
+            assert ret.ports[0].container_port == 9117
+
+    def test_get_uwsgi_exporter_sidecar_container_shouldnt_run(self):
+        system_paasta_config = mock.Mock(
+            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
+                return_value="uwsgi_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_uwsgi_exporter_sidecar", return_value=False
+        ):
+            assert (
+                self.deployment.get_uwsgi_exporter_sidecar_container(
+                    system_paasta_config
+                )
+                is None
+            )
+
+    def test_should_run_uwsgi_exporter_sidecar_explicit(self):
+        self.deployment.config_dict.update(
+            {
+                "max_instances": 5,
+                "autoscaling": {"metrics_provider": "uwsgi", "use_prometheus": True,},
+            }
+        )
+
+        system_paasta_config = mock.Mock()
+
+        assert (
+            self.deployment.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            is True
+        )
+
+        self.deployment.config_dict["autoscaling"]["use_prometheus"] = False
+        assert (
+            self.deployment.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            is False
+        )
+
+    def test_should_run_uwsgi_exporter_sidecar_defaults(self):
+        self.deployment.config_dict.update(
+            {"max_instances": 5, "autoscaling": {"metrics_provider": "uwsgi",},}
+        )
+
+        system_paasta_config_enabled = mock.Mock(
+            default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=True)
+        )
+        system_paasta_config_disabled = mock.Mock(
+            default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=False)
+        )
+
+        assert (
+            self.deployment.should_run_uwsgi_exporter_sidecar(
+                system_paasta_config_enabled
+            )
+            is True
+        )
+        assert (
+            self.deployment.should_run_uwsgi_exporter_sidecar(
+                system_paasta_config_disabled
+            )
+            is False
+        )
+
     def test_get_container_env(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_env",
