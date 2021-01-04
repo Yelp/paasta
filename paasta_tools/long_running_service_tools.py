@@ -12,6 +12,7 @@ from mypy_extensions import TypedDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -28,7 +29,18 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
 
+class AutoscalingParamsDict(TypedDict, total=False):
+    metrics_provider: str
+    decision_policy: str
+    setpoint: float
+    forecast_policy: Optional[str]
+    offset: Optional[float]
+    moving_average_window_seconds: Optional[int]
+    use_prometheus: bool
+
+
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
+    autoscaling: AutoscalingParamsDict
     drain_method: str
     iam_role: str
     iam_role_provider: str
@@ -312,6 +324,17 @@ class LongRunningServiceConfig(InstanceConfig):
         Returns min_instances if instances < min_instances
         """
         return max(self.get_min_instances(), min(self.get_max_instances(), instances))
+
+    def get_autoscaling_params(self) -> AutoscalingParamsDict:
+        default_params: AutoscalingParamsDict = {
+            "metrics_provider": "mesos_cpu",
+            "decision_policy": "proportional",
+            "setpoint": 0.8,
+        }
+        return deep_merge_dictionaries(
+            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
+            defaults=default_params,
+        )
 
 
 class InvalidHealthcheckMode(Exception):
