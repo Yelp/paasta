@@ -1,3 +1,10 @@
+paasta-tools (0.97.50) xenial; urgency=medium
+
+  * 0.97.50 tagged with 'make release'
+    Commit: Merge branch "u/krall/uwsgi_exporter_sidecar_config"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 Jan 2021 12:05:11 -0800
+
 paasta-tools (0.97.49) xenial; urgency=medium
 
   * 0.97.49 tagged with 'make release'
