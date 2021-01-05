@@ -1,3 +1,11 @@
+paasta-tools (0.97.52) xenial; urgency=medium
+
+  * 0.97.52 tagged with 'make release'
+    Commit: Fix command line arguments to uwsgi_exporter, bump
+    uwsgi_exporter sidecar image version.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jan 2021 15:13:18 -0800
+
 paasta-tools (0.97.51) xenial; urgency=medium
 
   * 0.97.51 tagged with 'make release'
