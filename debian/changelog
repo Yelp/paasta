@@ -1,3 +1,10 @@
+paasta-tools (0.97.51) xenial; urgency=medium
+
+  * 0.97.51 tagged with 'make release'
+    Commit: Fix AttributeError. PAASTA-17186
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jan 2021 12:27:36 -0800
+
 paasta-tools (0.97.50) xenial; urgency=medium
 
   * 0.97.50 tagged with 'make release'
