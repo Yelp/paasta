@@ -2562,7 +2562,7 @@ desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_ave
         """Get the docker image URL for the uwsgi_exporter sidecar container"""
         return self.config_dict.get(
             "uwsgi_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.0.0",
+            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.0.1",
         )
 
     def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
