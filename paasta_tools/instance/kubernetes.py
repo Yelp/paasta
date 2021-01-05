@@ -412,7 +412,7 @@ def filter_actually_running_replicasets(
     return [
         rs
         for rs in replicaset_list
-        if not (rs.replicas == 0 and rs.ready_replicas == 0)
+        if not (rs.spec.replicas == 0 and rs.ready_replicas == 0)
     ]
 
 
