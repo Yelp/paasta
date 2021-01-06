@@ -228,16 +228,24 @@ def test_can_handle():
 
 def test_filter_actually_running_replicasets():
     replicaset_list = [
-        mock.Mock(ready_replicas=5),
-        mock.Mock(ready_replicas=0),
-        mock.Mock(ready_replicas=0),
-        mock.Mock(ready_replicas=5),
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
     ]
     # the `spec` kwarg is special to Mock so we have to set it this way.
-    replicaset_list[0].spec = mock.Mock(replicas=5)
-    replicaset_list[1].spec = mock.Mock(replicas=5)
-    replicaset_list[2].spec = mock.Mock(replicas=0)
-    replicaset_list[3].spec = mock.Mock(replicas=0)
+    replicaset_list[0].configure_mock(
+        **{"spec.replicas": 5, "status.ready_replicas": 5}
+    )
+    replicaset_list[1].configure_mock(
+        **{"spec.replicas": 5, "status.ready_replicas": 0}
+    )
+    replicaset_list[2].configure_mock(
+        **{"spec.replicas": 0, "status.ready_replicas": 0}
+    )
+    replicaset_list[3].configure_mock(
+        **{"spec.replicas": 0, "status.ready_replicas": 5}
+    )
 
     expected = [
         replicaset_list[0],
