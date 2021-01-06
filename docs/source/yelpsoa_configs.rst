@@ -403,7 +403,7 @@ instance MAY have:
     seconds.
 
   * ``healthcheck_max_consecutive_failures``: Kubernetes will kill the current
-    task if this many healthchecks fail consecutively. Defaults to 6 attempts.
+    task if this many healthchecks fail consecutively. Defaults to 30 attempts.
 
   * ``healthcheck_uri``: The url of the service to healthcheck if using http.
     Defaults to the same uri specified in ``smartstack.yaml``, but can be
@@ -610,7 +610,7 @@ for more low-level details:
     seconds.
 
   * ``healthcheck_max_consecutive_failures``: Marathon will kill the current
-    task if this many healthchecks fail consecutively. Defaults to 6 attempts.
+    task if this many healthchecks fail consecutively. Defaults to 30 attempts.
 
   * ``healthcheck_uri``: The url of the service to healthcheck if using http.
     Defaults to the same uri specified in ``smartstack.yaml``, but can be

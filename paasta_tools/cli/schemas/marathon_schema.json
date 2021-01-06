@@ -298,7 +298,7 @@
                 },
                 "healthcheck_max_consecutive_failures": {
                     "type": "integer",
-                    "default": 6
+                    "default": 30
                 },
                 "healthcheck_uri": {
                     "type": "string",
