@@ -43,6 +43,7 @@ def test_main():
             service_instances=mock_parse_args.return_value.service_instance_list,
             cluster=mock_parse_args.return_value.cluster,
             soa_dir=mock_parse_args.return_value.soa_dir,
+            rate_limit=mock_parse_args.return_value.rate_limit,
         )
         mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
@@ -352,3 +353,41 @@ def test_setup_kube_deployment_create_update():
         assert mock_log_obj.info.call_args_list[0] == mock.call(
             "fake_app is up-to-date!"
         )
+
+
+def test_setup_kube_deployments_rate_limit():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+    ) as mock_create_application_object, mock.patch(
+        "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
+        mock_client = mock.Mock()
+        mock_service_instances = ["kurupt.fm", "kurupt.garage", "kurupt.radio"]
+        fake_app = mock.Mock(create=mock.Mock())
+        mock_create_application_object.return_value = (True, fake_app)
+
+        # Rate limit: 2 calls allowed
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instances=mock_service_instances,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            rate_limit=2,
+        )
+        assert fake_app.create.call_count == 2
+        mock_log_obj.info.assert_any_call(
+            "Not doing any further updates as we reached the limit (2)"
+        )
+
+        # No rate limit
+        fake_app.reset_mock()
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instances=mock_service_instances,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            rate_limit=0,
+        )
+        assert fake_app.create.call_count == 3
