@@ -1442,8 +1442,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
-            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
-            "paasta.yelp.com/docker_image": self.get_docker_image(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
@@ -1459,6 +1457,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ):
             # this is kinda silly, but k8s labels must be strings
             labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
+
+            # these should probably eventually be made into default labels,
+            # but for now we're fine with these being behind this feature toggle
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/docker_image"] = self.get_docker_image()
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
