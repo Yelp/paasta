@@ -208,18 +208,11 @@ async def job_status(
         )
 
         for replicaset in replicaset_list:
-            try:
-                ready_replicas = replicaset.status.ready_replicas
-                if ready_replicas is None:
-                    ready_replicas = 0
-            except AttributeError:
-                ready_replicas = 0
-
             kstatus["replicasets"].append(
                 {
                     "name": replicaset.metadata.name,
                     "replicas": replicaset.spec.replicas,
-                    "ready_replicas": ready_replicas,
+                    "ready_replicas": ready_replicas_from_replicaset(replicaset),
                     "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
                     "git_sha": replicaset.metadata.labels.get(
                         "paasta.yelp.com/git_sha"
@@ -412,7 +405,7 @@ def filter_actually_running_replicasets(
     return [
         rs
         for rs in replicaset_list
-        if not (rs.spec.replicas == 0 and rs.ready_replicas == 0)
+        if not (rs.spec.replicas == 0 and ready_replicas_from_replicaset(rs) == 0)
     ]
 
 
@@ -565,3 +558,14 @@ def instance_status(
         )
 
     return status
+
+
+def ready_replicas_from_replicaset(replicaset: V1ReplicaSet) -> int:
+    try:
+        ready_replicas = replicaset.status.ready_replicas
+        if ready_replicas is None:
+            ready_replicas = 0
+    except AttributeError:
+        ready_replicas = 0
+
+    return ready_replicas
