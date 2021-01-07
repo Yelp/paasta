@@ -1450,6 +1450,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
 
+        # not all services use uwsgi autoscaling, so we label those that do in order to have
+        # prometheus selectively discover/scrape them
+        if self.should_run_uwsgi_exporter_sidecar(
+            system_paasta_config=system_paasta_config
+        ):
+            # this is kinda silly, but k8s labels must be strings
+            labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
+
+            # these should probably eventually be made into default labels,
+            # but for now we're fine with these being behind this feature toggle
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/docker_image"] = self.get_docker_image()
+
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
             spec=V1PodSpec(**pod_spec_kwargs),
