@@ -1237,8 +1237,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
-                "paasta.yelp.com/deploy_group": self.get_deploy_group(),
-                "paasta.yelp.com/docker_image": self.get_docker_image(),
             },
         )
 
@@ -1324,16 +1322,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 complete_config.metadata.labels[
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
-
-            # not all services use uwsgi autoscaling, so we label those that do in order to have
-            # prometheus selectively discover/scrape them
-            if self.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config=system_paasta_config
-            ):
-                # this is kinda silly, but k8s labels must be strings
-                complete_config.metadata.labels[
-                    "paasta.yelp.com/scrape_uwsgi_prometheus"
-                ] = "true"
 
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
