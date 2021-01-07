@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dist: [trusty, xenial, bionic, focal]
+        dist: [xenial, bionic, focal]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
