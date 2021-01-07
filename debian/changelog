@@ -1,3 +1,12 @@
+paasta-tools (0.97.53) xenial; urgency=medium
+
+  * 0.97.53 tagged with 'make release'
+    Commit: Merge pull request #3001 from Yelp/u/gabrielv/PAASTA-17176-
+    setup_kubernetes_job-rate-limit  PAASTA-17176 Add rate limit param
+    for s_k_j
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 07 Jan 2021 03:55:53 -0800
+
 paasta-tools (0.97.52) xenial; urgency=medium
 
   * 0.97.52 tagged with 'make release'
