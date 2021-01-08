@@ -1458,10 +1458,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # this is kinda silly, but k8s labels must be strings
             labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
 
-            # these should probably eventually be made into default labels,
-            # but for now we're fine with these being behind this feature toggle
+            # this should probably eventually be made into a default label,
+            # but for now we're fine with it being behind this feature toggle.
+            # ideally, we'd also have the docker image here for ease-of-use
+            # in Prometheus relabeling, but that information is over the
+            # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
-            labels["paasta.yelp.com/docker_image"] = self.get_docker_image()
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
