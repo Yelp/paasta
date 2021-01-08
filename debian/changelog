@@ -1,3 +1,20 @@
+paasta-tools (0.97.55) xenial; urgency=medium
+
+  * 0.97.55 tagged with 'make release'
+    Commit: Add additional labels for Prometheus use (#3006)  * Add
+    additional labels for Prometheus use  deploy_group and docker_image
+    are existing dimensions that we can"t use relabeling to include in
+    metric scraping since they"re only present in the k8s container spec
+    and Prometheus doesn"t expose that.  most importantly,
+    scrape_uwsgi_prometheus will be how we filter down the set of pods
+    that Prometheus should actually scrape - the idea is currently that
+    this label is only set when someone has opted into using the uwsgi
+    exporter, but in the future this label should be set if a service
+    has chosen to use uwsgi autoscaling instead of checking this feature
+    toggle
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 07 Jan 2021 16:05:27 -0800
+
 paasta-tools (0.97.54) xenial; urgency=medium
 
   * 0.97.54 tagged with 'make release'
