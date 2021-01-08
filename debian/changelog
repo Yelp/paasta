@@ -1,3 +1,12 @@
+paasta-tools (0.97.56) xenial; urgency=medium
+
+  * 0.97.56 tagged with 'make release'
+    Commit: Remove docker_image label (#3007)  This is too long (over 63
+    chars) so we"ll need to figure out another way to get that
+    information in prometheus (or just skip it if no one ever uses it)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 08 Jan 2021 11:22:51 -0800
+
 paasta-tools (0.97.55) xenial; urgency=medium
 
   * 0.97.55 tagged with 'make release'
