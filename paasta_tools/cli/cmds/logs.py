@@ -18,10 +18,14 @@ import datetime
 import logging
 import re
 import sys
+import pdb
+import difflib
 from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
+from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.utils import list_all_instances_for_service
 from queue import Empty
 from time import sleep
 from typing import Any
@@ -1316,22 +1320,75 @@ def pick_default_log_mode(
         return 0
     return 1
 
+def verify_instances(
+    args_instances: str, service: str, clusters: Sequence[str]
+) -> Sequence[str]:
+    """Verify that a list of instances specified by user is correct for this service.
+
+    :param args_instances: a list of instances.
+    :param service: the service name
+    :param cluster: a list of clusters
+    :returns: a list of instances specified in args_instances without any exclusions.
+    """
+    unverified_instances = args_instances.split(",")
+    service_instances: Set[str] = list_all_instances_for_service(
+        service, clusters=clusters
+    )
+
+    misspelled_instances: Sequence[str] = [
+        i for i in unverified_instances if i not in service_instances
+    ]
+    
+    if misspelled_instances:
+        suggestions: List[str] = []
+        for instance in misspelled_instances:
+            matches = difflib.get_close_matches(
+                instance, service_instances, n=5, cutoff=0.5
+            )
+            suggestions.extend(matches)  # type: ignore
+        suggestions = list(set(suggestions))
+
+        if clusters:
+            message = "{} doesn't have any instances matching {} on {}.".format(
+                service,
+                ", ".join(sorted(misspelled_instances)),
+                ", ".join(sorted(clusters)),
+            )
+        else:
+            message = "{} doesn't have any instances matching {}.".format(
+                service, ", ".join(sorted(misspelled_instances))
+            )
+
+        print(PaastaColors.red(message))
+
+        if suggestions:
+            print("Did you mean any of these?")
+            for instance in sorted(suggestions):
+                print("  %s" % instance)
+        
+        return False
+
+    return True
 
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
-
+    
     if args.clusters is None:
         clusters = list_clusters(service, soa_dir=soa_dir)
     else:
         clusters = args.clusters.split(",")
 
+
     if args.instances is None:
         instances = None
     else:
         instances = args.instances.split(",")
+        
+        if not verify_instances(args.instances, service, clusters):
+            return 1
 
     if args.components is not None:
         components = args.components.split(",")
