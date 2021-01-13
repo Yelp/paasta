@@ -1386,7 +1386,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         instances = None
     else:
         instances = args.instances.split(",")
-        
+
         if not verify_instances(args.instances, service, clusters):
             return 1
 
