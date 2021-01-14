@@ -18,7 +18,6 @@ import datetime
 import logging
 import re
 import sys
-import pdb
 import difflib
 from collections import namedtuple
 from contextlib import contextmanager
@@ -1366,9 +1365,7 @@ def verify_instances(
             for instance in sorted(suggestions):
                 print("  %s" % instance)
         
-        return False
-
-    return True
+    return misspelled_instances
 
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
@@ -1387,7 +1384,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
     else:
         instances = args.instances.split(",")
 
-        if not verify_instances(args.instances, service, clusters):
+        if verify_instances(args.instances, service, clusters):
             return 1
 
     if args.components is not None:
