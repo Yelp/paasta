@@ -15,15 +15,14 @@
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
+import difflib
 import logging
 import re
 import sys
-import difflib
 from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
-from paasta_tools.utils import list_all_instances_for_service
 from queue import Empty
 from time import sleep
 from typing import Any
@@ -43,6 +42,8 @@ import isodate
 import pytz
 import ujson as json
 from dateutil import tz
+
+from paasta_tools.utils import list_all_instances_for_service
 
 try:
     from scribereader import scribereader
@@ -1318,6 +1319,7 @@ def pick_default_log_mode(
         return 0
     return 1
 
+
 def verify_instances(
     args_instances: str, service: str, clusters: Sequence[str]
 ) -> Sequence[str]:
@@ -1336,7 +1338,7 @@ def verify_instances(
     misspelled_instances: Sequence[str] = [
         i for i in unverified_instances if i not in service_instances
     ]
-    
+
     if misspelled_instances:
         suggestions: List[str] = []
         for instance in misspelled_instances:
@@ -1363,20 +1365,20 @@ def verify_instances(
             print("Did you mean any of these?")
             for instance in sorted(suggestions):
                 print("  %s" % instance)
-        
+
     return misspelled_instances
+
 
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
-    
+
     if args.clusters is None:
         clusters = list_clusters(service, soa_dir=soa_dir)
     else:
         clusters = args.clusters.split(",")
-
 
     if args.instances is None:
         instances = None
