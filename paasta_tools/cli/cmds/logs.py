@@ -23,7 +23,6 @@ from collections import namedtuple
 from contextlib import contextmanager
 from multiprocessing import Process
 from multiprocessing import Queue
-from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import list_all_instances_for_service
 from queue import Empty
 from time import sleep
