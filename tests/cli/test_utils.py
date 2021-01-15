@@ -17,15 +17,15 @@ from socket import gaierror
 
 import ephemeral_port_reserve
 import mock
-from mock import patch
 from mock import call
+from mock import patch
 from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
+from paasta_tools.cli.utils import verify_instances
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.cli.utils import verify_instances
 
 
 @patch("socket.gethostbyname_ex", autospec=True)
@@ -431,6 +431,7 @@ def test_trigger_deploys(mock_socket, mock_load_config):
     assert mock_client.send.call_args_list == [mock.call("a_service\n".encode("utf-8"))]
     assert mock_client.close.call_count == 1
 
+
 @patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 @patch("builtins.print", autospec=True)
 def test_verify_instances(mock_print, mock_list_all_instances_for_service):
@@ -448,6 +449,7 @@ def test_verify_instances(mock_print, mock_list_all_instances_for_service):
             call("  west"),
         ]
     )
+
 
 @patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 @patch("builtins.print", autospec=True)

@@ -20,7 +20,6 @@ from typing import Set
 import mock
 import pytest
 from mock import ANY
-from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
@@ -498,7 +497,7 @@ def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_grou
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group(
     mock_list_clusters,
     mock_figure_out_service_name,
@@ -714,7 +713,7 @@ def test_apply_args_filters_no_instances_found(
         "fake_service doesn't have any instances matching instance4, instance5 on cluster1."
         in output
     )
-    
+
     assert "Did you mean any of these?" in output
     for i in ["instance1", "instance2", "instance3"]:
         assert i in output

@@ -30,7 +30,6 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Sequence
-from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import Union
@@ -69,7 +68,6 @@ from paasta_tools.utils import format_table
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
-from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_deployments_json
@@ -1448,7 +1446,7 @@ def report_invalid_whitelist_values(
             "\n" "Warning: This service does not have any %s matching these names:\n%s"
         ) % (item_type, ",".join(bogus_entries))
     return return_string
-    
+
 
 def normalize_registrations(
     service: str, registrations: Sequence[str]

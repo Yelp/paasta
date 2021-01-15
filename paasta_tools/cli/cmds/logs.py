@@ -42,8 +42,6 @@ import pytz
 import ujson as json
 from dateutil import tz
 
-from paasta_tools.utils import list_all_instances_for_service
-
 try:
     from scribereader import scribereader
     from scribereader.scribereader import StreamTailerSetupError
@@ -1318,6 +1316,7 @@ def pick_default_log_mode(
         )
         return 0
     return 1
+
 
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.

@@ -1046,6 +1046,7 @@ def trigger_deploys(
     finally:
         client.close()
 
+
 def verify_instances(
     args_instances: str, service: str, clusters: Sequence[str]
 ) -> Sequence[str]:
