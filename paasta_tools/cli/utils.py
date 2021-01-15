@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import difflib
 import fnmatch
 import getpass
 import hashlib
@@ -1044,3 +1045,52 @@ def trigger_deploys(
         client.send(f"{service}\n".encode("utf-8"))
     finally:
         client.close()
+
+
+def verify_instances(
+    args_instances: str, service: str, clusters: Sequence[str]
+) -> Sequence[str]:
+    """Verify that a list of instances specified by user is correct for this service.
+
+    :param args_instances: a list of instances.
+    :param service: the service name
+    :param cluster: a list of clusters
+    :returns: a list of instances specified in args_instances without any exclusions.
+    """
+    unverified_instances = args_instances.split(",")
+    service_instances: Set[str] = list_all_instances_for_service(
+        service, clusters=clusters
+    )
+
+    misspelled_instances: Sequence[str] = [
+        i for i in unverified_instances if i not in service_instances
+    ]
+
+    if misspelled_instances:
+        suggestions: List[str] = []
+        for instance in misspelled_instances:
+            matches = difflib.get_close_matches(
+                instance, service_instances, n=5, cutoff=0.5
+            )
+            suggestions.extend(matches)  # type: ignore
+        suggestions = list(set(suggestions))
+
+        if clusters:
+            message = "{} doesn't have any instances matching {} on {}.".format(
+                service,
+                ", ".join(sorted(misspelled_instances)),
+                ", ".join(sorted(clusters)),
+            )
+        else:
+            message = "{} doesn't have any instances matching {}.".format(
+                service, ", ".join(sorted(misspelled_instances))
+            )
+
+        print(PaastaColors.red(message))
+
+        if suggestions:
+            print("Did you mean any of these?")
+            for instance in sorted(suggestions):
+                print("  %s" % instance)
+
+    return misspelled_instances

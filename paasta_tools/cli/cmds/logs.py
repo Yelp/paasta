@@ -54,6 +54,7 @@ from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import verify_instances
 from paasta_tools.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
@@ -1332,6 +1333,9 @@ def paasta_logs(args: argparse.Namespace) -> int:
         instances = None
     else:
         instances = args.instances.split(",")
+
+        if verify_instances(args.instances, service, clusters):
+            return 1
 
     if args.components is not None:
         components = args.components.split(",")

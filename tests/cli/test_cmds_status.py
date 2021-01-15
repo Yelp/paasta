@@ -20,7 +20,6 @@ from typing import Set
 import mock
 import pytest
 from mock import ANY
-from mock import call
 from mock import MagicMock
 from mock import Mock
 from mock import patch
@@ -50,7 +49,6 @@ from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
-from paasta_tools.cli.cmds.status import verify_instances
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.paastaapi import ApiException
@@ -499,7 +497,7 @@ def test_apply_args_filters_clusters_return_none_when_cluster_not_in_deploy_grou
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 def test_apply_args_filters_clusters_return_none_when_instance_not_in_deploy_group(
     mock_list_clusters,
     mock_figure_out_service_name,
@@ -665,7 +663,7 @@ def test_apply_args_filters_bad_service_name(mock_list_services, capfd):
     assert "  fake_service" in output
 
 
-@patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.status.list_services", autospec=True)
 @patch("paasta_tools.cli.cmds.status.figure_out_service_name", autospec=True)
@@ -715,52 +713,10 @@ def test_apply_args_filters_no_instances_found(
         "fake_service doesn't have any instances matching instance4, instance5 on cluster1."
         in output
     )
+
     assert "Did you mean any of these?" in output
     for i in ["instance1", "instance2", "instance3"]:
         assert i in output
-
-
-@patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
-@patch("builtins.print", autospec=True)
-def test_verify_instances(mock_print, mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
-
-    assert verify_instances("west,esst", "fake_service", []) == ["west", "esst"]
-    assert mock_print.called
-    mock_print.assert_has_calls(
-        [
-            call(
-                "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
-            ),
-            call("Did you mean any of these?"),
-            call("  east"),
-            call("  west"),
-        ]
-    )
-
-
-@patch("paasta_tools.cli.cmds.status.list_all_instances_for_service", autospec=True)
-@patch("builtins.print", autospec=True)
-def test_verify_instances_with_clusters(
-    mock_print, mock_list_all_instances_for_service
-):
-    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
-
-    assert verify_instances(
-        "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
-    ) == ["west", "esst", "fake"]
-    assert mock_print.called
-    mock_print.assert_has_calls(
-        [
-            call(
-                "\x1b[31mfake_service doesn't have any instances matching esst,"
-                " fake on fake_cluster1, fake_cluster2.\x1b[0m"
-            ),
-            call("Did you mean any of these?"),
-            call("  east"),
-            call("  west"),
-        ]
-    )
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
