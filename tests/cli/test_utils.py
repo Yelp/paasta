@@ -18,12 +18,14 @@ from socket import gaierror
 import ephemeral_port_reserve
 import mock
 from mock import patch
+from mock import call
 from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.cli.utils import verify_instances
 
 
 @patch("socket.gethostbyname_ex", autospec=True)
@@ -428,3 +430,44 @@ def test_trigger_deploys(mock_socket, mock_load_config):
     ]
     assert mock_client.send.call_args_list == [mock.call("a_service\n".encode("utf-8"))]
     assert mock_client.close.call_count == 1
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+@patch("builtins.print", autospec=True)
+def test_verify_instances(mock_print, mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+
+    assert verify_instances("west,esst", "fake_service", []) == ["esst"]
+    assert mock_print.called
+    mock_print.assert_has_calls(
+        [
+            call(
+                "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
+            ),
+            call("Did you mean any of these?"),
+            call("  east"),
+            call("  west"),
+        ]
+    )
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+@patch("builtins.print", autospec=True)
+def test_verify_instances_with_clusters(
+    mock_print, mock_list_all_instances_for_service
+):
+    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+
+    assert verify_instances(
+        "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
+    ) == ["esst", "fake"]
+    assert mock_print.called
+    mock_print.assert_has_calls(
+        [
+            call(
+                "\x1b[31mfake_service doesn't have any instances matching esst,"
+                " fake on fake_cluster1, fake_cluster2.\x1b[0m"
+            ),
+            call("Did you mean any of these?"),
+            call("  east"),
+            call("  west"),
+        ]
+    )

@@ -20,7 +20,6 @@ from queue import Empty
 import isodate
 import mock
 import pytest
-from mock import call
 from pytest import raises
 
 from paasta_tools.cli.cli import parse_args
@@ -1299,22 +1298,3 @@ def test_pick_default_log_mode():
 
         # Supports tailing , time and line counts. Line counts should be prioritized
         assert logs_by_lines.call_count == 1
-
-
-@mock.patch("paasta_tools.cli.cmds.logs.list_all_instances_for_service", autospec=True)
-@mock.patch("builtins.print", autospec=True)
-def test_verify_instances(mock_print, mock_list_all_instances_for_service):
-    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
-
-    assert logs.verify_instances("esst,west", "fake_service", []) == ["esst"]
-    assert mock_print.called
-    mock_print.assert_has_calls(
-        [
-            call(
-                "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
-            ),
-            call("Did you mean any of these?"),
-            call("  east"),
-            call("  west"),
-        ]
-    )

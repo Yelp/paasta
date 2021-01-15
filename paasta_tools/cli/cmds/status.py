@@ -49,6 +49,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
@@ -1447,56 +1448,7 @@ def report_invalid_whitelist_values(
             "\n" "Warning: This service does not have any %s matching these names:\n%s"
         ) % (item_type, ",".join(bogus_entries))
     return return_string
-
-
-def verify_instances(
-    args_instances: str, service: str, clusters: Sequence[str]
-) -> Sequence[str]:
-    """Verify that a list of instances specified by user is correct for this service.
-
-    :param args_instances: a list of instances.
-    :param service: the service name
-    :param cluster: a list of clusters
-    :returns: a list of instances specified in args_instances without any exclusions.
-    """
-    unverified_instances = args_instances.split(",")
-    service_instances: Set[str] = list_all_instances_for_service(
-        service, clusters=clusters
-    )
-
-    misspelled_instances: Sequence[str] = [
-        i for i in unverified_instances if i not in service_instances
-    ]
-
-    if misspelled_instances:
-        suggestions: List[str] = []
-        for instance in misspelled_instances:
-            matches = difflib.get_close_matches(
-                instance, service_instances, n=5, cutoff=0.5
-            )
-            suggestions.extend(matches)  # type: ignore
-        suggestions = list(set(suggestions))
-
-        if clusters:
-            message = "{} doesn't have any instances matching {} on {}.".format(
-                service,
-                ", ".join(sorted(misspelled_instances)),
-                ", ".join(sorted(clusters)),
-            )
-        else:
-            message = "{} doesn't have any instances matching {}.".format(
-                service, ", ".join(sorted(misspelled_instances))
-            )
-
-        print(PaastaColors.red(message))
-
-        if suggestions:
-            print("Did you mean any of these?")
-            for instance in sorted(suggestions):
-                print("  %s" % instance)
-
-    return unverified_instances
-
+    
 
 def normalize_registrations(
     service: str, registrations: Sequence[str]

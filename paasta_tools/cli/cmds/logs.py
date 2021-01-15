@@ -15,7 +15,6 @@
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
-import difflib
 import logging
 import re
 import sys
@@ -57,6 +56,7 @@ from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import verify_instances
 from paasta_tools.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
@@ -1318,56 +1318,6 @@ def pick_default_log_mode(
         )
         return 0
     return 1
-
-
-def verify_instances(
-    args_instances: str, service: str, clusters: Sequence[str]
-) -> Sequence[str]:
-    """Verify that a list of instances specified by user is correct for this service.
-
-    :param args_instances: a list of instances.
-    :param service: the service name
-    :param cluster: a list of clusters
-    :returns: a list of instances specified in args_instances without any exclusions.
-    """
-    unverified_instances = args_instances.split(",")
-    service_instances: Set[str] = list_all_instances_for_service(
-        service, clusters=clusters
-    )
-
-    misspelled_instances: Sequence[str] = [
-        i for i in unverified_instances if i not in service_instances
-    ]
-
-    if misspelled_instances:
-        suggestions: List[str] = []
-        for instance in misspelled_instances:
-            matches = difflib.get_close_matches(
-                instance, service_instances, n=5, cutoff=0.5
-            )
-            suggestions.extend(matches)  # type: ignore
-        suggestions = list(set(suggestions))
-
-        if clusters:
-            message = "{} doesn't have any instances matching {} on {}.".format(
-                service,
-                ", ".join(sorted(misspelled_instances)),
-                ", ".join(sorted(clusters)),
-            )
-        else:
-            message = "{} doesn't have any instances matching {}.".format(
-                service, ", ".join(sorted(misspelled_instances))
-            )
-
-        print(PaastaColors.red(message))
-
-        if suggestions:
-            print("Did you mean any of these?")
-            for instance in sorted(suggestions):
-                print("  %s" % instance)
-
-    return misspelled_instances
-
 
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
