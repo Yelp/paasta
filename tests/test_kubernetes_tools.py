@@ -3228,6 +3228,26 @@ def test_get_pod_hostname(pod_node_name, node, expected):
     assert hostname == expected
 
 
+def test_get_pod_node():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_all_nodes", autospec=True,
+    ) as mock_get_all_nodes:
+        mock_name_1 = mock.Mock()
+        mock_name_2 = mock.Mock()
+        type(mock_name_1).name = "node1"
+        mock_node_1 = mock.Mock(metadata=mock_name_1)
+        type(mock_name_2).name = "node2"
+        mock_node_2 = mock.Mock(metadata=mock_name_2)
+        mock_get_all_nodes.return_value = [mock_node_1, mock_node_2]
+        mock_pod = mock.Mock()
+        type(mock_pod).spec = mock.Mock(node_name="node1")
+        assert kubernetes_tools.get_pod_node(mock.Mock(), mock_pod) == mock_node_1
+
+        mock_get_all_nodes.return_value = [mock_node_1, mock_node_2]
+        type(mock_pod).spec = mock.Mock(node_name="node3")
+        assert kubernetes_tools.get_pod_node(mock.Mock(), mock_pod) is None
+
+
 @pytest.mark.parametrize(
     "label,expected",
     [
@@ -3254,11 +3274,17 @@ def test_running_task_allocation_get_kubernetes_metadata():
         "paasta.yelp.com/service": "srv1",
         "paasta.yelp.com/instance": "instance1",
     }
-    mock_pod.spec.node_selector = {"yelp.com/pool": "default"}
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
     mock_pod.status.host_ip = "10.10.10.11"
-    ret = task_allocation_get_kubernetes_metadata(mock_pod)
+    mock_node = mock.MagicMock()
+    mock_node.metadata.labels = {"yelp.com/pool": "default"}
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_pod_node",
+        autospec=True,
+        return_value=mock_node,
+    ):
+        ret = task_allocation_get_kubernetes_metadata(mock.Mock(), mock_pod)
     assert ret == (
         "srv1",
         "instance1",
