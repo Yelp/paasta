@@ -2,6 +2,7 @@ import socket
 
 
 DEFAULT_SPARK_SERVICE = "spark"
+KUBERNETES_NAMESPACE = "paasta-spark"
 
 
 def get_webui_url(port: str) -> str:

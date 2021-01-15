@@ -30,6 +30,7 @@ from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
 
+KUBERNETES_NAMESPACE = "paasta-flinks"
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
 

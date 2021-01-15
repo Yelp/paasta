@@ -13,12 +13,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import importlib
 import json
 import logging
 import os
 import sys
+from collections import defaultdict
 from typing import Mapping
-from typing import Sequence
+from typing import Set
 
 from kubernetes.client.rest import ApiException
 
@@ -30,20 +32,35 @@ from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPES
+from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger(__name__)
 
+INSTANCE_TYPE_TO_K8S_NAMESPACE = {}
+for instance_type in INSTANCE_TYPES:
+    try:
+        instance_type_module = importlib.import_module(
+            f"paasta_tools.{instance_type}_tools"
+        )
+    except ModuleNotFoundError:
+        # paasta_native defies the convention...
+        log.warning(
+            f"Cannot lookup k8s namespace no module called paasta_tools.{instance_type}_tools"
+        )
+        continue
+    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type] = getattr(
+        instance_type_module, "KUBERNETES_NAMESPACE", "paasta"
+    )
+
+print(INSTANCE_TYPE_TO_K8S_NAMESPACE)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync paasta secrets into k8s")
-    parser.add_argument(
-        "service_list",
-        nargs="+",
-        help="The list of services to sync secrets for",
-        metavar="SERVICE",
-    )
     parser.add_argument(
         "-c",
         "--cluster",
@@ -82,10 +99,24 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
+    services_to_k8s_namespaces = defaultdict(set)
+    services = list_services(args.soa_dir)
+    for service in services:
+        for instance_type in INSTANCE_TYPES:
+            instances = get_service_instance_list(
+                service=service,
+                instance_type=instance_type,
+                cluster=cluster,
+                soa_dir=args.soa_dir,
+            )
+            if instances:
+                services_to_k8s_namespaces[service].add(
+                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                )
     sys.exit(0) if sync_all_secrets(
         kube_client=kube_client,
         cluster=cluster,
-        service_list=args.service_list,
+        services_to_k8s_namespaces=services_to_k8s_namespaces,
         secret_provider_name=secret_provider_name,
         vault_cluster_config=vault_cluster_config,
         soa_dir=args.soa_dir,
@@ -95,23 +126,25 @@ def main() -> None:
 def sync_all_secrets(
     kube_client: KubeClient,
     cluster: str,
-    service_list: Sequence[str],
+    services_to_k8s_namespaces: Mapping[str, Set],
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
 ) -> bool:
     results = []
-    for service in service_list:
-        results.append(
-            sync_secrets(
-                kube_client=kube_client,
-                cluster=cluster,
-                service=service,
-                secret_provider_name=secret_provider_name,
-                vault_cluster_config=vault_cluster_config,
-                soa_dir=soa_dir,
+    for service, namespaces in services_to_k8s_namespaces.items():
+        for namespace in namespaces:
+            results.append(
+                sync_secrets(
+                    kube_client=kube_client,
+                    cluster=cluster,
+                    service=service,
+                    secret_provider_name=secret_provider_name,
+                    vault_cluster_config=vault_cluster_config,
+                    soa_dir=soa_dir,
+                    namespace=namespace,
+                )
             )
-        )
     return all(results)
 
 
@@ -122,6 +155,7 @@ def sync_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
+    namespace: str,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -152,7 +186,10 @@ def sync_secrets(
                 )
                 if secret_signature:
                     kubernetes_secret_signature = get_kubernetes_secret_signature(
-                        kube_client=kube_client, secret=secret, service=service
+                        kube_client=kube_client,
+                        secret=secret,
+                        service=service,
+                        namespace=namespace,
                     )
                     if not kubernetes_secret_signature:
                         log.info(f"{secret} for {service} not found, creating")
@@ -162,6 +199,7 @@ def sync_secrets(
                                 secret=secret,
                                 service=service,
                                 secret_provider=secret_provider,
+                                namespace=namespace,
                             )
                         except ApiException as e:
                             if e.status == 409:
@@ -175,6 +213,7 @@ def sync_secrets(
                             secret=secret,
                             service=service,
                             secret_signature=secret_signature,
+                            namespace=namespace,
                         )
                     elif secret_signature != kubernetes_secret_signature:
                         log.info(
@@ -185,12 +224,14 @@ def sync_secrets(
                             secret=secret,
                             service=service,
                             secret_provider=secret_provider,
+                            namespace=namespace,
                         )
                         update_kubernetes_secret_signature(
                             kube_client=kube_client,
                             secret=secret,
                             service=service,
                             secret_signature=secret_signature,
+                            namespace=namespace,
                         )
                     else:
                         log.info(f"{secret} for {service} up to date")

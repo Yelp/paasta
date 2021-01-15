@@ -25,6 +25,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
+KUBERNETES_NAMESPACE = "paasta-nrtsearchservices"
+
 
 class NrtsearchServiceDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     replicas: int

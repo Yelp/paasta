@@ -2526,11 +2526,12 @@ def create_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace="paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_secret(
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
@@ -2553,12 +2554,13 @@ def update_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace="paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_secret(
         name=f"paasta-secret-{service}-{sanitised_secret}",
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{sanitised_secret}",
@@ -2577,13 +2579,13 @@ def update_secret(
 
 
 def get_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str
+    kube_client: KubeClient, secret: str, service: str, namespace="paasta",
 ) -> Optional[str]:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     try:
         signature = kube_client.core.read_namespaced_config_map(
-            name=f"paasta-secret-{service}-{secret}-signature", namespace="paasta"
+            name=f"paasta-secret-{service}-{secret}-signature", namespace=namespace
         )
     except ApiException as e:
         if e.status == 404:
@@ -2597,13 +2599,17 @@ def get_kubernetes_secret_signature(
 
 
 def update_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace="paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_config_map(
         name=f"paasta-secret-{service}-{secret}-signature",
-        namespace="paasta",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
@@ -2618,12 +2624,16 @@ def update_kubernetes_secret_signature(
 
 
 def create_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace="paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_config_map(
-        namespace="paasta",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=f"paasta-secret-{service}-{secret}-signature",
