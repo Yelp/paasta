@@ -408,10 +408,11 @@ def get_spark_env(
 
     spark_env = {}
 
-    access_key, secret_key, _ = aws_creds
+    access_key, secret_key, token = aws_creds
     if access_key:
         spark_env["AWS_ACCESS_KEY_ID"] = access_key
         spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+        spark_env["AWS_SESSION_TOKEN"] = token
         spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
