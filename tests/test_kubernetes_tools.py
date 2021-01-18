@@ -64,6 +64,9 @@ from paasta_tools import kubernetes_tools
 from paasta_tools.contrib.get_running_task_allocation import (
     get_kubernetes_metadata as task_allocation_get_kubernetes_metadata,
 )
+from paasta_tools.contrib.get_running_task_allocation import (
+    get_pod_pool as task_allocation_get_pod_pool,
+)
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -3277,19 +3280,21 @@ def test_running_task_allocation_get_kubernetes_metadata():
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
     mock_pod.status.host_ip = "10.10.10.11"
+    ret = task_allocation_get_kubernetes_metadata(mock_pod)
+    assert ret == ("srv1", "instance1", "pod_1", "10.10.10.10", "10.10.10.11",)
+
+
+def test_running_task_allocation_get_pod_pool():
     mock_node = mock.MagicMock()
-    mock_node.metadata.labels = {"yelp.com/pool": "default"}
+    mock_node.metadata.labels = {"yelp.com/pool": "foo"}
     with mock.patch(
         "paasta_tools.kubernetes_tools.get_pod_node",
         autospec=True,
         return_value=mock_node,
     ):
-        ret = task_allocation_get_kubernetes_metadata(mock.Mock(), mock_pod)
-    assert ret == (
-        "srv1",
-        "instance1",
-        "default",
-        "pod_1",
-        "10.10.10.10",
-        "10.10.10.11",
-    )
+        ret = task_allocation_get_pod_pool(mock.Mock(), mock.Mock())
+        assert ret == "foo"
+        mock_node.metadata.labels = None
+
+        ret = task_allocation_get_pod_pool(mock.Mock(), mock.Mock())
+        assert ret == "default"

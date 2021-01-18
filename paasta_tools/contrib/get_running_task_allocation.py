@@ -133,8 +133,17 @@ def get_kubernetes_resource_request(
     }
 
 
+def get_pod_pool(kube_client: KubeClient, pod: V1Pod,) -> str:
+    node = kubernetes_tools.get_pod_node(kube_client, pod, cache_nodes=True)
+    pool = "default"
+    if node:
+        if node.metadata.labels:
+            pool = node.metadata.labels.get("yelp.com/pool", "default")
+    return pool
+
+
 def get_kubernetes_metadata(
-    kube_client: KubeClient, pod: V1Pod,
+    pod: V1Pod,
 ) -> Tuple[
     Optional[str],
     Optional[str],
@@ -143,18 +152,13 @@ def get_kubernetes_metadata(
     Optional[str],
     Optional[str],
 ]:
-    node = kubernetes_tools.get_pod_node(kube_client, pod, cache_nodes=True)
-    if node:
-        pool = node.metadata.labels.get("yelp.com/pool", "default")
-    else:
-        pool = "default"
     labels = pod.metadata.labels or {}
     pod_name = pod.metadata.name
     pod_ip = pod.status.pod_ip
     host_ip = pod.status.host_ip
     service = labels.get("paasta.yelp.com/service")
     instance = labels.get("paasta.yelp.com/instance")
-    return service, instance, pool, pod_name, pod_ip, host_ip
+    return service, instance, pod_name, pod_ip, host_ip
 
 
 def get_container_type(container_name: str, instance_name: str) -> str:
@@ -174,9 +178,8 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
     pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
-        service, instance, pool, pod_name, pod_ip, host_ip = get_kubernetes_metadata(
-            client, pod
-        )
+        service, instance, pod_name, pod_ip, host_ip = get_kubernetes_metadata(pod)
+        pool = get_pod_pool(client, pod)
         name_to_info: MutableMapping[str, Any] = {}
         for container in pod.spec.containers:
             name_to_info[container.name] = {
