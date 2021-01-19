@@ -1,3 +1,19 @@
+paasta-tools (0.97.57) xenial; urgency=medium
+
+  * 0.97.57 tagged with 'make release'
+    Commit: Merge pull request #3008 from Yelp/PAASTA-
+    16369_Validate_InstanceName_PaastaLogs  Paasta 16369 validate
+    instance name paasta logs
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 19 Jan 2021 13:28:46 -0800
+
+paasta-tools (0.97.57) xenial; urgency=medium
+
+  * 0.97.57 tagged with 'make release'
+    Commit: Removed unused imports
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 19 Jan 2021 13:25:33 -0800
+
 paasta-tools (0.97.56) xenial; urgency=medium
 
   * 0.97.56 tagged with 'make release'
