@@ -528,6 +528,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
+        use_prometheus = autoscaling_params.get(
+            "use_prometheus",
+            load_system_paasta_config().default_should_run_uwsgi_exporter_sidecar(),
+        )
         if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta2MetricSpec(
@@ -536,6 +540,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         name="cpu",
                         target=V2beta2MetricTarget(
                             type="Utilization", average_utilization=int(target * 100),
+                        ),
+                    ),
+                )
+            )
+        elif metrics_provider == "uwsgi" and use_prometheus:
+            # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
+            # prometheus adapter config entry?
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="External",
+                    external=V2beta2ExternalMetricSource(
+                        # TODO(luisp): verify that this doesn't need to differ from the uwsgi metric
+                        # id used for sfx
+                        metric=V2beta2MetricIdentifier(
+                            name=self.namespace_external_metric_name(metrics_provider),
+                        ),
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            # we average the number of instances needed to handle the current (or
+                            # averaged) load instead of the load itself as this leads to more
+                            # stable behavior. we return the percentage by which we want to
+                            # scale, so the target in the HPA should always be 1.
+                            # PAASTA-16756 for details
+                            value=1,
                         ),
                     ),
                 )
@@ -1380,6 +1408,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
         if metrics_provider in {"http", "uwsgi"}:
+            # TODO(luisp): we should probably only add this if we're not using prometheus?
             annotations["autoscaling"] = metrics_provider
 
         pod_spec_kwargs = {}
