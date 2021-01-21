@@ -17,7 +17,9 @@ import argparse
 import logging
 from pathlib import Path
 from typing import Any
+from typing import cast
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -25,12 +27,33 @@ import yaml
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
+from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
+
+
+class PrometheusAdapterRule(TypedDict):
+    """
+    Typed version of the (minimal) set of Prometheus adapter rule configuration options that we use
+    """
+
+    # see https://github.com/DirectXMan12/k8s-prometheus-adapter/blob/master/docs/config.md
+    # for more detailed information
+    seriesQuery: str  # used for discovering what resources should be scaled
+    resources: Dict[str, str]  # used to associate metrics with resources
+    metricsQuery: str  # the actual query we want to send to Prometheus
+
+
+class PrometheusAdapterConfig(TypedDict):
+    """
+    Typed version of the Prometheus adapter configuration dictionary.
+    """
+
+    rules: List[PrometheusAdapterRule]
 
 
 def parse_args() -> argparse.Namespace:
@@ -104,20 +127,18 @@ def should_create_uwsgi_scaling_config(
     return False, "did not request uwsgi autoscaling"
 
 
-# TODO: this should return a TypedDict
 def generate_instance_uwsgi_scaling_config(
     instance: str, instance_config: Dict[str, Any],
-) -> Dict[str, Any]:
+) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
     return {"seriesQuery": "", "resources": {}, "metricsQuery": ""}
 
 
-# TODO: this should return a TypedDict
 def generate_prometheus_adapter_config(
     paasta_cluster: str, soa_dir: Path
-) -> Dict[str, Any]:
+) -> PrometheusAdapterConfig:
     """
     Given a paasta cluster and a soaconfigs directory, create the necessary Prometheus adapter
     config to autoscale services.
@@ -125,7 +146,7 @@ def generate_prometheus_adapter_config(
     Currently supports the following metrics providers:
         * uwsgi
     """
-    config = {"rules": []}
+    config: PrometheusAdapterConfig = {"rules": []}
 
     for service_config_path in soa_dir.glob(f"*/kubernetes-{paasta_cluster}.yaml"):
         service_config = yaml.safe_load(service_config_path.read_text())
@@ -149,7 +170,7 @@ def generate_prometheus_adapter_config(
 
 
 def update_prometheus_adapter_config(
-    kube_client: KubeClient, config: Dict[str, Any]
+    kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.replace_namespaced_config_map(
         name="paasta-prometheus-adapter-configmap",
@@ -162,7 +183,7 @@ def update_prometheus_adapter_config(
 
 
 def create_prometheus_adapter_config(
-    kube_client: KubeClient, config: Dict[str, Any]
+    kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.create_namespaced_config_map(
         namespace="paasta",
@@ -173,10 +194,16 @@ def create_prometheus_adapter_config(
     )
 
 
-def get_prometheus_adapter_config(kube_client: KubeClient) -> Optional[Dict[str, Any]]:
+def get_prometheus_adapter_config(
+    kube_client: KubeClient,
+) -> Optional[PrometheusAdapterConfig]:
     try:
-        config = kube_client.core.read_namespaced_config_map(
-            name="paasta-prometheus-adapter-configmap", namespace="paasta"
+        config = cast(
+            # we cast since mypy infers the wrong type since the k8s clientlib is untyped
+            V1ConfigMap,
+            kube_client.core.read_namespaced_config_map(
+                name="paasta-prometheus-adapter-configmap", namespace="paasta"
+            ),
         )
     except ApiException as e:
         if e.status == 404:
@@ -186,8 +213,8 @@ def get_prometheus_adapter_config(kube_client: KubeClient) -> Optional[Dict[str,
 
     if not config:
         return None
-    else:
-        return config.data
+
+    return config.data
 
 
 def main() -> None:
