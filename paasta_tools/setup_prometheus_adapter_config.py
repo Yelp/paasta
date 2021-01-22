@@ -148,9 +148,12 @@ def create_instance_uwsgi_scaling_rule(
         f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
     )
     return {
-        "seriesQuery": f"{{{worker_filter_terms}}}",
+        "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
         # TODO: figure out how to go from a label to a k8s resource
-        "resources": {},
+        "resources": {
+            "kube_pod": {"resource": "pod"},
+            "kube_deployment": {"resource": "deployment"},
+        },
         "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
     }
 
