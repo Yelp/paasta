@@ -13,6 +13,7 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -329,7 +330,7 @@ class LongRunningServiceConfig(InstanceConfig):
         default_params: AutoscalingParamsDict = {
             "metrics_provider": "mesos_cpu",
             "decision_policy": "proportional",
-            "setpoint": 0.8,
+            "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
         }
         return deep_merge_dictionaries(
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),

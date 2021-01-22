@@ -127,6 +127,7 @@ from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -583,7 +584,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     setpoint=target,
                     offset=autoscaling_params.get("offset", 0),
                     moving_average_window_seconds=autoscaling_params.get(
-                        "moving_average_window_seconds", 1800
+                        "moving_average_window_seconds",
+                        DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
                     ),
                     paasta_service=self.get_service(),
                     paasta_instance=self.get_instance(),
