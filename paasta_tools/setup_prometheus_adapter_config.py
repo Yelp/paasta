@@ -1,6 +1,3 @@
-"""
-Small utility to update the Prometheus adapter's config to match soaconfigs.
-"""
 # Copyright 2015-2021 Yelp Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +10,9 @@ Small utility to update the Prometheus adapter's config to match soaconfigs.
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Small utility to update the Prometheus adapter's config to match soaconfigs.
+"""
 import argparse
 import logging
 from pathlib import Path
@@ -23,7 +23,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
-import yaml
+import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
@@ -31,6 +31,9 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.utils import DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
+from paasta_tools.utils import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
@@ -45,7 +48,7 @@ class PrometheusAdapterRule(TypedDict):
     # for more detailed information
     seriesQuery: str  # used for discovering what resources should be scaled
     resources: Dict[str, str]  # used to associate metrics with resources
-    metricsQuery: str  # the actual query we want to send to Prometheus
+    metricsQuery: str  # the actual query we want to send to Prometheus to use for scaling
 
 
 class PrometheusAdapterConfig(TypedDict):
@@ -97,7 +100,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def should_create_uwsgi_scaling_config(
+def should_create_uwsgi_scaling_rule(
     instance: str, instance_config: Dict[str, Any],
 ) -> Tuple[bool, Optional[str]]:
     """
@@ -127,16 +130,32 @@ def should_create_uwsgi_scaling_config(
     return False, "did not request uwsgi autoscaling"
 
 
-def generate_instance_uwsgi_scaling_config(
-    instance: str, instance_config: Dict[str, Any],
+def create_instance_uwsgi_scaling_rule(
+    service: str, instance: str, instance_config: Dict[str, Any], paasta_cluster: str
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    return {"seriesQuery": "", "resources": {}, "metricsQuery": ""}
+    setpoint = instance_config["autoscaling"].get(
+        "setpoint", DEFAULT_AUTOSCALING_SETPOINT
+    )
+    moving_average_window = instance_config["autoscaling"].get(
+        "moving_average_window_seconds", DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
+    deployment_name = f"{sanitise_kubernetes_name(service)}-{instance}"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+    replica_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
+    )
+    return {
+        "seriesQuery": f"{{{worker_filter_terms}}}",
+        # TODO: figure out how to go from a label to a k8s resource
+        "resources": {},
+        "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
+    }
 
 
-def generate_prometheus_adapter_config(
+def create_prometheus_adapter_config(
     paasta_cluster: str, soa_dir: Path
 ) -> PrometheusAdapterConfig:
     """
@@ -146,12 +165,14 @@ def generate_prometheus_adapter_config(
     Currently supports the following metrics providers:
         * uwsgi
     """
-    config: PrometheusAdapterConfig = {"rules": []}
-
+    rules: List[PrometheusAdapterRule] = []
+    # we don't know ahead of time what services are autoscaled, so we need to figure out
+    # what services are running in our cluster and then check if they're autoscaled
     for service_config_path in soa_dir.glob(f"*/kubernetes-{paasta_cluster}.yaml"):
+        service_name = str(service_config_path.relative_to(soa_dir).parent)
         service_config = yaml.safe_load(service_config_path.read_text())
         for instance, instance_config in service_config.items():
-            should_create, skip_reason = should_create_uwsgi_scaling_config(
+            should_create, skip_reason = should_create_uwsgi_scaling_rule(
                 instance, instance_config
             )
             if not should_create:
@@ -162,14 +183,21 @@ def generate_prometheus_adapter_config(
                     skip_reason,
                 )
                 continue
-            config["rules"].append(
-                generate_instance_uwsgi_scaling_config(instance, instance_config)
+            rules.append(
+                create_instance_uwsgi_scaling_rule(
+                    service=service_name,
+                    instance=instance,
+                    instance_config=instance_config,
+                    paasta_cluster=paasta_cluster,
+                )
             )
 
-    return config
+    return {
+        "rules": rules,
+    }
 
 
-def update_prometheus_adapter_config(
+def update_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.replace_namespaced_config_map(
@@ -182,7 +210,7 @@ def update_prometheus_adapter_config(
     )
 
 
-def create_prometheus_adapter_config(
+def create_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.create_namespaced_config_map(
@@ -194,7 +222,7 @@ def create_prometheus_adapter_config(
     )
 
 
-def get_prometheus_adapter_config(
+def get_prometheus_adapter_configmap(
     kube_client: KubeClient,
 ) -> Optional[PrometheusAdapterConfig]:
     try:
@@ -218,34 +246,44 @@ def get_prometheus_adapter_config(
 
 
 def main() -> None:
-    # TODO: exit early if not k8s leader
     args = parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     log.info("Generating adapter config from soaconfigs.")
-    config = generate_prometheus_adapter_config(
+    config = create_prometheus_adapter_config(
         paasta_cluster=args.cluster, soa_dir=args.soa_dir
     )
     log.info("Generated adapter config from soaconfigs.")
+    if args.dry_run:
+        log.info(
+            "Generated the following config:\n%s",
+            yaml.dump(config, default_flow_style=False, explicit_start=True),
+        )
+        return  # everything after this point requires creds/updates state
+    else:
+        log.debug(
+            "Generated the following config:\n%s",
+            yaml.dump(config, default_flow_style=False, explicit_start=True),
+        )
 
     kube_client = KubeClient()
-    # TODO: if we keep dry-run, do we wrap this?
-    ensure_namespace(kube_client, namespace="paasta")
+    if not args.dry_run:
+        ensure_namespace(kube_client, namespace="paasta")
 
-    existing_config = get_prometheus_adapter_config(kube_client=kube_client)
+    existing_config = get_prometheus_adapter_configmap(kube_client=kube_client)
     if existing_config and existing_config != config:
         log.info("Existing config differs from soaconfigs - updating.")
-        if not args.dry_run:
-            update_prometheus_adapter_config(kube_client=kube_client, config=config)
+        update_prometheus_adapter_configmap(kube_client=kube_client, config=config)
         log.info("Updated adapter config.")
     elif existing_config:
         log.info("Existing config matches soaconfigs - exiting.")
         return
     else:
         log.info("No existing config - creating.")
-        if not args.dry_run:
-            create_prometheus_adapter_config(kube_client=kube_client, config=config)
+        create_prometheus_adapter_configmap(kube_client=kube_client, config=config)
         log.info("Created adapter config.")
 
 
