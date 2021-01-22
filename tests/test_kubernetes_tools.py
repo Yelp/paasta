@@ -1444,14 +1444,10 @@ class TestKubernetesDeploymentConfig:
             (False, 8888, "true"),
             (True, None, "true"),
             (False, None, "false"),
-        ]
+        ],
     )
     def test_routable_ip(
-        self,
-        mock_get_prometheus_port,
-        in_smtstk,
-        prometheus_port,
-        expected,
+        self, mock_get_prometheus_port, in_smtstk, prometheus_port, expected,
     ):
         mock_get_prometheus_port.return_value = prometheus_port
         mock_service_namespace_config = mock.Mock()

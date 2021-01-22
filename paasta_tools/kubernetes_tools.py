@@ -1345,16 +1345,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
-    def has_routable_ip(
-        self,
-        service_namespace_config: ServiceNamespaceConfig,
-    ) -> str:
+    def has_routable_ip(self, service_namespace_config: ServiceNamespaceConfig) -> str:
         """Return whether the routable_ip label should be true or false.
 
         Services with a `prometheus_port` defined must have a routable IP
         address to allow Prometheus shards to scrape metrics.
         """
-        if service_namespace_config.is_in_smartstack() or self.get_prometheus_port() is not None:
+        if (
+            service_namespace_config.is_in_smartstack()
+            or self.get_prometheus_port() is not None
+        ):
             return "true"
         return "false"
 
