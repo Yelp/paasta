@@ -1333,6 +1333,9 @@ def paasta_logs(args: argparse.Namespace) -> int:
         instances = None
     else:
         instances = args.instances.split(",")
+        # Check for flint instance names only, not the containers inside them
+        check_flink_instances = [x.split(".")[0] for x in instances if x.split(".")]
+        args.instances = ",".join(check_flink_instances)
 
         if verify_instances(args.instances, service, clusters):
             return 1

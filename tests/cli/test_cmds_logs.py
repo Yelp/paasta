@@ -388,6 +388,19 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     assert not logs.extract_utc_timestamp_from_log_line(line)
 
 
+def test_paasta_log_line_passes_filter_true_with_nested_container():
+    service = "fake_service"
+    clusters = ["fake_cluster1"]
+    instance = "fake_instance.container"
+
+    with mock.patch(
+        "paasta_tools.cli.utils.verify_instances", autospec=True
+    ) as verify_instances_patch:
+        verify_instances_patch.return_value = True
+
+        assert verify_instances_patch(instance, service, clusters)
+
+
 def test_parse_marathon_log_line_fail():
     assert "" == logs.parse_marathon_log_line("fake timestamp", None, None)
 
