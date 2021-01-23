@@ -1696,9 +1696,12 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster", KubeClient(),
+            )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -1790,7 +1793,7 @@ class TestKubernetesDeploymentConfig:
             == return_value
         )
 
-    def test_get_autoscaling_metric_spec_uwsgi(self):
+    def test_get_autoscaling_metric_spec_uwsgi_no_prometheus(self):
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
@@ -1808,7 +1811,8 @@ class TestKubernetesDeploymentConfig:
         with mock.patch(
             "paasta_tools.kubernetes_tools.load_system_paasta_config",
             return_value=mock.Mock(
-                get_hpa_always_uses_external_for_signalfx=lambda: False
+                get_hpa_always_uses_external_for_signalfx=lambda: False,
+                default_should_run_uwsgi_exporter_sidecar=lambda: False,
             ),
             autospec=True,
         ):
@@ -1871,6 +1875,7 @@ class TestKubernetesDeploymentConfig:
                     "offset": 0.1,
                     "forecast_policy": "moving_average",
                     "moving_average_window_seconds": 300,
+                    "use_prometheus": False,
                 },
             }
         )
@@ -1881,6 +1886,7 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
+
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config, "fake_name", "cluster", KubeClient(),
         )
