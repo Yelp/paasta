@@ -388,17 +388,21 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     assert not logs.extract_utc_timestamp_from_log_line(line)
 
 
-def test_paasta_log_line_passes_filter_true_with_nested_container():
-    service = "fake_service"
-    clusters = ["fake_cluster1"]
-    instance = "fake_instance.container"
-
+def test_paasta_log_line_passes_filter_true_for_instances_with_suffixes():
     with mock.patch(
-        "paasta_tools.cli.utils.verify_instances", autospec=True
-    ) as verify_instances_patch:
-        verify_instances_patch.return_value = True
+        "paasta_tools.cli.cmds.logs.verify_instances", autospec=True
+    ) as mock_verify_instances, mock.patch(
+        "paasta_tools.cli.cmds.logs.figure_out_service_name", autospec=True
+    ):
+        mock_args = mock.Mock(
+            service="fake_service",
+            clusters="fake_cluster1",
+            instances="fake_instance.container",
+        )
 
-        assert verify_instances_patch(instance, service, clusters)
+        logs.paasta_logs(mock_args)
+
+        assert mock_verify_instances.call_args[0][0] == "fake_instance"
 
 
 def test_parse_marathon_log_line_fail():
@@ -599,6 +603,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
                 queue,
                 filter_fn,
             )
+
         mock_log.error.assert_any_call(
             "Failed to setup stream tailing for %s in fake_env" % stream_name
         )
