@@ -290,13 +290,18 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
-    mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
-        namespace="faasta",
-        body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", mock_client, namespace="faasta",
-        ),
-        pretty=True,
-    )
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
+            namespace="faasta",
+            body=app.soa_config.get_autoscaling_metric_spec(
+                "fake_name", "cluster", mock_client, namespace="faasta",
+            ),
+            pretty=True,
+        )
 
 
 @mock.patch(
@@ -347,11 +352,16 @@ def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused,):
         == 0
     )
     assert app.delete_horizontal_pod_autoscaler.call_count == 0
-    mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
-        namespace="faasta",
-        name="fake_name",
-        body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", mock_client, namespace="faasta",
-        ),
-        pretty=True,
-    )
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
+            namespace="faasta",
+            name="fake_name",
+            body=app.soa_config.get_autoscaling_metric_spec(
+                "fake_name", "cluster", mock_client, namespace="faasta",
+            ),
+            pretty=True,
+        )
