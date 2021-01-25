@@ -388,7 +388,7 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     assert not logs.extract_utc_timestamp_from_log_line(line)
 
 
-def test_paasta_log_line_passes_filter_true_for_instances_with_suffixes():
+def test_verify_instances_for_instances_with_suffixes():
     with mock.patch(
         "paasta_tools.cli.cmds.logs.verify_instances", autospec=True
     ) as mock_verify_instances, mock.patch(

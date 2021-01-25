@@ -1333,7 +1333,6 @@ def paasta_logs(args: argparse.Namespace) -> int:
     if args.instances is None:
         instances = None
     else:
-
         instances = args.instances.split(",")
         # Check for instance inputs with suffixes (i.e. Flink instances)
         instances_without_suffixes = [x.split(".")[0] for x in instances]
