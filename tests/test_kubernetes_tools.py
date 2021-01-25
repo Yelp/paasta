@@ -1438,21 +1438,27 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "in_smtstk,prometheus_port,expected",
+        "ip_configured,in_smtstk,prometheus_port,expected",
         [
-            (True, 8888, "true"),
-            (False, 8888, "true"),
-            (True, None, "true"),
-            (False, None, "false"),
+            (False, True, 8888, "true"),
+            (False, False, 8888, "true"),
+            (False, True, None, "true"),
+            (True, False, None, "true"),
+            (False, False, None, "false"),
         ],
     )
     def test_routable_ip(
-        self, mock_get_prometheus_port, in_smtstk, prometheus_port, expected,
+        self,
+        mock_get_prometheus_port,
+        ip_configured,
+        in_smtstk,
+        prometheus_port,
+        expected,
     ):
         mock_get_prometheus_port.return_value = prometheus_port
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
-
+        self.deployment.config_dict["routable_ip"] = ip_configured
         ret = self.deployment.has_routable_ip(mock_service_namespace_config)
 
         assert ret == expected
