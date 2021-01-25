@@ -221,7 +221,12 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
     app.item.spec.replicas = 2
 
     mock_autoscaling_is_paused.return_value = True
-    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -246,7 +251,12 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
     app.item.spec.replicas = 2
 
     mock_autoscaling_is_paused.return_value = False
-    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
@@ -268,7 +278,12 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
     app = setup_app(config_dict, False)
 
     mock_autoscaling_is_paused.return_value = False
-    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
 
     assert (
         mock_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler.call_count
@@ -314,14 +329,19 @@ def test_sync_horizontal_pod_autoscaler_do_not_create_hpa_bespoke(
     "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
-def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
+def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused,):
     mock_client = mock.MagicMock()
     # Update
     config_dict = {"max_instances": 3}
     app = setup_app(config_dict, True)
 
     mock_autoscaling_is_paused.return_value = False
-    app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(default_should_run_uwsgi_exporter_sidecar=lambda: False),
+    ):
+        app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
     assert (
         mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.call_count
         == 0
