@@ -1943,9 +1943,12 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True,
+        ):
+            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+                mock_config, "fake_name", "cluster", KubeClient(),
+            )
         expected_res = None
         assert expected_res == return_value
 
