@@ -1,3 +1,11 @@
+paasta-tools (0.97.58) xenial; urgency=medium
+
+  * 0.97.58 tagged with 'make release'
+    Commit: Merge pull request #3014 from Yelp/u/flavr/routable-ip-
+    prometheus  Make pods with a prometheus_port routable
+
+ -- Flavien Raynaud <flavr@yelp.com>  Mon, 25 Jan 2021 03:53:32 -0800
+
 paasta-tools (0.97.57) xenial; urgency=medium
 
   * 0.97.57 tagged with 'make release'
