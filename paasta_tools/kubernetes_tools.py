@@ -1345,6 +1345,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def has_routable_ip(self, service_namespace_config: ServiceNamespaceConfig) -> str:
+        """Return whether the routable_ip label should be true or false.
+
+        Services with a `prometheus_port` defined must have a routable IP
+        address to allow Prometheus shards to scrape metrics.
+        """
+        if (
+            service_namespace_config.is_in_smartstack()
+            or self.get_prometheus_port() is not None
+        ):
+            return "true"
+        return "false"
+
     def get_pod_template_spec(
         self, git_sha: str, system_paasta_config: SystemPaastaConfig
     ) -> V1PodTemplateSpec:
@@ -1355,11 +1368,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             system_volumes=system_paasta_config.get_volumes()
         )
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
+        has_routable_ip = self.has_routable_ip(service_namespace_config)
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
-            "paasta.yelp.com/routable_ip": "true"
-            if service_namespace_config.is_in_smartstack()
-            else "false",
+            "paasta.yelp.com/routable_ip": has_routable_ip,
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
 

@@ -1433,6 +1433,30 @@ class TestKubernetesDeploymentConfig:
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
+        autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "in_smtstk,prometheus_port,expected",
+        [
+            (True, 8888, "true"),
+            (False, 8888, "true"),
+            (True, None, "true"),
+            (False, None, "false"),
+        ],
+    )
+    def test_routable_ip(
+        self, mock_get_prometheus_port, in_smtstk, prometheus_port, expected,
+    ):
+        mock_get_prometheus_port.return_value = prometheus_port
+        mock_service_namespace_config = mock.Mock()
+        mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
+
+        ret = self.deployment.has_routable_ip(mock_service_namespace_config)
+
+        assert ret == expected
+
     @pytest.mark.parametrize(
         "raw_selectors,expected",
         [
