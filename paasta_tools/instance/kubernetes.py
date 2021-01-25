@@ -241,7 +241,9 @@ async def job_status(
     kstatus["running_instance_count"] = (
         app.status.ready_replicas if app.status.ready_replicas else 0
     )
-    kstatus["create_timestamp"] = app.metadata.creation_timestamp.timestamp()
+    kstatus["create_timestamp"] = min(
+        [rs.metadata.creation_timestamp.timestamp() for rs in replicaset_list]
+    )
     kstatus["namespace"] = app.metadata.namespace
 
 
