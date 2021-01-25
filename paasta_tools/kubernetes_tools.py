@@ -1352,7 +1352,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         address to allow Prometheus shards to scrape metrics.
         """
         if (
-            service_namespace_config.is_in_smartstack()
+            self.config_dict.get("routable_ip", False)
+            or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
         ):
             return "true"
