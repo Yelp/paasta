@@ -1,3 +1,19 @@
+paasta-tools (0.97.60) xenial; urgency=medium
+
+  * 0.97.60 tagged with 'make release'
+    Commit: Add a config option for kubernetes services to get a
+    routetable IP
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Mon, 25 Jan 2021 14:54:04 -0800
+
+paasta-tools (0.97.60) xenial; urgency=medium
+
+  * 0.97.60 tagged with 'make release'
+    Commit: Merge pull request #3015 from Yelp/PAASTA-17231-LogSuffix-
+    Fix  PAASTA-17231-LogSuffix-Fix
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Mon, 25 Jan 2021 14:48:45 -0800
+
 paasta-tools (0.97.59) xenial; urgency=medium
 
   * 0.97.59 tagged with 'make release'
