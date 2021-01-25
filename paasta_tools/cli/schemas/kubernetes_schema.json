@@ -625,6 +625,9 @@
                     "type": "integer",
                     "minimum": 0
                 },
+                "routable_ip": {
+                    "type": "boolean"
+                },
                 "lifecycle": {
                     "type": "object",
                     "properties": {

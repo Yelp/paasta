@@ -279,6 +279,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_shard: str
     prometheus_path: str
     prometheus_port: int
+    routable_ip: bool
 
 
 def load_kubernetes_service_config_no_cache(
