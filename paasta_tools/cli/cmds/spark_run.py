@@ -409,6 +409,9 @@ def get_spark_env(
     spark_env = {}
 
     access_key, secret_key, token = aws_creds
+    print(">>>> HELLO")
+    print(access_key)
+    print(token)
     if access_key:
         spark_env["AWS_ACCESS_KEY_ID"] = access_key
         spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
@@ -443,6 +446,7 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
+    print(spark_env)
     return spark_env
 
 
@@ -597,6 +601,8 @@ def configure_and_run_docker_container(
             else:
                 raise
 
+    print('>>> ENVIRONEMNT')
+    print(environment)
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
         volumes=volumes,

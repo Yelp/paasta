@@ -594,6 +594,8 @@ class InstanceConfig:
             env["PAASTA_INSTANCE_TYPE"] = instance_type
         user_env = self.config_dict.get("env", {})
         env.update(user_env)
+        print('instance config')
+        print(env.items())
         return {str(k): str(v) for (k, v) in env.items()}
 
     def get_env(
