@@ -1322,6 +1322,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
+
     service = figure_out_service_name(args, soa_dir)
 
     if args.clusters is None:
@@ -1333,6 +1334,9 @@ def paasta_logs(args: argparse.Namespace) -> int:
         instances = None
     else:
         instances = args.instances.split(",")
+        # Check for instance inputs with suffixes (i.e. Flink instances)
+        instances_without_suffixes = [x.split(".")[0] for x in instances]
+        args.instances = ",".join(instances_without_suffixes)
 
         if verify_instances(args.instances, service, clusters):
             return 1
