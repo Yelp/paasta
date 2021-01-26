@@ -9,7 +9,7 @@ from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
 
 NULL = "null"
-SUPPORTED_CSV_KEYS = ("cpus", "mem", "disk", "hacheck_cpus")
+SUPPORTED_CSV_KEYS = ("cpus", "mem", "disk", "hacheck_cpus", "cpu_burst_add")
 
 
 def parse_args():
@@ -114,6 +114,8 @@ def get_recommendation_from_result(result, keys_to_apply):
             continue
         if key == "cpus":
             rec["cpus"] = float(val)
+        elif key == "cpu_burst_add":
+            rec["cpu_burst_add"] = min(1, float(val))
         elif key == "mem":
             rec["mem"] = max(128, round(float(val)))
         elif key == "disk":
