@@ -22,6 +22,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -38,6 +39,10 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 
 log = logging.getLogger(__name__)
 
+PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE = "custom-metrics"
+PROMETHEUS_ADAPTER_CONFIGMAP_NAME = "adapter-config"
+PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME = "config.yaml"
+
 
 class PrometheusAdapterRule(TypedDict):
     """
@@ -46,9 +51,12 @@ class PrometheusAdapterRule(TypedDict):
 
     # see https://github.com/DirectXMan12/k8s-prometheus-adapter/blob/master/docs/config.md
     # for more detailed information
-    seriesQuery: str  # used for discovering what resources should be scaled
-    resources: Dict[str, Dict[str, str]]  # used to associate metrics with resources
-    metricsQuery: str  # the actual query we want to send to Prometheus to use for scaling
+    # used for discovering what resources should be scaled
+    seriesQuery: str
+    # used to associate metrics with k8s resources
+    resources: Dict[str, Union[Dict[str, str], str]]
+    # the actual query we want to send to Prometheus to use for scaling
+    metricsQuery: str
 
 
 class PrometheusAdapterConfig(TypedDict):
@@ -149,11 +157,7 @@ def create_instance_uwsgi_scaling_rule(
     )
     return {
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
-        # TODO: figure out how to go from a label to a k8s resource
-        "resources": {
-            "kube_pod": {"resource": "pod"},
-            "kube_deployment": {"resource": "deployment"},
-        },
+        "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
     }
 
@@ -204,11 +208,11 @@ def update_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.replace_namespaced_config_map(
-        name="paasta-prometheus-adapter-configmap",
-        namespace="paasta",
+        name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
+        namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
-            metadata=V1ObjectMeta(name="paasta-prometheus-adapter-configmap"),
-            data=config,
+            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
+            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: config},
         ),
     )
 
@@ -217,10 +221,10 @@ def create_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.create_namespaced_config_map(
-        namespace="paasta",
+        namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
-            metadata=V1ObjectMeta(name="paasta-prometheus-adapter-configmap"),
-            data=config,
+            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
+            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: config},
         ),
     )
 
@@ -233,7 +237,8 @@ def get_prometheus_adapter_configmap(
             # we cast since mypy infers the wrong type since the k8s clientlib is untyped
             V1ConfigMap,
             kube_client.core.read_namespaced_config_map(
-                name="paasta-prometheus-adapter-configmap", namespace="paasta"
+                name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
+                namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
             ),
         )
     except ApiException as e:
@@ -245,7 +250,7 @@ def get_prometheus_adapter_configmap(
     if not config:
         return None
 
-    return config.data
+    return config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME]
 
 
 def main() -> None:
@@ -275,6 +280,7 @@ def main() -> None:
     kube_client = KubeClient()
     if not args.dry_run:
         ensure_namespace(kube_client, namespace="paasta")
+        ensure_namespace(kube_client, namespace="custom-metrics")
 
     existing_config = get_prometheus_adapter_configmap(kube_client=kube_client)
     if existing_config and existing_config != config:
