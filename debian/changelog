@@ -1,3 +1,11 @@
+paasta-tools (0.97.61) xenial; urgency=medium
+
+  * 0.97.61 tagged with 'make release'
+    Commit: Merge pull request #3017 from Yelp/PAASTA-17172-add-autotune-
+    cpu-burst  Write cpu_burst_add in autotune batch
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 26 Jan 2021 09:30:23 -0800
+
 paasta-tools (0.97.60) xenial; urgency=medium
 
   * 0.97.60 tagged with 'make release'
