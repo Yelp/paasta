@@ -47,7 +47,7 @@ class PrometheusAdapterRule(TypedDict):
     # see https://github.com/DirectXMan12/k8s-prometheus-adapter/blob/master/docs/config.md
     # for more detailed information
     seriesQuery: str  # used for discovering what resources should be scaled
-    resources: Dict[str, str]  # used to associate metrics with resources
+    resources: Dict[str, Dict[str, str]]  # used to associate metrics with resources
     metricsQuery: str  # the actual query we want to send to Prometheus to use for scaling
 
 
