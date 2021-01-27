@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2015-2021 Yelp Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -212,7 +213,11 @@ def update_prometheus_adapter_configmap(
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: config},
+            data={
+                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
+                    config, default_flow_style=False, explicit_start=True
+                )
+            },
         ),
     )
 
@@ -224,7 +229,11 @@ def create_prometheus_adapter_configmap(
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: config},
+            data={
+                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
+                    config, default_flow_style=False, explicit_start=True
+                )
+            },
         ),
     )
 
@@ -250,7 +259,7 @@ def get_prometheus_adapter_configmap(
     if not config:
         return None
 
-    return config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME]
+    return yaml.safe_load(config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME])
 
 
 def main() -> None:
