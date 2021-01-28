@@ -23,7 +23,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -63,7 +62,7 @@ class PrometheusAdapterRule(TypedDict):
     # used for discovering what resources should be scaled
     seriesQuery: str
     # used to associate metrics with k8s resources
-    resources: Dict[str, Union[Dict[str, str], str]]
+    resources: Any  # Dict[str, Union[Dict[str, str], str]]
     # the actual query we want to send to Prometheus to use for scaling
     metricsQuery: str
 
@@ -135,7 +134,7 @@ def should_create_uwsgi_scaling_rule(
     if not autoscaling_config:
         return (
             False,
-            "not setup for autoscaling.",
+            "not setup for autoscaling",
         )
 
     if autoscaling_config.get("metrics_provider") == "uwsgi":
@@ -166,7 +165,7 @@ def create_instance_uwsgi_scaling_rule(
     )
     return {
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
-        "resources": {"template": "kube_<<.Resource>>"},
+        "resources": {"overrides": {"kube_pod": {"resource": "pod"}}},
         "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
     }
 
