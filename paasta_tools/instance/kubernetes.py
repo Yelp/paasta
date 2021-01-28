@@ -200,28 +200,24 @@ async def job_status(
     kstatus["app_id"] = app_id
     kstatus["pods"] = []
     kstatus["replicasets"] = []
-    if verbose > 0:
-        num_tail_lines = calculate_tail_lines(verbose)
+    num_tail_lines = calculate_tail_lines(verbose)
+    kstatus["pods"] = await asyncio.gather(
+        *[pod_info(pod, client, num_tail_lines) for pod in pod_list]
+    )
 
-        kstatus["pods"] = await asyncio.gather(
-            *[pod_info(pod, client, num_tail_lines) for pod in pod_list]
+    for replicaset in replicaset_list:
+        kstatus["replicasets"].append(
+            {
+                "name": replicaset.metadata.name,
+                "replicas": replicaset.spec.replicas,
+                "ready_replicas": ready_replicas_from_replicaset(replicaset),
+                "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
+                "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
+                "config_sha": replicaset.metadata.labels.get(
+                    "paasta.yelp.com/config_sha"
+                ),
+            }
         )
-
-        for replicaset in replicaset_list:
-            kstatus["replicasets"].append(
-                {
-                    "name": replicaset.metadata.name,
-                    "replicas": replicaset.spec.replicas,
-                    "ready_replicas": ready_replicas_from_replicaset(replicaset),
-                    "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
-                    "git_sha": replicaset.metadata.labels.get(
-                        "paasta.yelp.com/git_sha"
-                    ),
-                    "config_sha": replicaset.metadata.labels.get(
-                        "paasta.yelp.com/config_sha"
-                    ),
-                }
-            )
 
     kstatus["expected_instance_count"] = job_config.get_instances()
 
