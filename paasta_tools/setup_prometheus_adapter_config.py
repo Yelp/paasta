@@ -61,6 +61,7 @@ class PrometheusAdapterRule(TypedDict):
     # for more detailed information
     # used for discovering what resources should be scaled
     seriesQuery: str
+    name: Any
     # used to associate metrics with k8s resources
     resources: Any  # Dict[str, Union[Dict[str, str], str]]
     # the actual query we want to send to Prometheus to use for scaling
@@ -164,8 +165,9 @@ def create_instance_uwsgi_scaling_rule(
         f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
     )
     return {
+        "name": {"as": "uwsgi_worker_busy"},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
-        "resources": {"overrides": {"kube_pod": {"resource": "pod"}}},
+        "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
     }
 
