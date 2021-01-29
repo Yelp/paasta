@@ -1284,7 +1284,6 @@ class TestPrintKubernetesStatus:
             f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]
         expected_output += [
-            f"      App created: 2019-07-12 20:31:48 ({mock_naturaltime.return_value}). Namespace: paasta",
             f"      Pods:",
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
             f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
