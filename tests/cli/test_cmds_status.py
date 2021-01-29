@@ -1036,6 +1036,34 @@ def test_paasta_status_exception(system_paasta_config):
             verbose=False,
         )
 
+def test_format_kubernetes_replicaset_table_in_non_verbose():
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.print_kubernetes_status", autospec=True
+    ) as mock_print_kubernetes_status, mock.patch(
+        "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table", autospec=True
+    ) as mock_format_kubernetes_replicaset_table:
+        mock_kubernetes_status.replicasets = [
+            paastamodels.KubernetesReplicaSet(
+                name="replicaset_1",
+                replicas=3,
+                ready_replicas=2,
+                create_timestamp=1562963508.0,
+                git_sha=None,
+                config_sha=None,
+            )
+        ]
+        
+        mock_print_kubernetes_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            kubernetes_status=mock_kubernetes_status,
+            verbose=0
+        )
+
+        assert mock_format_kubernetes_replicaset_table.called == True
+        
 
 class TestPrintMarathonStatus:
     def test_error(self, mock_marathon_status):

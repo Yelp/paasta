@@ -200,10 +200,12 @@ async def job_status(
     kstatus["app_id"] = app_id
     kstatus["pods"] = []
     kstatus["replicasets"] = []
-    num_tail_lines = calculate_tail_lines(verbose)
-    kstatus["pods"] = await asyncio.gather(
-        *[pod_info(pod, client, num_tail_lines) for pod in pod_list]
-    )
+
+    if verbose > 0:
+        num_tail_lines = calculate_tail_lines(verbose)
+        kstatus["pods"] = await asyncio.gather(
+            *[pod_info(pod, client, num_tail_lines) for pod in pod_list]
+        )
 
     for replicaset in replicaset_list:
         kstatus["replicasets"].append(

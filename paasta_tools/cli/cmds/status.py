@@ -1136,7 +1136,7 @@ def print_kubernetes_status(
     if error_message:
         output.append(error_message)
         return 1
-
+    import pdb; pdb.set_trace()
     bouncing_status = bouncing_status_human(
         kubernetes_status.app_count, kubernetes_status.bounce_method
     )
@@ -1164,7 +1164,7 @@ def print_kubernetes_status(
             )
         )
     )
-    if kubernetes_status.create_timestamp:
+    if kubernetes_status.create_timestamp and verbose > 0:
         create_datetime = datetime.fromtimestamp(kubernetes_status.create_timestamp)
         output.append(
             "      App created: {} ({}). Namespace: {}".format(
