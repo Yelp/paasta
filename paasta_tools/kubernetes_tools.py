@@ -553,9 +553,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V2beta2MetricSpec(
                     type="Object",
                     object=V2beta2ObjectMetricSource(
-                        metric=V2beta2MetricIdentifier(
-                            name=self.namespace_external_metric_name(metrics_provider),
-                        ),
+                        metric=V2beta2MetricIdentifier(name="uwsgi_worker_busy",),
                         described_object=V2beta2CrossVersionObjectReference(
                             api_version="apps/v1", kind="Deployment", name=name
                         ),
