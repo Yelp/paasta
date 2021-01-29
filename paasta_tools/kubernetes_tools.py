@@ -103,6 +103,7 @@ from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
+from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
@@ -550,12 +551,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # prometheus adapter config entry?
             metrics.append(
                 V2beta2MetricSpec(
-                    type="External",
-                    external=V2beta2ExternalMetricSource(
-                        # TODO(luisp): verify that this doesn't need to differ from the uwsgi metric
-                        # id used for sfx
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
                         metric=V2beta2MetricIdentifier(
                             name=self.namespace_external_metric_name(metrics_provider),
+                        ),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
                         ),
                         target=V2beta2MetricTarget(
                             type="Value",
@@ -1406,11 +1408,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
+        use_prometheus = self.get_autoscaling_params().get(
+            "use_prometheus",
+            load_system_paasta_config().default_should_run_uwsgi_exporter_sidecar(),
+        )
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
-        if metrics_provider in {"http", "uwsgi"}:
-            # TODO(luisp): we should probably only add this if we're not using prometheus?
+        if metrics_provider in {"http", "uwsgi"} and not use_prometheus:
             annotations["autoscaling"] = metrics_provider
 
         pod_spec_kwargs = {}
