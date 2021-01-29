@@ -16,6 +16,8 @@ Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
 import argparse
 import logging
+import re
+import sys
 from pathlib import Path
 from typing import Any
 from typing import cast
@@ -164,11 +166,25 @@ def create_instance_uwsgi_scaling_rule(
     replica_filter_terms = (
         f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
     )
+    metrics_query = f"""
+            avg_over_time(
+                (
+                    sum(
+                        avg(
+                            uwsgi_worker_busy{{{worker_filter_terms}}}
+                        ) by (kube_pod, kube_deployment)
+                    ) by (kube_deployment) / {setpoint}
+                )[{moving_average_window}s:]
+            ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
+    """
+
     return {
         "name": {"as": "uwsgi_worker_busy"},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
-        "metricsQuery": f"avg_over_time((sum(avg(uwsgi_worker_busy{{{worker_filter_terms}}}) by (kube_pod)) / {setpoint})[{moving_average_window}s:]) / sum(kube_deployment_spec_replicas{{{replica_filter_terms}}})",
+        # our nicely formatted query has enough whitespace that collapsing said
+        # whitespace cuts down the size of the string by a meaningful amount
+        "metricsQuery": re.sub(pattern=r"\s+", repl=" ", string=metrics_query).strip(),
     }
 
 
@@ -224,7 +240,10 @@ def update_prometheus_adapter_configmap(
             metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
             data={
                 PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
-                    config, default_flow_style=False, explicit_start=True
+                    config,
+                    default_flow_style=False,
+                    explicit_start=True,
+                    width=sys.maxsize,
                 )
             },
         ),
@@ -320,13 +339,17 @@ def main() -> None:
     if args.dry_run:
         log.info(
             "Generated the following config:\n%s",
-            yaml.dump(config, default_flow_style=False, explicit_start=True),
+            yaml.dump(
+                config, default_flow_style=False, explicit_start=True, width=sys.maxsize
+            ),
         )
         return  # everything after this point requires creds/updates state
     else:
         log.debug(
             "Generated the following config:\n%s",
-            yaml.dump(config, default_flow_style=False, explicit_start=True),
+            yaml.dump(
+                config, default_flow_style=False, explicit_start=True, width=sys.maxsize
+            ),
         )
 
     kube_client = KubeClient()
