@@ -34,6 +34,7 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import V1Pod
@@ -142,7 +143,7 @@ def should_create_uwsgi_scaling_rule(
         )
 
     if autoscaling_config.get("metrics_provider") == "uwsgi":
-        if not autoscaling_config.get("use_prometheus"):
+        if not autoscaling_config.get("use_prometheus", False):
             return False, "requested uwsgi autoscaling, but not using Prometheus"
 
         return True, None
@@ -178,9 +179,10 @@ def create_instance_uwsgi_scaling_rule(
                 )[{moving_average_window}s:]
             ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
     """
+    metric_name = f"{get_kubernetes_app_name(service=service, instance=instance)}-uwsgi"
 
     return {
-        "name": {"as": "uwsgi_worker_busy"},
+        "name": {"as": metric_name},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         # our nicely formatted query has enough whitespace that collapsing said
