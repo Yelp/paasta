@@ -530,10 +530,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        use_prometheus = autoscaling_params.get(
-            "use_prometheus",
-            load_system_paasta_config().default_should_run_uwsgi_exporter_sidecar(),
-        )
+        use_prometheus = autoscaling_params.get("use_prometheus", False)
+
         if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta2MetricSpec(
@@ -549,11 +547,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif metrics_provider == "uwsgi" and use_prometheus:
             # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
             # prometheus adapter config entry?
+            hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
             metrics.append(
                 V2beta2MetricSpec(
                     type="Object",
                     object=V2beta2ObjectMetricSource(
-                        metric=V2beta2MetricIdentifier(name="uwsgi_worker_busy",),
+                        metric=V2beta2MetricIdentifier(name=hpa_metric_name),
                         described_object=V2beta2CrossVersionObjectReference(
                             api_version="apps/v1", kind="Deployment", name=name
                         ),
@@ -1406,14 +1405,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
-        use_prometheus = self.get_autoscaling_params().get(
-            "use_prometheus",
-            load_system_paasta_config().default_should_run_uwsgi_exporter_sidecar(),
-        )
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
-        if metrics_provider in {"http", "uwsgi"} and not use_prometheus:
+        if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
 
         pod_spec_kwargs = {}
