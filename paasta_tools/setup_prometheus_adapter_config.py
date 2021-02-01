@@ -63,9 +63,10 @@ class PrometheusAdapterRule(TypedDict):
     # for more detailed information
     # used for discovering what resources should be scaled
     seriesQuery: str
-    name: Any
+    # configuration for how to expose this rule to the HPA
+    name: Dict[str, str]
     # used to associate metrics with k8s resources
-    resources: Any  # Dict[str, Union[Dict[str, str], str]]
+    resources: Dict[str, str]
     # the actual query we want to send to Prometheus to use for scaling
     metricsQuery: str
 
