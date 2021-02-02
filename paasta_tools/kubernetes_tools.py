@@ -2721,6 +2721,17 @@ def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
     return node.metadata.labels.get("yelp.com/hostname", pod.spec.node_name)
 
 
+def get_pod_node(
+    kube_client: KubeClient, pod: V1Pod, cache_nodes: bool = False
+) -> Optional[V1Node]:
+    if cache_nodes:
+        nodes = get_all_nodes_cached(kube_client)
+    else:
+        nodes = get_all_nodes(kube_client)
+    running_node = [node for node in nodes if node.metadata.name == pod.spec.node_name]
+    return running_node[0] if running_node else None
+
+
 def to_node_label(label: str) -> str:
     """k8s-ifies certain special node labels"""
     if label in {"instance_type", "instance-type"}:
