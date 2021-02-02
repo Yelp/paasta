@@ -1,3 +1,11 @@
+paasta-tools (0.97.62) xenial; urgency=medium
+
+  * 0.97.62 tagged with 'make release'
+    Commit: Merge pull request #3010 from Yelp/u/mmb/PAASTA-16695-node-
+    selector  Make get_kubernetes_metadata use actual node pool
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 02 Feb 2021 08:15:53 -0800
+
 paasta-tools (0.97.61) xenial; urgency=medium
 
   * 0.97.61 tagged with 'make release'
