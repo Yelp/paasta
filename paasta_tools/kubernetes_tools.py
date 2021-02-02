@@ -544,7 +544,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
-        elif metrics_provider == "uwsgi" and use_prometheus:
+        if metrics_provider == "uwsgi" and use_prometheus:
             # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
             # prometheus adapter config entry?
             hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
@@ -568,7 +568,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
-        elif metrics_provider in ("http", "uwsgi"):
+        if metrics_provider in ("http", "uwsgi"):
             annotations = {"signalfx.com.custom.metrics": ""}
             if (
                 autoscaling_params.get("forecast_policy") == "moving_average"
