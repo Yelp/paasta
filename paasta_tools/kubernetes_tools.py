@@ -547,7 +547,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if metrics_provider == "uwsgi" and use_prometheus:
             # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
             # prometheus adapter config entry?
-            hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
+            hpa_metric_name = (
+                f"{self.namespace_external_metric_name(metrics_provider)}-prom"
+            )
             metrics.append(
                 V2beta2MetricSpec(
                     type="Object",

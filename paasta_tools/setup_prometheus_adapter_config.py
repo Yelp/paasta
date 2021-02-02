@@ -179,7 +179,9 @@ def create_instance_uwsgi_scaling_rule(
                 )[{moving_average_window}s:]
             ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
     """
-    metric_name = f"{get_kubernetes_app_name(service=service, instance=instance)}-uwsgi"
+    metric_name = (
+        f"{get_kubernetes_app_name(service=service, instance=instance)}-uwsgi-prom"
+    )
 
     return {
         "name": {"as": metric_name},
