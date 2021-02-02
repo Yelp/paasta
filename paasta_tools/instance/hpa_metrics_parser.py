@@ -95,19 +95,19 @@ class HPAMetricsParser:
     def parse_object_metric(
         self, metric_spec: V2beta2ObjectMetricSource, status: HPAMetricsDict
     ) -> None:
-        status["name"] = metric_spec.described_object.name
+        status["name"] = metric_spec.metric.name
         status["target_value"] = (
             metric_spec.target.average_value
             if getattr(metric_spec.target, "average_value")
-            else metric_spec.target.average_utilization
+            else metric_spec.target.value
         )
 
     def parse_object_metric_current(
         self, metric_spec: V2beta2ObjectMetricSource, status: HPAMetricsDict
     ) -> None:
-        status["name"] = metric_spec.described_object.name
+        status["name"] = metric_spec.metric.name
         status["current_value"] = (
             metric_spec.current.average_value
             if getattr(metric_spec.current, "average_value")
-            else metric_spec.current.average_utilization
+            else metric_spec.current.value
         )
