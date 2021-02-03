@@ -409,16 +409,20 @@ instance MAY have:
     Defaults to the same uri specified in ``smartstack.yaml``, but can be
     set to something different here.
 
- * ``prometheus_shard``: Optional name of Prometheus shard to be configured to
-   scrape the service. This shard should already exist and will not be
-   automatically created.
+  * ``prometheus_shard``: Optional name of Prometheus shard to be configured to
+    scrape the service. This shard should already exist and will not be
+    automatically created.
 
- * ``prometheus_path``: Optional path the Prometheus shard to be configured with
-   to scrape the service. This shard should already exist and will not be
-   automatically created.
+  * ``prometheus_path``: Optional path the Prometheus shard to be configured with
+    to scrape the service. This shard should already exist and will not be
+    automatically created.
 
- * ``prometheus_port``: Optional port, not equal to ``container_port``, to
-   expose for prometheus scraping.
+  * ``prometheus_port``: Optional port, not equal to ``container_port``, to
+    expose for prometheus scraping.
+
+  * ``routable_ip``: Optionally assign this instance a routable IP so it can be
+    accessed externally. This option is implied when registered to smartstack or
+    when specifying a ``prometheus_port``. Defaults to ``false``
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
