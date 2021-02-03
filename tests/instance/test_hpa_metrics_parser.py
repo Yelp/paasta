@@ -1,4 +1,5 @@
 import pytest
+from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2ExternalMetricStatus
 from kubernetes.client import V2beta2MetricIdentifier
@@ -6,10 +7,14 @@ from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricStatus
 from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2MetricValueStatus
+from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2PodsMetricStatus
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client import V2beta2ResourceMetricStatus
+from kubernetes.client.models.v2beta2_object_metric_status import (
+    V2beta2ObjectMetricStatus,
+)
 
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 
@@ -73,6 +78,22 @@ def test_parse_target_resource_metric(parser):
     assert status["target_value"] == "0.5"
 
 
+def test_parse_target_object_metric(parser):
+    metric_spec = V2beta2MetricSpec(
+        type="Object",
+        object=V2beta2ObjectMetricSource(
+            metric=V2beta2MetricIdentifier(name="some-metric"),
+            described_object=V2beta2CrossVersionObjectReference(
+                api_version="apps/v1", kind="Deployment", name="deployment"
+            ),
+            target=V2beta2MetricTarget(type="Value", value=1,),
+        ),
+    )
+    status = parser.parse_target(metric_spec)
+    assert status["name"] == "some-metric"
+    assert status["target_value"] == "1"
+
+
 def test_parse_current_external_metric_value(parser):
     metric_status = V2beta2MetricStatus(
         type="External",
@@ -124,3 +145,20 @@ def test_parse_current_resource_metric(parser):
     status = parser.parse_current(metric_status)
     assert status["name"] == "cpu"
     assert status["current_value"] == "0.4"
+
+
+def test_parse_current_object_metric(parser):
+    metric_status = V2beta2MetricStatus(
+        type="Object",
+        object=V2beta2ObjectMetricStatus(
+            current=V2beta2MetricValueStatus(value=0.1),
+            metric=V2beta2MetricIdentifier(name="some-metric"),
+            described_object=V2beta2CrossVersionObjectReference(
+                api_version="apps/v1", kind="Deployment", name="deployment"
+            ),
+        ),
+    )
+
+    status = parser.parse_current(metric_status)
+    assert status["name"] == "some-metric"
+    assert status["current_value"] == "0.1"
