@@ -19,12 +19,16 @@ import logging
 import re
 import sys
 from pathlib import Path
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
 
 import ruamel.yaml as yaml
+from kubernetes.client import V1ConfigMap
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -37,6 +41,10 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 
 log = logging.getLogger(__name__)
+
+PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE = "custom-metrics"
+PROMETHEUS_ADAPTER_CONFIGMAP_NAME = "adapter-config"
+PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME = "config.yaml"
 
 
 class PrometheusAdapterRule(TypedDict):
@@ -218,19 +226,61 @@ def create_prometheus_adapter_config(
 def update_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
-    pass
+    kube_client.core.replace_namespaced_config_map(
+        name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
+        namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
+        body=V1ConfigMap(
+            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
+            data={
+                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
+                    config,
+                    default_flow_style=False,
+                    explicit_start=True,
+                    width=sys.maxsize,
+                )
+            },
+        ),
+    )
 
 
 def create_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
-    pass
+    kube_client.core.create_namespaced_config_map(
+        namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
+        body=V1ConfigMap(
+            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
+            data={
+                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
+                    config, default_flow_style=False, explicit_start=True
+                )
+            },
+        ),
+    )
 
 
 def get_prometheus_adapter_configmap(
     kube_client: KubeClient,
 ) -> Optional[PrometheusAdapterConfig]:
-    return {"rules": []}
+    try:
+        config = cast(
+            # we cast since mypy infers the wrong type since the k8s clientlib is untyped
+            V1ConfigMap,
+            kube_client.core.read_namespaced_config_map(
+                name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
+                namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
+            ),
+        )
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+
+    if not config:
+        return None
+
+    return yaml.safe_load(config.data[PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME])
 
 
 def restart_prometheus_adapter(kube_client: KubeClient) -> None:
