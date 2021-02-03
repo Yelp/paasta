@@ -27,6 +27,7 @@ from typing import Tuple
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -35,6 +36,7 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -43,8 +45,14 @@ from paasta_tools.utils import get_services_for_cluster
 log = logging.getLogger(__name__)
 
 PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE = "custom-metrics"
+PROMETHEUS_ADAPTER_POD_NAMESPACE = "custom-metrics"
 PROMETHEUS_ADAPTER_CONFIGMAP_NAME = "adapter-config"
 PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME = "config.yaml"
+PROMETHEUS_ADAPTER_POD_NAME_PREFIX = "custom-metrics-apiserver"
+PROMETHEUS_ADAPTER_POD_PHASES_TO_REMOVE = (
+    "Running",
+    "Pending",
+)
 
 
 class PrometheusAdapterRule(TypedDict):
@@ -156,9 +164,7 @@ def create_instance_uwsgi_scaling_rule(
                 )[{moving_average_window}s:]
             ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
     """
-    metric_name = (
-        f"{deployment_name}-uwsgi-prom"
-    )
+    metric_name = f"{deployment_name}-uwsgi-prom"
 
     return {
         "name": {"as": metric_name},
@@ -284,7 +290,37 @@ def get_prometheus_adapter_configmap(
 
 
 def restart_prometheus_adapter(kube_client: KubeClient) -> None:
-    pass
+    log.info("Attempting to remove existing adapter pod(s).")
+    all_pods = cast(
+        # once again, we cast since the kubernetes python api isn't typed
+        List[V1Pod],
+        kube_client.core.list_namespaced_pod(
+            namespace=PROMETHEUS_ADAPTER_POD_NAMESPACE
+        ).items,
+    )
+    # there should only ever be one pod actually up, but we might as well enforce that here
+    # just in case there are more
+    pods_to_delete = [
+        pod
+        for pod in all_pods
+        if pod.metadata.name.startswith(PROMETHEUS_ADAPTER_POD_NAME_PREFIX)
+        and pod.status.phase in PROMETHEUS_ADAPTER_POD_PHASES_TO_REMOVE
+    ]
+    log.debug("Found the following pods to delete: %s", pods_to_delete)
+
+    for pod in pods_to_delete:
+        log.debug("Attempting to remove %s.", pod.metadata.name)
+        kube_client.core.delete_namespaced_pod(
+            name=pod.metadata.name,
+            namespace=pod.metadata.namespace,
+            body=V1DeleteOptions(),
+            # background propagation with no grace period is equivalent to doing a force-delete from kubectl
+            grace_period_seconds=0,
+            propagation_policy="Background",
+        )
+        log.debug("Removed %s.", pod.metadata.name)
+
+    log.info("Adapter restarted successfully")
 
 
 def main() -> int:
