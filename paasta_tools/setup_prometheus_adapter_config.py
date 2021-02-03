@@ -110,7 +110,26 @@ def should_create_uwsgi_scaling_rule(
     Determines whether we should configure the prometheus adapter for a given service.
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
-    return False, ""
+    if instance.startswith("_"):
+        return (
+            False,
+            "does not look like an instance name",
+        )
+
+    autoscaling_config = instance_config.get("autoscaling")
+    if not autoscaling_config:
+        return (
+            False,
+            "not setup for autoscaling",
+        )
+
+    if autoscaling_config.get("metrics_provider") == "uwsgi":
+        if not autoscaling_config.get("use_prometheus", False):
+            return False, "requested uwsgi autoscaling, but not using Prometheus"
+
+        return True, None
+
+    return False, "did not request uwsgi autoscaling"
 
 
 def create_instance_uwsgi_scaling_rule(
