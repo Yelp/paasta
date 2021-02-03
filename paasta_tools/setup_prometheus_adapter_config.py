@@ -16,6 +16,7 @@ Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
 import argparse
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Dict
@@ -27,6 +28,7 @@ import ruamel.yaml as yaml
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
@@ -110,20 +112,7 @@ def should_create_uwsgi_scaling_rule(
     Determines whether we should configure the prometheus adapter for a given service.
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
-    if instance.startswith("_"):
-        return (
-            False,
-            "does not look like an instance name",
-        )
-
-    autoscaling_config = instance_config.get("autoscaling")
-    if not autoscaling_config:
-        return (
-            False,
-            "not setup for autoscaling",
-        )
-
-    if autoscaling_config.get("metrics_provider") == "uwsgi":
+    if autoscaling_config["metrics_provider"] == "uwsgi":
         if not autoscaling_config.get("use_prometheus", False):
             return False, "requested uwsgi autoscaling, but not using Prometheus"
 
@@ -141,11 +130,35 @@ def create_instance_uwsgi_scaling_rule(
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    setpoint = autoscaling_config["setpoint"]
+    moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+    replica_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
+    )
+    metrics_query = f"""
+            avg_over_time(
+                (
+                    sum(
+                        avg(
+                            uwsgi_worker_busy{{{worker_filter_terms}}}
+                        ) by (kube_pod, kube_deployment)
+                    ) by (kube_deployment) / {setpoint}
+                )[{moving_average_window}s:]
+            ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
+    """
+    metric_name = (
+        f"{deployment_name}-uwsgi-prom"
+    )
+
     return {
-        "name": {"as": ""},
-        "seriesQuery": "",
+        "name": {"as": metric_name},
+        "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
-        "metricsQuery": "",
+        # our nicely formatted query has enough whitespace that collapsing said
+        # whitespace cuts down the size of the string by a meaningful amount
+        "metricsQuery": re.sub(pattern=r"\s+", repl=" ", string=metrics_query).strip(),
     }
 
 
