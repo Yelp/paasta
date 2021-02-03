@@ -1,5 +1,6 @@
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
+from paasta_tools.utils import DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
 
 
 FORECAST_POLICY_KEY = "forecast_policy"
@@ -39,7 +40,9 @@ def trailing_window_historical_load(historical_load, window_size):
 
 @register_autoscaling_component("moving_average", FORECAST_POLICY_KEY)
 def moving_average_forecast_policy(
-    historical_load, moving_average_window_seconds=1800, **kwargs
+    historical_load,
+    moving_average_window_seconds=DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+    **kwargs,
 ):
     """Does a simple average of all historical load data points within the moving average window. Weights all data
     points within the window equally."""
