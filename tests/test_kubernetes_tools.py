@@ -1758,12 +1758,9 @@ class TestKubernetesDeploymentConfig:
             return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
                 mock_config, "fake_name", "cluster", KubeClient(),
             )
-        annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations=annotations
-            ),
+            metadata=V1ObjectMeta(name="fake_name", namespace="paasta", annotations={}),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
@@ -1819,12 +1816,9 @@ class TestKubernetesDeploymentConfig:
                 mock_config, "fake_name", "cluster", KubeClient(),
             )
 
-        annotations = {"signalfx.com.custom.metrics": ""}
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations=annotations
-            ),
+            metadata=V1ObjectMeta(name="fake_name", namespace="paasta", annotations={}),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
                 min_replicas=1,
@@ -1893,7 +1887,6 @@ class TestKubernetesDeploymentConfig:
                 name="fake_name",
                 namespace="paasta",
                 annotations={
-                    "signalfx.com.custom.metrics": "",
                     "signalfx.com.external.metric/service-instance-uwsgi": "fake_signalflow_query",
                 },
             ),

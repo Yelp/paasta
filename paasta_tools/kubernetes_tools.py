@@ -541,7 +541,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider in ("http", "uwsgi"):
-            annotations = {"signalfx.com.custom.metrics": ""}
             if (
                 autoscaling_params.get("forecast_policy") == "moving_average"
                 or "offset" in autoscaling_params
