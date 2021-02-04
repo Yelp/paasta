@@ -18,7 +18,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -29,7 +28,11 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_services_for_cluster
 
 log = logging.getLogger(__name__)
 
@@ -101,7 +104,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def should_create_uwsgi_scaling_rule(
-    instance: str, instance_config: Dict[str, Any],
+    instance: str, autoscaling_config: AutoscalingParamsDict,
 ) -> Tuple[bool, Optional[str]]:
     """
     Determines whether we should configure the prometheus adapter for a given service.
@@ -111,7 +114,10 @@ def should_create_uwsgi_scaling_rule(
 
 
 def create_instance_uwsgi_scaling_rule(
-    service: str, instance: str, instance_config: Dict[str, Any], paasta_cluster: str
+    service: str,
+    instance: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -134,28 +140,40 @@ def create_prometheus_adapter_config(
         * uwsgi
     """
     rules: List[PrometheusAdapterRule] = []
-    # we don't know ahead of time what services are autoscaled, so we need to figure out
-    # what services are running in our cluster and then check if they're autoscaled
-    for service_config_path in soa_dir.glob(f"*/kubernetes-{paasta_cluster}.yaml"):
-        service_name = str(service_config_path.relative_to(soa_dir).parent)
-        service_config = yaml.safe_load(service_config_path.read_text())
-        for instance, instance_config in service_config.items():
+    # get_services_for_cluster() returns a list of (service, instance) tuples, but this
+    # is not great for us: if we were to iterate over that we'd end up getting duplicates
+    # for every service as PaastaServiceConfigLoader does not expose a way to get configs
+    # for a single instance by name. instead, we get the unique set of service names and then
+    # let PaastaServiceConfigLoader iterate over instances for us later
+    services = {
+        service_name
+        for service_name, _ in get_services_for_cluster(
+            cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
+        )
+    }
+    for service_name in services:
+        config_loader = PaastaServiceConfigLoader(
+            service=service_name, soa_dir=str(soa_dir)
+        )
+        for instance_config in config_loader.instance_configs(
+            cluster=paasta_cluster, instance_type_class=KubernetesDeploymentConfig,
+        ):
+            instance_name = instance_config.instance
+            autoscaling_config = instance_config.get_autoscaling_params()
             should_create, skip_reason = should_create_uwsgi_scaling_rule(
-                instance, instance_config
+                instance=instance_config.instance,
+                autoscaling_config=autoscaling_config,
             )
             if not should_create:
                 log.debug(
-                    "Skipping %s in %s - %s.",
-                    instance,
-                    service_config_path,
-                    skip_reason,
+                    "Skipping %s - %s.", instance_name, skip_reason,
                 )
                 continue
             rules.append(
                 create_instance_uwsgi_scaling_rule(
                     service=service_name,
-                    instance=instance,
-                    instance_config=instance_config,
+                    instance=instance_name,
+                    autoscaling_config=autoscaling_config,
                     paasta_cluster=paasta_cluster,
                 )
             )
