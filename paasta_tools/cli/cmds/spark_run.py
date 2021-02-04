@@ -15,7 +15,6 @@ from typing import Tuple
 from typing import Union
 
 from boto3.exceptions import Boto3Error
-from boto3 import Session as Boto3Session
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -445,7 +444,6 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    print(spark_env)
     return spark_env
 
 
@@ -600,8 +598,6 @@ def configure_and_run_docker_container(
             else:
                 raise
 
-    print('>>> ENVIRONEMNT')
-    print(environment)
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
         volumes=volumes,
@@ -760,12 +756,10 @@ def paasta_spark_run(args):
         )
         return 1
 
-    session = Boto3Session(profile_name=args.aws_profile)
     aws_creds = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
-        session=session,
         profile_name=args.aws_profile,
     )
     docker_image = get_docker_image(args, instance_config)
