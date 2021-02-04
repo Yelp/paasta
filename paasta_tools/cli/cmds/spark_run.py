@@ -15,6 +15,7 @@ from typing import Tuple
 from typing import Union
 
 from boto3.exceptions import Boto3Error
+from boto3 import Session as Boto3Session
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -49,7 +50,7 @@ DEFAULT_AWS_REGION = "us-west-2"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
-SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
 
@@ -408,15 +409,13 @@ def get_spark_env(
 
     spark_env = {}
 
-    access_key, secret_key, token = aws_creds
-    print(">>>> HELLO")
-    print(access_key)
-    print(token)
+    access_key, secret_key, session_token = aws_creds
     if access_key:
         spark_env["AWS_ACCESS_KEY_ID"] = access_key
         spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-        spark_env["AWS_SESSION_TOKEN"] = token
         spark_env["AWS_DEFAULT_REGION"] = args.aws_region
+        if session_token is not None:
+            spark_env["AWS_SESSION_TOKEN"] = session_token
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
@@ -761,10 +760,12 @@ def paasta_spark_run(args):
         )
         return 1
 
+    session = Boto3Session(profile_name=args.aws_profile)
     aws_creds = get_aws_credentials(
         service=args.service,
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
+        session=session,
         profile_name=args.aws_profile,
     )
     docker_image = get_docker_image(args, instance_config)
