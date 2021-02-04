@@ -333,6 +333,7 @@ class LongRunningServiceConfig(InstanceConfig):
             "metrics_provider": "mesos_cpu",
             "decision_policy": "proportional",
             "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
+            "moving_average_window_seconds": DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
         }
         return deep_merge_dictionaries(
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
