@@ -35,8 +35,8 @@ def main():
     # export config path
     os.environ["PAASTA_SYSTEM_CONFIG_DIR"] = config_path
     os.execl(
-        ".tox/py36-linux/bin/python",
-        ".tox/py36-linux/bin/python",
+        ".tox/py37-linux/bin/python",
+        ".tox/py37-linux/bin/python",
         "-m",
         "paasta_tools.api.api",
         *["-D", "-c", cluster, str(port)],

@@ -96,7 +96,7 @@ service-configuration-lib==2.5.3
 setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
-six==1.11.0
+six==1.15.0
 slackclient==1.2.1
 sseclient-py==1.7
 sticht==1.1.13
