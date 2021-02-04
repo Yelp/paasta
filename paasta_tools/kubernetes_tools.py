@@ -103,7 +103,6 @@ from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
@@ -527,7 +526,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
-        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta2MetricSpec(
@@ -577,21 +575,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-            else:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Pods",
-                        pods=V2beta2PodsMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=metrics_provider, selector=selector,
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="AverageValue", average_value=target,
-                            ),
-                        ),
-                    )
-                )
-
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\

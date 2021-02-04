@@ -56,7 +56,6 @@ from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
@@ -1718,122 +1717,6 @@ class TestKubernetesDeploymentConfig:
                             name="cpu",
                             target=V2beta2MetricTarget(
                                 type="Utilization", average_utilization=50.0,
-                            ),
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
-                ),
-            ),
-        )
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
-
-    def test_get_autoscaling_metric_spec_http(self):
-        # with http
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "min_instances": 1,
-                "max_instances": 3,
-                "autoscaling": {"metrics_provider": "http", "setpoint": 0.5},
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            return_value=mock.Mock(
-                get_hpa_always_uses_external_for_signalfx=lambda: False
-            ),
-            autospec=True,
-        ):
-            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-                mock_config, "fake_name", "cluster", KubeClient(),
-            )
-        expected_res = V2beta2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="paasta", annotations={}),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta2MetricSpec(
-                        type="Pods",
-                        pods=V2beta2PodsMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="http",
-                                selector=V1LabelSelector(
-                                    match_labels={"paasta_cluster": "cluster"}
-                                ),
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="AverageValue", average_value=0.5,
-                            ),
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
-                ),
-            ),
-        )
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
-
-    def test_get_autoscaling_metric_spec_uwsgi(self):
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "min_instances": 1,
-                "max_instances": 3,
-                "autoscaling": {"metrics_provider": "uwsgi", "setpoint": 0.5},
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.load_system_paasta_config",
-            return_value=mock.Mock(
-                get_hpa_always_uses_external_for_signalfx=lambda: False
-            ),
-            autospec=True,
-        ):
-            return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-                mock_config, "fake_name", "cluster", KubeClient(),
-            )
-
-        expected_res = V2beta2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(name="fake_name", namespace="paasta", annotations={}),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta2MetricSpec(
-                        type="Pods",
-                        pods=V2beta2PodsMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="uwsgi",
-                                selector=V1LabelSelector(
-                                    match_labels={"paasta_cluster": "cluster"}
-                                ),
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="AverageValue", average_value=0.5,
                             ),
                         ),
                     )
