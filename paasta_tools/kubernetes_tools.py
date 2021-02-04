@@ -539,42 +539,35 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider in ("http", "uwsgi"):
-            if (
-                autoscaling_params.get("forecast_policy") == "moving_average"
-                or "offset" in autoscaling_params
-                or load_system_paasta_config().get_hpa_always_uses_external_for_signalfx()
-            ):
-                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
-                legacy_autoscaling_signalflow = (
-                    load_system_paasta_config().get_legacy_autoscaling_signalflow()
-                )
-                signalflow = legacy_autoscaling_signalflow.format(
-                    setpoint=target,
-                    offset=autoscaling_params.get("offset", 0),
-                    moving_average_window_seconds=autoscaling_params[
-                        "moving_average_window_seconds"
-                    ],
-                    paasta_service=self.get_service(),
-                    paasta_instance=self.get_instance(),
-                    paasta_cluster=self.get_cluster(),
-                    signalfx_metric_name=metrics_provider,
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{hpa_metric_name}"
-                ] = signalflow
+            hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
+            legacy_autoscaling_signalflow = (
+                load_system_paasta_config().get_legacy_autoscaling_signalflow()
+            )
+            signalflow = legacy_autoscaling_signalflow.format(
+                setpoint=target,
+                offset=autoscaling_params.get("offset", 0),
+                moving_average_window_seconds=autoscaling_params[
+                    "moving_average_window_seconds"
+                ],
+                paasta_service=self.get_service(),
+                paasta_instance=self.get_instance(),
+                paasta_cluster=self.get_cluster(),
+                signalfx_metric_name=metrics_provider,
+            )
+            annotations[f"signalfx.com.external.metric/{hpa_metric_name}"] = signalflow
 
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=1,  # see comments on signalflow template above
-                            ),
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="External",
+                    external=V2beta2ExternalMetricSource(
+                        metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            value=1,  # see comments on signalflow template above
                         ),
-                    )
+                    ),
                 )
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
