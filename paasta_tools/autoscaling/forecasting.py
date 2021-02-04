@@ -1,6 +1,8 @@
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
-from paasta_tools.utils import DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 
 
 FORECAST_POLICY_KEY = "forecast_policy"

@@ -13,7 +13,6 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
-from paasta_tools.utils import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
 from paasta_tools.utils import DeployWhitelist
@@ -28,6 +27,9 @@ logging.getLogger("marathon").setLevel(logging.WARNING)
 
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
+
+DEFAULT_AUTOSCALING_SETPOINT = 0.8
+DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 
 
 class AutoscalingParamsDict(TypedDict, total=False):

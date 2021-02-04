@@ -118,9 +118,6 @@ DEFAULT_CPU_BURST_ADD = 1
 
 DEFAULT_SOA_CONFIGS_GIT_URL = "sysgit.yelpcorp.com"
 
-DEFAULT_AUTOSCALING_SETPOINT = 0.8
-DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
