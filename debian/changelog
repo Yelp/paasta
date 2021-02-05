@@ -1,3 +1,12 @@
+paasta-tools (0.97.63) xenial; urgency=medium
+
+  * 0.97.63 tagged with 'make release'
+    Commit: Remove unused DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    import (#3028)  I incorrectly rebased/merged and left this in by
+    accident
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Feb 2021 15:15:39 -0800
+
 paasta-tools (0.97.62) xenial; urgency=medium
 
   * 0.97.62 tagged with 'make release'
