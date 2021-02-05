@@ -1,13 +1,11 @@
-from pathlib import Path
 import json
-from typing import Any
-from typing import Dict
+from pathlib import Path
 
 import pytest
 import ruamel.yaml as yaml
 from py._path.local import LocalPath
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_uwsgi_scaling_rule,
 )
@@ -24,17 +22,31 @@ from paasta_tools.setup_prometheus_adapter_config import (
     [
         (
             "not_uwsgi_autoscaled",
-            {"metrics_provider": "mesos_cpu", "decision_policy": "bespoke", "moving_average_window_seconds": 123, "setpoint": .653},
+            {
+                "metrics_provider": "mesos_cpu",
+                "decision_policy": "bespoke",
+                "moving_average_window_seconds": 123,
+                "setpoint": 0.653,
+            },
             False,
         ),
         (
             "uwsgi_autoscaled_no_prometheus",
-            {"metrics_provider": "uwsgi", "moving_average_window_seconds": 124, "setpoint": .425},
+            {
+                "metrics_provider": "uwsgi",
+                "moving_average_window_seconds": 124,
+                "setpoint": 0.425,
+            },
             False,
         ),
         (
             "uwsgi_autoscaled_prometheus",
-            {"metrics_provider": "uwsgi", "use_prometheus": True, "moving_average_window_seconds": 544, "setpoint": .764},
+            {
+                "metrics_provider": "uwsgi",
+                "use_prometheus": True,
+                "moving_average_window_seconds": 544,
+                "setpoint": 0.764,
+            },
             True,
         ),
     ],
@@ -57,7 +69,7 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     service_name = "test_service"
     instance_name = "test_instance"
     paasta_cluster = "test_cluster"
-    autoscaling_config = {
+    autoscaling_config: AutoscalingParamsDict = {
         "metrics_provider": "uwsgi",
         "setpoint": 0.1234567890,
         "moving_average_window_seconds": 20120302,
@@ -81,8 +93,7 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     # these two numbers are distinctive and unlikely to be used as constants
     assert str(autoscaling_config["setpoint"]) in rule["metricsQuery"]
     assert (
-        str(autoscaling_config["moving_average_window_seconds"])
-        in rule["metricsQuery"]
+        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
     )
 
 
@@ -100,7 +111,7 @@ def test_create_prometheus_adapter_config(tmpdir: LocalPath) -> None:
                 "metrics_provider": "uwsgi",
                 "setpoint": 0.45,
                 "use_prometheus": True,
-            }
+            },
         },
         "another_test_instance": {
             "deploy_group": "some-group",
@@ -111,17 +122,12 @@ def test_create_prometheus_adapter_config(tmpdir: LocalPath) -> None:
                 "metrics_provider": "uwsgi",
                 "setpoint": 0.45,
                 "use_prometheus": True,
-            }
+            },
         },
     }
     deployments = {
         "v2": {
-            "deployments": {
-                "some-group": {
-                    "docker_image": "image",
-                    "git_sha": "sha",
-                }
-            },
+            "deployments": {"some-group": {"docker_image": "image", "git_sha": "sha",}},
             "controls": {
                 "test_service:some-cluster.test_instance": {
                     "desired_state": "start",
@@ -131,7 +137,7 @@ def test_create_prometheus_adapter_config(tmpdir: LocalPath) -> None:
                     "desired_state": "start",
                     "force_bounce": "20210129T005338",
                 },
-            }
+            },
         },
     }
 
