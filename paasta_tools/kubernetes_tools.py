@@ -554,9 +554,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 signalflow = legacy_autoscaling_signalflow.format(
                     setpoint=target,
                     offset=autoscaling_params.get("offset", 0),
-                    moving_average_window_seconds=autoscaling_params.get(
-                        "moving_average_window_seconds", 1800
-                    ),
+                    moving_average_window_seconds=autoscaling_params[
+                        "moving_average_window_seconds"
+                    ],
                     paasta_service=self.get_service(),
                     paasta_instance=self.get_instance(),
                     paasta_cluster=self.get_cluster(),
