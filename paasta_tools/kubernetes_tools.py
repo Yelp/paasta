@@ -103,7 +103,6 @@ from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2PodsMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
@@ -527,7 +526,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
-        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
         if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta2MetricSpec(
@@ -541,58 +539,35 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider in ("http", "uwsgi"):
-            annotations = {"signalfx.com.custom.metrics": ""}
-            if (
-                autoscaling_params.get("forecast_policy") == "moving_average"
-                or "offset" in autoscaling_params
-                or load_system_paasta_config().get_hpa_always_uses_external_for_signalfx()
-            ):
-                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
-                legacy_autoscaling_signalflow = (
-                    load_system_paasta_config().get_legacy_autoscaling_signalflow()
-                )
-                signalflow = legacy_autoscaling_signalflow.format(
-                    setpoint=target,
-                    offset=autoscaling_params.get("offset", 0),
-                    moving_average_window_seconds=autoscaling_params[
-                        "moving_average_window_seconds"
-                    ],
-                    paasta_service=self.get_service(),
-                    paasta_instance=self.get_instance(),
-                    paasta_cluster=self.get_cluster(),
-                    signalfx_metric_name=metrics_provider,
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{hpa_metric_name}"
-                ] = signalflow
+            hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
+            legacy_autoscaling_signalflow = (
+                load_system_paasta_config().get_legacy_autoscaling_signalflow()
+            )
+            signalflow = legacy_autoscaling_signalflow.format(
+                setpoint=target,
+                offset=autoscaling_params.get("offset", 0),
+                moving_average_window_seconds=autoscaling_params[
+                    "moving_average_window_seconds"
+                ],
+                paasta_service=self.get_service(),
+                paasta_instance=self.get_instance(),
+                paasta_cluster=self.get_cluster(),
+                signalfx_metric_name=metrics_provider,
+            )
+            annotations[f"signalfx.com.external.metric/{hpa_metric_name}"] = signalflow
 
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=1,  # see comments on signalflow template above
-                            ),
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="External",
+                    external=V2beta2ExternalMetricSource(
+                        metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            value=1,  # see comments on signalflow template above
                         ),
-                    )
+                    ),
                 )
-            else:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Pods",
-                        pods=V2beta2PodsMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=metrics_provider, selector=selector,
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="AverageValue", average_value=target,
-                            ),
-                        ),
-                    )
-                )
-
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
