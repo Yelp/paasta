@@ -103,6 +103,7 @@ from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
+from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
@@ -110,6 +111,9 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -526,6 +530,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
+        use_prometheus = autoscaling_params.get("use_prometheus", False)
         if metrics_provider == "mesos_cpu":
             metrics.append(
                 V2beta2MetricSpec(
@@ -539,6 +544,38 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         elif metrics_provider in ("http", "uwsgi"):
+            # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
+            # which should make this look less silly.
+            if metrics_provider == "uwsgi" and use_prometheus:
+                # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
+                # prometheus adapter config entry?
+
+                # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
+                # HPAs and, since they're looking at the same thing, we need to suffix one of these metric
+                # identifiers because metric names inside an HPA must be unique.
+                hpa_metric_name = (
+                    f"{self.namespace_external_metric_name(metrics_provider)}-prom"
+                )
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(name=hpa_metric_name),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1", kind="Deployment", name=name
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                # we average the number of instances needed to handle the current (or
+                                # averaged) load instead of the load itself as this leads to more
+                                # stable behavior. we return the percentage by which we want to
+                                # scale, so the target in the HPA should always be 1.
+                                # PAASTA-16756 for details
+                                value=1,
+                            ),
+                        ),
+                    )
+                )
             hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
             legacy_autoscaling_signalflow = (
                 load_system_paasta_config().get_legacy_autoscaling_signalflow()
