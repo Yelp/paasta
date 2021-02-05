@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+import mock
 import pytest
 import ruamel.yaml as yaml
 from py._path.local import LocalPath
@@ -148,8 +149,11 @@ def test_create_prometheus_adapter_config(tmpdir: LocalPath) -> None:
     (tmp_path / "test_service" / "deployments.json").write_text(
         json.dumps(deployments), encoding="utf-8"
     )
-    config = create_prometheus_adapter_config(
-        paasta_cluster="some-cluster", soa_dir=tmp_path
-    )
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config", autospec=True,
+    ):
+        config = create_prometheus_adapter_config(
+            paasta_cluster="some-cluster", soa_dir=tmp_path
+        )
 
     assert len(config["rules"]) == len(service_config.keys()) - 1
