@@ -1,18 +1,10 @@
-import json
-from pathlib import Path
-
-import mock
 import pytest
-import ruamel.yaml as yaml
-from py._path.local import LocalPath
 
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_uwsgi_scaling_rule,
 )
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_prometheus_adapter_config,
-)
+from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
 )
@@ -98,62 +90,58 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     )
 
 
-def test_create_prometheus_adapter_config(tmpdir: LocalPath) -> None:
-    # TODO: if we upgrade to pytest>=3.9, we can use their tmp_path fixture directly
-    tmp_path = Path(str(tmpdir))
-    service_config = {
-        "_shared_env": {"env": {"PAASTA_IS_GREAT": True}},
-        "test_instance": {
-            "deploy_group": "some-group",
-            "min_instances": 1,
-            "max_instances": 3,
-            "registrations": ["test_service.test_instance"],
-            "autoscaling": {
+@pytest.mark.parametrize(
+    "autoscaling_config,expected_rules",
+    [
+        (
+            {
                 "metrics_provider": "uwsgi",
-                "setpoint": 0.45,
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
                 "use_prometheus": True,
             },
-        },
-        "another_test_instance": {
-            "deploy_group": "some-group",
-            "min_instances": 1,
-            "max_instances": 3,
-            "registrations": ["test_service.another_test_instance"],
-            "autoscaling": {
+            1,
+        ),
+        (
+            {
                 "metrics_provider": "uwsgi",
-                "setpoint": 0.45,
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
+                "use_prometheus": False,
+            },
+            0,
+        ),
+        (
+            {
+                "metrics_provider": "mesos_cpu",
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
                 "use_prometheus": True,
             },
-        },
-    }
-    deployments = {
-        "v2": {
-            "deployments": {"some-group": {"docker_image": "image", "git_sha": "sha",}},
-            "controls": {
-                "test_service:some-cluster.test_instance": {
-                    "desired_state": "start",
-                    "force_bounce": "20210129T005338",
-                },
-                "test_service:some-cluster.another_test_instance": {
-                    "desired_state": "start",
-                    "force_bounce": "20210129T005338",
-                },
+            0,
+        ),
+        (
+            {
+                "metrics_provider": "mesos_cpu",
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
+                "use_prometheus": False,
             },
-        },
-    }
-
-    (tmp_path / "test_service").mkdir()
-    (tmp_path / "test_service" / "kubernetes-some-cluster.yaml").write_text(
-        yaml.dump(service_config), encoding="utf-8"
-    )
-    (tmp_path / "test_service" / "deployments.json").write_text(
-        json.dumps(deployments), encoding="utf-8"
-    )
-    with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True,
-    ):
-        config = create_prometheus_adapter_config(
-            paasta_cluster="some-cluster", soa_dir=tmp_path
+            0,
+        ),
+    ],
+)
+def test_get_rules_for_service_instance(
+    autoscaling_config: AutoscalingParamsDict, expected_rules: int,
+) -> None:
+    assert (
+        len(
+            get_rules_for_service_instance(
+                service_name="service",
+                instance_name="instance",
+                autoscaling_config=autoscaling_config,
+                paasta_cluster="cluster",
+            )
         )
-
-    assert len(config["rules"]) == len(service_config.keys()) - 1
+        == expected_rules
+    )

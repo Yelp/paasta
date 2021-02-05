@@ -176,6 +176,39 @@ def create_instance_uwsgi_scaling_rule(
     }
 
 
+def get_rules_for_service_instance(
+    service_name: str,
+    instance_name: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
+) -> List[PrometheusAdapterRule]:
+    """
+    Returns a list of Prometheus Adapter rules for a given service instance. For now, this
+    will always be a 0 or 1-element list - but when we support scaling on multiple metrics
+    we will return N rules for a given service instance.
+    """
+    rules: List[PrometheusAdapterRule] = []
+
+    should_create_uwsgi, skip_uwsgi_reason = should_create_uwsgi_scaling_rule(
+        instance=instance_name, autoscaling_config=autoscaling_config,
+    )
+    if should_create_uwsgi:
+        rules.append(
+            create_instance_uwsgi_scaling_rule(
+                service=service_name,
+                instance=instance_name,
+                autoscaling_config=autoscaling_config,
+                paasta_cluster=paasta_cluster,
+            )
+        )
+    else:
+        log.debug(
+            "Skipping %s.%s - %s.", service_name, instance_name, skip_uwsgi_reason,
+        )
+
+    return rules
+
+
 def create_prometheus_adapter_config(
     paasta_cluster: str, soa_dir: Path
 ) -> PrometheusAdapterConfig:
@@ -204,22 +237,11 @@ def create_prometheus_adapter_config(
         for instance_config in config_loader.instance_configs(
             cluster=paasta_cluster, instance_type_class=KubernetesDeploymentConfig,
         ):
-            instance_name = instance_config.instance
-            autoscaling_config = instance_config.get_autoscaling_params()
-            should_create, skip_reason = should_create_uwsgi_scaling_rule(
-                instance=instance_config.instance,
-                autoscaling_config=autoscaling_config,
-            )
-            if not should_create:
-                log.debug(
-                    "Skipping %s - %s.", instance_name, skip_reason,
-                )
-                continue
-            rules.append(
-                create_instance_uwsgi_scaling_rule(
-                    service=service_name,
-                    instance=instance_name,
-                    autoscaling_config=autoscaling_config,
+            rules.extend(
+                get_rules_for_service_instance(
+                    service_name=service_name,
+                    instance_name=instance_config.instance,
+                    autoscaling_config=instance_config.get_autoscaling_params(),
                     paasta_cluster=paasta_cluster,
                 )
             )
