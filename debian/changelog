@@ -1,3 +1,12 @@
+paasta-tools (0.97.64) xenial; urgency=medium
+
+  * 0.97.64 tagged with 'make release'
+    Commit: Merge pull request #3011 from Yelp/u/srojas/SEC-13906-pass-
+    session-token-to-spark-env  Pass AWS_SESSION_TOKEN During Spark
+    Environment Creation
+
+ -- Skyler Rojas <srojas@yelp.com>  Mon, 08 Feb 2021 14:38:33 -0800
+
 paasta-tools (0.97.63) xenial; urgency=medium
 
   * 0.97.63 tagged with 'make release'
