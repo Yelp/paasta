@@ -208,10 +208,11 @@ def mock_get_possible_launced_by_user_variable_from_env():
     [
         ((None, None, None), {}),
         (
-            ("access-key", "secret-key", None),
+            ("access-key", "secret-key", "token"),
             {
                 "AWS_ACCESS_KEY_ID": "access-key",
                 "AWS_SECRET_ACCESS_KEY": "secret-key",
+                "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "test-region",
             },
         ),
@@ -411,6 +412,7 @@ class TestConfigureAndRunDockerContainer:
                 "env1": "val1",
                 "AWS_ACCESS_KEY_ID": "id",
                 "AWS_SECRET_ACCESS_KEY": "secret",
+                "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
                 "SPARK_OPTS": mock_create_spark_config_str.return_value,
                 "SPARK_USER": "root",

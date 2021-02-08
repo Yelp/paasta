@@ -49,7 +49,7 @@ DEFAULT_AWS_REGION = "us-west-2"
 DEFAULT_SPARK_WORK_DIR = "/spark_driver"
 DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
-SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"]
+SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 
 
@@ -408,11 +408,13 @@ def get_spark_env(
 
     spark_env = {}
 
-    access_key, secret_key, _ = aws_creds
+    access_key, secret_key, session_token = aws_creds
     if access_key:
         spark_env["AWS_ACCESS_KEY_ID"] = access_key
         spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
         spark_env["AWS_DEFAULT_REGION"] = args.aws_region
+        if session_token is not None:
+            spark_env["AWS_SESSION_TOKEN"] = session_token
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
