@@ -887,7 +887,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return ret
 
-    def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
+    def get_kubernetes_environment(self) -> List[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name="PAASTA_POD_IP",
