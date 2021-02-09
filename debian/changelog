@@ -1,3 +1,13 @@
+paasta-tools (0.97.65) xenial; urgency=medium
+
+  * 0.97.65 tagged with 'make release'
+    Commit: Stop returning non-zero when no rules are generated (#3030)
+    This is a fail-safe to stop us from deleting all rules, but this is
+    currently tripping up our alerting on clusters that don"t have
+    Prometheus-enabled HPAs
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Feb 2021 17:39:06 -0800
+
 paasta-tools (0.97.64) xenial; urgency=medium
 
   * 0.97.64 tagged with 'make release'
