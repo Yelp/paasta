@@ -1,3 +1,10 @@
+paasta-tools (0.97.66) xenial; urgency=medium
+
+  * 0.97.66 tagged with 'make release'
+    Commit: Show replicasets in non-verbose paasta status
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 09 Feb 2021 13:41:00 -0800
+
 paasta-tools (0.97.65) xenial; urgency=medium
 
   * 0.97.65 tagged with 'make release'
