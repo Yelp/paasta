@@ -40,7 +40,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     offset: Optional[float]
     moving_average_window_seconds: Optional[int]
     use_prometheus: bool
-    uwsgi_stats_uri: str
+    uwsgi_stats_port: int
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
