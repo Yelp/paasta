@@ -679,6 +679,36 @@ class TestKubernetesDeploymentConfig:
             assert ret.image == "uwsgi_exporter_image"
             assert ret.ports[0].container_port == 9117
 
+    @pytest.mark.parametrize(
+        "uwsgi_stats_uri,expected_uri",
+        [
+            (None, "http://127.0.0.1:8889/"),
+            ("http://127.0.0.1:31337/", "http://127.0.0.1:31337/"),
+        ],
+    )
+    def test_get_uwsgi_exporter_sidecar_container_stats_uri(
+        self, uwsgi_stats_uri, expected_uri
+    ):
+        system_paasta_config = mock.Mock(
+            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
+                return_value="uwsgi_exporter_image"
+            )
+        )
+        self.deployment.config_dict.update(
+            {
+                "max_instances": 5,
+                "autoscaling": {"metrics_provider": "uwsgi", "use_prometheus": True,},
+            }
+        )
+        if uwsgi_stats_uri is not None:
+            self.deployment.config_dict["autoscaling"][
+                "uwsgi_stats_uri"
+            ] = uwsgi_stats_uri
+
+        ret = self.deployment.get_uwsgi_exporter_sidecar_container(system_paasta_config)
+        expected_env_var = V1EnvVar(name="STATS_URI", value=expected_uri,)
+        assert expected_env_var in ret.env
+
     def test_get_uwsgi_exporter_sidecar_container_shouldnt_run(self):
         system_paasta_config = mock.Mock(
             get_uwsgi_exporter_sidecar_image_url=mock.Mock(
