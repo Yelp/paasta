@@ -1037,6 +1037,35 @@ def test_paasta_status_exception(system_paasta_config):
         )
 
 
+def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_status):
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.format_kubernetes_replicaset_table", autospec=True
+    ) as mock_format_kubernetes_replicaset_table, mock.patch(
+        "paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True
+    ):
+        mock_kubernetes_status.replicasets = [
+            paastamodels.KubernetesReplicaSet(
+                name="replicaset_1",
+                replicas=3,
+                ready_replicas=2,
+                create_timestamp=1562963508.0,
+                git_sha="fake_git_sha",
+                config_sha="fake_config_sha",
+            )
+        ]
+        mock_kubernetes_status.error_message = ""
+        status.print_kubernetes_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            kubernetes_status=mock_kubernetes_status,
+            verbose=0,
+        )
+
+        assert mock_format_kubernetes_replicaset_table.called
+
+
 class TestPrintMarathonStatus:
     def test_error(self, mock_marathon_status):
         mock_marathon_status.error_message = "Things went wrong"
@@ -1255,7 +1284,6 @@ class TestPrintKubernetesStatus:
             f"    Kubernetes:   {PaastaColors.green('Healthy')} - up with {PaastaColors.green('(2/2)')} instances ({PaastaColors.red('1')} evicted). Status: {mock_kubernetes_app_deploy_status_human.return_value}",
         ]
         expected_output += [
-            f"      App created: 2019-07-12 20:31:48 ({mock_naturaltime.return_value}). Namespace: paasta",
             f"      Pods:",
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
             f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",

@@ -113,6 +113,22 @@ def test_kubernetes_status(
     assert "desired_state" in status
 
 
+@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
+def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_name):
+    kstatus = {}
+    pik.job_status(
+        kstatus=kstatus,
+        client=mock.Mock(),
+        job_config=mock.Mock(),
+        pod_list=[],
+        replicaset_list=[mock.Mock(), mock.Mock(), mock.Mock()],
+        verbose=0,
+        namespace=mock.Mock(),
+    )
+
+    assert len(kstatus["replicasets"]) == 3
+
+
 @mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
 @mock.patch(
     "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True

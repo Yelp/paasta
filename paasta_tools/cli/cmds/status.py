@@ -1164,7 +1164,7 @@ def print_kubernetes_status(
             )
         )
     )
-    if kubernetes_status.create_timestamp:
+    if kubernetes_status.create_timestamp and verbose > 0:
         create_datetime = datetime.fromtimestamp(kubernetes_status.create_timestamp)
         output.append(
             "      App created: {} ({}). Namespace: {}".format(
