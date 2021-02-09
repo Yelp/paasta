@@ -375,7 +375,7 @@ def main() -> int:
 
     if not config["rules"]:
         log.error("Got empty rule configuration - refusing to continue.")
-        return 1
+        return 0
 
     kube_client = KubeClient()
     if not args.dry_run:
