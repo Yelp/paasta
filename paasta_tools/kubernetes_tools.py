@@ -795,11 +795,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> Optional[V1Container]:
 
         if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
+            stats_port_env = V1EnvVar(
+                name="STATS_PORT",
+                value=str(self.get_autoscaling_params().get("uwsgi_stats_port", 8889)),
+            )
+
             return V1Container(
                 image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
                 resources=self.get_sidecar_resource_requirements("uwsgi_exporter"),
                 name=UWSGI_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment(),
+                env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
             )
 
@@ -880,7 +885,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return ret
 
-    def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
+    def get_kubernetes_environment(self) -> List[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name="PAASTA_POD_IP",
