@@ -1,3 +1,11 @@
+paasta-tools (0.97.68) xenial; urgency=medium
+
+  * 0.97.68 tagged with 'make release'
+    Commit: Bump uwsgi_exporter-k8s-sidecar image version to reflect
+    changes in #3031
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 Feb 2021 11:19:40 -0800
+
 paasta-tools (0.97.67) xenial; urgency=medium
 
   * 0.97.67 tagged with 'make release'
