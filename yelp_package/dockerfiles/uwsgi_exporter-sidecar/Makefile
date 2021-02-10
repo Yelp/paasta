@@ -1,6 +1,6 @@
 UWSGI_EXPORTER_REPO ?= https://github.com/timonwong/uwsgi_exporter
 UWSGI_EXPORTER_TAG ?= v1.0.0
-YELP_SUFFIX ?= yelp1
+YELP_SUFFIX ?= yelp2
 
 DOCKER_IMAGE ?= docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:$(UWSGI_EXPORTER_TAG)-$(YELP_SUFFIX)
 
