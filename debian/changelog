@@ -1,3 +1,12 @@
+paasta-tools (0.97.67) xenial; urgency=medium
+
+  * 0.97.67 tagged with 'make release'
+    Commit: Merge pull request #3031 from
+    Yelp/u/krall/parameterize_stats_uri  Allow services to override the
+    uwsgi_exporter stats.uri parameter, t…
+
+ -- Evan Krall <krall@yelp.com>  Tue, 09 Feb 2021 17:04:56 -0800
+
 paasta-tools (0.97.66) xenial; urgency=medium
 
   * 0.97.66 tagged with 'make release'
