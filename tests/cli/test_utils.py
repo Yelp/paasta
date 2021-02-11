@@ -473,3 +473,22 @@ def test_verify_instances_with_clusters(
             call("  west"),
         ]
     )
+
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+def test_verify_instances_with_suffixes(mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = [
+        "fake_instance1",
+        "fake_instance2.jobname",
+    ]
+
+    assert (
+        verify_instances(
+            "fake_instance1.containername", "fake_service", ["fake_cluster"]
+        )
+        == []
+    )
+    assert (
+        verify_instances("fake_instance2.jobname", "fake_service", ["fake_cluster"])
+        == []
+    )
