@@ -54,6 +54,10 @@ PROMETHEUS_ADAPTER_POD_PHASES_TO_REMOVE = (
     "Pending",
 )
 
+DEFAULT_SCRAPE_PERIOD_S = 10
+DEFAULT_EXTRAPOLATION_PERIODS = 10
+DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
+
 
 class PrometheusAdapterRule(TypedDict):
     """
@@ -162,7 +166,15 @@ def create_instance_uwsgi_scaling_rule(
                         ) by (kube_pod, kube_deployment)
                     ) by (kube_deployment) / {setpoint}
                 )[{moving_average_window}s:]
-            ) / scalar(sum(kube_deployment_spec_replicas{{{replica_filter_terms}}}))
+            ) / (
+                    scalar(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                        or
+                        max_over_time(
+                            kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                        )
+                    )
+                )
     """
     metric_name = f"{deployment_name}-uwsgi-prom"
 
