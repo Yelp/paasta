@@ -1071,8 +1071,8 @@ def verify_instances(
 
     # Check for instances with suffixes other than Tron instances (i.e. Flink instances)
     instances_without_suffixes = [x.split(".")[0] for x in unverified_instances]
-    misspelled_instances.clear()
-    misspelled_instances: Sequence[str] = [
+
+    misspelled_instances = [
         i for i in instances_without_suffixes if i not in service_instances
     ]
 
