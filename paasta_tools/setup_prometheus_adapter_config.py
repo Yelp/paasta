@@ -152,6 +152,9 @@ def create_instance_uwsgi_scaling_rule(
     """
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    # this should always be set, but we default to 0 for safety as the worst thing that would happen
+    # is that we take a couple more iterations than required to hit the desired setpoint
+    offset = autoscaling_config.get("offset", 0)
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
     replica_filter_terms = (
@@ -164,7 +167,7 @@ def create_instance_uwsgi_scaling_rule(
                         avg(
                             uwsgi_worker_busy{{{worker_filter_terms}}}
                         ) by (kube_pod, kube_deployment)
-                    ) by (kube_deployment) / {setpoint}
+                    ) by (kube_deployment) / {setpoint - offset}
                 )[{moving_average_window}s:]
             ) / (
                     scalar(
