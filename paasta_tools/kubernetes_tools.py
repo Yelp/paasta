@@ -757,7 +757,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     + self.get_registrations()
                 ),
                 initial_delay_seconds=10,
-                period_seconds=10,
+                period_seconds=self.config_dict.get("readiness_check_period", 10),
             )
         else:
             readiness_probe = None
