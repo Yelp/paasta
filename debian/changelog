@@ -1,3 +1,12 @@
+paasta-tools (0.97.69) xenial; urgency=medium
+
+  * 0.97.69 tagged with 'make release'
+    Commit: Merge pull request #3034 from Yelp/luisp/PAASTA-17094-handle-
+    missing-data  Handle missing metrics and include offset for
+    Prometheus HPAs
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Feb 2021 15:23:17 -0800
+
 paasta-tools (0.97.68) xenial; urgency=medium
 
   * 0.97.68 tagged with 'make release'
