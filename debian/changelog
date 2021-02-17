@@ -1,3 +1,10 @@
+paasta-tools (0.97.70) xenial; urgency=medium
+
+  * 0.97.70 tagged with 'make release'
+    Commit: Paasta Logs support tron instance names
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Wed, 17 Feb 2021 12:58:08 -0800
+
 paasta-tools (0.97.69) xenial; urgency=medium
 
   * 0.97.69 tagged with 'make release'
