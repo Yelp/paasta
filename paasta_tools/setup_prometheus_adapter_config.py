@@ -126,7 +126,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def should_create_uwsgi_scaling_rule(
-    instance: str, autoscaling_config: AutoscalingParamsDict,
+    autoscaling_config: AutoscalingParamsDict,
 ) -> Tuple[bool, Optional[str]]:
     """
     Determines whether we should configure the prometheus adapter for a given service.
@@ -205,7 +205,7 @@ def get_rules_for_service_instance(
     rules: List[PrometheusAdapterRule] = []
 
     should_create_uwsgi, skip_uwsgi_reason = should_create_uwsgi_scaling_rule(
-        instance=instance_name, autoscaling_config=autoscaling_config,
+        autoscaling_config=autoscaling_config,
     )
     if should_create_uwsgi:
         rules.append(

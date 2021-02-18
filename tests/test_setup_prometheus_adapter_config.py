@@ -11,10 +11,9 @@ from paasta_tools.setup_prometheus_adapter_config import (
 
 
 @pytest.mark.parametrize(
-    "instance_name,autoscaling_config,expected",
+    "autoscaling_config,expected",
     [
         (
-            "not_uwsgi_autoscaled",
             {
                 "metrics_provider": "mesos_cpu",
                 "decision_policy": "bespoke",
@@ -24,7 +23,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
             False,
         ),
         (
-            "uwsgi_autoscaled_no_prometheus",
             {
                 "metrics_provider": "uwsgi",
                 "moving_average_window_seconds": 124,
@@ -33,7 +31,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
             False,
         ),
         (
-            "uwsgi_autoscaled_prometheus",
             {
                 "metrics_provider": "uwsgi",
                 "use_prometheus": True,
@@ -45,10 +42,10 @@ from paasta_tools.setup_prometheus_adapter_config import (
     ],
 )
 def test_should_create_uswgi_scaling_rule(
-    instance_name: str, autoscaling_config: AutoscalingParamsDict, expected: bool
+    autoscaling_config: AutoscalingParamsDict, expected: bool
 ) -> None:
     should_create, reason = should_create_uwsgi_scaling_rule(
-        instance=instance_name, autoscaling_config=autoscaling_config
+        autoscaling_config=autoscaling_config
     )
 
     assert should_create == expected
