@@ -18,8 +18,10 @@ import mock
 import pytest
 import requests
 
+from paasta_tools.envoy_tools import are_namespaces_up_in_eds
 from paasta_tools.envoy_tools import are_services_up_in_pod
 from paasta_tools.envoy_tools import get_backends
+from paasta_tools.envoy_tools import get_backends_from_eds
 from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import match_backends_and_pods
 from paasta_tools.envoy_tools import match_backends_and_tasks
@@ -349,4 +351,127 @@ class TestServicesUpInPod:
             ],
             pod_ip=self.pod_ip,
             pod_port=self.pod_port,
+        )
+
+    @mock.patch("paasta_tools.envoy_tools.open", autospec=False)
+    @mock.patch("paasta_tools.envoy_tools.os.access", autospec=True)
+    @mock.patch("paasta_tools.envoy_tools.yaml.safe_load", autospec=True)
+    def test_get_backends_from_eds(self, mock_yaml, mock_os_access, mock_open):
+
+        mock_yaml.return_value = {"resources": [{"endpoints": None}]}
+        backends = get_backends_from_eds("my-namespace", "/var/bla")
+        assert len(backends) == 0
+
+        mock_yaml.return_value = {
+            "resources": [
+                {
+                    "endpoints": [
+                        {
+                            "priority": 0,
+                            "lb_endpoints": [
+                                {
+                                    "endpoint": {
+                                        "address": {
+                                            "socket_address": {
+                                                "address": "1.2.3.4",
+                                                "port_value": 5555,
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "endpoint": {
+                                        "address": {
+                                            "socket_address": {
+                                                "address": "5.6.7.8",
+                                                "port_value": 5555,
+                                            }
+                                        }
+                                    }
+                                },
+                            ],
+                        },
+                        {
+                            "priority": 1,
+                            "lb_endpoints": [
+                                {
+                                    "endpoint": {
+                                        "address": {
+                                            "socket_address": {
+                                                "address": "9.10.11.12",
+                                                "port_value": 5555,
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "endpoint": {
+                                        "address": {
+                                            "socket_address": {
+                                                "address": "13.14.15.16",
+                                                "port_value": 5555,
+                                            }
+                                        }
+                                    }
+                                },
+                            ],
+                        },
+                    ]
+                }
+            ]
+        }
+        expected_backends = [
+            ("1.2.3.4", 5555),
+            ("5.6.7.8", 5555),
+            ("9.10.11.12", 5555),
+            ("13.14.15.16", 5555),
+        ]
+        backends = get_backends_from_eds("my-namespace", "/var/bla")
+        assert sorted(backends) == sorted(expected_backends)
+
+    @mock.patch("paasta_tools.envoy_tools.get_backends_from_eds", autospec=True)
+    def test_are_namespaces_up_in_eds(self, mock_get_backends_from_eds):
+        # No backends for service1.instance1 and service1.instance2
+        mock_get_backends_from_eds.return_value = []
+        assert not are_namespaces_up_in_eds(
+            envoy_eds_path="/eds/path",
+            namespaces=["service1.instance1", "service1.instance2"],
+            pod_ip="1.2.3.4",
+            pod_port=50000,
+        )
+
+        # No backends for service1.instance2
+        mock_get_backends_from_eds.side_effect = [
+            [("1.2.3.4", 50000), ("5.6.7.8", 60000)],
+            [],
+        ]
+        assert not are_namespaces_up_in_eds(
+            envoy_eds_path="/eds/path",
+            namespaces=["service1.instance1", "service1.instance2"],
+            pod_ip="1.2.3.4",
+            pod_port=50000,
+        )
+
+        # Missing backend for service1.instance2
+        mock_get_backends_from_eds.side_effect = [
+            [("1.2.3.4", 50000), ("5.6.7.8", 60000)],
+            [("5.6.7.8", 60000)],
+        ]
+        assert not are_namespaces_up_in_eds(
+            envoy_eds_path="/eds/path",
+            namespaces=["service1.instance1", "service1.instance2"],
+            pod_ip="1.2.3.4",
+            pod_port=50000,
+        )
+
+        # Backends returned for both namespaces
+        mock_get_backends_from_eds.side_effect = [
+            [("1.2.3.4", 50000), ("5.6.7.8", 60000)],
+            [("5.6.7.8", 60000), ("1.2.3.4", 50000)],
+        ]
+        assert are_namespaces_up_in_eds(
+            envoy_eds_path="/eds/path",
+            namespaces=["service1.instance1", "service1.instance2"],
+            pod_ip="1.2.3.4",
+            pod_port=50000,
         )
