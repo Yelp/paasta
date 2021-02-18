@@ -1,3 +1,12 @@
+paasta-tools (0.97.71) xenial; urgency=medium
+
+  * 0.97.71 tagged with 'make release'
+    Commit: Merge pull request #3038 from Yelp/u/gabrielv/MESH-1070-
+    readiness-check-update  MESH-1070 Readiness check based on EDS yaml
+    files
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 18 Feb 2021 06:59:29 -0800
+
 paasta-tools (0.97.70) xenial; urgency=medium
 
   * 0.97.70 tagged with 'make release'
