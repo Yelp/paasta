@@ -1,3 +1,10 @@
+paasta-tools (0.97.72) xenial; urgency=medium
+
+  * 0.97.72 tagged with 'make release'
+    Commit: bump yelp-clog to 5.1.0 (#3036)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 19 Feb 2021 03:55:23 -0800
+
 paasta-tools (0.97.71) xenial; urgency=medium
 
   * 0.97.71 tagged with 'make release'
