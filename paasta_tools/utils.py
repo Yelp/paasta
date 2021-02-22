@@ -2097,7 +2097,8 @@ class SystemPaastaConfig:
 
     def get_envoy_readiness_check_script(self) -> List[str]:
         return self.config_dict.get(
-            "envoy_readiness_check_script", ["/check_proxy_up.sh", "--enable-envoy"]
+            "envoy_readiness_check_script",
+            ["/check_proxy_up.sh", "--enable-envoy", "--envoy-check-mode", "eds-dir"],
         )
 
     def get_envoy_nerve_readiness_check_script(self) -> List[str]:
@@ -2405,10 +2406,7 @@ class SystemPaastaConfig:
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
-        return self.config_dict.get(
-            "hacheck_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar",
-        )
+        return self.config_dict.get("hacheck_sidecar_image_url")
 
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
