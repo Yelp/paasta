@@ -400,6 +400,8 @@ def main() -> int:
     existing_config = get_prometheus_adapter_configmap(kube_client=kube_client)
     if existing_config and existing_config != config:
         log.info("Existing config differs from soaconfigs - updating.")
+        log.debug("Existing data: %s", existing_config)
+        log.debug("Desired data: %s", config)
         update_prometheus_adapter_configmap(kube_client=kube_client, config=config)
         log.info("Updated adapter config.")
     elif existing_config:
