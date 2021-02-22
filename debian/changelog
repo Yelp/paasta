@@ -1,3 +1,10 @@
+paasta-tools (0.97.73) xenial; urgency=medium
+
+  * 0.97.73 tagged with 'make release'
+    Commit: Add additional logging to prometheus config setup (#3041)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 22 Feb 2021 15:10:58 -0800
+
 paasta-tools (0.97.72) xenial; urgency=medium
 
   * 0.97.72 tagged with 'make release'
