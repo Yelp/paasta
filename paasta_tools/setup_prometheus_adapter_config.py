@@ -262,7 +262,11 @@ def create_prometheus_adapter_config(
             )
 
     return {
-        "rules": rules,
+        # we sort our rules so that we can easily compare between two different configmaps
+        # as otherwise we'd need to do fancy order-independent comparisons between the two
+        # sets of rules later due to the fact that we're not iterating in a deterministic
+        # way and can add rules in any arbitrary order
+        "rules": sorted(rules, key=lambda rule: rule["name"]["as"]),
     }
 
 
