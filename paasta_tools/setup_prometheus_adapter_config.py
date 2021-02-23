@@ -262,7 +262,7 @@ def create_prometheus_adapter_config(
             )
 
     return {
-        "rules": rules,
+        "rules": sorted(rules, key=lambda rule: rule["name"]["as"]),
     }
 
 
