@@ -1,3 +1,13 @@
+paasta-tools (0.97.74) xenial; urgency=medium
+
+  * 0.97.74 tagged with 'make release'
+    Commit: Sort Prometheus rulesets for easier comparison (#3042)
+    Previously we were just doing strict dictionary equality, but this
+    breaks down when your values are lists and those lists aren"t in the
+    same order.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Feb 2021 09:32:56 -0800
+
 paasta-tools (0.97.73) xenial; urgency=medium
 
   * 0.97.73 tagged with 'make release'
