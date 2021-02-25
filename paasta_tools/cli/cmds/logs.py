@@ -69,7 +69,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
-DEFAULT_COMPONENTS = ["build", "deploy", "monitoring", "oom", "stdout", "stderr"]
+DEFAULT_COMPONENTS = ["stdout", "stderr"]
 
 log = logging.getLogger(__name__)
 
