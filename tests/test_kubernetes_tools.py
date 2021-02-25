@@ -426,7 +426,16 @@ class TestKubernetesDeploymentConfig:
                 True,
                 ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
             ),
-            (True, False, ["/check_proxy_up.sh", "--enable-envoy"]),
+            (
+                True,
+                False,
+                [
+                    "/check_proxy_up.sh",
+                    "--enable-envoy",
+                    "--envoy-check-mode",
+                    "eds-dir",
+                ],
+            ),
             (False, True, ["/check_smartstack_up.sh"]),
         ],
     )
