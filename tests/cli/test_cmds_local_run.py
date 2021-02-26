@@ -383,6 +383,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.volumes = []
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -450,6 +451,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.volumes = []
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -522,6 +524,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.vault_auth_method = "ldap"
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
+    args.volumes = []
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -592,6 +595,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.vault_auth_method = "ldap"
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
+        args.volumes = []
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -1890,7 +1894,7 @@ def test_volumes_are_deduped(mock_exists):
                 },
                 "/etc/paasta",
             ),
-            args=mock.Mock(yelpsoa_config_root="/blurp/durp"),
+            args=mock.Mock(yelpsoa_config_root="/blurp/durp", volumes=[]),
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs["volumes"] == ["/hostPath:/containerPath:ro"]
@@ -1945,7 +1949,7 @@ def test_missing_volumes_skipped(mock_exists):
                 },
                 "/etc/paasta",
             ),
-            args=mock.Mock(yelpsoa_config_root="/blurp/durp"),
+            args=mock.Mock(yelpsoa_config_root="/blurp/durp", volumes=[]),
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs["volumes"] == []

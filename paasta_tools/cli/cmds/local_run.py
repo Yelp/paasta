@@ -466,6 +466,17 @@ def add_subparser(subparsers):
         required=False,
         default=None,
     )
+    list_parser.add_argument(
+        "--volume",
+        dest="volumes",
+        action="append",
+        type=str,
+        default=[],
+        required=False,
+        help=(
+            "Same as the -v / --volume parameter to docker run: hostPath:containerPath[:mode]"
+        ),
+    )
 
     list_parser.set_defaults(command=paasta_local_run)
 
@@ -873,7 +884,7 @@ def configure_and_run_docker_container(
         return 1
 
     soa_dir = args.yelpsoa_config_root
-    volumes = list()
+    volumes = args.volumes
     load_deployments = (docker_url is None or pull_image) and not docker_sha
     interactive = args.interactive
 
