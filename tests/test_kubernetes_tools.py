@@ -272,7 +272,7 @@ class TestKubernetesDeploymentConfig:
         if isinstance(obj, V2beta2HorizontalPodAutoscaler):
             obj = KubeClient().jsonify(obj)
             obj["spec"]["behavior"] = deployment.get_autoscaling_scaling_policy(
-                max_replicas,
+                autoscaling_params={}, max_replicas=max_replicas,
             )
         return obj
 
@@ -1832,6 +1832,37 @@ class TestKubernetesDeploymentConfig:
             self.patch_expected_autoscaling_spec(expected_res, mock_config)
             == return_value
         )
+
+    def test_override_scaledown_policies(self):
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "scaledown_policies": {
+                        "stabilizationWindowSeconds": 123,
+                        "policies": [
+                            {"type": "Percent", "value": 45, "periodSeconds": 67}
+                        ],
+                    }
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        hpa_dict = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name", "cluster", KubeClient(),
+        )
+        assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
+            "stabilizationWindowSeconds": 123,
+            "selectPolicy": "Max",
+            "policies": [{"type": "Percent", "value": 45, "periodSeconds": 67}],
+        }
 
     def test_get_autoscaling_metric_spec_bespoke(self):
         config_dict = KubernetesDeploymentConfigDict(

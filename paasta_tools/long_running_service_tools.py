@@ -41,6 +41,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     moving_average_window_seconds: Optional[int]
     use_prometheus: bool
     uwsgi_stats_port: int
+    scaledown_policies: Optional[dict]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
