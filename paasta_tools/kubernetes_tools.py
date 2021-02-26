@@ -111,6 +111,7 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -465,7 +466,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return bounce_method
 
     # TODO: move the default scaling policy to system paasta configs
-    def get_autoscaling_scaling_policy(self, max_replicas: int) -> Dict:
+    def get_autoscaling_scaling_policy(
+        self, max_replicas: int, autoscaling_params: AutoscalingParamsDict,
+    ) -> Dict:
         """Returns the k8s HPA scaling policy in raw JSON. Requires k8s v1.18
         to work.
         """
@@ -482,7 +485,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         #      desired capacity.
         #      - the idea is to stabilize scaling against (heavily) fluctuating
         #        metrics
-        return {
+        policy = {
             "scaleDown": {
                 "stabilizationWindowSeconds": 300,
                 # the policy in a human-readable way: scale down every 60s by
@@ -491,6 +494,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "policies": [{"type": "Percent", "value": 30, "periodSeconds": 60}],
             }
         }
+        policy["scaleDown"].update(autoscaling_params.get("scaledown_policies", {}))
+        return policy
 
     def namespace_external_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}"
@@ -629,7 +634,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # However, the python client library currently only supports v1.17, so
         # we need to monkey-patch scaling policies until the library is updated
         # v1.18.
-        scaling_policy = self.get_autoscaling_scaling_policy(max_replicas)
+        scaling_policy = self.get_autoscaling_scaling_policy(
+            max_replicas, autoscaling_params,
+        )
         if scaling_policy:
             hpa = kube_client.jsonify(hpa)  # this is a hack, see KubeClient class
             hpa["spec"]["behavior"] = scaling_policy
