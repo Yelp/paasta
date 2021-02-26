@@ -1,3 +1,12 @@
+paasta-tools (0.97.75) xenial; urgency=medium
+
+  * 0.97.75 tagged with 'make release'
+    Commit: Merge pull request #3044 from Yelp/PAASTA-
+    17257_allow_scaledown_policy_override  Allow HPA scaledown policies
+    to be overridden from soa configs
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 26 Feb 2021 12:03:58 -0800
+
 paasta-tools (0.97.74) xenial; urgency=medium
 
   * 0.97.74 tagged with 'make release'
