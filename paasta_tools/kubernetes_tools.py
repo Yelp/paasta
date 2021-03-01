@@ -533,7 +533,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
         use_prometheus = autoscaling_params.get("use_prometheus", False)
-        if metrics_provider == "mesos_cpu":
+        # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
+        # HPAs and, since they may be looking at the same thing, we need to suffix one of these metric
+        # identifiers because metric names inside an HPA must be unique.
+        prometheus_hpa_metric_name = (
+            f"{self.namespace_external_metric_name(metrics_provider)}-prom"
+        )
+        # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
+        if metrics_provider in ("mesos_cpu", "cpu"):
+            if use_prometheus:
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=prometheus_hpa_metric_name
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1", kind="Deployment", name=name
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value", value=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
+
             metrics.append(
                 V2beta2MetricSpec(
                     type="Resource",
@@ -549,20 +574,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
             # which should make this look less silly.
             if metrics_provider == "uwsgi" and use_prometheus:
-                # TODO: do we need to do anything if we setup an HPA but don't have a corresponding
-                # prometheus adapter config entry?
-
-                # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
-                # HPAs and, since they're looking at the same thing, we need to suffix one of these metric
-                # identifiers because metric names inside an HPA must be unique.
-                hpa_metric_name = (
-                    f"{self.namespace_external_metric_name(metrics_provider)}-prom"
-                )
                 metrics.append(
                     V2beta2MetricSpec(
                         type="Object",
                         object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(name=hpa_metric_name),
+                            metric=V2beta2MetricIdentifier(
+                                name=prometheus_hpa_metric_name
+                            ),
                             described_object=V2beta2CrossVersionObjectReference(
                                 api_version="apps/v1", kind="Deployment", name=name
                             ),
