@@ -29,7 +29,11 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
-DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+# we set a different default moving average window so that we can reuse our existing PromQL
+# without having to write a different query for existing users that want to autoscale on
+# instantaneous CPU
+DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW = 60
 
 
 class AutoscalingParamsDict(TypedDict, total=False):
@@ -335,7 +339,6 @@ class LongRunningServiceConfig(InstanceConfig):
             "metrics_provider": "mesos_cpu",
             "decision_policy": "proportional",
             "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
-            "moving_average_window_seconds": DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW,
         }
         return deep_merge_dictionaries(
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),

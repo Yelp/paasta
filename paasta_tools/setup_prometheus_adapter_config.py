@@ -39,6 +39,12 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -194,7 +200,9 @@ def create_instance_uwsgi_scaling_rule(
     Creates a Prometheus adapter rule config for a given service instance.
     """
     setpoint = autoscaling_config["setpoint"]
-    moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
     # this should always be set, but we default to 0 for safety as the worst thing that would happen
     # is that we take a couple more iterations than required to hit the desired setpoint
     offset = autoscaling_config.get("offset", 0)
@@ -261,7 +269,9 @@ def create_instance_cpu_scaling_rule(
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
-    moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds", DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
     # this series query is a bit of a hack: we don't use the Prometheus adapter as expected (i.e., very generic rules)
     # but we still need to give it a query that returns something even though we're not going to use the series/label
     # templates that are auto-extracted for us. That said: we still need this query to return labels that can be tied
