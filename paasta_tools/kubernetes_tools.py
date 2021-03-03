@@ -112,6 +112,9 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -603,9 +606,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             signalflow = legacy_autoscaling_signalflow.format(
                 setpoint=target,
                 offset=autoscaling_params.get("offset", 0),
-                moving_average_window_seconds=autoscaling_params[
-                    "moving_average_window_seconds"
-                ],
+                moving_average_window_seconds=autoscaling_params.get(
+                    "moving_average_window_seconds",
+                    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+                ),
                 paasta_service=self.get_service(),
                 paasta_instance=self.get_instance(),
                 paasta_cluster=self.get_cluster(),
