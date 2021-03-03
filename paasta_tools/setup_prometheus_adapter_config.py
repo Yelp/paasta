@@ -62,19 +62,46 @@ DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PER
 CPU_METRICS_PROVIDERS = ("mesos_cpu", "cpu")
 
 
+class PrometheusAdapterResourceConfig(TypedDict, total=False):
+    """
+    Configuration for resource association in the Prometheus adapter.
+
+    NOTE: this dict is not total as there's no existing way in mypy to annotate
+    that you only need one of these keys can be populated (and that both can be
+    populated if so desired)
+
+    For more information, see:
+    https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md#association
+    """
+
+    # this should be a Go template string (e.g., "kube_<<.Resource>>") and will be used to
+    # extract k8s resources from a label
+    template: str
+    # if your labels don't have a common prefix (or if you only want to inspect certain labels)
+    # you'd want to use an override - these are of the form:
+    # {
+    #     "$SOME_PROMETHEUS_LABEL": {
+    #         "group": "$SOME_K8S_GROUP",
+    #         "resource": "$SOME_K8S_RESOURCE",
+    #     }
+    # }
+    overrides: Dict[str, Dict[str, str]]
+
+
 class PrometheusAdapterRule(TypedDict):
     """
     Typed version of the (minimal) set of Prometheus adapter rule configuration options that we use
+
+    For more information, see:
+    https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md
     """
 
-    # see https://github.com/DirectXMan12/k8s-prometheus-adapter/blob/master/docs/config.md
-    # for more detailed information
     # used for discovering what resources should be scaled
     seriesQuery: str
     # configuration for how to expose this rule to the HPA
     name: Dict[str, str]
     # used to associate metrics with k8s resources
-    resources: Dict[str, str]
+    resources: PrometheusAdapterResourceConfig
     # the actual query we want to send to Prometheus to use for scaling
     metricsQuery: str
 
@@ -235,56 +262,93 @@ def create_instance_cpu_scaling_rule(
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
     moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    # this series query is a bit of a hack: we don't use the Prometheus adapter as expected (i.e., very generic rules)
+    # but we still need to give it a query that returns something even though we're not going to use the series/label
+    # templates that are auto-extracted for us. That said: we still need this query to return labels that can be tied
+    # back to k8s objects WITHOUT using label_replace
+    series_query = f"""
+        kube_deployment_labels{{
+            deployment='{deployment_name}',
+            paasta_cluster='{paasta_cluster}',
+            namespace='paasta'
+        }}
+    """
     metrics_query = f"""
-        # during bounces we'll have multiple timeseries, so we average these together to get the current usage
-        avg(
-            avg_over_time(
-                (
-                    avg(
+        # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
+        # without these, the adapter doesn't know what deployment to associate the query result with
+        label_replace(
+            label_replace(
+                avg(
+                    avg_over_time(
                         (
-                            # get the total usage of all of our Pods divided by the number of CPUs available to those Pods
-                            # (i.e., the k8s CPU limit) in order to get the % of CPU used
-                            (
-                                sum(
-                                    irate(
-                                        container_cpu_usage_seconds_total{{namespace="paasta", container="{sanitized_instance_name}", paasta_cluster="{paasta_cluster}"}}[1m]
+                            avg(
+                                (
+                                    # get the total usage of all of our Pods divided by the number of CPUs available to
+                                    # those Pods (i.e., the k8s CPU limit) in order to get the % of CPU used
+                                    (
+                                        sum(
+                                            irate(
+                                                container_cpu_usage_seconds_total{{
+                                                    namespace="paasta",
+                                                    container="{sanitized_instance_name}",
+                                                    paasta_cluster="{paasta_cluster}"
+                                                }}[1m]
+                                            )
+                                        ) by (pod, container)
+                                        / (
+                                            sum(
+                                                container_spec_cpu_quota{{
+                                                    namespace="paasta",
+                                                    container="{sanitized_instance_name}",
+                                                    paasta_cluster="{paasta_cluster}"
+                                                }}
+                                                / container_spec_cpu_period{{
+                                                    namespace="paasta",
+                                                    paasta_cluster="{paasta_cluster}"
+                                                }}
+                                            ) by (pod, container)
+                                        )
                                     )
-                                ) by (pod, container)
-                                / (
-                                    sum(
-                                        container_spec_cpu_quota{{namespace="paasta", container="{sanitized_instance_name}", paasta_cluster="{paasta_cluster}"}}
-                                        / container_spec_cpu_period{{namespace="paasta", paasta_cluster="{paasta_cluster}"}}
-                                    ) by (pod, container)
+                                    # NOTE: we only have Pod names in our container_cpu* metrics, but we can't get a
+                                    # Deployment from those consistenly due to k8s limitations on certain field lengths
+                                    # - thus we need to extract this information from the ReplicaSet name (which is made
+                                    # possible by the fact that our ReplicaSets are named
+                                    # {{deployment}}-{{10 character hex string}}) so that our query only considers the
+                                    # service that we want to autoscale - without this we're only filtering by instance
+                                    # name and these are very much not unique
+                                    * on (pod) group_left(kube_deployment) label_replace(
+                                        # k8s:pod:info is an internal recording rule that joins kube_pod_info with
+                                        # kube_pod_status_phase
+                                        k8s:pod:info{{
+                                            created_by_name=~"{deployment_name}.*",
+                                            created_by_kind="ReplicaSet",
+                                            namespace="paasta",
+                                            paasta_cluster="{paasta_cluster}",
+                                            phase="Running"
+                                        }},
+                                        "kube_deployment",
+                                        "$1",
+                                        "created_by_name",
+                                        "(.+)-[a-f0-9]{{10}}"
+                                    )
                                 )
-                            )
-                            # NOTE: we only have Pod names in our container_cpu* metrics, but we can't get a Deployment
-                            # from those consistenly due to k8s limitations on certain field lengths - thus we need to
-                            # extract this information from the ReplicaSet name (which is made possible by the fact that
-                            # our ReplicaSets are named {{deployment}}-{{10 character hex string}}) so that our query only
-                            # considers the service that we want to autoscale - without this we're only filtering by instance
-                            # name and these are very much not unique
-                            * on (pod) group_left(kube_deployment) label_replace(
-                                # k8s:pod:info is an internal recording rule that joins kube_pod_info with kube_pod_status_phase
-                                k8s:pod:info{{created_by_name=~"{deployment_name}.*", created_by_kind="ReplicaSet", namespace="paasta", paasta_cluster="{paasta_cluster}", phase="Running"}},
-                                "kube_deployment",
-                                "$1",
-                                "created_by_name",
-                                "(.+)-[a-f0-9]{{10}}"
-                            )
-                        )
-                    ) by (kube_deployment)
-                )[{moving_average_window}s:]
-            )
-        ) * 100
+                            ) by (kube_deployment)
+                        )[{moving_average_window}s:]
+                    )
+                # these labels MUST match the equivalent ones in the seriesQuery
+                ) * 100, 'deployment', '{deployment_name}', '', ''), 'namespace', 'paasta', '', '')
     """
 
     return {
         "name": {"as": metric_name},
-        # we just need to associate this rule with a given k8s object (in this case, a Deployment) - but
-        # there's no cheap/easy query that gives us this value, so we just make a fake timeseries :)
-        "seriesQuery": f"label_replace(vector(1), 'kube_deployment', '{deployment_name}', '', '')",
+        "seriesQuery": _minify_promql(series_query),
         "metricsQuery": _minify_promql(metrics_query),
-        "resources": {"template": "kube_<<.Resource>>"},
+        "resources": {
+            "overrides": {
+                "namespace": {"resource": "namespace"},
+                "deployment": {"group": "apps", "resource": "deployments"},
+            },
+        },
     }
 
 
