@@ -95,7 +95,7 @@ Mesos
 -----
 
 PaaSTA uses Mesos to do the heavy lifting of running the actual services on
-pools of machines.  See the `official documentation <http://mesos.apache.org/gettingstarted/>`_
+pools of machines.  See the `official documentation <https://mesos.apache.org/getting-started/>`_
 on how to get started with Mesos.
 
 Marathon
@@ -165,11 +165,11 @@ Packages for nerve-tools and synapse-tools are available in our `bintray repo <h
 Sensu
 -----
 
-`Sensu <https://sensuapp.org/>`_ is a flexible and scalable monitoring system
+`Sensu <https://sensu.io/>`_ is a flexible and scalable monitoring system
 that allows clients to send alerts for arbitrary events. PaaSTA uses Sensu to
 allow individual teams to get alerts for their services.
 
-The `official documentation <https://sensuapp.org/docs/latest/overview>`_ has
+The `official documentation <https://docs.sensu.io/sensu-go/latest/>`_ has
 instructions on how to set it up.
 
 Out of the box Sensu doesn't understand team-centric routing, and must be combined

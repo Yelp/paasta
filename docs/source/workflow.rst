@@ -177,7 +177,7 @@ Current master has three draining methods:
 Monitoring
 ----------
 
-PaaSTA gives you a few `Sensu <https://sensuapp.org/docs/latest/>`_-powered
+PaaSTA gives you a few `Sensu <https://docs.sensu.io/sensu-go/latest/>`_-powered
 monitoring checks for free:
 
 * `setup_marathon_job <generated/paasta_tools.setup_marathon_job.html#module-paasta_tools.setup_marathon_job>`_:
