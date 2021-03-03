@@ -1,3 +1,11 @@
+paasta-tools (0.97.76) xenial; urgency=medium
+
+  * 0.97.76 tagged with 'make release'
+    Commit: Add --volume parameter to local-run. PAASTA-1262, PAASTA-
+    16089
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Mar 2021 13:09:41 -0800
+
 paasta-tools (0.97.75) xenial; urgency=medium
 
   * 0.97.75 tagged with 'make release'
