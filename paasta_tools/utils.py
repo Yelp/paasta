@@ -1108,7 +1108,10 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "build",
             {
                 "color": PaastaColors.blue,
-                "help": "Jenkins build jobs output, like the itest, promotion, security checks, etc.",
+                "help": (
+                    "Logs for pre-deployment steps, such as itests, "
+                    "image building, and security checks."
+                ),
                 "source_env": "devc",
             },
         ),
@@ -1116,7 +1119,10 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "deploy",
             {
                 "color": PaastaColors.cyan,
-                "help": "Output from the paasta deploy code. (setup_marathon_job, bounces, etc)",
+                "help": (
+                    "Logs for deployment steps and actions, such as "
+                    "bouncing, start/stop/restart, and instance cleanup."
+                ),
                 "additional_source_envs": ["devc"],
             },
         ),
@@ -1131,29 +1137,31 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "marathon",
             {
                 "color": PaastaColors.magenta,
-                "help": "Logs from Marathon for the service",
+                "help": "Logs from Marathon for the service (deprecated).",
             },
         ),
         (
             "app_output",
             {
                 "color": compose(PaastaColors.yellow, PaastaColors.bold),
-                "help": "Stderr and stdout of the actual process spawned by Mesos. "
-                "Convenience alias for both the stdout and stderr components",
+                "help": (
+                    "Stderr and stdout from a service's running processes. "
+                    "Alias for both the stdout and stderr components."
+                ),
             },
         ),
         (
             "stdout",
             {
                 "color": PaastaColors.yellow,
-                "help": "Stdout from the process spawned by Mesos.",
+                "help": "Stdout from a service's running processes.",
             },
         ),
         (
             "stderr",
             {
                 "color": PaastaColors.yellow,
-                "help": "Stderr from the process spawned by Mesos.",
+                "help": "Stderr from a service's running processes.",
             },
         ),
         (

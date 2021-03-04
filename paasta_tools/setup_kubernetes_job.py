@@ -48,11 +48,11 @@ log = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Creates marathon jobs.")
+    parser = argparse.ArgumentParser(description="Creates Kubernetes jobs.")
     parser.add_argument(
         "service_instance_list",
         nargs="+",
-        help="The list of marathon service instances to create or update",
+        help="The list of Kubernetes service instances to create or update",
         metavar="SERVICE%sINSTANCE" % SPACER,
     )
     parser.add_argument(
