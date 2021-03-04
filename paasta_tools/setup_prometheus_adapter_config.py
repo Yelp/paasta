@@ -265,7 +265,6 @@ def create_instance_cpu_scaling_rule(
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    metrics_query = f""""""
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
