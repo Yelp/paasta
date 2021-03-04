@@ -1,3 +1,12 @@
+paasta-tools (0.97.77) xenial; urgency=medium
+
+  * 0.97.77 tagged with 'make release'
+    Commit: Make paasta status print what it can even if an
+    error_message attribute exists. Make the error_message for
+    autoscaling issues a little more descriptive. PAASTA-17298
+
+ -- Evan Krall <krall@yelp.com>  Thu, 04 Mar 2021 11:25:21 -0800
+
 paasta-tools (0.97.76) xenial; urgency=medium
 
   * 0.97.76 tagged with 'make release'
