@@ -1132,11 +1132,6 @@ def print_kubernetes_status(
     kubernetes_status,
     verbose: int = 0,
 ) -> int:
-    error_message = kubernetes_status.error_message
-    if error_message:
-        output.append(error_message)
-        return 1
-
     bouncing_status = bouncing_status_human(
         kubernetes_status.app_count, kubernetes_status.bounce_method
     )
@@ -1232,6 +1227,11 @@ def print_kubernetes_status(
             kubernetes_status.envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
+
+    error_message = kubernetes_status.error_message
+    if error_message:
+        output.append("    " + PaastaColors.red(error_message))
+        return 1
     return 0
 
 

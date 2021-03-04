@@ -478,7 +478,7 @@ def kubernetes_status(
         except Exception as e:
             kstatus[
                 "error_message"
-            ] = f"Unknown error happened. Please contact #compute-infra for help: {e}"
+            ] = f"Unknown error occurred while fetching autoscaling status. Please contact #compute-infra for help: {e}"
 
     evicted_count = 0
     for pod in pod_list:

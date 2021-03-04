@@ -1191,7 +1191,7 @@ class TestPrintKubernetesStatus:
         )
 
         assert return_value == 1
-        assert output == ["Things went wrong"]
+        assert PaastaColors.red("Things went wrong") in output[-1]
 
     def test_successful_return_value(self, mock_kubernetes_status):
         return_value = print_kubernetes_status(
