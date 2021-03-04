@@ -1,3 +1,5 @@
+from typing import Optional
+
 from kubernetes.client.models.v2beta2_object_metric_status import (
     V2beta2ObjectMetricStatus,
 )
@@ -34,12 +36,19 @@ class HPAMetricsParser:
         )
         return status
 
-    def parse_current(self, metric) -> HPAMetricsDict:
+    def parse_current(self, metric) -> Optional[HPAMetricsDict]:
         """
         Parse current metrics
         """
-        metric_spec = getattr(metric, metric.type.lower())
         status: HPAMetricsDict = {}
+
+        # Sometimes, when the custom metrics adapter is having a bad day, we get metric = {"type": ""}
+        # Try to gracefully handle that.
+        try:
+            metric_spec = getattr(metric, metric.type.lower())
+        except AttributeError:
+            return None
+
         switchers = {
             "Pods": self.parse_pod_metric_current,
             "External": self.parse_external_metric_current,

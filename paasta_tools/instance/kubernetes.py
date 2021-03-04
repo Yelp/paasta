@@ -138,7 +138,8 @@ def autoscaling_status(
     if hpa.status.current_metrics is not None:
         for metric_spec in hpa.status.current_metrics:
             parsed = parser.parse_current(metric_spec)
-            metrics_by_name[parsed["name"]].update(parsed)
+            if parsed is not None:
+                metrics_by_name[parsed["name"]].update(parsed)
 
     metric_stats = list(metrics_by_name.values())
 
