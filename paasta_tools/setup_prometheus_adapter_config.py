@@ -271,6 +271,7 @@ def create_instance_cpu_scaling_rule(
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds", DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW
     )
+
     # this series query is a bit of a hack: we don't use the Prometheus adapter as expected (i.e., very generic rules)
     # but we still need to give it a query that returns something even though we're not going to use the series/label
     # templates that are auto-extracted for us. That said: we still need this query to return labels that can be tied
@@ -282,70 +283,97 @@ def create_instance_cpu_scaling_rule(
             namespace='paasta'
         }}
     """
+
+    cpu_usage = f"""
+        sum(
+            irate(
+                container_cpu_usage_seconds_total{{
+                    namespace="paasta",
+                    container="{sanitized_instance_name}",
+                    paasta_cluster="{paasta_cluster}"
+                }}[1m]
+            )
+        ) by (pod, container)
+    """
+
+    cpus_available = f"""
+        sum(
+            container_spec_cpu_quota{{
+                namespace="paasta",
+                container="{sanitized_instance_name}",
+                paasta_cluster="{paasta_cluster}"
+            }}
+            / container_spec_cpu_period{{
+                namespace="paasta",
+                paasta_cluster="{paasta_cluster}"
+            }}
+        ) by (pod, container)
+    """
+
+    # NOTE: we only have Pod names in our container_cpu* metrics, but we can't get a
+    # Deployment from those consistenly due to k8s limitations on certain field lengths
+    # - thus we need to extract this information from the ReplicaSet name (which is made
+    # possible by the fact that our ReplicaSets are named
+    # {{deployment}}-{{10 character hex string}}) so that our query only considers the
+    # service that we want to autoscale - without this we're only filtering by instance
+    # name and these are very much not unique
+    pod_info_join = f"""
+        on (pod) group_left(kube_deployment) label_replace(
+            # k8s:pod:info is an internal recording rule that joins kube_pod_info with
+            # kube_pod_status_phase
+            k8s:pod:info{{
+                created_by_name=~"{deployment_name}.*",
+                created_by_kind="ReplicaSet",
+                namespace="paasta",
+                paasta_cluster="{paasta_cluster}",
+                phase="Running"
+            }},
+            "kube_deployment",
+            "$1",
+            "created_by_name",
+            "(.+)-[a-f0-9]{{10}}"
+        )
+    """
+
+    # get the total usage of all of our Pods divided by the number of CPUs available to
+    # those Pods (i.e., the k8s CPU limit) in order to get the % of CPU used and then add
+    # some labels to this vector
+    average_cpu_usage_per_deployment = f"""
+        avg(
+            (({cpu_usage}) / ({cpus_available})) * {pod_info_join}
+        ) by (kube_deployment)
+    """
+
+    moving_average_cpu_usage_per_deployment = f"""
+        avg_over_time(
+            ({average_cpu_usage_per_deployment})[{moving_average_window}s:]
+        )
+    """
+
+    # for some reason, during bounces we lose the labels from the previous timeseries (and thus end up with two
+    # timeseries), so we avg these to merge them together
+    # NOTE: we multiply by 100 to return a number between [0, 100] to the HPA
+    moving_average_cpu_usage_percent = (
+        f"avg({moving_average_cpu_usage_per_deployment}) * 100"
+    )
+
     metrics_query = f"""
         # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
         # without these, the adapter doesn't know what deployment to associate the query result with
+        # NOTE: these labels MUST match the equivalent ones in the seriesQuery
         label_replace(
             label_replace(
-                avg(
-                    avg_over_time(
-                        (
-                            avg(
-                                (
-                                    # get the total usage of all of our Pods divided by the number of CPUs available to
-                                    # those Pods (i.e., the k8s CPU limit) in order to get the % of CPU used
-                                    (
-                                        sum(
-                                            irate(
-                                                container_cpu_usage_seconds_total{{
-                                                    namespace="paasta",
-                                                    container="{sanitized_instance_name}",
-                                                    paasta_cluster="{paasta_cluster}"
-                                                }}[1m]
-                                            )
-                                        ) by (pod, container)
-                                        / (
-                                            sum(
-                                                container_spec_cpu_quota{{
-                                                    namespace="paasta",
-                                                    container="{sanitized_instance_name}",
-                                                    paasta_cluster="{paasta_cluster}"
-                                                }}
-                                                / container_spec_cpu_period{{
-                                                    namespace="paasta",
-                                                    paasta_cluster="{paasta_cluster}"
-                                                }}
-                                            ) by (pod, container)
-                                        )
-                                    )
-                                    # NOTE: we only have Pod names in our container_cpu* metrics, but we can't get a
-                                    # Deployment from those consistenly due to k8s limitations on certain field lengths
-                                    # - thus we need to extract this information from the ReplicaSet name (which is made
-                                    # possible by the fact that our ReplicaSets are named
-                                    # {{deployment}}-{{10 character hex string}}) so that our query only considers the
-                                    # service that we want to autoscale - without this we're only filtering by instance
-                                    # name and these are very much not unique
-                                    * on (pod) group_left(kube_deployment) label_replace(
-                                        # k8s:pod:info is an internal recording rule that joins kube_pod_info with
-                                        # kube_pod_status_phase
-                                        k8s:pod:info{{
-                                            created_by_name=~"{deployment_name}.*",
-                                            created_by_kind="ReplicaSet",
-                                            namespace="paasta",
-                                            paasta_cluster="{paasta_cluster}",
-                                            phase="Running"
-                                        }},
-                                        "kube_deployment",
-                                        "$1",
-                                        "created_by_name",
-                                        "(.+)-[a-f0-9]{{10}}"
-                                    )
-                                )
-                            ) by (kube_deployment)
-                        )[{moving_average_window}s:]
-                    )
-                # these labels MUST match the equivalent ones in the seriesQuery
-                ) * 100, 'deployment', '{deployment_name}', '', ''), 'namespace', 'paasta', '', '')
+                {moving_average_cpu_usage_percent},
+                'deployment',
+                '{deployment_name}',
+                '',
+                ''
+            ),
+            'namespace',
+            'paasta',
+            '',
+            ''
+        )
     """
 
     return {
