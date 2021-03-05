@@ -160,25 +160,39 @@ def create_instance_uwsgi_scaling_rule(
     replica_filter_terms = (
         f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
     )
-    metrics_query = f"""
-            avg_over_time(
-                (
-                    sum(
-                        avg(
-                            uwsgi_worker_busy{{{worker_filter_terms}}}
-                        ) by (kube_pod, kube_deployment)
-                    ) by (kube_deployment) / {setpoint - offset}
-                )[{moving_average_window}s:]
-            ) / (
-                    scalar(
-                        kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
-                        or
-                        max_over_time(
-                            kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-                        )
-                    )
+
+    current_replicas = f"""
+        (
+            scalar(
+                kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                or
+                max_over_time(
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
                 )
+            )
+        )
     """
+    load_per_instance = f"""
+        avg(
+            uwsgi_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    desired_instances_at_each_point_in_time = f"""
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment) / {setpoint - offset}
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {desired_instances_at_each_point_in_time}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {current_replicas}
+    """
+
     metric_name = f"{deployment_name}-uwsgi-prom"
 
     return {
