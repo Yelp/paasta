@@ -177,10 +177,13 @@ def create_instance_uwsgi_scaling_rule(
             uwsgi_worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
-    desired_instances_at_each_point_in_time = f"""
+    total_load = f"""
         sum(
             {load_per_instance}
-        ) by (kube_deployment) / {setpoint - offset}
+        ) by (kube_deployment)
+    """
+    desired_instances_at_each_point_in_time = f"""
+        {total_load} / {setpoint - offset}
     """
     desired_instances = f"""
         avg_over_time(
