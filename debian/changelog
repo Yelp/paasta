@@ -1,3 +1,11 @@
+paasta-tools (0.97.78) xenial; urgency=medium
+
+  * 0.97.78 tagged with 'make release'
+    Commit: Implement CPU-based moving average window autoscaling
+    (#3046)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Mar 2021 15:18:30 -0800
+
 paasta-tools (0.97.77) xenial; urgency=medium
 
   * 0.97.77 tagged with 'make release'
