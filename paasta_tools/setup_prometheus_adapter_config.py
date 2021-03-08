@@ -162,25 +162,38 @@ def create_instance_uwsgi_scaling_rule(
     )
 
     current_replicas = f"""
-        (
-            scalar(
-                kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
-                or
-                max_over_time(
-                    kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-                )
+        sum(
+            label_join(
+                (
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                    or
+                    max_over_time(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                    )
+                ),
+                "kube_deployment", "", "deployment"
             )
-        )
+        ) by (kube_deployment)
     """
     load_per_instance = f"""
         avg(
             uwsgi_worker_busy{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
+    missing_instances = f"""
+        clamp_min(
+            {current_replicas} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
     total_load = f"""
+    (
         sum(
             {load_per_instance}
         ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
     """
     desired_instances_at_each_point_in_time = f"""
         {total_load} / {setpoint - offset}
