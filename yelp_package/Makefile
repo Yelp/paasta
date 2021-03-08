@@ -98,17 +98,12 @@ clean:
 
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
-# github_changelog_generator comes from
-# https://github.com/skywinder/github-changelog-generator
-# Follow the instructions to generate a github api token
 release:
 	dch -v $(RELEASE) --distribution xenial --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/__version__ = .*/__version__ = \"$(VERSION)\"/" ../paasta_tools/__init__.py
-	@echo "$(RELEASE) has the changelog set."
-	github_changelog_generator -u Yelp -p paasta --since-tag v0.72.0 --max-issues=100 --future-release $(RELEASE) --output ../CHANGELOG.md || echo github_changelog_generator not installed, not generating changelog!! || true
 	cd .. && make docs || true
 	@git diff
 	@echo "Now Run:"
 	@echo 'git commit -a -m "Released $(RELEASE) via make release"'
-	@echo 'git tag --force v$(VERSION)'
-	@echo 'git push --tags origin master'
+	@echo 'git tag v$(VERSION)'
+	@echo 'git push --atomic origin master v$(VERSION)'
