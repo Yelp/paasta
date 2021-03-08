@@ -292,9 +292,9 @@ def create_instance_cpu_scaling_rule(
         avg(
             irate(
                 container_cpu_usage_seconds_total{{
-                    namespace="paasta",
-                    container="{sanitized_instance_name}",
-                    paasta_cluster="{paasta_cluster}"
+                    namespace='paasta',
+                    container='{sanitized_instance_name}',
+                    paasta_cluster='{paasta_cluster}'
                 }}[1m]
             )
         ) by (pod, container)
@@ -303,13 +303,13 @@ def create_instance_cpu_scaling_rule(
     cpus_available = f"""
         sum(
             container_spec_cpu_quota{{
-                namespace="paasta",
-                container="{sanitized_instance_name}",
-                paasta_cluster="{paasta_cluster}"
+                namespace='paasta',
+                container='{sanitized_instance_name}',
+                paasta_cluster='{paasta_cluster}'
             }}
             / container_spec_cpu_period{{
-                namespace="paasta",
-                paasta_cluster="{paasta_cluster}"
+                namespace='paasta',
+                paasta_cluster='{paasta_cluster}'
             }}
         ) by (pod, container)
     """
@@ -321,10 +321,10 @@ def create_instance_cpu_scaling_rule(
     # {{deployment}}-{{10 character hex string}}) so that our query only considers the
     # service that we want to autoscale - without this we're only filtering by instance
     # name and these are very much not unique
+    # k8s:pod:info is an internal recording rule that joins kube_pod_info with
+    # kube_pod_status_phase
     pod_info_join = f"""
         on (pod) group_left(kube_deployment) label_replace(
-            # k8s:pod:info is an internal recording rule that joins kube_pod_info with
-            # kube_pod_status_phase
             k8s:pod:info{{
                 created_by_name=~'{deployment_name}.*',
                 created_by_kind='ReplicaSet',
