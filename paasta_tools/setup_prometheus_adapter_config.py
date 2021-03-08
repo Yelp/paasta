@@ -16,7 +16,6 @@ Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
 import argparse
 import logging
-import re
 import sys
 from pathlib import Path
 from typing import cast
@@ -36,8 +35,15 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -58,20 +64,49 @@ DEFAULT_SCRAPE_PERIOD_S = 10
 DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
 
+CPU_METRICS_PROVIDERS = ("mesos_cpu", "cpu")
+
+
+class PrometheusAdapterResourceConfig(TypedDict, total=False):
+    """
+    Configuration for resource association in the Prometheus adapter.
+
+    NOTE: this dict is not total as there's no existing way in mypy to annotate
+    that you only need one of these keys can be populated (and that both can be
+    populated if so desired)
+
+    For more information, see:
+    https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md#association
+    """
+
+    # this should be a Go template string (e.g., "kube_<<.Resource>>") and will be used to
+    # extract k8s resources from a label
+    template: str
+    # if your labels don't have a common prefix (or if you only want to inspect certain labels)
+    # you'd want to use an override - these are of the form:
+    # {
+    #     "$SOME_PROMETHEUS_LABEL": {
+    #         "group": "$SOME_K8S_GROUP",
+    #         "resource": "$SOME_K8S_RESOURCE",
+    #     }
+    # }
+    overrides: Dict[str, Dict[str, str]]
+
 
 class PrometheusAdapterRule(TypedDict):
     """
     Typed version of the (minimal) set of Prometheus adapter rule configuration options that we use
+
+    For more information, see:
+    https://github.com/kubernetes-sigs/prometheus-adapter/blob/master/docs/config.md
     """
 
-    # see https://github.com/DirectXMan12/k8s-prometheus-adapter/blob/master/docs/config.md
-    # for more detailed information
     # used for discovering what resources should be scaled
     seriesQuery: str
     # configuration for how to expose this rule to the HPA
     name: Dict[str, str]
     # used to associate metrics with k8s resources
-    resources: Dict[str, str]
+    resources: PrometheusAdapterResourceConfig
     # the actual query we want to send to Prometheus to use for scaling
     metricsQuery: str
 
@@ -125,8 +160,26 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _minify_promql(query: str) -> str:
+    """
+    Given a PromQL query, return the same query with most whitespace collapsed.
+
+    This is useful for allowing us to nicely format queries in code, but minimize the size of our
+    queries when they're actually sent to Prometheus by the adapter.
+    """
+    trimmed_query = []
+    # while we could potentially do some regex magic, we want to ensure
+    # that we don't mess up any labels (even though they really shouldn't
+    # have any whitespace in them in the first place) - thus we just just
+    # strip any leading/trailing whitespace and leave everything else alone
+    for line in query.split("\n"):
+        trimmed_query.append(line.strip())
+
+    return (" ".join(trimmed_query)).strip()
+
+
 def should_create_uwsgi_scaling_rule(
-    instance: str, autoscaling_config: AutoscalingParamsDict,
+    autoscaling_config: AutoscalingParamsDict,
 ) -> Tuple[bool, Optional[str]]:
     """
     Determines whether we should configure the prometheus adapter for a given service.
@@ -151,7 +204,9 @@ def create_instance_uwsgi_scaling_rule(
     Creates a Prometheus adapter rule config for a given service instance.
     """
     setpoint = autoscaling_config["setpoint"]
-    moving_average_window = autoscaling_config["moving_average_window_seconds"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
     # this should always be set, but we default to 0 for safety as the worst thing that would happen
     # is that we take a couple more iterations than required to hit the desired setpoint
     offset = autoscaling_config.get("offset", 0)
@@ -185,9 +240,170 @@ def create_instance_uwsgi_scaling_rule(
         "name": {"as": metric_name},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
-        # our nicely formatted query has enough whitespace that collapsing said
-        # whitespace cuts down the size of the string by a meaningful amount
-        "metricsQuery": re.sub(pattern=r"\s+", repl=" ", string=metrics_query).strip(),
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def should_create_cpu_scaling_rule(
+    autoscaling_config: AutoscalingParamsDict,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determines whether we should configure the prometheus adapter for a given service.
+    Returns a 2-tuple of (should_create, reason_to_skip)
+    """
+    if autoscaling_config["metrics_provider"] in CPU_METRICS_PROVIDERS:
+        if not autoscaling_config.get("use_prometheus", False):
+            return False, "requested cpu autoscaling, but not using Prometheus"
+
+        return True, None
+
+    return False, "did not request cpu autoscaling"
+
+
+def create_instance_cpu_scaling_rule(
+    service: str,
+    instance: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    """
+    Creates a Prometheus adapter rule config for a given service instance.
+    """
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+    sanitized_instance_name = sanitise_kubernetes_name(instance)
+    metric_name = f"{deployment_name}-cpu-prom"
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds", DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
+
+    # this series query is a bit of a hack: we don't use the Prometheus adapter as expected (i.e., very generic rules)
+    # but we still need to give it a query that returns something even though we're not going to use the series/label
+    # templates that are auto-extracted for us. That said: we still need this query to return labels that can be tied
+    # back to k8s objects WITHOUT using label_replace
+    series_query = f"""
+        kube_deployment_labels{{
+            deployment='{deployment_name}',
+            paasta_cluster='{paasta_cluster}',
+            namespace='paasta'
+        }}
+    """
+
+    cpu_usage = f"""
+        avg(
+            irate(
+                container_cpu_usage_seconds_total{{
+                    namespace='paasta',
+                    container='{sanitized_instance_name}',
+                    paasta_cluster='{paasta_cluster}'
+                }}[1m]
+            )
+        ) by (pod, container)
+    """
+
+    cpus_available = f"""
+        sum(
+            container_spec_cpu_quota{{
+                namespace='paasta',
+                container='{sanitized_instance_name}',
+                paasta_cluster='{paasta_cluster}'
+            }}
+            / container_spec_cpu_period{{
+                namespace='paasta',
+                paasta_cluster='{paasta_cluster}'
+            }}
+        ) by (pod, container)
+    """
+
+    # NOTE: we only have Pod names in our container_cpu* metrics, but we can't get a
+    # Deployment from those consistenly due to k8s limitations on certain field lengths
+    # - thus we need to extract this information from the ReplicaSet name (which is made
+    # possible by the fact that our ReplicaSets are named
+    # {{deployment}}-{{10 character hex string}}) so that our query only considers the
+    # service that we want to autoscale - without this we're only filtering by instance
+    # name and these are very much not unique
+    # k8s:pod:info is an internal recording rule that joins kube_pod_info with
+    # kube_pod_status_phase
+    pod_info_join = f"""
+        on (pod) group_left(kube_deployment) label_replace(
+            k8s:pod:info{{
+                created_by_name=~'{deployment_name}.*',
+                created_by_kind='ReplicaSet',
+                namespace='paasta',
+                paasta_cluster='{paasta_cluster}',
+                phase='Running'
+            }},
+            'kube_deployment',
+            '$1',
+            'created_by_name',
+            '(.+)-[a-f0-9]{{10}}'
+        )
+    """
+
+    # get the total usage of all of our Pods divided by the number of CPUs available to
+    # those Pods (i.e., the k8s CPU limit) in order to get the % of CPU used and then add
+    # some labels to this vector
+    load = f"""
+        sum(
+            (({cpu_usage}) / ({cpus_available})) * {pod_info_join}
+        ) by (kube_deployment)
+    """
+
+    current_replicas = f"""
+        (
+            scalar(
+                kube_deployment_spec_replicas{{paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'}} >= 0
+                or
+                max_over_time(
+                    kube_deployment_spec_replicas{{paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            )
+        )
+    """
+
+    # we want to calculate:
+    # * the desired replicas based on instantaneous load,
+    # * smooth that over time,
+    # * and then divide by the non-smoothed current number of replicas.
+    # otherwise, if we do the naive thing and take the average of the load inside avg_over_time,
+    # then we'll see the oscillations that we fixed in PR #2862
+    moving_average_load = f"""
+        avg_over_time(({load})[{moving_average_window}s:]) / {current_replicas}
+    """
+
+    # for some reason, during bounces we lose the labels from the previous timeseries (and thus end up with two
+    # timeseries), so we avg these to merge them together
+    # NOTE: we multiply by 100 to return a number between [0, 100] to the HPA
+    moving_average_load_percent = f"avg({moving_average_load}) * 100"
+
+    # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
+    # without these, the adapter doesn't know what deployment to associate the query result with
+    # NOTE: these labels MUST match the equivalent ones in the seriesQuery
+    metrics_query = f"""
+        label_replace(
+            label_replace(
+                {moving_average_load_percent},
+                'deployment',
+                '{deployment_name}',
+                '',
+                ''
+            ),
+            'namespace',
+            'paasta',
+            '',
+            ''
+        )
+    """
+
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": _minify_promql(series_query),
+        "metricsQuery": _minify_promql(metrics_query),
+        "resources": {
+            "overrides": {
+                "namespace": {"resource": "namespace"},
+                "deployment": {"group": "apps", "resource": "deployments"},
+            },
+        },
     }
 
 
@@ -205,7 +421,7 @@ def get_rules_for_service_instance(
     rules: List[PrometheusAdapterRule] = []
 
     should_create_uwsgi, skip_uwsgi_reason = should_create_uwsgi_scaling_rule(
-        instance=instance_name, autoscaling_config=autoscaling_config,
+        autoscaling_config=autoscaling_config,
     )
     if should_create_uwsgi:
         rules.append(
@@ -219,6 +435,22 @@ def get_rules_for_service_instance(
     else:
         log.debug(
             "Skipping %s.%s - %s.", service_name, instance_name, skip_uwsgi_reason,
+        )
+    should_create_cpu, skip_cpu_reason = should_create_cpu_scaling_rule(
+        autoscaling_config=autoscaling_config,
+    )
+    if should_create_cpu:
+        rules.append(
+            create_instance_cpu_scaling_rule(
+                service=service_name,
+                instance=instance_name,
+                autoscaling_config=autoscaling_config,
+                paasta_cluster=paasta_cluster,
+            )
+        )
+    else:
+        log.debug(
+            "Skipping %s.%s - %s.", service_name, instance_name, skip_cpu_reason,
         )
 
     return rules

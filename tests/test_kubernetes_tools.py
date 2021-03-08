@@ -57,6 +57,9 @@ from kubernetes.client import V2beta2MetricIdentifier
 from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2ResourceMetricSource
+from kubernetes.client.models.v2beta2_object_metric_source import (
+    V2beta2ObjectMetricSource,
+)
 from kubernetes.client.rest import ApiException
 
 from paasta_tools import kubernetes_tools
@@ -1717,13 +1720,14 @@ class TestKubernetesDeploymentConfig:
                 name="kurupt-fm",
             )
 
-    def test_get_autoscaling_metric_spec_mesos_cpu(self):
+    @pytest.mark.parametrize("metrics_provider", ("mesos_cpu", "cpu",))
+    def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
         config_dict = KubernetesDeploymentConfigDict(
             {
                 "min_instances": 1,
                 "max_instances": 3,
-                "autoscaling": {"metrics_provider": "mesos_cpu", "setpoint": 0.5},
+                "autoscaling": {"metrics_provider": metrics_provider, "setpoint": 0.5},
             }
         )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
@@ -1755,6 +1759,74 @@ class TestKubernetesDeploymentConfig:
                             ),
                         ),
                     )
+                ],
+                scale_target_ref=V2beta2CrossVersionObjectReference(
+                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                ),
+            ),
+        )
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
+
+    @pytest.mark.parametrize("metrics_provider", ("mesos_cpu", "cpu",))
+    def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
+        # with cpu
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_provider": metrics_provider,
+                    "setpoint": 0.5,
+                    "use_prometheus": True,
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config, "fake_name", "cluster", KubeClient(),
+        )
+        annotations: Dict[Any, Any] = {}
+        expected_res = V2beta2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name", namespace="paasta", annotations=annotations
+            ),
+            spec=V2beta2HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=f"service-instance-{metrics_provider}-prom"
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                            target=V2beta2MetricTarget(type="Value", value=50,),
+                        ),
+                    ),
+                    V2beta2MetricSpec(
+                        type="Resource",
+                        resource=V2beta2ResourceMetricSource(
+                            name="cpu",
+                            target=V2beta2MetricTarget(
+                                type="Utilization", average_utilization=50.0,
+                            ),
+                        ),
+                    ),
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
