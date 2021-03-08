@@ -53,6 +53,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.utils import remove_ansi_escape_sequences
+from tests.conftest import Struct
 
 
 def make_fake_instance_conf(
@@ -861,30 +862,6 @@ def test_status_with_registration(
         system_paasta_config=system_paasta_config,
         verbose=args.verbose,
     )
-
-
-class Struct:
-    """
-    convert a dictionary to an object
-    """
-
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-
-    def __iter__(self):
-        return iter(self.__dict__)
-
-    def __getitem__(self, property_name):
-        """Get a property value by name.
-        :type property_name: str
-        """
-        return self.__dict__[property_name]
-
-    def __setitem__(self, property_name, val):
-        """Set a property value by name.
-        :type property_name: str
-        """
-        self.__dict__[property_name] = val
 
 
 @pytest.fixture
