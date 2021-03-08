@@ -326,16 +326,16 @@ def create_instance_cpu_scaling_rule(
             # k8s:pod:info is an internal recording rule that joins kube_pod_info with
             # kube_pod_status_phase
             k8s:pod:info{{
-                created_by_name=~"{deployment_name}.*",
-                created_by_kind="ReplicaSet",
-                namespace="paasta",
-                paasta_cluster="{paasta_cluster}",
-                phase="Running"
+                created_by_name=~'{deployment_name}.*',
+                created_by_kind='ReplicaSet',
+                namespace='paasta',
+                paasta_cluster='{paasta_cluster}',
+                phase='Running'
             }},
-            "kube_deployment",
-            "$1",
-            "created_by_name",
-            "(.+)-[a-f0-9]{{10}}"
+            'kube_deployment',
+            '$1',
+            'created_by_name',
+            '(.+)-[a-f0-9]{{10}}'
         )
     """
 
