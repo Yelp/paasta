@@ -285,7 +285,7 @@ def create_instance_cpu_scaling_rule(
     """
 
     cpu_usage = f"""
-        sum(
+        avg(
             irate(
                 container_cpu_usage_seconds_total{{
                     namespace="paasta",
@@ -338,24 +338,38 @@ def create_instance_cpu_scaling_rule(
     # get the total usage of all of our Pods divided by the number of CPUs available to
     # those Pods (i.e., the k8s CPU limit) in order to get the % of CPU used and then add
     # some labels to this vector
-    average_cpu_usage_per_deployment = f"""
-        avg(
+    load = f"""
+        sum(
             (({cpu_usage}) / ({cpus_available})) * {pod_info_join}
         ) by (kube_deployment)
     """
 
-    moving_average_cpu_usage_per_deployment = f"""
-        avg_over_time(
-            ({average_cpu_usage_per_deployment})[{moving_average_window}s:]
+    current_replicas = f"""
+        (
+            scalar(
+                kube_deployment_spec_replicas{{paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'}} >= 0
+                or
+                max_over_time(
+                    kube_deployment_spec_replicas{{paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
+            )
         )
+    """
+
+    # we want to calculate:
+    # * the desired replicas based on instantaneous load,
+    # * smooth that over time,
+    # * and then divide by the non-smoothed current number of replicas.
+    # otherwise, if we do the naive thing and take the average of the load inside avg_over_time,
+    # then we'll see the oscillations that we fixed in PR #2862
+    moving_average_load = f"""
+        avg_over_time(({load})[{moving_average_window}s:]) / {current_replicas}
     """
 
     # for some reason, during bounces we lose the labels from the previous timeseries (and thus end up with two
     # timeseries), so we avg these to merge them together
     # NOTE: we multiply by 100 to return a number between [0, 100] to the HPA
-    moving_average_cpu_usage_percent = (
-        f"avg({moving_average_cpu_usage_per_deployment}) * 100"
-    )
+    moving_average_load_percent = f"avg({moving_average_load}) * 100"
 
     metrics_query = f"""
         # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
@@ -363,7 +377,7 @@ def create_instance_cpu_scaling_rule(
         # NOTE: these labels MUST match the equivalent ones in the seriesQuery
         label_replace(
             label_replace(
-                {moving_average_cpu_usage_percent},
+                {moving_average_load_percent},
                 'deployment',
                 '{deployment_name}',
                 '',
