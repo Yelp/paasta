@@ -1,6 +1,7 @@
 import pytest
 
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_cpu_scaling_rule,
 )
@@ -259,3 +260,20 @@ def test_get_rules_for_service_instance(
         )
         == expected_rules
     )
+
+
+@pytest.mark.parametrize(
+    "query,expected",
+    [
+        # empty strings shouldn't be touched (or happen...)
+        ("", ""),
+        # we should have no leading/trailing whitespace
+        ("\t\t\ttest{label='a'}\n", "test{label='a'}"),
+        # we should collapse internal whitespace
+        ("\t \ttest{label='a'}\n   test{label='b'}", "test{label='a'} test{label='b'}"),
+        # we shouldn't touch whitespace inside of labels
+        ("\t \ttest{label='a  b'}\n", "test{label='a  b'}"),
+    ],
+)
+def test__minify_promql(query: str, expected: str) -> None:
+    assert _minify_promql(query) == expected

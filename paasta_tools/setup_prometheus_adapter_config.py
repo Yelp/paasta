@@ -16,7 +16,6 @@ Small utility to update the Prometheus adapter's config to match soaconfigs.
 """
 import argparse
 import logging
-import re
 import sys
 from pathlib import Path
 from typing import cast
@@ -163,15 +162,20 @@ def parse_args() -> argparse.Namespace:
 
 def _minify_promql(query: str) -> str:
     """
-    Given a PromQL query, return the same query without comments and with some whitespace collapsed.
+    Given a PromQL query, return the same query with most whitespace collapsed.
 
     This is useful for allowing us to nicely format queries in code, but minimize the size of our
     queries when they're actually sent to Prometheus by the adapter.
     """
-    comments_removed = re.sub(r"#.*\n", "", query)
-    whitespace_trimmed = re.sub(r"\s+", " ", comments_removed)
+    trimmed_query = []
+    # while we could potentially do some regex magic, we want to ensure
+    # that we don't mess up any labels (even though they really shouldn't
+    # have any whitespace in them in the first place) - thus we just just
+    # strip any leading/trailing whitespace and leave everything else alone
+    for line in query.split("\n"):
+        trimmed_query.append(line.strip())
 
-    return whitespace_trimmed.strip()
+    return (" ".join(trimmed_query)).strip()
 
 
 def should_create_uwsgi_scaling_rule(
@@ -371,10 +375,10 @@ def create_instance_cpu_scaling_rule(
     # NOTE: we multiply by 100 to return a number between [0, 100] to the HPA
     moving_average_load_percent = f"avg({moving_average_load}) * 100"
 
+    # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
+    # without these, the adapter doesn't know what deployment to associate the query result with
+    # NOTE: these labels MUST match the equivalent ones in the seriesQuery
     metrics_query = f"""
-        # we need to do some somwhat hacky label_replaces to inject labels that will then be used for association
-        # without these, the adapter doesn't know what deployment to associate the query result with
-        # NOTE: these labels MUST match the equivalent ones in the seriesQuery
         label_replace(
             label_replace(
                 {moving_average_load_percent},
