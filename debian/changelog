@@ -1,3 +1,10 @@
+paasta-tools (0.97.79) xenial; urgency=medium
+
+  * 0.97.79 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17299_pad_missing_metrics"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 08 Mar 2021 16:45:05 -0800
+
 paasta-tools (0.97.78) xenial; urgency=medium
 
   * 0.97.78 tagged with 'make release'
