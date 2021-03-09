@@ -2,3 +2,5 @@
 # See y/smartstack-config
 main:
   proxy_port: {{cookiecutter.proxy_port}}
+  advertise: [habitat, region]
+  discover: habitat
