@@ -175,6 +175,8 @@ DISCOVERY_ATTRIBUTES = {
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
+DEFAULT_PRESTOP_SLEEP_SECONDS = 30
+DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -800,7 +802,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             command=[
                                 "/bin/sh",
                                 "-c",
-                                f"/usr/bin/hadown {registrations}; sleep 31",
+                                f"/usr/bin/hadown {registrations}; sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
                             ]
                         )
                     )
@@ -835,6 +837,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name=UWSGI_EXPORTER_POD_NAME,
                 env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
+                                # metrics up until our Pod dies
+                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                            ]
+                        )
+                    )
+                ),
             )
 
         return None
@@ -1074,7 +1089,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # default pre stop hook for the container
         if not command:
-            return V1Handler(_exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"]))
+            return V1Handler(
+                _exec=V1ExecAction(
+                    command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
+                )
+            )
         if isinstance(command, str):
             command = [command]
         return V1Handler(_exec=V1ExecAction(command=command))
