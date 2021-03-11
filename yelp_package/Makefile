@@ -100,6 +100,8 @@ VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e 's/\x27/"/g')
 release:
 	@if [[ "$$(git status --porcelain --untracked-files=no :^/yelp_package/Makefile)" != '' ]]; then echo "Error: Working directory is not clean; only changes to yelp_package/Makefile are allowed when cutting a release."; exit 1; fi
+	$(eval untracked_files_tmpfile=$(shell mktemp))
+	git status --porcelain --untracked-files=all :^/yelp_package/Makefile > $(untracked_files_tmpfile)
 	@if [[ "$$(git status --porcelain --untracked-files=normal :/docs/source/generated)" != '' ]]; then echo "Error: Untracked files found in docs/source/generated."; exit 1; fi
 	@if existing_sha=$$(git rev-parse --verify --quiet v$(VERSION)); then echo "Error: tag v$(VERSION) exists and points at $$existing_sha"; exit 1; fi
 	@read upstream_master junk <<<"$$(git ls-remote -h origin master)" && if ! git merge-base --is-ancestor $$upstream_master HEAD; then echo "Error: HEAD is missing commits from origin/master ($$upstream_master)."; exit 1; fi
@@ -107,6 +109,6 @@ release:
 	sed -i -e "s/__version__ = .*/__version__ = \"$(VERSION)\"/" ../paasta_tools/__init__.py
 	cd .. && make docs || true
 	git commit -m "Released $(RELEASE) via make release" ./Makefile ../debian/changelog ../paasta_tools/__init__.py ../docs/source/generated/
-	@if [[ "$$(git status --porcelain)" != '' ]]; then echo "Error: automatic git commit left some files uncommitted. Fix the git commit command in yelp_package/Makefile to include any automatically generated files that it is currently missing."; exit 1; fi
+	if [[ "$$(git status --porcelain --untracked-files=all)" != "$$(<$(untracked_files_tmpfile))" ]]; then echo "Error: automatic git commit left some files uncommitted. Fix the git commit command in yelp_package/Makefile to include any automatically generated files that it is currently missing."; exit 1; fi
 	git tag v$(VERSION)
 	git push --atomic origin master v$(VERSION)
