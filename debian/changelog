@@ -1,3 +1,10 @@
+paasta-tools (0.97.81) xenial; urgency=medium
+
+  * 0.97.81 tagged with 'make release'
+    Commit: Bump Sticht to v1.1.13
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 11 Mar 2021 14:03:35 -0800
+
 paasta-tools (0.97.80) xenial; urgency=medium
 
   * 0.97.80 tagged with 'make release'
