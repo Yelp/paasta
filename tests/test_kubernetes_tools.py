@@ -917,6 +917,7 @@ class TestKubernetesDeploymentConfig:
                         period_seconds=10,
                         timeout_seconds=10,
                     ),
+                    readiness_probe=None,
                     name="fm",
                     ports=ports,
                     volume_mounts=mock_get_volume_mounts.return_value,
@@ -1017,6 +1018,21 @@ class TestKubernetesDeploymentConfig:
             self.deployment.get_liveness_probe(service_namespace_config)
             == liveness_probe
         )
+
+    def test_get_readiness_probe_in_mesh(self):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.is_in_smartstack.return_value = True
+        assert self.deployment.get_readiness_probe(service_namespace_config) is None
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_liveness_probe",
+        autospec=True,
+    )
+    def test_get_readiness_probe_not_in_mesh(self, mock_get_liveness_probe):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.is_in_smartstack.return_value = False
+        readiness_probe = self.deployment.get_readiness_probe(service_namespace_config)
+        assert readiness_probe == mock_get_liveness_probe.return_value
 
     def test_get_security_context_without_cap_add(self):
         expected_security_context = V1SecurityContext(

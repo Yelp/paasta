@@ -1089,6 +1089,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
+            readiness_probe=self.get_readiness_probe(service_namespace_config),
             ports=[V1ContainerPort(container_port=port) for port in ports],
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
@@ -1104,6 +1105,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             hacheck_sidecar_volumes=hacheck_sidecar_volumes,
         )
         return containers
+
+    def get_readiness_probe(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> Optional[V1Probe]:
+        if service_namespace_config.is_in_smartstack():
+            return None
+        else:
+            return self.get_liveness_probe(service_namespace_config)
 
     def get_kubernetes_container_termination_action(self) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
