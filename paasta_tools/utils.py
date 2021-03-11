@@ -1390,6 +1390,7 @@ def format_log_line(
     instance: str,
     component: str,
     line: str,
+    pod: str = None,
     timestamp: str = None,
 ) -> str:
     """Accepts a string 'line'.
@@ -1397,6 +1398,7 @@ def format_log_line(
     Returns an appropriately-formatted dictionary which can be serialized to
     JSON for logging and which contains 'line'.
     """
+
     validate_log_component(component)
     if not timestamp:
         timestamp = _now()
@@ -1408,6 +1410,7 @@ def format_log_line(
             "cluster": cluster,
             "service": service,
             "instance": instance,
+            "pod": pod,
             "component": component,
             "message": line,
         },

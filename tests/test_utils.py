@@ -64,6 +64,7 @@ def test_format_log_line():
     fake_cluster = "fake_cluster"
     fake_service = "fake_service"
     fake_instance = "fake_instance"
+    fake_pod = "fake_pod"
     fake_component = "build"
     fake_level = "debug"
     fake_now = "fake_now"
@@ -74,6 +75,7 @@ def test_format_log_line():
             "cluster": fake_cluster,
             "service": fake_service,
             "instance": fake_instance,
+            "pod": fake_pod,
             "component": fake_component,
             "message": input_line,
         },
@@ -86,6 +88,7 @@ def test_format_log_line():
             cluster=fake_cluster,
             service=fake_service,
             instance=fake_instance,
+            pod=fake_pod,
             component=fake_component,
             line=input_line,
         )
@@ -107,6 +110,7 @@ def test_format_log_line_with_timestamp():
     fake_cluster = "fake_cluster"
     fake_service = "fake_service"
     fake_instance = "fake_instance"
+    fake_pod = "fake_pod"
     fake_component = "build"
     fake_level = "debug"
     fake_timestamp = "fake_timestamp"
@@ -117,6 +121,7 @@ def test_format_log_line_with_timestamp():
             "cluster": fake_cluster,
             "service": fake_service,
             "instance": fake_instance,
+            "pod": fake_pod,
             "component": fake_component,
             "message": input_line,
         },
@@ -130,6 +135,7 @@ def test_format_log_line_with_timestamp():
         fake_component,
         input_line,
         timestamp=fake_timestamp,
+        pod=fake_pod,
     )
     assert actual == expected
 

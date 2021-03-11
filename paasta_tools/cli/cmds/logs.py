@@ -256,7 +256,7 @@ def paasta_log_line_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
-    pods: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
@@ -290,7 +290,7 @@ def paasta_app_output_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
-    pods: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
@@ -672,7 +672,7 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
-        pods: Iterable[str],
+        pods: Iterable[str] = None,
         raw_mode: bool = False,
         strip_headers: bool = False,
     ) -> None:
@@ -857,8 +857,8 @@ class ScribeLogReader(LogReader):
                 components=components,
                 clusters=clusters,
                 instances=instances,
-                pods=pods,
                 aggregated_logs=aggregated_logs,
+                pods=pods,
                 filter_fn=stream_info.filter_fn,
                 parser_fn=stream_info.parse_fn,
                 start_time=start_time,
@@ -912,8 +912,8 @@ class ScribeLogReader(LogReader):
                 components=components,
                 clusters=clusters,
                 instances=instances,
-                pods=pods,
                 aggregated_logs=aggregated_logs,
+                pods=pods,
                 filter_fn=stream_info.filter_fn,
                 parser_fn=stream_info.parse_fn,
             )
@@ -938,8 +938,8 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
-        pods: Iterable[str],
         aggregated_logs: MutableSequence[Dict[str, Any]],
+        pods: Iterable[str] = None,
         parser_fn: Callable = None,
         filter_fn: Callable = None,
         start_time: datetime.datetime = None,
@@ -961,7 +961,6 @@ class ScribeLogReader(LogReader):
                             components,
                             clusters,
                             instances,
-                            pods,
                             start_time=start_time,
                             end_time=end_time,
                         ):
@@ -1088,7 +1087,9 @@ class ScribeLogReader(LogReader):
             for line in tailer:
                 if parse_fn:
                     line = parse_fn(line, clusters, service)
-                if filter_fn(line, levels, service, components, clusters, instances, pods):
+                if filter_fn(
+                    line, levels, service, components, clusters, instances, pods
+                ):
                     queue.put(line)
         except KeyboardInterrupt:
             # Die peacefully rather than printing N threads worth of stack
