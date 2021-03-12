@@ -101,6 +101,8 @@ def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
         ({"instance": {"cpus": 1.2, "mem": 100, "disk": "very big"}}, False),
         ({"instance": {"cpus": 1.2, "mem": 100, "disk": 0}}, False),
         ({"instance": {"cpus": 1.2, "mem": 100, "disk": 1000}}, True),
+        ({"instance": {"min_instances": 1.2}}, False),
+        ({"instance": {"min_instances": 1}}, True),
     ],
 )
 def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
