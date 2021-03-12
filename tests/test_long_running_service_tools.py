@@ -262,6 +262,20 @@ class TestLongRunningServiceConfig:
         )
         assert fake_conf.get_instances() == 0
 
+    def test_validate_with_bad_registration(self):
+        fake_conf = long_running_service_tools.LongRunningServiceConfig(
+            service="fake_name",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={
+                "registrations": ["fake_name.fake_instance", "bad_registration"],
+                "deploy_group": None,
+            },
+            branch_dict=None,
+        )
+        error_messages = fake_conf.validate()
+        assert "bad_registration" in error_messages[0]
+
 
 class TestServiceNamespaceConfig:
     def test_get_mode_default(self):
