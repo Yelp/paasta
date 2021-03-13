@@ -33,3 +33,27 @@ def system_paasta_config():
         },
         "/fake_dir/",
     )
+
+
+class Struct:
+    """
+    convert a dictionary to an object
+    """
+
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+    def __iter__(self):
+        return iter(self.__dict__)
+
+    def __getitem__(self, property_name):
+        """Get a property value by name.
+        :type property_name: str
+        """
+        return self.__dict__[property_name]
+
+    def __setitem__(self, property_name, val):
+        """Set a property value by name.
+        :type property_name: str
+        """
+        self.__dict__[property_name] = val
