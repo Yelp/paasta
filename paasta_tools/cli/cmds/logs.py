@@ -69,7 +69,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
-DEFAULT_COMPONENTS = ["build", "deploy", "monitoring", "oom", "stdout", "stderr"]
+DEFAULT_COMPONENTS = ["stdout", "stderr"]
 
 log = logging.getLogger(__name__)
 
@@ -89,17 +89,15 @@ def add_subparser(subparsers) -> None:
         "--service",
         help="The name of the service you wish to inspect. Defaults to autodetect.",
     ).completer = lazy_choices_completer(list_services)
-    components_help = "A comma separated list of the components you want logs for."
     status_parser.add_argument(
-        "-C", "--components", help=components_help
-    ).completer = lazy_choices_completer(LOG_COMPONENTS.keys)
-    cluster_help = "The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed."
-    status_parser.add_argument(
-        "-c", "--clusters", help=cluster_help
+        "-c",
+        "--clusters",
+        help="The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.",
     ).completer = completer_clusters
-    instance_help = "The instances to see relevant logs for. Defaults to all instances for this service."
     status_parser.add_argument(
-        "-i", "--instances", help=instance_help
+        "-i",
+        "--instances",
+        help="The instances to see relevant logs for. Defaults to all instances for this service.",
     ).completer = completer_clusters
     pod_help = (
         "The pods to see relevant logs for. Defaults to all pods for this service."
@@ -107,6 +105,19 @@ def add_subparser(subparsers) -> None:
     status_parser.add_argument(
         "-p", "--pods", help=pod_help
     ).completer = completer_clusters
+    status_parser.add_argument(
+        "-C",
+        "--components",
+        type=lambda s: set(s.split(",")),
+        default=set(DEFAULT_COMPONENTS),
+        help=(
+            "A comma-separated list of the components you want logs for. "
+            "PaaSTA consists of 'components' such as builds and deployments, "
+            "for each of which we collect logs for per service. "
+            "See below for a list of components. "
+            "Defaults to %(default)s."
+        ),
+    ).completer = lazy_choices_completer(LOG_COMPONENTS.keys)
     status_parser.add_argument(
         "-f",
         "-F",
@@ -138,7 +149,7 @@ def add_subparser(subparsers) -> None:
         dest="soa_dir",
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
-        help="define a different soa config directory",
+        help=f"Define a different soa config directory. Defaults to %(default)s.",
     )
 
     status_parser.add_argument(
@@ -146,32 +157,49 @@ def add_subparser(subparsers) -> None:
         "--from",
         "--after",
         dest="time_from",
-        help="The time to start getting logs from. This can be an ISO-8601 timestamp or a human readable duration "
-        'parsable by pytimeparse such as "5m", "1d3h" etc. For example: --from "3m" would start retrieving logs '
-        "from 3 minutes ago",
+        help=(
+            "The time to start getting logs from. "
+            'This can be an ISO-8601 timestamp or a human readable duration parsable by pytimeparse such as "5m", "1d3h" etc. '
+            'For example: --from "3m" would start retrieving logs from 3 minutes ago. '
+            "Incompatible with --line-offset and --lines."
+        ),
     )
     status_parser.add_argument(
         "-t",
         "--to",
         dest="time_to",
-        help="The time to get logs up to. This can be an ISO-8601 timestamp or a human readable duration"
-        'parsable by pytimeparse such as "5m", "1d3h" etc. Defaults to right now',
+        help=(
+            "The time to get logs up to. "
+            'This can be an ISO-8601 timestamp or a human readable duration parsable by pytimeparse such as "5m", "1d3h" etc. '
+            "Incompatiable with --line-offset and --lines. "
+            "Defaults to now."
+        ),
     )
     status_parser.add_argument(
         "-l",
         "-n",
         "--lines",
         dest="line_count",
-        help='The number of lines to retrieve from the specified offset. May optionally be prefixed with a "+" or "-" '
-        'to specify which direction from the offset, defaults to "-100"',
+        help=(
+            "The number of lines to retrieve from the specified offset. "
+            'May optionally be prefixed with a "+" or "-" to specify which direction from the offset. '
+            "Incompatiable with --from and --to. "
+            'Defaults to "-100".'
+        ),
         type=int,
     )
     status_parser.add_argument(
         "-o",
         "--line-offset",
         dest="line_offset",
-        help="The offset at which line to start grabbing logs from. For example 1 would be the first line. Paired with "
-        "--lines +100 would give you the first 100 lines of logs. Defaults to the latest line's offset",
+        help=(
+            "The offset at which line to start grabbing logs from. "
+            "For example, --line-offset 1 would be the first line. "
+            "Paired with --lines, --line-offset +100 would give you the first 100 lines of logs. "
+            "Some logging backends may not support line offsetting by time or lines. "
+            "Incompatiable with --from and --to. "
+            "Defaults to the latest line's offset."
+        ),
         type=int,
     )
     status_parser.add_argument(
@@ -181,23 +209,11 @@ def add_subparser(subparsers) -> None:
         help="Print log lines without header information.",
         action="store_true",
     )
-    default_component_string = ",".join(DEFAULT_COMPONENTS)
-    component_descriptions = build_component_descriptions(LOG_COMPONENTS)
-    epilog = (
-        "TIME/LINE PARAMETERS\n"
-        "The args for time and line based offsetting are mutually exclusive, they cannot be used together. "
-        "Additionally, some logging backends may not support offsetting by time or offsetting by lines."
-        "\n"
-        "\n"
+    status_parser.epilog = (
         "COMPONENTS\n"
-        "There are many possible components of Paasta logs that you might be interested in:\n"
-        "Run --list-components to see all available log components.\n"
-        "If unset, the default components are:\n\t%s\n"
-        "So the default behavior of `paasta logs` will be to tail those logs.\n\n"
-        "Here is a list of all components and what they are:\n%s\n\n"
-        % (default_component_string, component_descriptions)
+        "Here is a list of all components and what they are:\n"
+        f"{build_component_descriptions(LOG_COMPONENTS)}"
     )
-    status_parser.epilog = epilog
     status_parser.set_defaults(command=paasta_logs)
 
 
@@ -214,7 +230,7 @@ def build_component_descriptions(components: Mapping[str, Mapping[str, Any]]) ->
     based on its help attribute"""
     output = []
     for k, v in components.items():
-        output.append("     {}: {}".format(v["color"](k), v["help"]))
+        output.append("    {}: {}".format(v["color"](k), v["help"]))
     return "\n".join(output)
 
 
@@ -1368,14 +1384,9 @@ def paasta_logs(args: argparse.Namespace) -> int:
         pods = None
     else:
         pods = args.pods.split(",")
-
-    if args.components is not None:
-        components = args.components.split(",")
-    else:
-        components = DEFAULT_COMPONENTS
-    components = set(components)
-
-    if "app_output" in components:
+        
+    components = args.components
+    if "app_output" in args.components:
         components.remove("app_output")
         components.add("stdout")
         components.add("stderr")

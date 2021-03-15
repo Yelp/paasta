@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 from collections import defaultdict
 from typing import Any
 from typing import Dict
@@ -37,7 +38,9 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
+from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
+from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import marathon_app_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_human
@@ -47,12 +50,14 @@ from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
+from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
 from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.utils import remove_ansi_escape_sequences
+from tests.conftest import Struct
 
 
 def make_fake_instance_conf(
@@ -301,6 +306,7 @@ def test_status_calls_sergeants(
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None
+    args.new = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -314,6 +320,7 @@ def test_status_calls_sergeants(
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
         verbose=False,
+        new=False,
     )
 
 
@@ -347,6 +354,7 @@ class StatusArgs:
         registration,
         verbose,
         service_instance=None,
+        new=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -357,6 +365,7 @@ class StatusArgs:
         self.registration = registration
         self.verbose = verbose
         self.service_instance = service_instance
+        self.new = new
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -844,6 +853,7 @@ def test_status_with_registration(
         soa_dir="/fake/soa/dir",
         verbose=False,
         service_instance=None,
+        new=False,
     )
     return_value = paasta_status(args)
 
@@ -860,31 +870,8 @@ def test_status_with_registration(
         },
         system_paasta_config=system_paasta_config,
         verbose=args.verbose,
+        new=False,
     )
-
-
-class Struct:
-    """
-    convert a dictionary to an object
-    """
-
-    def __init__(self, **entries):
-        self.__dict__.update(entries)
-
-    def __iter__(self):
-        return iter(self.__dict__)
-
-    def __getitem__(self, property_name):
-        """Get a property value by name.
-        :type property_name: str
-        """
-        return self.__dict__[property_name]
-
-    def __setitem__(self, property_name, val):
-        """Set a property value by name.
-        :type property_name: str
-        """
-        self.__dict__[property_name] = val
 
 
 @pytest.fixture
@@ -1178,6 +1165,171 @@ class TestPrintMarathonStatus:
         assert expected_output == output
 
 
+@pytest.fixture
+def mock_kubernetes_status_v2():
+    return paastamodels.InstanceStatusKubernetesV2(
+        app_name="service--instance",
+        desired_state="start",
+        desired_instances=1,
+        error_message="",
+        replicasets=[
+            paastamodels.KubernetesReplicaSetV2(
+                create_timestamp=float(datetime.datetime(2021, 3, 5).timestamp()),
+                git_sha="aaa000",
+                config_sha="config000",
+                name="service--instance--000",
+                replicas=1,
+                ready_replicas=1,
+                pods=[
+                    paastamodels.KubernetesPodV2(
+                        name="service--instance--000-0000",
+                        ip="1.2.3.4",
+                        create_timestamp=float(
+                            datetime.datetime(2021, 3, 6).timestamp()
+                        ),
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+class TestPrintKubernetesStatusV2:
+    def test_error(self, mock_kubernetes_status_v2):
+        mock_kubernetes_status_v2.error_message = "Something bad happened!"
+        output = []
+        return_code = print_kubernetes_status_v2(
+            cluster="cluster",
+            service="service",
+            instance="instance",
+            output=output,
+            status=mock_kubernetes_status_v2,
+            verbose=0,
+        )
+        assert return_code == 1
+        assert "Something bad happened!" in output[-1]
+
+    def test_successful_return_value(self, mock_kubernetes_status_v2):
+        return_code = print_kubernetes_status_v2(
+            cluster="cluster",
+            service="service",
+            instance="instance",
+            output=[],
+            status=mock_kubernetes_status_v2,
+            verbose=0,
+        )
+        assert return_code == 0
+
+    @mock.patch(
+        "paasta_tools.cli.cmds.status.get_instance_state", autospec=True,
+    )
+    @mock.patch(
+        "paasta_tools.cli.cmds.status.get_versions_table", autospec=True,
+    )
+    def test_output(
+        self,
+        mock_get_versions_table,
+        mock_get_instance_state,
+        mock_kubernetes_status_v2,
+    ):
+        output = []
+        mock_versions_table = ["table_entry_1", "table_entry_2"]
+        mock_get_versions_table.return_value = mock_versions_table
+        print_kubernetes_status_v2(
+            cluster="cluster",
+            service="service",
+            instance="instance",
+            output=output,
+            status=mock_kubernetes_status_v2,
+            verbose=0,
+        )
+        joined_output = "\n".join(output)
+        assert f"State: {mock_get_instance_state.return_value}" in joined_output
+        for table_entry in mock_versions_table:
+            assert table_entry in joined_output
+
+
+class TestGetInstanceState:
+    def test_stop(self, mock_kubernetes_status_v2):
+        mock_kubernetes_status_v2.desired_state = "stop"
+        assert "Stop" in get_instance_state(mock_kubernetes_status_v2)
+
+    def test_running(self, mock_kubernetes_status_v2):
+        mock_kubernetes_status_v2.desired_state = "start"
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        assert remove_ansi_escape_sequences(instance_state) == "Running"
+
+    def test_bouncing(self, mock_kubernetes_status_v2):
+        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+            create_timestamp=1.0,
+            git_sha="bbb111",
+            config_sha="config111",
+            ready_replicas=0,
+        )
+        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        instance_state = remove_ansi_escape_sequences(instance_state)
+        assert instance_state == "Bouncing to bbb111, config111"
+
+    def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
+        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+            create_timestamp=1.0,
+            git_sha="bbb111",
+            config_sha=mock_kubernetes_status_v2.replicasets[0].config_sha,
+            ready_replicas=0,
+        )
+        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+
+        instance_state = get_instance_state(mock_kubernetes_status_v2)
+        instance_state = remove_ansi_escape_sequences(instance_state)
+        assert instance_state == "Bouncing to bbb111"
+
+
+class TestGetVersionsTable:
+    @pytest.fixture(autouse=True)
+    def mock_get_replica_states(self):
+        with mock.patch(
+            "paasta_tools.cli.cmds.status.get_replica_states", autospec=True,
+        ) as self.mock_get_replica_states:
+            self.mock_get_replica_states.return_value = "3 Running"
+            yield
+
+    @pytest.fixture
+    def mock_replicasets(self):
+        replicaset_1 = paastamodels.KubernetesReplicaSetV2(
+            git_sha="aabbccddee",
+            config_sha="config000",
+            create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+            pods=[],
+        )
+        replicaset_2 = paastamodels.KubernetesReplicaSetV2(
+            git_sha="ff11223344",
+            config_sha="config000",
+            create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
+            pods=[],
+        )
+        # in reverse order to ensure we are sorting
+        return [replicaset_2, replicaset_1]
+
+    def test_two_replicasets(self, mock_replicasets):
+        versions_table = get_versions_table(mock_replicasets)
+        assert "aabbccdd (new)" in versions_table[0]
+        assert "2021-03-01" in versions_table[0]
+
+        assert "ff112233 (old)" in versions_table[2]
+        assert "2021-03-03" in versions_table[2]
+
+        assert self.mock_get_replica_states.return_value in versions_table[1]
+        assert self.mock_get_replica_states.return_value in versions_table[3]
+
+    def test_different_config_shas(self, mock_replicasets):
+        mock_replicasets[0].config_sha = "config111"
+        versions_table = get_versions_table(mock_replicasets)
+        assert "aabbccdd, config000" in versions_table[0]
+        assert "ff112233, config111" in versions_table[2]
+
+
 class TestPrintKubernetesStatus:
     def test_error(self, mock_kubernetes_status):
         mock_kubernetes_status.error_message = "Things went wrong"
@@ -1191,7 +1343,7 @@ class TestPrintKubernetesStatus:
         )
 
         assert return_value == 1
-        assert output == ["Things went wrong"]
+        assert PaastaColors.red("Things went wrong") in output[-1]
 
     def test_successful_return_value(self, mock_kubernetes_status):
         return_value = print_kubernetes_status(

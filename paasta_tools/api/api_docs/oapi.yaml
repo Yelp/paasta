@@ -207,6 +207,9 @@ components:
         kubernetes:
           $ref: '#/components/schemas/InstanceStatusKubernetes'
           description: Kubernetes instance status
+        kubernetes_v2:
+          $ref: '#/components/schemas/InstanceStatusKubernetesV2'
+          description: Kubernetes instance status
         marathon:
           $ref: '#/components/schemas/InstanceStatusMarathon'
           description: Marathon instance status
@@ -347,6 +350,27 @@ components:
       - app_count
       - bounce_method
       type: object
+    InstanceStatusKubernetesV2:
+      type: object
+      properties:
+        app_name:
+          description: Name of Kubernetes Deployment or Statefulset for instance
+          type: string
+        desired_state:
+          description: Desired state of the app (start or stop)
+          type: string
+        desired_instances:
+          description: Number of instances desired for this app
+          type: integer
+          format: int32
+        error_message:
+          description: Error message if we cannot assemble status for the instance
+          type: string
+        replicasets:
+          description: Replicasets corresponding to individual versions of the instance
+          items:
+            $ref: '#/components/schemas/KubernetesReplicaSetV2'
+          type: array
     InstanceStatusMarathon:
       properties:
         active_shas:
@@ -534,6 +558,19 @@ components:
           items:
             $ref: '#/components/schemas/KubernetesPodEvent'
       type: object
+    KubernetesPodV2:
+      properties:
+        name:
+          description: Pod name
+          type: string
+        ip:
+          description: Pod IP
+          type: string
+        create_timestamp:
+          description: Unix timestamp at which pod was created
+          format: float
+          type: number
+      type: object
     KubernetesPodEvent:
       type: object
       properties:
@@ -566,6 +603,35 @@ components:
           description: Hash of configuration of this replicaset
           type: string
           nullable: true
+      type: object
+    KubernetesReplicaSetV2:
+      properties:
+        create_timestamp:
+          description: Unix timestamp when replicaset was created
+          format: float
+          type: number
+        git_sha:
+          description: Git SHA of service code for this version of the instance
+          type: string
+        config_sha:
+          description: SHA of configuration for this instance
+          type: string
+        name:
+          description: Name of the replicaset
+          type: string
+        pods:
+          description: Pods associated to this replicaset
+          items:
+            $ref: '#/components/schemas/KubernetesPodV2'
+          type: array
+        replicas:
+          description: Desired number of replicas for this replicaset
+          format: int32
+          type: integer
+        ready_replicas:
+          description: Number of replicas currently ready
+          format: int32
+          type: integer
       type: object
     MarathonAppStatus:
       properties:
@@ -1202,6 +1268,12 @@ paths:
       - description: Include Mesos information
         in: query
         name: include_mesos
+        required: false
+        schema:
+          type: boolean
+      - description: Use new version of paasta status for services
+        in: query
+        name: new
         required: false
         schema:
           type: boolean

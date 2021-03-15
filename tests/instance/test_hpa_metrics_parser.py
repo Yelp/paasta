@@ -162,3 +162,10 @@ def test_parse_current_object_metric(parser):
     status = parser.parse_current(metric_status)
     assert status["name"] == "some-metric"
     assert status["current_value"] == "0.1"
+
+
+def test_parse_current_empty_string_metric(parser):
+    metric_status = V2beta2MetricStatus(type="",)
+
+    status = parser.parse_current(metric_status)
+    assert status is None

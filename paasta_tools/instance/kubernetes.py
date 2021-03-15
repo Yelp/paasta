@@ -138,7 +138,8 @@ def autoscaling_status(
     if hpa.status.current_metrics is not None:
         for metric_spec in hpa.status.current_metrics:
             parsed = parser.parse_current(metric_spec)
-            metrics_by_name[parsed["name"]].update(parsed)
+            if parsed is not None:
+                metrics_by_name[parsed["name"]].update(parsed)
 
     metric_stats = list(metrics_by_name.values())
 
@@ -407,6 +408,97 @@ def filter_actually_running_replicasets(
     ]
 
 
+def kubernetes_status_v2(
+    service: str,
+    instance: str,
+    verbose: int,
+    include_smartstack: bool,
+    include_envoy: bool,
+    instance_type: str,
+    settings: Any,
+):
+    status: Dict[str, Any] = {}
+    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
+    job_config = config_loader(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=True,
+    )
+    kube_client = settings.kubernetes_client
+    if kube_client is None:
+        return status
+
+    app_name = job_config.get_sanitised_deployment_name()
+    pod_list = kubernetes_tools.pods_for_service_instance(
+        service=job_config.service,
+        instance=job_config.instance,
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    # TODO(PAASTA-17315): support statefulsets, too
+    pods_by_replicaset = get_pods_by_replicaset(pod_list)
+    replicaset_list = kubernetes_tools.replicasets_for_service_instance(
+        service=job_config.service,
+        instance=job_config.instance,
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    # For the purpose of active_shas/app_count, don't count replicasets that
+    # are at 0/0.
+    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
+
+    desired_state = job_config.get_desired_state()
+
+    status["app_name"] = app_name
+    status["desired_state"] = desired_state
+    status["desired_instances"] = (
+        job_config.get_instances() if desired_state != "stop" else 0
+    )
+    status["bounce_method"] = job_config.get_bounce_method()
+    status["replicasets"] = [
+        get_replicaset_status(
+            replicaset, pods_by_replicaset.get(replicaset.metadata.name),
+        )
+        for replicaset in actually_running_replicasets
+    ]
+    return status
+
+
+def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
+    # TODO: should we make sure that we get every pod...?
+    pods_by_replicaset: DefaultDict[str, List[V1Pod]] = defaultdict(list)
+    for pod in pods:
+        for owner_reference in pod.metadata.owner_references:
+            if owner_reference.kind == "ReplicaSet":
+                pods_by_replicaset[owner_reference.name].append(pod)
+
+    return pods_by_replicaset
+
+
+def get_replicaset_status(
+    replicaset: V1ReplicaSet, pods: Sequence[V1Pod],
+) -> Dict[str, Any]:
+    return {
+        "name": replicaset.metadata.name,
+        "replicas": replicaset.spec.replicas,
+        "ready_replicas": ready_replicas_from_replicaset(replicaset),
+        "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
+        "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "pods": [get_pod_status(pod) for pod in pods],
+    }
+
+
+def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
+    return {
+        "name": pod.metadata.name,
+        "ip": pod.status.pod_ip,
+        "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
+    }
+
+
 def kubernetes_status(
     service: str,
     instance: str,
@@ -478,7 +570,7 @@ def kubernetes_status(
         except Exception as e:
             kstatus[
                 "error_message"
-            ] = f"Unknown error happened. Please contact #compute-infra for help: {e}"
+            ] = f"Unknown error occurred while fetching autoscaling status. Please contact #compute-infra for help: {e}"
 
     evicted_count = 0
     for pod in pod_list:
@@ -524,6 +616,7 @@ def instance_status(
     verbose: int,
     include_smartstack: bool,
     include_envoy: bool,
+    use_new: bool,
     instance_type: str,
     settings: Any,
 ) -> Mapping[str, Any]:
@@ -545,15 +638,26 @@ def instance_status(
         )
 
     if instance_type in INSTANCE_TYPES_K8S:
-        status["kubernetes"] = kubernetes_status(
-            service=service,
-            instance=instance,
-            instance_type=instance_type,
-            verbose=verbose,
-            include_smartstack=include_smartstack,
-            include_envoy=include_envoy,
-            settings=settings,
-        )
+        if use_new:
+            status["kubernetes_v2"] = kubernetes_status_v2(
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
+                verbose=verbose,
+                include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
+                settings=settings,
+            )
+        else:
+            status["kubernetes"] = kubernetes_status(
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
+                verbose=verbose,
+                include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
+                settings=settings,
+            )
 
     return status
 

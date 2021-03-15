@@ -1,3 +1,51 @@
+paasta-tools (0.97.81) xenial; urgency=medium
+
+  * 0.97.81 tagged with 'make release'
+    Commit: Bump Sticht to v1.1.13
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 11 Mar 2021 14:03:35 -0800
+
+paasta-tools (0.97.80) xenial; urgency=medium
+
+  * 0.97.80 tagged with 'make release'
+    Commit: Add a preStop config for uwsgi-exporter  We"re currently
+    dropping some metrics since this sidecar is getting terminated
+    before the main container.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 Mar 2021 14:27:51 -0800
+
+paasta-tools (0.97.79) xenial; urgency=medium
+
+  * 0.97.79 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17299_pad_missing_metrics"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 08 Mar 2021 16:45:05 -0800
+
+paasta-tools (0.97.78) xenial; urgency=medium
+
+  * 0.97.78 tagged with 'make release'
+    Commit: Implement CPU-based moving average window autoscaling
+    (#3046)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Mar 2021 15:18:30 -0800
+
+paasta-tools (0.97.77) xenial; urgency=medium
+
+  * 0.97.77 tagged with 'make release'
+    Commit: Make paasta status print what it can even if an
+    error_message attribute exists. Make the error_message for
+    autoscaling issues a little more descriptive. PAASTA-17298
+
+ -- Evan Krall <krall@yelp.com>  Thu, 04 Mar 2021 11:25:21 -0800
+
+paasta-tools (0.97.76) xenial; urgency=medium
+
+  * 0.97.76 tagged with 'make release'
+    Commit: Add --volume parameter to local-run. PAASTA-1262, PAASTA-
+    16089
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Mar 2021 13:09:41 -0800
+
 paasta-tools (0.97.75) xenial; urgency=medium
 
   * 0.97.75 tagged with 'make release'
