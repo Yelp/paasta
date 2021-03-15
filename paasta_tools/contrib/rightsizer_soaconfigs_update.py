@@ -9,7 +9,15 @@ from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
 
 NULL = "null"
-SUPPORTED_CSV_KEYS = ("cpus", "mem", "disk", "hacheck_cpus", "cpu_burst_add", "min_instances", "max_instances")
+SUPPORTED_CSV_KEYS = (
+    "cpus",
+    "mem",
+    "disk",
+    "hacheck_cpus",
+    "cpu_burst_add",
+    "min_instances",
+    "max_instances",
+)
 
 
 def parse_args():
