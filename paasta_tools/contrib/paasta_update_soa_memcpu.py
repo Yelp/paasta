@@ -139,12 +139,13 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
     estimated_monthly_savings (Optional)
     search_time (Unix time)
     one of the following pairs:
-    - current_cpus
-    suggested_cpus
-    - current_mem
-    suggested_mem
-    - current_disk
-    suggested_disk
+    - current_cpus and suggested_cpus
+    - current_mem and suggested_mem
+    - current_disk and suggested_disk
+    - suggested_hacheck_cpus
+    - suggested_cpu_burst_add
+    - suggested_min_instances
+    - suggested_max_instances
     """
     url = f"https://splunk-api.yelpcorp.com/servicesNS/nobody/{app}/search/jobs/export"
     search = (
@@ -178,6 +179,8 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
         serv["old_mem"] = d["result"].get("current_mem")
         serv["disk"] = d["result"].get("suggested_disk")
         serv["old_disk"] = d["result"].get("current_disk")
+        serv["min_instances"] = d["result"].get("suggested_min_instances")
+        serv["max_instances"] = d["result"].get("suggested_max_instances")
         serv["hacheck_cpus"] = d["result"].get("suggested_hacheck_cpus")
         serv["cpu_burst_add"] = d["result"].get("suggested_cpu_burst_add")
         services_to_update[criteria] = serv
