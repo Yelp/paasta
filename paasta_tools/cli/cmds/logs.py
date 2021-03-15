@@ -1384,7 +1384,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         pods = None
     else:
         pods = args.pods.split(",")
-        
+
     components = args.components
     if "app_output" in args.components:
         components.remove("app_output")
