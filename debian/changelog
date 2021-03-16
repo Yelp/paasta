@@ -1,3 +1,12 @@
+paasta-tools (0.97.82) xenial; urgency=medium
+
+  * 0.97.82 tagged with 'make release'
+    Commit: Merge pull request #3063 from Yelp/u/mathieu/PEREL-
+    2288_add_autotuneautoscaling_to_ysoa  Add support for min and max
+    instances in autotuned_defaults
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Tue, 16 Mar 2021 13:51:14 -0700
+
 paasta-tools (0.97.81) xenial; urgency=medium
 
   * 0.97.81 tagged with 'make release'
