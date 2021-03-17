@@ -1397,7 +1397,6 @@ def format_log_line(
     instance: str,
     component: str,
     line: str,
-    pod: str = None,
     timestamp: str = None,
 ) -> str:
     """Accepts a string 'line'.
@@ -1417,7 +1416,6 @@ def format_log_line(
             "cluster": cluster,
             "service": service,
             "instance": instance,
-            "pod": pod,
             "component": component,
             "message": line,
         },

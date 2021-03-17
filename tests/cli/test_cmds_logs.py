@@ -93,13 +93,12 @@ def test_paasta_log_line_passes_filter_true():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], clusters[0], service, instance, components[0], line, pod=pod
+        levels[0], clusters[0], service, instance, components[0], line,
     )
 
     assert (
@@ -115,13 +114,12 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line, pod=pod
+        levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -136,13 +134,12 @@ def test_paasta_log_line_passes_filter_true_when_default_instance():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = None
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line, pod=pod
+        levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -157,13 +154,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line, pod=pod
+        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -178,15 +174,14 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], clusters[0], service, instance, "monitoring", line, pod=pod
+        levels[0], clusters[0], service, instance, "monitoring", line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -201,15 +196,14 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line, pod=pod
+        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -224,15 +218,14 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "non-existant_instance"
-    pod = "fake_pod"
     instances = ["fake_instance"]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line, pod=pod
+        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
     assert (
         logs.paasta_log_line_passes_filter(
@@ -265,9 +258,8 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -277,7 +269,6 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
         instance,
         components[0],
         line,
-        pod=pod,
         timestamp="2016-06-07T23:46:03+00:00",
     )
 
@@ -305,9 +296,8 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
-    pod = "fake_pod"
     instances = [instance]
-    pods = [pod]
+    pods = ["fake_pod"]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -317,7 +307,6 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
         instance,
         components[0],
         line,
-        pod=pod,
         timestamp=isodate.datetime_isoformat(datetime.datetime.utcnow()),
     )
 
@@ -430,7 +419,6 @@ def test_parse_marathon_log_line_ok():
             "cluster": clusters[0],
             "service": fake_service,
             "instance": "ALL",
-            "pod": None,
             "level": "event",
             "message": line,
         }
