@@ -33,7 +33,7 @@ from paasta_tools.setup_prometheus_adapter_config import (
                 "moving_average_window_seconds": 124,
                 "setpoint": 0.425,
             },
-            False,
+            True,
         ),
         (
             {
@@ -43,6 +43,15 @@ from paasta_tools.setup_prometheus_adapter_config import (
                 "setpoint": 0.764,
             },
             True,
+        ),
+        (
+            {
+                "metrics_provider": "uwsgi",
+                "use_prometheus": False,
+                "moving_average_window_seconds": 544,
+                "setpoint": 0.764,
+            },
+            False,
         ),
     ],
 )
