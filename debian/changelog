@@ -1,3 +1,11 @@
+paasta-tools (0.97.83) xenial; urgency=medium
+
+  * 0.97.83 tagged with 'make release'
+    Commit: Also give pods a routable IP if they run the uwsgi_exporter
+    sidecar, so that Prometheus can scrape them. PAASTA-17316
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Mar 2021 12:08:28 -0700
+
 paasta-tools (0.97.82) xenial; urgency=medium
 
   * 0.97.82 tagged with 'make release'
