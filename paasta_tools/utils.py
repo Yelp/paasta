@@ -816,16 +816,15 @@ class InstanceConfig:
                 'Your service config specifies "%s", an unsupported parameter.' % param,
             )
 
-    def validate(
-        self,
-        params: List[str] = [
-            "cpus",
-            "mem",
-            "security",
-            "dependencies_reference",
-            "deploy_group",
-        ],
-    ) -> List[str]:
+    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+        if params is None:
+            params = [
+                "cpus",
+                "mem",
+                "security",
+                "dependencies_reference",
+                "deploy_group",
+            ]
         error_msgs = []
         for param in params:
             check_passed, check_msg = self.check(param)

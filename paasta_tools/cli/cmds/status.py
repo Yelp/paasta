@@ -61,6 +61,9 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
+from paasta_tools.paastaapi.models import KubernetesPodV2
+from paasta_tools.paastaapi.models import KubernetesReplicaSetV2
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -124,6 +127,13 @@ def add_subparser(subparsers,) -> None:
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
+    )
+    status_parser.add_argument(
+        "--new",
+        dest="new",
+        action="store_true",
+        default=False,
+        help="Use experimental new version of paasta status for services",
     )
     add_instance_filter_arguments(status_parser)
     status_parser.set_defaults(command=paasta_status)
@@ -231,6 +241,7 @@ def paasta_status_on_api_endpoint(
     output: List[str],
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
+    new: bool = False,
 ) -> int:
     output.append("    instance: %s" % PaastaColors.cyan(instance))
     client = get_paasta_oapi_client(cluster, system_paasta_config)
@@ -239,7 +250,7 @@ def paasta_status_on_api_endpoint(
         exit(1)
     try:
         status = client.service.status_instance(
-            service=service, instance=instance, verbose=verbose
+            service=service, instance=instance, verbose=verbose, new=new,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
@@ -1124,6 +1135,116 @@ def print_flink_status(
     return 0
 
 
+def print_kubernetes_status_v2(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    status: InstanceStatusKubernetesV2,
+    verbose: int = 0,
+) -> int:
+    instance_state = get_instance_state(status)
+    output.append(f"    State: {instance_state}")
+    output.append("    Running versions:")
+    output.append("      " + PaastaColors.green("Rerun with -v to see all replicas"))
+    output.extend([f"      {line}" for line in get_versions_table(status.replicasets)])
+    if status.error_message:
+        output.append("    " + PaastaColors.red(status.error_message))
+        return 1
+    else:
+        return 0
+
+
+# TODO: Make an enum class or similar for the various instance states
+def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
+    num_replicasets = len(status.replicasets)
+    num_ready_replicas = sum(r.ready_replicas for r in status.replicasets)
+    if status.desired_state == "stop":
+        if num_replicasets == 1 and status.replicasets[0].replicas == 0:
+            return PaastaColors.red("Stopped")
+        else:
+            return PaastaColors.red("Stopping")
+    elif status.desired_state == "start":
+        if num_replicasets == 0:
+            return PaastaColors.yellow("Starting")
+        if num_replicasets == 1:
+            if num_ready_replicas < status.desired_instances:
+                return PaastaColors.yellow("Launching replicas")
+            else:
+                return PaastaColors.green("Running")
+        else:
+            replicasets = sorted(status.replicasets, key=lambda x: x.create_timestamp)
+            git_shas = {r.git_sha for r in replicasets}
+            config_shas = {r.config_sha for r in replicasets}
+            bouncing_to = []
+            if len(git_shas) > 1:
+                bouncing_to.append(replicasets[0].git_sha[:8])
+            if len(config_shas) > 1:
+                bouncing_to.append(replicasets[0].config_sha)
+
+            bouncing_to_str = ", ".join(bouncing_to)
+            return PaastaColors.yellow(f"Bouncing to {bouncing_to_str}")
+    else:
+        return PaastaColors.red("Unknown")
+
+
+def get_versions_table(replicasets: List[KubernetesReplicaSetV2]) -> List[str]:
+    if len(replicasets) == 0:
+        return [PaastaColors.red("There are no running versions for this instance")]
+    elif len(replicasets) == 1:
+        return get_version_table_entry(replicasets[0])
+    else:
+        replicasets = sorted(replicasets, key=lambda x: x.create_timestamp)
+        config_shas = {r.config_sha for r in replicasets}
+        if len(config_shas) > 1:
+            show_config_sha = True
+        else:
+            show_config_sha = False
+
+        table: List[str] = []
+        table.extend(
+            get_version_table_entry(
+                replicasets[0],
+                version_name_suffix="new",
+                show_config_sha=show_config_sha,
+            )
+        )
+        for replicaset in replicasets[1:]:
+            table.extend(
+                get_version_table_entry(
+                    replicaset,
+                    version_name_suffix="old",
+                    show_config_sha=show_config_sha,
+                )
+            )
+        return table
+
+
+def get_version_table_entry(
+    replicaset: KubernetesReplicaSetV2,
+    version_name_suffix: str = None,
+    show_config_sha: bool = False,
+) -> List[str]:
+    version_name = replicaset.git_sha[:8]
+    if show_config_sha:
+        version_name += f", {replicaset.config_sha}"
+    if version_name_suffix is not None:
+        version_name += f" ({version_name_suffix})"
+    version_name = PaastaColors.blue(version_name)
+
+    start_datetime = datetime.fromtimestamp(replicaset.create_timestamp)
+    humanized_start_time = humanize.naturaltime(start_datetime)
+    entry = [f"{version_name} - Started {start_datetime} ({humanized_start_time})"]
+    replica_states = get_replica_states(replicaset.pods)
+    entry.append(f"  Replica States: {replica_states}")
+    return entry
+
+
+# TODO(PAASTA-17287): Implement replica states
+def get_replica_states(pods: List[KubernetesPodV2]) -> str:
+    return PaastaColors.green(f"{len(pods)} Running")
+
+
 def print_kubernetes_status(
     cluster: str,
     service: str,
@@ -1365,6 +1486,7 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
+    new: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -1415,6 +1537,7 @@ def report_status_for_cluster(
             output=output,
             system_paasta_config=system_paasta_config,
             verbose=verbose,
+            new=new,
         )
         for deployed_instance in instances
     ]
@@ -1627,6 +1750,7 @@ def paasta_status(args) -> int:
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
                             verbose=args.verbose,
+                            new=args.new,
                         ),
                     )
                 )
@@ -1769,6 +1893,7 @@ def status_marathon_job_human(
 INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
+    kubernetes_v2=print_kubernetes_status_v2,
     tron=print_tron_status,
     adhoc=print_adhoc_status,
     flink=print_flink_status,

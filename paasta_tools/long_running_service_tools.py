@@ -201,15 +201,13 @@ class LongRunningServiceConfig(InstanceConfig):
         return decompose_job_id(self.get_registrations()[0])[1]
 
     def get_registrations(self) -> List[str]:
+        for registration in self.get_invalid_registrations():
+            log.error(
+                "Provided registration {} for service "
+                "{} is invalid".format(registration, self.service)
+            )
+
         registrations = self.config_dict.get("registrations", [])
-        for registration in registrations:
-            try:
-                decompose_job_id(registration)
-            except InvalidJobNameError:
-                log.error(
-                    "Provided registration {} for service "
-                    "{} is invalid".format(registration, self.service)
-                )
 
         # Backwards compatibility with nerve_ns
         # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
@@ -219,6 +217,16 @@ class LongRunningServiceConfig(InstanceConfig):
             )
 
         return registrations or [compose_job_id(self.service, self.instance)]
+
+    def get_invalid_registrations(self) -> List[str]:
+        registrations = self.config_dict.get("registrations", [])
+        invalid_registrations: List[str] = []
+        for registration in registrations:
+            try:
+                decompose_job_id(registration)
+            except InvalidJobNameError:
+                invalid_registrations.append(registration)
+        return invalid_registrations
 
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 50)
@@ -344,6 +352,19 @@ class LongRunningServiceConfig(InstanceConfig):
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
             defaults=default_params,
         )
+
+    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+        error_messages = super().validate(params=params)
+        invalid_registrations = self.get_invalid_registrations()
+        if invalid_registrations:
+            service_instance = compose_job_id(self.service, self.instance)
+            registrations_str = ", ".join(invalid_registrations)
+            error_messages.append(
+                f"Service registrations must be of the form service.registration. "
+                f"The following registrations for {service_instance} are "
+                f"invalid: {registrations_str}"
+            )
+        return error_messages
 
 
 class InvalidHealthcheckMode(Exception):

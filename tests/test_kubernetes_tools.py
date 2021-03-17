@@ -1477,29 +1477,43 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_run_uwsgi_exporter_sidecar",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
-        "ip_configured,in_smtstk,prometheus_port,expected",
+        "ip_configured,in_smtstk,prometheus_port,should_run_uwsgi_exporter_sidecar_retval,expected",
         [
-            (False, True, 8888, "true"),
-            (False, False, 8888, "true"),
-            (False, True, None, "true"),
-            (True, False, None, "true"),
-            (False, False, None, "false"),
+            (False, True, 8888, False, "true"),
+            (False, False, 8888, False, "true"),
+            (False, True, None, False, "true"),
+            (True, False, None, False, "true"),
+            (False, False, None, True, "true"),
+            (False, False, None, False, "false"),
         ],
     )
     def test_routable_ip(
         self,
+        mock_should_run_uwsgi_exporter_sidecar,
         mock_get_prometheus_port,
         ip_configured,
         in_smtstk,
         prometheus_port,
+        should_run_uwsgi_exporter_sidecar_retval,
         expected,
     ):
         mock_get_prometheus_port.return_value = prometheus_port
+        mock_should_run_uwsgi_exporter_sidecar.return_value = (
+            should_run_uwsgi_exporter_sidecar_retval
+        )
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
+        mock_system_paasta_config = mock.Mock()
+
         self.deployment.config_dict["routable_ip"] = ip_configured
-        ret = self.deployment.has_routable_ip(mock_service_namespace_config)
+        ret = self.deployment.has_routable_ip(
+            mock_service_namespace_config, mock_system_paasta_config
+        )
 
         assert ret == expected
 

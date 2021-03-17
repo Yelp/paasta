@@ -544,6 +544,7 @@ class ServiceApi(object):
                 include_smartstack (bool): Include Smartstack information. [optional]
                 include_envoy (bool): Include Envoy information. [optional]
                 include_mesos (bool): Include Mesos information. [optional]
+                new (bool): Use new version of paasta status for services. [optional]
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
                 _preload_content (bool): if False, the urllib3.HTTPResponse object
@@ -611,6 +612,7 @@ class ServiceApi(object):
                     'include_smartstack',
                     'include_envoy',
                     'include_mesos',
+                    'new',
                 ],
                 'required': [
                     'service',
@@ -641,6 +643,8 @@ class ServiceApi(object):
                         (bool,),
                     'include_mesos':
                         (bool,),
+                    'new':
+                        (bool,),
                 },
                 'attribute_map': {
                     'service': 'service',
@@ -649,6 +653,7 @@ class ServiceApi(object):
                     'include_smartstack': 'include_smartstack',
                     'include_envoy': 'include_envoy',
                     'include_mesos': 'include_mesos',
+                    'new': 'new',
                 },
                 'location_map': {
                     'service': 'path',
@@ -657,6 +662,7 @@ class ServiceApi(object):
                     'include_smartstack': 'query',
                     'include_envoy': 'query',
                     'include_mesos': 'query',
+                    'new': 'query',
                 },
                 'collection_format_map': {
                 }

@@ -829,7 +829,11 @@ def run_docker_container(
             for line in docker_client.attach(
                 container_id, stderr=True, stream=True, logs=True
             ):
-                print(line, flush=True)
+                # writing to sys.stdout.buffer lets us write the raw bytes we
+                # get from the docker client without having to convert them to
+                # a utf-8 string
+                sys.stdout.buffer.write(line)
+                sys.stdout.flush()
         else:
             _output_exit_code()
             returncode = 3
