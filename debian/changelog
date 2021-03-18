@@ -1,3 +1,11 @@
+paasta-tools (0.97.85) xenial; urgency=medium
+
+  * 0.97.85 tagged with 'make release'
+    Commit: Merge pull request #3068 from Yelp/kedo-build-focal  Build
+    and upload deb for focal
+
+ -- Kenny Do <kedo@yelp.com>  Thu, 18 Mar 2021 15:03:56 -0700
+
 paasta-tools (0.97.84) xenial; urgency=medium
 
   * 0.97.84 tagged with 'make release'
