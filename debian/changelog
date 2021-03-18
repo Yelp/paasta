@@ -1,3 +1,10 @@
+paasta-tools (0.97.84) xenial; urgency=medium
+
+  * 0.97.84 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17095_default_prometheus"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Mar 2021 17:44:01 -0700
+
 paasta-tools (0.97.83) xenial; urgency=medium
 
   * 0.97.83 tagged with 'make release'
