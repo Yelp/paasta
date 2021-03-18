@@ -94,12 +94,20 @@ def test_paasta_log_line_passes_filter_true():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
         levels[0], clusters[0], service, instance, components[0], line,
     )
+
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
 
     assert (
         logs.paasta_log_line_passes_filter(
@@ -115,12 +123,21 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
         levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
+
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
+
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line, levels, service, components, clusters, instances, pods
@@ -135,12 +152,19 @@ def test_paasta_log_line_passes_filter_true_when_default_instance():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = None
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
         levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line, levels, service, components, clusters, instances, pods
@@ -155,12 +179,19 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
         "BOGUS_LEVEL", clusters[0], service, instance, components[0], line,
     )
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line, levels, service, components, clusters, instances, pods
@@ -175,7 +206,8 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
@@ -183,6 +215,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     formatted_line = format_log_line(
         levels[0], clusters[0], service, instance, "monitoring", line,
     )
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line, levels, service, components, clusters, instances, pods
@@ -197,7 +235,8 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
@@ -205,6 +244,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     formatted_line = format_log_line(
         levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line, levels, service, components, clusters, instances, pods
@@ -219,7 +264,8 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "non-existant_instance"
     instances = ["fake_instance"]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
@@ -227,9 +273,15 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     formatted_line = format_log_line(
         levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances, pods
+            formatted_line, levels, service, components, clusters, instances, pods,
         )
         is False
     )
@@ -245,6 +297,7 @@ def test_paasta_log_line_passes_filter_false_when_line_not_valid_json():
     line = "i am definitely not json"
     # component must be legit as well as not in the list of requested
     # components
+
     assert (
         logs.paasta_log_line_passes_filter(
             line, levels, service, components, clusters, instances, pods
@@ -259,7 +312,8 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -274,6 +328,13 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
 
     start_time = isodate.parse_datetime("2016-06-07T23:40:03+00:00")
     end_time = isodate.parse_datetime("2016-06-07T23:50:03+00:00")
+
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
 
     assert (
         logs.paasta_log_line_passes_filter(
@@ -297,7 +358,8 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
-    pods = ["fake_pod"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -313,7 +375,12 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     start_time, end_time = logs.generate_start_end_time(
         from_string="5m", to_string="3m"
     )
-
+    # LogWriters don't write logs for pods yet. Since LogWriters use format_log_line, we're
+    # manually adding pods to the line until we have implemented this change in the future.
+    # NOTE: pods are part of the app_output which is what formatted_line will be representing.
+    parsed_line = json.loads(formatted_line)
+    parsed_line["pod_name"] = pod
+    formatted_line = json.dumps(parsed_line, sort_keys=True)
     assert (
         logs.paasta_log_line_passes_filter(
             formatted_line,
@@ -1063,7 +1130,7 @@ def test_tail_paasta_logs_empty_pods():
     components = ["deploy", "monitoring"]
     clusters = ["fake_cluster"]
     instances = ["fake_instance1", "fake_instance2"]
-    pods = []
+    pods = None
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,

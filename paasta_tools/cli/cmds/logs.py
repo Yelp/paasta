@@ -279,6 +279,8 @@ def paasta_log_line_passes_filter(
     """Given a (JSON-formatted) log line, return True if the line should be
     displayed given the provided levels, components, and clusters; return False
     otherwise.
+
+    NOTE: Pods are optional as services that use Marathon do not operate with pods.
     """
     try:
         parsed_line = json.loads(line)
@@ -296,6 +298,7 @@ def paasta_log_line_passes_filter(
             or parsed_line.get("cluster") == ANY_CLUSTER
         )
         and (instances is None or parsed_line.get("instance") in instances)
+        and (pods is None or parsed_line.get("pod_name") in pods)
     )
 
 
@@ -900,9 +903,9 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
-        pods: Iterable[str],
         raw_mode: bool,
         strip_headers: bool,
+        pods: Iterable[str] = None,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
@@ -970,16 +973,30 @@ class ScribeLogReader(LogReader):
                     if parser_fn:
                         line = parser_fn(line, clusters, service)
                     if filter_fn:
-                        if filter_fn(
-                            line,
-                            levels,
-                            service,
-                            components,
-                            clusters,
-                            instances,
-                            start_time=start_time,
-                            end_time=end_time,
-                        ):
+                        if "marathon" in components:
+                            passed_filter = filter_fn(
+                                line,
+                                levels,
+                                service,
+                                components,
+                                clusters,
+                                instances,
+                                start_time=start_time,
+                                end_time=end_time,
+                            )
+                        else:
+                            passed_filter = filter_fn(
+                                line,
+                                levels,
+                                service,
+                                components,
+                                clusters,
+                                instances,
+                                pods,
+                                start_time=start_time,
+                                end_time=end_time,
+                            )
+                        if passed_filter:
                             try:
                                 parsed_line = json.loads(line)
                                 timestamp = isodate.parse_datetime(
