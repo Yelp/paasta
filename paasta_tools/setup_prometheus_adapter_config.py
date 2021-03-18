@@ -31,6 +31,8 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
+from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
@@ -186,7 +188,7 @@ def should_create_uwsgi_scaling_rule(
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
     if autoscaling_config["metrics_provider"] == "uwsgi":
-        if not autoscaling_config.get("use_prometheus", False):
+        if not autoscaling_config.get("use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI):
             return False, "requested uwsgi autoscaling, but not using Prometheus"
 
         return True, None
@@ -282,7 +284,7 @@ def should_create_cpu_scaling_rule(
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
     if autoscaling_config["metrics_provider"] in CPU_METRICS_PROVIDERS:
-        if not autoscaling_config.get("use_prometheus", False):
+        if not autoscaling_config.get("use_prometheus", DEFAULT_USE_PROMETHEUS_CPU):
             return False, "requested cpu autoscaling, but not using Prometheus"
 
         return True, None

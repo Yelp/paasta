@@ -179,6 +179,10 @@ DEFAULT_PRESTOP_SLEEP_SECONDS = 30
 DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
+DEFAULT_USE_PROMETHEUS_CPU = False
+DEFAULT_USE_PROMETHEUS_UWSGI = True
+
+
 # conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
@@ -537,7 +541,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
-        use_prometheus = autoscaling_params.get("use_prometheus", False)
         # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
         # HPAs and, since they may be looking at the same thing, we need to suffix one of these metric
         # identifiers because metric names inside an HPA must be unique.
@@ -546,6 +549,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
         if metrics_provider in ("mesos_cpu", "cpu"):
+            use_prometheus = autoscaling_params.get(
+                "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
+            )
             if use_prometheus:
                 metrics.append(
                     V2beta2MetricSpec(
@@ -578,6 +584,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif metrics_provider in ("http", "uwsgi"):
             # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
             # which should make this look less silly.
+            use_prometheus = autoscaling_params.get(
+                "use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI
+            )
             if metrics_provider == "uwsgi" and use_prometheus:
                 metrics.append(
                     V2beta2MetricSpec(

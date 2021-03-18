@@ -1899,6 +1899,20 @@ class TestKubernetesDeploymentConfig:
                 min_replicas=1,
                 metrics=[
                     V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="service-instance-uwsgi-prom",
+                            ),
+                            target=V2beta2MetricTarget(type="Value", value=1,),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                        ),
+                    ),
+                    V2beta2MetricSpec(
                         type="External",
                         external=V2beta2ExternalMetricSource(
                             metric=V2beta2MetricIdentifier(
@@ -1906,7 +1920,7 @@ class TestKubernetesDeploymentConfig:
                             ),
                             target=V2beta2MetricTarget(type="Value", value=1,),
                         ),
-                    )
+                    ),
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name="fake_name",
