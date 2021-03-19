@@ -1,3 +1,10 @@
+paasta-tools (0.97.87) xenial; urgency=medium
+
+  * 0.97.87 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17097_signalfx_optional"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 19 Mar 2021 14:15:05 -0700
+
 paasta-tools (0.97.86) xenial; urgency=medium
 
   * 0.97.86 tagged with 'make release'
