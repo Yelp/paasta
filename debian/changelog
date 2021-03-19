@@ -1,3 +1,11 @@
+paasta-tools (0.97.86) xenial; urgency=medium
+
+  * 0.97.86 tagged with 'make release'
+    Commit: Merge pull request #3061 from Yelp/drop-capabilities-for-k8s
+    Drop capabilities for k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 19 Mar 2021 05:23:13 -0700
+
 paasta-tools (0.97.85) xenial; urgency=medium
 
   * 0.97.85 tagged with 'make release'
