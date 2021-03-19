@@ -182,6 +182,7 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
+DEFAULT_USE_SIGNALFX_UWSGI = True
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -611,36 +612,44 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-            hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
-            legacy_autoscaling_signalflow = (
-                load_system_paasta_config().get_legacy_autoscaling_signalflow()
-            )
-            signalflow = legacy_autoscaling_signalflow.format(
-                setpoint=target,
-                offset=autoscaling_params.get("offset", 0),
-                moving_average_window_seconds=autoscaling_params.get(
-                    "moving_average_window_seconds",
-                    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-                ),
-                paasta_service=self.get_service(),
-                paasta_instance=self.get_instance(),
-                paasta_cluster=self.get_cluster(),
-                signalfx_metric_name=metrics_provider,
-            )
-            annotations[f"signalfx.com.external.metric/{hpa_metric_name}"] = signalflow
 
-            metrics.append(
-                V2beta2MetricSpec(
-                    type="External",
-                    external=V2beta2ExternalMetricSource(
-                        metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
-                        target=V2beta2MetricTarget(
-                            type="Value",
-                            value=1,  # see comments on signalflow template above
-                        ),
-                    ),
-                )
+            use_signalfx = autoscaling_params.get(
+                "use_signalfx", DEFAULT_USE_SIGNALFX_UWSGI
             )
+
+            if use_signalfx:
+                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
+                legacy_autoscaling_signalflow = (
+                    load_system_paasta_config().get_legacy_autoscaling_signalflow()
+                )
+                signalflow = legacy_autoscaling_signalflow.format(
+                    setpoint=target,
+                    offset=autoscaling_params.get("offset", 0),
+                    moving_average_window_seconds=autoscaling_params.get(
+                        "moving_average_window_seconds",
+                        DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+                    ),
+                    paasta_service=self.get_service(),
+                    paasta_instance=self.get_instance(),
+                    paasta_cluster=self.get_cluster(),
+                    signalfx_metric_name=metrics_provider,
+                )
+                annotations[
+                    f"signalfx.com.external.metric/{hpa_metric_name}"
+                ] = signalflow
+
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="External",
+                        external=V2beta2ExternalMetricSource(
+                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,  # see comments on signalflow template above
+                            ),
+                        ),
+                    )
+                )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
