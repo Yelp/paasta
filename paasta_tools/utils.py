@@ -133,6 +133,23 @@ INSTANCE_TYPES = (
     "nrtsearchservice",
 )
 
+CAPS_DROP = [
+    "SETPCAP",
+    "MKNOD",
+    "AUDIT_WRITE",
+    "CHOWN",
+    "NET_RAW",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "FSETID",
+    "KILL",
+    "SETGID",
+    "SETUID",
+    "NET_BIND_SERVICE",
+    "SYS_CHROOT",
+    "SETFCAP",
+]
+
 
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
@@ -454,23 +471,7 @@ class InstanceConfig:
         makes them not able to perform special privilege escalation stuff
         https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
         """
-        caps = [
-            "SETPCAP",
-            "MKNOD",
-            "AUDIT_WRITE",
-            "CHOWN",
-            "NET_RAW",
-            "DAC_OVERRIDE",
-            "FOWNER",
-            "FSETID",
-            "KILL",
-            "SETGID",
-            "SETUID",
-            "NET_BIND_SERVICE",
-            "SYS_CHROOT",
-            "SETFCAP",
-        ]
-        for cap in caps:
+        for cap in CAPS_DROP:
             yield {"key": "cap-drop", "value": cap}
 
     def format_docker_parameters(

@@ -129,6 +129,7 @@ from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -1041,8 +1042,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_security_context(self) -> Optional[V1SecurityContext]:
         cap_add = self.config_dict.get("cap_add", None)
         if cap_add is None:
-            return None
-        return V1SecurityContext(capabilities=V1Capabilities(add=cap_add))
+            return V1SecurityContext(capabilities=V1Capabilities(drop=CAPS_DROP))
+        else:
+            return V1SecurityContext(
+                capabilities=V1Capabilities(add=cap_add, drop=CAPS_DROP)
+            )
 
     def get_kubernetes_containers(
         self,

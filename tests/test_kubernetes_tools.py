@@ -120,6 +120,7 @@ from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
+from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
@@ -919,6 +920,9 @@ class TestKubernetesDeploymentConfig:
                     name="fm",
                     ports=ports,
                     volume_mounts=mock_get_volume_mounts.return_value,
+                    security_context=V1SecurityContext(
+                        capabilities=V1Capabilities(drop=CAPS_DROP)
+                    ),
                 ),
                 "mock_sidecar",
             ]
@@ -1015,12 +1019,15 @@ class TestKubernetesDeploymentConfig:
         )
 
     def test_get_security_context_without_cap_add(self):
-        assert self.deployment.get_security_context() is None
+        expected_security_context = V1SecurityContext(
+            capabilities=V1Capabilities(drop=CAPS_DROP)
+        )
+        assert self.deployment.get_security_context() == expected_security_context
 
     def test_get_security_context_with_cap_add(self):
         self.deployment.config_dict["cap_add"] = ["SETGID"]
         expected_security_context = V1SecurityContext(
-            capabilities=V1Capabilities(add=["SETGID"])
+            capabilities=V1Capabilities(add=["SETGID"], drop=CAPS_DROP)
         )
         assert self.deployment.get_security_context() == expected_security_context
 
@@ -3272,7 +3279,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config33f02c03"
+            == "configc5795b2b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
