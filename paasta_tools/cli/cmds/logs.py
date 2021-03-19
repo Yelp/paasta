@@ -903,9 +903,9 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
+        pods: Iterable[str],
         raw_mode: bool,
         strip_headers: bool,
-        pods: Iterable[str] = None,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
 
