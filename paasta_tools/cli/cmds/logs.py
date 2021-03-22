@@ -452,7 +452,6 @@ def prettify_log_line(
         return "Invalid JSON: %s" % line
 
     try:
-        pretty_level = prettify_level(parsed_line["level"], requested_levels)
         if strip_headers:
             return "%(timestamp)s %(message)s" % (
                 {
@@ -462,15 +461,16 @@ def prettify_log_line(
             )
         else:
             return (
-                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s"
+                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(pod)s%(container)s"
                 % (
                     {
                         "timestamp": prettify_timestamp(parsed_line["timestamp"]),
                         "component": prettify_component(parsed_line["component"]),
                         "cluster": "[%s]" % parsed_line["cluster"],
                         "instance": "[%s]" % parsed_line["instance"],
-                        "level": "%s" % pretty_level,
-                        "message": parsed_line["message"],
+                        "pod": "%s" % parsed_line["pod_name"],
+                        "container": "%s"
+                        % re.findall(r"\(.*?\)", parsed_line["message"])[0],
                     }
                 )
             )
