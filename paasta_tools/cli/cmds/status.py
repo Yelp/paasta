@@ -250,7 +250,11 @@ def paasta_status_on_api_endpoint(
         exit(1)
     try:
         status = client.service.status_instance(
-            service=service, instance=instance, verbose=verbose, new=new,
+            service=service,
+            instance=instance,
+            verbose=verbose,
+            new=new,
+            include_smartstack=False,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
