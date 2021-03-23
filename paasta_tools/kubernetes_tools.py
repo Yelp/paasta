@@ -2286,6 +2286,15 @@ is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
 
 
+def is_pod_scheduled(pod: V1Pod) -> bool:
+    scheduled_conditions = [
+        cond.status == "True"
+        for cond in pod.status.conditions or []
+        if cond.type == "PodScheduled"
+    ]
+    return all(scheduled_conditions) if scheduled_conditions else False
+
+
 class PodStatus(Enum):
     PENDING = (1,)
     RUNNING = (2,)

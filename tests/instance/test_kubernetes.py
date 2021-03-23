@@ -117,6 +117,7 @@ def test_kubernetes_status(
     assert "desired_state" in status
 
 
+# TODO: Test coverage for container status
 @mock.patch(
     "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
 )
@@ -154,7 +155,28 @@ def test_kubernetes_status_v2(
                 name="pod_1",
                 creation_timestamp=datetime.datetime(2021, 3, 6),
             ),
-            status=Struct(pod_ip="1.2.3.4"),
+            status=Struct(
+                pod_ip="1.2.3.4",
+                host_ip="4.3.2.1",
+                phase="Running",
+                reason=None,
+                message=None,
+                conditions=[
+                    Struct(type="Ready", status="True",),
+                    Struct(type="PodScheduled", status="True",),
+                ],
+                container_statuses=[
+                    Struct(
+                        name="main_container",
+                        restart_count=0,
+                        state=Struct(
+                            running=Struct(started_at=datetime.datetime(2021, 3, 6)),
+                            waiting=None,
+                            terminated=None,
+                        ),
+                    )
+                ],
+            ),
         ),
     ]
 
@@ -186,6 +208,22 @@ def test_kubernetes_status_v2(
                         "name": "pod_1",
                         "ip": "1.2.3.4",
                         "create_timestamp": datetime.datetime(2021, 3, 6).timestamp(),
+                        "host": "4.3.2.1",
+                        "phase": "Running",
+                        "reason": None,
+                        "message": None,
+                        "scheduled": True,
+                        "ready": True,
+                        "containers": [
+                            {
+                                "name": "main_container",
+                                "restart_count": 0,
+                                "state": "running",
+                                "reason": None,
+                                "message": None,
+                                "timestamp": datetime.datetime(2021, 3, 6).timestamp(),
+                            }
+                        ],
                     }
                 ],
             }

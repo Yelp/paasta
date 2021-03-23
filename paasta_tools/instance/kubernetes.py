@@ -492,11 +492,60 @@ def get_replicaset_status(
 
 
 def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
+    # TODO: Return enough data to figure out _all_ ReplicaStates
     return {
         "name": pod.metadata.name,
         "ip": pod.status.pod_ip,
+        "host": pod.status.host_ip,
+        "phase": pod.status.phase,
+        "reason": pod.status.reason,
+        "message": pod.status.message,
+        # Based on pod.status.conditions
+        "scheduled": kubernetes_tools.is_pod_scheduled(pod),
+        "ready": kubernetes_tools.is_pod_ready(pod),
+        "containers": get_containers(pod),
+        # TODO: we need container_statuses for restart/liveness info
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
     }
+
+
+# TODO: Include data required to provide hints, healthcheck spec, etc
+def get_containers(pod: V1Pod) -> List[Dict[str, Any]]:
+    containers = []
+    statuses = pod.status.container_statuses or []
+    for cs in statuses:
+        state = None
+        reason = None
+        message = None
+        state_timestamp = None
+        for attr in ["running", "waiting", "terminated"]:
+            this_state = getattr(cs.state, attr)
+            # Each container should have only a single state populated
+            if this_state:
+                state = attr
+                if not state == "running":
+                    reason = this_state.reason
+                    message = this_state.message
+                    if state == "waiting":
+                        # if in crashloop, check last_state.terminated
+                        if reason == "CrashLoopBackOff" and cs.last_state.terminated:
+                            reason = cs.last_state.terminated.reason
+                            message = cs.last_state.terminated.message
+                            state_timestamp = cs.last_state.terminated.finished_at
+                else:
+                    state_timestamp = this_state.started_at
+
+        containers.append(
+            {
+                "name": cs.name,
+                "restart_count": cs.restart_count,
+                "state": state,
+                "reason": reason,
+                "message": message,
+                "timestamp": state_timestamp.timestamp() if state_timestamp else None,
+            }
+        )
+    return containers
 
 
 def kubernetes_status(

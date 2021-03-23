@@ -1510,6 +1510,35 @@
                 "name": {
                     "type": "string",
                     "description": "Pod name"
+                },
+                "phase": {
+                    "type": "string",
+                    "description": "The lifecycle phase of the pod"
+                },
+                "ready": {
+                    "type": "boolean",
+                    "description": "Whether or not the pod is ready"
+                },
+                "scheduled": {
+                    "type": "boolean",
+                    "description": "Whether or not the pod is scheduled"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "brief description of the pod's state",
+                    "x-nullable": true
+                },
+                "message": {
+                    "type": "string",
+                    "description": "short message with details about the pod's state",
+                    "x-nullable": true
+                },
+                "containers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesContainerV2",
+                        "description": "List of containers in the pod"
+                    }
                 }
             }
         },
@@ -1523,6 +1552,40 @@
                 "tail_lines": {
                     "$ref": "#/definitions/TaskTailLines",
                     "description": "Stdout and stderr tail of the container"
+                }
+            }
+        },
+        "KubernetesContainerV2": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the container"
+                },
+                "state": {
+                    "type": "string",
+                    "description": "State of the container"
+                },
+                "restart_count": {
+                    "type": "integer",
+                    "description": "Number of restarts since container creation",
+                    "x-nullable": true
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Short description of the state of the container",
+                    "x-nullable": true
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Details about the state of the container",
+                    "x-nullable": true
+                },
+                "timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp at which state transitioned",
+                    "x-nullable": true
                 }
             }
         },

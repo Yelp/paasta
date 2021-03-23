@@ -1287,13 +1287,7 @@ class TestGetInstanceState:
 
 
 class TestGetVersionsTable:
-    @pytest.fixture(autouse=True)
-    def mock_get_replica_states(self):
-        with mock.patch(
-            "paasta_tools.cli.cmds.status.get_replica_states", autospec=True,
-        ) as self.mock_get_replica_states:
-            self.mock_get_replica_states.return_value = "3 Running"
-            yield
+    # TODO: Add replica table coverage
 
     @pytest.fixture
     def mock_replicasets(self):
@@ -1301,33 +1295,64 @@ class TestGetVersionsTable:
             git_sha="aabbccddee",
             config_sha="config000",
             create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
-            pods=[],
+            pods=[
+                paastamodels.KubernetesPodV2(
+                    name="pod1",
+                    ip="1.2.3.4",
+                    create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+                    phase="Running",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+                paastamodels.KubernetesPodV2(
+                    name="pod2",
+                    ip="1.2.3.5",
+                    create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
+                    phase="Failed",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+            ],
         )
         replicaset_2 = paastamodels.KubernetesReplicaSetV2(
             git_sha="ff11223344",
             config_sha="config000",
             create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
-            pods=[],
+            pods=[
+                paastamodels.KubernetesPodV2(
+                    name="pod1",
+                    ip="1.2.3.4",
+                    create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+                    phase="Running",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+            ],
         )
         # in reverse order to ensure we are sorting
         return [replicaset_2, replicaset_1]
 
     def test_two_replicasets(self, mock_replicasets):
         versions_table = get_versions_table(mock_replicasets)
+
         assert "aabbccdd (new)" in versions_table[0]
         assert "2021-03-01" in versions_table[0]
+        assert "Healthy" in versions_table[1]
+        assert "Unhealthy" in versions_table[1]
 
-        assert "ff112233 (old)" in versions_table[2]
-        assert "2021-03-03" in versions_table[2]
-
-        assert self.mock_get_replica_states.return_value in versions_table[1]
-        assert self.mock_get_replica_states.return_value in versions_table[3]
+        assert "ff112233 (old)" in versions_table[6]
+        assert "2021-03-03" in versions_table[6]
+        assert "Healthy" in versions_table[7]
+        assert "Unhealthy" not in versions_table[7]
 
     def test_different_config_shas(self, mock_replicasets):
         mock_replicasets[0].config_sha = "config111"
         versions_table = get_versions_table(mock_replicasets)
         assert "aabbccdd, config000" in versions_table[0]
-        assert "ff112233, config111" in versions_table[2]
+        assert "ff112233, config111" in versions_table[6]
 
 
 class TestPrintKubernetesStatus:

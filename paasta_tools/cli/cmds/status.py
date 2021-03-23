@@ -1146,8 +1146,20 @@ def print_kubernetes_status_v2(
     instance_state = get_instance_state(status)
     output.append(f"    State: {instance_state}")
     output.append("    Running versions:")
-    output.append("      " + PaastaColors.green("Rerun with -v to see all replicas"))
-    output.extend([f"      {line}" for line in get_versions_table(status.replicasets)])
+    if not verbose:
+        output.append(
+            "      " + PaastaColors.green("Rerun with -v to see all replicas")
+        )
+    elif verbose < 2:
+        output.append(
+            "      "
+            + PaastaColors.green(
+                "You can use paasta logs to view stoud/stderr or rerun with -vv for even more information."
+            )
+        )
+    output.extend(
+        [f"      {line}" for line in get_versions_table(status.replicasets, verbose)]
+    )
     if status.error_message:
         output.append("    " + PaastaColors.red(status.error_message))
         return 1
@@ -1188,11 +1200,14 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
         return PaastaColors.red("Unknown")
 
 
-def get_versions_table(replicasets: List[KubernetesReplicaSetV2]) -> List[str]:
+def get_versions_table(
+    replicasets: List[KubernetesReplicaSetV2], verbose: int = 0,
+) -> List[str]:
+    # TODO: why are replicasets w/ 0 desired pods still listed
     if len(replicasets) == 0:
         return [PaastaColors.red("There are no running versions for this instance")]
     elif len(replicasets) == 1:
-        return get_version_table_entry(replicasets[0])
+        return get_version_table_entry(replicasets[0], verbose=verbose)
     else:
         replicasets = sorted(replicasets, key=lambda x: x.create_timestamp)
         config_shas = {r.config_sha for r in replicasets}
@@ -1207,6 +1222,7 @@ def get_versions_table(replicasets: List[KubernetesReplicaSetV2]) -> List[str]:
                 replicasets[0],
                 version_name_suffix="new",
                 show_config_sha=show_config_sha,
+                verbose=verbose,
             )
         )
         for replicaset in replicasets[1:]:
@@ -1215,6 +1231,7 @@ def get_versions_table(replicasets: List[KubernetesReplicaSetV2]) -> List[str]:
                     replicaset,
                     version_name_suffix="old",
                     show_config_sha=show_config_sha,
+                    verbose=verbose,
                 )
             )
         return table
@@ -1224,6 +1241,7 @@ def get_version_table_entry(
     replicaset: KubernetesReplicaSetV2,
     version_name_suffix: str = None,
     show_config_sha: bool = False,
+    verbose: int = 0,
 ) -> List[str]:
     version_name = replicaset.git_sha[:8]
     if show_config_sha:
@@ -1236,13 +1254,152 @@ def get_version_table_entry(
     humanized_start_time = humanize.naturaltime(start_datetime)
     entry = [f"{version_name} - Started {start_datetime} ({humanized_start_time})"]
     replica_states = get_replica_states(replicaset.pods)
-    entry.append(f"  Replica States: {replica_states}")
+    replica_states = sorted(replica_states, key=lambda s: s[1].create_timestamp)
+
+    replica_state_list = [
+        state.color(
+            f"{len([rs for rs in replica_states if rs[0]==state])} {state.value}"
+        )
+        for state in ReplicaState
+        if [rs for rs in replica_states if rs[0] == state]
+    ]
+    entry.append(f"  Replica States: {' / '.join(replica_state_list)}")
+    if not verbose:
+        unhealthy_replicas = [rs for rs in replica_states if rs[0].is_unhealthy()]
+        if unhealthy_replicas:
+            entry.append(f"    Unhealthy Replicas:")
+            replica_table = create_replica_table(unhealthy_replicas)
+            for line in replica_table:
+                entry.append(f"      {line}")
+    else:
+        replica_table = create_replica_table(replica_states)
+        for line in replica_table:
+            entry.append(f"    {line}")
     return entry
 
 
+class ReplicaState(Enum):
+    RUNNING = "Healthy"
+    UNSCHEDULED = "Unscheduled"
+    STARTING = "Starting"
+    WARMING_UP = "Warming Up"
+    TERMINATING = "Terminating"
+    HEALTHCHECK_FAILING = "Healthcheck Failing"
+    UNREACHABLE = "Unreachable"
+    UNHEALTHY = "Unhealthy"
+    UNKNOWN = "Unknown"
+
+    def is_unhealthy(self):
+        return self in ReplicaState.unhealthy_states()
+
+    @property
+    def color(self):
+        if self.is_unhealthy():
+            return PaastaColors.red
+        elif self.name == "RUNNING":
+            return PaastaColors.green
+        return PaastaColors.yellow
+
+    @classmethod
+    def unhealthy_states(cls):
+        return [cls.UNHEALTHY, cls.UNREACHABLE, cls.HEALTHCHECK_FAILING]
+
+
 # TODO(PAASTA-17287): Implement replica states
-def get_replica_states(pods: List[KubernetesPodV2]) -> str:
-    return PaastaColors.green(f"{len(pods)} Running")
+def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
+    phase = pod.phase
+    state = ReplicaState.UNKNOWN
+    if phase is None or not pod.scheduled:
+        # if pod within healthcheck grace period, WARMING_UP
+        # if no containers scheduled yet, STARTING
+        state = ReplicaState.UNSCHEDULED
+        # If we are unscheduled but getting error unschedulable, is that unhealthy or still just unscheduled?
+    elif phase == "Pending":
+        # Check containers, liveness, restart
+        # ReplicaState.STARTING
+        # ReplicaState.WARMING_UP
+        if not pod.containers:
+            state = ReplicaState.STARTING
+        else:
+            state = ReplicaState.WARMING_UP
+    elif phase == "Running":
+        # Check pod restarts, current container statuses
+        # ReplicaState.HEALTHCHECK_FAILING?
+        # Check readiness probe
+        if not pod.ready:
+            state = ReplicaState.UNREACHABLE
+        else:
+            state = ReplicaState.RUNNING
+    elif phase == "Terminating":
+        state = ReplicaState.TERMINATING
+    elif phase == "Failed":
+        # e.g. pod.reason == evicted
+        state = ReplicaState.UNHEALTHY
+    return state
+
+
+def get_replica_states(
+    pods: List[KubernetesPodV2],
+) -> List[Tuple[ReplicaState, KubernetesPodV2]]:
+    return [(get_replica_state(pod), pod) for pod in pods]
+
+
+def create_replica_table(pods: List[Tuple[ReplicaState, Any]],) -> List[str]:
+    header = ["ID", "IP/Port", "Host deployed to", "Started at what localtime", "State"]
+    table: List[Union[List[str], str]] = [header]
+    for state, pod in pods:
+        # TODO: Is it always port 8888?
+        start_datetime = datetime.fromtimestamp(pod.create_timestamp)
+        humanized_start_time = humanize.naturaltime(start_datetime)
+        row = [
+            pod.name,
+            f"{pod.ip}:8888",
+            pod.host or "None",
+            humanized_start_time,
+            state.color(state.value),
+        ]
+        table.append(row)
+        if state.is_unhealthy():
+            # Need per-container details eg start time + restart count
+            if pod.reason == "Evicted":
+                table.append(
+                    PaastaColors.red(
+                        f'  Evicted: {pod.message if pod.message else "Unknown reason"}'
+                    )
+                )
+            for c in pod.containers:
+                # If container has no timestamp, use pod's creation
+                timestamp = (
+                    datetime.fromtimestamp(c.timestamp)
+                    if c.timestamp
+                    else start_datetime
+                )
+                humanized_timestamp = humanize.naturaltime(timestamp)
+                if c.restart_count > 0:
+                    if c.state == "running":
+                        table.append(
+                            PaastaColors.red(
+                                f"Restarted at {humanized_timestamp}. {c.restart_count} restarts since starting"
+                            )
+                        )
+                    if c.reason == "OOMKilled":
+                        table.append(
+                            PaastaColors.red(
+                                f"  OOMKilled at {humanized_timestamp}.  {c.restart_count} restarts since starting"
+                            )
+                        )
+            if state == ReplicaState.HEALTHCHECK_FAILING:
+                # TODO: Use actual container.liveness_probe
+                table.append(
+                    PaastaColors.red(
+                        f"  To test healthcheck directly, run `curl {pod.ip}:8888/status`"
+                    )
+                )
+            else:
+                table.append(
+                    PaastaColors.red(f"  Consider checking its logs with `paasta logs`")
+                )
+    return format_table(table)
 
 
 def print_kubernetes_status(

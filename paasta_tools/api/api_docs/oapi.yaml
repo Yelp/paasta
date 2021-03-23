@@ -519,6 +519,32 @@ components:
           $ref: '#/components/schemas/TaskTailLines'
           description: Stdout and stderr tail of the container
       type: object
+    KubernetesContainerV2:
+      properties:
+        name:
+          description: Name of the container
+          type: string
+        state:
+          description: State of the container
+          type: string
+        restart_count:
+          description: Number of restarts since container creation
+          type: integer
+          nullable: true
+        reason:
+          description: Short description of state of container
+          type: string
+          nullable: true
+        message:
+          description: Details about state of container
+          type: string
+          nullable: true
+        timestamp:
+          description: Unix timestamp at which state transitioned
+          format: float
+          type: number
+          nullable: true
+      type: object
     KubernetesPod:
       properties:
         containers:
@@ -570,6 +596,29 @@ components:
           description: Unix timestamp at which pod was created
           format: float
           type: number
+        phase:
+          nullable: true
+          description: The lifecycle phase of the pod
+          type: string
+        ready:
+          description: Whether or not the pod is ready
+          type: boolean
+        scheduled:
+          description: Whether or not the pod is scheduled
+          type: boolean
+        reason:
+          description: brief description of the pod's state
+          nullable: true
+          type: string
+        message:
+          description: short message with details about the pod's state
+          nullable: true
+          type: string
+        containers:
+          items:
+            $ref: '#/components/schemas/KubernetesContainerV2'
+            description: List of containers in the pod
+          type: array
       type: object
     KubernetesPodEvent:
       type: object
