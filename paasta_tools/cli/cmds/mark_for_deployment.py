@@ -455,6 +455,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
+    timeout_percentage_before_reminding = 75
 
     def __init__(
         self,
@@ -605,8 +606,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("mfd_succeeded")
 
     def schedule_paasta_status_reminder(self):
-        timeout_percentage_before_reminding = 75
-
         def waiting_on_to_status(waiting_on):
             if waiting_on is None:
                 return [
@@ -636,7 +635,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
                     self.notify_users(
                         (
-                            f"It has been {timeout_percentage_before_reminding}% of the maximum deploy time ({human_max_deploy_time}), "
+                            f"It has been {self.timeout_percentage_before_reminding}% of the maximum deploy time ({human_max_deploy_time}), "
                             "it probably should have finished by now. Is it stuck?\n\n"
                             "Try running this command to see the status of the deploy:\n"
                             f"{status_commands}"
@@ -648,7 +647,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 )
 
         def schedule_callback():
-            time_to_notify = self.timeout * (timeout_percentage_before_reminding / 100)
+            time_to_notify = self.timeout * (
+                self.timeout_percentage_before_reminding / 100
+            )
             self.paasta_status_reminder_handle = self.event_loop.call_later(
                 time_to_notify, times_up
             )
@@ -1446,7 +1447,7 @@ def wait_for_deployment(
             service=service,
             component="deploy",
             line=(
-                "Couldn't find any marathon instances for service {} in deploy group {}. Exiting.".format(
+                "Couldn't find any long-running instances for service {} in deploy group {}. Exiting.".format(
                     service, deploy_group
                 )
             ),
@@ -1549,8 +1550,8 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
 
 
 class NoSuchCluster(Exception):
-    """To be raised by wait_for_deployment() when a service has a marathon config for
-    a cluster that is not listed in /etc/paasta/api_endpoints.json.
+    """To be raised by wait_for_deployment() when a service has a marathon or
+    kubernetes config for a cluster that is not listed in /etc/paasta/api_endpoints.json.
     """
 
     pass
