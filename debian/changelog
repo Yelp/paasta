@@ -1,3 +1,12 @@
+paasta-tools (0.97.88) xenial; urgency=medium
+
+  * 0.97.88 tagged with 'make release'
+    Commit: Merge pull request #3073 from Yelp/PAASTA-17311-remove-
+    haproxy-section-from-status  PAASTA-17311, removed haproxy section
+    from the paasta status field
+
+ -- Manvendra Singh <msingh@yelp.com>  Tue, 23 Mar 2021 09:39:45 -0700
+
 paasta-tools (0.97.87) xenial; urgency=medium
 
   * 0.97.87 tagged with 'make release'
