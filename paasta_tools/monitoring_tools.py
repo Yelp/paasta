@@ -210,6 +210,7 @@ def send_event(
     ttl=None,
     cluster=None,
     system_paasta_config=None,
+    dry_run=False,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -268,7 +269,16 @@ def send_event(
         "description": get_description(overrides, service, soa_dir),
     }
 
-    if result_dict.get("sensu_host"):
+    if dry_run:
+        if status == pysensu_yelp.Status.OK:
+            print(f"Would've sent an OK event for check '{check_name}'")
+        else:
+            from pprint import pprint  # only import during testing
+
+            print(f"Would've sent the following alert for check '{check_name}':")
+            pprint(result_dict)
+
+    elif result_dict.get("sensu_host"):
         pysensu_yelp.send_event(**result_dict)
 
 
