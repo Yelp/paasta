@@ -31,7 +31,9 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 )
 
 def lazy_import():
+    from paasta_tools.paastaapi.model.envoy_status import EnvoyStatus
     from paasta_tools.paastaapi.model.kubernetes_replica_set_v2 import KubernetesReplicaSetV2
+    globals()['EnvoyStatus'] = EnvoyStatus
     globals()['KubernetesReplicaSetV2'] = KubernetesReplicaSetV2
 
 
@@ -86,6 +88,7 @@ class InstanceStatusKubernetesV2(ModelNormal):
             'desired_instances': (int,),  # noqa: E501
             'error_message': (str,),  # noqa: E501
             'replicasets': ([KubernetesReplicaSetV2],),  # noqa: E501
+            'envoy': (EnvoyStatus,),  # noqa: E501
         }
 
     @cached_property
@@ -99,6 +102,7 @@ class InstanceStatusKubernetesV2(ModelNormal):
         'desired_instances': 'desired_instances',  # noqa: E501
         'error_message': 'error_message',  # noqa: E501
         'replicasets': 'replicasets',  # noqa: E501
+        'envoy': 'envoy',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -152,6 +156,7 @@ class InstanceStatusKubernetesV2(ModelNormal):
             desired_instances (int): Number of instances desired for this app. [optional]  # noqa: E501
             error_message (str): Error message if we cannot assemble status for the instance. [optional]  # noqa: E501
             replicasets ([KubernetesReplicaSetV2]): Replicasets corresponding to individual versions of the instance. [optional]  # noqa: E501
+            envoy (EnvoyStatus): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

@@ -30,6 +30,7 @@ Submodules
    paasta_tools.paastaapi.model.instance_tasks
    paasta_tools.paastaapi.model.integer_and_error
    paasta_tools.paastaapi.model.kubernetes_container
+   paasta_tools.paastaapi.model.kubernetes_container_v2
    paasta_tools.paastaapi.model.kubernetes_pod
    paasta_tools.paastaapi.model.kubernetes_pod_event
    paasta_tools.paastaapi.model.kubernetes_pod_v2

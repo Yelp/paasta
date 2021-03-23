@@ -371,6 +371,9 @@ components:
           items:
             $ref: '#/components/schemas/KubernetesReplicaSetV2'
           type: array
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
     InstanceStatusMarathon:
       properties:
         active_shas:
@@ -519,6 +522,54 @@ components:
           $ref: '#/components/schemas/TaskTailLines'
           description: Stdout and stderr tail of the container
       type: object
+    KubernetesContainerV2:
+      properties:
+        name:
+          description: Name of the container
+          type: string
+        state:
+          description: State of the container
+          type: string
+        last_state:
+          description: Previous state of the container
+          type: string
+          nullable: true
+        restart_count:
+          description: Number of restarts since container creation
+          type: integer
+          nullable: true
+        reason:
+          description: Short description of the state of container
+          type: string
+          nullable: true
+        message:
+          description: Details about the state of container
+          type: string
+          nullable: true
+        last_reason:
+          description: Short description of the previous state of container
+          type: string
+          nullable: true
+        last_message:
+          description: Details about state of container
+          type: string
+          nullable: true
+        last_duration:
+          description: Duration in seconds of previous state
+          format: float
+          type: number
+          nullable: true
+        timestamp:
+          description: Unix timestamp at which current state began
+          format: float
+          type: number
+          nullable: true
+        healthcheck_grace_period:
+          description: Time in seconds for healthcheck grace period
+          format: float
+          type: number
+          nullable: true
+      type: object
     KubernetesPod:
       properties:
         containers:
@@ -566,10 +617,42 @@ components:
         ip:
           description: Pod IP
           type: string
+          nullable: true
+        host:
+          description: Host IP this pod was scheduled on
+          type: string
+          nullable: true
         create_timestamp:
           description: Unix timestamp at which pod was created
           format: float
           type: number
+        delete_timestamp:
+          description: Unix timestamp at which pod should be deleted
+          format: float
+          type: number
+          nullable: true
+        phase:
+          description: The lifecycle phase of the pod
+          type: string
+        ready:
+          description: Whether or not the pod is ready and/or registered in the mesh
+          type: boolean
+        scheduled:
+          description: Whether or not the pod is scheduled
+          type: boolean
+        reason:
+          description: brief description of the pod's state
+          nullable: true
+          type: string
+        message:
+          description: short message with details about the pod's state
+          nullable: true
+          type: string
+        containers:
+          items:
+            $ref: '#/components/schemas/KubernetesContainerV2'
+            description: List of containers in the pod
+          type: array
       type: object
     KubernetesPodEvent:
       type: object
