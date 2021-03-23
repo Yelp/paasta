@@ -461,16 +461,14 @@ def prettify_log_line(
             )
         else:
             return (
-                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(pod)s%(container)s"
+                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(message)s"
                 % (
                     {
                         "timestamp": prettify_timestamp(parsed_line["timestamp"]),
                         "component": prettify_component(parsed_line["component"]),
                         "cluster": "[%s]" % parsed_line["cluster"],
                         "instance": "[%s]" % parsed_line["instance"],
-                        "pod": "%s" % parsed_line["pod_name"],
-                        "container": "%s"
-                        % re.findall(r"\(.*?\)", parsed_line["message"])[0],
+                        "message": parsed_line["message"],
                     }
                 )
             )
