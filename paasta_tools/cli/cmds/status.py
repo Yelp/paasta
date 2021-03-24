@@ -64,7 +64,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
-from paasta_tools.paastaapi.models import KubernetesReplicaSetV2
+from paasta_tools.paastaapi.models import KubernetesVersion
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -1163,7 +1163,7 @@ def print_kubernetes_status_v2(
             )
         )
     output.extend(
-        [f"      {line}" for line in get_versions_table(status.replicasets, verbose)]
+        [f"      {line}" for line in get_versions_table(status.versions, verbose)]
     )
     if status.error_message:
         output.append("    " + PaastaColors.red(status.error_message))
@@ -1174,30 +1174,30 @@ def print_kubernetes_status_v2(
 
 # TODO: Make an enum class or similar for the various instance states
 def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
-    num_replicasets = len(status.replicasets)
-    num_ready_replicas = sum(r.ready_replicas for r in status.replicasets)
+    num_versions = len(status.versions)
+    num_ready_replicas = sum(r.ready_replicas for r in status.versions)
     if status.desired_state == "stop":
-        if num_replicasets == 1 and status.replicasets[0].replicas == 0:
+        if num_versions == 1 and status.versions[0].replicas == 0:
             return PaastaColors.red("Stopped")
         else:
             return PaastaColors.red("Stopping")
     elif status.desired_state == "start":
-        if num_replicasets == 0:
+        if num_versions == 0:
             return PaastaColors.yellow("Starting")
-        if num_replicasets == 1:
+        if num_versions == 1:
             if num_ready_replicas < status.desired_instances:
                 return PaastaColors.yellow("Launching replicas")
             else:
                 return PaastaColors.green("Running")
         else:
-            replicasets = sorted(status.replicasets, key=lambda x: x.create_timestamp)
-            git_shas = {r.git_sha for r in replicasets}
-            config_shas = {r.config_sha for r in replicasets}
+            versions = sorted(status.versions, key=lambda x: x.create_timestamp)
+            git_shas = {r.git_sha for r in versions}
+            config_shas = {r.config_sha for r in versions}
             bouncing_to = []
             if len(git_shas) > 1:
-                bouncing_to.append(replicasets[0].git_sha[:8])
+                bouncing_to.append(versions[0].git_sha[:8])
             if len(config_shas) > 1:
-                bouncing_to.append(replicasets[0].config_sha)
+                bouncing_to.append(versions[0].config_sha)
 
             bouncing_to_str = ", ".join(bouncing_to)
             return PaastaColors.yellow(f"Bouncing to {bouncing_to_str}")
@@ -1206,18 +1206,16 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
 
 
 def get_versions_table(
-    replicasets: List[KubernetesReplicaSetV2], verbose: int = 0,
+    versions: List[KubernetesVersion], verbose: int = 0,
 ) -> List[str]:
     # TODO: why are replicasets w/ 0 desired pods still listed
-    if len(replicasets) == 0:
+    if len(versions) == 0:
         return [PaastaColors.red("There are no running versions for this instance")]
-    elif len(replicasets) == 1:
-        return get_version_table_entry(replicasets[0], verbose=verbose)
+    elif len(versions) == 1:
+        return get_version_table_entry(versions[0], verbose=verbose)
     else:
-        replicasets = sorted(
-            replicasets, key=lambda x: x.create_timestamp, reverse=True
-        )
-        config_shas = {r.config_sha for r in replicasets}
+        versions = sorted(versions, key=lambda x: x.create_timestamp, reverse=True)
+        config_shas = {v.config_sha for v in versions}
         if len(config_shas) > 1:
             show_config_sha = True
         else:
@@ -1226,16 +1224,16 @@ def get_versions_table(
         table: List[str] = []
         table.extend(
             get_version_table_entry(
-                replicasets[0],
+                versions[0],
                 version_name_suffix="new",
                 show_config_sha=show_config_sha,
                 verbose=verbose,
             )
         )
-        for replicaset in replicasets[1:]:
+        for version in versions[1:]:
             table.extend(
                 get_version_table_entry(
-                    replicaset,
+                    version,
                     version_name_suffix="old",
                     show_config_sha=show_config_sha,
                     verbose=verbose,
@@ -1245,23 +1243,26 @@ def get_versions_table(
 
 
 def get_version_table_entry(
-    replicaset: KubernetesReplicaSetV2,
+    version: KubernetesVersion,
     version_name_suffix: str = None,
     show_config_sha: bool = False,
     verbose: int = 0,
 ) -> List[str]:
-    version_name = replicaset.git_sha[:8]
+    version_name = version.git_sha[:8]
     if show_config_sha:
-        version_name += f", {replicaset.config_sha}"
+        version_name += f", {version.config_sha}"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
     version_name = PaastaColors.blue(version_name)
 
-    start_datetime = datetime.fromtimestamp(replicaset.create_timestamp)
+    start_datetime = datetime.fromtimestamp(version.create_timestamp)
     humanized_start_time = humanize.naturaltime(start_datetime)
     entry = [f"{version_name} - Started {start_datetime} ({humanized_start_time})"]
-    replica_states = get_replica_states(replicaset.pods)
+    replica_states = get_replica_states(version.pods)
     replica_states = sorted(replica_states, key=lambda s: s[1].create_timestamp)
+    if len(replica_states) == 0:
+        message = PaastaColors.red("0 pods found")
+        entry.append(f"  {message}")
     if replica_states:
         # If no replica_states, there were no pods found
         replica_state_counts = Counter([state for state, pod in replica_states])

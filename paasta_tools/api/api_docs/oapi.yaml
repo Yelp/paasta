@@ -366,10 +366,10 @@ components:
         error_message:
           description: Error message if we cannot assemble status for the instance
           type: string
-        replicasets:
-          description: Replicasets corresponding to individual versions of the instance
+        versions:
+          description: Individual versions of the instance
           items:
-            $ref: '#/components/schemas/KubernetesReplicaSetV2'
+            $ref: '#/components/schemas/KubernetesVersion'
           type: array
         envoy:
           $ref: '#/components/schemas/EnvoyStatus'
@@ -687,10 +687,13 @@ components:
           type: string
           nullable: true
       type: object
-    KubernetesReplicaSetV2:
+    KubernetesVersion:
       properties:
+        type:
+          description: Type of version (ReplicaSet or ControllerRevision)
+          type: string
         create_timestamp:
-          description: Unix timestamp when replicaset was created
+          description: Unix timestamp when version was created
           format: float
           type: number
         git_sha:
@@ -700,15 +703,15 @@ components:
           description: SHA of configuration for this instance
           type: string
         name:
-          description: Name of the replicaset
+          description: Name of the version (only valid for ReplicaSets)
           type: string
         pods:
-          description: Pods associated to this replicaset
+          description: Pods associated to this version
           items:
             $ref: '#/components/schemas/KubernetesPodV2'
           type: array
         replicas:
-          description: Desired number of replicas for this replicaset
+          description: Desired number of replicas for this version
           format: int32
           type: integer
         ready_replicas:

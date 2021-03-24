@@ -1353,12 +1353,12 @@
                     "type": "string",
                     "description": "Error message if we cannot assemble status for the instance"
                 },
-                "replicasets": {
+                "versions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/KubernetesReplicaSetV2"
+                        "$ref": "#/definitions/KubernetesVersion"
                     },
-                    "description": "Replicasets corresponding to individual versions of the instance"
+                    "description": "Individual versions of the instance"
                 }
             }
         },
@@ -1413,13 +1413,17 @@
                 }
             }
         },
-        "KubernetesReplicaSetV2": {
+        "KubernetesVersion": {
             "type": "object",
             "properties": {
+                "type": {
+                    "description": "Type of version (ReplicaSet or ControllerRevision)",
+                    "type": "string"
+                },
                 "create_timestamp": {
                     "type": "number",
                     "format": "float",
-                    "description": "Unix timestamp when replicaset was created"
+                    "description": "Unix timestamp when version was created"
                 },
                 "git_sha": {
                     "type": "string",
@@ -1431,19 +1435,19 @@
                 },
                 "name": {
                     "type": "string",
-                    "description": "Name of the replicaset"
+                    "description": "Name of the version (only valid for ReplicaSets)"
                 },
                 "pods": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/KubernetesPodV2"
                     },
-                    "description": "Pods associated to this replicaset"
+                    "description": "Pods associated to this version"
                 },
                 "replicas": {
                     "type": "integer",
                     "format": "int32",
-                    "description": "Desired number of replicas for this replicaset"
+                    "description": "Desired number of replicas for this version"
                 },
                 "ready_replicas": {
                     "type": "integer",
