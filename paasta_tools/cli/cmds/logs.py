@@ -298,7 +298,6 @@ def paasta_log_line_passes_filter(
             or parsed_line.get("cluster") == ANY_CLUSTER
         )
         and (instances is None or parsed_line.get("instance") in instances)
-        and (pods is None or parsed_line.get("pod_name") in pods)
     )
 
 
@@ -382,6 +381,7 @@ def marathon_log_line_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
@@ -973,30 +973,17 @@ class ScribeLogReader(LogReader):
                     if parser_fn:
                         line = parser_fn(line, clusters, service)
                     if filter_fn:
-                        if "marathon" in components:
-                            passed_filter = filter_fn(
-                                line,
-                                levels,
-                                service,
-                                components,
-                                clusters,
-                                instances,
-                                start_time=start_time,
-                                end_time=end_time,
-                            )
-                        else:
-                            passed_filter = filter_fn(
-                                line,
-                                levels,
-                                service,
-                                components,
-                                clusters,
-                                instances,
-                                pods,
-                                start_time=start_time,
-                                end_time=end_time,
-                            )
-                        if passed_filter:
+                        if filter_fn(
+                            line,
+                            levels,
+                            service,
+                            components,
+                            clusters,
+                            instances,
+                            pods,
+                            start_time=start_time,
+                            end_time=end_time,
+                        ):
                             try:
                                 parsed_line = json.loads(line)
                                 timestamp = isodate.parse_datetime(
