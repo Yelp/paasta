@@ -27,6 +27,7 @@ import a_sync
 from marathon import MarathonClient
 from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
+from mypy_extensions import NamedArg
 
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
@@ -59,6 +60,7 @@ CheckServiceReplication = Callable[
         Arg(InstanceConfig_T, "instance_config"),
         Arg(Sequence[Union[MarathonTask, V1Pod]], "all_tasks_or_pods"),
         Arg(Any, "replication_checker"),
+        NamedArg(bool, "dry_run"),
     ],
     Optional[bool],
 ]
@@ -100,6 +102,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Print Sensu alert events instead of sending them",
+    )
     options = parser.parse_args()
 
     return options
@@ -113,6 +121,7 @@ def check_services_replication(
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
     all_tasks_or_pods: Sequence[Union[MarathonTask, V1Pod]],
+    dry_run: bool = False,
 ) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
     replication_statuses: List[bool] = []
@@ -133,6 +142,7 @@ def check_services_replication(
                     instance_config=instance_config,
                     all_tasks_or_pods=all_tasks_or_pods,
                     replication_checker=replication_checker,
+                    dry_run=dry_run,
                 )
                 if is_well_replicated is not None:
                     replication_statuses.append(is_well_replicated)
@@ -194,6 +204,7 @@ def main(
         check_service_replication=check_service_replication,
         replication_checker=replication_checker,
         all_tasks_or_pods=tasks_or_pods,
+        dry_run=args.dry_run,
     )
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
     if yelp_meteorite is not None:

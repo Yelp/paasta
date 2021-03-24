@@ -129,6 +129,7 @@ def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
     all_tasks_or_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
+    dry_run: bool = False,
 ) -> None:
     si_pods = filter_pods_by_service_instance(
         pod_list=all_tasks_or_pods,
@@ -177,7 +178,7 @@ def check_flink_service_health(
         log.info(output)
         status = pysensu_yelp.Status.OK
     send_replication_event(
-        instance_config=instance_config, status=status, output=output
+        instance_config=instance_config, status=status, output=output, dry_run=dry_run,
     )
 
 

@@ -121,6 +121,7 @@ def test_check_flink_service_health_healthy(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -150,6 +151,7 @@ def test_check_flink_service_health_healthy(instance_config):
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
             output="OK\n########\nOK\n########\nOK\n########\nOK",
+            dry_run=True,
         )
 
 
@@ -183,6 +185,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -212,6 +215,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output="OK\n########\nOK\n########\nNOPE\n########\nNOPE",
+            dry_run=True,
         )
 
 
@@ -237,6 +241,7 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -266,4 +271,5 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output="OK\n########\nOK\n########\nOK\n########\nNOPE",
+            dry_run=True,
         )

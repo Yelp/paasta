@@ -55,11 +55,13 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_tasks,
             replication_checker=None,
+            dry_run=True,
         )
         mock_check_replication_for_service.assert_called_once_with(
             instance_config=instance_config,
             expected_count=100,
             replication_checker=None,
+            dry_run=True,
         )
 
 
@@ -83,10 +85,14 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
             instance_config=instance_config,
             all_tasks_or_pods=all_tasks,
             replication_checker=None,
+            dry_run=True,
         )
         assert not mock_check_replication_for_service.called
         mock_check_healthy_marathon_tasks.assert_called_once_with(
-            instance_config=instance_config, expected_count=100, all_tasks=[]
+            instance_config=instance_config,
+            expected_count=100,
+            all_tasks=[],
+            dry_run=True,
         )
 
 
@@ -105,9 +111,13 @@ def test_check_service_replication_for_non_smartstack(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=[],
             replication_checker=None,
+            dry_run=True,
         )
         mock_check_healthy_marathon_tasks.assert_called_once_with(
-            instance_config=instance_config, expected_count=100, all_tasks=[]
+            instance_config=instance_config,
+            expected_count=100,
+            all_tasks=[],
+            dry_run=True,
         )
 
 
@@ -175,8 +185,14 @@ def test_check_healthy_marathon_tasks_for_service_instance(
 ):
     mock_healthy_instances.return_value = 2
     check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance(
-        instance_config=instance_config, expected_count=10, all_tasks=mock.Mock()
+        instance_config=instance_config,
+        expected_count=10,
+        all_tasks=mock.Mock(),
+        dry_run=True,
     )
     mock_send_replication_event_if_under_replication.assert_called_once_with(
-        instance_config=instance_config, expected_count=10, num_available=2
+        instance_config=instance_config,
+        expected_count=10,
+        num_available=2,
+        dry_run=True,
     )

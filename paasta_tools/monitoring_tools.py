@@ -304,7 +304,7 @@ def list_teams():
     return teams
 
 
-def send_replication_event(instance_config, status, output):
+def send_replication_event(instance_config, status, output, dry_run=False):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param instance_config: an instance of LongRunningServiceConfig
@@ -328,6 +328,7 @@ def send_replication_event(instance_config, status, output):
         output=output,
         soa_dir=instance_config.soa_dir,
         cluster=instance_config.cluster,
+        dry_run=dry_run,
     )
     _log(
         service=instance_config.service,
@@ -378,6 +379,7 @@ def check_replication_for_instance(
     instance_config: LongRunningServiceConfig,
     expected_count: int,
     replication_checker: ReplicationChecker,
+    dry_run: bool = False,
 ) -> bool:
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -512,7 +514,10 @@ def check_replication_for_instance(
         status = pysensu_yelp.Status.OK
 
     send_replication_event(
-        instance_config=instance_config, status=status, output=combined_output
+        instance_config=instance_config,
+        status=status,
+        output=combined_output,
+        dry_run=dry_run,
     )
 
     return not service_is_under_replicated
@@ -577,6 +582,7 @@ def send_replication_event_if_under_replication(
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
+    dry_run: bool = False,
 ):
     under_replicated, output = check_under_replication(
         instance_config, expected_count, num_available, sub_component
@@ -588,5 +594,5 @@ def send_replication_event_if_under_replication(
         log.info(output)
         status = pysensu_yelp.Status.OK
     send_replication_event(
-        instance_config=instance_config, status=status, output=output
+        instance_config=instance_config, status=status, output=output, dry_run=dry_run,
     )
