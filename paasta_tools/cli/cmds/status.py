@@ -1310,14 +1310,12 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
     if phase is None or not pod.scheduled:
-        # if pod within healthcheck grace period, WARMING_UP
-        # if no containers scheduled yet, STARTING
         state = ReplicaState.UNSCHEDULED
         # If we are unscheduled but getting error unschedulable, is that unhealthy or still just unscheduled?
     elif phase == "Pending":
         # Check containers, liveness, restart
-        # ReplicaState.STARTING
-        # ReplicaState.WARMING_UP
+        # if pod within healthcheck grace period, WARMING_UP
+        # if no containers scheduled yet, STARTING
         if not pod.containers:
             state = ReplicaState.STARTING
         else:
@@ -1353,7 +1351,7 @@ def create_replica_table(pods: List[Tuple[ReplicaState, Any]],) -> List[str]:
         humanized_start_time = humanize.naturaltime(start_datetime)
         row = [
             pod.name,
-            f"{pod.ip}:8888",
+            f"{pod.ip}:8888" if pod.ip else "None",
             pod.host or "None",
             humanized_start_time,
             state.color(state.value),
@@ -1385,7 +1383,7 @@ def create_replica_table(pods: List[Tuple[ReplicaState, Any]],) -> List[str]:
                     if c.reason == "OOMKilled":
                         table.append(
                             PaastaColors.red(
-                                f"  OOMKilled at {humanized_timestamp}.  {c.restart_count} restarts since starting"
+                                f"  OOM Killed at {humanized_timestamp}.  {c.restart_count} restarts since starting"
                             )
                         )
             if state == ReplicaState.HEALTHCHECK_FAILING:
@@ -1399,6 +1397,9 @@ def create_replica_table(pods: List[Tuple[ReplicaState, Any]],) -> List[str]:
                 table.append(
                     PaastaColors.red(f"  Consider checking its logs with `paasta logs`")
                 )
+        elif state == ReplicaState.UNSCHEDULED:
+            if pod.reason == "Unschedulable":
+                table.append(PaastaColors.red(f"  Pod is unschedulable: {pod.message}"))
     return format_table(table)
 
 

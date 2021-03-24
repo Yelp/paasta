@@ -1505,7 +1505,13 @@
                 },
                 "ip": {
                     "type": "string",
-                    "description": "Pod IP"
+                    "description": "Pod IP",
+                    "x-nullable": true
+                },
+                "host": {
+                    "type": "string",
+                    "description": "Host IP this pod was scheduled on",
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string",

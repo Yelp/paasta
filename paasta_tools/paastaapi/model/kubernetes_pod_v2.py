@@ -82,9 +82,10 @@ class KubernetesPodV2(ModelNormal):
         lazy_import()
         return {
             'name': (str,),  # noqa: E501
-            'ip': (str,),  # noqa: E501
+            'ip': (str, none_type,),  # noqa: E501
+            'host': (str, none_type,),  # noqa: E501
             'create_timestamp': (float,),  # noqa: E501
-            'phase': (str, none_type,),  # noqa: E501
+            'phase': (str,),  # noqa: E501
             'ready': (bool,),  # noqa: E501
             'scheduled': (bool,),  # noqa: E501
             'reason': (str, none_type,),  # noqa: E501
@@ -100,6 +101,7 @@ class KubernetesPodV2(ModelNormal):
     attribute_map = {
         'name': 'name',  # noqa: E501
         'ip': 'ip',  # noqa: E501
+        'host': 'host',  # noqa: E501
         'create_timestamp': 'create_timestamp',  # noqa: E501
         'phase': 'phase',  # noqa: E501
         'ready': 'ready',  # noqa: E501
@@ -156,9 +158,10 @@ class KubernetesPodV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             name (str): Pod name. [optional]  # noqa: E501
-            ip (str): Pod IP. [optional]  # noqa: E501
+            ip (str, none_type): Pod IP. [optional]  # noqa: E501
+            host (str, none_type): Host IP this pod was scheduled on. [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp at which pod was created. [optional]  # noqa: E501
-            phase (str, none_type): The lifecycle phase of the pod. [optional]  # noqa: E501
+            phase (str): The lifecycle phase of the pod. [optional]  # noqa: E501
             ready (bool): Whether or not the pod is ready. [optional]  # noqa: E501
             scheduled (bool): Whether or not the pod is scheduled. [optional]  # noqa: E501
             reason (str, none_type): brief description of the pod&#39;s state. [optional]  # noqa: E501

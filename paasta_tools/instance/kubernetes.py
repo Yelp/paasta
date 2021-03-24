@@ -493,16 +493,27 @@ def get_replicaset_status(
 
 def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
     # TODO: Return enough data to figure out _all_ ReplicaStates
+    # If unscheduled, set reason/message to conditions[PodScheduled].reason
+    reason = pod.status.reason
+    message = pod.status.message
+    scheduled = kubernetes_tools.is_pod_scheduled(pod)
+    ready = kubernetes_tools.is_pod_ready(pod)
+
+    if not scheduled:
+        sched_condition = kubernetes_tools.get_pod_condition(pod, "PodScheduled")
+        reason = sched_condition.reason
+        message = sched_condition.message
+
     return {
         "name": pod.metadata.name,
         "ip": pod.status.pod_ip,
         "host": pod.status.host_ip,
         "phase": pod.status.phase,
-        "reason": pod.status.reason,
-        "message": pod.status.message,
+        "reason": reason,
+        "message": message,
         # Based on pod.status.conditions
-        "scheduled": kubernetes_tools.is_pod_scheduled(pod),
-        "ready": kubernetes_tools.is_pod_ready(pod),
+        "scheduled": scheduled,
+        "ready": ready,
         "containers": get_containers(pod),
         # TODO: we need container_statuses for restart/liveness info
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),

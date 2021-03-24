@@ -592,12 +592,16 @@ components:
         ip:
           description: Pod IP
           type: string
+          nullable: true
+        host:
+          description: Host IP this pod was scheduled on
+          type: string
+          nullable: true
         create_timestamp:
           description: Unix timestamp at which pod was created
           format: float
           type: number
         phase:
-          nullable: true
           description: The lifecycle phase of the pod
           type: string
         ready:

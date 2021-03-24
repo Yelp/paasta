@@ -78,6 +78,7 @@ from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
+from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
@@ -2287,12 +2288,17 @@ is_node_ready = _is_it_ready
 
 
 def is_pod_scheduled(pod: V1Pod) -> bool:
-    scheduled_conditions = [
-        cond.status == "True"
-        for cond in pod.status.conditions or []
-        if cond.type == "PodScheduled"
+    scheduled_condition = get_pod_condition(pod, "PodScheduled")
+    return scheduled_condition.status == "True" if scheduled_condition else False
+
+
+def get_pod_condition(pod: V1Pod, condition: str) -> V1PodCondition:
+    conditions = [
+        cond for cond in pod.status.conditions or [] if cond.type == condition
     ]
-    return all(scheduled_conditions) if scheduled_conditions else False
+    if conditions:
+        return conditions[0]
+    return None
 
 
 class PodStatus(Enum):
