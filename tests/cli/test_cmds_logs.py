@@ -687,6 +687,34 @@ def test_prettify_log_line_valid_json_strip_headers():
     assert parsed_line["message"] in actual
 
 
+def test_prettify_log_line_valid_json_strip_cluster_and_instances():
+    parsed_line = {
+        "message": "fake_message",
+        "component": "fake_component",
+        "level": "fake_level",
+        "cluster": "fake_cluster",
+        "instance": "fake_instance",
+        "timestamp": "2015-03-12T21:20:04.602002",
+    }
+
+    requested_levels = ["fake_requested_level1", "fake_requested_level2"]
+    line = json.dumps(parsed_line)
+
+    actual = logs.prettify_log_line(
+        line,
+        requested_levels,
+        strip_headers=False,
+        strip_cluster=True,
+        strip_instance=True,
+    )
+    expected_timestamp = logs.prettify_timestamp(parsed_line["timestamp"])
+    assert expected_timestamp in actual
+    assert parsed_line["component"] in actual
+    assert parsed_line["cluster"] not in actual
+    assert parsed_line["instance"] not in actual
+    assert parsed_line["message"] in actual
+
+
 def test_scribereader_run_code_over_scribe_envs():
     clusters = ["fake_cluster1", "fake_cluster2"]
     components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]

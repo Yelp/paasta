@@ -394,6 +394,8 @@ def print_log(
     requested_levels: Sequence[str],
     raw_mode: bool = False,
     strip_headers: bool = False,
+    strip_cluster: bool = False,
+    strip_instance: bool = False,
 ) -> None:
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
@@ -402,7 +404,12 @@ def print_log(
         # suppress trailing newline since scribereader already attached one
         print(line, end=" ", flush=True)
     else:
-        print(prettify_log_line(line, requested_levels, strip_headers), flush=True)
+        print(
+            prettify_log_line(
+                line, requested_levels, strip_headers, strip_cluster, strip_instance
+            ),
+            flush=True,
+        )
 
 
 def prettify_timestamp(timestamp: datetime.datetime) -> str:
@@ -440,7 +447,11 @@ def prettify_level(level: str, requested_levels: Sequence[str]) -> str:
 
 
 def prettify_log_line(
-    line: str, requested_levels: Sequence[str], strip_headers: bool
+    line: str,
+    requested_levels: Sequence[str],
+    strip_headers: bool,
+    strip_cluster: bool = False,
+    strip_instance: bool = False,
 ) -> str:
     """Given a line from the log, which is expected to be JSON and have all the
     things we expect, return a pretty formatted string containing relevant values.
@@ -460,17 +471,22 @@ def prettify_log_line(
                 }
             )
         else:
+            log_line = {
+                "timestamp": prettify_timestamp(parsed_line["timestamp"]),
+                "component": prettify_component(parsed_line["component"]),
+                "cluster": " [%s]" % parsed_line["cluster"],
+                "instance": " [%s]" % parsed_line["instance"],
+                "message": parsed_line["message"],
+            }
+
+            if strip_cluster:
+                log_line["cluster"] = ""
+            if strip_instance:
+                log_line["instance"] = ""
+
             return (
-                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(message)s"
-                % (
-                    {
-                        "timestamp": prettify_timestamp(parsed_line["timestamp"]),
-                        "component": prettify_component(parsed_line["component"]),
-                        "cluster": "[%s]" % parsed_line["cluster"],
-                        "instance": "[%s]" % parsed_line["instance"],
-                        "message": parsed_line["message"],
-                    }
-                )
+                "%(timestamp)s %(component)s%(cluster)s%(instance)s - %(message)s"
+                % (log_line)
             )
     except KeyError:
         log.debug(
@@ -742,6 +758,9 @@ class ScribeLogReader(LogReader):
             clusters=clusters, components=components, callback=callback
         )
 
+        strip_cluster = True if len(clusters) < 2 else False
+        strip_instance = True if instances is not None else False
+
         # Pull things off the queue and output them. If any thread dies we are no
         # longer presenting the user with the full picture so we quit.
         #
@@ -780,7 +799,14 @@ class ScribeLogReader(LogReader):
                 # in test code to smooth this out, then pulling the trigger on
                 # moving that test to integration land where it belongs.
                 line = queue.get(block=True, timeout=0.1)
-                print_log(line, levels, raw_mode, strip_headers)
+                print_log(
+                    line,
+                    levels,
+                    raw_mode,
+                    strip_headers,
+                    strip_cluster,
+                    strip_instance,
+                )
             except Empty:
                 try:
                     # If there's nothing in the queue, take this opportunity to make
@@ -871,8 +897,19 @@ class ScribeLogReader(LogReader):
             {line["raw_line"]: line for line in aggregated_logs}.values()
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
+        strip_cluster = True if len(clusters) < 2 else False
+        strip_instance = True if instances is not None else False
+
         for line in aggregated_logs:
-            print_log(line["raw_line"], levels, raw_mode, strip_headers)
+            print_log(
+                line["raw_line"],
+                levels,
+                raw_mode,
+                strip_headers,
+                strip_cluster,
+                strip_instance,
+            )
 
     def print_last_n_logs(
         self,
@@ -921,8 +958,19 @@ class ScribeLogReader(LogReader):
             {line["raw_line"]: line for line in aggregated_logs}.values()
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
+        strip_cluster = True if len(clusters) < 2 else False
+        strip_instance = True if instances is not None else False
+
         for line in aggregated_logs:
-            print_log(line["raw_line"], levels, raw_mode, strip_headers)
+            print_log(
+                line["raw_line"],
+                levels,
+                raw_mode,
+                strip_headers,
+                strip_cluster,
+                strip_instance,
+            )
 
     def filter_and_aggregate_scribe_logs(
         self,
@@ -1344,10 +1392,18 @@ def paasta_logs(args: argparse.Namespace) -> int:
     else:
         clusters = args.clusters.split(",")
 
+        if len(clusters) > 1:
+            print("You can only filter one cluster.")
+            return 1
+
     if args.instances is None:
         instances = None
     else:
         instances = args.instances.split(",")
+
+        if len(instances) > 1:
+            print("You can only filter one instance.")
+            return 1
 
         if verify_instances(args.instances, service, clusters):
             return 1
