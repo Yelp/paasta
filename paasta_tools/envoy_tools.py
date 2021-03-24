@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+import os
 import socket
 from typing import AbstractSet
 from typing import Any
@@ -30,6 +31,7 @@ from typing import Tuple
 from typing import Union
 
 import requests
+import yaml
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
@@ -84,6 +86,24 @@ def are_services_up_in_pod(
     return True
 
 
+def are_namespaces_up_in_eds(
+    envoy_eds_path: str, namespaces: Collection[str], pod_ip: str, pod_port: int,
+) -> bool:
+    """Returns whether a Pod is registered on Envoy through the EDS
+    :param envoy_eds_path: path where EDS yaml files are stored
+    :param namespaces: list of namespaces to check
+    :param pod_ip: IP of the pod
+    :param pod_port: The port to reach the service in the pod
+    """
+
+    for namespace in namespaces:
+        backends_from_eds = get_backends_from_eds(namespace, envoy_eds_path)
+        if (pod_ip, pod_port) not in backends_from_eds:
+            return False
+
+    return True
+
+
 def retrieve_envoy_clusters(
     envoy_host: str, envoy_admin_port: int, envoy_admin_endpoint_format: str
 ) -> Dict[str, Any]:
@@ -118,6 +138,36 @@ def get_casper_endpoints(
                         )
                     )
     return frozenset(casper_endpoints)
+
+
+def get_backends_from_eds(namespace: str, envoy_eds_path: str) -> List[Tuple[str, int]]:
+    """Returns a list of backends for a given namespace. Casper backends are also returned (if present).
+
+    :param namespace: return backends for this namespace
+    :param envoy_eds_path: path where EDS yaml files are stored
+    :returns backends: a list of touples representing the backends for
+                       the requested service
+    """
+    backends = []
+    eds_file_for_namespace = f"{envoy_eds_path}/{namespace}/{namespace}.yaml"
+
+    if os.access(eds_file_for_namespace, os.R_OK):
+        with open(eds_file_for_namespace) as f:
+            eds_yaml = yaml.safe_load(f)
+            for resource in eds_yaml.get("resources", []):
+                endpoints = resource.get("endpoints")
+                # endpoints could be None if there are no backends listed
+                if endpoints:
+                    for endpoint in endpoints:
+                        for lb_endpoint in endpoint.get("lb_endpoints", []):
+                            address = lb_endpoint["endpoint"]["address"][
+                                "socket_address"
+                            ]["address"]
+                            port_value = lb_endpoint["endpoint"]["address"][
+                                "socket_address"
+                            ]["port_value"]
+                            backends.append((address, port_value))
+    return backends
 
 
 def get_backends(

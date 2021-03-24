@@ -11,7 +11,7 @@ try:
     from vault_tools.paasta_secret import get_vault_client
     from vault_tools.gpg import TempGpgKeyring
     from vault_tools.paasta_secret import encrypt_secret
-    from vault_tools.cert_tools import do_renew
+    from vault_tools.cert_tools import do_cert_renew
     import hvac
 except ImportError:
 
@@ -26,7 +26,7 @@ except ImportError:
     def encrypt_secret(*args: Any, **kwargs: Any) -> None:
         return None
 
-    def do_renew(*args: Any, **kwargs: Any) -> None:
+    def do_cert_renew(*args: Any, **kwargs: Any) -> None:
         return None
 
 
@@ -86,6 +86,7 @@ class SecretProvider(BaseSecretProvider):
                 cache_dir=None,
                 cache_key=None,
                 context=self.service_name,
+                rescue_failures=False,
             ).decode("utf-8")
             secret_environment[k] = secret
         return secret_environment
@@ -106,7 +107,13 @@ class SecretProvider(BaseSecretProvider):
             )
             raise
 
-    def write_secret(self, action: str, secret_name: str, plaintext: bytes) -> None:
+    def write_secret(
+        self,
+        action: str,
+        secret_name: str,
+        plaintext: bytes,
+        cross_environment_motivation: Optional[str] = None,
+    ) -> None:
         with TempGpgKeyring(overwrite=True):
             for ecosystem in self.ecosystems:
                 client = self.clients[ecosystem]
@@ -119,6 +126,7 @@ class SecretProvider(BaseSecretProvider):
                     plaintext=plaintext,
                     service_name=self.service_name,
                     transit_key=self.encryption_key,
+                    cross_environment_motivation=cross_environment_motivation,
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:
@@ -132,6 +140,7 @@ class SecretProvider(BaseSecretProvider):
             cache_key=None,
             cache_dir=None,
             context=self.service_name,
+            rescue_failures=False,
         ).decode("utf-8")
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
@@ -145,11 +154,12 @@ class SecretProvider(BaseSecretProvider):
             cache_key=None,
             cache_dir=None,
             context=self.service_name,
+            rescue_failures=False,
         )
 
     def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         ecosystem = self.ecosystems[0]
-        if data["environments"][ecosystem]:
+        if data["environments"].get(ecosystem):
             return data["environments"][ecosystem]["signature"]
         else:
             return None
@@ -158,7 +168,7 @@ class SecretProvider(BaseSecretProvider):
         client = self.clients[self.ecosystems[0]]
         user = getpass.getuser()
         pki_dir = os.path.expanduser("~/.paasta/pki")
-        do_renew(
+        do_cert_renew(
             client=client,
             pki_backend=pki_backend,
             role=user,

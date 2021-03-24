@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import difflib
 import fnmatch
 import getpass
 import hashlib
 import logging
 import os
-import pkgutil
 import random
 import re
 import socket
@@ -64,29 +64,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
-
-
-def load_method(module_name, method_name):
-    """Return a function given a module and method name.
-
-    :param module_name: a string
-    :param method_name: a string
-    :return: a function
-    """
-    module = __import__(module_name, fromlist=[method_name])
-    method = getattr(module, method_name)
-    return method
-
-
-def modules_in_pkg(pkg):
-    """Return the list of modules in a python package (a module with a
-    __init__.py file.)
-
-    :return: a list of strings such as `['list', 'check']` that correspond to
-             the module names in the package.
-    """
-    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
-        yield module_name
 
 
 def is_file_in_dir(file_name, path):
@@ -1068,3 +1045,62 @@ def trigger_deploys(
         client.send(f"{service}\n".encode("utf-8"))
     finally:
         client.close()
+
+
+def verify_instances(
+    args_instances: str, service: str, clusters: Sequence[str]
+) -> Sequence[str]:
+    """Verify that a list of instances specified by user is correct for this service.
+
+    :param args_instances: a list of instances.
+    :param service: the service name
+    :param cluster: a list of clusters
+    :returns: a list of instances specified in args_instances without any exclusions.
+    """
+    unverified_instances = args_instances.split(",")
+    service_instances: Set[str] = list_all_instances_for_service(
+        service, clusters=clusters
+    )
+
+    misspelled_instances: Sequence[str] = [
+        i for i in unverified_instances if i not in service_instances
+    ]
+
+    if len(misspelled_instances) == 0:
+        return misspelled_instances
+
+    # Check for instances with suffixes other than Tron instances (i.e. Flink instances)
+    instances_without_suffixes = [x.split(".")[0] for x in unverified_instances]
+
+    misspelled_instances = [
+        i for i in instances_without_suffixes if i not in service_instances
+    ]
+
+    if misspelled_instances:
+        suggestions: List[str] = []
+        for instance in misspelled_instances:
+            matches = difflib.get_close_matches(
+                instance, service_instances, n=5, cutoff=0.5
+            )
+            suggestions.extend(matches)  # type: ignore
+        suggestions = list(set(suggestions))
+
+        if clusters:
+            message = "{} doesn't have any instances matching {} on {}.".format(
+                service,
+                ", ".join(sorted(misspelled_instances)),
+                ", ".join(sorted(clusters)),
+            )
+        else:
+            message = "{} doesn't have any instances matching {}.".format(
+                service, ", ".join(sorted(misspelled_instances))
+            )
+
+        print(PaastaColors.red(message))
+
+        if suggestions:
+            print("Did you mean any of these?")
+            for instance in sorted(suggestions):
+                print("  %s" % instance)
+
+    return misspelled_instances

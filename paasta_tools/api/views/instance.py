@@ -619,6 +619,7 @@ def instance_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
+    use_new = request.swagger_data.get("new") or False
     include_smartstack = request.swagger_data.get("include_smartstack")
     if include_smartstack is None:
         include_smartstack = True
@@ -689,6 +690,7 @@ def instance_status(request):
                     verbose=verbose,
                     include_smartstack=include_smartstack,
                     include_envoy=include_envoy,
+                    use_new=use_new,
                     instance_type=instance_type,
                     settings=settings,
                 )

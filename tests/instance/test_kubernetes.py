@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
+
 import mock
 import pytest
 
 import paasta_tools.instance.kubernetes as pik
 from paasta_tools import utils
+from tests.conftest import Struct
 
 
 def test_instance_types_integrity():
@@ -34,6 +37,7 @@ def instance_status_kwargs():
         include_smartstack=False,
         include_envoy=False,
         settings=mock.Mock(),
+        use_new=False,
     )
 
 
@@ -111,6 +115,98 @@ def test_kubernetes_status(
     assert "evicted_count" in status
     assert "bounce_method" in status
     assert "desired_state" in status
+
+
+@mock.patch(
+    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
+)
+@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    autospec=True,
+)
+def test_kubernetes_status_v2(
+    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+    mock_pods_for_service_instance,
+    mock_replicasets_for_service_instance,
+):
+    mock_job_config = mock.Mock()
+    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+        "kubernetes"
+    ].loader.return_value = mock_job_config
+    mock_replicasets_for_service_instance.return_value = [
+        Struct(
+            spec=Struct(replicas=1),
+            metadata=Struct(
+                name="replicaset_1",
+                creation_timestamp=datetime.datetime(2021, 3, 5),
+                labels={
+                    "paasta.yelp.com/git_sha": "aaa000",
+                    "paasta.yelp.com/config_sha": "config000",
+                },
+            ),
+        ),
+    ]
+    mock_pods_for_service_instance.return_value = [
+        Struct(
+            metadata=Struct(
+                owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
+                name="pod_1",
+                creation_timestamp=datetime.datetime(2021, 3, 6),
+            ),
+            status=Struct(pod_ip="1.2.3.4"),
+        ),
+    ]
+
+    status = pik.kubernetes_status_v2(
+        service="service",
+        instance="instance",
+        verbose=0,
+        include_smartstack=False,
+        include_envoy=False,
+        instance_type="kubernetes",
+        settings=mock.Mock(),
+    )
+
+    assert status == {
+        "app_name": mock_job_config.get_sanitised_deployment_name.return_value,
+        "desired_state": mock_job_config.get_desired_state.return_value,
+        "desired_instances": mock_job_config.get_instances.return_value,
+        "bounce_method": mock_job_config.get_bounce_method.return_value,
+        "replicasets": [
+            {
+                "name": "replicaset_1",
+                "replicas": 1,
+                "ready_replicas": 0,
+                "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
+                "git_sha": "aaa000",
+                "config_sha": "config000",
+                "pods": [
+                    {
+                        "name": "pod_1",
+                        "ip": "1.2.3.4",
+                        "create_timestamp": datetime.datetime(2021, 3, 6).timestamp(),
+                    }
+                ],
+            }
+        ],
+    }
+
+
+@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
+def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_name):
+    kstatus = {}
+    pik.job_status(
+        kstatus=kstatus,
+        client=mock.Mock(),
+        job_config=mock.Mock(),
+        pod_list=[],
+        replicaset_list=[mock.Mock(), mock.Mock(), mock.Mock()],
+        verbose=0,
+        namespace=mock.Mock(),
+    )
+
+    assert len(kstatus["replicasets"]) == 3
 
 
 @mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
@@ -224,3 +320,32 @@ def test_can_handle():
         assert pik.can_handle(it)
 
     assert not pik.can_handle("marathon")
+
+
+def test_filter_actually_running_replicasets():
+    replicaset_list = [
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+    ]
+    # the `spec` kwarg is special to Mock so we have to set it this way.
+    replicaset_list[0].configure_mock(
+        **{"spec.replicas": 5, "status.ready_replicas": 5}
+    )
+    replicaset_list[1].configure_mock(
+        **{"spec.replicas": 5, "status.ready_replicas": 0}
+    )
+    replicaset_list[2].configure_mock(
+        **{"spec.replicas": 0, "status.ready_replicas": 0}
+    )
+    replicaset_list[3].configure_mock(
+        **{"spec.replicas": 0, "status.ready_replicas": 5}
+    )
+
+    expected = [
+        replicaset_list[0],
+        replicaset_list[1],
+        replicaset_list[3],
+    ]
+    assert pik.filter_actually_running_replicasets(replicaset_list) == expected

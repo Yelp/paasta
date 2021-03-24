@@ -61,6 +61,7 @@ def add_subparser(subparsers):
         dest="timeout",
         help="How many seconds before this command times out",
         default=3600,
+        type=float,
     )
     list_parser.set_defaults(command=paasta_itest)
 

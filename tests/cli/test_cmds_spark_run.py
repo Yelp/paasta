@@ -208,10 +208,11 @@ def mock_get_possible_launced_by_user_variable_from_env():
     [
         ((None, None, None), {}),
         (
-            ("access-key", "secret-key", None),
+            ("access-key", "secret-key", "token"),
             {
                 "AWS_ACCESS_KEY_ID": "access-key",
                 "AWS_SECRET_ACCESS_KEY": "secret-key",
+                "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "test-region",
             },
         ),
@@ -411,6 +412,7 @@ class TestConfigureAndRunDockerContainer:
                 "env1": "val1",
                 "AWS_ACCESS_KEY_ID": "id",
                 "AWS_SECRET_ACCESS_KEY": "secret",
+                "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
                 "SPARK_OPTS": mock_create_spark_config_str.return_value,
                 "SPARK_USER": "root",
@@ -634,7 +636,9 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
 def test_paasta_spark_run(
+    mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
     mock_parse_user_spark_args,
@@ -690,7 +694,7 @@ def test_paasta_spark_run(
         paasta_cluster="test-cluster",
         paasta_pool="test-pool",
         paasta_service="test-service",
-        paasta_instance="test-instance",
+        paasta_instance=mock_get_smart_paasta_instance_name.return_value,
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,

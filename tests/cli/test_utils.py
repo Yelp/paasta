@@ -17,11 +17,13 @@ from socket import gaierror
 
 import ephemeral_port_reserve
 import mock
+from mock import call
 from mock import patch
 from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
+from paasta_tools.cli.utils import verify_instances
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -239,15 +241,6 @@ def test_lazy_choices_completer():
     assert completer(prefix="") == ["1", "2", "3"]
 
 
-def test_modules_in_pkg():
-    from paasta_tools.cli import cmds
-
-    ret = tuple(utils.modules_in_pkg(cmds))
-    assert "__init__" not in ret
-    assert "cook_image" in ret
-    assert "list_clusters" in ret
-
-
 @mock.patch("paasta_tools.cli.utils.INSTANCE_TYPE_HANDLERS", dict(), autospec=None)
 @mock.patch("paasta_tools.cli.utils.validate_service_instance", autospec=True)
 def test_get_instance_config_by_instance_type(mock_validate_service_instance,):
@@ -437,3 +430,65 @@ def test_trigger_deploys(mock_socket, mock_load_config):
     ]
     assert mock_client.send.call_args_list == [mock.call("a_service\n".encode("utf-8"))]
     assert mock_client.close.call_count == 1
+
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+@patch("builtins.print", autospec=True)
+def test_verify_instances(mock_print, mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+
+    assert verify_instances("west,esst", "fake_service", []) == ["esst"]
+    assert mock_print.called
+    mock_print.assert_has_calls(
+        [
+            call(
+                "\x1b[31mfake_service doesn't have any instances matching esst.\x1b[0m"
+            ),
+            call("Did you mean any of these?"),
+            call("  east"),
+            call("  west"),
+        ]
+    )
+
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+@patch("builtins.print", autospec=True)
+def test_verify_instances_with_clusters(
+    mock_print, mock_list_all_instances_for_service
+):
+    mock_list_all_instances_for_service.return_value = ["east", "west", "north"]
+
+    assert verify_instances(
+        "west,esst,fake", "fake_service", ["fake_cluster1", "fake_cluster2"]
+    ) == ["esst", "fake"]
+    assert mock_print.called
+    mock_print.assert_has_calls(
+        [
+            call(
+                "\x1b[31mfake_service doesn't have any instances matching esst,"
+                " fake on fake_cluster1, fake_cluster2.\x1b[0m"
+            ),
+            call("Did you mean any of these?"),
+            call("  east"),
+            call("  west"),
+        ]
+    )
+
+
+@patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
+def test_verify_instances_with_suffixes(mock_list_all_instances_for_service):
+    mock_list_all_instances_for_service.return_value = [
+        "fake_instance1",
+        "fake_instance2.jobname",
+    ]
+
+    assert (
+        verify_instances(
+            "fake_instance1.containername", "fake_service", ["fake_cluster"]
+        )
+        == []
+    )
+    assert (
+        verify_instances("fake_instance2.jobname", "fake_service", ["fake_cluster"])
+        == []
+    )

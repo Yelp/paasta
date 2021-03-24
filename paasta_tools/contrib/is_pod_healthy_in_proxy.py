@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 
+from paasta_tools.envoy_tools import are_namespaces_up_in_eds
 from paasta_tools.envoy_tools import are_services_up_in_pod as is_envoy_ready
 from paasta_tools.smartstack_tools import (
     are_services_up_on_ip_port as is_smartstack_ready,
@@ -32,6 +33,7 @@ synapse_haproxy_url_format = system_paasta_config.get_synapse_haproxy_url_format
 envoy_host = os.environ["PAASTA_HOST"]
 envoy_admin_port = system_paasta_config.get_envoy_admin_port()
 envoy_admin_endpoint_format = system_paasta_config.get_envoy_admin_endpoint_format()
+envoy_eds_path = "/nail/etc/envoy/endpoints"
 pod_ip = os.environ["PAASTA_POD_IP"]
 
 
@@ -50,6 +52,13 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="envoy_readiness_check_enabled",
         help="Check envoy readiness",
+    )
+
+    parser.add_argument(
+        "--envoy-check-mode",
+        choices=["admin-port", "eds-dir"],
+        default="admin-port",
+        help="Query Envoy backends through the admin interface (default) or the EDS directory",
     )
 
     parser.add_argument(
@@ -79,14 +88,23 @@ def main() -> None:
         smartstack_ready = True
 
     if args.envoy_readiness_check_enabled:
-        envoy_ready = is_envoy_ready(
-            envoy_host=envoy_host,
-            envoy_admin_port=envoy_admin_port,
-            envoy_admin_endpoint_format=envoy_admin_endpoint_format,
-            registrations=args.services,
-            pod_ip=pod_ip,
-            pod_port=args.pod_port,
-        )
+        if args.envoy_check_mode == "admin-port":
+            envoy_ready = is_envoy_ready(
+                envoy_host=envoy_host,
+                envoy_admin_port=envoy_admin_port,
+                envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+                registrations=args.services,
+                pod_ip=pod_ip,
+                pod_port=args.pod_port,
+            )
+        elif args.envoy_check_mode == "eds-dir":
+            envoy_ready = are_namespaces_up_in_eds(
+                envoy_eds_path=envoy_eds_path,
+                namespaces=args.services,
+                pod_ip=pod_ip,
+                pod_port=args.pod_port,
+            )
+
     else:
         envoy_ready = True
 
@@ -101,7 +119,7 @@ def main() -> None:
         if not envoy_ready:
             print(
                 f"Could not find backend {pod_ip}:{args.pod_port} for service {args.services} "
-                f"on Envoy at {envoy_host}:{envoy_admin_port}"
+                f"on Envoy at {envoy_host}"
             )
         sys.exit(1)
 

@@ -95,20 +95,26 @@ from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
-from kubernetes.client import V2beta1CrossVersionObjectReference
-from kubernetes.client import V2beta1ExternalMetricSource
-from kubernetes.client import V2beta1HorizontalPodAutoscaler
-from kubernetes.client import V2beta1HorizontalPodAutoscalerCondition
-from kubernetes.client import V2beta1HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta1MetricSpec
-from kubernetes.client import V2beta1PodsMetricSource
-from kubernetes.client import V2beta1ResourceMetricSource
+from kubernetes.client import V2beta2CrossVersionObjectReference
+from kubernetes.client import V2beta2ExternalMetricSource
+from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
+from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
+from kubernetes.client import V2beta2MetricIdentifier
+from kubernetes.client import V2beta2MetricSpec
+from kubernetes.client import V2beta2MetricTarget
+from kubernetes.client import V2beta2ObjectMetricSource
+from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.configuration import Configuration as KubeConfiguration
-from kubernetes.client.models import V2beta1HorizontalPodAutoscalerStatus
+from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -116,7 +122,6 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.marathon_tools import AutoscalingParamsDict
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -124,6 +129,7 @@ from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -156,6 +162,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
+UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 KUBERNETES_NAMESPACE = "paasta"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
@@ -166,47 +173,35 @@ DISCOVERY_ATTRIBUTES = {
     "pool",
     "hostname",
 }
-SUPPORTED_STORAGE_CLASSES = {"ebs", "ebs-slow", "ebs-retain"}
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
-
-# This Signaflow attempts to recreate the behavior of the legacy autoscaler,
-# which averages the number of instances needed to handle the current (or
-# averaged) load instead of the load itself. This leads to more stable behavior.
-# Note that it returns the percentage by which we want to scale , so its target
-# in the HPA should always be 1.
-# See PAASTA-16756 for details.
-LEGACY_AUTOSCALING_SIGNALFLOW = """offset = {offset}
-setpoint = {setpoint}
-moving_average_window = '{moving_average_window_seconds}s'
-filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
-
-current_replicas = data('kube_hpa_status_current_replicas', filter=filters, extrapolation="last_value").sum(by=['paasta_cluster'])
-load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation="last_value", maxExtrapolations=10).below(1, clamp=True)
-
-desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
-desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
-
-(desired_instances / current_replicas).above(0).publish()
-"""
+DEFAULT_STORAGE_CLASS_NAME = "ebs"
+DEFAULT_PRESTOP_SLEEP_SECONDS = 30
+DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
+DEFAULT_USE_PROMETHEUS_CPU = False
+DEFAULT_USE_PROMETHEUS_UWSGI = True
+DEFAULT_USE_SIGNALFX_UWSGI = True
+
+
+# conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
 # This hack should be removed when the issue got fixed.
 # This is no better way to work around rn.
-class MonkeyPatchAutoScalingConditions(V2beta1HorizontalPodAutoscalerStatus):
+class MonkeyPatchAutoScalingConditions(V2beta2HorizontalPodAutoscalerStatus):
     @property
-    def conditions(self) -> Sequence[V2beta1HorizontalPodAutoscalerCondition]:
+    def conditions(self) -> Sequence[V2beta2HorizontalPodAutoscalerCondition]:
         return super().conditions()
 
     @conditions.setter
     def conditions(
-        self, conditions: Optional[Sequence[V2beta1HorizontalPodAutoscalerCondition]]
+        self, conditions: Optional[Sequence[V2beta2HorizontalPodAutoscalerCondition]]
     ) -> None:
         self._conditions = list() if conditions is None else conditions
 
 
-models.V2beta1HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
+models.V2beta2HorizontalPodAutoscalerStatus = MonkeyPatchAutoScalingConditions
 
 
 class KubeKind(NamedTuple):
@@ -289,8 +284,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    autoscaling: AutoscalingParamsDict
-    horizontal_autoscaling: Dict[str, Any]
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
@@ -298,6 +291,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_shard: str
     prometheus_path: str
     prometheus_port: int
+    routable_ip: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -402,13 +396,22 @@ class KubeClient:
             ),
             fset=_set_disrupted_pods,
         )
+
         self.deployments = kube_client.AppsV1Api()
         self.core = kube_client.CoreV1Api()
         self.policy = kube_client.PolicyV1beta1Api()
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
-        self.autoscaling = kube_client.AutoscalingV2beta1Api()
-        self.request = kube_client.ApiClient().request
+        self.autoscaling = kube_client.AutoscalingV2beta2Api()
+
+        self.api_client = kube_client.ApiClient()
+        self.request = self.api_client.request
+        # This function is used by the k8s client to serialize OpenAPI objects
+        # into JSON before posting to the api. The JSON output can be used
+        # in place of OpenAPI objects in client function calls. This allows us
+        # to monkey-patch the JSON data with configs the api supports, but the
+        # Python client lib may not yet.
+        self.jsonify = self.api_client.sanitize_for_serialization
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -473,110 +476,48 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return bounce_method
 
-    def get_autoscaling_params(self) -> AutoscalingParamsDict:
-        default_params: AutoscalingParamsDict = {
-            "metrics_provider": "mesos_cpu",
-            "decision_policy": "proportional",
-            "setpoint": 0.8,
+    # TODO: move the default scaling policy to system paasta configs
+    def get_autoscaling_scaling_policy(
+        self, max_replicas: int, autoscaling_params: AutoscalingParamsDict,
+    ) -> Dict:
+        """Returns the k8s HPA scaling policy in raw JSON. Requires k8s v1.18
+        to work.
+        """
+        # The HPA scaling algorithm is as follows. Every sync period (default:
+        # 15 seconds), the HPA will:
+        #   1. determine what the desired capacity is from metrics
+        #   2. apply min/max replica scaling limits
+        #   3. rate-limit the scaling magnitude (e.g. scale down by no more than
+        #      30% of current replicas)
+        #   4. constrain the scaling magnitude by the period seconds (e.g. scale
+        #      down by no more than 30% of current replicas per 60 seconds)
+        #   5. record the desired capacity, then pick the highest capacity from
+        #      the stabilization window (default: last 300 seconds) as the final
+        #      desired capacity.
+        #      - the idea is to stabilize scaling against (heavily) fluctuating
+        #        metrics
+        policy = {
+            "scaleDown": {
+                "stabilizationWindowSeconds": 300,
+                # the policy in a human-readable way: scale down every 60s by
+                # at most 30% of current replicas.
+                "selectPolicy": "Max",
+                "policies": [{"type": "Percent", "value": 30, "periodSeconds": 60}],
+            }
         }
-        return deep_merge_dictionaries(
-            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
-            defaults=default_params,
-        )
-
-    def get_hpa_metric_spec(
-        self, name: str, cluster: str, namespace: str = "paasta"
-    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
-        hpa_config = self.config_dict["horizontal_autoscaling"]
-        min_replicas = hpa_config.get("min_replicas", 1)
-        max_replicas = hpa_config["max_replicas"]
-        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        annotations = {"signalfx.com.custom.metrics": ""}
-        metrics = []
-        for metric_name, value in hpa_config.items():
-            if metric_name in {"min_replicas", "max_replicas"}:
-                continue
-            if metric_name in {"cpu", "memory"}:
-                metrics.append(
-                    V2beta1MetricSpec(
-                        type="Resource",
-                        resource=V2beta1ResourceMetricSource(
-                            name=metric_name,
-                            target_average_utilization=int(
-                                value["target_average_value"] * 100
-                            ),
-                        ),
-                    )
-                )
-            elif metric_name in {"http", "uwsgi"}:
-                if "dimensions" not in value:
-                    metrics.append(
-                        V2beta1MetricSpec(
-                            type="Pods",
-                            pods=V2beta1PodsMetricSource(
-                                metric_name=metric_name,
-                                target_average_value=value["target_average_value"],
-                                selector=selector,
-                            ),
-                        )
-                    )
-                else:
-                    namespaced_metric_name = self.namespace_external_metric_name(
-                        metric_name
-                    )
-                    metrics.append(
-                        V2beta1MetricSpec(
-                            type="External",
-                            external=V2beta1ExternalMetricSource(
-                                metric_name=namespaced_metric_name,
-                                target_value=value["target_average_value"],
-                            ),
-                        )
-                    )
-                    filters = " and ".join(
-                        f'filter("{k}", "{v}")' for k, v in value["dimensions"].items()
-                    )
-                    annotations[
-                        f"signalfx.com.external.metric/{namespaced_metric_name}"
-                    ] = f'data("{metric_name}", filter={filters}).mean(by="paasta_yelp_com_instance").mean(over="15m").publish()'
-            else:
-                namespaced_metric_name = self.namespace_external_metric_name(
-                    metric_name
-                )
-                metrics.append(
-                    V2beta1MetricSpec(
-                        type="External",
-                        external=V2beta1ExternalMetricSource(
-                            metric_name=namespaced_metric_name,
-                            target_value=value["target_value"],
-                        ),
-                    )
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{namespaced_metric_name}"
-                ] = value["signalflow_metrics_query"]
-
-        return V2beta1HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=annotations
-            ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
-                max_replicas=max_replicas,
-                min_replicas=min_replicas,
-                metrics=metrics,
-                scale_target_ref=V2beta1CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name=name
-                ),
-            ),
-        )
+        policy["scaleDown"].update(autoscaling_params.get("scaledown_policies", {}))
+        return policy
 
     def namespace_external_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}"
 
     def get_autoscaling_metric_spec(
-        self, name: str, cluster: str, namespace: str = "paasta"
-    ) -> Optional[V2beta1HorizontalPodAutoscaler]:
+        self,
+        name: str,
+        cluster: str,
+        kube_client: KubeClient,
+        namespace: str = "paasta",
+    ) -> Optional[Union[V2beta2HorizontalPodAutoscaler, Dict]]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
 
@@ -585,10 +526,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if not self.is_autoscaling_enabled():
             return None
-
-        # use new autoscaling configuration if it exists.
-        if "horizontal_autoscaling" in self.config_dict:
-            return self.get_hpa_metric_spec(name, cluster, namespace)
 
         autoscaling_params = self.get_autoscaling_params()
         if autoscaling_params["decision_policy"] == "bespoke":
@@ -606,28 +543,91 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         metrics = []
         target = autoscaling_params["setpoint"]
         annotations: Dict[str, str] = {}
-        selector = V1LabelSelector(match_labels={"paasta_cluster": cluster})
-        if metrics_provider == "mesos_cpu":
+        # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
+        # HPAs and, since they may be looking at the same thing, we need to suffix one of these metric
+        # identifiers because metric names inside an HPA must be unique.
+        prometheus_hpa_metric_name = (
+            f"{self.namespace_external_metric_name(metrics_provider)}-prom"
+        )
+        # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
+        if metrics_provider in ("mesos_cpu", "cpu"):
+            use_prometheus = autoscaling_params.get(
+                "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
+            )
+            if use_prometheus:
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=prometheus_hpa_metric_name
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1", kind="Deployment", name=name
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value", value=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
+
             metrics.append(
-                V2beta1MetricSpec(
+                V2beta2MetricSpec(
                     type="Resource",
-                    resource=V2beta1ResourceMetricSource(
-                        name="cpu", target_average_utilization=int(target * 100)
+                    resource=V2beta2ResourceMetricSource(
+                        name="cpu",
+                        target=V2beta2MetricTarget(
+                            type="Utilization", average_utilization=int(target * 100),
+                        ),
                     ),
                 )
             )
         elif metrics_provider in ("http", "uwsgi"):
-            annotations = {"signalfx.com.custom.metrics": ""}
-            if (
-                autoscaling_params.get("forecast_policy") == "moving_average"
-                or "offset" in autoscaling_params
-            ):
+            # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
+            # which should make this look less silly.
+            use_prometheus = autoscaling_params.get(
+                "use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI
+            )
+            if metrics_provider == "uwsgi" and use_prometheus:
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=prometheus_hpa_metric_name
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1", kind="Deployment", name=name
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                # we average the number of instances needed to handle the current (or
+                                # averaged) load instead of the load itself as this leads to more
+                                # stable behavior. we return the percentage by which we want to
+                                # scale, so the target in the HPA should always be 1.
+                                # PAASTA-16756 for details
+                                value=1,
+                            ),
+                        ),
+                    )
+                )
+
+            use_signalfx = autoscaling_params.get(
+                "use_signalfx", DEFAULT_USE_SIGNALFX_UWSGI
+            )
+
+            if use_signalfx:
                 hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
-                signalflow = LEGACY_AUTOSCALING_SIGNALFLOW.format(
+                legacy_autoscaling_signalflow = (
+                    load_system_paasta_config().get_legacy_autoscaling_signalflow()
+                )
+                signalflow = legacy_autoscaling_signalflow.format(
                     setpoint=target,
                     offset=autoscaling_params.get("offset", 0),
                     moving_average_window_seconds=autoscaling_params.get(
-                        "moving_average_window_seconds", 1800
+                        "moving_average_window_seconds",
+                        DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
                     ),
                     paasta_service=self.get_service(),
                     paasta_instance=self.get_instance(),
@@ -639,26 +639,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ] = signalflow
 
                 metrics.append(
-                    V2beta1MetricSpec(
+                    V2beta2MetricSpec(
                         type="External",
-                        external=V2beta1ExternalMetricSource(
-                            metric_name=hpa_metric_name,
-                            target_value=1,  # see comments on signalflow template above
+                        external=V2beta2ExternalMetricSource(
+                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,  # see comments on signalflow template above
+                            ),
                         ),
                     )
                 )
-            else:
-                metrics.append(
-                    V2beta1MetricSpec(
-                        type="Pods",
-                        pods=V2beta1PodsMetricSource(
-                            metric_name=metrics_provider,
-                            target_average_value=target,
-                            selector=selector,
-                        ),
-                    )
-                )
-
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
@@ -666,20 +657,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        return V2beta1HorizontalPodAutoscaler(
+        hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
                 name=name, namespace=namespace, annotations=annotations
             ),
-            spec=V2beta1HorizontalPodAutoscalerSpec(
+            spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2beta1CrossVersionObjectReference(
+                scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1", kind="Deployment", name=name
                 ),
             ),
         )
+
+        # In k8s v1.18, HPA scaling policies can be set:
+        #   https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-configurable-scaling-behavior
+        # However, the python client library currently only supports v1.17, so
+        # we need to monkey-patch scaling policies until the library is updated
+        # v1.18.
+        scaling_policy = self.get_autoscaling_scaling_policy(
+            max_replicas, autoscaling_params,
+        )
+        if scaling_policy:
+            hpa = kube_client.jsonify(hpa)  # this is a hack, see KubeClient class
+            hpa["spec"]["behavior"] = scaling_policy
+        return hpa
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
         # get soa defined bounce_method
@@ -768,6 +772,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_namespace_config: ServiceNamespaceConfig,
         hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
+        hacheck_container = self.get_hacheck_sidecar_container(
+            system_paasta_config, service_namespace_config, hacheck_sidecar_volumes,
+        )
+        uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
+            system_paasta_config
+        )
+
+        sidecars = []
+        if hacheck_container:
+            sidecars.append(hacheck_container)
+        if uwsgi_exporter_container:
+            sidecars.append(uwsgi_exporter_container)
+        return sidecars
+
+    def get_hacheck_sidecar_container(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        service_namespace_config: ServiceNamespaceConfig,
+        hacheck_sidecar_volumes: Sequence[DockerVolume],
+    ) -> Optional[V1Container]:
         registrations = " ".join(self.get_registrations())
         # s_m_j currently asserts that services are healthy in smartstack before
         # continuing a bounce. this readiness check lets us achieve the same thing
@@ -788,36 +812,79 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             readiness_probe = None
 
-        sidecars = []
         if service_namespace_config.is_in_smartstack():
-            sidecars.append(
-                V1Container(
-                    image=system_paasta_config.get_hacheck_sidecar_image_url(),
-                    lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
-                            _exec=V1ExecAction(
-                                command=[
-                                    "/bin/sh",
-                                    "-c",
-                                    f"/usr/bin/hadown {registrations}; sleep 31",
-                                ]
-                            )
+            return V1Container(
+                image=system_paasta_config.get_hacheck_sidecar_image_url(),
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                f"/usr/bin/hadown {registrations}; sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                            ]
                         )
-                    ),
-                    resources=self.get_sidecar_resource_requirements("hacheck"),
-                    name=HACHECK_POD_NAME,
-                    env=self.get_kubernetes_environment(),
-                    ports=[V1ContainerPort(container_port=6666)],
-                    readiness_probe=readiness_probe,
-                    volume_mounts=self.get_volume_mounts(
-                        docker_volumes=hacheck_sidecar_volumes,
-                        aws_ebs_volumes=[],
-                        persistent_volumes=[],
-                        secret_volumes=[],
-                    ),
-                )
+                    )
+                ),
+                resources=self.get_sidecar_resource_requirements("hacheck"),
+                name=HACHECK_POD_NAME,
+                env=self.get_kubernetes_environment(),
+                ports=[V1ContainerPort(container_port=6666)],
+                readiness_probe=readiness_probe,
+                volume_mounts=self.get_volume_mounts(
+                    docker_volumes=hacheck_sidecar_volumes,
+                    aws_ebs_volumes=[],
+                    persistent_volumes=[],
+                    secret_volumes=[],
+                ),
             )
-        return sidecars
+        return None
+
+    def get_uwsgi_exporter_sidecar_container(
+        self, system_paasta_config: SystemPaastaConfig,
+    ) -> Optional[V1Container]:
+
+        if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
+            stats_port_env = V1EnvVar(
+                name="STATS_PORT",
+                value=str(self.get_autoscaling_params().get("uwsgi_stats_port", 8889)),
+            )
+
+            return V1Container(
+                image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
+                resources=self.get_sidecar_resource_requirements("uwsgi_exporter"),
+                name=UWSGI_EXPORTER_POD_NAME,
+                env=self.get_kubernetes_environment() + [stats_port_env],
+                ports=[V1ContainerPort(container_port=9117)],
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
+                                # metrics up until our Pod dies
+                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                            ]
+                        )
+                    )
+                ),
+            )
+
+        return None
+
+    def should_run_uwsgi_exporter_sidecar(
+        self, system_paasta_config: SystemPaastaConfig,
+    ) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            if autoscaling_params["metrics_provider"] == "uwsgi":
+                if autoscaling_params.get(
+                    "use_prometheus",
+                    system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                ):
+                    return True
+        return False
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}
@@ -881,7 +948,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return ret
 
-    def get_kubernetes_environment(self) -> Sequence[V1EnvVar]:
+    def get_kubernetes_environment(self) -> List[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name="PAASTA_POD_IP",
@@ -984,8 +1051,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_security_context(self) -> Optional[V1SecurityContext]:
         cap_add = self.config_dict.get("cap_add", None)
         if cap_add is None:
-            return None
-        return V1SecurityContext(capabilities=V1Capabilities(add=cap_add))
+            return V1SecurityContext(capabilities=V1Capabilities(drop=CAPS_DROP))
+        else:
+            return V1SecurityContext(
+                capabilities=V1Capabilities(add=cap_add, drop=CAPS_DROP)
+            )
 
     def get_kubernetes_containers(
         self,
@@ -1041,7 +1111,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # default pre stop hook for the container
         if not command:
-            return V1Handler(_exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"]))
+            return V1Handler(
+                _exec=V1ExecAction(
+                    command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
+                )
+            )
         if isinstance(command, str):
             command = [command]
         return V1Handler(_exec=V1ExecAction(command=command))
@@ -1183,18 +1257,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
     def get_min_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "min_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get("min_replicas", 1),
-        )
+        return self.config_dict.get("min_instances", 1,)
 
     def get_max_instances(self) -> Optional[int]:
-        return self.config_dict.get(
-            "max_instances",
-            self.config_dict.get("horizontal_autoscaling", {}).get(
-                "max_replicas", None
-            ),
-        )
+        return self.config_dict.get("max_instances", None,)
 
     def set_autoscaled_instances(
         self, instance_count: int, kube_client: KubeClient
@@ -1232,10 +1298,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_storage_class_name(self, volume: PersistentVolume) -> str:
+        try:
+            system_paasta_config = load_system_paasta_config()
+            supported_storage_classes = (
+                system_paasta_config.get_supported_storage_classes()
+            )
+        except (PaastaNotConfiguredError):
+            log.warning("No PaaSTA configuration was found, returning default value")
+            supported_storage_classes = []
         storage_class_name = volume.get("storage_class_name", "ebs")
-        if storage_class_name not in SUPPORTED_STORAGE_CLASSES:
+        if storage_class_name not in supported_storage_classes:
             log.warning(f"storage class {storage_class_name} is not supported")
-            storage_class_name = "ebs"
+            storage_class_name = DEFAULT_STORAGE_CLASS_NAME
         return storage_class_name
 
     def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
@@ -1356,6 +1430,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def has_routable_ip(
+        self,
+        service_namespace_config: ServiceNamespaceConfig,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> str:
+        """Return whether the routable_ip label should be true or false.
+
+        Services with a `prometheus_port` defined or that use the uwsgi_exporter sidecar must have a routable IP
+        address to allow Prometheus shards to scrape metrics.
+        """
+        if (
+            self.config_dict.get("routable_ip", False)
+            or service_namespace_config.is_in_smartstack()
+            or self.get_prometheus_port() is not None
+            or self.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+        ):
+            return "true"
+        return "false"
+
     def get_pod_template_spec(
         self, git_sha: str, system_paasta_config: SystemPaastaConfig
     ) -> V1PodTemplateSpec:
@@ -1366,11 +1459,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             system_volumes=system_paasta_config.get_volumes()
         )
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
+        has_routable_ip = self.has_routable_ip(
+            service_namespace_config, system_paasta_config
+        )
         annotations: Dict[str, Any] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
-            "paasta.yelp.com/routable_ip": "true"
-            if service_namespace_config.is_in_smartstack()
-            else "false",
+            "paasta.yelp.com/routable_ip": has_routable_ip,
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
 
@@ -1378,18 +1472,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # metrics from these pods
         if metrics_provider in {"http", "uwsgi"}:
             annotations["autoscaling"] = metrics_provider
-        # If legacy autoscaling is not configured
-        if "autoscaling" not in self.config_dict:
-            for metric_name in ["http", "uwsgi"]:
-                hpa_config = self.config_dict.get("horizontal_autoscaling", {})
-                if metric_name in hpa_config:
-                    if "hpa" not in annotations:
-                        annotations["hpa"] = {}
-                    annotations["hpa"][metric_name] = hpa_config[metric_name].get(
-                        "dimensions", {}
-                    )
-            if "hpa" in annotations:
-                annotations["hpa"] = json.dumps(annotations["hpa"])
 
         pod_spec_kwargs = {}
         pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())
@@ -1472,6 +1554,21 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
+        # not all services use uwsgi autoscaling, so we label those that do in order to have
+        # prometheus selectively discover/scrape them
+        if self.should_run_uwsgi_exporter_sidecar(
+            system_paasta_config=system_paasta_config
+        ):
+            # this is kinda silly, but k8s labels must be strings
+            labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
+
+            # this should probably eventually be made into a default label,
+            # but for now we're fine with it being behind this feature toggle.
+            # ideally, we'd also have the docker image here for ease-of-use
+            # in Prometheus relabeling, but that information is over the
+            # character limit for k8s labels (63 chars)
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
@@ -2713,6 +2810,17 @@ def get_pod_hostname(kube_client: KubeClient, pod: V1Pod) -> str:
         return pod.spec.node_name
     # if label has disappeared (say we changed it), default to node name
     return node.metadata.labels.get("yelp.com/hostname", pod.spec.node_name)
+
+
+def get_pod_node(
+    kube_client: KubeClient, pod: V1Pod, cache_nodes: bool = False
+) -> Optional[V1Node]:
+    if cache_nodes:
+        nodes = get_all_nodes_cached(kube_client)
+    else:
+        nodes = get_all_nodes(kube_client)
+    running_node = [node for node in nodes if node.metadata.name == pod.spec.node_name]
+    return running_node[0] if running_node else None
 
 
 def to_node_label(label: str) -> str:

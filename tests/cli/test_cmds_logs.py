@@ -586,6 +586,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
                 queue,
                 filter_fn,
             )
+
         mock_log.error.assert_any_call(
             "Failed to setup stream tailing for %s in fake_env" % stream_name
         )

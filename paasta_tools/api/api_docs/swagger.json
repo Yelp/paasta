@@ -363,6 +363,13 @@
                         "name": "include_mesos",
                         "required": false,
                         "type": "boolean"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Use new version of paasta status for services",
+                        "name": "new",
+                        "required": false,
+                        "type": "boolean"
                     }
                 ]
             }
@@ -643,6 +650,10 @@
                 },
                 "kubernetes": {
                     "$ref": "#/definitions/InstanceStatusKubernetes",
+                    "description": "Kubernetes instance status"
+                },
+                "kubernetes_v2": {
+                    "$ref": "#/definitions/InstanceStatusKubernetesV2",
                     "description": "Kubernetes instance status"
                 },
                 "tron": {
@@ -1322,6 +1333,35 @@
                 "bounce_method"
             ]
         },
+        "InstanceStatusKubernetesV2": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string",
+                    "description": "Name of Kubernetes Deployment or Statefulset for instance"
+                },
+                "desired_state": {
+                    "type": "string",
+                    "description": "Desired state of the app (start or stop)"
+                },
+                "desired_instances": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of instances desired for this app"
+                },
+                "error_message": {
+                    "type": "string",
+                    "description": "Error message if we cannot assemble status for the instance"
+                },
+                "replicasets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesReplicaSetV2"
+                    },
+                    "description": "Replicasets corresponding to individual versions of the instance"
+                }
+            }
+        },
         "HPAMetric": {
             "type": "object",
             "properties": {
@@ -1373,6 +1413,45 @@
                 }
             }
         },
+        "KubernetesReplicaSetV2": {
+            "type": "object",
+            "properties": {
+                "create_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp when replicaset was created"
+                },
+                "git_sha": {
+                    "type": "string",
+                    "description": "Git SHA of service code for this version of the instance"
+                },
+                "config_sha": {
+                    "type": "string",
+                    "description": "SHA of configuration for this instance"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of the replicaset"
+                },
+                "pods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/KubernetesPodV2"
+                    },
+                    "description": "Pods associated to this replicaset"
+                },
+                "replicas": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Desired number of replicas for this replicaset"
+                },
+                "ready_replicas": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "Number of replicas currently ready"
+                }
+            }
+        },
         "KubernetesPod": {
             "type": "object",
             "properties": {
@@ -1413,6 +1492,24 @@
                     "type": "string",
                     "x-nullable": true,
                     "description": "long message explaining the pod's state"
+                }
+            }
+        },
+        "KubernetesPodV2": {
+            "type": "object",
+            "properties": {
+                "create_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp at which pod was created"
+                },
+                "ip": {
+                    "type": "string",
+                    "description": "Pod IP"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Pod name"
                 }
             }
         },

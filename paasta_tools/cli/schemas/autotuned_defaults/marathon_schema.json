@@ -15,10 +15,25 @@
                     "minimum": 0,
                     "exclusiveMinimum": true
                 },
+                "cpu_burst_add": {
+                    "type": "number",
+                    "minimum": 0.0,
+                    "exclusiveMinimum": false
+                },
                 "disk": {
                     "type": "number",
                     "minimum": 128,
                     "exclusiveMinimum": true
+                },
+                "min_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "max_instances": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
                 },
                 "mem": {
                     "type": "number",

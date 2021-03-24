@@ -9,6 +9,15 @@ from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
 
 NULL = "null"
+SUPPORTED_CSV_KEYS = (
+    "cpus",
+    "mem",
+    "disk",
+    "hacheck_cpus",
+    "cpu_burst_add",
+    "min_instances",
+    "max_instances",
+)
 
 
 def parse_args():
@@ -34,6 +43,15 @@ def parse_args():
         help="Splunk csv file from which to pull data.",
         required=True,
         dest="csv_report",
+    )
+    parser.add_argument(
+        "--csv-key",
+        help="Key(s) to apply to config from the csv. If not specified, applies all supported keys.",
+        choices=SUPPORTED_CSV_KEYS,
+        required=False,
+        nargs="*",
+        default=None,
+        dest="csv_keys",
     )
     parser.add_argument(
         "--app",
@@ -96,37 +114,43 @@ def get_default_git_remote():
     return default_git_remote
 
 
-def get_recommendation_from_result(result):
+def get_recommendation_from_result(result, keys_to_apply):
     rec = {}
-    cpus = result.get("cpus")
-    if cpus and cpus != NULL:
-        rec["cpus"] = float(cpus)
-    mem = result.get("mem")
-    if mem and mem != NULL:
-        rec["mem"] = max(128, round(float(mem)))
-    disk = result.get("disk")
-    if disk and disk != NULL:
-        rec["disk"] = max(128, round(float(disk)))
-    hacheck_cpus = result.get("hacheck_cpus")
-    if hacheck_cpus and hacheck_cpus != NULL:
-        hacheck_cpus_value = max(0.1, min(float(hacheck_cpus), 1))
-        rec["sidecar_resource_requirements"] = {
-            "hacheck": {
-                "requests": {"cpu": hacheck_cpus_value,},
-                "limits": {"cpu": hacheck_cpus_value,},
-            },
-        }
+    for key in keys_to_apply:
+        val = result.get(key)
+        if not val or val == NULL:
+            continue
+        if key == "cpus":
+            rec["cpus"] = float(val)
+        elif key == "cpu_burst_add":
+            rec["cpu_burst_add"] = min(1, float(val))
+        elif key == "mem":
+            rec["mem"] = max(128, round(float(val)))
+        elif key == "disk":
+            rec["disk"] = max(128, round(float(val)))
+        elif key == "min_instances":
+            rec["min_instances"] = int(val)
+        elif key == "max_instances":
+            rec["max_instances"] = int(val)
+        elif key == "hacheck_cpus":
+            hacheck_cpus_value = max(0.1, min(float(val), 1))
+            rec["sidecar_resource_requirements"] = {
+                "hacheck": {
+                    "requests": {"cpu": hacheck_cpus_value,},
+                    "limits": {"cpu": hacheck_cpus_value,},
+                },
+            }
     return rec
 
 
-def get_recommendations_by_service_file(results):
+def get_recommendations_by_service_file(results, keys_to_apply):
     results_by_service_file = defaultdict(dict)
     for result in results.values():
         key = (
             result["service"],
             result["cluster"],
         )  # e.g. (foo, marathon-norcal-stagef)
-        rec = get_recommendation_from_result(result)
+        rec = get_recommendation_from_result(result, keys_to_apply)
         if not rec:
             continue
         results_by_service_file[key][result["instance"]] = rec
@@ -146,7 +170,8 @@ def main(args):
     extra_message = get_extra_message(report["search"])
     config_source = args.source_id or args.csv_report
 
-    results = get_recommendations_by_service_file(report["results"])
+    keys_to_apply = args.csv_keys or SUPPORTED_CSV_KEYS
+    results = get_recommendations_by_service_file(report["results"], keys_to_apply)
     updater = AutoConfigUpdater(
         config_source=config_source,
         git_remote=args.git_remote or get_default_git_remote(),

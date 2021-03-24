@@ -14,18 +14,20 @@ directory. There is one folder per service. Here is an example tree::
   soa-configs
   ├── web
   │   ├── deploy.yaml
-  │   ├── marathon-dev.yaml
-  │   ├── marathon-prod.yaml
+  │   ├── kubernetes-dev.yaml
+  │   ├── kubernetes-prod.yaml
   │   ├── monitoring.yaml
   │   ├── service.yaml
   │   └── smartstack.yaml
   ├── api
+  │   ├── adhoc-prod.yaml
   │   ├── deploy.yaml
   │   ├── marathon-dev.yaml
   │   ├── marathon-prod.yaml
   │   ├── monitoring.yaml
   │   ├── service.yaml
-  │   └── smartstack.yaml
+  │   ├── smartstack.yaml
+  │   └── tron-prod.yaml
   ...
 
 See the `paasta-specific soa-configs documentation <yelpsoa_configs.html>`_ for more information

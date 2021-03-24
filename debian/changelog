@@ -1,3 +1,491 @@
+paasta-tools (0.97.88) xenial; urgency=medium
+
+  * 0.97.88 tagged with 'make release'
+    Commit: Merge pull request #3073 from Yelp/PAASTA-17311-remove-
+    haproxy-section-from-status  PAASTA-17311, removed haproxy section
+    from the paasta status field
+
+ -- Manvendra Singh <msingh@yelp.com>  Tue, 23 Mar 2021 09:39:45 -0700
+
+paasta-tools (0.97.87) xenial; urgency=medium
+
+  * 0.97.87 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17097_signalfx_optional"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 19 Mar 2021 14:15:05 -0700
+
+paasta-tools (0.97.86) xenial; urgency=medium
+
+  * 0.97.86 tagged with 'make release'
+    Commit: Merge pull request #3061 from Yelp/drop-capabilities-for-k8s
+    Drop capabilities for k8s
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 19 Mar 2021 05:23:13 -0700
+
+paasta-tools (0.97.85) xenial; urgency=medium
+
+  * 0.97.85 tagged with 'make release'
+    Commit: Merge pull request #3068 from Yelp/kedo-build-focal  Build
+    and upload deb for focal
+
+ -- Kenny Do <kedo@yelp.com>  Thu, 18 Mar 2021 15:03:56 -0700
+
+paasta-tools (0.97.84) xenial; urgency=medium
+
+  * 0.97.84 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17095_default_prometheus"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Mar 2021 17:44:01 -0700
+
+paasta-tools (0.97.83) xenial; urgency=medium
+
+  * 0.97.83 tagged with 'make release'
+    Commit: Also give pods a routable IP if they run the uwsgi_exporter
+    sidecar, so that Prometheus can scrape them. PAASTA-17316
+
+ -- Evan Krall <krall@yelp.com>  Wed, 17 Mar 2021 12:08:28 -0700
+
+paasta-tools (0.97.82) xenial; urgency=medium
+
+  * 0.97.82 tagged with 'make release'
+    Commit: Merge pull request #3063 from Yelp/u/mathieu/PEREL-
+    2288_add_autotuneautoscaling_to_ysoa  Add support for min and max
+    instances in autotuned_defaults
+
+ -- Mathieu Frappier <mathieu@yelp.com>  Tue, 16 Mar 2021 13:51:14 -0700
+
+paasta-tools (0.97.81) xenial; urgency=medium
+
+  * 0.97.81 tagged with 'make release'
+    Commit: Bump Sticht to v1.1.13
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 11 Mar 2021 14:03:35 -0800
+
+paasta-tools (0.97.80) xenial; urgency=medium
+
+  * 0.97.80 tagged with 'make release'
+    Commit: Add a preStop config for uwsgi-exporter  We"re currently
+    dropping some metrics since this sidecar is getting terminated
+    before the main container.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 Mar 2021 14:27:51 -0800
+
+paasta-tools (0.97.79) xenial; urgency=medium
+
+  * 0.97.79 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17299_pad_missing_metrics"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 08 Mar 2021 16:45:05 -0800
+
+paasta-tools (0.97.78) xenial; urgency=medium
+
+  * 0.97.78 tagged with 'make release'
+    Commit: Implement CPU-based moving average window autoscaling
+    (#3046)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Mar 2021 15:18:30 -0800
+
+paasta-tools (0.97.77) xenial; urgency=medium
+
+  * 0.97.77 tagged with 'make release'
+    Commit: Make paasta status print what it can even if an
+    error_message attribute exists. Make the error_message for
+    autoscaling issues a little more descriptive. PAASTA-17298
+
+ -- Evan Krall <krall@yelp.com>  Thu, 04 Mar 2021 11:25:21 -0800
+
+paasta-tools (0.97.76) xenial; urgency=medium
+
+  * 0.97.76 tagged with 'make release'
+    Commit: Add --volume parameter to local-run. PAASTA-1262, PAASTA-
+    16089
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Mar 2021 13:09:41 -0800
+
+paasta-tools (0.97.75) xenial; urgency=medium
+
+  * 0.97.75 tagged with 'make release'
+    Commit: Merge pull request #3044 from Yelp/PAASTA-
+    17257_allow_scaledown_policy_override  Allow HPA scaledown policies
+    to be overridden from soa configs
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 26 Feb 2021 12:03:58 -0800
+
+paasta-tools (0.97.74) xenial; urgency=medium
+
+  * 0.97.74 tagged with 'make release'
+    Commit: Sort Prometheus rulesets for easier comparison (#3042)
+    Previously we were just doing strict dictionary equality, but this
+    breaks down when your values are lists and those lists aren"t in the
+    same order.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Feb 2021 09:32:56 -0800
+
+paasta-tools (0.97.73) xenial; urgency=medium
+
+  * 0.97.73 tagged with 'make release'
+    Commit: Add additional logging to prometheus config setup (#3041)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 22 Feb 2021 15:10:58 -0800
+
+paasta-tools (0.97.72) xenial; urgency=medium
+
+  * 0.97.72 tagged with 'make release'
+    Commit: bump yelp-clog to 5.1.0 (#3036)
+
+ -- Maksym Melnychok <maksym@yelp.com>  Fri, 19 Feb 2021 03:55:23 -0800
+
+paasta-tools (0.97.71) xenial; urgency=medium
+
+  * 0.97.71 tagged with 'make release'
+    Commit: Merge pull request #3038 from Yelp/u/gabrielv/MESH-1070-
+    readiness-check-update  MESH-1070 Readiness check based on EDS yaml
+    files
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 18 Feb 2021 06:59:29 -0800
+
+paasta-tools (0.97.70) xenial; urgency=medium
+
+  * 0.97.70 tagged with 'make release'
+    Commit: Paasta Logs support tron instance names
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Wed, 17 Feb 2021 12:58:08 -0800
+
+paasta-tools (0.97.69) xenial; urgency=medium
+
+  * 0.97.69 tagged with 'make release'
+    Commit: Merge pull request #3034 from Yelp/luisp/PAASTA-17094-handle-
+    missing-data  Handle missing metrics and include offset for
+    Prometheus HPAs
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Feb 2021 15:23:17 -0800
+
+paasta-tools (0.97.68) xenial; urgency=medium
+
+  * 0.97.68 tagged with 'make release'
+    Commit: Bump uwsgi_exporter-k8s-sidecar image version to reflect
+    changes in #3031
+
+ -- Evan Krall <krall@yelp.com>  Wed, 10 Feb 2021 11:19:40 -0800
+
+paasta-tools (0.97.67) xenial; urgency=medium
+
+  * 0.97.67 tagged with 'make release'
+    Commit: Merge pull request #3031 from
+    Yelp/u/krall/parameterize_stats_uri  Allow services to override the
+    uwsgi_exporter stats.uri parameter, t…
+
+ -- Evan Krall <krall@yelp.com>  Tue, 09 Feb 2021 17:04:56 -0800
+
+paasta-tools (0.97.66) xenial; urgency=medium
+
+  * 0.97.66 tagged with 'make release'
+    Commit: Show replicasets in non-verbose paasta status
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 09 Feb 2021 13:41:00 -0800
+
+paasta-tools (0.97.65) xenial; urgency=medium
+
+  * 0.97.65 tagged with 'make release'
+    Commit: Stop returning non-zero when no rules are generated (#3030)
+    This is a fail-safe to stop us from deleting all rules, but this is
+    currently tripping up our alerting on clusters that don"t have
+    Prometheus-enabled HPAs
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Feb 2021 17:39:06 -0800
+
+paasta-tools (0.97.64) xenial; urgency=medium
+
+  * 0.97.64 tagged with 'make release'
+    Commit: Merge pull request #3011 from Yelp/u/srojas/SEC-13906-pass-
+    session-token-to-spark-env  Pass AWS_SESSION_TOKEN During Spark
+    Environment Creation
+
+ -- Skyler Rojas <srojas@yelp.com>  Mon, 08 Feb 2021 14:38:33 -0800
+
+paasta-tools (0.97.63) xenial; urgency=medium
+
+  * 0.97.63 tagged with 'make release'
+    Commit: Remove unused DEFAULT_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    import (#3028)  I incorrectly rebased/merged and left this in by
+    accident
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Feb 2021 15:15:39 -0800
+
+paasta-tools (0.97.62) xenial; urgency=medium
+
+  * 0.97.62 tagged with 'make release'
+    Commit: Merge pull request #3010 from Yelp/u/mmb/PAASTA-16695-node-
+    selector  Make get_kubernetes_metadata use actual node pool
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Tue, 02 Feb 2021 08:15:53 -0800
+
+paasta-tools (0.97.61) xenial; urgency=medium
+
+  * 0.97.61 tagged with 'make release'
+    Commit: Merge pull request #3017 from Yelp/PAASTA-17172-add-autotune-
+    cpu-burst  Write cpu_burst_add in autotune batch
+
+ -- Qui Nguyen <qui@yelp.com>  Tue, 26 Jan 2021 09:30:23 -0800
+
+paasta-tools (0.97.60) xenial; urgency=medium
+
+  * 0.97.60 tagged with 'make release'
+    Commit: Add a config option for kubernetes services to get a
+    routetable IP
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Mon, 25 Jan 2021 14:54:04 -0800
+
+paasta-tools (0.97.60) xenial; urgency=medium
+
+  * 0.97.60 tagged with 'make release'
+    Commit: Merge pull request #3015 from Yelp/PAASTA-17231-LogSuffix-
+    Fix  PAASTA-17231-LogSuffix-Fix
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Mon, 25 Jan 2021 14:48:45 -0800
+
+paasta-tools (0.97.59) xenial; urgency=medium
+
+  * 0.97.59 tagged with 'make release'
+    Commit: Merge pull request #3012 from Yelp/PAASTA-17172-autotune-cpu-
+    burst  Add support for auto-configuring cpu_burst_add (PAASTA-17172)
+
+ -- Qui Nguyen <qui@yelp.com>  Mon, 25 Jan 2021 10:40:59 -0800
+
+paasta-tools (0.97.58) xenial; urgency=medium
+
+  * 0.97.58 tagged with 'make release'
+    Commit: Merge pull request #3014 from Yelp/u/flavr/routable-ip-
+    prometheus  Make pods with a prometheus_port routable
+
+ -- Flavien Raynaud <flavr@yelp.com>  Mon, 25 Jan 2021 03:53:32 -0800
+
+paasta-tools (0.97.57) xenial; urgency=medium
+
+  * 0.97.57 tagged with 'make release'
+    Commit: Merge pull request #3008 from Yelp/PAASTA-
+    16369_Validate_InstanceName_PaastaLogs  Paasta 16369 validate
+    instance name paasta logs
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 19 Jan 2021 13:28:46 -0800
+
+paasta-tools (0.97.57) xenial; urgency=medium
+
+  * 0.97.57 tagged with 'make release'
+    Commit: Removed unused imports
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 19 Jan 2021 13:25:33 -0800
+
+paasta-tools (0.97.56) xenial; urgency=medium
+
+  * 0.97.56 tagged with 'make release'
+    Commit: Remove docker_image label (#3007)  This is too long (over 63
+    chars) so we"ll need to figure out another way to get that
+    information in prometheus (or just skip it if no one ever uses it)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 08 Jan 2021 11:22:51 -0800
+
+paasta-tools (0.97.55) xenial; urgency=medium
+
+  * 0.97.55 tagged with 'make release'
+    Commit: Add additional labels for Prometheus use (#3006)  * Add
+    additional labels for Prometheus use  deploy_group and docker_image
+    are existing dimensions that we can"t use relabeling to include in
+    metric scraping since they"re only present in the k8s container spec
+    and Prometheus doesn"t expose that.  most importantly,
+    scrape_uwsgi_prometheus will be how we filter down the set of pods
+    that Prometheus should actually scrape - the idea is currently that
+    this label is only set when someone has opted into using the uwsgi
+    exporter, but in the future this label should be set if a service
+    has chosen to use uwsgi autoscaling instead of checking this feature
+    toggle
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 07 Jan 2021 16:05:27 -0800
+
+paasta-tools (0.97.54) xenial; urgency=medium
+
+  * 0.97.54 tagged with 'make release'
+    Commit: Merge pull request #3004 from
+    Yelp/u/krall/fix_attribute_error_again  Fix another AttributeError
+    in filter_actually_running_replicasets. PAASTA-17186
+
+ -- Evan Krall <krall@yelp.com>  Thu, 07 Jan 2021 10:07:41 -0800
+
+paasta-tools (0.97.53) xenial; urgency=medium
+
+  * 0.97.53 tagged with 'make release'
+    Commit: Merge pull request #3001 from Yelp/u/gabrielv/PAASTA-17176-
+    setup_kubernetes_job-rate-limit  PAASTA-17176 Add rate limit param
+    for s_k_j
+
+ -- gabrielv <gabrielv@yelp.com>  Thu, 07 Jan 2021 03:55:53 -0800
+
+paasta-tools (0.97.52) xenial; urgency=medium
+
+  * 0.97.52 tagged with 'make release'
+    Commit: Fix command line arguments to uwsgi_exporter, bump
+    uwsgi_exporter sidecar image version.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jan 2021 15:13:18 -0800
+
+paasta-tools (0.97.51) xenial; urgency=medium
+
+  * 0.97.51 tagged with 'make release'
+    Commit: Fix AttributeError. PAASTA-17186
+
+ -- Evan Krall <krall@yelp.com>  Tue, 05 Jan 2021 12:27:36 -0800
+
+paasta-tools (0.97.50) xenial; urgency=medium
+
+  * 0.97.50 tagged with 'make release'
+    Commit: Merge branch "u/krall/uwsgi_exporter_sidecar_config"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 04 Jan 2021 12:05:11 -0800
+
+paasta-tools (0.97.49) xenial; urgency=medium
+
+  * 0.97.49 tagged with 'make release'
+    Commit: Revert "Remove 0/0 replicasets before counting active SHAs,
+    so that wait-for-deployment doesn"t wait for 0/0 replicasets to
+    disappear. PAASTA-17186"  This reverts commit
+    7adfde786ee98830bef815b35317c5d2e104f08e.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 14 Dec 2020 14:21:41 -0800
+
+paasta-tools (0.97.48) xenial; urgency=medium
+
+  * 0.97.48 tagged with 'make release'
+    Commit: Merge branch "u/krall/float_timeout"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 14 Dec 2020 14:08:38 -0800
+
+paasta-tools (0.97.47) xenial; urgency=medium
+
+  * 0.97.47 tagged with 'make release'
+    Commit: Merge pull request #2987 from Yelp/u/gabrielv/PAASTA-17119-
+    replace-hpa-metric  PAASTA-17119 Replace
+    kube_hpa_status_current_replicas uwsgi hpa metric
+
+ -- gabrielv <gabrielv@yelp.com>  Mon, 14 Dec 2020 08:35:46 -0800
+
+paasta-tools (0.97.46) xenial; urgency=medium
+
+  * 0.97.46 tagged with 'make release'
+    Commit: Merge pull request #2993 from Yelp/u/mpiano/SECPLAT-236_fix2
+    set rescue_failures parameter in Vault provider decryption
+
+ -- Matteo Piano <mpiano@yelp.com>  Fri, 11 Dec 2020 03:10:12 -0800
+
+paasta-tools (0.97.45) xenial; urgency=medium
+
+  * 0.97.45 tagged with 'make release'
+    Commit: Merge pull request #2989 from Yelp/u/mpiano/SECPLAT-236_fix
+    fix vault secret provider (s/do_renew/do_cert_renew)
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 10 Dec 2020 07:33:24 -0800
+
+paasta-tools (0.97.44) xenial; urgency=medium
+
+  * 0.97.44 tagged with 'make release'
+    Commit: Merge pull request #2983 from Yelp/u/mpiano/SECPLAT-236
+    allow tagging secret as shared across environments
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 09 Dec 2020 05:44:22 -0800
+
+paasta-tools (0.97.43) xenial; urgency=medium
+
+  * 0.97.43 tagged with 'make release'
+    Commit: Merge pull request #2986 from Yelp/u/lrudolph/PAASTA-
+    17168_read_supported_storage_classes_from_puppet  Read supported
+    storage classes from system_paasta_config
+
+ -- Lennart Rudolph <lrudolph@yelp.com>  Mon, 07 Dec 2020 17:20:44 -0800
+
+paasta-tools (0.97.42) xenial; urgency=medium
+
+  * 0.97.42 tagged with 'make release'
+    Commit: Merge pull request #2982 from Yelp/u/jfong/PAASTA-17145-
+    missing-ecosystem  PAASTA-17145: handle a missing ecosystem in vault
+    data gracefully
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 03 Dec 2020 10:11:29 -0800
+
+paasta-tools (0.97.41) xenial; urgency=medium
+
+  * 0.97.41 tagged with 'make release'
+    Commit: Use -1 to get the last element of list (#2985)
+
+ -- Ashish Khatkar <akhatkar@yelp.com>  Thu, 03 Dec 2020 03:29:21 -0800
+
+paasta-tools (0.97.40) xenial; urgency=medium
+
+  * 0.97.40 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17091"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 30 Nov 2020 14:26:38 -0800
+
+paasta-tools (0.97.39) xenial; urgency=medium
+
+  * 0.97.39 tagged with 'make release'
+    Commit: Released 0.97.38 via make release
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 07:03:18 -0800
+
+paasta-tools (0.97.38) xenial; urgency=medium
+
+  * 0.97.38 tagged with 'make release'
+    Commit: fix help message for subcommands
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 06:42:27 -0800
+
+paasta-tools (0.97.37) xenial; urgency=medium
+
+  * 0.97.37 tagged with 'make release'
+    Commit: Squashed commit of the following:  commit
+    e2a13e8e36264a2355bb747c9142f67b42313d11 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 07:27:29 2020 -0800
+    actually fix completion test  commit
+    a7a260eae37c9177ce47df115c9533bb679feeb1 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Tue Nov 24 04:04:29 2020 -0800
+    simplify paasta -h message, show subcommand choices in alphabetical
+    order  commit 33b116ab4f6153e417fbe02cb10ee67092f71cfe Author:
+    Maksym Melnychok <maksym@yelp.com> Date:   Tue Nov 24 03:10:24 2020 -
+    0800      fix tab completion  commit
+    65687242e81084b584e8dcafd019b00d90769f01 Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Mon Nov 23 03:41:30 2020 -0800      fix
+    typo  commit 7834280a79873cbd00b5e77f74ecdff99f207d64 Author: Maksym
+    Melnychok <maksym@yelp.com> Date:   Fri Nov 20 12:37:02 2020 -0800
+    only load required subcommmand instead of all of them  commit
+    511883fcfcebe4b5e0fd378b2679687ba78c780a Author: Maksym Melnychok
+    <maksym@yelp.com> Date:   Fri Nov 20 11:41:19 2020 -0800      move
+    modules_in_pkg and load_method into cli.py as it"s the only callsite
+
+ -- Maksym Melnychok <maksym@yelp.com>  Wed, 25 Nov 2020 00:46:29 -0800
+
+paasta-tools (0.97.36) xenial; urgency=medium
+
+  * 0.97.36 tagged with 'make release'
+    Commit: Bump slo_transcoder to get PEOBS-1953 fix
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Nov 2020 11:42:16 -0800
+
+paasta-tools (0.97.35) xenial; urgency=medium
+
+  * 0.97.35 tagged with 'make release'
+    Commit: Merge pull request #2972 from Yelp/PAASTA-16974-v2beta2-
+    again  Update to v2beta2 API for HPA, try #2
+
+ -- Qui Nguyen <qui@yelp.com>  Fri, 20 Nov 2020 11:27:26 -0800
+
+paasta-tools (0.97.34) xenial; urgency=medium
+
+  * 0.97.34 tagged with 'make release'
+    Commit: Merge pull request #2976 from
+    talalryz/u/talal/fix_broken_spark_run_test  U/talal/fix broken spark
+    run test
+
+ -- Charles Wan <kawaiwan@yelp.com>  Mon, 16 Nov 2020 16:29:09 -0800
+
 paasta-tools (0.97.33) xenial; urgency=medium
 
   * 0.97.33 tagged with 'make release'

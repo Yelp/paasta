@@ -73,7 +73,10 @@ def test_write_secret(mock_secret_provider):
         "paasta_tools.secret_providers.vault.encrypt_secret", autospec=False
     ) as mock_encrypt_secret:
         mock_secret_provider.write_secret(
-            action="add", secret_name="mysecret", plaintext=b"SECRETSQUIRREL"
+            action="add",
+            secret_name="mysecret",
+            plaintext=b"SECRETSQUIRREL",
+            cross_environment_motivation="because ...",
         )
         mock_encrypt_secret.assert_called_with(
             client=mock_secret_provider.clients["devc"],
@@ -84,6 +87,7 @@ def test_write_secret(mock_secret_provider):
             service_name="universe",
             soa_dir="/nail/blah",
             transit_key="paasta",
+            cross_environment_motivation="because ...",
         )
 
         mock_secret_provider.encryption_key = "special-key"
@@ -99,6 +103,7 @@ def test_write_secret(mock_secret_provider):
             service_name="universe",
             soa_dir="/nail/blah",
             transit_key="special-key",
+            cross_environment_motivation=None,
         )
 
 
@@ -116,6 +121,7 @@ def test_decrypt_secret(mock_secret_provider):
             cache_key=None,
             cache_dir=None,
             context="universe",
+            rescue_failures=False,
         )
 
 
@@ -133,6 +139,7 @@ def test_decrypt_secret_raw(mock_secret_provider):
             cache_key=None,
             cache_dir=None,
             context="universe",
+            rescue_failures=False,
         )
 
 
@@ -151,9 +158,25 @@ def test_get_secret_signature_from_data(mock_secret_provider):
         )
 
 
+def test_get_secret_signature_from_data_missing(mock_secret_provider):
+    mock_secret_provider.cluster_names = ["mesosstage", "devc", "prod"]
+    mock_secret_provider.vault_cluster_config = {
+        "mesosstage": "devc",
+        "devc": "devc",
+        "prod": "prod",
+    }
+    with mock.patch(
+        "paasta_tools.secret_providers.vault.get_plaintext", autospec=False
+    ):
+        # Should not raise errors
+        assert not mock_secret_provider.get_secret_signature_from_data(
+            {"environments": {"westeros": {}}}
+        )
+
+
 def test_renew_issue_cert(mock_secret_provider):
     with mock.patch(
-        "paasta_tools.secret_providers.vault.do_renew", autospec=True
-    ) as mock_do_renew:
+        "paasta_tools.secret_providers.vault.do_cert_renew", autospec=True
+    ) as mock_do_cert_renew:
         mock_secret_provider.renew_issue_cert("paasta", "30m")
-        assert mock_do_renew.called
+        assert mock_do_cert_renew.called

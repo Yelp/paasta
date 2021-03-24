@@ -6,7 +6,7 @@ yproperties() // Sets releng approved global properties (SCM polling, build log 
 CHANNELS = ['paasta']
 GIT_SERVER = 'git@github.com'
 PACKAGE_NAME = 'mirrors/Yelp/paasta'
-DIST = ['trusty', 'xenial', 'bionic']
+DIST = ['xenial', 'bionic', 'focal']
 
 commit = ''
 

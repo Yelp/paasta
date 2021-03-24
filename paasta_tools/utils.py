@@ -133,6 +133,23 @@ INSTANCE_TYPES = (
     "nrtsearchservice",
 )
 
+CAPS_DROP = [
+    "SETPCAP",
+    "MKNOD",
+    "AUDIT_WRITE",
+    "CHOWN",
+    "NET_RAW",
+    "DAC_OVERRIDE",
+    "FOWNER",
+    "FSETID",
+    "KILL",
+    "SETGID",
+    "SETUID",
+    "NET_BIND_SERVICE",
+    "SYS_CHROOT",
+    "SETFCAP",
+]
+
 
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
@@ -454,23 +471,7 @@ class InstanceConfig:
         makes them not able to perform special privilege escalation stuff
         https://docs.docker.com/engine/reference/run/#runtime-privilege-and-linux-capabilities
         """
-        caps = [
-            "SETPCAP",
-            "MKNOD",
-            "AUDIT_WRITE",
-            "CHOWN",
-            "NET_RAW",
-            "DAC_OVERRIDE",
-            "FOWNER",
-            "FSETID",
-            "KILL",
-            "SETGID",
-            "SETUID",
-            "NET_BIND_SERVICE",
-            "SYS_CHROOT",
-            "SETFCAP",
-        ]
-        for cap in caps:
+        for cap in CAPS_DROP:
             yield {"key": "cap-drop", "value": cap}
 
     def format_docker_parameters(
@@ -816,16 +817,15 @@ class InstanceConfig:
                 'Your service config specifies "%s", an unsupported parameter.' % param,
             )
 
-    def validate(
-        self,
-        params: List[str] = [
-            "cpus",
-            "mem",
-            "security",
-            "dependencies_reference",
-            "deploy_group",
-        ],
-    ) -> List[str]:
+    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+        if params is None:
+            params = [
+                "cpus",
+                "mem",
+                "security",
+                "dependencies_reference",
+                "deploy_group",
+            ]
         error_msgs = []
         for param in params:
             check_passed, check_msg = self.check(param)
@@ -1108,7 +1108,10 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "build",
             {
                 "color": PaastaColors.blue,
-                "help": "Jenkins build jobs output, like the itest, promotion, security checks, etc.",
+                "help": (
+                    "Logs for pre-deployment steps, such as itests, "
+                    "image building, and security checks."
+                ),
                 "source_env": "devc",
             },
         ),
@@ -1116,7 +1119,10 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "deploy",
             {
                 "color": PaastaColors.cyan,
-                "help": "Output from the paasta deploy code. (setup_marathon_job, bounces, etc)",
+                "help": (
+                    "Logs for deployment steps and actions, such as "
+                    "bouncing, start/stop/restart, and instance cleanup."
+                ),
                 "additional_source_envs": ["devc"],
             },
         ),
@@ -1131,29 +1137,31 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             "marathon",
             {
                 "color": PaastaColors.magenta,
-                "help": "Logs from Marathon for the service",
+                "help": "Logs from Marathon for the service (deprecated).",
             },
         ),
         (
             "app_output",
             {
                 "color": compose(PaastaColors.yellow, PaastaColors.bold),
-                "help": "Stderr and stdout of the actual process spawned by Mesos. "
-                "Convenience alias for both the stdout and stderr components",
+                "help": (
+                    "Stderr and stdout from a service's running processes. "
+                    "Alias for both the stdout and stderr components."
+                ),
             },
         ),
         (
             "stdout",
             {
                 "color": PaastaColors.yellow,
-                "help": "Stdout from the process spawned by Mesos.",
+                "help": "Stdout from a service's running processes.",
             },
         ),
         (
             "stderr",
             {
                 "color": PaastaColors.yellow,
-                "help": "Stderr from the process spawned by Mesos.",
+                "help": "Stderr from a service's running processes.",
             },
         ),
         (
@@ -1831,6 +1839,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
+    default_should_run_uwsgi_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -1860,6 +1869,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
+    hpa_always_uses_external_for_signalfx: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -1867,6 +1877,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     ldap_reader_username: str
     ldap_search_base: str
     ldap_search_ou: str
+    legacy_autoscaling_signalflow: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -1893,11 +1904,13 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_discovery_providers: Dict[str, Any]
     slack: Dict[str, str]
     spark_run_config: SparkRunConfig
+    supported_storage_classes: Sequence[str]
     synapse_haproxy_url_format: str
     synapse_host: str
     synapse_port: int
     taskproc: Dict
     tron: Dict
+    uwsgi_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2092,7 +2105,8 @@ class SystemPaastaConfig:
 
     def get_envoy_readiness_check_script(self) -> List[str]:
         return self.config_dict.get(
-            "envoy_readiness_check_script", ["/check_proxy_up.sh", "--enable-envoy"]
+            "envoy_readiness_check_script",
+            ["/check_proxy_up.sh", "--enable-envoy", "--envoy-check-mode", "eds-dir"],
         )
 
     def get_envoy_nerve_readiness_check_script(self) -> List[str]:
@@ -2400,10 +2414,7 @@ class SystemPaastaConfig:
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
-        return self.config_dict.get(
-            "hacheck_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar",
-        )
+        return self.config_dict.get("hacheck_sidecar_image_url")
 
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
@@ -2456,6 +2467,9 @@ class SystemPaastaConfig:
 
     def get_clusters(self) -> Sequence[str]:
         return self.config_dict.get("clusters", [])
+
+    def get_supported_storage_classes(self) -> Sequence[str]:
+        return self.config_dict.get("supported_storage_classes", [])
 
     def get_envoy_admin_endpoint_format(self) -> str:
         """ Get the format string for Envoy's admin interface. """
@@ -2522,6 +2536,43 @@ class SystemPaastaConfig:
         :returns: the git config dict for a specific repo.
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
+
+    def get_hpa_always_uses_external_for_signalfx(self) -> bool:
+        return self.config_dict.get("hpa_always_uses_external_for_signalfx", False)
+
+    def get_legacy_autoscaling_signalflow(self) -> str:
+        # This Signaflow attempts to recreate the behavior of the legacy autoscaler,
+        # which averages the number of instances needed to handle the current (or
+        # averaged) load instead of the load itself. This leads to more stable behavior.
+        # Note that it returns the percentage by which we want to scale , so its target
+        # in the HPA should always be 1.
+        # See PAASTA-16756 for details.
+        default_legacy_autoscaling_signalflow = """offset = {offset}
+setpoint = {setpoint}
+moving_average_window = '{moving_average_window_seconds}s'
+filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
+
+current_replicas = data('kube_deployment_spec_replicas', filter=filters, extrapolation="last_value").sum(by=['paasta_cluster'])
+load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation="last_value", maxExtrapolations=10).below(1, clamp=True)
+
+desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
+desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
+
+(desired_instances / current_replicas).above(0).publish()
+"""
+        return self.config_dict.get(
+            "legacy_autoscaling_signalflow", default_legacy_autoscaling_signalflow
+        )
+
+    def get_uwsgi_exporter_sidecar_image_url(self) -> str:
+        """Get the docker image URL for the uwsgi_exporter sidecar container"""
+        return self.config_dict.get(
+            "uwsgi_exporter_sidecar_image_url",
+            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.0.0-yelp2",
+        )
+
+    def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
+        return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
 
 
 def _run(

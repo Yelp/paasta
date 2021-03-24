@@ -214,17 +214,7 @@ class MarathonNotConfigured(Exception):
     pass
 
 
-class AutoscalingParamsDict(TypedDict, total=False):
-    metrics_provider: str
-    decision_policy: str
-    setpoint: float
-    forecast_policy: Optional[str]
-    offset: Optional[float]
-    moving_average_window_seconds: Optional[int]
-
-
 class MarathonServiceConfigDict(LongRunningServiceConfigDict, total=False):
-    autoscaling: AutoscalingParamsDict
     backoff_factor: float
     max_launch_delay_seconds: float
     bounce_method: str
@@ -479,17 +469,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             if self.branch_dict is not None
             else None,
             soa_dir=self.soa_dir,
-        )
-
-    def get_autoscaling_params(self) -> AutoscalingParamsDict:
-        default_params: AutoscalingParamsDict = {
-            "metrics_provider": "mesos_cpu",
-            "decision_policy": "proportional",
-            "setpoint": 0.8,
-        }
-        return deep_merge_dictionaries(
-            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
-            defaults=default_params,
         )
 
     def get_backoff_seconds(self) -> int:
