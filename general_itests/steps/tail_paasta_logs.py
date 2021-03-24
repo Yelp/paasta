@@ -28,7 +28,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
     service = "fake_service"
     context.levels = ["fake_level1", "fake_level2"]
     context.components = ["deploy", "monitoring"]
-    context.clusters = ["fake_cluster1", "fake_cluster2"]
+    context.clusters = ["fake_cluster1"]
     context.instances = ["fake_instance"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
@@ -95,9 +95,10 @@ def step_impl(context):
     # Instead, we'll rely on what we can see, which is the result of the
     # thread's work deposited in the shared queue.
     assert context.print_log_patch.call_count == 2
+
     context.print_log_patch.assert_any_call(
-        "fake log line added for env1", context.levels, False, False
+        "fake log line added for env1", context.levels, False, False, True, True
     )
     context.print_log_patch.assert_any_call(
-        "fake log line added for env2", context.levels, False, False
+        "fake log line added for env2", context.levels, False, False, True, True
     )
