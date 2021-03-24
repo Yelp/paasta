@@ -1068,6 +1068,28 @@ def test_emit_replication_metrics(instance_config):
         mock_gauges["paasta.service.expected_backends"].set.assert_called_once_with(10)
 
 
+def test_emit_replication_metrics_dry_run(instance_config):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
+    ) as mock_yelp_meteorite:
+        mock_smartstack_replication_info = {
+            "fake_provider": {
+                "fake_region_1": {
+                    "fake_service.fake_instance": 2,
+                    "other_service.other_instance": 5,
+                },
+                "fake_region_2": {"fake_service.fake_instance": 4},
+            }
+        }
+        monitoring_tools.emit_replication_metrics(
+            mock_smartstack_replication_info,
+            instance_config,
+            expected_count=10,
+            dry_run=True,
+        )
+        mock_yelp_meteorite.create_gauge.call_count = 0
+
+
 def test_check_replication_for_instance_emits_metrics(instance_config):
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
@@ -1085,11 +1107,13 @@ def test_check_replication_for_instance_emits_metrics(instance_config):
             instance_config=instance_config,
             expected_count=10,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_emit_replication_metrics.assert_called_once_with(
             mock_smartstack_replication_checker.get_replication_for_instance.return_value,
             instance_config,
             10,
+            dry_run=True,
         )
 
 

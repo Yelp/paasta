@@ -106,7 +106,7 @@ def parse_args() -> argparse.Namespace:
         "--dry-run",
         action="store_true",
         dest="dry_run",
-        help="Print Sensu alert events instead of sending them",
+        help="Print Sensu alert events and metrics instead of sending them",
     )
     options = parser.parse_args()
 
@@ -160,13 +160,15 @@ def check_services_replication(
 
 
 def emit_cluster_replication_metrics(
-    pct_under_replicated: float, cluster: str, scheduler: str,
+    pct_under_replicated: float, cluster: str, scheduler: str, dry_run: bool = False,
 ) -> None:
-    meteorite_dims = {"paasta_cluster": cluster, "scheduler": scheduler}
-    gauge = yelp_meteorite.create_gauge(
-        "paasta.pct_services_under_replicated", meteorite_dims
-    )
-    gauge.set(pct_under_replicated)
+    metric_name = "paasta.pct_services_under_replicated"
+    if dry_run:
+        print(f"Would've sent value {pct_under_replicated} for metric '{metric_name}'")
+    else:
+        meteorite_dims = {"paasta_cluster": cluster, "scheduler": scheduler}
+        gauge = yelp_meteorite.create_gauge(metric_name, meteorite_dims)
+        gauge.set(pct_under_replicated)
 
 
 def main(
@@ -209,7 +211,10 @@ def main(
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
     if yelp_meteorite is not None:
         emit_cluster_replication_metrics(
-            pct_under_replicated, cluster, scheduler="mesos" if mesos else "kubernetes"
+            pct_under_replicated,
+            cluster,
+            scheduler="mesos" if mesos else "kubernetes",
+            dry_run=args.dry_run,
         )
 
     if (

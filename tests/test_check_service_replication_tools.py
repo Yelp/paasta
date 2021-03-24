@@ -23,6 +23,7 @@ def test_main_kubernetes():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
+        mock_parse_args.return_value.dry_run = False
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -63,6 +64,7 @@ def test_main_mesos():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
+        mock_parse_args.return_value.dry_run = False
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(

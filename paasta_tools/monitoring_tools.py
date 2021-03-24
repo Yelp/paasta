@@ -224,6 +224,7 @@ def send_event(
     :param ttl: TTL (optional)
     :param cluster: The cluster name (optional)
     :param system_paasta_config: A SystemPaastaConfig object representing the system
+    :param dry_run: Print the Sensu event instead of emitting it
     """
     # This function assumes the input is a string like "mumble.main"
     team = get_team(overrides, service, soa_dir)
@@ -304,12 +305,16 @@ def list_teams():
     return teams
 
 
-def send_replication_event(instance_config, status, output, dry_run=False):
+def send_replication_event(
+    instance_config, status, output, dry_run=False,
+):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param instance_config: an instance of LongRunningServiceConfig
     :param status: The status to emit for this event
-    :param output: The output to emit for this event"""
+    :param output: The output to emit for this event
+    :param dry_run: Print the event instead of emitting it
+    """
     # This function assumes the input is a string like "mumble.main"
     monitoring_overrides = instance_config.get_monitoring()
     if "alert_after" not in monitoring_overrides:
@@ -344,6 +349,7 @@ def emit_replication_metrics(
     replication_infos: Mapping[str, Mapping[str, Mapping[str, int]]],
     instance_config: LongRunningServiceConfig,
     expected_count: int,
+    dry_run: bool = False,
 ) -> None:
     for provider, replication_info in replication_infos.items():
         meteorite_dims = {
@@ -357,22 +363,40 @@ def emit_replication_metrics(
         num_available_backends = 0
         for available_backends in replication_info.values():
             num_available_backends += available_backends.get(instance_config.job_id, 0)
-        available_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.available_backends", meteorite_dims
-        )
-        available_backends_gauge.set(num_available_backends)
+        available_backends_metric = "paasta.service.available_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {num_available_backends} for metric '{available_backends_metric}'"
+            )
+        else:
+            available_backends_gauge = yelp_meteorite.create_gauge(
+                available_backends_metric, meteorite_dims
+            )
+            available_backends_gauge.set(num_available_backends)
 
         critical_percentage = instance_config.get_replication_crit_percentage()
         num_critical_backends = critical_percentage * expected_count / 100.0
-        critical_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.critical_backends", meteorite_dims
-        )
-        critical_backends_gauge.set(num_critical_backends)
+        critical_backends_metric = "paasta.service.critical_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {num_critical_backends} for metric '{critical_backends_metric}'"
+            )
+        else:
+            critical_backends_gauge = yelp_meteorite.create_gauge(
+                critical_backends_metric, meteorite_dims
+            )
+            critical_backends_gauge.set(num_critical_backends)
 
-        expected_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.expected_backends", meteorite_dims
-        )
-        expected_backends_gauge.set(expected_count)
+        expected_backends_metric = "paasta.service.expected_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {expected_count} for metric '{expected_backends_metric}'"
+            )
+        else:
+            expected_backends_gauge = yelp_meteorite.create_gauge(
+                "paasta.service.expected_backends", meteorite_dims
+            )
+            expected_backends_gauge.set(expected_count)
 
 
 def check_replication_for_instance(
@@ -387,6 +411,7 @@ def check_replication_for_instance(
 
     :param instance_config: an instance of MarathonServiceConfig
     :param replication_checker: an instance of ReplicationChecker
+    :param dry_run: Print Sensu event and metrics instead of emitting them
     """
 
     crit_threshold = instance_config.get_replication_crit_percentage()
@@ -401,7 +426,7 @@ def check_replication_for_instance(
     log.debug(f"Got replication info for {instance_config.job_id}: {replication_infos}")
     if yelp_meteorite is not None:
         emit_replication_metrics(
-            replication_infos, instance_config, expected_count,
+            replication_infos, instance_config, expected_count, dry_run=dry_run,
         )
 
     combined_output = ""
