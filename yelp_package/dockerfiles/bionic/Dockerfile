@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -yq gnupg2
 # RUN echo "deb http://repos.mesosphere.com/ubuntu bionic main" > /etc/apt/sources.list.d/mesosphere.list && \
 #     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-# Need Python 3.6
+# Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
@@ -39,7 +39,7 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.6-dev \
+        python3.7-dev \
         python-pip \
         python-tox \
         wget \

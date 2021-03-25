@@ -2,11 +2,11 @@ Source: paasta-tools
 Section: python
 Priority: optional
 Maintainer: Compute Infrastructure <compute-infra@yelp.com>
-Build-Depends: debhelper (>= 7), base-files (<< 11ubuntu) | python3.8, base-files (>= 11ubuntu) | python3.6, dh-virtualenv
+Build-Depends: debhelper (>= 7), base-files (<< 11ubuntu) | python3.8, base-files (>= 11ubuntu) | python3.7, dh-virtualenv
 Standards-Version: 3.8.3
 
 Package: paasta-tools
 Architecture: any
-Depends: base-files (<< 11ubuntu) | python3.8, base-files (>= 11ubuntu) | python3.6, ${shlibs:Depends}, ${misc:Depends}
+Depends: base-files (<< 11ubuntu) | python3.8, base-files (>= 11ubuntu) | python3.7, ${shlibs:Depends}, ${misc:Depends}
 Description: CLI tools for PaaSTA
 Conflicts: service-deployment-tools

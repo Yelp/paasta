@@ -33,14 +33,14 @@ docs: .paasta/bin/activate
 test: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
 
-.tox/py36-linux: .paasta/bin/activate
+.tox/py37-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
-dev-api: .tox/py36-linux
-	.tox/py36-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
+dev-api: .tox/py37-linux
+	.tox/py37-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.6 .paasta
+	test -d .paasta/bin/activate || virtualenv -p python3.7 .paasta
 	.paasta/bin/pip install -U \
 		pip==18.1 \
 		virtualenv==16.2.0 \
@@ -72,7 +72,7 @@ clean:
 	-rm -rf .paasta
 
 yelpy: ## Installs the yelp-internal packages into the default tox environment
-	.tox/py36-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
+	.tox/py37-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
 
 
 .PHONY: help
