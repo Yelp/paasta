@@ -1,3 +1,10 @@
+paasta-tools (0.97.89) xenial; urgency=medium
+
+  * 0.97.89 tagged with 'make release'
+    Commit: Merge pull request #2350 from Yelp/py37  Use Python 3.7
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 25 Mar 2021 04:47:16 -0700
+
 paasta-tools (0.97.88) xenial; urgency=medium
 
   * 0.97.88 tagged with 'make release'
