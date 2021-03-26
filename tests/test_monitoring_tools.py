@@ -537,7 +537,8 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
             check_name=expected_check_name,
             overrides={
                 "fake_key": "fake_value",
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "2m",
                 "check_every": "1m",
                 "description": fake_description,
@@ -582,7 +583,8 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
             check_name=expected_check_name,
             overrides={
                 "fake_key": "fake_value",
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "2m",
                 "check_every": "1m",
                 "description": fake_description,
@@ -626,7 +628,8 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
             service=instance_config.service,
             check_name=expected_check_name,
             overrides={
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "666m",
                 "check_every": "1m",
                 "description": fake_description,

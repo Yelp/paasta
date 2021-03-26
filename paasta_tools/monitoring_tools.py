@@ -55,6 +55,8 @@ except ImportError:
     yelp_meteorite = None
 
 
+DEFAULT_REPLICATION_RUNBOOK = "y/unhealthy-paasta-instances"
+
 log = logging.getLogger(__name__)
 
 
@@ -320,8 +322,22 @@ def send_replication_event(
     if "alert_after" not in monitoring_overrides:
         monitoring_overrides["alert_after"] = "2m"
     monitoring_overrides["check_every"] = "1m"
-    monitoring_overrides["runbook"] = get_runbook(
-        monitoring_overrides, instance_config.service, soa_dir=instance_config.soa_dir
+    monitoring_overrides["runbook"] = __get_monitoring_config_value(
+        "runbook",
+        monitoring_overrides,
+        instance_config.service,
+        soa_dir=instance_config.soa_dir,
+        monitoring_defaults=lambda _: DEFAULT_REPLICATION_RUNBOOK,
+    )
+    monitoring_overrides["tip"] = __get_monitoring_config_value(
+        "tip",
+        monitoring_overrides,
+        instance_config.service,
+        soa_dir=instance_config.soa_dir,
+        monitoring_defaults=lambda _: (
+            f"Check the instance with: `paasta status -s {instance_config.service} "
+            f"-i {instance_config.instance} -c {instance_config.cluster} -vv`"
+        ),
     )
     monitoring_overrides["description"] = description
 
