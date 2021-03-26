@@ -13,7 +13,7 @@ from typing import Sequence
 
 import a_sync
 import pytz
-from kubernetes.client import V1ContainerSpec
+from kubernetes.client import V1Container
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
@@ -572,7 +572,7 @@ def get_pod_containers(pod: V1Pod) -> List[Dict[str, Any]]:
         start_timestamp = None
         max_healthcheck_period = None
 
-        specs: List[V1ContainerSpec] = [c for c in container_specs if c.name == cs.name]
+        specs: List[V1Container] = [c for c in container_specs if c.name == cs.name]
         if specs:
             # There should be only one matching spec
             spec = specs[0]
