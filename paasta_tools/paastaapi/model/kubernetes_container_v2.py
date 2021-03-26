@@ -78,10 +78,15 @@ class KubernetesContainerV2(ModelNormal):
         return {
             'name': (str,),  # noqa: E501
             'state': (str,),  # noqa: E501
+            'last_state': (str, none_type,),  # noqa: E501
             'restart_count': (int, none_type,),  # noqa: E501
             'reason': (str, none_type,),  # noqa: E501
             'message': (str, none_type,),  # noqa: E501
+            'last_reason': (str, none_type,),  # noqa: E501
+            'last_message': (str, none_type,),  # noqa: E501
+            'last_duration': (float, none_type,),  # noqa: E501
             'timestamp': (float, none_type,),  # noqa: E501
+            'max_healthcheck_period': (float, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -92,10 +97,15 @@ class KubernetesContainerV2(ModelNormal):
     attribute_map = {
         'name': 'name',  # noqa: E501
         'state': 'state',  # noqa: E501
+        'last_state': 'last_state',  # noqa: E501
         'restart_count': 'restart_count',  # noqa: E501
         'reason': 'reason',  # noqa: E501
         'message': 'message',  # noqa: E501
+        'last_reason': 'last_reason',  # noqa: E501
+        'last_message': 'last_message',  # noqa: E501
+        'last_duration': 'last_duration',  # noqa: E501
         'timestamp': 'timestamp',  # noqa: E501
+        'max_healthcheck_period': 'max_healthcheck_period',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -146,10 +156,15 @@ class KubernetesContainerV2(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             name (str): Name of the container. [optional]  # noqa: E501
             state (str): State of the container. [optional]  # noqa: E501
+            last_state (str, none_type): Previous state of the container. [optional]  # noqa: E501
             restart_count (int, none_type): Number of restarts since container creation. [optional]  # noqa: E501
-            reason (str, none_type): Short description of state of container. [optional]  # noqa: E501
-            message (str, none_type): Details about state of container. [optional]  # noqa: E501
-            timestamp (float, none_type): Unix timestamp at which state transitioned. [optional]  # noqa: E501
+            reason (str, none_type): Short description of the state of container. [optional]  # noqa: E501
+            message (str, none_type): Details about the state of container. [optional]  # noqa: E501
+            last_reason (str, none_type): Short description of the previous state of container. [optional]  # noqa: E501
+            last_message (str, none_type): Details about state of container. [optional]  # noqa: E501
+            last_duration (float, none_type): Duration in seconds of previous state. [optional]  # noqa: E501
+            timestamp (float, none_type): Unix timestamp at which current state began. [optional]  # noqa: E501
+            max_healthcheck_period (float, none_type): Time in seconds for maximum healthcheck failure. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

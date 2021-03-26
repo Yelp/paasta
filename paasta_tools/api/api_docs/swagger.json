@@ -1503,6 +1503,12 @@
                     "format": "float",
                     "description": "Unix timestamp at which pod was created"
                 },
+                "delete_timestamp": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Unix timestamp at which pod should be deleted",
+                    "x-nullable": true
+                },
                 "ip": {
                     "type": "string",
                     "description": "Pod IP",
@@ -1572,6 +1578,11 @@
                     "type": "string",
                     "description": "State of the container"
                 },
+                "last_state": {
+                    "type": "string",
+                    "description": "State of the container",
+                    "x-nullable": true
+                },
                 "restart_count": {
                     "type": "integer",
                     "description": "Number of restarts since container creation",
@@ -1585,6 +1596,28 @@
                 "message": {
                     "type": "string",
                     "description": "Details about the state of the container",
+                    "x-nullable": true
+                },
+                "last_reason": {
+                    "type": "string",
+                    "description": "Short description of the previous state of the container",
+                    "x-nullable": true
+                },
+                "last_message": {
+                    "type": "string",
+                    "description": "Details about the previous state of the container",
+                    "x-nullable": true
+                },
+                "last_duration": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Duration in seconds of previous state",
+                    "x-nullable": true
+                },
+                "max_healthcheck_period": {
+                    "type": "number",
+                    "format": "float",
+                    "description": "Time in seconds for maximum healthcheck failure",
                     "x-nullable": true
                 },
                 "timestamp": {

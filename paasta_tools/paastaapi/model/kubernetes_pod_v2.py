@@ -85,6 +85,7 @@ class KubernetesPodV2(ModelNormal):
             'ip': (str, none_type,),  # noqa: E501
             'host': (str, none_type,),  # noqa: E501
             'create_timestamp': (float,),  # noqa: E501
+            'delete_timestamp': (float, none_type,),  # noqa: E501
             'phase': (str,),  # noqa: E501
             'ready': (bool,),  # noqa: E501
             'scheduled': (bool,),  # noqa: E501
@@ -103,6 +104,7 @@ class KubernetesPodV2(ModelNormal):
         'ip': 'ip',  # noqa: E501
         'host': 'host',  # noqa: E501
         'create_timestamp': 'create_timestamp',  # noqa: E501
+        'delete_timestamp': 'delete_timestamp',  # noqa: E501
         'phase': 'phase',  # noqa: E501
         'ready': 'ready',  # noqa: E501
         'scheduled': 'scheduled',  # noqa: E501
@@ -161,8 +163,9 @@ class KubernetesPodV2(ModelNormal):
             ip (str, none_type): Pod IP. [optional]  # noqa: E501
             host (str, none_type): Host IP this pod was scheduled on. [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp at which pod was created. [optional]  # noqa: E501
+            delete_timestamp (float, none_type): Unix timestamp at which pod should be deleted. [optional]  # noqa: E501
             phase (str): The lifecycle phase of the pod. [optional]  # noqa: E501
-            ready (bool): Whether or not the pod is ready. [optional]  # noqa: E501
+            ready (bool): Whether or not the pod is ready and/or registered in the mesh. [optional]  # noqa: E501
             scheduled (bool): Whether or not the pod is scheduled. [optional]  # noqa: E501
             reason (str, none_type): brief description of the pod&#39;s state. [optional]  # noqa: E501
             message (str, none_type): short message with details about the pod&#39;s state. [optional]  # noqa: E501

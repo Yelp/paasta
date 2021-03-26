@@ -118,18 +118,24 @@ def test_kubernetes_status(
 
 
 # TODO: Test coverage for container status
+@mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
 @mock.patch(
     "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
 )
 @mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+)
 @mock.patch(
     "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
     autospec=True,
 )
 def test_kubernetes_status_v2(
     mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+    mock_load_service_namespace_config,
     mock_pods_for_service_instance,
     mock_replicasets_for_service_instance,
+    mock_mesh_status,
 ):
     mock_job_config = mock.Mock()
     mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
@@ -141,6 +147,7 @@ def test_kubernetes_status_v2(
             metadata=Struct(
                 name="replicaset_1",
                 creation_timestamp=datetime.datetime(2021, 3, 5),
+                deletion_timestamp=None,
                 labels={
                     "paasta.yelp.com/git_sha": "aaa000",
                     "paasta.yelp.com/config_sha": "config000",
@@ -154,6 +161,7 @@ def test_kubernetes_status_v2(
                 owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
                 name="pod_1",
                 creation_timestamp=datetime.datetime(2021, 3, 6),
+                deletion_timestamp=None,
             ),
             status=Struct(
                 pod_ip="1.2.3.4",
@@ -174,11 +182,28 @@ def test_kubernetes_status_v2(
                             waiting=None,
                             terminated=None,
                         ),
+                        last_state=Struct(running=None, waiting=None, terminated=None,),
                     )
                 ],
             ),
+            spec=Struct(
+                containers=[
+                    Struct(
+                        name="main_container",
+                        liveness_probe=Struct(
+                            initial_delay_seconds=1,
+                            failure_threshold=2,
+                            period_seconds=3,
+                            timeout_seconds=4,
+                        ),
+                    )
+                ]
+            ),
         ),
     ]
+
+    mock_load_service_namespace_config.return_value = {}
+    mock_job_config.get_registrations.return_value = ["service.instance"]
 
     status = pik.kubernetes_status_v2(
         service="service",
@@ -208,6 +233,7 @@ def test_kubernetes_status_v2(
                         "name": "pod_1",
                         "ip": "1.2.3.4",
                         "create_timestamp": datetime.datetime(2021, 3, 6).timestamp(),
+                        "delete_timestamp": None,
                         "host": "4.3.2.1",
                         "phase": "Running",
                         "reason": None,
@@ -216,11 +242,16 @@ def test_kubernetes_status_v2(
                         "ready": True,
                         "containers": [
                             {
+                                "max_healthcheck_period": 15,
                                 "name": "main_container",
                                 "restart_count": 0,
                                 "state": "running",
                                 "reason": None,
                                 "message": None,
+                                "last_state": None,
+                                "last_reason": None,
+                                "last_message": None,
+                                "last_duration": None,
                                 "timestamp": datetime.datetime(2021, 3, 6).timestamp(),
                             }
                         ],

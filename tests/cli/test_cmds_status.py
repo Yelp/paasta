@@ -1294,12 +1294,13 @@ class TestGetVersionsTable:
         replicaset_1 = paastamodels.KubernetesReplicaSetV2(
             git_sha="aabbccddee",
             config_sha="config000",
-            create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+            create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
             pods=[
                 paastamodels.KubernetesPodV2(
                     name="pod1",
                     ip="1.2.3.4",
-                    create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+                    host="w.x.y.z",
+                    create_timestamp=float(datetime.datetime(2021, 3, 5).timestamp()),
                     phase="Running",
                     ready=True,
                     scheduled=True,
@@ -1308,8 +1309,11 @@ class TestGetVersionsTable:
                 paastamodels.KubernetesPodV2(
                     name="pod2",
                     ip="1.2.3.5",
+                    host="a.b.c.d",
                     create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
                     phase="Failed",
+                    reason="Evicted",
+                    message="Not enough memory!",
                     ready=True,
                     scheduled=True,
                     containers=[],
@@ -1319,11 +1323,12 @@ class TestGetVersionsTable:
         replicaset_2 = paastamodels.KubernetesReplicaSetV2(
             git_sha="ff11223344",
             config_sha="config000",
-            create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
+            create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
             pods=[
                 paastamodels.KubernetesPodV2(
                     name="pod1",
-                    ip="1.2.3.4",
+                    ip="1.2.3.6",
+                    host="a.b.c.d",
                     create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
                     phase="Running",
                     ready=True,
@@ -1336,23 +1341,30 @@ class TestGetVersionsTable:
         return [replicaset_2, replicaset_1]
 
     def test_two_replicasets(self, mock_replicasets):
-        versions_table = get_versions_table(mock_replicasets)
+        versions_table = get_versions_table(mock_replicasets, verbose=0)
 
         assert "aabbccdd (new)" in versions_table[0]
-        assert "2021-03-01" in versions_table[0]
-        assert "Healthy" in versions_table[1]
-        assert "Unhealthy" in versions_table[1]
+        assert "2021-03-03" in versions_table[0]
+        assert PaastaColors.green("1 Healthy") in versions_table[1]
+        assert PaastaColors.red("1 Unhealthy") in versions_table[1]
 
-        assert "ff112233 (old)" in versions_table[6]
-        assert "2021-03-03" in versions_table[6]
-        assert "Healthy" in versions_table[7]
-        assert "Unhealthy" not in versions_table[7]
+        assert "ff112233 (old)" in versions_table[7]
+        assert "2021-03-01" in versions_table[7]
+        assert PaastaColors.green("1 Healthy") in versions_table[8]
+        assert "Unhealhty" not in versions_table[8]
 
     def test_different_config_shas(self, mock_replicasets):
         mock_replicasets[0].config_sha = "config111"
-        versions_table = get_versions_table(mock_replicasets)
+        versions_table = get_versions_table(mock_replicasets, verbose=0)
         assert "aabbccdd, config000" in versions_table[0]
-        assert "ff112233, config111" in versions_table[6]
+        assert "ff112233, config111" in versions_table[7]
+
+    def test_full_replica_table(self, mock_replicasets):
+        versions_table = get_versions_table(mock_replicasets, verbose=2)
+        versions_table_tip = remove_ansi_escape_sequences(versions_table[4])
+        assert "1.2.3.5" in versions_table[3]
+        assert "Evicted: Not enough memory!" in versions_table_tip
+        assert "1.2.3.6" in versions_table[10]
 
 
 class TestPrintKubernetesStatus:

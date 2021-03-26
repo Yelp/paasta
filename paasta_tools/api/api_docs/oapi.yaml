@@ -371,6 +371,9 @@ components:
           items:
             $ref: '#/components/schemas/KubernetesReplicaSetV2'
           type: array
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
     InstanceStatusMarathon:
       properties:
         active_shas:
@@ -527,20 +530,42 @@ components:
         state:
           description: State of the container
           type: string
+        last_state:
+          description: Previous state of the container
+          type: string
+          nullable: true
         restart_count:
           description: Number of restarts since container creation
           type: integer
           nullable: true
         reason:
-          description: Short description of state of container
+          description: Short description of the state of container
           type: string
           nullable: true
         message:
+          description: Details about the state of container
+          type: string
+          nullable: true
+        last_reason:
+          description: Short description of the previous state of container
+          type: string
+          nullable: true
+        last_message:
           description: Details about state of container
           type: string
           nullable: true
+        last_duration:
+          description: Duration in seconds of previous state
+          format: float
+          type: number
+          nullable: true
         timestamp:
-          description: Unix timestamp at which state transitioned
+          description: Unix timestamp at which current state began
+          format: float
+          type: number
+          nullable: true
+        max_healthcheck_period:
+          description: Time in seconds for maximum healthcheck failure
           format: float
           type: number
           nullable: true
@@ -601,11 +626,16 @@ components:
           description: Unix timestamp at which pod was created
           format: float
           type: number
+        delete_timestamp:
+          description: Unix timestamp at which pod should be deleted
+          format: float
+          type: number
+          nullable: true
         phase:
           description: The lifecycle phase of the pod
           type: string
         ready:
-          description: Whether or not the pod is ready
+          description: Whether or not the pod is ready and/or registered in the mesh
           type: boolean
         scheduled:
           description: Whether or not the pod is scheduled

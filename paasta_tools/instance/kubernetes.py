@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Sequence
 
 import a_sync
@@ -457,12 +458,39 @@ def kubernetes_status_v2(
         job_config.get_instances() if desired_state != "stop" else 0
     )
     status["bounce_method"] = job_config.get_bounce_method()
+
+    service_namespace_config = kubernetes_tools.load_service_namespace_config(
+        service=service,
+        namespace=job_config.get_nerve_namespace(),
+        soa_dir=settings.soa_dir,
+    )
+    backends_list = None
+    if "proxy_port" in service_namespace_config:
+        envoy_status = mesh_status(
+            service=service,
+            service_mesh=ServiceMesh.ENVOY,
+            instance=job_config.get_nerve_namespace(),
+            job_config=job_config,
+            service_namespace_config=service_namespace_config,
+            pods=pod_list,
+            should_return_individual_backends=True,
+            settings=settings,
+        )
+        if envoy_status.get("locations"):
+            backends_list = envoy_status["locations"][0].get("backends", [])
+        else:
+            backends_list = []
+        if include_envoy:
+            # Note we always include backends here now
+            status["envoy"] = envoy_status
+
     status["replicasets"] = [
         get_replicaset_status(
-            replicaset, pods_by_replicaset.get(replicaset.metadata.name),
+            replicaset, pods_by_replicaset.get(replicaset.metadata.name), backends_list
         )
         for replicaset in actually_running_replicasets
     ]
+
     return status
 
 
@@ -478,7 +506,9 @@ def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
 
 
 def get_replicaset_status(
-    replicaset: V1ReplicaSet, pods: Sequence[V1Pod],
+    replicaset: V1ReplicaSet,
+    pods: Sequence[V1Pod],
+    backends: Optional[Sequence[Mapping[str, Any]]],
 ) -> Dict[str, Any]:
     return {
         "name": replicaset.metadata.name,
@@ -487,11 +517,13 @@ def get_replicaset_status(
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
         "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
-        "pods": [get_pod_status(pod) for pod in pods],
+        "pods": [get_pod_status(pod, backends) for pod in pods],
     }
 
 
-def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
+def get_pod_status(
+    pod: V1Pod, backends: Optional[Sequence[Mapping[str, Any]]],
+) -> Dict[str, Any]:
     # TODO: Return enough data to figure out _all_ ReplicaStates
     # If unscheduled, set reason/message to conditions[PodScheduled].reason
     reason = pod.status.reason
@@ -504,6 +536,11 @@ def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
         reason = sched_condition.reason
         message = sched_condition.message
 
+    if ready and backends is not None:
+        # Replace readiness with whether or not it is actually registered in the mesh
+        # TODO: Replace this once k8s readiness reflects mesh readiness, PAASTA-17266
+        ready = [be for be in backends if be["address"] == pod.status.pod_ip] != []
+
     return {
         "name": pod.metadata.name,
         "ip": pod.status.pod_ip,
@@ -514,37 +551,67 @@ def get_pod_status(pod: V1Pod) -> Dict[str, Any]:
         # Based on pod.status.conditions
         "scheduled": scheduled,
         "ready": ready,
-        "containers": get_containers(pod),
+        "containers": get_pod_containers(pod),
         # TODO: we need container_statuses for restart/liveness info
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
+        "delete_timestamp": pod.metadata.deletion_timestamp.timestamp()
+        if pod.metadata.deletion_timestamp
+        else None,
     }
 
 
-# TODO: Include data required to provide hints, healthcheck spec, etc
-def get_containers(pod: V1Pod) -> List[Dict[str, Any]]:
+def get_pod_containers(pod: V1Pod) -> List[Dict[str, Any]]:
     containers = []
     statuses = pod.status.container_statuses or []
+    container_specs = pod.spec.containers
     for cs in statuses:
         state = None
         reason = None
         message = None
-        state_timestamp = None
-        for attr in ["running", "waiting", "terminated"]:
-            this_state = getattr(cs.state, attr)
-            # Each container should have only a single state populated
+        last_state = None
+        last_reason = None
+        last_message = None
+        last_duration = None
+        start_timestamp = None
+        max_healthcheck_period = None
+
+        spec = [c for c in container_specs if c.name == cs.name]
+        if spec:
+            spec = spec[0]
+            if spec.liveness_probe:
+                max_healthcheck_period = spec.liveness_probe.initial_delay_seconds + (
+                    spec.liveness_probe.failure_threshold
+                    * (
+                        spec.liveness_probe.period_seconds
+                        + spec.liveness_probe.timeout_seconds
+                    )
+                )
+
+        state_dict = cs.state.to_dict()
+        for state_name in state_dict:
+            this_state = state_dict[state_name]
             if this_state:
-                state = attr
-                if not state == "running":
-                    reason = this_state.reason
-                    message = this_state.message
-                    if state == "waiting":
-                        # if in crashloop, check last_state.terminated
-                        if reason == "CrashLoopBackOff" and cs.last_state.terminated:
-                            reason = cs.last_state.terminated.reason
-                            message = cs.last_state.terminated.message
-                            state_timestamp = cs.last_state.terminated.finished_at
-                else:
-                    state_timestamp = this_state.started_at
+                state = state_name
+                if "reason" in this_state:
+                    reason = this_state["reason"]
+                if "message" in this_state:
+                    message = this_state["message"]
+                if "started_at" in this_state:
+                    start_timestamp = this_state["started_at"]
+
+        last_state_dict = cs.last_state.to_dict()
+        for state_name in last_state_dict:
+            this_state = last_state_dict[state_name]
+            if this_state:
+                last_state = state_name
+                if "reason" in this_state:
+                    last_reason = this_state["reason"]
+                if "message" in this_state:
+                    last_message = this_state["message"]
+                if "started_at" in this_state and "finished_at":
+                    last_duration = (
+                        this_state["finished_at"] - this_state["started_at"]
+                    ).seconds
 
         containers.append(
             {
@@ -553,7 +620,12 @@ def get_containers(pod: V1Pod) -> List[Dict[str, Any]]:
                 "state": state,
                 "reason": reason,
                 "message": message,
-                "timestamp": state_timestamp.timestamp() if state_timestamp else None,
+                "last_state": last_state,
+                "last_reason": last_reason,
+                "last_message": last_message,
+                "last_duration": last_duration,
+                "timestamp": start_timestamp.timestamp() if start_timestamp else None,
+                "max_healthcheck_period": max_healthcheck_period,
             }
         )
     return containers

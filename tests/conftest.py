@@ -57,3 +57,6 @@ class Struct:
         :type property_name: str
         """
         self.__dict__[property_name] = val
+
+    def to_dict(self):
+        return self.__dict__
