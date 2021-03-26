@@ -653,6 +653,11 @@ components:
             $ref: '#/components/schemas/KubernetesContainerV2'
             description: List of containers in the pod
           type: array
+        events:
+          description: Kubernetes pod events
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesPodEvent'
       type: object
     KubernetesPodEvent:
       type: object

@@ -67,6 +67,7 @@ from paasta_tools.paastaapi.models import KubernetesReplicaSetV2
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import find_it
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
@@ -1319,33 +1320,46 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         state = ReplicaState.TERMINATING
     elif phase == "Pending":
         if not pod.containers or all([c.state == "waiting" for c in pod.containers]):
+            # What about containers bouncing between waiting<->running while continuously failing
             state = ReplicaState.STARTING
         else:
             state = ReplicaState.UNHEALTHY
     elif phase == "Running":
-        if not pod.ready:
-            # TODO: Take sidecar containers into account
-            #   This logic likely needs refining
-            state = ReplicaState.UNREACHABLE
-            main_container = [
-                c
-                for c in pod.containers
-                if c.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES
-            ]
-            if main_container:
-                if main_container[0].restart_count > 0:
-                    if (
-                        pod.create_timestamp + main_container[0].max_healthcheck_period
-                        > datetime.utcnow().timestamp()
-                    ):
-                        state = ReplicaState.WARMING_UP
-                    else:
-                        state = ReplicaState.HEALTHCHECK_FAILING
-                else:
-                    # No restarts yet, still warming up?
-                    state = ReplicaState.WARMING_UP
+        main_container = find_it(
+            pod.containers,
+            key=lambda x: x.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES,
+        )
+        if not main_container:
+            # What? How is this possible
+            state = ReplicaState.STARTING
         else:
-            state = ReplicaState.RUNNING
+            max_healthcheck_period = main_container.max_healthcheck_period or 0
+            max_healthcheck_failure_ts = datetime.fromtimestamp(
+                pod.create_timestamp
+            ) - timedelta(seconds=max_healthcheck_period)
+            recent_events = [
+                e for e in pod.events if e.time_stamp < str(max_healthcheck_failure_ts)
+            ]
+            print(recent_events)
+            # If pod is not yet older than max healthcheck failure, regardless of state we should report Warming Up
+            # We will never be warming up if there is no liveness probe on main container
+            if (
+                datetime.utcnow().timestamp() - pod.create_timestamp
+            ) < max_healthcheck_period:
+                state = ReplicaState.WARMING_UP
+            # if liveness probe happened within liveness check period
+            elif main_container.restart_count == 0 and any(
+                ["Liveness probe failed" in e for e in recent_events]
+            ):
+                state = ReplicaState.HEALTHCHECK_FAILING
+            elif main_container.restart_count > 0 and any(
+                ["Back-off restarting container" in e for e in recent_events]
+            ):
+                state = ReplicaState.UNHEALTHY
+            elif not pod.ready:
+                state = ReplicaState.UNREACHABLE
+            else:
+                state = ReplicaState.RUNNING
     elif phase == "Failed":
         # e.g. pod.reason == evicted
         state = ReplicaState.UNHEALTHY

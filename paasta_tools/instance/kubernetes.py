@@ -487,7 +487,10 @@ def kubernetes_status_v2(
 
     status["replicasets"] = [
         get_replicaset_status(
-            replicaset, pods_by_replicaset.get(replicaset.metadata.name), backends_list
+            replicaset=replicaset,
+            pods=pods_by_replicaset.get(replicaset.metadata.name),
+            backends=backends_list,
+            kube_client=kube_client,
         )
         for replicaset in actually_running_replicasets
     ]
@@ -506,10 +509,12 @@ def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
     return pods_by_replicaset
 
 
-def get_replicaset_status(
+@a_sync.to_blocking
+async def get_replicaset_status(
     replicaset: V1ReplicaSet,
     pods: Sequence[V1Pod],
     backends: Optional[Sequence[Mapping[str, Any]]],
+    kube_client: Any,
 ) -> Dict[str, Any]:
     return {
         "name": replicaset.metadata.name,
@@ -518,17 +523,22 @@ def get_replicaset_status(
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
         "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
-        "pods": [get_pod_status(pod, backends) for pod in pods],
+        "pods": await asyncio.gather(
+            *[get_pod_status(pod, backends, kube_client) for pod in pods]
+        ),
     }
 
 
-def get_pod_status(
-    pod: V1Pod, backends: Optional[Sequence[Mapping[str, Any]]],
+# akin to pod_info
+async def get_pod_status(
+    pod: V1Pod, backends: Optional[Sequence[Mapping[str, Any]]], kube_client: Any,
 ) -> Dict[str, Any]:
     reason = pod.status.reason
     message = pod.status.message
     scheduled = kubernetes_tools.is_pod_scheduled(pod)
     ready = kubernetes_tools.is_pod_ready(pod)
+
+    pod_event_messages = await get_pod_event_messages(kube_client, pod)
 
     if not scheduled:
         sched_condition = kubernetes_tools.get_pod_condition(pod, "PodScheduled")
@@ -554,6 +564,7 @@ def get_pod_status(
         "delete_timestamp": pod.metadata.deletion_timestamp.timestamp()
         if pod.metadata.deletion_timestamp
         else None,
+        "events": pod_event_messages,
     }
 
 

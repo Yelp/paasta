@@ -3599,6 +3599,12 @@ def to_bytes(obj: Any) -> bytes:
         return str(obj).encode("UTF-8")
 
 
+def find_it(sequence: Collection[Any], key: Callable):
+    filtered = [e for e in sequence if key(e)]
+    if filtered:
+        return filtered[0]
+
+
 _TimeoutFuncRetType = TypeVar("_TimeoutFuncRetType")
 
 
