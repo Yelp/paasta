@@ -117,7 +117,6 @@ def test_kubernetes_status(
     assert "desired_state" in status
 
 
-# TODO: Test coverage for container status
 @mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
 @mock.patch(
     "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
@@ -183,7 +182,7 @@ def test_kubernetes_status_v2(
                             terminated=None,
                         ),
                         last_state=Struct(running=None, waiting=None, terminated=None,),
-                    )
+                    ),
                 ],
             ),
             spec=Struct(
@@ -418,3 +417,21 @@ def test_filter_actually_running_replicasets():
         replicaset_list[3],
     ]
     assert pik.filter_actually_running_replicasets(replicaset_list) == expected
+
+
+@mock.patch("paasta_tools.instance.kubernetes.get_pod_containers", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.is_pod_scheduled", autospec=True)
+def test_get_pod_status_ready_with_backends(
+    mock_is_pod_scheduled, mock_get_pod_containers
+):
+    mock_get_pod_containers.return_value = []
+    mock_is_pod_scheduled.return_value = True
+    mock_pod = mock.MagicMock()
+    mock_pod.status.pod_ip = "1.2.3.4"
+    mock_ready_condition = mock.MagicMock()
+    mock_ready_condition.type = "Ready"
+    mock_ready_condition.status = "True"
+    mock_pod.status.conditions = [mock_ready_condition]
+    backends = [{"address": "0.0.0.0"}]
+    status = pik.get_pod_status(mock_pod, backends)
+    assert not status["ready"]
