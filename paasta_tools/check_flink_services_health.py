@@ -60,7 +60,7 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
 
 def check_under_registered_taskmanagers(
     instance_config: FlinkDeploymentConfig, expected_count: int, cr_name: str,
-) -> Tuple[bool, str]:
+) -> Tuple[bool, str, str]:
     """Check if not enough taskmanagers have been registered to the jobmanager and
     returns both the result of the check in the form of a boolean and a human-readable
     text to be used in logging or monitoring events.
@@ -74,24 +74,22 @@ def check_under_registered_taskmanagers(
             num_reported = overview.get("taskmanagers", 0)
             crit_threshold = instance_config.get_replication_crit_percentage()
             output = (
-                f"Service {instance_config.job_id} has "
-                f"{num_reported} out of {expected_count} expected instances "
-                f"of taskmanager reported by dashboard!\n"
-                f"(threshold: {crit_threshold}%)"
+                f"{instance_config.job_id} has {num_reported}/{expected_count} "
+                f"taskmanagers reported by dashboard (threshold: {crit_threshold}%)"
             )
             unhealthy, _ = is_under_replicated(
                 num_reported, expected_count, crit_threshold
             )
         except ValueError as e:
-            output = f"Dashboard of service {instance_config.job_id} is not available!\n({e})"
+            output = (
+                f"Dashboard of service {instance_config.job_id} is not available ({e})"
+            )
     else:
-        output = f"Dashboard of service {instance_config.job_id} is not available!\n"
+        output = f"Dashboard of service {instance_config.job_id} is not available"
     if unhealthy:
-        output += f"""
-What this alert means:
-
-  This alert means that the Flink dashboard is not reporting the expected
-  number of taskmanagers.
+        description = f"""
+This alert means that the Flink dashboard is not reporting the expected
+number of taskmanagers.
 
 Reasons this might be happening:
 
@@ -105,7 +103,9 @@ Things you can do:
      paasta status -s {instance_config.service} -i {instance_config.instance} -c {instance_config.cluster} -vv
 
 """
-    return (unhealthy, output)
+    else:
+        description = f"{instance_config.job_id} taskmanager is available"
+    return unhealthy, output, description
 
 
 def get_cr_name(si_pods: Sequence[V1Pod]) -> str:
@@ -170,7 +170,8 @@ def check_flink_service_health(
             cr_name=service_cr_name,
         ),
     ]
-    output = "\n########\n".join([r[1] for r in results])
+    output = ", ".join([r[1] for r in results])
+    description = "\n########\n".join([r[2] for r in results])
     if any(r[0] for r in results):
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
@@ -178,7 +179,11 @@ def check_flink_service_health(
         log.info(output)
         status = pysensu_yelp.Status.OK
     send_replication_event(
-        instance_config=instance_config, status=status, output=output, dry_run=dry_run,
+        instance_config=instance_config,
+        status=status,
+        output=output,
+        description=description,
+        dry_run=dry_run,
     )
 
 

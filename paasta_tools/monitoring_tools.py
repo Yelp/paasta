@@ -306,7 +306,7 @@ def list_teams():
 
 
 def send_replication_event(
-    instance_config, status, output, dry_run=False,
+    instance_config, status, output, description, dry_run=False,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -323,6 +323,7 @@ def send_replication_event(
     monitoring_overrides["runbook"] = get_runbook(
         monitoring_overrides, instance_config.service, soa_dir=instance_config.soa_dir
     )
+    monitoring_overrides["description"] = description
 
     check_name = "check_paasta_services_replication.%s" % instance_config.job_id
     send_event(
@@ -429,7 +430,6 @@ def check_replication_for_instance(
             replication_infos, instance_config, expected_count, dry_run=dry_run,
         )
 
-    combined_output = ""
     service_is_under_replicated = False
     failed_service_discovery_providers = set()
     for service_discovery_provider, replication_info in replication_infos.items():
@@ -442,9 +442,8 @@ def check_replication_for_instance(
             failed_service_discovery_providers.add(service_discovery_provider)
         else:
             expected_count_per_location = int(expected_count / len(replication_info))
-            output = ""
-            output_critical = ""
-            output_ok = ""
+            output_critical = []
+            output_ok = []
             under_replication_per_location = []
 
             for location, available_backends in sorted(replication_info.items()):
@@ -457,9 +456,8 @@ def check_replication_for_instance(
                     crit_threshold,
                 )
                 if under_replicated:
-                    output_critical += (
-                        "- Service %s has %d out of %d expected instances in %s according to %s (CRITICAL: %d%%)\n"
-                        % (
+                    output_critical.append(
+                        "{} has {}/{} replicas in {} according to {} (CRITICAL: {}%)\n".format(
                             instance_config.job_id,
                             num_available_in_location,
                             expected_count_per_location,
@@ -470,9 +468,8 @@ def check_replication_for_instance(
                     )
                     failed_service_discovery_providers.add(service_discovery_provider)
                 else:
-                    output_ok += (
-                        "- Service %s has %d out of %d expected instances in %s according to %s (OK: %d%%)\n"
-                        % (
+                    output_ok.append(
+                        "{} has {}/{} replicas in {} according to {} (OK: {}%)\n".format(
                             instance_config.job_id,
                             num_available_in_location,
                             expected_count_per_location,
@@ -483,11 +480,10 @@ def check_replication_for_instance(
                     )
                 under_replication_per_location.append(under_replicated)
 
-            output += output_critical
+            output = ", ".join(output_critical)
             if output_critical and output_ok:
-                output += "\n\n"
-                output += "The following locations are OK:\n"
-            output += output_ok
+                output += ". The following locations are OK: "
+            output += ", ".join(output_ok)
 
             service_is_under_replicated_anywhere = any(under_replication_per_location)
             service_is_under_replicated |= service_is_under_replicated_anywhere
@@ -495,20 +491,16 @@ def check_replication_for_instance(
                 log.error(output)
             else:
                 log.info(output)
-        combined_output += output
 
     if service_is_under_replicated:
         failed_service_discovery_providers_list = ",".join(
             failed_service_discovery_providers
         )
-        combined_output += (
-            "\n\n"
-            "What this alert means:\n"
-            "\n"
-            "  This replication alert means that a %(service_discovery_provider)s powered loadbalancer\n"
-            "  doesn't have enough healthy backends. Not having enough healthy backends\n"
-            "  means that clients of that service will get 503s (http) or connection refused\n"
-            "  (tcp) when trying to connect to it.\n"
+        description = (
+            "This replication alert means that a {service_discovery_provider} powered loadbalancer\n"
+            "doesn't have enough healthy backends. Not having enough healthy backends\n"
+            "means that clients of that service will get 503s (http) or connection refused\n"
+            "(tcp) when trying to connect to it.\n"
             "\n"
             "Reasons this might be happening:\n"
             "\n"
@@ -519,32 +511,36 @@ def check_replication_for_instance(
             "Things you can do:\n"
             "\n"
             "  * You can view the logs for the job with:\n"
-            "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+            "      paasta logs -s {service} -i {instance} -c {cluster}\n"
             "\n"
             "  * Fix the cause of the unhealthy service. Try running:\n"
             "\n"
-            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+            "      paasta status -s {service} -i {instance} -c {cluster} -vv\n"
             "\n"
-            "  * Widen %(service_discovery_provider)s discovery settings\n"
+            "  * Widen {service_discovery_provider} discovery settings\n"
             "  * Increase the instance count\n"
             "\n"
-        ) % {
-            "service": instance_config.service,
-            "instance": instance_config.instance,
-            "cluster": instance_config.cluster,
-            "service_discovery_provider": failed_service_discovery_providers_list,
-        }
+        ).format(
+            service=instance_config.service,
+            instance=instance_config.instance,
+            cluster=instance_config.cluster,
+            service_discovery_provider=failed_service_discovery_providers_list,
+        )
         status = pysensu_yelp.Status.CRITICAL
     else:
+        description = (
+            "{} is well-replicated because it has over {}% of its "
+            "expected replicas up."
+        ).format(instance_config.job_id, crit_threshold)
         status = pysensu_yelp.Status.OK
 
     send_replication_event(
         instance_config=instance_config,
         status=status,
-        output=combined_output,
+        output=output,
+        description=description,
         dry_run=dry_run,
     )
-
     return not service_is_under_replicated
 
 
@@ -553,15 +549,17 @@ def check_under_replication(
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
-) -> Tuple[bool, str]:
+) -> Tuple[bool, str, str]:
     """Check if a component/sub_component is under-replicated and returns both the result of the check in the form of a
     boolean and a human-readable text to be used in logging or monitoring events.
     """
     crit_threshold = instance_config.get_replication_crit_percentage()
+
+    # Keep output short, with rest of context in description. This is because
+    # by default, Slack-Sensu messages have a 400 char limit, incl. the output.
+    # If it is too long, the runbook and tip won't show up.
     if sub_component is not None:
-        output = (
-            "Service %s has %d out of %d expected instances of %s available! (threshold: %d%%)"
-        ) % (
+        output = ("{} has {}/{} replicas of {} available (threshold: {}%)").format(
             instance_config.job_id,
             num_available,
             expected_count,
@@ -569,19 +567,18 @@ def check_under_replication(
             crit_threshold,
         )
     else:
-        output = (
-            "Service %s has %d out of %d expected instances available! (threshold: %d%%)"
-        ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
+        output = ("{} has {}/{} replicas available (threshold: {}%)").format(
+            instance_config.job_id, num_available, expected_count, crit_threshold
+        )
+
     under_replicated, _ = is_under_replicated(
         num_available, expected_count, crit_threshold
     )
     if under_replicated:
-        output += (
-            "\n\n"
-            "What this alert means:\n"
-            "\n"
-            "  This replication alert means that the service PaaSTA can't keep the\n"
-            "  requested number of copies up and healthy in the cluster.\n"
+        description = (
+            "This replication alert means that PaaSTA can't keep the\n"
+            "requested number of replicas up and healthy in the cluster for "
+            "the instance {service}.{instance}.\n"
             "\n"
             "Reasons this might be happening:\n"
             "\n"
@@ -593,13 +590,18 @@ def check_under_replication(
             "  * Increase the instance count\n"
             "  * Fix the cause of the unhealthy service. Try running:\n"
             "\n"
-            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
-        ) % {
-            "service": instance_config.service,
-            "instance": instance_config.instance,
-            "cluster": instance_config.cluster,
-        }
-    return under_replicated, output
+            "      paasta status -s {service} -i {instance} -c {cluster} -vv\n"
+        ).format(
+            service=instance_config.service,
+            instance=instance_config.instance,
+            cluster=instance_config.cluster,
+        )
+    else:
+        description = (
+            "{} is well-replicated because it has over {}% of its "
+            "expected replicas up."
+        ).format(instance_config.job_id, crit_threshold)
+    return under_replicated, output, description
 
 
 def send_replication_event_if_under_replication(
@@ -609,7 +611,7 @@ def send_replication_event_if_under_replication(
     sub_component: Optional[str] = None,
     dry_run: bool = False,
 ):
-    under_replicated, output = check_under_replication(
+    under_replicated, output, description = check_under_replication(
         instance_config, expected_count, num_available, sub_component
     )
     if under_replicated:
@@ -619,5 +621,9 @@ def send_replication_event_if_under_replication(
         log.info(output)
         status = pysensu_yelp.Status.OK
     send_replication_event(
-        instance_config=instance_config, status=status, output=output, dry_run=dry_run,
+        instance_config=instance_config,
+        status=status,
+        output=output,
+        description=description,
+        dry_run=dry_run,
     )
