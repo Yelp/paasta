@@ -201,7 +201,10 @@ def send_sensu_event(instance, oom_events, args):
             "alert_after": "0m",
             "realert_every": args.realert_every,
             "runbook": "y/check-oom-events",
-            "tip": "Try bumping the memory limit past %s" % memory_limit_str,
+            "tip": (
+                "Follow the runbook to investigate and rightsize memory usage "
+                f"(curr: {memory_limit_str})"
+            ),
         }
     )
     return monitoring_tools.send_event(
