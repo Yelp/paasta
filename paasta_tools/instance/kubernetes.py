@@ -13,6 +13,7 @@ from typing import Sequence
 
 import a_sync
 import pytz
+from kubernetes.client import V1ContainerSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
@@ -524,8 +525,6 @@ def get_replicaset_status(
 def get_pod_status(
     pod: V1Pod, backends: Optional[Sequence[Mapping[str, Any]]],
 ) -> Dict[str, Any]:
-    # TODO: Return enough data to figure out _all_ ReplicaStates
-    # If unscheduled, set reason/message to conditions[PodScheduled].reason
     reason = pod.status.reason
     message = pod.status.message
     scheduled = kubernetes_tools.is_pod_scheduled(pod)
@@ -548,11 +547,9 @@ def get_pod_status(
         "phase": pod.status.phase,
         "reason": reason,
         "message": message,
-        # Based on pod.status.conditions
         "scheduled": scheduled,
         "ready": ready,
         "containers": get_pod_containers(pod),
-        # TODO: we need container_statuses for restart/liveness info
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
         "delete_timestamp": pod.metadata.deletion_timestamp.timestamp()
         if pod.metadata.deletion_timestamp
@@ -575,9 +572,10 @@ def get_pod_containers(pod: V1Pod) -> List[Dict[str, Any]]:
         start_timestamp = None
         max_healthcheck_period = None
 
-        spec = [c for c in container_specs if c.name == cs.name]
-        if spec:
-            spec = spec[0]
+        specs: List[V1ContainerSpec] = [c for c in container_specs if c.name == cs.name]
+        if specs:
+            # There should be only one matching spec
+            spec = specs[0]
             if spec.liveness_probe:
                 max_healthcheck_period = spec.liveness_probe.initial_delay_seconds + (
                     spec.liveness_probe.failure_threshold
