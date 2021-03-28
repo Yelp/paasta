@@ -1,6 +1,6 @@
 a-sync==0.5.0
 addict==2.1.0
-aiohttp==3.5.4
+aiohttp==3.7.4.post0
 argcomplete==0.8.1
 argparse==1.4.0
 arrow==0.12.1
@@ -52,7 +52,7 @@ marathon==0.12.0
 MarkupSafe==1.1.1
 monotonic==1.4
 msgpack-python==0.5.6
-multidict==4.1.0
+multidict==4.7.6
 mypy-extensions==0.4.1
 nulltype==2.3.1
 oauthlib==2.0.7
