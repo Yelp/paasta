@@ -24,7 +24,7 @@ pre-commit==1.18.0
 pycodestyle==2.3.1
 pyfakefs==4.1.0
 pyflakes==1.6.0
-Pygments==2.2.0
+Pygments==2.7.4
 pylint==2.6.0
 pytest==3.3.1
 pytest-asyncio==0.8.0
