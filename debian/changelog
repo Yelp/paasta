@@ -1,3 +1,11 @@
+paasta-tools (0.97.90) xenial; urgency=medium
+
+  * 0.97.90 tagged with 'make release'
+    Commit: Merge branch "u/kawaiwan/make-prom-signalflow-use-ready-
+    pods" of github.com:Yelp/paasta
+
+ -- Evan Krall <krall@yelp.com>  Mon, 29 Mar 2021 11:50:09 -0700
+
 paasta-tools (0.97.89) xenial; urgency=medium
 
   * 0.97.89 tagged with 'make release'
