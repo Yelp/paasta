@@ -1,3 +1,10 @@
+paasta-tools (0.97.91) xenial; urgency=medium
+
+  * 0.97.91 tagged with 'make release'
+    Commit: Bump RSA to latest (4.7.2)
+
+ -- Evan Krall <krall@yelp.com>  Mon, 29 Mar 2021 12:46:34 -0700
+
 paasta-tools (0.97.90) xenial; urgency=medium
 
   * 0.97.90 tagged with 'make release'
