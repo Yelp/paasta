@@ -102,9 +102,7 @@ def add_subparser(subparsers) -> None:
     pod_help = (
         "The pods to see relevant logs for. Defaults to all pods for this service."
     )
-    status_parser.add_argument(
-        "-p", "--pods", help=pod_help
-    ).completer = completer_clusters
+    status_parser.add_argument("-p", "--pods", help=pod_help)
     status_parser.add_argument(
         "-C",
         "--components",
