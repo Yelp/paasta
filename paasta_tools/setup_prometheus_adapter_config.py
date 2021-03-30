@@ -232,18 +232,6 @@ def create_instance_uwsgi_scaling_rule(
             )
         ) by (kube_deployment)
     """
-    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
-    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
-    # deployment.
-    ready_pods = f"""
-        (
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        )
-    """
     load_per_instance = f"""
         avg(
             uwsgi_worker_busy{{{worker_filter_terms}}}
@@ -251,7 +239,7 @@ def create_instance_uwsgi_scaling_rule(
     """
     missing_instances = f"""
         clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            {current_replicas} - count({load_per_instance}) by (kube_deployment),
             0
         )
     """
