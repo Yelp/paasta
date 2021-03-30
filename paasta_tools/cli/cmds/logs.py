@@ -99,6 +99,10 @@ def add_subparser(subparsers) -> None:
         "--instances",
         help="The instances to see relevant logs for. Defaults to all instances for this service.",
     ).completer = completer_clusters
+    pod_help = (
+        "The pods to see relevant logs for. Defaults to all pods for this service."
+    )
+    status_parser.add_argument("-p", "--pods", help=pod_help)
     status_parser.add_argument(
         "-C",
         "--components",
@@ -266,19 +270,21 @@ def paasta_log_line_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
     """Given a (JSON-formatted) log line, return True if the line should be
     displayed given the provided levels, components, and clusters; return False
     otherwise.
+
+    NOTE: Pods are optional as services that use Marathon do not operate with pods.
     """
     try:
         parsed_line = json.loads(line)
     except ValueError:
         log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
         return False
-
     timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
@@ -300,6 +306,7 @@ def paasta_app_output_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
@@ -322,6 +329,7 @@ def paasta_app_output_passes_filter(
             or parsed_line.get("cluster") == ANY_CLUSTER
         )
         and (instances is None or parsed_line.get("instance") in instances)
+        and (pods is None or parsed_line.get("pod_name") in pods)
     )
 
 
@@ -371,6 +379,7 @@ def marathon_log_line_passes_filter(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
+    pods: Iterable[str] = None,
     start_time: datetime.datetime = None,
     end_time: datetime.datetime = None,
 ) -> bool:
@@ -528,6 +537,7 @@ class LogReader:
         components,
         clusters,
         instances,
+        pods,
         raw_mode=False,
         strip_headers=False,
     ):
@@ -542,6 +552,7 @@ class LogReader:
         components,
         clusters,
         instances,
+        pods,
         raw_mode,
         strip_headers,
     ):
@@ -555,6 +566,7 @@ class LogReader:
         components,
         clusters,
         instances,
+        pods,
         raw_mode,
         strip_headers,
     ):
@@ -569,6 +581,7 @@ class LogReader:
         components,
         clusters,
         instances,
+        pods,
         raw_mode,
         strip_headers,
     ):
@@ -676,6 +689,7 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
+        pods: Iterable[str] = None,
         raw_mode: bool = False,
         strip_headers: bool = False,
     ) -> None:
@@ -722,6 +736,7 @@ class ScribeLogReader(LogReader):
                 "components": components,
                 "clusters": clusters,
                 "instances": instances,
+                "pods": pods,
                 "queue": queue,
                 "filter_fn": stream_info.filter_fn,
             }
@@ -821,6 +836,7 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
+        pods: Iterable[str],
         raw_mode: bool,
         strip_headers: bool,
     ) -> None:
@@ -859,6 +875,7 @@ class ScribeLogReader(LogReader):
                 clusters=clusters,
                 instances=instances,
                 aggregated_logs=aggregated_logs,
+                pods=pods,
                 filter_fn=stream_info.filter_fn,
                 parser_fn=stream_info.parse_fn,
                 start_time=start_time,
@@ -884,6 +901,7 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
+        pods: Iterable[str],
         raw_mode: bool,
         strip_headers: bool,
     ) -> None:
@@ -912,6 +930,7 @@ class ScribeLogReader(LogReader):
                 clusters=clusters,
                 instances=instances,
                 aggregated_logs=aggregated_logs,
+                pods=pods,
                 filter_fn=stream_info.filter_fn,
                 parser_fn=stream_info.parse_fn,
             )
@@ -937,6 +956,7 @@ class ScribeLogReader(LogReader):
         clusters: Sequence[str],
         instances: Iterable[str],
         aggregated_logs: MutableSequence[Dict[str, Any]],
+        pods: Iterable[str] = None,
         parser_fn: Callable = None,
         filter_fn: Callable = None,
         start_time: datetime.datetime = None,
@@ -958,6 +978,7 @@ class ScribeLogReader(LogReader):
                             components,
                             clusters,
                             instances,
+                            pods,
                             start_time=start_time,
                             end_time=end_time,
                         ):
@@ -1063,6 +1084,7 @@ class ScribeLogReader(LogReader):
         components: Iterable[str],
         clusters: Sequence[str],
         instances: Iterable[str],
+        pods: Iterable[str],
         queue: Queue,
         filter_fn: Callable,
         parse_fn: Callable = None,
@@ -1083,7 +1105,9 @@ class ScribeLogReader(LogReader):
             for line in tailer:
                 if parse_fn:
                     line = parse_fn(line, clusters, service)
-                if filter_fn(line, levels, service, components, clusters, instances):
+                if filter_fn(
+                    line, levels, service, components, clusters, instances, pods
+                ):
                     queue.put(line)
         except KeyboardInterrupt:
             # Die peacefully rather than printing N threads worth of stack
@@ -1278,6 +1302,7 @@ def pick_default_log_mode(
     components: Iterable[str],
     clusters: Sequence[str],
     instances: Iterable[str],
+    pods: Iterable[str],
 ) -> int:
     if log_reader.SUPPORTS_LINE_COUNT:
         print(
@@ -1293,6 +1318,7 @@ def pick_default_log_mode(
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1313,6 +1339,7 @@ def pick_default_log_mode(
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1327,6 +1354,7 @@ def pick_default_log_mode(
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1354,6 +1382,11 @@ def paasta_logs(args: argparse.Namespace) -> int:
         if verify_instances(args.instances, service, clusters):
             return 1
 
+    if args.pods is None:
+        pods = None
+    else:
+        pods = args.pods.split(",")
+
     components = args.components
     if "app_output" in args.components:
         components.remove("app_output")
@@ -1373,13 +1406,11 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     if not validate_filtering_args(args, log_reader):
         return 1
-
     # They haven't specified what kind of filtering they want, decide for them
     if args.line_count is None and args.time_from is None and not args.tail:
         return pick_default_log_mode(
-            args, log_reader, service, levels, components, clusters, instances
+            args, log_reader, service, levels, components, clusters, instances, pods
         )
-
     if args.tail:
         print(
             PaastaColors.cyan("Tailing logs and applying filters..."), file=sys.stderr
@@ -1390,6 +1421,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1410,6 +1442,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1423,6 +1456,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             components=components,
             clusters=clusters,
             instances=instances,
+            pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1443,6 +1477,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         components=components,
         clusters=clusters,
         instances=instances,
+        pods=pods,
         raw_mode=args.raw_mode,
         strip_headers=args.strip_headers,
     )

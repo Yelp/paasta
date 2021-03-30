@@ -30,6 +30,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
     context.components = ["deploy", "monitoring"]
     context.clusters = ["fake_cluster1", "fake_cluster2"]
     context.instances = ["fake_instance"]
+    context.pods = ["fake_pod"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -53,6 +54,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             components,
             clusters,
             instances,
+            pods,
             queue,
             filter_fn,
             parse_fn=None,
@@ -77,6 +79,7 @@ def tail_paasta_logs_let_threads_be_threads(context):
             context.components,
             context.clusters,
             context.instances,
+            context.pods,
         )
 
 

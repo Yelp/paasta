@@ -94,6 +94,7 @@ def test_paasta_log_line_passes_filter_true():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -101,7 +102,7 @@ def test_paasta_log_line_passes_filter_true():
     )
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is True
     )
@@ -113,14 +114,16 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line
+        levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is True
     )
@@ -132,14 +135,16 @@ def test_paasta_log_line_passes_filter_true_when_default_instance():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = None
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line
+        levels[0], ANY_CLUSTER, service, instance, components[0], line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is True
     )
@@ -151,14 +156,16 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line
+        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is False
     )
@@ -170,16 +177,18 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], clusters[0], service, instance, "monitoring", line
+        levels[0], clusters[0], service, instance, "monitoring", line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is False
     )
@@ -191,16 +200,18 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line
+        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods
         )
         is False
     )
@@ -212,16 +223,19 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "non-existant_instance"
     instances = ["fake_instance"]
+    pod = "fake_pod"
+    pods = [pod]
     components = ["build", "deploy"]
     line = "fake_line"
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line
+        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
     )
+
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances
+            formatted_line, levels, service, components, clusters, instances, pods,
         )
         is False
     )
@@ -232,13 +246,15 @@ def test_paasta_log_line_passes_filter_false_when_line_not_valid_json():
     levels = ["fake_level1", "fake_level2"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["fake_instance"]
+    pods = None
     components = ["build", "deploy"]
     line = "i am definitely not json"
     # component must be legit as well as not in the list of requested
     # components
+
     assert (
         logs.paasta_log_line_passes_filter(
-            line, levels, service, components, clusters, instances
+            line, levels, service, components, clusters, instances, pods
         )
         is False
     )
@@ -250,6 +266,7 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -273,6 +290,7 @@ def test_paasta_log_line_passes_filter_true_when_valid_time():
             components,
             clusters,
             instances,
+            pods,
             start_time=start_time,
             end_time=end_time,
         )
@@ -286,6 +304,7 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
     clusters = ["fake_cluster1", "fake_cluster2"]
     instance = "fake_instance"
     instances = [instance]
+    pods = None
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
@@ -310,6 +329,7 @@ def test_paasta_log_line_passes_filter_false_when_invalid_time():
             components,
             clusters,
             instances,
+            pods,
             start_time=start_time,
             end_time=end_time,
         )
@@ -329,7 +349,7 @@ def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
         service,
         "fake_instance",
         "marathon",
-        "fake message with service name %s" % service,
+        line="fake message with service name %s" % service,
     )
     with mock.patch(
         "paasta_tools.cli.cmds.logs.format_job_id", autospec=True
@@ -410,6 +430,7 @@ def test_parse_marathon_log_line_ok():
             "message": line,
         }
     )
+
     assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(
         expected
     )
@@ -754,7 +775,6 @@ def test_scribereader_print_last_n_logs():
             * 100
         )
         mock_scribereader.get_stream_tailer.return_value = fake_iter
-
         logs.ScribeLogReader(cluster_map={}).print_last_n_logs(
             service,
             100,
@@ -762,6 +782,7 @@ def test_scribereader_print_last_n_logs():
             components,
             clusters,
             instances,
+            pods=None,
             raw_mode=False,
             strip_headers=False,
         )
@@ -816,6 +837,7 @@ def test_scribereader_print_logs_by_time():
             components,
             clusters,
             instances,
+            pods=None,
             raw_mode=False,
             strip_headers=False,
         )
@@ -832,6 +854,7 @@ def test_scribereader_print_logs_by_time():
             components,
             clusters,
             instances,
+            pods=None,
             raw_mode=False,
             strip_headers=False,
         )
@@ -846,6 +869,7 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
     components = ["deploy", "monitoring", "stdout", "stderr"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["fake_instance1", "fake_instance2"]
+    pods = ["fake_pod1", "fake_pod2"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -867,7 +891,7 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         queue_patch.return_value = fake_queue
         with reraise_keyboardinterrupt():
             logs.ScribeLogReader(cluster_map={}).tail_logs(
-                service, levels, components, clusters, instances
+                service, levels, components, clusters, instances, pods
             )
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
@@ -879,6 +903,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
     components = ["deploy", "monitoring"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["fake_instance1", "fake_instance2"]
+    pods = ["fake_pod1", "fake_pod2"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -907,7 +932,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         )
         with reraise_keyboardinterrupt():
             scribe_log_reader.tail_logs(
-                service, levels, components, clusters, instances
+                service, levels, components, clusters, instances, pods
             )
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
@@ -919,6 +944,7 @@ def test_tail_paasta_logs_aliveness_check():
     components = ["deploy", "monitoring"]
     clusters = ["fake_cluster1", "fake_cluster2"]
     instances = ["fake_instance1", "fake_instance2"]
+    pods = ["fake_pod1", "fake_pod2"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -959,7 +985,9 @@ def test_tail_paasta_logs_aliveness_check():
         scribe_log_reader = logs.ScribeLogReader(
             cluster_map={"env1": "env1", "env2": "env2"}
         )
-        scribe_log_reader.tail_logs(service, levels, components, clusters, instances)
+        scribe_log_reader.tail_logs(
+            service, levels, components, clusters, instances, pods
+        )
         # is_alive() should be called on all the values we painstakingly provided above.
         assert fake_process.is_alive.call_count == len(is_alive_responses)
         # We only terminate the first thread, which is still alive. We don't
@@ -973,6 +1001,8 @@ def test_tail_paasta_logs_empty_clusters():
     components = ["deploy", "monitoring"]
     clusters = []
     instances = ["fake_instance"]
+    pods = ["fake_pod"]
+
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -994,7 +1024,7 @@ def test_tail_paasta_logs_empty_clusters():
         fake_queue.get.side_effect = Empty
         queue_patch.return_value = fake_queue
         logs.ScribeLogReader(cluster_map={}).tail_logs(
-            service, levels, components, clusters, instances
+            service, levels, components, clusters, instances, pods
         )
         assert process_patch.call_count == 0
         assert print_log_patch.call_count == 0
@@ -1006,6 +1036,7 @@ def test_tail_paasta_logs_empty_instances():
     components = ["deploy", "monitoring"]
     clusters = ["fake_cluster"]
     instances = []
+    pods = ["fake_pod1", "fake_pod2"]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
         autospec=True,
@@ -1027,7 +1058,41 @@ def test_tail_paasta_logs_empty_instances():
         fake_queue.get.side_effect = Empty
         queue_patch.return_value = fake_queue
         logs.ScribeLogReader(cluster_map={}).tail_logs(
-            service, levels, components, clusters, instances
+            service, levels, components, clusters, instances, pods
+        )
+        assert process_patch.call_count == 0
+        assert print_log_patch.call_count == 0
+
+
+def test_tail_paasta_logs_empty_pods():
+    service = "fake_service"
+    levels = ["fake_level1", "fake_level2"]
+    components = ["deploy", "monitoring"]
+    clusters = ["fake_cluster"]
+    instances = ["fake_instance1", "fake_instance2"]
+    pods = None
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs",
+        autospec=True,
+    ) as determine_scribereader_envs_patch, mock.patch(
+        "paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.log", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.print_log", autospec=True
+    ) as print_log_patch, mock.patch(
+        "paasta_tools.cli.cmds.logs.Queue", autospec=True
+    ) as queue_patch, mock.patch(
+        "paasta_tools.cli.cmds.logs.Process", autospec=True
+    ) as process_patch, mock.patch(
+        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ):
+        determine_scribereader_envs_patch.return_value = []
+        fake_queue = mock.MagicMock(spec_set=Queue())
+        fake_queue.get.side_effect = Empty
+        queue_patch.return_value = fake_queue
+        logs.ScribeLogReader(cluster_map={}).tail_logs(
+            service, levels, components, clusters, instances, pods
         )
         assert process_patch.call_count == 0
         assert print_log_patch.call_count == 0
@@ -1250,6 +1315,7 @@ def test_pick_default_log_mode():
             components=None,
             clusters=None,
             instances=None,
+            pods=None,
         )
 
         # Only supports tailing so that's the one that should be used
@@ -1272,6 +1338,7 @@ def test_pick_default_log_mode():
             components=None,
             clusters=None,
             instances=None,
+            pods=None,
         )
 
         # Supports tailing and time, but time should be prioritized
@@ -1295,6 +1362,7 @@ def test_pick_default_log_mode():
             components=None,
             clusters=None,
             instances=None,
+            pods=None,
         )
 
         # Supports tailing , time and line counts. Line counts should be prioritized
