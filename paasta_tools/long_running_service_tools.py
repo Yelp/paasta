@@ -45,6 +45,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     moving_average_window_seconds: Optional[int]
     use_prometheus: bool
     use_signalfx: bool
+    use_resource_metrics: bool
     uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
 
