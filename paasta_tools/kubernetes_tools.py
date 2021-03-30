@@ -183,6 +183,7 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
 DEFAULT_USE_SIGNALFX_UWSGI = True
+DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -572,17 +573,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                 )
 
-            metrics.append(
-                V2beta2MetricSpec(
-                    type="Resource",
-                    resource=V2beta2ResourceMetricSource(
-                        name="cpu",
-                        target=V2beta2MetricTarget(
-                            type="Utilization", average_utilization=int(target * 100),
-                        ),
-                    ),
-                )
+            use_resource_metrics = autoscaling_params.get(
+                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
             )
+            if use_resource_metrics:
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Resource",
+                        resource=V2beta2ResourceMetricSource(
+                            name="cpu",
+                            target=V2beta2MetricTarget(
+                                type="Utilization",
+                                average_utilization=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
         elif metrics_provider in ("http", "uwsgi"):
             # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
             # which should make this look less silly.
