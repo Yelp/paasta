@@ -236,13 +236,13 @@ def create_instance_uwsgi_scaling_rule(
     # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
     # deployment.
     ready_pods = f"""
-        (
+        (sum(
             k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
             or
             max_over_time(
                 k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
             )
-        )
+        ) by (kube_deployment))
     """
     load_per_instance = f"""
         avg(
