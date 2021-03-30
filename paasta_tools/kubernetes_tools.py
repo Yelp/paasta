@@ -78,6 +78,7 @@ from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
+from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
@@ -163,6 +164,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
+SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
@@ -2297,6 +2299,20 @@ def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
 
 is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
+
+
+def is_pod_scheduled(pod: V1Pod) -> bool:
+    scheduled_condition = get_pod_condition(pod, "PodScheduled")
+    return scheduled_condition.status == "True" if scheduled_condition else False
+
+
+def get_pod_condition(pod: V1Pod, condition: str) -> V1PodCondition:
+    conditions = [
+        cond for cond in pod.status.conditions or [] if cond.type == condition
+    ]
+    if conditions:
+        return conditions[0]
+    return None
 
 
 class PodStatus(Enum):
