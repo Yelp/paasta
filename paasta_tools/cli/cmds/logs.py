@@ -91,13 +91,15 @@ def add_subparser(subparsers) -> None:
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         "-c",
-        "--clusters",
-        help="The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        "--cluster",
+        help="The cluster to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        nargs=1,
     ).completer = completer_clusters
     status_parser.add_argument(
         "-i",
-        "--instances",
-        help="The instances to see relevant logs for. Defaults to all instances for this service.",
+        "--instance",
+        help="The instance to see relevant logs for. Defaults to all instances for this service.",
+        type=str,
     ).completer = completer_clusters
     status_parser.add_argument(
         "-C",
@@ -394,8 +396,6 @@ def print_log(
     requested_levels: Sequence[str],
     raw_mode: bool = False,
     strip_headers: bool = False,
-    strip_cluster: bool = False,
-    strip_instance: bool = False,
 ) -> None:
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
@@ -405,10 +405,7 @@ def print_log(
         print(line, end=" ", flush=True)
     else:
         print(
-            prettify_log_line(
-                line, requested_levels, strip_headers, strip_cluster, strip_instance
-            ),
-            flush=True,
+            prettify_log_line(line, requested_levels, strip_headers), flush=True,
         )
 
 
@@ -447,11 +444,7 @@ def prettify_level(level: str, requested_levels: Sequence[str]) -> str:
 
 
 def prettify_log_line(
-    line: str,
-    requested_levels: Sequence[str],
-    strip_headers: bool,
-    strip_cluster: bool = False,
-    strip_instance: bool = False,
+    line: str, requested_levels: Sequence[str], strip_headers: bool,
 ) -> str:
     """Given a line from the log, which is expected to be JSON and have all the
     things we expect, return a pretty formatted string containing relevant values.
@@ -471,22 +464,12 @@ def prettify_log_line(
                 }
             )
         else:
-            log_line = {
-                "timestamp": prettify_timestamp(parsed_line["timestamp"]),
-                "component": prettify_component(parsed_line["component"]),
-                "cluster": " [%s]" % parsed_line["cluster"],
-                "instance": " [%s]" % parsed_line["instance"],
-                "message": parsed_line["message"],
-            }
-
-            if strip_cluster:
-                log_line["cluster"] = ""
-            if strip_instance:
-                log_line["instance"] = ""
-
-            return (
-                "%(timestamp)s %(component)s%(cluster)s%(instance)s - %(message)s"
-                % (log_line)
+            return "%(timestamp)s %(component)s - %(message)s" % (
+                {
+                    "timestamp": prettify_timestamp(parsed_line["timestamp"]),
+                    "component": prettify_component(parsed_line["component"]),
+                    "message": parsed_line["message"],
+                }
             )
     except KeyError:
         log.debug(
@@ -758,9 +741,6 @@ class ScribeLogReader(LogReader):
             clusters=clusters, components=components, callback=callback
         )
 
-        strip_cluster = True if len(clusters) < 2 else False
-        strip_instance = True if instances is not None else False
-
         # Pull things off the queue and output them. If any thread dies we are no
         # longer presenting the user with the full picture so we quit.
         #
@@ -799,14 +779,7 @@ class ScribeLogReader(LogReader):
                 # in test code to smooth this out, then pulling the trigger on
                 # moving that test to integration land where it belongs.
                 line = queue.get(block=True, timeout=0.1)
-                print_log(
-                    line,
-                    levels,
-                    raw_mode,
-                    strip_headers,
-                    strip_cluster,
-                    strip_instance,
-                )
+                print_log(line, levels, raw_mode, strip_headers)
             except Empty:
                 try:
                     # If there's nothing in the queue, take this opportunity to make
@@ -898,17 +871,9 @@ class ScribeLogReader(LogReader):
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
 
-        strip_cluster = True if len(clusters) < 2 else False
-        strip_instance = True if instances is not None else False
-
         for line in aggregated_logs:
             print_log(
-                line["raw_line"],
-                levels,
-                raw_mode,
-                strip_headers,
-                strip_cluster,
-                strip_instance,
+                line["raw_line"], levels, raw_mode, strip_headers,
             )
 
     def print_last_n_logs(
@@ -959,18 +924,8 @@ class ScribeLogReader(LogReader):
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
 
-        strip_cluster = True if len(clusters) < 2 else False
-        strip_instance = True if instances is not None else False
-
         for line in aggregated_logs:
-            print_log(
-                line["raw_line"],
-                levels,
-                raw_mode,
-                strip_headers,
-                strip_cluster,
-                strip_instance,
-            )
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
     def filter_and_aggregate_scribe_logs(
         self,
@@ -1387,26 +1342,22 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     service = figure_out_service_name(args, soa_dir)
 
-    if args.clusters is None:
-        clusters = list_clusters(service, soa_dir=soa_dir)
-    else:
-        clusters = args.clusters.split(",")
+    cluster = args.cluster
+    if (
+        args.cluster is None
+        or args.instance is None
+        or len(args.instance.split(",")) > 2
+    ):
+        print(
+            PaastaColors.red("You must specify one cluster and one instance."),
+            file=sys.stderr,
+        )
+        return 1
 
-        if len(clusters) > 1:
-            print("You can only filter one cluster.")
-            return 1
+    if verify_instances(args.instance, service, cluster):
+        return 1
 
-    if args.instances is None:
-        instances = None
-    else:
-        instances = args.instances.split(",")
-
-        if len(instances) > 1:
-            print("You can only filter one instance.")
-            return 1
-
-        if verify_instances(args.instances, service, clusters):
-            return 1
+    instance = args.instance
 
     components = args.components
     if "app_output" in args.components:
@@ -1421,7 +1372,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     levels = [DEFAULT_LOGLEVEL, "debug"]
 
-    log.debug(f"Going to get logs for {service} on clusters {clusters}")
+    log.debug(f"Going to get logs for {service} on cluster {cluster}")
 
     log_reader = get_log_reader()
 
@@ -1431,7 +1382,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
     # They haven't specified what kind of filtering they want, decide for them
     if args.line_count is None and args.time_from is None and not args.tail:
         return pick_default_log_mode(
-            args, log_reader, service, levels, components, clusters, instances
+            args, log_reader, service, levels, components, cluster, instance
         )
 
     if args.tail:
@@ -1442,8 +1393,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             service=service,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1462,8 +1413,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_count=args.line_count,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1475,8 +1426,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_offset=args.line_offset,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
         )
@@ -1495,8 +1446,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
         end_time=end_time,
         levels=levels,
         components=components,
-        clusters=clusters,
-        instances=instances,
+        clusters=cluster,
+        instances=instance,
         raw_mode=args.raw_mode,
         strip_headers=args.strip_headers,
     )
