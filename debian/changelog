@@ -1,3 +1,13 @@
+paasta-tools (0.97.92) xenial; urgency=medium
+
+  * 0.97.92 tagged with 'make release'
+    Commit: Revert "Merge branch "u/kawaiwan/make-prom-signalflow-use-
+    ready-pods" of github.com:Yelp/paasta"  This reverts commit
+    18703921d59c1a5e845ce2ad9f728a972ff5b0a2, reversing changes made to
+    e9fb23979faed31c00b423177f608ad29da2c3cf.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 29 Mar 2021 19:04:24 -0700
+
 paasta-tools (0.97.91) xenial; urgency=medium
 
   * 0.97.91 tagged with 'make release'
