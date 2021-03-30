@@ -1,3 +1,12 @@
+paasta-tools (0.97.93) xenial; urgency=medium
+
+  * 0.97.93 tagged with 'make release'
+    Commit: In make release: add files before committing, because
+    passing ../docs/source/generated as an argument to commit doesn"t
+    result in new files being committed.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 30 Mar 2021 15:21:21 -0700
+
 paasta-tools (0.97.92) xenial; urgency=medium
 
   * 0.97.92 tagged with 'make release'
