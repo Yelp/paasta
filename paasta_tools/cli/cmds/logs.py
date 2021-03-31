@@ -444,7 +444,7 @@ def prettify_level(level: str, requested_levels: Sequence[str]) -> str:
 
 
 def prettify_log_line(
-    line: str, requested_levels: Sequence[str], strip_headers: bool,
+    line: str, requested_levels: Sequence[str], strip_headers: bool
 ) -> str:
     """Given a line from the log, which is expected to be JSON and have all the
     things we expect, return a pretty formatted string containing relevant values.
@@ -872,9 +872,7 @@ class ScribeLogReader(LogReader):
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
 
         for line in aggregated_logs:
-            print_log(
-                line["raw_line"], levels, raw_mode, strip_headers,
-            )
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
     def print_last_n_logs(
         self,
