@@ -767,18 +767,43 @@ class TestKubernetesDeploymentConfig:
             default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=False)
         )
 
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_enabled
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=False,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
             )
-            is True
-        )
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_disabled
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is False
             )
-            is False
-        )
+
+        # If the default for use_prometheus is True and config_dict doesn't specify use_prometheus, we should run
+        # uwsgi_exporter regardless of default_should_run_uwsgi_exporter_sidecar.
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=True,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
+            )
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is True
+            )
 
     def test_get_container_env(self):
         with mock.patch(
