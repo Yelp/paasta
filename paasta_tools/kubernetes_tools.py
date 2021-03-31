@@ -157,6 +157,8 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
+ENVOY_POD_NAME = "envoy"
+ROUTE_MANAGER_POD_NAME = "proxyinit"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
@@ -319,6 +321,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
+    appmesh_routing: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -772,13 +775,101 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
             system_paasta_config
         )
+        appmesh_envoy_container = self.get_appmesh_envoy_container(system_paasta_config)
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
         if uwsgi_exporter_container:
             sidecars.append(uwsgi_exporter_container)
+        if appmesh_envoy_container:
+            sidecars.append(appmesh_envoy_container)
         return sidecars
+
+    def get_kubernetes_init_containers(self) -> Sequence[V1Container]:
+        init_containers = []
+        if self.is_appmesh_enabled():
+            container = V1Container(
+                image="docker-paasta.yelpcorp.com:443/appmesh_route_manager:latest",
+                name=ROUTE_MANAGER_POD_NAME,
+                env=[
+                    V1EnvVar(name="APPMESH_START_ENABLED", value="1"),
+                    V1EnvVar(name="APPMESH_IGNORE_UID", value="1337"),
+                    V1EnvVar(name="APPMESH_ENVOY_INGRESS_PORT", value="15000"),
+                    V1EnvVar(name="APPMESH_ENVOY_EGRESS_PORT", value="15001"),
+                    V1EnvVar(name="APPMESH_APP_PORTS", value="8888"),
+                    V1EnvVar(name="APPMESH_EGRESS_IGNORED_IP", value="169.254.169.254"),
+                    # Leaving this one as an example
+                    # V1EnvVar(name="APPMESH_EGRESS_IGNORED_PORTS", value="22")
+                ],
+                resources=V1ResourceRequirements(
+                    requests={"cpu": "10m", "memory": "32Mi"}
+                ),
+                security_context=V1SecurityContext(
+                    capabilities=V1Capabilities(add=["NET_ADMIN"])
+                ),
+                termination_message_path="/dev/termination-log",
+                termination_message_policy="File",
+            )
+            init_containers.append(container)
+        return init_containers
+
+    def get_appmesh_envoy_container(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> Optional[V1Container]:
+        if self.is_appmesh_enabled():
+            paasta_cluster = system_paasta_config.get_cluster()
+            paasta_service = self.get_service()
+            paasta_instance = self.get_instance()
+            return V1Container(
+                image="docker-paasta.yelpcorp.com:443/aws-appmesh-envoy:v1.16.1.0-prod",
+                name=ENVOY_POD_NAME,
+                env=[
+                    V1EnvVar(name="APPMESH_PREVIEW", value="0"),
+                    V1EnvVar(name="ENVOY_LOG_LEVEL", value="info"),
+                    V1EnvVar(name="ENVOY_ADMIN_ACCESS_PORT", value="9901"),
+                    V1EnvVar(
+                        name="ENVOY_ADMIN_ACCESS_LOG_FILE",
+                        value="/tmp/envoy_admin_access.log",
+                    ),
+                    V1EnvVar(
+                        name="APPMESH_VIRTUAL_NODE_NAME",
+                        value=f"mesh/{paasta_cluster}/virtualNode/{paasta_service}.{paasta_instance}",
+                    ),
+                    # If we don't set this env var, it will be fetched from the metadata service by the container boot script
+                    # V1EnvVar(
+                    #     name="AWS_REGION",
+                    #     value="us-west-1",
+                    # ),
+                ],
+                resources=V1ResourceRequirements(
+                    requests={"cpu": "10m", "memory": "32Mi"},
+                    # We need to run some tests and set these values right.
+                    limits={"cpu": "250m", "memory": "50Mi"},
+                ),
+                readiness_probe=V1Probe(
+                    _exec=V1ExecAction(
+                        command=[
+                            "sh",
+                            "-c",
+                            "curl -s http://localhost:9901/server_info | grep state | grep -q LIVE",
+                        ]
+                    ),
+                    failure_threshold=3,
+                    initial_delay_seconds=1,
+                    period_seconds=10,
+                    success_threshold=1,
+                    timeout_seconds=1,
+                ),
+                security_context=V1SecurityContext(run_as_user=1337),
+                termination_message_path="/dev/termination-log",
+                termination_message_policy="File",
+            )
+        else:
+            return None
+
+    def is_appmesh_enabled(self) -> bool:
+        return self.config_dict.get("appmesh_routing", False)
 
     def get_hacheck_sidecar_container(
         self,
@@ -1494,6 +1585,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 system_paasta_config=system_paasta_config,
                 service_namespace_config=service_namespace_config,
             ),
+            init_containers=self.get_kubernetes_init_containers(),
             share_process_namespace=True,
             node_selector=self.get_node_selector(),
             restart_policy="Always",
