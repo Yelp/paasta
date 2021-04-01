@@ -1,3 +1,12 @@
+paasta-tools (0.97.94) xenial; urgency=medium
+
+  * 0.97.94 tagged with 'make release'
+    Commit: Merge pull request #3090 from
+    Yelp/check_kubernetes_services_replication-test-multiple-hosts
+    Don"t fail if one of replication info source isn"t available
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Thu, 01 Apr 2021 04:07:39 -0700
+
 paasta-tools (0.97.93) xenial; urgency=medium
 
   * 0.97.93 tagged with 'make release'
