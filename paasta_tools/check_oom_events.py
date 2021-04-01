@@ -83,6 +83,12 @@ def parse_args(args):
         required=True,
         help="The superregion to read OOM events from.",
     )
+    parser.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Print Sensu alert events instead of sending them",
+    )
     return parser.parse_args(args)
 
 
@@ -195,7 +201,10 @@ def send_sensu_event(instance, oom_events, args):
             "alert_after": "0m",
             "realert_every": args.realert_every,
             "runbook": "y/check-oom-events",
-            "tip": "Try bumping the memory limit past %s" % memory_limit_str,
+            "tip": (
+                "Follow the runbook to investigate and rightsize memory usage "
+                f"(curr: {memory_limit_str})"
+            ),
         }
     )
     return monitoring_tools.send_event(
@@ -205,6 +214,7 @@ def send_sensu_event(instance, oom_events, args):
         status=status[0],
         output=status[1],
         soa_dir=instance.soa_dir,
+        dry_run=args.dry_run,
     )
 
 
@@ -214,6 +224,7 @@ def main(sys_argv):
     victims = latest_oom_events(
         cluster, args.superregion, interval=(60 * args.check_interval)
     )
+
     for (service, instance) in get_services_for_cluster(cluster, soa_dir=args.soa_dir):
         try:
             instance_config = get_instance_config(

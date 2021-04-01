@@ -68,7 +68,7 @@ def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
 
 
 def check_healthy_marathon_tasks_for_service_instance(
-    instance_config, expected_count, all_tasks
+    instance_config, expected_count, all_tasks, dry_run=False,
 ):
     app_id = format_job_id(instance_config.service, instance_config.instance)
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(
@@ -79,6 +79,7 @@ def check_healthy_marathon_tasks_for_service_instance(
         instance_config=instance_config,
         expected_count=expected_count,
         num_available=num_healthy_tasks,
+        dry_run=dry_run,
     )
 
 
@@ -86,6 +87,7 @@ def check_service_replication(
     instance_config: MarathonServiceConfig,
     all_tasks_or_pods: Sequence[MarathonTask],
     replication_checker: MesosSmartstackEnvoyReplicationChecker,
+    dry_run: bool = False,
 ) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack/envoy or mesos)
@@ -107,6 +109,7 @@ def check_service_replication(
             instance_config=instance_config,
             expected_count=expected_count,
             replication_checker=replication_checker,
+            dry_run=dry_run,
         )
         return is_well_replicated
     else:
@@ -114,6 +117,7 @@ def check_service_replication(
             instance_config=instance_config,
             expected_count=expected_count,
             all_tasks=all_tasks_or_pods,
+            dry_run=dry_run,
         )
         return None
 

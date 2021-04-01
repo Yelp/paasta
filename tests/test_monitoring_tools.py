@@ -510,6 +510,7 @@ def test_list_teams():
 def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
     fake_status = "999999"
     fake_output = "YOU DID IT"
+    fake_description = "SOME CONTEXT"
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
     expected_check_name = (
@@ -525,21 +526,28 @@ def test_send_event_users_monitoring_tools_send_event_properly(instance_config):
         return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
-            instance_config=instance_config, status=fake_status, output=fake_output
+            instance_config=instance_config,
+            status=fake_status,
+            output=fake_output,
+            description=fake_description,
+            dry_run=True,
         )
         send_event_patch.assert_called_once_with(
             service=instance_config.service,
             check_name=expected_check_name,
             overrides={
                 "fake_key": "fake_value",
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "2m",
                 "check_every": "1m",
+                "description": fake_description,
             },
             status=fake_status,
             output=fake_output,
             soa_dir=instance_config.soa_dir,
             cluster=instance_config.cluster,
+            dry_run=True,
         )
 
 
@@ -548,6 +556,7 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
 ):
     fake_status = "999999"
     fake_output = "YOU DID IT"
+    fake_description = "SOME CONTEXT"
     instance_config.get_monitoring.return_value = {"fake_key": "fake_value"}
 
     expected_check_name = (
@@ -563,21 +572,28 @@ def test_send_replication_event_users_monitoring_tools_send_event_properly(
         return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
-            instance_config=instance_config, status=fake_status, output=fake_output
+            instance_config=instance_config,
+            status=fake_status,
+            output=fake_output,
+            description=fake_description,
+            dry_run=True,
         )
         send_event_patch.assert_called_once_with(
             service=instance_config.service,
             check_name=expected_check_name,
             overrides={
                 "fake_key": "fake_value",
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "2m",
                 "check_every": "1m",
+                "description": fake_description,
             },
             status=fake_status,
             output=fake_output,
             soa_dir=instance_config.soa_dir,
             cluster=instance_config.cluster,
+            dry_run=True,
         )
 
 
@@ -586,6 +602,7 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
 ):
     fake_status = "999999"
     fake_output = "YOU DID IT"
+    fake_description = "SOME CONTEXT"
     instance_config.get_monitoring.return_value = {"alert_after": "666m"}
     expected_check_name = (
         "check_paasta_services_replication.%s" % instance_config.job_id
@@ -600,21 +617,28 @@ def test_send_replication_event_users_monitoring_tools_send_event_respects_alert
         return_value="y/runbook",
     ):
         monitoring_tools.send_replication_event(
-            instance_config=instance_config, status=fake_status, output=fake_output
+            instance_config=instance_config,
+            status=fake_status,
+            output=fake_output,
+            description=fake_description,
+            dry_run=True,
         )
         send_event_patch.call_count == 1
         send_event_patch.assert_called_once_with(
             service=instance_config.service,
             check_name=expected_check_name,
             overrides={
-                "runbook": "y/runbook",
+                "runbook": mock.ANY,
+                "tip": mock.ANY,
                 "alert_after": "666m",
                 "check_every": "1m",
+                "description": fake_description,
             },
             status=fake_status,
             output=fake_output,
             soa_dir=instance_config.soa_dir,
             cluster=instance_config.cluster,
+            dry_run=True,
         )
 
 
@@ -652,11 +676,14 @@ def test_check_replication_for_instance_ok_when_expecting_zero(instance_config,)
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
 
 
@@ -675,11 +702,14 @@ def test_check_replication_for_instance_crit_when_absent(instance_config):
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
 
 
@@ -702,18 +732,19 @@ def test_check_replication_for_instance_crit_when_zero_replication(instance_conf
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "Service {} has 0 out of 8 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/8 replicas in fake_region"
         ) in alert_output
         assert (
             "paasta status -s {} -i {} -c {} -vv".format(
@@ -721,7 +752,7 @@ def test_check_replication_for_instance_crit_when_zero_replication(instance_conf
                 instance_config.instance,
                 instance_config.cluster,
             )
-        ) in alert_output
+        ) in send_replication_event_kwargs["description"]
 
 
 def test_check_replication_for_instance_crit_when_low_replication(instance_config,):
@@ -743,18 +774,19 @@ def test_check_replication_for_instance_crit_when_low_replication(instance_confi
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "Service {} has 4 out of 8 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 4/8 replicas in fake_region"
         ) in alert_output
         assert (
             "paasta status -s {} -i {} -c {} -vv".format(
@@ -762,7 +794,7 @@ def test_check_replication_for_instance_crit_when_low_replication(instance_confi
                 instance_config.instance,
                 instance_config.cluster,
             )
-        ) in alert_output
+        ) in send_replication_event_kwargs["description"]
 
 
 def test_check_replication_for_instance_ok_with_enough_replication(instance_config,):
@@ -784,16 +816,19 @@ def test_check_replication_for_instance_ok_with_enough_replication(instance_conf
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 8 out of 8 expected instances in fake_region according to fake_provider (OK: 100%)".format(
+            "{} has 8/8 replicas in fake_region according to fake_provider (OK: 100.0%)".format(
                 instance_config.job_id
             )
         ) in alert_output
@@ -817,23 +852,22 @@ def test_check_replication_for_instance_ok_with_enough_replication_multilocation
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 1 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 1/1 replicas in fake_region"
         ) in alert_output
         assert (
-            "{} has 1 out of 1 expected instances in fake_other_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 1/1 replicas in fake_other_region"
         ) in alert_output
 
 
@@ -855,23 +889,22 @@ def test_check_replication_for_instance_crit_when_low_replication_multilocation(
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 1 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 1/1 replicas in fake_region"
         ) in alert_output
         assert (
-            "{} has 0 out of 1 expected instances in fake_other_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/1 replicas in fake_other_region"
         ) in alert_output
         assert (
             "paasta status -s {} -i {} -c {} -vv".format(
@@ -879,7 +912,7 @@ def test_check_replication_for_instance_crit_when_low_replication_multilocation(
                 instance_config.instance,
                 instance_config.cluster,
             )
-        ) in alert_output
+        ) in send_replication_event_kwargs["description"]
 
 
 def test_check_replication_for_instance_crit_when_zero_replication_multilocation(
@@ -900,23 +933,22 @@ def test_check_replication_for_instance_crit_when_zero_replication_multilocation
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 0 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/1 replicas in fake_region"
         ) in alert_output
         assert (
-            "{} has 0 out of 1 expected instances in fake_other_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/1 replicas in fake_other_region"
         ) in alert_output
         assert (
             "paasta status -s {} -i {} -c {} -vv".format(
@@ -924,7 +956,7 @@ def test_check_replication_for_instance_crit_when_zero_replication_multilocation
                 instance_config.instance,
                 instance_config.cluster,
             )
-        ) in alert_output
+        ) in send_replication_event_kwargs["description"]
 
 
 def test_check_replication_for_instance_crit_when_missing_replication_multilocation(
@@ -945,23 +977,22 @@ def test_check_replication_for_instance_crit_when_missing_replication_multilocat
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
         assert (
-            "{} has 0 out of 1 expected instances in fake_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/1 replicas in fake_region"
         ) in alert_output
         assert (
-            "{} has 0 out of 1 expected instances in fake_other_region".format(
-                instance_config.job_id
-            )
+            f"{instance_config.job_id} has 0/1 replicas in fake_other_region"
         ) in alert_output
 
 
@@ -978,11 +1009,14 @@ def test_check_replication_for_instance_crit_when_no_smartstack_info(instance_co
             instance_config=instance_config,
             expected_count=expected_replication_count,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
             output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_replication_event_kwargs = mock_send_replication_event.call_args
         alert_output = send_replication_event_kwargs["output"]
@@ -1036,6 +1070,28 @@ def test_emit_replication_metrics(instance_config):
         mock_gauges["paasta.service.expected_backends"].set.assert_called_once_with(10)
 
 
+def test_emit_replication_metrics_dry_run(instance_config):
+    with mock.patch(
+        "paasta_tools.monitoring_tools.yelp_meteorite", autospec=True
+    ) as mock_yelp_meteorite:
+        mock_smartstack_replication_info = {
+            "fake_provider": {
+                "fake_region_1": {
+                    "fake_service.fake_instance": 2,
+                    "other_service.other_instance": 5,
+                },
+                "fake_region_2": {"fake_service.fake_instance": 4},
+            }
+        }
+        monitoring_tools.emit_replication_metrics(
+            mock_smartstack_replication_info,
+            instance_config,
+            expected_count=10,
+            dry_run=True,
+        )
+        mock_yelp_meteorite.create_gauge.call_count = 0
+
+
 def test_check_replication_for_instance_emits_metrics(instance_config):
     with mock.patch(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
@@ -1053,11 +1109,13 @@ def test_check_replication_for_instance_emits_metrics(instance_config):
             instance_config=instance_config,
             expected_count=10,
             replication_checker=mock_smartstack_replication_checker,
+            dry_run=True,
         )
         mock_emit_replication_metrics.assert_called_once_with(
             mock_smartstack_replication_checker.get_replication_for_instance.return_value,
             instance_config,
             10,
+            dry_run=True,
         )
 
 
@@ -1068,15 +1126,22 @@ def test_send_replication_event_if_under_replication_handles_0_expected(
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_event:
         monitoring_tools.send_replication_event_if_under_replication(
-            instance_config=instance_config, expected_count=0, num_available=0
+            instance_config=instance_config,
+            expected_count=0,
+            num_available=0,
+            dry_run=True,
         )
         mock_send_event.assert_called_once_with(
-            instance_config=instance_config, status=0, output=mock.ANY
+            instance_config=instance_config,
+            status=0,
+            output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 0 out of 0 expected instances available! (threshold: 90%)".format(
+            "{} has 0/0 replicas available (threshold: 90%)".format(
                 instance_config.job_id
             )
         ) in alert_output
@@ -1087,15 +1152,22 @@ def test_send_replication_event_if_under_replication_good(instance_config):
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_event:
         monitoring_tools.send_replication_event_if_under_replication(
-            instance_config=instance_config, expected_count=100, num_available=100
+            instance_config=instance_config,
+            expected_count=100,
+            num_available=100,
+            dry_run=True,
         )
         mock_send_event.assert_called_once_with(
-            instance_config=instance_config, status=0, output=mock.ANY
+            instance_config=instance_config,
+            status=0,
+            output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_event_kwargs = mock_send_event.call_args
         alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 100 out of 100 expected instances available! (threshold: 90%)".format(
+            "{} has 100/100 replicas available (threshold: 90%)".format(
                 instance_config.job_id
             )
         ) in alert_output
@@ -1106,22 +1178,28 @@ def test_send_replication_event_if_under_replication_critical(instance_config):
         "paasta_tools.monitoring_tools.send_replication_event", autospec=True
     ) as mock_send_event:
         monitoring_tools.send_replication_event_if_under_replication(
-            instance_config=instance_config, expected_count=100, num_available=89
+            instance_config=instance_config,
+            expected_count=100,
+            num_available=89,
+            dry_run=True,
         )
         mock_send_event.assert_called_once_with(
-            instance_config=instance_config, status=2, output=mock.ANY
+            instance_config=instance_config,
+            status=2,
+            output=mock.ANY,
+            description=mock.ANY,
+            dry_run=True,
         )
         _, send_event_kwargs = mock_send_event.call_args
-        alert_output = send_event_kwargs["output"]
         assert (
-            "{} has 89 out of 100 expected instances available! (threshold: 90%)".format(
+            "{} has 89/100 replicas available (threshold: 90%)".format(
                 instance_config.job_id
             )
-        ) in alert_output
+        ) in send_event_kwargs["output"]
         assert (
             "paasta status -s {} -i {} -c {} -vv".format(
                 instance_config.service,
                 instance_config.instance,
                 instance_config.cluster,
             )
-        ) in alert_output
+        ) in send_event_kwargs["description"]

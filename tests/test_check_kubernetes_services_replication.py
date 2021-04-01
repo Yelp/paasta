@@ -54,11 +54,13 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         mock_check_replication_for_service.assert_called_once_with(
             instance_config=instance_config,
             expected_count=100,
             replication_checker=None,
+            dry_run=True,
         )
 
 
@@ -82,10 +84,14 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         assert not mock_check_replication_for_service.called
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
-            instance_config=instance_config, expected_count=100, all_pods=[]
+            instance_config=instance_config,
+            expected_count=100,
+            all_pods=[],
+            dry_run=True,
         )
 
 
@@ -104,9 +110,13 @@ def test_check_service_replication_for_non_smartstack(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=[],
             replication_checker=None,
+            dry_run=True,
         )
         mock_check_healthy_kubernetes_tasks.assert_called_once_with(
-            instance_config=instance_config, expected_count=100, all_pods=[]
+            instance_config=instance_config,
+            expected_count=100,
+            all_pods=[],
+            dry_run=True,
         )
 
 
@@ -128,7 +138,7 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
         mock_pod_2 = mock.Mock()
         mock_filter_pods_by_service_instance.return_value = [mock_pod_1, mock_pod_2]
         check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance(
-            mock_instance_config, 5, mock_pods
+            mock_instance_config, 5, mock_pods, dry_run=True,
         )
         mock_filter_pods_by_service_instance.assert_called_with(
             pod_list=mock_pods,
@@ -136,5 +146,8 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
             instance=mock_instance_config.instance,
         )
         mock_send_replication_event_if_under_replication.assert_called_with(
-            instance_config=mock_instance_config, expected_count=5, num_available=1
+            instance_config=mock_instance_config,
+            expected_count=5,
+            num_available=1,
+            dry_run=True,
         )

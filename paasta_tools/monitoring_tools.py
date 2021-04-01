@@ -55,6 +55,8 @@ except ImportError:
     yelp_meteorite = None
 
 
+DEFAULT_REPLICATION_RUNBOOK = "y/unhealthy-paasta-instances"
+
 log = logging.getLogger(__name__)
 
 
@@ -210,6 +212,7 @@ def send_event(
     ttl=None,
     cluster=None,
     system_paasta_config=None,
+    dry_run=False,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -223,6 +226,7 @@ def send_event(
     :param ttl: TTL (optional)
     :param cluster: The cluster name (optional)
     :param system_paasta_config: A SystemPaastaConfig object representing the system
+    :param dry_run: Print the Sensu event instead of emitting it
     """
     # This function assumes the input is a string like "mumble.main"
     team = get_team(overrides, service, soa_dir)
@@ -268,7 +272,16 @@ def send_event(
         "description": get_description(overrides, service, soa_dir),
     }
 
-    if result_dict.get("sensu_host"):
+    if dry_run:
+        if status == pysensu_yelp.Status.OK:
+            print(f"Would've sent an OK event for check '{check_name}'")
+        else:
+            from pprint import pprint  # only import during testing
+
+            print(f"Would've sent the following alert for check '{check_name}':")
+            pprint(result_dict)
+
+    elif result_dict.get("sensu_host"):
         pysensu_yelp.send_event(**result_dict)
 
 
@@ -294,20 +307,39 @@ def list_teams():
     return teams
 
 
-def send_replication_event(instance_config, status, output):
+def send_replication_event(
+    instance_config, status, output, description, dry_run=False,
+):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param instance_config: an instance of LongRunningServiceConfig
     :param status: The status to emit for this event
-    :param output: The output to emit for this event"""
+    :param output: The output to emit for this event
+    :param dry_run: Print the event instead of emitting it
+    """
     # This function assumes the input is a string like "mumble.main"
     monitoring_overrides = instance_config.get_monitoring()
     if "alert_after" not in monitoring_overrides:
         monitoring_overrides["alert_after"] = "2m"
     monitoring_overrides["check_every"] = "1m"
-    monitoring_overrides["runbook"] = get_runbook(
-        monitoring_overrides, instance_config.service, soa_dir=instance_config.soa_dir
+    monitoring_overrides["runbook"] = __get_monitoring_config_value(
+        "runbook",
+        monitoring_overrides,
+        instance_config.service,
+        soa_dir=instance_config.soa_dir,
+        monitoring_defaults=lambda _: DEFAULT_REPLICATION_RUNBOOK,
     )
+    monitoring_overrides["tip"] = __get_monitoring_config_value(
+        "tip",
+        monitoring_overrides,
+        instance_config.service,
+        soa_dir=instance_config.soa_dir,
+        monitoring_defaults=lambda _: (
+            f"Check the instance with: `paasta status -s {instance_config.service} "
+            f"-i {instance_config.instance} -c {instance_config.cluster} -vv`"
+        ),
+    )
+    monitoring_overrides["description"] = description
 
     check_name = "check_paasta_services_replication.%s" % instance_config.job_id
     send_event(
@@ -318,6 +350,7 @@ def send_replication_event(instance_config, status, output):
         output=output,
         soa_dir=instance_config.soa_dir,
         cluster=instance_config.cluster,
+        dry_run=dry_run,
     )
     _log(
         service=instance_config.service,
@@ -333,6 +366,7 @@ def emit_replication_metrics(
     replication_infos: Mapping[str, Mapping[str, Mapping[str, int]]],
     instance_config: LongRunningServiceConfig,
     expected_count: int,
+    dry_run: bool = False,
 ) -> None:
     for provider, replication_info in replication_infos.items():
         meteorite_dims = {
@@ -346,28 +380,47 @@ def emit_replication_metrics(
         num_available_backends = 0
         for available_backends in replication_info.values():
             num_available_backends += available_backends.get(instance_config.job_id, 0)
-        available_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.available_backends", meteorite_dims
-        )
-        available_backends_gauge.set(num_available_backends)
+        available_backends_metric = "paasta.service.available_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {num_available_backends} for metric '{available_backends_metric}'"
+            )
+        else:
+            available_backends_gauge = yelp_meteorite.create_gauge(
+                available_backends_metric, meteorite_dims
+            )
+            available_backends_gauge.set(num_available_backends)
 
         critical_percentage = instance_config.get_replication_crit_percentage()
         num_critical_backends = critical_percentage * expected_count / 100.0
-        critical_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.critical_backends", meteorite_dims
-        )
-        critical_backends_gauge.set(num_critical_backends)
+        critical_backends_metric = "paasta.service.critical_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {num_critical_backends} for metric '{critical_backends_metric}'"
+            )
+        else:
+            critical_backends_gauge = yelp_meteorite.create_gauge(
+                critical_backends_metric, meteorite_dims
+            )
+            critical_backends_gauge.set(num_critical_backends)
 
-        expected_backends_gauge = yelp_meteorite.create_gauge(
-            "paasta.service.expected_backends", meteorite_dims
-        )
-        expected_backends_gauge.set(expected_count)
+        expected_backends_metric = "paasta.service.expected_backends"
+        if dry_run:
+            print(
+                f"Would've sent value {expected_count} for metric '{expected_backends_metric}'"
+            )
+        else:
+            expected_backends_gauge = yelp_meteorite.create_gauge(
+                "paasta.service.expected_backends", meteorite_dims
+            )
+            expected_backends_gauge.set(expected_count)
 
 
 def check_replication_for_instance(
     instance_config: LongRunningServiceConfig,
     expected_count: int,
     replication_checker: ReplicationChecker,
+    dry_run: bool = False,
 ) -> bool:
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -375,6 +428,7 @@ def check_replication_for_instance(
 
     :param instance_config: an instance of MarathonServiceConfig
     :param replication_checker: an instance of ReplicationChecker
+    :param dry_run: Print Sensu event and metrics instead of emitting them
     """
 
     crit_threshold = instance_config.get_replication_crit_percentage()
@@ -389,10 +443,9 @@ def check_replication_for_instance(
     log.debug(f"Got replication info for {instance_config.job_id}: {replication_infos}")
     if yelp_meteorite is not None:
         emit_replication_metrics(
-            replication_infos, instance_config, expected_count,
+            replication_infos, instance_config, expected_count, dry_run=dry_run,
         )
 
-    combined_output = ""
     service_is_under_replicated = False
     failed_service_discovery_providers = set()
     for service_discovery_provider, replication_info in replication_infos.items():
@@ -405,9 +458,8 @@ def check_replication_for_instance(
             failed_service_discovery_providers.add(service_discovery_provider)
         else:
             expected_count_per_location = int(expected_count / len(replication_info))
-            output = ""
-            output_critical = ""
-            output_ok = ""
+            output_critical = []
+            output_ok = []
             under_replication_per_location = []
 
             for location, available_backends in sorted(replication_info.items()):
@@ -420,9 +472,8 @@ def check_replication_for_instance(
                     crit_threshold,
                 )
                 if under_replicated:
-                    output_critical += (
-                        "- Service %s has %d out of %d expected instances in %s according to %s (CRITICAL: %d%%)\n"
-                        % (
+                    output_critical.append(
+                        "{} has {}/{} replicas in {} according to {} (CRITICAL: {}%)\n".format(
                             instance_config.job_id,
                             num_available_in_location,
                             expected_count_per_location,
@@ -433,9 +484,8 @@ def check_replication_for_instance(
                     )
                     failed_service_discovery_providers.add(service_discovery_provider)
                 else:
-                    output_ok += (
-                        "- Service %s has %d out of %d expected instances in %s according to %s (OK: %d%%)\n"
-                        % (
+                    output_ok.append(
+                        "{} has {}/{} replicas in {} according to {} (OK: {}%)\n".format(
                             instance_config.job_id,
                             num_available_in_location,
                             expected_count_per_location,
@@ -446,11 +496,10 @@ def check_replication_for_instance(
                     )
                 under_replication_per_location.append(under_replicated)
 
-            output += output_critical
+            output = ", ".join(output_critical)
             if output_critical and output_ok:
-                output += "\n\n"
-                output += "The following locations are OK:\n"
-            output += output_ok
+                output += ". The following locations are OK: "
+            output += ", ".join(output_ok)
 
             service_is_under_replicated_anywhere = any(under_replication_per_location)
             service_is_under_replicated |= service_is_under_replicated_anywhere
@@ -458,20 +507,16 @@ def check_replication_for_instance(
                 log.error(output)
             else:
                 log.info(output)
-        combined_output += output
 
     if service_is_under_replicated:
         failed_service_discovery_providers_list = ",".join(
             failed_service_discovery_providers
         )
-        combined_output += (
-            "\n\n"
-            "What this alert means:\n"
-            "\n"
-            "  This replication alert means that a %(service_discovery_provider)s powered loadbalancer\n"
-            "  doesn't have enough healthy backends. Not having enough healthy backends\n"
-            "  means that clients of that service will get 503s (http) or connection refused\n"
-            "  (tcp) when trying to connect to it.\n"
+        description = (
+            "This replication alert means that a {service_discovery_provider} powered loadbalancer\n"
+            "doesn't have enough healthy backends. Not having enough healthy backends\n"
+            "means that clients of that service will get 503s (http) or connection refused\n"
+            "(tcp) when trying to connect to it.\n"
             "\n"
             "Reasons this might be happening:\n"
             "\n"
@@ -482,29 +527,36 @@ def check_replication_for_instance(
             "Things you can do:\n"
             "\n"
             "  * You can view the logs for the job with:\n"
-            "      paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+            "      paasta logs -s {service} -i {instance} -c {cluster}\n"
             "\n"
             "  * Fix the cause of the unhealthy service. Try running:\n"
             "\n"
-            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+            "      paasta status -s {service} -i {instance} -c {cluster} -vv\n"
             "\n"
-            "  * Widen %(service_discovery_provider)s discovery settings\n"
+            "  * Widen {service_discovery_provider} discovery settings\n"
             "  * Increase the instance count\n"
             "\n"
-        ) % {
-            "service": instance_config.service,
-            "instance": instance_config.instance,
-            "cluster": instance_config.cluster,
-            "service_discovery_provider": failed_service_discovery_providers_list,
-        }
+        ).format(
+            service=instance_config.service,
+            instance=instance_config.instance,
+            cluster=instance_config.cluster,
+            service_discovery_provider=failed_service_discovery_providers_list,
+        )
         status = pysensu_yelp.Status.CRITICAL
     else:
+        description = (
+            "{} is well-replicated because it has over {}% of its "
+            "expected replicas up."
+        ).format(instance_config.job_id, crit_threshold)
         status = pysensu_yelp.Status.OK
 
     send_replication_event(
-        instance_config=instance_config, status=status, output=combined_output
+        instance_config=instance_config,
+        status=status,
+        output=output,
+        description=description,
+        dry_run=dry_run,
     )
-
     return not service_is_under_replicated
 
 
@@ -513,15 +565,17 @@ def check_under_replication(
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
-) -> Tuple[bool, str]:
+) -> Tuple[bool, str, str]:
     """Check if a component/sub_component is under-replicated and returns both the result of the check in the form of a
     boolean and a human-readable text to be used in logging or monitoring events.
     """
     crit_threshold = instance_config.get_replication_crit_percentage()
+
+    # Keep output short, with rest of context in description. This is because
+    # by default, Slack-Sensu messages have a 400 char limit, incl. the output.
+    # If it is too long, the runbook and tip won't show up.
     if sub_component is not None:
-        output = (
-            "Service %s has %d out of %d expected instances of %s available! (threshold: %d%%)"
-        ) % (
+        output = ("{} has {}/{} replicas of {} available (threshold: {}%)").format(
             instance_config.job_id,
             num_available,
             expected_count,
@@ -529,19 +583,18 @@ def check_under_replication(
             crit_threshold,
         )
     else:
-        output = (
-            "Service %s has %d out of %d expected instances available! (threshold: %d%%)"
-        ) % (instance_config.job_id, num_available, expected_count, crit_threshold)
+        output = ("{} has {}/{} replicas available (threshold: {}%)").format(
+            instance_config.job_id, num_available, expected_count, crit_threshold
+        )
+
     under_replicated, _ = is_under_replicated(
         num_available, expected_count, crit_threshold
     )
     if under_replicated:
-        output += (
-            "\n\n"
-            "What this alert means:\n"
-            "\n"
-            "  This replication alert means that the service PaaSTA can't keep the\n"
-            "  requested number of copies up and healthy in the cluster.\n"
+        description = (
+            "This replication alert means that PaaSTA can't keep the\n"
+            "requested number of replicas up and healthy in the cluster for "
+            "the instance {service}.{instance}.\n"
             "\n"
             "Reasons this might be happening:\n"
             "\n"
@@ -553,13 +606,18 @@ def check_under_replication(
             "  * Increase the instance count\n"
             "  * Fix the cause of the unhealthy service. Try running:\n"
             "\n"
-            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
-        ) % {
-            "service": instance_config.service,
-            "instance": instance_config.instance,
-            "cluster": instance_config.cluster,
-        }
-    return under_replicated, output
+            "      paasta status -s {service} -i {instance} -c {cluster} -vv\n"
+        ).format(
+            service=instance_config.service,
+            instance=instance_config.instance,
+            cluster=instance_config.cluster,
+        )
+    else:
+        description = (
+            "{} is well-replicated because it has over {}% of its "
+            "expected replicas up."
+        ).format(instance_config.job_id, crit_threshold)
+    return under_replicated, output, description
 
 
 def send_replication_event_if_under_replication(
@@ -567,8 +625,9 @@ def send_replication_event_if_under_replication(
     expected_count: int,
     num_available: int,
     sub_component: Optional[str] = None,
+    dry_run: bool = False,
 ):
-    under_replicated, output = check_under_replication(
+    under_replicated, output, description = check_under_replication(
         instance_config, expected_count, num_available, sub_component
     )
     if under_replicated:
@@ -578,5 +637,9 @@ def send_replication_event_if_under_replication(
         log.info(output)
         status = pysensu_yelp.Status.OK
     send_replication_event(
-        instance_config=instance_config, status=status, output=output
+        instance_config=instance_config,
+        status=status,
+        output=output,
+        description=description,
+        dry_run=dry_run,
     )

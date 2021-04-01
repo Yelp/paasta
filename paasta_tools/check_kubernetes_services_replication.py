@@ -53,6 +53,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
     instance_config: KubernetesDeploymentConfig,
     expected_count: int,
     all_pods: Sequence[V1Pod],
+    dry_run: bool = False,
 ) -> None:
     si_pods = filter_pods_by_service_instance(
         pod_list=all_pods,
@@ -67,6 +68,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
         instance_config=instance_config,
         expected_count=expected_count,
         num_available=num_healthy_tasks,
+        dry_run=dry_run,
     )
 
 
@@ -74,6 +76,7 @@ def check_kubernetes_pod_replication(
     instance_config: KubernetesDeploymentConfig,
     all_tasks_or_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
+    dry_run: bool = False,
 ) -> Optional[bool]:
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack/envoy or k8s)
@@ -112,6 +115,7 @@ def check_kubernetes_pod_replication(
             instance_config=instance_config,
             expected_count=expected_count,
             replication_checker=replication_checker,
+            dry_run=dry_run,
         )
         return is_well_replicated
     else:
@@ -119,6 +123,7 @@ def check_kubernetes_pod_replication(
             instance_config=instance_config,
             expected_count=expected_count,
             all_pods=all_tasks_or_pods,
+            dry_run=dry_run,
         )
         return None
 
