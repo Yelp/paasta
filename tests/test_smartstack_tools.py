@@ -561,12 +561,13 @@ def test_get_replication_for_instance(mock_replication_checker):
         "paasta_tools.smartstack_tools.BaseReplicationChecker.get_allowed_locations_and_hosts",
         autospec=True,
     ) as mock_get_allowed_locations_and_hosts, mock.patch(
-        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_first_host_in_pool",
+        "paasta_tools.smartstack_tools.BaseReplicationChecker.get_hostnames_in_pool",
         autospec=True,
-    ) as mock_get_first_host_in_pool, mock.patch(
+    ) as mock_get_hostnames_in_pool, mock.patch(
         "paasta_tools.smartstack_tools.BaseReplicationChecker._get_replication_info",
         autospec=True,
     ) as mock_get_replication_info:
+        mock_get_hostnames_in_pool.return_value = [mock.Mock()]
         mock_get_allowed_locations_and_hosts.return_value = {
             "westeros-prod": [mock.Mock()],
             "middleearth-prod": [mock.Mock(), mock.Mock()],
@@ -581,7 +582,7 @@ def test_get_replication_for_instance(mock_replication_checker):
             mock_replication_checker.get_replication_for_instance(mock.Mock())
             == expected
         )
-        assert mock_get_first_host_in_pool.call_count == 2
+        assert mock_get_hostnames_in_pool.call_count == 2
 
 
 def test_get_first_host_in_pool(mock_replication_checker):
@@ -596,6 +597,20 @@ def test_get_first_host_in_pool(mock_replication_checker):
     assert ret == "host789"
     ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "what")
     assert ret == "host0"
+
+
+def test_hostnames_in_pool(mock_replication_checker):
+    mock_host_0 = mock.Mock(hostname="host0", pool="some")
+    mock_host_1 = mock.Mock(hostname="host123", pool="default")
+    mock_host_2 = mock.Mock(hostname="host456", pool="default")
+    mock_host_3 = mock.Mock(hostname="host789", pool="special")
+    mock_hosts = [mock_host_0, mock_host_1, mock_host_2, mock_host_3]
+    ret = mock_replication_checker.get_hostnames_in_pool(mock_hosts, "default")
+    assert ret == ["host123", "host456"]
+    ret = mock_replication_checker.get_hostnames_in_pool(mock_hosts, "special")
+    assert ret == ["host789"]
+    ret = mock_replication_checker.get_hostnames_in_pool(mock_hosts, "what")
+    assert ret == ["host0"]
 
 
 def test_get_replication_info(mock_replication_checker):
