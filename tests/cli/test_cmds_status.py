@@ -1172,8 +1172,8 @@ def mock_kubernetes_status_v2():
         desired_state="start",
         desired_instances=1,
         error_message="",
-        replicasets=[
-            paastamodels.KubernetesReplicaSetV2(
+        versions=[
+            paastamodels.KubernetesVersion(
                 create_timestamp=float(datetime.datetime(2021, 3, 5).timestamp()),
                 git_sha="aaa000",
                 config_sha="config000",
@@ -1260,26 +1260,26 @@ class TestGetInstanceState:
         assert remove_ansi_escape_sequences(instance_state) == "Running"
 
     def test_bouncing(self, mock_kubernetes_status_v2):
-        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+        new_version = paastamodels.KubernetesVersion(
             create_timestamp=1.0,
             git_sha="bbb111",
             config_sha="config111",
             ready_replicas=0,
         )
-        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+        mock_kubernetes_status_v2.versions.append(new_version)
 
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111, config111"
 
     def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
-        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+        new_version = paastamodels.KubernetesVersion(
             create_timestamp=1.0,
             git_sha="bbb111",
-            config_sha=mock_kubernetes_status_v2.replicasets[0].config_sha,
+            config_sha=mock_kubernetes_status_v2.versions[0].config_sha,
             ready_replicas=0,
         )
-        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+        mock_kubernetes_status_v2.versions.append(new_version)
 
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
@@ -1291,7 +1291,7 @@ class TestGetVersionsTable:
 
     @pytest.fixture
     def mock_replicasets(self):
-        replicaset_1 = paastamodels.KubernetesReplicaSetV2(
+        replicaset_1 = paastamodels.KubernetesVersion(
             git_sha="aabbccddee",
             config_sha="config000",
             create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
@@ -1320,7 +1320,7 @@ class TestGetVersionsTable:
                 ),
             ],
         )
-        replicaset_2 = paastamodels.KubernetesReplicaSetV2(
+        replicaset_2 = paastamodels.KubernetesVersion(
             git_sha="ff11223344",
             config_sha="config000",
             create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),

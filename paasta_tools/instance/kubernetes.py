@@ -11,10 +11,12 @@ from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
 from typing import Set
+from typing import Tuple
 
 import a_sync
 import pytz
 from kubernetes.client import V1Container
+from kubernetes.client import V1ControllerRevision
 from kubernetes.client import V1Pod
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client.rest import ApiException
@@ -65,6 +67,17 @@ class KubernetesAutoscalingStatusDict(TypedDict):
     metrics: List
     desired_replicas: int
     last_scale_time: str
+
+
+class KubernetesVersionDict(TypedDict, total=False):
+    name: str
+    type: str
+    replicas: int
+    ready_replicas: int
+    create_timestamp: int
+    git_sha: str
+    config_sha: str
+    pods: Sequence[Dict[str, Any]]
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -433,33 +446,20 @@ def kubernetes_status_v2(
     if kube_client is None:
         return status
 
-    app_name = job_config.get_sanitised_deployment_name()
+    desired_state = job_config.get_desired_state()
+    status["app_name"] = job_config.get_sanitised_deployment_name()
+    status["desired_state"] = desired_state
+    status["desired_instances"] = (
+        job_config.get_instances() if desired_state != "stop" else 0
+    )
+    status["bounce_method"] = job_config.get_bounce_method()
+
     pod_list = kubernetes_tools.pods_for_service_instance(
         service=job_config.service,
         instance=job_config.instance,
         kube_client=kube_client,
         namespace=job_config.get_kubernetes_namespace(),
     )
-    # TODO(PAASTA-17315): support statefulsets, too
-    pods_by_replicaset = get_pods_by_replicaset(pod_list)
-    replicaset_list = kubernetes_tools.replicasets_for_service_instance(
-        service=job_config.service,
-        instance=job_config.instance,
-        kube_client=kube_client,
-        namespace=job_config.get_kubernetes_namespace(),
-    )
-    # For the purpose of active_shas/app_count, don't count replicasets that
-    # are at 0/0.
-    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-
-    desired_state = job_config.get_desired_state()
-
-    status["app_name"] = app_name
-    status["desired_state"] = desired_state
-    status["desired_instances"] = (
-        job_config.get_instances() if desired_state != "stop" else 0
-    )
-    status["bounce_method"] = job_config.get_bounce_method()
 
     service_namespace_config = kubernetes_tools.load_service_namespace_config(
         service=service,
@@ -488,18 +488,48 @@ def kubernetes_status_v2(
             # Note we always include backends here now
             status["envoy"] = envoy_status
 
-    status["replicasets"] = [
+    if job_config.get_persistent_volumes():
+        controller_revision_list = kubernetes_tools.controller_revisions_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+        status["versions"] = get_versions_for_controller_revisions(
+            controller_revision_list, pod_list, backends,
+        )
+    else:
+        replicaset_list = kubernetes_tools.replicasets_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+        status["versions"] = get_versions_for_replicasets(
+            replicaset_list, pod_list, backends,
+        )
+
+    return status
+
+
+def get_versions_for_replicasets(
+    replicaset_list: Sequence[V1ReplicaSet],
+    pod_list: Sequence[V1Pod],
+    backends: Optional[Set[str]],
+) -> List[KubernetesVersionDict]:
+    # For the purpose of active_shas/app_count, don't count replicasets that
+    # are at 0/0.
+    actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
+    pods_by_replicaset = get_pods_by_replicaset(pod_list)
+    return [
         get_replicaset_status(
             replicaset, pods_by_replicaset.get(replicaset.metadata.name), backends
         )
         for replicaset in actually_running_replicasets
     ]
 
-    return status
-
 
 def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
-    # TODO: should we make sure that we get every pod...?
     pods_by_replicaset: DefaultDict[str, List[V1Pod]] = defaultdict(list)
     for pod in pods:
         for owner_reference in pod.metadata.owner_references:
@@ -511,9 +541,10 @@ def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
 
 def get_replicaset_status(
     replicaset: V1ReplicaSet, pods: Sequence[V1Pod], backends: Optional[Set[str]],
-) -> Dict[str, Any]:
+) -> KubernetesVersionDict:
     return {
         "name": replicaset.metadata.name,
+        "type": "ReplicaSet",
         "replicas": replicaset.spec.replicas,
         "ready_replicas": ready_replicas_from_replicaset(replicaset),
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
@@ -621,6 +652,47 @@ def get_pod_containers(pod: V1Pod) -> List[Dict[str, Any]]:
             }
         )
     return containers
+
+
+def get_versions_for_controller_revisions(
+    controller_revisions: Sequence[V1ControllerRevision],
+    pods: Sequence[V1Pod],
+    backends: Optional[Set[str]],
+) -> List[KubernetesVersionDict]:
+    versions = []
+
+    cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
+    for cr in controller_revisions:
+        git_sha = cr.metadata.labels["paasta.yelp.com/git_sha"]
+        config_sha = cr.metadata.labels["paasta.yelp.com/config_sha"]
+        cr_by_shas[(git_sha, config_sha)] = cr
+
+    pods_by_shas: DefaultDict[Tuple[str, str], List[V1Pod]] = defaultdict(list)
+    for pod in pods:
+        git_sha = pod.metadata.labels["paasta.yelp.com/git_sha"]
+        config_sha = pod.metadata.labels["paasta.yelp.com/config_sha"]
+        pods_by_shas[(git_sha, config_sha)].append(pod)
+
+    for (git_sha, config_sha), cr in cr_by_shas.items():
+        pods = pods_by_shas[(git_sha, config_sha)]
+        versions.append(get_version_for_controller_revision(cr, pods, backends),)
+    return versions
+
+
+def get_version_for_controller_revision(
+    cr: V1ControllerRevision, pods: Sequence[V1Pod], backends: Optional[Set[str]],
+) -> KubernetesVersionDict:
+    ready_pods = [pod for pod in pods if kubernetes_tools.is_pod_ready(pod)]
+    return {
+        "name": cr.metadata.name,
+        "type": "ControllerRevision",
+        "replicas": len(pods),
+        "ready_replicas": len(ready_pods),
+        "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
+        "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "pods": [get_pod_status(pod, backends) for pod in pods],
+    }
 
 
 def kubernetes_status(

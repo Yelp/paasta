@@ -51,6 +51,7 @@ from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
+from kubernetes.client import V1ControllerRevision
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
@@ -2259,6 +2260,15 @@ def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ReplicaSet]:
     return kube_client.deployments.list_namespaced_replica_set(
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
+    ).items
+
+
+def controller_revisions_for_service_instance(
+    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[V1ControllerRevision]:
+    return kube_client.deployments.list_namespaced_controller_revision(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     ).items
