@@ -597,9 +597,9 @@ class BaseReplicationChecker(ReplicationChecker):
                             location, hostname, instance_config, provider
                         )
                         break
-                    except ConnectionError as e:
+                    except Exception as e:
                         log.warn(
-                            f"Connection error while getting replication info for {location} from {hostname}: {e}"
+                            f"Error while getting replication info for {location} from {hostname}: {e}"
                         )
                         if hostname == hostnames[-1]:
                             # Last hostname failed, giving up
