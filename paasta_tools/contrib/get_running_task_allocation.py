@@ -126,14 +126,18 @@ def get_kubernetes_resource_request(
 ) -> Mapping[str, float]:
     if not resources:
         requests: Mapping[str, str] = {}
+        limits: Mapping[str, str] = {}
     else:
         requests = resources.requests or {}
+        limits = resources.limits or {}
 
-    parsed = kubernetes_tools.parse_container_resources(requests)
+    parsed_requests = kubernetes_tools.parse_container_resources(requests)
+    parsed_limits = kubernetes_tools.parse_container_resources(limits)
     return {
-        "cpus": parsed.cpus,
-        "mem": parsed.mem,
-        "disk": parsed.disk,
+        "cpus": parsed_requests.cpus,
+        "mem": parsed_requests.mem,
+        "disk": parsed_requests.disk,
+        "cpus_limit": parsed_limits.cpus,
     }
 
 
