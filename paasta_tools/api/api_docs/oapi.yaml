@@ -171,6 +171,21 @@ components:
       type: object
     InstanceDelay:
       type: object
+    InstanceMeshStatus:
+      properties:
+        instance:
+          description: Instance name
+          type: string
+        service:
+          description: Service name
+          type: string
+        smartstack:
+          $ref: '#/components/schemas/SmartstackStatus'
+          description: Status of the service in smartstack
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
+      type: object
     InstanceMetadataKafkaCluster:
       description: Kafka instance metadata
       type: object
@@ -1375,6 +1390,52 @@ paths:
         "500":
           description: Instance failure
       summary: Get status of service_name.instance_name
+      tags:
+      - service
+  /services/{service}/{instance}/mesh_status:
+    get:
+      operationId: mesh_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Include Smartstack information
+        in: query
+        name: include_smartstack
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - description: Include Envoy information
+        in: query
+        name: include_envoy
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceMeshStatus'
+          description: Mesh status of an instance
+        "404":
+          description: Deployment key not found
+        "405":
+          description: Instance type not supported
+        "500":
+          description: Instance failure
+      summary: Get mesh status for service_name.instance_name
       tags:
       - service
   /services/{service}/{instance}/tasks:

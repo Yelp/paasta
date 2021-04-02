@@ -23,6 +23,7 @@ from paasta_tools.paastaapi.model.hpa_metric import HPAMetric
 from paasta_tools.paastaapi.model.inline_object import InlineObject
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
+from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus
 from paasta_tools.paastaapi.model.instance_status_adhoc import InstanceStatusAdhoc
 from paasta_tools.paastaapi.model.instance_status_flink import InstanceStatusFlink
