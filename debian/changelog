@@ -1,3 +1,13 @@
+paasta-tools (0.97.95) xenial; urgency=medium
+
+  * 0.97.95 tagged with 'make release'
+    Commit: Handle all errors while checking getting replication info
+    There are many various exceptions used by different layers of the
+    stack, which can be produced as a result of connection error, so
+    let"s handle generic exception instead of just `ConnectionError`.
+
+ -- Valeriy Khromov <vkhromov@yelp.com>  Fri, 02 Apr 2021 00:32:36 -0700
+
 paasta-tools (0.97.94) xenial; urgency=medium
 
   * 0.97.94 tagged with 'make release'
