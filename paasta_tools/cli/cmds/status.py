@@ -1165,6 +1165,13 @@ def print_kubernetes_status_v2(
     output.extend(
         [f"      {line}" for line in get_versions_table(status.versions, verbose)]
     )
+
+    if verbose > 1:
+        as_table = get_autoscaling_table(status.autoscaling_status, verbose)
+        print(f"autoscaling table:")
+        print(as_table)
+        output.extend(as_table)
+
     if status.error_message:
         output.append("    " + PaastaColors.red(status.error_message))
         return 1
@@ -1221,6 +1228,8 @@ def get_versions_table(
         else:
             show_config_sha = False
 
+        print(f"show_config_sha: {show_config_sha}, verbose: {verbose})")
+
         table: List[str] = []
         table.extend(
             get_version_table_entry(
@@ -1249,7 +1258,7 @@ def get_version_table_entry(
     verbose: int = 0,
 ) -> List[str]:
     version_name = version.git_sha[:8]
-    if show_config_sha:
+    if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
@@ -1277,11 +1286,11 @@ def get_version_table_entry(
             ]
             if unhealthy_replicas:
                 entry.append(f"    Unhealthy Replicas:")
-                replica_table = create_replica_table(unhealthy_replicas)
+                replica_table = create_replica_table(unhealthy_replicas, verbose)
                 for line in replica_table:
                     entry.append(f"      {line}")
         else:
-            replica_table = create_replica_table(replica_states)
+            replica_table = create_replica_table(replica_states, verbose)
             for line in replica_table:
                 entry.append(f"    {line}")
     return entry
@@ -1331,16 +1340,18 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
             # TODO: Take sidecar containers into account
             #   This logic likely needs refining
             state = ReplicaState.UNREACHABLE
-            main_container = [
-                c
-                for c in pod.containers
-                if c.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES
-            ]
+            main_container = next(
+                (
+                    c
+                    for c in pod.containers
+                    if c.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES
+                ),
+                None,
+            )
             if main_container:
-                if main_container[0].restart_count > 0:
+                if main_container.restart_count > 0:
                     if (
-                        pod.create_timestamp
-                        + main_container[0].healthcheck_grace_period
+                        pod.create_timestamp + main_container.healthcheck_grace_period
                         > datetime.utcnow().timestamp()
                     ):
                         state = ReplicaState.WARMING_UP
@@ -1364,7 +1375,7 @@ def get_replica_states(
 
 
 def create_replica_table(
-    pods: List[Tuple[ReplicaState, KubernetesPodV2]],
+    pods: List[Tuple[ReplicaState, KubernetesPodV2]], verbose: int = 0,
 ) -> List[str]:
     header = ["ID", "IP/Port", "Host deployed to", "Started at what localtime", "State"]
     table: List[Union[List[str], str]] = [header]
@@ -1397,32 +1408,74 @@ def create_replica_table(
                 humanized_timestamp = humanize.naturaltime(timestamp)
                 if c.restart_count > 0:
                     if c.state != "running" or c.last_reason == "CrashLoopBackOff":
-                        table.append(
-                            PaastaColors.red(
-                                f"Restarted at {humanized_timestamp}. {c.restart_count} restarts since starting"
+                        if verbose > 1:
+                            table.append(
+                                PaastaColors.red(
+                                    f"  Restarted at {humanized_timestamp}. {c.restart_count} restarts since starting"
+                                )
                             )
-                        )
                     if c.reason == "OOMKilled":
-                        table.append(
-                            PaastaColors.red(
-                                f"  OOM Killed at {humanized_timestamp}.  {c.restart_count} restarts since starting"
-                            )
+                        table.extend(
+                            [
+                                PaastaColors.red(
+                                    f"  OOM Killed at {humanized_timestamp}.  {c.restart_count} restarts since starting"
+                                ),
+                                PaastaColors.red(
+                                    f"  Check y/{pod.service}_load and consider increasing memory in yelpsoa_configs"
+                                ),
+                            ]
                         )
-            if state == ReplicaState.HEALTHCHECK_FAILING:
-                # TODO: Use actual container.liveness_probe port or healthcheck from config
+            if state == ReplicaState.HEALTHCHECK_FAILING and c.healthcheck_cmd:
                 table.append(
                     PaastaColors.red(
-                        f"  To test healthcheck directly, run `curl {pod.ip}:8888/status`"
+                        f"  To test healthcheck directly, {c.healthcheck_cmd}"
                     )
                 )
             else:
                 # TODO: Specify full paasta logs cmd once pod filtering is available
                 table.append(
-                    PaastaColors.red(f"  Consider checking logs with `paasta logs`")
+                    PaastaColors.red(
+                        f"  Consider checking logs with `paasta logs -s {pod.service} -p {pod.name}`"
+                    )
                 )
         elif state == ReplicaState.UNSCHEDULED:
             if pod.reason == "Unschedulable":
                 table.append(PaastaColors.red(f"  Pod is unschedulable: {pod.message}"))
+    return format_table(table)
+
+
+def get_autoscaling_table(
+    autoscaling_status: Dict[str, Any], verbose: int = 0
+) -> List[str]:
+    table = []
+    if autoscaling_status and verbose > 1:
+        table.append("    Autoscaling status:")
+        table.append(f"       min_instances: {autoscaling_status['min_instances']}")
+        table.append(f"       max_instances: {autoscaling_status['max_instances']}")
+        table.append(
+            f"       Desired instances: {autoscaling_status['desired_replicas']}"
+        )
+        table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
+        table.append(f"       Dashboard: y/sfx-autoscaling")
+        NA = PaastaColors.red("N/A")
+        if len(autoscaling_status["metrics"]) > 0:
+            table.append(f"       Metrics:")
+
+        metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
+        for metric in autoscaling_status["metrics"]:
+            current_metric = (
+                NA
+                if getattr(metric, "current_value") is None
+                else getattr(metric, "current_value")
+            )
+            target_metric = (
+                NA
+                if getattr(metric, "target_value") is None
+                else getattr(metric, "target_value")
+            )
+            metrics_table.append([metric["name"], current_metric, target_metric])
+        table.extend(["         " + s for s in format_table(metrics_table)])
+
     return format_table(table)
 
 

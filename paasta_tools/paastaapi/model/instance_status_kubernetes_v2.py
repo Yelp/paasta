@@ -32,8 +32,10 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 
 def lazy_import():
     from paasta_tools.paastaapi.model.envoy_status import EnvoyStatus
+    from paasta_tools.paastaapi.model.instance_status_kubernetes_autoscaling_status import InstanceStatusKubernetesAutoscalingStatus
     from paasta_tools.paastaapi.model.kubernetes_version import KubernetesVersion
     globals()['EnvoyStatus'] = EnvoyStatus
+    globals()['InstanceStatusKubernetesAutoscalingStatus'] = InstanceStatusKubernetesAutoscalingStatus
     globals()['KubernetesVersion'] = KubernetesVersion
 
 
@@ -84,7 +86,10 @@ class InstanceStatusKubernetesV2(ModelNormal):
         lazy_import()
         return {
             'app_name': (str,),  # noqa: E501
+            'autoscaling_status': (InstanceStatusKubernetesAutoscalingStatus,),  # noqa: E501
             'desired_state': (str,),  # noqa: E501
+            'desired_git_sha': (str,),  # noqa: E501
+            'desired_config_sha': (str,),  # noqa: E501
             'desired_instances': (int,),  # noqa: E501
             'error_message': (str,),  # noqa: E501
             'versions': ([KubernetesVersion],),  # noqa: E501
@@ -98,7 +103,10 @@ class InstanceStatusKubernetesV2(ModelNormal):
 
     attribute_map = {
         'app_name': 'app_name',  # noqa: E501
+        'autoscaling_status': 'autoscaling_status',  # noqa: E501
         'desired_state': 'desired_state',  # noqa: E501
+        'desired_git_sha': 'desired_git_sha',  # noqa: E501
+        'desired_config_sha': 'desired_config_sha',  # noqa: E501
         'desired_instances': 'desired_instances',  # noqa: E501
         'error_message': 'error_message',  # noqa: E501
         'versions': 'versions',  # noqa: E501
@@ -152,7 +160,10 @@ class InstanceStatusKubernetesV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             app_name (str): Name of Kubernetes Deployment or Statefulset for instance. [optional]  # noqa: E501
+            autoscaling_status (InstanceStatusKubernetesAutoscalingStatus): [optional]  # noqa: E501
             desired_state (str): Desired state of the app (start or stop). [optional]  # noqa: E501
+            desired_git_sha (str): Desired git sha of the app. [optional]  # noqa: E501
+            desired_config_sha (str): Desired config sha of the app. [optional]  # noqa: E501
             desired_instances (int): Number of instances desired for this app. [optional]  # noqa: E501
             error_message (str): Error message if we cannot assemble status for the instance. [optional]  # noqa: E501
             versions ([KubernetesVersion]): Individual versions of the instance. [optional]  # noqa: E501

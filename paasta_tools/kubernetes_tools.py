@@ -1051,7 +1051,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         else:
             raise InvalidHealthcheckMode(
-                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp"
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp/cmd"
                 % mode
             )
 

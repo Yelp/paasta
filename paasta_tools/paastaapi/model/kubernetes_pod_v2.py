@@ -82,6 +82,8 @@ class KubernetesPodV2(ModelNormal):
         lazy_import()
         return {
             'name': (str,),  # noqa: E501
+            'service': (str,),  # noqa: E501
+            'instance': (str,),  # noqa: E501
             'ip': (str, none_type,),  # noqa: E501
             'host': (str, none_type,),  # noqa: E501
             'create_timestamp': (float,),  # noqa: E501
@@ -101,6 +103,8 @@ class KubernetesPodV2(ModelNormal):
 
     attribute_map = {
         'name': 'name',  # noqa: E501
+        'service': 'service',  # noqa: E501
+        'instance': 'instance',  # noqa: E501
         'ip': 'ip',  # noqa: E501
         'host': 'host',  # noqa: E501
         'create_timestamp': 'create_timestamp',  # noqa: E501
@@ -160,6 +164,8 @@ class KubernetesPodV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             name (str): Pod name. [optional]  # noqa: E501
+            service (str): Service this pod belongs to. [optional]  # noqa: E501
+            instance (str): Instance this pod belongs to. [optional]  # noqa: E501
             ip (str, none_type): Pod IP. [optional]  # noqa: E501
             host (str, none_type): Host IP this pod was scheduled on. [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp at which pod was created. [optional]  # noqa: E501

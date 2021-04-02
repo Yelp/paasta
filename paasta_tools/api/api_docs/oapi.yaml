@@ -236,6 +236,7 @@ components:
       type: object
     InstanceStatusKubernetes:
       properties:
+
         active_shas:
           type: array
           description: List of git/config SHAs running.
@@ -356,8 +357,35 @@ components:
         app_name:
           description: Name of Kubernetes Deployment or Statefulset for instance
           type: string
+        autoscaling_status:
+          description: HPA associated to this app
+          properties:
+            desired_replicas:
+              description: desired number of _instances as calculated by HPA
+              type: integer
+            last_scale_time:
+              description: timestamp of last autoscale
+              type: string
+            max_instances:
+              description: min_instances as specified in yelpsoa_configs
+              type: integer
+            metrics:
+              description: Current metrics
+              items:
+                $ref: '#/components/schemas/HPAMetric'
+              type: array
+            min_instances:
+              description: min_instances as specified in yelpsoa_configs
+              type: integer
+          type: object
         desired_state:
           description: Desired state of the app (start or stop)
+          type: string
+        desired_git_sha:
+          description: Desired git sha of the app
+          type: string
+        desired_config_sha:
+          description: Desired config sha of the app
           type: string
         desired_instances:
           description: Number of instances desired for this app
@@ -569,6 +597,13 @@ components:
           format: float
           type: number
           nullable: true
+        healthcheck_cmd:
+          description: Command that can be used to test liveness probe of this container
+          type: string
+          nullable: true
+        tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Stdout and stderr tail of the container
       type: object
     KubernetesPod:
       properties:
@@ -613,6 +648,13 @@ components:
       properties:
         name:
           description: Pod name
+          type: string
+        service:
+          description: Service this pod belongs to
+          type: string
+        instance:
+          description: Instance this pod belongs to
+
           type: string
         ip:
           description: Pod IP
