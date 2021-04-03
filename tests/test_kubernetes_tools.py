@@ -2519,9 +2519,9 @@ def test_get_pod_event_messages(messages_num, event_loop):
     kube_client = mock.MagicMock()
 
     with asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_pod_events", autospec=True
-    ) as mock_get_pod_events:
-        mock_get_pod_events.return_value = events
+        "paasta_tools.kubernetes_tools.get_events_for_object", autospec=True
+    ) as mock_get_events_for_object:
+        mock_get_events_for_object.return_value = events
         pod_event_messages = event_loop.run_until_complete(
             kubernetes_tools.get_pod_event_messages(kube_client=kube_client, pod=pod)
         )

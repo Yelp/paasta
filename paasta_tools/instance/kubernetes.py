@@ -179,7 +179,10 @@ async def pod_info(
     pod: V1Pod, client: kubernetes_tools.KubeClient, num_tail_lines: int,
 ):
     container_statuses = pod.status.container_statuses or []
-    pod_event_messages = await get_pod_event_messages(client, pod)
+    try:
+        pod_event_messages = await get_pod_event_messages(client, pod)
+    except asyncio.TimeoutError:
+        pod_event_messages = [{"error": "Could not fetch events for pod"}]
     containers = [
         dict(
             name=container.name,

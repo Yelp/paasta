@@ -35,7 +35,6 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
-import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -107,7 +106,6 @@ from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
-from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -1995,21 +1993,8 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
-@a_sync.to_async
-def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
-    try:
-        pod_events = kube_client.core.list_namespaced_event(
-            namespace=pod.metadata.namespace,
-            field_selector=f"involvedObject.name={pod.metadata.name}",
-        )
-        return pod_events.items if pod_events else []
-    except ApiException:
-        return []
-
-
-@async_timeout()
 async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
-    pod_events = await get_pod_events(kube_client, pod)
+    pod_events = await get_events_for_object(kube_client, pod, "Pod")
     pod_event_messages = []
     if pod_events:
         for event in pod_events:
@@ -2537,30 +2522,22 @@ def update_stateful_set(
     )
 
 
-@a_sync.to_async
-def get_events_for_object(
+@async_timeout()
+async def get_events_for_object(
     kube_client: KubeClient,
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
 ) -> List[V1Event]:
-    host = KubeConfiguration().host
 
-    # The python kubernetes client doesn't support the V1Events API
-    # yet, so we have to make the request by hand (we need the V1Events
-    # API so that we can query by the involvedObject.name/kind)
-    #
-    # Also, as best as I can tell, the list_namespaced_event API call under the
-    # CoreV1 API does _not_ return the events that we're interested in.
-    events = kube_client.request(
-        "GET",
-        f"{host}/api/v1/namespaces/{obj.metadata.namespace}/events",
-        query_params={
-            "fieldSelector": f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
-            "limit": MAX_EVENTS_TO_RETRIEVE,
-        },
-    )
-    parsed_events = json.loads(events.data)
-    return parsed_events["items"]
+    try:
+        events = kube_client.core.list_namespaced_event(
+            namespace=obj.metadata.namespace,
+            field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
+            limit=MAX_EVENTS_TO_RETRIEVE,
+        )
+        return events.items if events else []
+    except ApiException:
+        return []
 
 
 async def get_all_events_for_service(
@@ -2608,9 +2585,9 @@ async def get_all_events_for_service(
     return sorted(
         events,
         key=lambda x: (
-            x.get("lastTimestamp")
-            or x.get("eventTime")
-            or x.get("firstTimestamp")
+            getattr(x, "last_timestamp")
+            or getattr(x, "event_time")
+            or getattr(x, "first_imestamp")
             or 0  # prevent errors in case none of the fields exist
         ),
     )
