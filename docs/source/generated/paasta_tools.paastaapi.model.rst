@@ -35,7 +35,7 @@ Submodules
    paasta_tools.paastaapi.model.kubernetes_pod_event
    paasta_tools.paastaapi.model.kubernetes_pod_v2
    paasta_tools.paastaapi.model.kubernetes_replica_set
-   paasta_tools.paastaapi.model.kubernetes_replica_set_v2
+   paasta_tools.paastaapi.model.kubernetes_version
    paasta_tools.paastaapi.model.marathon_app_status
    paasta_tools.paastaapi.model.marathon_autoscaling_info
    paasta_tools.paastaapi.model.marathon_dashboard
