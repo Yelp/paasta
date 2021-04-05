@@ -885,7 +885,6 @@ def kubernetes_mesh_status(
             f"Getting mesh status for {instance_type} instances is not supported"
         )
 
-    kmesh: Dict[str, Any] = {}
     config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
     job_config = config_loader(
         service=service,
@@ -912,6 +911,7 @@ def kubernetes_mesh_status(
         namespace=job_config.get_kubernetes_namespace(),
     )
 
+    kmesh: Dict[str, Any] = {}
     mesh_status_kwargs = dict(
         service=service,
         instance=job_config.get_nerve_namespace(),

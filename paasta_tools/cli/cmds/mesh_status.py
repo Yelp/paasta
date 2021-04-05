@@ -14,7 +14,6 @@
 # limitations under the License.
 from typing import List
 from typing import Tuple
-from typing import Type
 
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.cmds.status import get_envoy_status_human
