@@ -890,7 +890,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if autoscaling_params["metrics_provider"] == "uwsgi":
                 if autoscaling_params.get(
                     "use_prometheus",
-                    system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                    DEFAULT_USE_PROMETHEUS_UWSGI
+                    or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
         return False
