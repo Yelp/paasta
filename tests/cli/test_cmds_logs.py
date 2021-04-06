@@ -670,9 +670,9 @@ def test_prettify_log_line_valid_json():
     parsed_line = {
         "message": "fake_message",
         "component": "fake_component",
-        "level": "fake_level",
         "cluster": "fake_cluster",
         "instance": "fake_instance",
+        "pod_name": "fake_pod",
         "timestamp": "2015-03-12T21:20:04.602002",
     }
     requested_levels = ["fake_requested_level1", "fake_requested_level2"]
@@ -682,9 +682,6 @@ def test_prettify_log_line_valid_json():
     expected_timestamp = logs.prettify_timestamp(parsed_line["timestamp"])
     assert expected_timestamp in actual
     assert parsed_line["component"] in actual
-    assert parsed_line["cluster"] in actual
-    assert parsed_line["instance"] in actual
-    assert parsed_line["level"] in actual
     assert parsed_line["message"] in actual
 
 
@@ -706,24 +703,7 @@ def test_prettify_log_line_valid_json_strip_headers():
     assert parsed_line["component"] not in actual
     assert parsed_line["cluster"] not in actual
     assert parsed_line["instance"] not in actual
-    assert parsed_line["level"] not in actual
     assert parsed_line["message"] in actual
-
-
-def test_prettify_log_line_valid_json_requested_level_is_only_event():
-    requested_levels = ["fake_requested_level1"]
-    parsed_line = {
-        "message": "fake_message",
-        "component": "fake_component",
-        "level": "event",
-        "cluster": "fake_cluster",
-        "instance": "fake_instance",
-        "timestamp": "2015-03-12T21:20:04.602002",
-    }
-    line = json.dumps(parsed_line)
-
-    actual = logs.prettify_log_line(line, requested_levels, strip_headers=False)
-    assert parsed_line["level"] not in actual
 
 
 def test_scribereader_run_code_over_scribe_envs():
