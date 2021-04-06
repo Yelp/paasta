@@ -18,7 +18,7 @@ To run a tests for a specific module:
 
 Ensure the virtualenv created by tox is activated
 
-``source .tox/py36/bin/activate``
+``source .tox/py37/bin/activate``
 
 And execute pytest
 

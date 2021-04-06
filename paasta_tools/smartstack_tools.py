@@ -589,10 +589,21 @@ class BaseReplicationChecker(ReplicationChecker):
             attribute_host_dict = self.get_allowed_locations_and_hosts(instance_config)
             instance_pool = instance_config.get_pool()
             for location, hosts in attribute_host_dict.items():
-                hostname = self.get_first_host_in_pool(hosts, instance_pool)
-                replication_info[location] = self._get_replication_info(
-                    location, hostname, instance_config, provider
-                )
+                # Try to get information from all available hosts in the pool before giving up
+                hostnames = self.get_hostnames_in_pool(hosts, instance_pool)
+                for hostname in hostnames:
+                    try:
+                        replication_info[location] = self._get_replication_info(
+                            location, hostname, instance_config, provider
+                        )
+                        break
+                    except Exception as e:
+                        log.warn(
+                            f"Error while getting replication info for {location} from {hostname}: {e}"
+                        )
+                        if hostname == hostnames[-1]:
+                            # Last hostname failed, giving up
+                            raise
             replication_infos[provider.NAME] = replication_info
         return replication_infos
 
@@ -601,6 +612,17 @@ class BaseReplicationChecker(ReplicationChecker):
             if host.pool == pool:
                 return host.hostname
         return hosts[0].hostname
+
+    def get_hostnames_in_pool(
+        self, hosts: Sequence[DiscoveredHost], pool: str
+    ) -> Sequence[str]:
+        hostnames = []
+        for host in hosts:
+            if host.pool == pool:
+                hostnames.append(host.hostname)
+        if len(hostnames) == 0:
+            hostnames.append(hosts[0].hostname)
+        return hostnames
 
     def _get_replication_info(
         self,

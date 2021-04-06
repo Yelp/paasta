@@ -1172,8 +1172,8 @@ def mock_kubernetes_status_v2():
         desired_state="start",
         desired_instances=1,
         error_message="",
-        replicasets=[
-            paastamodels.KubernetesReplicaSetV2(
+        versions=[
+            paastamodels.KubernetesVersion(
                 create_timestamp=float(datetime.datetime(2021, 3, 5).timestamp()),
                 git_sha="aaa000",
                 config_sha="config000",
@@ -1260,26 +1260,26 @@ class TestGetInstanceState:
         assert remove_ansi_escape_sequences(instance_state) == "Running"
 
     def test_bouncing(self, mock_kubernetes_status_v2):
-        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+        new_version = paastamodels.KubernetesVersion(
             create_timestamp=1.0,
             git_sha="bbb111",
             config_sha="config111",
             ready_replicas=0,
         )
-        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+        mock_kubernetes_status_v2.versions.append(new_version)
 
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111, config111"
 
     def test_bouncing_git_sha_change_only(self, mock_kubernetes_status_v2):
-        new_replicaset = paastamodels.KubernetesReplicaSetV2(
+        new_version = paastamodels.KubernetesVersion(
             create_timestamp=1.0,
             git_sha="bbb111",
-            config_sha=mock_kubernetes_status_v2.replicasets[0].config_sha,
+            config_sha=mock_kubernetes_status_v2.versions[0].config_sha,
             ready_replicas=0,
         )
-        mock_kubernetes_status_v2.replicasets.append(new_replicaset)
+        mock_kubernetes_status_v2.versions.append(new_version)
 
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
@@ -1287,47 +1287,84 @@ class TestGetInstanceState:
 
 
 class TestGetVersionsTable:
-    @pytest.fixture(autouse=True)
-    def mock_get_replica_states(self):
-        with mock.patch(
-            "paasta_tools.cli.cmds.status.get_replica_states", autospec=True,
-        ) as self.mock_get_replica_states:
-            self.mock_get_replica_states.return_value = "3 Running"
-            yield
+    # TODO: Add replica table coverage
 
     @pytest.fixture
     def mock_replicasets(self):
-        replicaset_1 = paastamodels.KubernetesReplicaSetV2(
+        replicaset_1 = paastamodels.KubernetesVersion(
             git_sha="aabbccddee",
             config_sha="config000",
-            create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
-            pods=[],
+            create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
+            pods=[
+                paastamodels.KubernetesPodV2(
+                    name="pod1",
+                    ip="1.2.3.4",
+                    host="w.x.y.z",
+                    create_timestamp=float(datetime.datetime(2021, 3, 5).timestamp()),
+                    phase="Running",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+                paastamodels.KubernetesPodV2(
+                    name="pod2",
+                    ip="1.2.3.5",
+                    host="a.b.c.d",
+                    create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
+                    phase="Failed",
+                    reason="Evicted",
+                    message="Not enough memory!",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+            ],
         )
-        replicaset_2 = paastamodels.KubernetesReplicaSetV2(
+        replicaset_2 = paastamodels.KubernetesVersion(
             git_sha="ff11223344",
             config_sha="config000",
-            create_timestamp=float(datetime.datetime(2021, 3, 3).timestamp()),
-            pods=[],
+            create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+            pods=[
+                paastamodels.KubernetesPodV2(
+                    name="pod1",
+                    ip="1.2.3.6",
+                    host="a.b.c.d",
+                    create_timestamp=float(datetime.datetime(2021, 3, 1).timestamp()),
+                    phase="Running",
+                    ready=True,
+                    scheduled=True,
+                    containers=[],
+                ),
+            ],
         )
         # in reverse order to ensure we are sorting
         return [replicaset_2, replicaset_1]
 
     def test_two_replicasets(self, mock_replicasets):
-        versions_table = get_versions_table(mock_replicasets)
+        versions_table = get_versions_table(mock_replicasets, verbose=0)
+
         assert "aabbccdd (new)" in versions_table[0]
-        assert "2021-03-01" in versions_table[0]
+        assert "2021-03-03" in versions_table[0]
+        assert PaastaColors.green("1 Healthy") in versions_table[1]
+        assert PaastaColors.red("1 Unhealthy") in versions_table[1]
 
-        assert "ff112233 (old)" in versions_table[2]
-        assert "2021-03-03" in versions_table[2]
-
-        assert self.mock_get_replica_states.return_value in versions_table[1]
-        assert self.mock_get_replica_states.return_value in versions_table[3]
+        assert "ff112233 (old)" in versions_table[7]
+        assert "2021-03-01" in versions_table[7]
+        assert PaastaColors.green("1 Healthy") in versions_table[8]
+        assert "Unhealhty" not in versions_table[8]
 
     def test_different_config_shas(self, mock_replicasets):
         mock_replicasets[0].config_sha = "config111"
-        versions_table = get_versions_table(mock_replicasets)
+        versions_table = get_versions_table(mock_replicasets, verbose=0)
         assert "aabbccdd, config000" in versions_table[0]
-        assert "ff112233, config111" in versions_table[2]
+        assert "ff112233, config111" in versions_table[7]
+
+    def test_full_replica_table(self, mock_replicasets):
+        versions_table = get_versions_table(mock_replicasets, verbose=2)
+        versions_table_tip = remove_ansi_escape_sequences(versions_table[4])
+        assert "1.2.3.5" in versions_table[3]
+        assert "Evicted: Not enough memory!" in versions_table_tip
+        assert "1.2.3.6" in versions_table[10]
 
 
 class TestPrintKubernetesStatus:

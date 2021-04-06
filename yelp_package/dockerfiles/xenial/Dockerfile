@@ -22,7 +22,7 @@ RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sou
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-# Need Python 3.6
+# Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
@@ -37,7 +37,7 @@ RUN apt-get update > /dev/null && \
         libgpgme11 \
         libssl-dev \
         libyaml-dev \
-        python3.6-dev \
+        python3.7-dev \
         python-pip \
         python-tox \
         wget \
@@ -54,7 +54,7 @@ ADD mesos-slave-secret /etc/mesos-slave-secret
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==16.7.7
-RUN virtualenv --python=python3.6 venv && venv/bin/pip install -r requirements.txt
+RUN virtualenv --python=python3.7 venv && venv/bin/pip install -r requirements.txt
 
 
 WORKDIR /work

@@ -767,18 +767,43 @@ class TestKubernetesDeploymentConfig:
             default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=False)
         )
 
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_enabled
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=False,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
             )
-            is True
-        )
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_disabled
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is False
             )
-            is False
-        )
+
+        # If the default for use_prometheus is True and config_dict doesn't specify use_prometheus, we should run
+        # uwsgi_exporter regardless of default_should_run_uwsgi_exporter_sidecar.
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=True,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
+            )
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is True
+            )
 
     def test_get_container_env(self):
         with mock.patch(
@@ -917,6 +942,7 @@ class TestKubernetesDeploymentConfig:
                         period_seconds=10,
                         timeout_seconds=10,
                     ),
+                    readiness_probe=None,
                     name="fm",
                     ports=ports,
                     volume_mounts=mock_get_volume_mounts.return_value,
@@ -1017,6 +1043,21 @@ class TestKubernetesDeploymentConfig:
             self.deployment.get_liveness_probe(service_namespace_config)
             == liveness_probe
         )
+
+    def test_get_readiness_probe_in_mesh(self):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.is_in_smartstack.return_value = True
+        assert self.deployment.get_readiness_probe(service_namespace_config) is None
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_liveness_probe",
+        autospec=True,
+    )
+    def test_get_readiness_probe_not_in_mesh(self, mock_get_liveness_probe):
+        service_namespace_config = mock.Mock()
+        service_namespace_config.is_in_smartstack.return_value = False
+        readiness_probe = self.deployment.get_readiness_probe(service_namespace_config)
+        assert readiness_probe == mock_get_liveness_probe.return_value
 
     def test_get_security_context_without_cap_add(self):
         expected_security_context = V1SecurityContext(

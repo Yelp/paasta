@@ -19,7 +19,7 @@ ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
-# Need Python 3.6
+# Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
@@ -29,7 +29,7 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.6-dev \
+        python3.7-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -39,7 +39,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.6 --no-download
+RUN virtualenv /venv -ppython3.7 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 

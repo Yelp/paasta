@@ -23,6 +23,7 @@ def test_main_kubernetes():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
+        mock_parse_args.return_value.dry_run = False
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -63,6 +64,7 @@ def test_main_mesos():
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
+        mock_parse_args.return_value.dry_run = False
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
@@ -124,6 +126,7 @@ def test_check_services_replication():
             check_service_replication=mock_check_service_replication,
             replication_checker=mock_replication_checker,
             all_tasks_or_pods=mock_pods,
+            dry_run=True,
         )
         mock_paasta_service_config_loader.assert_called_once_with(
             service="a", soa_dir=soa_dir
@@ -133,6 +136,7 @@ def test_check_services_replication():
             instance_config=instance_config,
             all_tasks_or_pods=mock_pods,
             replication_checker=mock_replication_checker,
+            dry_run=True,
         )
         assert count_under_replicated == 0
         assert total == 1

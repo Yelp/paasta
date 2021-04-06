@@ -51,6 +51,7 @@ from kubernetes.client import V1ConfigMap
 from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
+from kubernetes.client import V1ControllerRevision
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
@@ -78,6 +79,7 @@ from kubernetes.client import V1PersistentVolumeClaimSpec
 from kubernetes.client import V1Pod
 from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
+from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
@@ -163,6 +165,7 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
+SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
@@ -183,6 +186,7 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
 DEFAULT_USE_SIGNALFX_UWSGI = True
+DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -572,17 +576,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     )
                 )
 
-            metrics.append(
-                V2beta2MetricSpec(
-                    type="Resource",
-                    resource=V2beta2ResourceMetricSource(
-                        name="cpu",
-                        target=V2beta2MetricTarget(
-                            type="Utilization", average_utilization=int(target * 100),
-                        ),
-                    ),
-                )
+            use_resource_metrics = autoscaling_params.get(
+                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
             )
+            if use_resource_metrics:
+                metrics.append(
+                    V2beta2MetricSpec(
+                        type="Resource",
+                        resource=V2beta2ResourceMetricSource(
+                            name="cpu",
+                            target=V2beta2MetricTarget(
+                                type="Utilization",
+                                average_utilization=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
         elif metrics_provider in ("http", "uwsgi"):
             # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
             # which should make this look less silly.
@@ -881,7 +890,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if autoscaling_params["metrics_provider"] == "uwsgi":
                 if autoscaling_params.get(
                     "use_prometheus",
-                    system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                    DEFAULT_USE_PROMETHEUS_UWSGI
+                    or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
         return False
@@ -1089,6 +1099,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
+            readiness_probe=self.get_readiness_probe(service_namespace_config),
             ports=[V1ContainerPort(container_port=port) for port in ports],
             security_context=self.get_security_context(),
             volume_mounts=self.get_volume_mounts(
@@ -1104,6 +1115,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             hacheck_sidecar_volumes=hacheck_sidecar_volumes,
         )
         return containers
+
+    def get_readiness_probe(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> Optional[V1Probe]:
+        if service_namespace_config.is_in_smartstack():
+            return None
+        else:
+            return self.get_liveness_probe(service_namespace_config)
 
     def get_kubernetes_container_termination_action(self) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
@@ -2247,6 +2266,15 @@ def replicasets_for_service_instance(
     ).items
 
 
+def controller_revisions_for_service_instance(
+    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[V1ControllerRevision]:
+    return kube_client.deployments.list_namespaced_controller_revision(
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
+    ).items
+
+
 def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
@@ -2297,6 +2325,20 @@ def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
 
 is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
+
+
+def is_pod_scheduled(pod: V1Pod) -> bool:
+    scheduled_condition = get_pod_condition(pod, "PodScheduled")
+    return scheduled_condition.status == "True" if scheduled_condition else False
+
+
+def get_pod_condition(pod: V1Pod, condition: str) -> V1PodCondition:
+    conditions = [
+        cond for cond in pod.status.conditions or [] if cond.type == condition
+    ]
+    if conditions:
+        return conditions[0]
+    return None
 
 
 class PodStatus(Enum):

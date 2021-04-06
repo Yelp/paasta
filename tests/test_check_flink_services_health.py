@@ -48,15 +48,15 @@ def instance_config():
     return_value={"taskmanagers": 3},
 )
 def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
-    under, output = check_under_registered_taskmanagers(
+    under, output, description = check_under_registered_taskmanagers(
         instance_config, expected_count=3, cr_name="fake--service-575c857546"
     )
     assert not under
     assert (
-        "Service fake_service.fake_instance has 3 out of 3 expected instances of "
-        "taskmanager reported by dashboard!\n"
-        "(threshold: 100%)"
+        "fake_service.fake_instance has 3/3 taskmanagers "
+        "reported by dashboard (threshold: 100%)"
     ) in output
+    assert "fake_service.fake_instance taskmanager is available" in description
 
 
 @mock.patch(
@@ -65,17 +65,17 @@ def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
     return_value={"taskmanagers": 2},
 )
 def test_check_under_registered_taskmanagers_under(mock_overview, instance_config):
-    under, output = check_under_registered_taskmanagers(
+    under, output, description = check_under_registered_taskmanagers(
         instance_config, expected_count=3, cr_name="fake--service-575c857546"
     )
     assert under
     assert (
-        "Service fake_service.fake_instance has 2 out of 3 expected instances of "
-        "taskmanager reported by dashboard!\n"
-        "(threshold: 100%)"
+        "fake_service.fake_instance has 2/3 taskmanagers "
+        "reported by dashboard (threshold: 100%)"
     ) in output
     assert (
-        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv" in output
+        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
+        in description
     )
 
 
@@ -85,17 +85,17 @@ def test_check_under_registered_taskmanagers_under(mock_overview, instance_confi
     side_effect=ValueError("dummy exception"),
 )
 def test_check_under_registered_taskmanagers_error(mock_overview, instance_config):
-    under, output = check_under_registered_taskmanagers(
+    under, output, description = check_under_registered_taskmanagers(
         instance_config, expected_count=3, cr_name="fake--service-575c857546"
     )
     assert under
     assert (
-        "Dashboard of service fake_service.fake_instance is not available!\n"
-        "(dummy exception)\n"
-        "What this alert"
+        "Dashboard of service fake_service.fake_instance is not available "
+        "(dummy exception)"
     ) in output
     assert (
-        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv" in output
+        "paasta status -s fake_service -i fake_instance -c fake_cluster -vv"
+        in description
     )
 
 
@@ -108,11 +108,11 @@ def test_check_flink_service_health_healthy(instance_config):
     ), mock.patch(
         "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
-        return_value=(False, "OK"),
+        return_value=(False, "OK", "check_rep"),
     ) as mock_check_under_replication, mock.patch(
         "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-        return_value=(False, "OK"),
+        return_value=(False, "OK", "check_task"),
     ) as mock_check_under_registered_taskmanagers, mock.patch(
         "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
     ) as mock_send_replication_event:
@@ -121,6 +121,7 @@ def test_check_flink_service_health_healthy(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -149,18 +150,20 @@ def test_check_flink_service_health_healthy(instance_config):
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.OK,
-            output="OK\n########\nOK\n########\nOK\n########\nOK",
+            output="OK, OK, OK, OK",
+            description="check_rep\n########\ncheck_rep\n########\ncheck_rep\n########\ncheck_task",
+            dry_run=True,
         )
 
 
 def test_check_flink_service_health_too_few_taskmanagers(instance_config):
     def check_under_replication_side_effect(*args, **kwargs):
         if kwargs["sub_component"] == "supervisor":
-            return False, "OK"
+            return False, "OK", "check_rep"
         if kwargs["sub_component"] == "jobmanager":
-            return False, "OK"
+            return False, "OK", "check_rep"
         if kwargs["sub_component"] == "taskmanager":
-            return True, "NOPE"
+            return True, "NOPE", "check_rep"
 
     all_pods = []
     with mock.patch(
@@ -170,7 +173,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
     ), mock.patch(
         "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-        return_value=(True, "NOPE"),
+        return_value=(True, "NOPE", "check_task"),
     ) as mock_check_under_registered_taskmanagers, mock.patch(
         "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
@@ -183,6 +186,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -211,7 +215,9 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
-            output="OK\n########\nOK\n########\nNOPE\n########\nNOPE",
+            output="OK, OK, NOPE, NOPE",
+            description="check_rep\n########\ncheck_rep\n########\ncheck_rep\n########\ncheck_task",
+            dry_run=True,
         )
 
 
@@ -224,11 +230,11 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
     ), mock.patch(
         "paasta_tools.check_flink_services_health.check_under_replication",
         autospec=True,
-        return_value=(False, "OK"),
+        return_value=(False, "OK", "check_rep"),
     ) as mock_check_under_replication, mock.patch(
         "paasta_tools.check_flink_services_health.check_under_registered_taskmanagers",
         autospec=True,
-        return_value=(True, "NOPE"),
+        return_value=(True, "NOPE", "check_task"),
     ) as mock_check_under_registered_taskmanagers, mock.patch(
         "paasta_tools.check_flink_services_health.send_replication_event", autospec=True
     ) as mock_send_replication_event:
@@ -237,6 +243,7 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
             instance_config=instance_config,
             all_tasks_or_pods=all_pods,
             replication_checker=None,
+            dry_run=True,
         )
         expected = [
             mock.call(
@@ -265,5 +272,7 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
             status=pysensu_yelp.Status.CRITICAL,
-            output="OK\n########\nOK\n########\nOK\n########\nNOPE",
+            output="OK, OK, OK, NOPE",
+            description="check_rep\n########\ncheck_rep\n########\ncheck_rep\n########\ncheck_task",
+            dry_run=True,
         )

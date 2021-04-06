@@ -117,80 +117,219 @@ def test_kubernetes_status(
     assert "desired_state" in status
 
 
-@mock.patch(
-    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-)
+@mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
 @mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+)
 @mock.patch(
     "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
     autospec=True,
 )
-def test_kubernetes_status_v2(
-    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
-    mock_pods_for_service_instance,
-    mock_replicasets_for_service_instance,
-):
-    mock_job_config = mock.Mock()
-    mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-        "kubernetes"
-    ].loader.return_value = mock_job_config
-    mock_replicasets_for_service_instance.return_value = [
-        Struct(
-            spec=Struct(replicas=1),
+class TestKubernetesStatusV2:
+    @pytest.fixture
+    def mock_pod(self):
+        return Struct(
             metadata=Struct(
-                name="replicaset_1",
-                creation_timestamp=datetime.datetime(2021, 3, 5),
+                owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
+                name="pod_1",
+                creation_timestamp=datetime.datetime(2021, 3, 6),
+                deletion_timestamp=None,
                 labels={
                     "paasta.yelp.com/git_sha": "aaa000",
                     "paasta.yelp.com/config_sha": "config000",
                 },
             ),
-        ),
-    ]
-    mock_pods_for_service_instance.return_value = [
-        Struct(
-            metadata=Struct(
-                owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
-                name="pod_1",
-                creation_timestamp=datetime.datetime(2021, 3, 6),
-            ),
-            status=Struct(pod_ip="1.2.3.4"),
-        ),
-    ]
-
-    status = pik.kubernetes_status_v2(
-        service="service",
-        instance="instance",
-        verbose=0,
-        include_smartstack=False,
-        include_envoy=False,
-        instance_type="kubernetes",
-        settings=mock.Mock(),
-    )
-
-    assert status == {
-        "app_name": mock_job_config.get_sanitised_deployment_name.return_value,
-        "desired_state": mock_job_config.get_desired_state.return_value,
-        "desired_instances": mock_job_config.get_instances.return_value,
-        "bounce_method": mock_job_config.get_bounce_method.return_value,
-        "replicasets": [
-            {
-                "name": "replicaset_1",
-                "replicas": 1,
-                "ready_replicas": 0,
-                "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
-                "git_sha": "aaa000",
-                "config_sha": "config000",
-                "pods": [
-                    {
-                        "name": "pod_1",
-                        "ip": "1.2.3.4",
-                        "create_timestamp": datetime.datetime(2021, 3, 6).timestamp(),
-                    }
+            status=Struct(
+                pod_ip="1.2.3.4",
+                host_ip="4.3.2.1",
+                phase="Running",
+                reason=None,
+                message=None,
+                conditions=[
+                    Struct(type="Ready", status="True",),
+                    Struct(type="PodScheduled", status="True",),
                 ],
-            }
-        ],
-    }
+                container_statuses=[
+                    Struct(
+                        name="main_container",
+                        restart_count=0,
+                        state=Struct(
+                            running=Struct(started_at=datetime.datetime(2021, 3, 6)),
+                            waiting=None,
+                            terminated=None,
+                        ),
+                        last_state=Struct(running=None, waiting=None, terminated=None,),
+                    ),
+                ],
+            ),
+            spec=Struct(
+                containers=[
+                    Struct(
+                        name="main_container",
+                        liveness_probe=Struct(
+                            initial_delay_seconds=1,
+                            failure_threshold=2,
+                            period_seconds=3,
+                            timeout_seconds=4,
+                        ),
+                    )
+                ]
+            ),
+        )
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
+    )
+    def test_replicaset(
+        self,
+        mock_replicasets_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_pod,
+    ):
+        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_replicasets_for_service_instance.return_value = [
+            Struct(
+                spec=Struct(replicas=1),
+                metadata=Struct(
+                    name="replicaset_1",
+                    creation_timestamp=datetime.datetime(2021, 3, 5),
+                    deletion_timestamp=None,
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                    },
+                ),
+            ),
+        ]
+        mock_pods_for_service_instance.return_value = [mock_pod]
+
+        mock_load_service_namespace_config.return_value = {}
+        mock_job_config.get_registrations.return_value = ["service.instance"]
+
+        status = pik.kubernetes_status_v2(
+            service="service",
+            instance="instance",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            instance_type="kubernetes",
+            settings=mock.Mock(),
+        )
+
+        assert status == {
+            "app_name": mock_job_config.get_sanitised_deployment_name.return_value,
+            "desired_state": mock_job_config.get_desired_state.return_value,
+            "desired_instances": mock_job_config.get_instances.return_value,
+            "bounce_method": mock_job_config.get_bounce_method.return_value,
+            "versions": [
+                {
+                    "type": "ReplicaSet",
+                    "name": "replicaset_1",
+                    "replicas": 1,
+                    "ready_replicas": 0,
+                    "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
+                    "git_sha": "aaa000",
+                    "config_sha": "config000",
+                    "pods": [
+                        {
+                            "name": "pod_1",
+                            "ip": "1.2.3.4",
+                            "create_timestamp": datetime.datetime(
+                                2021, 3, 6
+                            ).timestamp(),
+                            "delete_timestamp": None,
+                            "host": "4.3.2.1",
+                            "phase": "Running",
+                            "reason": None,
+                            "message": None,
+                            "scheduled": True,
+                            "ready": True,
+                            "containers": [
+                                {
+                                    "healthcheck_grace_period": 1,
+                                    "name": "main_container",
+                                    "restart_count": 0,
+                                    "state": "running",
+                                    "reason": None,
+                                    "message": None,
+                                    "last_state": None,
+                                    "last_reason": None,
+                                    "last_message": None,
+                                    "last_duration": None,
+                                    "timestamp": datetime.datetime(
+                                        2021, 3, 6
+                                    ).timestamp(),
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ],
+        }
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.controller_revisions_for_service_instance",
+        autospec=True,
+    )
+    def test_statefulset(
+        self,
+        mock_controller_revisions_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_pod,
+    ):
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
+        )
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_controller_revisions_for_service_instance.return_value = [
+            Struct(
+                metadata=Struct(
+                    name="controller_revision_1",
+                    creation_timestamp=datetime.datetime(2021, 4, 1),
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                    },
+                ),
+            ),
+        ]
+
+        mock_pod.metadata.owner_references = []
+        mock_pods_for_service_instance.return_value = [mock_pod]
+
+        status = pik.kubernetes_status_v2(
+            service="service",
+            instance="instance",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            instance_type="kubernetes",
+            settings=mock.Mock(),
+        )
+
+        assert len(status["versions"]) == 1
+        assert status["versions"][0] == {
+            "name": "controller_revision_1",
+            "type": "ControllerRevision",
+            "replicas": 1,
+            "ready_replicas": 1,
+            "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
+            "git_sha": "aaa000",
+            "config_sha": "config000",
+            "pods": [mock.ANY],
+        }
 
 
 @mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
@@ -349,3 +488,21 @@ def test_filter_actually_running_replicasets():
         replicaset_list[3],
     ]
     assert pik.filter_actually_running_replicasets(replicaset_list) == expected
+
+
+@mock.patch("paasta_tools.instance.kubernetes.get_pod_containers", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.is_pod_scheduled", autospec=True)
+def test_get_pod_status_ready_with_backends(
+    mock_is_pod_scheduled, mock_get_pod_containers
+):
+    mock_get_pod_containers.return_value = []
+    mock_is_pod_scheduled.return_value = True
+    mock_pod = mock.MagicMock()
+    mock_pod.status.pod_ip = "1.2.3.4"
+    mock_ready_condition = mock.MagicMock()
+    mock_ready_condition.type = "Ready"
+    mock_ready_condition.status = "True"
+    mock_pod.status.conditions = [mock_ready_condition]
+    backends = [{"address": "0.0.0.0"}]
+    status = pik.get_pod_status(mock_pod, backends)
+    assert not status["ready"]

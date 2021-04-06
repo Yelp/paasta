@@ -17,7 +17,7 @@ RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so
 RUN ln -s /etc/paasta/mesos-cli.json /nail/etc/mesos-cli.json
 
 ADD requirements.txt requirements-dev.txt requirements-bootstrap.txt /paasta/
-RUN virtualenv /venv -ppython3.6
+RUN virtualenv /venv -ppython3.7
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r /paasta/requirements-bootstrap.txt
 RUN pip install -r /paasta/requirements.txt

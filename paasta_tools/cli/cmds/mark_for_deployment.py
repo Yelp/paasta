@@ -77,6 +77,7 @@ from paasta_tools.utils import TimeoutError
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
+DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 
 log = logging.getLogger(__name__)
 
@@ -455,6 +456,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
+    timeout_percentage_before_reminding = 75
 
     def __init__(
         self,
@@ -605,8 +607,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("mfd_succeeded")
 
     def schedule_paasta_status_reminder(self):
-        timeout_percentage_before_reminding = 75
-
         def waiting_on_to_status(waiting_on):
             if waiting_on is None:
                 return [
@@ -630,15 +630,22 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     human_max_deploy_time = humanize.naturaldelta(
                         datetime.timedelta(seconds=self.timeout)
                     )
+                    stuck_bounce_runbook = os.environ.get(
+                        "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+                    )
                     status_commands = "\n".join(
                         waiting_on_to_status(self.progress.waiting_on)
                     )
 
                     self.notify_users(
                         (
-                            f"It has been {timeout_percentage_before_reminding}% of the maximum deploy time ({human_max_deploy_time}), "
-                            "it probably should have finished by now. Is it stuck?\n\n"
-                            "Try running this command to see the status of the deploy:\n"
+                            f"It has been {self.timeout_percentage_before_reminding}% of the "
+                            f"maximum deploy time ({human_max_deploy_time}), "
+                            "which means the deployment may be stuck. "
+                            "Here are some things you can try:\n\n"
+                            f"* See {stuck_bounce_runbook} for debugging help\n"
+                            f"* Run these commands to see the status of instances that "
+                            "have not yet finished deploying:\n\n"
                             f"{status_commands}"
                         )
                     )
@@ -648,7 +655,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 )
 
         def schedule_callback():
-            time_to_notify = self.timeout * (timeout_percentage_before_reminding / 100)
+            time_to_notify = self.timeout * (
+                self.timeout_percentage_before_reminding / 100
+            )
             self.paasta_status_reminder_handle = self.event_loop.call_later(
                 time_to_notify, times_up
             )
@@ -1446,7 +1455,7 @@ def wait_for_deployment(
             service=service,
             component="deploy",
             line=(
-                "Couldn't find any marathon instances for service {} in deploy group {}. Exiting.".format(
+                "Couldn't find any long-running instances for service {} in deploy group {}. Exiting.".format(
                     service, deploy_group
                 )
             ),
@@ -1532,7 +1541,8 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
         "in {deploy_group} to be deployed by PaaSTA.\n"
         "This probably means the deploy hasn't succeeded. The new service "
         "might not be healthy or one or more clusters could be having issues.\n\n"
-        "To debug try running:\n\n"
+        "To debug, follow steps in {stuck_bounce_runbook}, "
+        "or try running the following to see the status of instances we tried to deploy:\n\n"
         "  {status_commands}\n\n  {logs_commands}"
         "\n\nIf the service is known to be slow to start you may wish to "
         "increase the timeout on this step.\n"
@@ -1544,13 +1554,16 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
             git_sha=git_sha,
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
+            stuck_bounce_runbook=os.environ.get(
+                "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+            ),
         )
     )
 
 
 class NoSuchCluster(Exception):
-    """To be raised by wait_for_deployment() when a service has a marathon config for
-    a cluster that is not listed in /etc/paasta/api_endpoints.json.
+    """To be raised by wait_for_deployment() when a service has a marathon or
+    kubernetes config for a cluster that is not listed in /etc/paasta/api_endpoints.json.
     """
 
     pass
