@@ -70,6 +70,10 @@ documentation for how to deploy PaaSTA.
 
 Read the documentation at [Read the Docs](http://paasta.readthedocs.io/en/latest/).
 
+## Yelp-internal Documentation/Links
+* [HPA](http://y/hpa)
+* [Service Deployment](http://y/service-deploys)
+
 ## Videos / Talks About PaaSTA
 
 * [EvanKrall](https://github.com/EvanKrall) speaks at [QCon NYC 2015](http://www.infoq.com/presentations/paasta-yelp) (Oct 2015)
