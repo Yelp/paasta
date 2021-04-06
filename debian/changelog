@@ -1,3 +1,13 @@
+paasta-tools (0.97.97) xenial; urgency=medium
+
+  * 0.97.97 tagged with 'make release'
+    Commit: Merge pull request #3072 from Yelp/PAASTA-17310-
+    ReplaceHostnameWithPodandContainer  PAASTA-17310- Shorten Log Line
+    Preamble in Paasta Logs by Removing Instance and Cluster in Log
+    Line, and Enforce User to Input One Cluster and One Instance
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 06 Apr 2021 14:09:26 -0700
+
 paasta-tools (0.97.96) xenial; urgency=medium
 
   * 0.97.96 tagged with 'make release'
