@@ -50,7 +50,6 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
-from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
@@ -1907,7 +1906,7 @@ class TestKubernetesDeploymentConfig:
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
         ),
     )
-    def test_get_autoscaling_metric_spec_offset_and_averaging(
+    def test_get_autoscaling_metric_spec_uwsgi_prometheus(
         self, fake_system_paasta_config
     ):
         config_dict = KubernetesDeploymentConfigDict(
@@ -1936,11 +1935,7 @@ class TestKubernetesDeploymentConfig:
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name="fake_name",
-                namespace="paasta",
-                annotations={
-                    "signalfx.com.external.metric/service-instance-uwsgi": "fake_signalflow_query",
-                },
+                name="fake_name", namespace="paasta", annotations={},
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
@@ -1958,15 +1953,6 @@ class TestKubernetesDeploymentConfig:
                                 kind="Deployment",
                                 name="fake_name",
                             ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="service-instance-uwsgi",
-                            ),
-                            target=V2beta2MetricTarget(type="Value", value=1,),
                         ),
                     ),
                 ],
