@@ -78,6 +78,7 @@ class KubernetesPodEvent(ModelNormal):
         return {
             'message': (str,),  # noqa: E501
             'time_stamp': (str,),  # noqa: E501
+            'error': (str, none_type,),  # noqa: E501
         }
 
     @cached_property
@@ -88,6 +89,7 @@ class KubernetesPodEvent(ModelNormal):
     attribute_map = {
         'message': 'message',  # noqa: E501
         'time_stamp': 'timeStamp',  # noqa: E501
+        'error': 'error',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -138,6 +140,7 @@ class KubernetesPodEvent(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             message (str): [optional]  # noqa: E501
             time_stamp (str): [optional]  # noqa: E501
+            error (str, none_type): [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

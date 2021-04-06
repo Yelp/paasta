@@ -32,7 +32,9 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 
 def lazy_import():
     from paasta_tools.paastaapi.model.kubernetes_container_v2 import KubernetesContainerV2
+    from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
     globals()['KubernetesContainerV2'] = KubernetesContainerV2
+    globals()['KubernetesPodEvent'] = KubernetesPodEvent
 
 
 class KubernetesPodV2(ModelNormal):
@@ -82,17 +84,17 @@ class KubernetesPodV2(ModelNormal):
         lazy_import()
         return {
             'name': (str,),  # noqa: E501
-            'service': (str,),  # noqa: E501
-            'instance': (str,),  # noqa: E501
             'ip': (str, none_type,),  # noqa: E501
             'host': (str, none_type,),  # noqa: E501
             'create_timestamp': (float,),  # noqa: E501
             'delete_timestamp': (float, none_type,),  # noqa: E501
             'phase': (str,),  # noqa: E501
             'ready': (bool,),  # noqa: E501
+            'mesh_ready': (bool, none_type,),  # noqa: E501
             'scheduled': (bool,),  # noqa: E501
             'reason': (str, none_type,),  # noqa: E501
             'message': (str, none_type,),  # noqa: E501
+            'events': ([KubernetesPodEvent],),  # noqa: E501
             'containers': ([KubernetesContainerV2],),  # noqa: E501
         }
 
@@ -103,17 +105,17 @@ class KubernetesPodV2(ModelNormal):
 
     attribute_map = {
         'name': 'name',  # noqa: E501
-        'service': 'service',  # noqa: E501
-        'instance': 'instance',  # noqa: E501
         'ip': 'ip',  # noqa: E501
         'host': 'host',  # noqa: E501
         'create_timestamp': 'create_timestamp',  # noqa: E501
         'delete_timestamp': 'delete_timestamp',  # noqa: E501
         'phase': 'phase',  # noqa: E501
         'ready': 'ready',  # noqa: E501
+        'mesh_ready': 'mesh_ready',  # noqa: E501
         'scheduled': 'scheduled',  # noqa: E501
         'reason': 'reason',  # noqa: E501
         'message': 'message',  # noqa: E501
+        'events': 'events',  # noqa: E501
         'containers': 'containers',  # noqa: E501
     }
 
@@ -164,17 +166,17 @@ class KubernetesPodV2(ModelNormal):
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
             name (str): Pod name. [optional]  # noqa: E501
-            service (str): Service this pod belongs to. [optional]  # noqa: E501
-            instance (str): Instance this pod belongs to. [optional]  # noqa: E501
             ip (str, none_type): Pod IP. [optional]  # noqa: E501
             host (str, none_type): Host IP this pod was scheduled on. [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp at which pod was created. [optional]  # noqa: E501
             delete_timestamp (float, none_type): Unix timestamp at which pod should be deleted. [optional]  # noqa: E501
             phase (str): The lifecycle phase of the pod. [optional]  # noqa: E501
-            ready (bool): Whether or not the pod is ready and/or registered in the mesh. [optional]  # noqa: E501
+            ready (bool): Whether or not the pod is ready in Kubernetes. [optional]  # noqa: E501
+            mesh_ready (bool, none_type): Whether or not the pod is ready in the service mesh. [optional]  # noqa: E501
             scheduled (bool): Whether or not the pod is scheduled. [optional]  # noqa: E501
             reason (str, none_type): brief description of the pod&#39;s state. [optional]  # noqa: E501
             message (str, none_type): short message with details about the pod&#39;s state. [optional]  # noqa: E501
+            events ([KubernetesPodEvent]): Kubernetes pod events. [optional]  # noqa: E501
             containers ([KubernetesContainerV2]): [optional]  # noqa: E501
         """
 

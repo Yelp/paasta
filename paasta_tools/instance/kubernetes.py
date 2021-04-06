@@ -451,11 +451,11 @@ def kubernetes_status_v2(
         return status
 
     if (
-        job_config.is_autoscaling_enabled() is True
+        verbose > 1
+        and job_config.is_autoscaling_enabled()
         and job_config.get_autoscaling_params().get("decision_policy", "") != "bespoke"  # type: ignore
     ):
         try:
-            print("Getting autoscaling status")
             status["autoscaling_status"] = autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
@@ -506,7 +506,6 @@ def kubernetes_status_v2(
             # Note we always include backends here now
             status["envoy"] = envoy_status
 
-    # TODO: FIX
     update_kubernetes_status(
         status, kube_client, job_config, pod_list, backends, verbose,
     )
@@ -619,24 +618,25 @@ async def get_pod_status(
     )
 
     try:
-        pod_event_messages = await get_pod_event_messages(client, pod)
+        # Filter events to only last 15m
+        pod_event_messages = await get_pod_event_messages(
+            client, pod, max_age_in_seconds=900
+        )
     except asyncio.TimeoutError:
-        pod_event_messages = [{"error": "Could not retrieve events"}]
+        pod_event_messages = [{"error": "Could not retrieve events. Please try again."}]
 
     if not scheduled:
         sched_condition = kubernetes_tools.get_pod_condition(pod, "PodScheduled")
         reason = sched_condition.reason
         message = sched_condition.message
 
-    if ready and backends is not None:
-        # Replace readiness with whether or not it is actually registered in the mesh
-        # TODO: Replace this once k8s readiness reflects mesh readiness, PAASTA-17266
-        ready = pod.status.pod_ip in backends
+    mesh_ready = None
+    if backends is not None:
+        # TODO: Remove this once k8s readiness reflects mesh readiness, PAASTA-17266
+        mesh_ready = pod.status.pod_ip in backends
 
     return {
         "name": pod.metadata.name,
-        "service": pod.metadata.labels.get("paasta.yelp.com/service", "Unknown"),
-        "instance": pod.metadata.labels.get("paasta.yelp.com/instance", "Unknown"),
         "ip": pod.status.pod_ip,
         "host": pod.status.host_ip,
         "phase": pod.status.phase,
@@ -644,6 +644,7 @@ async def get_pod_status(
         "message": message,
         "scheduled": scheduled,
         "ready": ready,
+        "mesh_ready": mesh_ready,
         "containers": await get_pod_containers(pod, client, num_tail_lines),
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
         "delete_timestamp": delete_timestamp,
@@ -651,13 +652,16 @@ async def get_pod_status(
     }
 
 
-def get_healthcheck_verification(pod_ip: str, probe: V1Probe) -> str:
-    if probe.http_get:
-        return f"run `curl http://{pod_ip}:{probe.http_get.port}{probe.http_get.path}`"
-    if probe.tcp_socket:
-        return "verify your service is listening on {pod_ip}:{probe.tcp_socket.port}"
-    if probe._exec:
-        return "run `{probe._exec.command}`"
+def get_container_healthcheck(pod_ip: str, probe: V1Probe) -> Dict[str, Any]:
+    if getattr(probe, "http_get", None):
+        return {
+            "http_url": f"http://{pod_ip}:{probe.http_get.port}{probe.http_get.path}"
+        }
+    if getattr(probe, "tcp_socket", None):
+        return {"tcp_port": f"{probe.tcp_socket.port}"}
+    if getattr(probe, "_exec", None):
+        return {"cmd": f"{' '.join(probe._exec.command)}"}
+    return {}
 
 
 async def get_pod_containers(
@@ -668,14 +672,16 @@ async def get_pod_containers(
     container_specs = pod.spec.containers
     for cs in statuses:
         specs: List[V1Container] = [c for c in container_specs if c.name == cs.name]
-        healthcheck_grace_period = None
-        healthcheck_verify = None
+        healthcheck_grace_period = 0
+        healthcheck = None
         if specs:
             # There should be only one matching spec
             spec = specs[0]
             if spec.liveness_probe:
-                healthcheck_grace_period = spec.liveness_probe.initial_delay_seconds
-                healthcheck_verify = get_healthcheck_verification(
+                healthcheck_grace_period = (
+                    spec.liveness_probe.initial_delay_seconds or 0
+                )
+                healthcheck = get_container_healthcheck(
                     pod.status.pod_ip, spec.liveness_probe
                 )
 
@@ -700,6 +706,7 @@ async def get_pod_containers(
         last_reason = None
         last_message = None
         last_duration = None
+        last_timestamp = None
         for state_name, this_state in last_state_dict.items():
             if this_state:
                 last_state = state_name
@@ -707,17 +714,20 @@ async def get_pod_containers(
                     last_reason = this_state["reason"]
                 if "message" in this_state:
                     last_message = this_state["message"]
-                if "started_at" in this_state and "finished_at":
-                    last_duration = (
-                        this_state["finished_at"] - this_state["started_at"]
-                    ).seconds
+                if this_state.get("started_at"):
+                    if this_state.get("finished_at"):
+                        last_duration = (
+                            this_state["finished_at"] - this_state["started_at"]
+                        ).total_seconds()
+
+                    last_timestamp = this_state["started_at"]
 
         try:
             tail_lines = await get_tail_lines_for_kubernetes_container(
                 client, pod, cs, num_tail_lines,
             )
         except asyncio.TimeoutError:
-            tail_lines = [{"error_message": f"Could not fetch logs for {cs.name}"}]
+            tail_lines = {"error_message": f"Could not fetch logs for {cs.name}"}
 
         containers.append(
             {
@@ -730,9 +740,12 @@ async def get_pod_containers(
                 "last_reason": last_reason,
                 "last_message": last_message,
                 "last_duration": last_duration,
+                "last_timestamp": last_timestamp.timestamp()
+                if last_timestamp
+                else None,
                 "timestamp": start_timestamp.timestamp() if start_timestamp else None,
                 "healthcheck_grace_period": healthcheck_grace_period,
-                "healthcheck_cmd": healthcheck_verify,
+                "healthcheck_cmd": healthcheck,
                 "tail_lines": tail_lines,
             }
         )
@@ -746,7 +759,7 @@ async def get_versions_for_controller_revisions(
     backends: Optional[Set[str]],
     num_tail_lines: int,
 ) -> List[KubernetesVersionDict]:
-    versions = []
+    versions: List[KubernetesVersionDict] = []
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
     for cr in controller_revisions:
@@ -792,7 +805,9 @@ async def get_version_for_controller_revision(
         "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
         "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
-        "pods": [get_pod_status(pod, backends, client, num_tail_lines) for pod in pods],
+        "pods": await asyncio.gather(
+            *[get_pod_status(pod, backends, client, num_tail_lines) for pod in pods]
+        ),
     }
 
 

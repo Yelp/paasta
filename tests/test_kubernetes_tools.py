@@ -2535,8 +2535,8 @@ def test_get_pod_event_messages(messages_num, event_loop):
 
 def test_format_pod_event_messages():
     pod_event_messages = [
-        {"message": "message_1", "timeStamp": "1"},
-        {"message": "message_2", "timeStamp": "2"},
+        {"message": "message_1", "time_stamp": "1"},
+        {"message": "message_2", "time_stamp": "2"},
     ]
     pod_name = "test_pod"
     rows = kubernetes_tools.format_pod_event_messages(pod_event_messages, pod_name)
