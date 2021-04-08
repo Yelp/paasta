@@ -1870,7 +1870,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
-    hpa_always_uses_external_for_signalfx: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -1878,7 +1877,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     ldap_reader_username: str
     ldap_search_base: str
     ldap_search_ou: str
-    legacy_autoscaling_signalflow: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
@@ -2537,33 +2535,6 @@ class SystemPaastaConfig:
         :returns: the git config dict for a specific repo.
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
-
-    def get_hpa_always_uses_external_for_signalfx(self) -> bool:
-        return self.config_dict.get("hpa_always_uses_external_for_signalfx", False)
-
-    def get_legacy_autoscaling_signalflow(self) -> str:
-        # This Signaflow attempts to recreate the behavior of the legacy autoscaler,
-        # which averages the number of instances needed to handle the current (or
-        # averaged) load instead of the load itself. This leads to more stable behavior.
-        # Note that it returns the percentage by which we want to scale , so its target
-        # in the HPA should always be 1.
-        # See PAASTA-16756 for details.
-        default_legacy_autoscaling_signalflow = """offset = {offset}
-setpoint = {setpoint}
-moving_average_window = '{moving_average_window_seconds}s'
-filters = filter('paasta_service', '{paasta_service}') and filter('paasta_instance', '{paasta_instance}') and filter('paasta_cluster', '{paasta_cluster}')
-
-current_replicas = data('kube_deployment_spec_replicas', filter=filters, extrapolation="last_value").sum(by=['paasta_cluster'])
-load_per_instance = data('{signalfx_metric_name}', filter=filters, extrapolation="last_value", maxExtrapolations=10).below(1, clamp=True)
-
-desired_instances_at_each_point_in_time = (load_per_instance - offset).sum() / (setpoint - offset)
-desired_instances = desired_instances_at_each_point_in_time.mean(over=moving_average_window)
-
-(desired_instances / current_replicas).above(0).publish()
-"""
-        return self.config_dict.get(
-            "legacy_autoscaling_signalflow", default_legacy_autoscaling_signalflow
-        )
 
     def get_uwsgi_exporter_sidecar_image_url(self) -> str:
         """Get the docker image URL for the uwsgi_exporter sidecar container"""

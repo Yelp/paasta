@@ -1494,7 +1494,7 @@ def print_kubernetes_status(
         output.append(
             f"       Last scale time: {autoscaling_status['last_scale_time']}"
         )
-        output.append(f"       Dashboard: y/sfx-autoscaling")
+        output.append(f"       Dashboard: y/was-it-the-autoscaler")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             output.append(f"       Metrics:")
