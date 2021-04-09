@@ -416,6 +416,38 @@ def validate_autoscaling_configs(service_path):
     return returncode
 
 
+def validate_min_max_instances(service_path):
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    returncode = True
+
+    for cluster in list_clusters(service, soa_dir):
+        for instance in list_all_instances_for_service(
+            service=service, clusters=[cluster], soa_dir=soa_dir
+        ):
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            if instance_config.get_instance_type() != "tron":
+                min_instances = instance_config.get_min_instances()
+                max_instances = instance_config.get_max_instances()
+                if min_instances is not None and max_instances is not None:
+                    if max_instances < min_instances:
+                        returncode = False
+                        print(
+                            failure(
+                                f"Instance {instance} on cluster {cluster} has an invalid number of min_instances."
+                                + f"The number of min_instances ({min_instances}) must not be higher than the max_instances ({max_instances}).",
+                                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+                            )
+                        )
+
+    return returncode
+
+
 def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vault_env):
     return_value = True
     for env_value in instance_config_dict.get("env", {}).values():
@@ -501,6 +533,9 @@ def paasta_validate_soa_configs(service, service_path):
         returncode = False
 
     if not validate_secrets(service_path):
+        returncode = False
+
+    if not validate_min_max_instances(service_path):
         returncode = False
 
     return returncode
