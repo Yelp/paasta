@@ -424,6 +424,65 @@ def filter_actually_running_replicasets(
     ]
 
 
+def bounce_status(
+    service: str, instance: str, settings: Any,
+):
+    status: Dict[str, Any] = {}
+    job_config = kubernetes_tools.load_kubernetes_service_config(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=True,
+    )
+    expected_instance_count = job_config.get_instances()
+    status["expected_instance_count"] = expected_instance_count
+    desired_state = job_config.get_desired_state()
+    status["desired_state"] = desired_state
+
+    kube_client = settings.kubernetes_client
+    if kube_client is None:
+        raise RuntimeError("Could not load Kubernetes client!")
+
+    app = kubernetes_tools.get_kubernetes_app_by_name(
+        name=job_config.get_sanitised_deployment_name(),
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    status["running_instance_count"] = (
+        app.status.ready_replicas if app.status.ready_replicas else 0
+    )
+
+    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+        app=app,
+        desired_instances=(expected_instance_count if desired_state != "stop" else 0),
+    )
+    status["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
+        deploy_status
+    )
+
+    if job_config.get_persistent_volumes():
+        version_objects = kubernetes_tools.controller_revisions_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+    else:
+        replicasets = kubernetes_tools.replicasets_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+        version_objects = filter_actually_running_replicasets(replicasets)
+
+    active_shas = kubernetes_tools.get_active_shas_for_service([app, *version_objects],)
+    status["active_shas"] = list(active_shas)
+    status["app_count"] = len(active_shas)
+    return status
+
+
 def kubernetes_status_v2(
     service: str,
     instance: str,

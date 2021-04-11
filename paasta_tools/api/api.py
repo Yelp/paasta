@@ -106,6 +106,10 @@ def make_app(global_config=None):
         "service.instance.mesh_status", "/v1/services/{service}/{instance}/mesh_status"
     )
     config.add_route(
+        "service.instance.bounce_status",
+        "/v1/services/{service}/{instance}/bounce_status",
+    )
+    config.add_route(
         "service.instance.set_state",
         "/v1/services/{service}/{instance}/state/{desired_state}",
     )
