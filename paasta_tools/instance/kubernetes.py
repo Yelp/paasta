@@ -246,8 +246,8 @@ async def job_status(
     desired_instances = (
         job_config.get_instances() if job_config.get_desired_state() != "stop" else 0
     )
-    deploy_status, message = await kubernetes_tools.get_kubernetes_app_deploy_status(
-        app=app, kube_client=client, desired_instances=desired_instances,
+    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+        app=app, desired_instances=desired_instances,
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
         deploy_status

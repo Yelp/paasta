@@ -2617,10 +2617,8 @@ async def get_all_events_for_service(
     )
 
 
-async def get_kubernetes_app_deploy_status(
-    app: Union[V1Deployment, V1StatefulSet],
-    kube_client: KubeClient,
-    desired_instances: int,
+def get_kubernetes_app_deploy_status(
+    app: Union[V1Deployment, V1StatefulSet], desired_instances: int,
 ) -> Tuple[int, str]:
     if app.status.ready_replicas is None:
         if desired_instances == 0:

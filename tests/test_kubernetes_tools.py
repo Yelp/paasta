@@ -2784,42 +2784,46 @@ def test_update_stateful_set():
     )
 
 
-@pytest.mark.asyncio
-async def test_get_kubernetes_app_deploy_status():
-    mock_client = mock.Mock()
+def test_get_kubernetes_app_deploy_status():
     mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Running, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=1) == (
+        KubernetesDeployStatus.Running,
+        "",
+    )
 
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Waiting, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=2) == (
+        KubernetesDeployStatus.Waiting,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Deploying, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=2) == (
+        KubernetesDeployStatus.Deploying,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=0) == (
+        KubernetesDeployStatus.Stopped,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=0) == (
+        KubernetesDeployStatus.Stopped,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Waiting, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=1) == (
+        KubernetesDeployStatus.Waiting,
+        "",
+    )
 
 
 def test_parse_container_resources():
