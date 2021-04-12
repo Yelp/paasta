@@ -70,7 +70,7 @@ def test_get_hmac_for_secret():
         )
         mock_get_secret_name_from_ref.assert_called_with("SECRET(secretsquirrel)")
         mock_open.assert_called_with(
-            "/nail/blah/service-name/secrets/secretsquirrel.json", "r"
+            "/nail/blah/service-name/secrets/secretsquirrel.json"
         )
         assert ret == "notArealHMAC"
 
@@ -118,7 +118,7 @@ def test_get_hmac_for_shared_secret():
             "SHARED_SECRET(secretsquirrel)"
         )
         mock_open.assert_called_with(
-            f"/nail/blah/{SHARED_SECRET_SERVICE}/secrets/secretsquirrel.json", "r"
+            f"/nail/blah/{SHARED_SECRET_SERVICE}/secrets/secretsquirrel.json"
         )
         assert ret == "notArealHMAC"
 

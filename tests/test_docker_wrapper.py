@@ -224,12 +224,11 @@ class TestCanAddMacAddress:
 
 class TestMemInfo:
     def test_get_numa_memsize(self):
-        m = mock.mock_open()
-        m.return_value.__iter__.return_value = [
-            "MemTotal:       1024000 kB",
-            "MemFree:        42 kB",
-        ]
-        with mock.patch.object(docker_wrapper, "open", new=m):
+        m = mock.mock_open(
+            read_data=r"""MemTotal:       1024000 kB
+MemFree:        42 kB"""
+        )
+        with mock.patch.object(docker_wrapper, "open", m):
             memtotal = docker_wrapper.get_numa_memsize(2)
             assert memtotal == 500
 
@@ -699,14 +698,13 @@ class TestMain:
 
     @contextmanager
     def _patch_docker_wrapper_dependencies(self, is_numa_enabled, cpu_info, node_mem):
-        m = mock.mock_open()
-        m.return_value.__iter__.return_value = cpu_info
+        m = mock.mock_open(read_data="\n".join(cpu_info))
         with mock.patch.object(
             docker_wrapper, "is_numa_enabled", return_value=is_numa_enabled
         ), mock.patch.object(
             docker_wrapper, "get_numa_memsize", return_value=node_mem
         ), mock.patch.object(
-            docker_wrapper, "open", new=m
+            docker_wrapper, "open", m
         ):
             yield
 

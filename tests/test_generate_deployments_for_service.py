@@ -151,7 +151,7 @@ def test_main():
         assert join_patch.call_count == 2
 
         atomic_file_write_patch.assert_called_once_with("JOIN")
-        open_patch.assert_called_once_with("JOIN", "r")
+        open_patch.assert_called_once_with("JOIN")
         json_dump_patch.assert_called_once_with(
             {
                 "v1": {"MAP": {"docker_image": "PINGS", "desired_state": "start"}},
