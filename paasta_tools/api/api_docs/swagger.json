@@ -374,6 +374,64 @@
                 ]
             }
         },
+        "/services/{service}/{instance}/mesh_status": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Mesh status of an instance",
+                        "schema": {
+                            "$ref": "#/definitions/InstanceMeshStatus"
+                        }
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "405": {
+                        "description": "Instance type not supported"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    }
+                },
+                "summary": "Get mesh status for service_name.instance_name",
+                "operationId": "mesh_instance",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "description": "Include Smartstack information",
+                        "name": "include_smartstack",
+                        "required": false,
+                        "type": "boolean",
+                        "default": true
+                    },
+                    {
+                        "in": "query",
+                        "description": "Include Envoy information",
+                        "name": "include_envoy",
+                        "required": false,
+                        "type": "boolean",
+                        "default": true
+                    }
+                ]
+            }
+        },
         "/services/{service}/{instance}/delay": {
             "get": {
                 "responses": {
@@ -626,6 +684,27 @@
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "InstanceMeshStatus": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "Service name"
+                },
+                "instance": {
+                    "type": "string",
+                    "description": "Instance name"
+                },
+                "smartstack": {
+                    "$ref": "#/definitions/SmartstackStatus",
+                    "description": "Status of the service in smartstack"
+                },
+                "envoy": {
+                    "$ref": "#/definitions/EnvoyStatus",
+                    "description": "Status of the service in Envoy"
                 }
             }
         },

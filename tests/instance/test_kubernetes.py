@@ -506,3 +506,108 @@ def test_get_pod_status_ready_with_backends(
     backends = [{"address": "0.0.0.0"}]
     status = pik.get_pod_status(mock_pod, backends)
     assert not status["ready"]
+
+
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+)
+@mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
+@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    {"flink": mock.Mock()},
+    autospec=False,
+)
+@pytest.mark.parametrize(
+    "include_smartstack,include_envoy,expected",
+    [
+        (True, True, ("smartstack", "envoy")),
+        (True, False, ("smartstack",)),
+        (False, True, ("envoy",)),
+    ],
+)
+def test_kubernetes_mesh_status(
+    mock_pods_for_service_instance,
+    mock_mesh_status,
+    mock_load_service_namespace_config,
+    include_smartstack,
+    include_envoy,
+    expected,
+):
+    mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
+    mock_pods_for_service_instance.return_value = ["pod_1"]
+    mock_job_config = pik.LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+        "flink"
+    ].loader.return_value
+    mock_settings = mock.Mock()
+
+    kmesh = pik.kubernetes_mesh_status(
+        service="fake_service",
+        instance="fake_instance",
+        instance_type="flink",
+        settings=mock_settings,
+        include_smartstack=include_smartstack,
+        include_envoy=include_envoy,
+    )
+
+    assert len(kmesh) == len(expected)
+    for i in range(len(expected)):
+        mesh_type = expected[i]
+        assert kmesh.get(mesh_type) == mock_mesh_status.return_value
+        assert mock_mesh_status.call_args_list[i] == mock.call(
+            service="fake_service",
+            instance=mock_job_config.get_nerve_namespace.return_value,
+            job_config=mock_job_config,
+            service_namespace_config={"proxy_port": 1234},
+            pods=["pod_1"],
+            should_return_individual_backends=True,
+            settings=mock_settings,
+            service_mesh=getattr(pik.ServiceMesh, mesh_type.upper()),
+        )
+
+
+@mock.patch(
+    "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
+)
+@mock.patch("paasta_tools.instance.kubernetes.mesh_status", autospec=True)
+@mock.patch(
+    "paasta_tools.kubernetes_tools.pods_for_service_instance",
+    mock.Mock(return_value=("pod_1")),
+    autospec=False,
+)
+@mock.patch(
+    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+    {"flink": mock.Mock()},
+    autospec=False,
+)
+@pytest.mark.parametrize(
+    "include_mesh,inst_type,service_ns_conf,expected_msg",
+    [
+        (False, "flink", {"proxy_port": 1234}, "No mesh types"),
+        (True, "tron", {"proxy_port": 1234}, "not supported"),
+        (True, "flink", {}, "not configured"),
+    ],
+)
+def test_kubernetes_mesh_status_error(
+    mock_mesh_status,
+    mock_load_service_namespace_config,
+    include_mesh,
+    inst_type,
+    service_ns_conf,
+    expected_msg,
+):
+    mock_load_service_namespace_config.return_value = service_ns_conf
+    mock_settings = mock.Mock()
+
+    with pytest.raises(RuntimeError) as excinfo:
+        pik.kubernetes_mesh_status(
+            service="fake_service",
+            instance="fake_instance",
+            instance_type=inst_type,
+            settings=mock_settings,
+            include_smartstack=include_mesh,
+            include_envoy=include_mesh,
+        )
+
+    assert expected_msg in excinfo.value.args[0]
+    assert mock_mesh_status.call_args_list == []
