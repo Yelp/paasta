@@ -14,8 +14,8 @@
 import json
 import os
 import time
+from unittest import mock
 
-import mock
 import requests
 import requests_cache
 import service_configuration_lib

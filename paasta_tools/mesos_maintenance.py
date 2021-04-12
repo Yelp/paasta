@@ -502,7 +502,7 @@ def load_credentials(mesos_secrets="/nail/etc/mesos-slave-secret"):
     try:
         with open(mesos_secrets) as data_file:
             data = json.load(data_file)
-    except EnvironmentError:
+    except OSError:
         log.error(
             "maintenance calls must be run on a Mesos slave containing valid credentials (%s)"
             % mesos_secrets

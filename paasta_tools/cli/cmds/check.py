@@ -234,7 +234,7 @@ def deployments_check(service, soa_dir):
             % x_mark()
         )
         print("  by any marathon or adhoc instance:")
-        print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_frameworks))))
+        print("  %s" % PaastaColors.bold(", ".join(in_deploy_not_frameworks)))
         print(
             "  You should probably delete these deploy.yaml entries if they are unused."
         )
@@ -325,5 +325,5 @@ def paasta_check(args):
 
 
 def read_dockerfile_lines(path):
-    with open(path, "r") as dockerfile:
+    with open(path) as dockerfile:
         return dockerfile.readlines()

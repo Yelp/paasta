@@ -17,7 +17,7 @@ def reserve_unique_mac_address(lock_directory):
     and lockfile is a file object that holds an exclusive lock
     """
     for x in range(100):
-        random_hex = "{:08x}".format(random.getrandbits(32))
+        random_hex = f"{random.getrandbits(32):08x}"
         mac_address = ":".join(
             MAC_ADDRESS_PREFIX
             + (random_hex[0:2], random_hex[2:4], random_hex[4:6], random_hex[6:8])
@@ -38,7 +38,7 @@ def obtain_lock(lock_filepath):
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         return lock_file
-    except IOError as err:
+    except OSError as err:
         if err.errno != errno.EAGAIN:
             raise
         lock_file.close()

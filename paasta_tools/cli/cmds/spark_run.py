@@ -157,7 +157,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-w",
         "--work-dir",
-        default="{}:{}".format(os.getcwd(), DEFAULT_SPARK_WORK_DIR),
+        default=f"{os.getcwd()}:{DEFAULT_SPARK_WORK_DIR}",
         help="The read-write volume to mount in format local_abs_dir:container_abs_dir",
     )
 
@@ -652,7 +652,7 @@ def build_and_push_docker_image(args):
         )
         return None
 
-    default_tag = "{}-{}".format(DEFAULT_SPARK_DOCKER_IMAGE_PREFIX, get_username())
+    default_tag = f"{DEFAULT_SPARK_DOCKER_IMAGE_PREFIX}-{get_username()}"
     docker_tag = os.environ.get("DOCKER_TAG", default_tag)
     os.environ["DOCKER_TAG"] = docker_tag
 

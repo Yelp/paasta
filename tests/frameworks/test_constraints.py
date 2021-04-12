@@ -1,4 +1,4 @@
-from mock import Mock
+from unittest.mock import Mock
 
 from paasta_tools.frameworks import constraints
 

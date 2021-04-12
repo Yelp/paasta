@@ -1,6 +1,6 @@
 import json
+from unittest import mock
 
-import mock
 import pytest
 from kazoo.client import KazooClient
 from kazoo.exceptions import BadVersionError

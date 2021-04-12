@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from time import sleep
+from unittest import mock
 
-import mock
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string

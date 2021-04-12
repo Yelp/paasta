@@ -27,7 +27,7 @@ def render_file(src, dst, values):
     basename = os.path.basename(src)
     new_name = replace(basename, values)
     with open(f"{dst}/{new_name}", "w") as new:
-        with open(f"{src}", "r") as old:
+        with open(f"{src}") as old:
             new.write(replace(old.read(), values))
 
 

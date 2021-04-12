@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+from unittest import mock
 
 import docker
-import mock
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig

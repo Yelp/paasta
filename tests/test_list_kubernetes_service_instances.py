@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 import pytest
 
 from paasta_tools.list_kubernetes_service_instances import main

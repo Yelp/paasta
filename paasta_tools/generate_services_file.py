@@ -97,7 +97,7 @@ def write_yaml_file(filename):
 
 def maybe_load_previous_config(filename, config_loader):
     try:
-        with open(filename, "r") as fp:
+        with open(filename) as fp:
             previous_config = config_loader(fp)
             return previous_config
     except Exception:

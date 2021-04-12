@@ -6,8 +6,8 @@ import threading
 import time
 from subprocess import PIPE
 from subprocess import Popen
+from unittest import mock
 
-import mock
 import service_configuration_lib
 from behave import given
 from behave import then
@@ -94,7 +94,7 @@ def start_second_deployd(context):
             output = context.daemon1.stderr.readline().decode("utf-8")
             print(output.rstrip("\n"))
             assert "This node is elected as leader" not in output
-        except IOError:
+        except OSError:
             pass
         time.sleep(1)
 
@@ -103,14 +103,14 @@ def start_second_deployd(context):
 def second_deployd_is_leader(context):
     try:
         output = context.daemon1.stderr.readline().decode("utf-8")
-    except IOError:
+    except OSError:
         output = ""
     start = time.time()
     timeout = start + 60
     while "This node is elected as leader" not in output:
         try:
             output = context.daemon1.stderr.readline().decode("utf-8")
-        except IOError:
+        except OSError:
             output = ""
         if output:
             print(output.rstrip("\n"))

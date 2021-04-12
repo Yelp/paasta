@@ -19,13 +19,13 @@ class MockChecker(ast.NodeVisitor):
     def check_file(self, filename):
         self.current_filename = filename
         try:
-            with open(filename, "r") as fd:
+            with open(filename) as fd:
                 try:
                     file_ast = ast.parse(fd.read())
                 except SyntaxError as error:
                     print("SyntaxError on file %s:%d" % (filename, error.lineno))
                     return
-        except IOError:
+        except OSError:
             print("Error opening filename: %s" % filename)
             return
         self.init_module_imports()

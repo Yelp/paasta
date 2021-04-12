@@ -58,7 +58,7 @@ def get_boosted_load(zk_boost_path: str, current_load: float) -> float:
                 # If there is an expected_load value, that means we've just completed
                 # a boost period. Reset it to 0
                 if boost_values.expected_load > 0:
-                    zk.set(zk_boost_path + "/expected_load", "0".encode("utf-8"))
+                    zk.set(zk_boost_path + "/expected_load", b"0")
 
                 # Boost is no longer active - return current load with no boost
                 return current_load
@@ -192,7 +192,7 @@ def set_boost_factor(
             zk.ensure_path(zk_expected_load_path)
             zk.set(zk_end_time_path, str(end_time).encode("utf-8"))
             zk.set(zk_factor_path, str(factor).encode("utf-8"))
-            zk.set(zk_expected_load_path, "0".encode("utf-8"))
+            zk.set(zk_expected_load_path, b"0")
         except Exception:
             log.error("Error setting the boost in Zookeeper")
             raise

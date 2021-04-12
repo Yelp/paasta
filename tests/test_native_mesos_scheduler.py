@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 import pytest
 
 from paasta_tools import long_running_service_tools

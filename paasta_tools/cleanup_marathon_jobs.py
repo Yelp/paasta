@@ -122,7 +122,7 @@ def delete_app(app_id, client, soa_dir):
             instance=instance,
             line=log_line,
         )
-    except IOError:
+    except OSError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
         loglines = ["Exception raised during cleanup of service %s:" % service]

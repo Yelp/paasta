@@ -1,7 +1,6 @@
 from datetime import datetime
-
-import mock
-from mock import Mock
+from unittest import mock
+from unittest.mock import Mock
 
 from paasta_tools.autoscaling import ec2_fitness
 from paasta_tools.mesos_tools import SlaveTaskCount

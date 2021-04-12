@@ -13,8 +13,8 @@
 # limitations under the License.
 import json
 import os
+from unittest import mock
 
-import mock
 import pytest
 import requests
 
@@ -30,7 +30,7 @@ from paasta_tools.envoy_tools import match_backends_and_tasks
 def test_get_backends():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, "envoy_admin_clusters_snapshot.txt")
-    with open(testdata, "r") as fd:
+    with open(testdata) as fd:
         mock_envoy_admin_clusters_data = json.load(fd)
 
     mock_response = mock.Mock()
@@ -77,7 +77,7 @@ def test_get_backends():
 def test_get_casper_endpoints():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, "envoy_admin_clusters_snapshot.txt")
-    with open(testdata, "r") as fd:
+    with open(testdata) as fd:
         mock_envoy_admin_clusters_data = json.load(fd)
 
     expected = frozenset([("10.46.6.106", 13819)])

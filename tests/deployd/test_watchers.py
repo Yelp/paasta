@@ -1,7 +1,7 @@
 import sys
 import unittest
+from unittest import mock
 
-import mock
 from pytest import raises
 from requests.exceptions import RequestException
 

@@ -13,9 +13,9 @@
 # limitations under the License.
 import time
 from tempfile import NamedTemporaryFile
+from unittest import mock
 
 import itest_utils
-import mock
 from behave import given
 from behave import then
 from behave import when

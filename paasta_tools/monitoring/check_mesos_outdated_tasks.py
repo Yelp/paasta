@@ -53,8 +53,7 @@ def get_mesos_state():
 def marathon_tasks(state):
     for framework in state.get("frameworks", []):
         if framework["name"].lower().startswith(FRAMEWORK_NAME):
-            for task in framework.get("tasks", []):
-                yield task
+            yield from framework.get("tasks", [])
 
 
 def create_slave_id_to_hostname_dict(state):

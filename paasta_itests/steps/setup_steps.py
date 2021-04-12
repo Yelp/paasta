@@ -373,10 +373,8 @@ def write_soa_dir_deployments_default_image(context, service, disabled, csv_inst
 
 
 @when(
-    (
-        'we set the "{field}" field of the {framework} config for service "{service}"'
-        ' and instance "{instance}" to "{value}"'
-    )
+    'we set the "{field}" field of the {framework} config for service "{service}"'
+    ' and instance "{instance}" to "{value}"'
 )
 def modify_configs(context, field, framework, service, instance, value):
     soa_dir = context.soa_dir
@@ -391,10 +389,8 @@ def modify_configs(context, field, framework, service, instance, value):
 
 
 @when(
-    (
-        'we set the "{field}" field of the {framework} config for service "{service}"'
-        ' and instance "{instance}" to the integer {value:d}'
-    )
+    'we set the "{field}" field of the {framework} config for service "{service}"'
+    ' and instance "{instance}" to the integer {value:d}'
 )
 def modify_configs_for_int(context, field, framework, service, instance, value):
     modify_configs(context, field, framework, service, instance, value)

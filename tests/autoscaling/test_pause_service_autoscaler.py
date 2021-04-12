@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools.autoscaling.pause_service_autoscaler import (

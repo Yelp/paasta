@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from mock import call
-from mock import Mock
-from mock import patch
+from unittest.mock import call
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds.rollback import get_git_shas_for_service

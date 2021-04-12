@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from argparse import ArgumentTypeError
+from unittest import mock
 
-import mock
 from pytest import raises
 
 from paasta_tools.cli.cmds import secret

@@ -1,6 +1,6 @@
 import unittest
+from unittest import mock
 
-import mock
 from pytest import raises
 
 from paasta_tools.deployd.common import BounceTimers

@@ -140,7 +140,7 @@ async def transfer_one_file(
 
 
 async def gather_files(hosts: Set[str]) -> Dict[str, str]:
-    logger.info("gathering files from {} hosts".format(len(hosts)))
+    logger.info(f"gathering files from {len(hosts)} hosts")
     tasks = [transfer_one_file(host) for host in hosts]
     responses = {}
     for idx in range(0, len(tasks), CHUNK_SIZE):
@@ -202,11 +202,9 @@ def get_instance_data(
         x for x in zk_instance_data if x[0] not in not_found_hosts
     }
 
-    logger.info("zk_instance_data (unfiltered) len: {}".format(len(zk_instance_data)))
-    logger.info(
-        "zk_instance_data (filtered) len: {}".format(len(zk_instance_data_filtered))
-    )
-    logger.info("nerve_instance_data len: {}".format(len(nerve_instance_data)))
+    logger.info(f"zk_instance_data (unfiltered) len: {len(zk_instance_data)}")
+    logger.info(f"zk_instance_data (filtered) len: {len(zk_instance_data_filtered)}")
+    logger.info(f"nerve_instance_data len: {len(nerve_instance_data)}")
 
     return zk_instance_data_filtered, nerve_instance_data
 
@@ -239,7 +237,7 @@ def check_orphans(
         print("\n".join(collisions))
         return ExitCode.COLLISIONS
     elif orphans:
-        logger.warning("{} orphans found".format(len(orphans)))
+        logger.warning(f"{len(orphans)} orphans found")
         print(dict(orphans_by_host))
         return ExitCode.ORPHANS
     else:

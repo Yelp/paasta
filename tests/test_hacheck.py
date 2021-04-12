@@ -1,7 +1,7 @@
 import contextlib
+from unittest import mock
 
 import asynctest
-import mock
 import pytest
 
 from paasta_tools import hacheck

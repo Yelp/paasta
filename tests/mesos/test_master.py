@@ -1,7 +1,8 @@
+from unittest.mock import call
+from unittest.mock import Mock
+
 from asynctest import CoroutineMock
 from asynctest import patch
-from mock import call
-from mock import Mock
 from pytest import mark
 
 from paasta_tools.mesos import framework

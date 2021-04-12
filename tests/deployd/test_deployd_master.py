@@ -1,7 +1,7 @@
 import sys
 from queue import Empty
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools.deployd.common import ServiceInstance

@@ -1109,7 +1109,7 @@ def print_flink_status(
                 job_id=job_id,
                 job_name=get_flink_job_name(job),
                 allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
+                state=color_fn(job.get("state").title() or "Unknown"),
                 start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
                 dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
             )
@@ -1549,7 +1549,7 @@ def print_tron_status(
     if verbose:
         output.append(f"      Status: {tron_status.job_status}")
         output.append(f"      Schedule: {tron_status.job_schedule}")
-    output.append("      Dashboard: {}".format(PaastaColors.blue(tron_status.job_url)))
+    output.append(f"      Dashboard: {PaastaColors.blue(tron_status.job_url)}")
 
     output.append(f"    Action: {tron_status.action_name}")
     output.append(f"      Status: {tron_status.action_state}")

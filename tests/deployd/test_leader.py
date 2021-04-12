@@ -1,6 +1,6 @@
 import unittest
+from unittest import mock
 
-import mock
 from kazoo.client import KazooState
 
 from paasta_tools.deployd.leader import PaastaLeaderElection

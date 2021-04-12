@@ -4,9 +4,9 @@ import socket
 import time
 from typing import List
 from typing import Tuple
+from unittest import mock
 
 import a_sync
-import mock
 import yaml
 from behave import given
 from behave import then

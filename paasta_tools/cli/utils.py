@@ -110,7 +110,7 @@ def success(msg):
     :param msg: a string
     :return: a beautiful string
     """
-    return "{} {}".format(check_mark(), msg)
+    return f"{check_mark()} {msg}"
 
 
 def failure(msg, link):
@@ -119,7 +119,7 @@ def failure(msg, link):
     :param msg: a string
     :return: a beautiful string
     """
-    return "{} {} {}".format(x_mark(), msg, PaastaColors.blue(link))
+    return f"{x_mark()} {msg} {PaastaColors.blue(link)}"
 
 
 class PaastaCheckMessages:

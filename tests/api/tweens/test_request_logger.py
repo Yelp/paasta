@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
+from unittest import mock
 
-import mock
 import pytest
 from pyramid.request import Request
 from pyramid.response import Response

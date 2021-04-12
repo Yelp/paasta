@@ -108,7 +108,7 @@ def get_schema(file_type):
     schema_path = "schemas/%s_schema.json" % file_type
     try:
         schema = pkgutil.get_data("paasta_tools.cli", schema_path).decode()
-    except IOError:
+    except OSError:
         return None
     return json.loads(schema)
 

@@ -13,10 +13,10 @@
 # limitations under the License.
 from datetime import datetime
 from datetime import timedelta
+from unittest import mock
 
 import aiohttp
 import asynctest
-import mock
 import pytest
 from kazoo.exceptions import NoNodeError
 
@@ -121,7 +121,7 @@ def test_update_instances_for_marathon_service():
             "service", "instance", instance_count=8
         )
         zk_client.set.assert_called_once_with(
-            "/autoscaling/service/instance/instances", "8".encode("utf8")
+            "/autoscaling/service/instance/instances", b"8"
         )
 
 
@@ -219,7 +219,7 @@ def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
             [
                 mock.call(
                     "/autoscaling/fake-service/fake-instance/cpu_data",
-                    "480.0:fake-service.fake-instance".encode("utf8"),
+                    b"480.0:fake-service.fake-instance",
                 )
             ],
             any_order=True,
@@ -320,7 +320,7 @@ def test_mesos_cpu_metrics_provider():
                 ),
                 mock.call(
                     "/autoscaling/fake-service/fake-instance/cpu_data",
-                    "480.0:fake-service.fake-instance".encode("utf8"),
+                    b"480.0:fake-service.fake-instance",
                 ),
             ],
             any_order=True,
@@ -414,7 +414,7 @@ def test_get_http_utilization_for_all_tasks_no_data():
         mock.Mock(id="fake-service.fake-instance", host="fake_host", ports=[30101])
     ]
     # KeyError simulates an invalid response
-    mock_json_mapper = mock.Mock(side_effect=KeyError(str("Detailed message")))
+    mock_json_mapper = mock.Mock(side_effect=KeyError("Detailed message"))
 
     with mock.patch(
         "paasta_tools.autoscaling.autoscaling_service_lib.log.error", autospec=True

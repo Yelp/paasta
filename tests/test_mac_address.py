@@ -5,8 +5,8 @@ import os
 import signal
 import sys
 import time
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import mac_address

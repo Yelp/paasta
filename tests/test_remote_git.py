@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
 
 from paasta_tools import remote_git
 
@@ -47,9 +47,7 @@ def test_non_ascii_tags():
         "dulwich.client.get_transport_and_path",
         autospec=True,
         return_value=(
-            mock.Mock(
-                **{"fetch_pack.return_value": {"☃".encode("UTF-8"): b"deadbeef"}}
-            ),
+            mock.Mock(**{"fetch_pack.return_value": {"☃".encode(): b"deadbeef"}}),
             "path",
         ),
     ):

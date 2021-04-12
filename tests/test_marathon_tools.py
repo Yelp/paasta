@@ -15,9 +15,9 @@ import datetime
 from typing import cast
 from typing import Dict
 from typing import List
+from unittest import mock
 
 import marathon
-import mock
 from marathon import MarathonHttpError
 from marathon.models import MarathonApp
 from pytest import raises

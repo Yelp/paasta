@@ -122,7 +122,7 @@ def bounce_lock(name):
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             remove = True
             yield
-        except IOError:
+        except OSError:
             raise LockHeldException("Service %s is already being bounced!" % name)
         finally:
             if remove:

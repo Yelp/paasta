@@ -1,6 +1,6 @@
 import datetime
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import tron_tools

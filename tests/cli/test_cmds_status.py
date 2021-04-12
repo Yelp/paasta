@@ -17,13 +17,13 @@ from typing import Any
 from typing import Dict
 from typing import Mapping
 from typing import Set
+from unittest import mock
+from unittest.mock import ANY
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+from unittest.mock import patch
 
-import mock
 import pytest
-from mock import ANY
-from mock import MagicMock
-from mock import Mock
-from mock import patch
 
 import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import marathon_tools

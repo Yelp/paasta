@@ -14,11 +14,11 @@
 import argparse
 import getpass
 from socket import gaierror
+from unittest import mock
+from unittest.mock import call
+from unittest.mock import patch
 
 import ephemeral_port_reserve
-import mock
-from mock import call
-from mock import patch
 from pytest import mark
 from pytest import raises
 
@@ -428,7 +428,7 @@ def test_trigger_deploys(mock_socket, mock_load_config):
     assert mock_client.connect.call_args_list == [
         mock.call(("sysgit.yelpcorp.com", 5049))
     ]
-    assert mock_client.send.call_args_list == [mock.call("a_service\n".encode("utf-8"))]
+    assert mock_client.send.call_args_list == [mock.call(b"a_service\n")]
     assert mock_client.close.call_count == 1
 
 

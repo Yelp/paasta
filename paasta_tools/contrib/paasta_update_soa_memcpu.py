@@ -157,7 +157,7 @@ def get_report_from_splunk(creds, app, filename, criteria_filter):
     creds = creds.split(":")
     resp = requests.post(url, data=data, auth=(creds[0], creds[1]))
     resp_text = resp.text.split("\n")
-    log.info("Found {} services to rightsize".format(len(resp_text) - 1))
+    log.info(f"Found {len(resp_text) - 1} services to rightsize")
     resp_text = [x for x in resp_text if x]
     resp_text = [json.loads(x) for x in resp_text]
     services_to_update = {}
@@ -314,7 +314,7 @@ def edit_soa_configs(filename, instance, cpu, mem, disk):
     else:
         real_filename = filename
     try:
-        with open(real_filename, "r") as fi:
+        with open(real_filename) as fi:
             yams = fi.read()
             yams = yams.replace("cpus: .", "cpus: 0.")
             data = yaml.round_trip_load(yams, preserve_quotes=True)
@@ -412,7 +412,7 @@ def generate_ticket_content(serv):
 
 def bulk_rightsize(report, create_code_review, publish_code_review, create_new_branch):
     if create_new_branch:
-        branch = "rightsize-bulk-{}".format(int(time.time()))
+        branch = f"rightsize-bulk-{int(time.time())}"
         create_branch(branch)
 
     filenames = []
@@ -438,7 +438,7 @@ def individual_rightsize(
         if create_tickets is True:
             branch = create_jira_ticket(serv, jira_creds, ticket_desc, JIRA)
         else:
-            branch = "rightsize-{}".format(int(time.time() * 1000))
+            branch = f"rightsize-{int(time.time() * 1000)}"
 
         create_branch(branch)
         cpus = serv.get("cpus", None)

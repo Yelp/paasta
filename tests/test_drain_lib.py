@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+from unittest import mock
 
 import asynctest
-import mock
 import pytest
 
 from paasta_tools import drain_lib

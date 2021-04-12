@@ -19,10 +19,10 @@ from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
+from unittest import mock
 
 import asynctest
 import marathon
-import mock
 from marathon import MarathonClient
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask

@@ -482,7 +482,7 @@ def add_subparser(subparsers):
 
 
 def get_container_name():
-    return "paasta_local_run_{}_{}".format(get_username(), randint(1, 999999))
+    return f"paasta_local_run_{get_username()}_{randint(1, 999999)}"
 
 
 def get_docker_run_cmd(
@@ -639,7 +639,7 @@ def check_if_port_free(port):
     temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         temp_socket.bind(("127.0.0.1", port))
-    except socket.error:
+    except OSError:
         return False
     finally:
         temp_socket.close()
@@ -1086,7 +1086,7 @@ def paasta_local_run(args):
     docker_url = None
 
     if args.action == "build":
-        default_tag = "paasta-local-run-{}-{}".format(service, get_username())
+        default_tag = f"paasta-local-run-{service}-{get_username()}"
         docker_url = os.environ.get("DOCKER_TAG", default_tag)
         os.environ["DOCKER_TAG"] = docker_url
         pull_image = False

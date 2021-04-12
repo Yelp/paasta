@@ -13,8 +13,8 @@
 # limitations under the License.
 from contextlib import contextmanager
 from datetime import datetime
+from unittest import mock
 
-import mock
 from freezegun import freeze_time
 
 from paasta_tools.autoscaling import load_boost
@@ -105,7 +105,7 @@ def test_set_boost_factor_with_defaults():
         mock.call(
             base_path + "/factor", str(load_boost.DEFAULT_BOOST_FACTOR).encode("utf-8")
         ),
-        mock.call(base_path + "/expected_load", "0".encode("utf-8")),
+        mock.call(base_path + "/expected_load", b"0"),
     ]
 
 
@@ -182,8 +182,8 @@ def test_clear_boost():
 
     assert mock_zk_client.set.call_args_list == [
         mock.call(base_path + "/end_time", str(expected_end_time).encode("utf-8")),
-        mock.call(base_path + "/factor", "1".encode("utf-8")),
-        mock.call(base_path + "/expected_load", "0".encode("utf-8")),
+        mock.call(base_path + "/factor", b"1"),
+        mock.call(base_path + "/expected_load", b"0"),
     ]
 
 

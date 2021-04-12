@@ -1,6 +1,6 @@
 from typing import Sequence
+from unittest import mock
 
-import mock
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 from pytest import raises

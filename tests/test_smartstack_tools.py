@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+from unittest import mock
 
-import mock
 import pytest
 import requests
 
@@ -88,7 +88,7 @@ def test_get_smartstack_replication_for_attribute(system_paasta_config):
 def test_get_replication_for_service():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, "haproxy_snapshot.txt")
-    with open(testdata, "r") as fd:
+    with open(testdata) as fd:
         mock_haproxy_data = fd.read()
 
     mock_response = mock.Mock()

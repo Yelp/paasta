@@ -14,8 +14,10 @@
 # limitations under the License.
 import inspect
 import re
+from unittest import mock
+from unittest.mock import Mock
+from unittest.mock import patch
 
-import mock
 import pytest
 from kubernetes.client import V1Container
 from kubernetes.client import V1Node
@@ -25,8 +27,6 @@ from kubernetes.client import V1Pod
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodStatus
 from kubernetes.client import V1ResourceRequirements
-from mock import Mock
-from mock import patch
 
 from paasta_tools.metrics import metastatus_lib
 from paasta_tools.utils import PaastaColors

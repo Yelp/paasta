@@ -1,6 +1,7 @@
+from unittest.mock import Mock
+
 import a_sync
 import asynctest
-from mock import Mock
 from pytest import raises
 
 from paasta_tools.async_utils import aiter_to_list

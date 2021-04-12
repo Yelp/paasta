@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from json.decoder import JSONDecodeError
-
-import mock
+from unittest import mock
 
 from paasta_tools.secret_tools import decrypt_secret_environment_for_service
 from paasta_tools.secret_tools import decrypt_secret_environment_variables

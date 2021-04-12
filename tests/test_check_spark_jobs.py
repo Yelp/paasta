@@ -1,6 +1,6 @@
 import datetime
+from unittest import mock
 
-import mock
 import pytest
 
 import paasta_tools.check_spark_jobs as check_spark_jobs

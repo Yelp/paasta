@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+from unittest import mock
 
 import marathon
-import mock
 import pytz
 from requests.exceptions import ConnectionError
 from requests.exceptions import RequestException

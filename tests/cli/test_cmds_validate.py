@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-
-import mock
-from mock import patch
+from unittest import mock
+from unittest.mock import patch
 
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path

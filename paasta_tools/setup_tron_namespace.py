@@ -79,7 +79,7 @@ def main():
                 cluster=args.cluster, soa_dir=args.soa_dir
             )
         except Exception as e:
-            log.error("Failed to list tron namespaces: {error}".format(error=str(e)))
+            log.error(f"Failed to list tron namespaces: {str(e)}")
             sys.exit(1)
     else:
         services = args.services

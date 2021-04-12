@@ -47,7 +47,7 @@ def get_hmac_for_secret(
         service = SHARED_SECRET_SERVICE
     secret_path = os.path.join(soa_dir, service, "secrets", f"{secret_name}.json")
     try:
-        with open(secret_path, "r") as json_secret_file:
+        with open(secret_path) as json_secret_file:
             secret_file = json.load(json_secret_file)
             try:
                 return secret_file["environments"][secret_environment]["signature"]
@@ -58,7 +58,7 @@ def get_hmac_for_secret(
                     file=sys.stderr,
                 )
                 return None
-    except IOError:
+    except OSError:
         print(f"Failed to open json secret at {secret_path}", file=sys.stderr)
         return None
     except json.decoder.JSONDecodeError:

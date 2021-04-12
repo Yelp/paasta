@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
 
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.api.client import renew_issue_cert

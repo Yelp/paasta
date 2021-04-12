@@ -15,8 +15,8 @@ import argparse
 import datetime
 import json
 from socket import gaierror
+from unittest import mock
 
-import mock
 import pytest
 from dateutil import tz
 from requests.exceptions import HTTPError

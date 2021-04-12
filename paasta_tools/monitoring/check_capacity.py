@@ -111,7 +111,7 @@ def get_check_from_overrides(overrides, default_check, groupings):
 
 def read_overrides(override_file):
     if override_file:
-        with open(override_file, "r") as f:
+        with open(override_file) as f:
             return json.loads(f.read())
     else:
         return {}

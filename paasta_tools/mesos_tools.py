@@ -146,7 +146,7 @@ def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
         try:
             host = socket.gethostbyaddr(hostname)[0]
             fqdn = socket.getfqdn(host)
-        except (socket.error, socket.herror, socket.gaierror, socket.timeout):
+        except (OSError, socket.herror, socket.gaierror, socket.timeout):
             log.debug("Failed to convert mesos leader hostname to fqdn!")
             raise
         log.debug("Mesos Leader: %s" % fqdn)

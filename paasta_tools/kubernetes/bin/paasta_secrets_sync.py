@@ -145,7 +145,7 @@ def sync_secrets(
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith("json"):
                 secret = secret_file_path.name.replace(".json", "")
-                with open(secret_file_path, "r") as secret_file:
+                with open(secret_file_path) as secret_file:
                     secret_data = json.load(secret_file)
                 secret_signature = secret_provider.get_secret_signature_from_data(
                     secret_data

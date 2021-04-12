@@ -638,16 +638,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     )
 
                     self.notify_users(
-                        (
-                            f"It has been {self.timeout_percentage_before_reminding}% of the "
-                            f"maximum deploy time ({human_max_deploy_time}), "
-                            "which means the deployment may be stuck. "
-                            "Here are some things you can try:\n\n"
-                            f"* See {stuck_bounce_runbook} for debugging help\n"
-                            f"* Run these commands to see the status of instances that "
-                            "have not yet finished deploying:\n\n"
-                            f"{status_commands}"
-                        )
+                        f"It has been {self.timeout_percentage_before_reminding}% of the "
+                        f"maximum deploy time ({human_max_deploy_time}), "
+                        "which means the deployment may be stuck. "
+                        "Here are some things you can try:\n\n"
+                        f"* See {stuck_bounce_runbook} for debugging help\n"
+                        f"* Run these commands to see the status of instances that "
+                        "have not yet finished deploying:\n\n"
+                        f"{status_commands}"
                     )
             except Exception as e:
                 log.error(
@@ -1481,7 +1479,7 @@ def wait_for_deployment(
                 raise KeyboardInterrupt
 
             finished_instances = total_instances - sum(
-                (c.instances_queue.qsize() for c in clusters_data)
+                c.instances_queue.qsize() for c in clusters_data
             )
             bar.update(finished_instances)
             if progress is not None:
@@ -1490,7 +1488,7 @@ def wait_for_deployment(
                     c.cluster: list(c.instances_queue.queue) for c in clusters_data
                 }
 
-            if all((cluster.instances_queue.empty() for cluster in clusters_data)):
+            if all(cluster.instances_queue.empty() for cluster in clusters_data):
                 sys.stdout.flush()
                 if progress is not None:
                     progress.percent = 100.0

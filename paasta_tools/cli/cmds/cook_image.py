@@ -68,7 +68,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
-    default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
+    default_tag = f"paasta-cook-image-{service}-{get_username()}"
     tag = run_env.get("DOCKER_TAG", default_tag)
     run_env["DOCKER_TAG"] = tag
 

@@ -59,7 +59,7 @@ class ServiceGroup(collections.namedtuple("ServiceGroup", ("service", "instance"
         bit. To attempt to ensure we don't have collisions due to shortening,
         we append a hash to the end.
         """
-        chain = "PAASTA.{}".format(self.service[:10])
+        chain = f"PAASTA.{self.service[:10]}"
         chain += "." + hashlib.sha256(json.dumps(self).encode("utf8")).hexdigest()[:10]
         assert len(chain) <= 28, len(chain)
         return chain
@@ -234,7 +234,7 @@ def _smartstack_rules(conf, soa_dir, synapse_service_dir):
         # synapse backends
         try:
             backends = _synapse_backends(synapse_service_dir, namespace)
-        except (OSError, IOError, ValueError):
+        except (OSError, ValueError):
             # Don't fatal if something goes wrong loading the synapse files
             log.exception(f"Unable to load backend {namespace}")
             backends = ()
@@ -358,7 +358,7 @@ def active_service_groups():
 
 
 def _dns_servers():
-    with io.open(RESOLV_CONF) as f:
+    with open(RESOLV_CONF) as f:
         for line in f:
             parts = line.split()
             if (

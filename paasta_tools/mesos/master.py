@@ -85,7 +85,7 @@ class MesosMaster:
         self.config = config
 
     def __str__(self):
-        return "<master: {}>".format(self.key())
+        return f"<master: {self.key()}>"
 
     def key(self):
         return self.config["master"]

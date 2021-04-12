@@ -13,8 +13,8 @@
 # limitations under the License.
 import socket
 import time
+from unittest import mock
 
-import mock
 from behave import given
 from behave import then
 from behave import when

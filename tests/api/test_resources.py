@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+from unittest import mock
 
 import asynctest
-import mock
 from pyramid import testing
 
 from paasta_tools.api.views.resources import parse_filters

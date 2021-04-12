@@ -17,7 +17,7 @@ def get_deploy_durations_from_file(filename):
     The expected input is a paasta service log for the deploy events
     The way I've been fetching them is by running 'internal logreader command' | grep deploy | grep event > filename
     """
-    file_object = open(filename, "r")
+    file_object = open(filename)
     data = sorted(
         [json.loads(line.rstrip("\n")) for line in file_object],
         key=lambda x: get_datetime_from_ts(x["timestamp"]),
@@ -45,9 +45,9 @@ def display_bounce_info(timedeltas):
     timedeltas: iterable of timedelta objects
     """
     std = list(sorted(timedeltas))
-    print("Median time to bounce: {} seconds".format(std[len(std) / 2]))
-    print("10% time to bounce: {}".format(std[len(std) / 10]))
-    print("90% time to bounce: {}".format(std[len(std) * 9 / 10]))
+    print(f"Median time to bounce: {std[len(std) / 2]} seconds")
+    print(f"10% time to bounce: {std[len(std) / 10]}")
+    print(f"90% time to bounce: {std[len(std) * 9 / 10]}")
 
 
 def main(filenames):

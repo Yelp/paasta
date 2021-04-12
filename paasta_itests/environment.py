@@ -15,9 +15,9 @@ import asyncio
 import os
 import shutil
 import time
+from unittest import mock
 
 import a_sync
-import mock
 import requests
 from itest_utils import cleanup_file
 from itest_utils import clear_mesos_tools_cache

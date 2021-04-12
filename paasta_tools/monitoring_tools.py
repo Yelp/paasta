@@ -194,7 +194,7 @@ def _load_sensu_team_data():
     try:
         with open("/etc/sensu/team_data.json") as f:
             team_data = json.load(f)
-    except IOError:
+    except OSError:
         log.warning(
             "No Sensu Team data (/etc/sensu/team_data.json) available. Using empty defaults"
         )

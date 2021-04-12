@@ -1,9 +1,9 @@
 from typing import Any
 from typing import Dict
 from typing import Sequence
+from unittest import mock
 
 import asynctest
-import mock
 import pytest
 from hypothesis import given
 from hypothesis.strategies import floats

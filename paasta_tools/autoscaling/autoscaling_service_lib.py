@@ -845,7 +845,7 @@ def autoscaling_is_paused():
 
     remaining = pause_until - time.time()
     if remaining >= 0:
-        log.debug("Autoscaling is paused for {} more seconds".format(str(remaining)))
+        log.debug(f"Autoscaling is paused for {str(remaining)} more seconds")
         return True
     else:
         return False

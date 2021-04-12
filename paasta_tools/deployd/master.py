@@ -116,7 +116,7 @@ class DeployDaemon(PaastaThread):
 
     def startup(self) -> None:
         self.is_leader = True
-        self.log.info("This node is elected as leader {}".format(socket.getfqdn()))
+        self.log.info(f"This node is elected as leader {socket.getfqdn()}")
         leader_counter = self.metrics.create_counter(
             "leader_elections", paasta_cluster=self.config.get_cluster()
         )

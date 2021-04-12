@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+from unittest import mock
 
 import asynctest
-import mock
 import pytest
 from kubernetes.client import V1Pod
 from marathon.models.app import MarathonApp

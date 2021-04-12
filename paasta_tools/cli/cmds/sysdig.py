@@ -84,15 +84,15 @@ def paasta_sysdig(args):
             cluster=args.cluster, system_paasta_config=system_paasta_config
         )
         ssh_cmd = (
-            "ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET {0} "
-            '"sudo paasta {1} --local"'
+            "ssh -At -o StrictHostKeyChecking=no -o LogLevel=QUIET {} "
+            '"sudo paasta {} --local"'
         ).format(mesos_master, " ".join(sys.argv[1:]))
         return_code, output = _run(ssh_cmd)
         if return_code != 0:
             print(output)
             sys.exit(return_code)
         slave, command = output.split(":", 1)
-        subprocess.call(shlex.split("ssh -tA {} '{}'".format(slave, command.strip())))
+        subprocess.call(shlex.split(f"ssh -tA {slave} '{command.strip()}'"))
         return
     status = get_status_for_instance(
         cluster=args.cluster, service=args.service, instance=args.instance

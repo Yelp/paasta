@@ -85,8 +85,7 @@ class PaastaServiceConfigLoader:
         """
         if self._clusters is None:
             self._clusters = list_clusters(service=self._service, soa_dir=self._soa_dir)
-        for cluster in self._clusters:
-            yield cluster
+        yield from self._clusters
 
     def instances(
         self, cluster: str, instance_type_class: Type[InstanceConfig_T]
@@ -99,8 +98,7 @@ class PaastaServiceConfigLoader:
         """
         if (cluster, instance_type_class) not in self._framework_configs:
             self._refresh_framework_config(cluster, instance_type_class)
-        for instance in self._framework_configs.get((cluster, instance_type_class), []):
-            yield instance
+        yield from self._framework_configs.get((cluster, instance_type_class), [])
 
     def instance_configs(
         self, cluster: str, instance_type_class: Type[InstanceConfig_T]

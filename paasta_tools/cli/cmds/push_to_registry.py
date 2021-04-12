@@ -155,7 +155,7 @@ def read_docker_registry_creds(registry_uri):
             first_colon = auth.find(":")
             if first_colon != -1:
                 return (auth[:first_colon], auth[first_colon + 1 : -2])
-    except IOError:  # Can't open ~/.dockercfg
+    except OSError:  # Can't open ~/.dockercfg
         pass
     except json.scanner.JSONDecodeError:  # JSON decoder error
         pass

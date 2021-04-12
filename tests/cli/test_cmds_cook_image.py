@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
 
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.utils import get_username
@@ -34,9 +34,7 @@ def test_run_success(
 
     mock_log_audit.assert_called_once_with(
         action="cook-image",
-        action_details={
-            "tag": "paasta-cook-image-fake_service-{}".format(get_username())
-        },
+        action_details={"tag": f"paasta-cook-image-fake_service-{get_username()}"},
         service="fake_service",
     )
 

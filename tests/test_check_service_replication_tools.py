@@ -1,4 +1,4 @@
-import mock
+from unittest import mock
 
 from paasta_tools import check_services_replication_tools
 

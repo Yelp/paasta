@@ -1,8 +1,8 @@
 import time
 import unittest
 from queue import Empty
+from unittest import mock
 
-import mock
 from pytest import fixture
 from pytest import raises
 

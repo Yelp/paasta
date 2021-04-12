@@ -12,7 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
+from unittest import mock
+
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 from pytest import fixture

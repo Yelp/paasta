@@ -107,9 +107,7 @@ def get_service_instances_needing_update(
         # Not ideal but we rely on a lot of user input to create the app dict
         # and we really can't afford to bail if just one app definition is malformed
         except Exception as e:
-            print(
-                "ERROR: Skipping {}.{} because: '{}'".format(service, instance, str(e))
-            )
+            print(f"ERROR: Skipping {service}.{instance} because: '{str(e)}'")
             continue
         if (
             app_id not in marathon_app_ids

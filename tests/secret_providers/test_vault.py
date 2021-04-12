@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 from pytest import fixture
 from pytest import raises
 

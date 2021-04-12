@@ -14,8 +14,8 @@
 from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
+from unittest import mock
 
-import mock
 import pytest
 
 from paasta_tools import check_marathon_services_replication

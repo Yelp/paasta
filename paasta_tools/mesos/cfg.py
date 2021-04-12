@@ -33,11 +33,11 @@ def load_mesos_config(config_path, profile="default"):
     on_disk = {}
 
     try:
-        with open(config_path, "rt") as f:
+        with open(config_path) as f:
             on_disk = json.load(f)[profile]
     except ValueError as e:
-        raise ValueError("Invalid JSON: {} in {}".format(str(e), config_path))
-    except IOError as e:
+        raise ValueError(f"Invalid JSON: {str(e)} in {config_path}")
+    except OSError as e:
         if e.errno != errno.ENOENT:
             raise
 

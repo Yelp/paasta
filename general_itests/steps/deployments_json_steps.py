@@ -16,8 +16,8 @@ import os
 import tempfile
 from datetime import datetime
 from time import time
+from unittest import mock
 
-import mock
 from behave import given
 from behave import then
 from behave import when

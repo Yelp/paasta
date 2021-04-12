@@ -22,7 +22,7 @@ from paasta_tools import __version__
 
 
 def get_install_requires():
-    with open("requirements-minimal.txt", "r") as f:
+    with open("requirements-minimal.txt") as f:
         minimal_reqs = list(yield_lines(f.read()))
 
     return minimal_reqs

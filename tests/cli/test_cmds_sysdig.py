@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+from unittest import mock
+from unittest.mock import patch
 
-import mock
-from mock import patch
 from pytest import raises
 
 from paasta_tools.cli.cmds import sysdig

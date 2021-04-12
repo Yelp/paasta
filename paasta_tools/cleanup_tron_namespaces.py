@@ -82,12 +82,7 @@ def main():
     if errors:
         print(
             "Failed to remove namespaces:\n  "
-            + "\n  ".join(
-                [
-                    "{namespace}: {error}".format(namespace=namespace, error=str(error))
-                    for namespace, error in errors
-                ]
-            )
+            + "\n  ".join([f"{namespace}: {str(error)}" for namespace, error in errors])
         )
         sys.exit(1)
 
