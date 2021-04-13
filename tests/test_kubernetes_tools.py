@@ -1361,6 +1361,7 @@ class TestKubernetesDeploymentConfig:
                     revision_history_limit=0,
                     template=mock_get_pod_template_spec.return_value,
                     volume_claim_templates=mock_get_volumes_claim_templates.return_value,
+                    pod_management_policy="OrderedReady",
                 ),
             )
             assert ret == expected
@@ -3404,3 +3405,27 @@ def test_running_task_allocation_get_pod_pool():
 
         ret = task_allocation_get_pod_pool(mock.Mock(), mock.Mock())
         assert ret == "default"
+
+    @pytest.mark.parametrize(
+        "config_dict, expected_management_policy",
+        [
+            ({"pod_management_policy": "Parallel"}, "Parallel"),
+            ({}, "OrderedReady"),
+        ],
+    )
+    def test_get_pod_management_policy(
+        self, config_dict, expected_management_policy
+    ):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        mock_system_paasta_config = mock.Mock()
+        assert (
+            deployment.get_pod_management_policy()
+            == expected_management_policy
+        )

@@ -236,6 +236,14 @@ For more information on selector operators, see the official Kubernetes
 documentation on `node affinities
 <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
 
+  * ``pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the pods are managed in parallel or in order.
+
+    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-pod-management>`_.
+    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-pod-management>`_. For example::
+
+      pod_management_policy: Parallel
+
+
 .. _mesos-placement-options:
 
 Mesos
