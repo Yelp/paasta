@@ -35,6 +35,7 @@ from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 
 
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_all_schemas", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_tron", autospec=True)
@@ -49,6 +50,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_all_schemas,
     mock_validate_paasta_objects,
     mock_validate_unique_instance_names,
+    mock_validate_min_max_instances,
 ):
     # Ensure each check in 'paasta_validate' is called
 
@@ -59,6 +61,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_tron.return_value = True
     mock_validate_paasta_objects.return_value = True
     mock_validate_unique_instance_names.return_value = True
+    mock_validate_min_max_instances.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
