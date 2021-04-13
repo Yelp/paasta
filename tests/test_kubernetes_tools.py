@@ -3382,12 +3382,22 @@ def test_running_task_allocation_get_kubernetes_metadata():
         "yelp.com/paasta_instance": "instance1",
         "paasta.yelp.com/service": "srv1",
         "paasta.yelp.com/instance": "instance1",
+        "paasta.yelp.com/git_sha": "30cc51cff849871c7de3cc39ed951a7914894dac",
+        "paasta.yelp.com/config_sha": "config399d26e6",
     }
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
     mock_pod.status.host_ip = "10.10.10.11"
     ret = task_allocation_get_kubernetes_metadata(mock_pod)
-    assert ret == ("srv1", "instance1", "pod_1", "10.10.10.10", "10.10.10.11",)
+    assert ret == (
+        "srv1",
+        "instance1",
+        "pod_1",
+        "10.10.10.10",
+        "10.10.10.11",
+        "30cc51cff849871c7de3cc39ed951a7914894dac",
+        "config399d26e6",
+    )
 
 
 def test_running_task_allocation_get_pod_pool():
