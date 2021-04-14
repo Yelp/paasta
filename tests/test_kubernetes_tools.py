@@ -3408,14 +3408,9 @@ def test_running_task_allocation_get_pod_pool():
 
     @pytest.mark.parametrize(
         "config_dict, expected_management_policy",
-        [
-            ({"pod_management_policy": "Parallel"}, "Parallel"),
-            ({}, "OrderedReady"),
-        ],
+        [({"pod_management_policy": "Parallel"}, "Parallel"), ({}, "OrderedReady"),],
     )
-    def test_get_pod_management_policy(
-        self, config_dict, expected_management_policy
-    ):
+    def test_get_pod_management_policy(self, config_dict, expected_management_policy):
         deployment = KubernetesDeploymentConfig(
             service="my-service",
             instance="my-instance",
@@ -3424,8 +3419,4 @@ def test_running_task_allocation_get_pod_pool():
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        mock_system_paasta_config = mock.Mock()
-        assert (
-            deployment.get_pod_management_policy()
-            == expected_management_policy
-        )
+        assert deployment.get_pod_management_policy() == expected_management_policy
