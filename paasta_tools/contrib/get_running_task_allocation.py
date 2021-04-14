@@ -36,6 +36,8 @@ class TaskAllocationInfo(NamedTuple):
     pod_name: str
     pod_ip: str
     host_ip: str
+    git_sha: str
+    config_sha: str
     mesos_container_id: str  # Because Mesos task info does not have docker id
 
 
@@ -101,6 +103,8 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
                 pod_name=None,
                 pod_ip=None,
                 host_ip=None,
+                git_sha=None,
+                config_sha=None,
                 mesos_container_id=mesos_container_id,
             )
         )
@@ -151,6 +155,8 @@ def get_kubernetes_metadata(
     Optional[str],
     Optional[str],
     Optional[str],
+    Optional[str],
+    Optional[str],
 ]:
     labels = pod.metadata.labels or {}
     pod_name = pod.metadata.name
@@ -158,7 +164,9 @@ def get_kubernetes_metadata(
     host_ip = pod.status.host_ip
     service = labels.get("paasta.yelp.com/service")
     instance = labels.get("paasta.yelp.com/instance")
-    return service, instance, pod_name, pod_ip, host_ip
+    git_sha = labels.get("paasta.yelp.com/git_sha")
+    config_sha = labels.get("paasta.yelp.com/config_sha")
+    return service, instance, pod_name, pod_ip, host_ip, git_sha, config_sha
 
 
 def get_container_type(container_name: str, instance_name: str) -> str:
@@ -178,7 +186,15 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
     pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
-        service, instance, pod_name, pod_ip, host_ip = get_kubernetes_metadata(pod)
+        (
+            service,
+            instance,
+            pod_name,
+            pod_ip,
+            host_ip,
+            git_sha,
+            config_sha,
+        ) = get_kubernetes_metadata(pod)
         pool = get_pod_pool(client, pod)
         name_to_info: MutableMapping[str, Any] = {}
         for container in pod.spec.containers:
@@ -188,6 +204,8 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                 "pod_name": pod_name,
                 "pod_ip": pod_ip,
                 "host_ip": host_ip,
+                "git_sha": git_sha,
+                "config_sha": config_sha,
             }
         container_statuses = pod.status.container_statuses or []
         for container in container_statuses:
@@ -217,6 +235,8 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                     pod_name=info.get("pod_name"),
                     pod_ip=info.get("pod_ip"),
                     host_ip=info.get("host_ip"),
+                    git_sha=info.get("git_sha"),
+                    config_sha=info.get("config_sha"),
                     mesos_container_id=None,
                 )
             )
