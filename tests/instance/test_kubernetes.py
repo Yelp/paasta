@@ -611,3 +611,27 @@ def test_kubernetes_mesh_status_error(
 
     assert expected_msg in excinfo.value.args[0]
     assert mock_mesh_status.call_args_list == []
+
+
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_tools", autospec=True)
+def test_bounce_status(mock_kubernetes_tools):
+    mock_config = mock_kubernetes_tools.load_kubernetes_service_config.return_value
+    mock_kubernetes_tools.get_kubernetes_app_deploy_status.return_value = (
+        "deploy_status",
+        "message",
+    )
+    mock_kubernetes_tools.get_active_shas_for_service.return_value = [
+        ("aaa", "config_aaa"),
+        ("bbb", "config_bbb"),
+    ]
+
+    mock_settings = mock.Mock()
+    status = pik.bounce_status("fake_service", "fake_instance", mock_settings)
+    assert status == {
+        "expected_instance_count": mock_config.get_instances.return_value,
+        "desired_state": mock_config.get_desired_state.return_value,
+        "running_instance_count": mock_kubernetes_tools.get_kubernetes_app_by_name.return_value.status.ready_replicas,
+        "deploy_status": mock_kubernetes_tools.KubernetesDeployStatus.tostring.return_value,
+        "active_shas": [("aaa", "config_aaa"), ("bbb", "config_bbb"),],
+        "app_count": 2,
+    }

@@ -613,6 +613,13 @@ async def get_mesos_non_running_task_dict(
     return task_dict
 
 
+def no_configuration_for_service_message(cluster, service, instance):
+    return (
+        f"No instance named '{compose_job_id(service, instance)}' has been "
+        f"configured to run in the {settings.cluster} cluster"
+    )
+
+
 @view_config(
     route_name="service.instance.status", request_method="GET", renderer="json"
 )
@@ -639,9 +646,8 @@ def instance_status(request):
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = (
-            f"No instance named '{compose_job_id(service, instance)}' has been "
-            f"configured to run in the {settings.cluster} cluster"
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -725,9 +731,8 @@ def instance_set_state(request,) -> None:
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = (
-            f"No instance named '{compose_job_id(service, instance)}' has been "
-            f"configured to run in the {settings.cluster} cluster"
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -813,6 +818,39 @@ def instance_delay(request):
         response = Response()
         response.status_int = 204
         return response
+
+
+@view_config(
+    route_name="service.instance.bounce_status", request_method="GET", renderer="json",
+)
+def bounce_status(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
+        )
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    if instance_type != "kubernetes":
+        # We are using HTTP 204 to indicate that the instance exists but has
+        # no bounce status to be returned.  The client should just mark the
+        # instance as bounced.
+        response = Response()
+        response.status_int = 204
+        return response
+
+    try:
+        return pik.bounce_status(service, instance, settings)
+    except Exception as e:
+        raise ApiFailure(e, 500)
 
 
 def add_executor_info(task):

@@ -299,6 +299,48 @@
                 ]
             }
         },
+        "/services/{service}/{instance}/bounce_status": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Bounce status of an instance",
+                        "schema": {
+                            "$ref": "#/definitions/InstanceBounceStatus"
+                        }
+                    },
+                    "204": {
+                        "description": "Instance is not bounceable and therefore has no bounce status"
+                    },
+                    "404": {
+                        "description": "Deployment key not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    }
+                },
+                "summary": "Get bounce status of service_name.instance_name",
+                "operationId": "bounce_status_instance",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/services/{service}/{instance}/status": {
             "get": {
                 "responses": {
@@ -1264,6 +1306,57 @@
                 "has_associated_task": {
                     "type": "boolean",
                     "description": "Whether this backend has an associated task running"
+                }
+            }
+        },
+        "InstanceBounceStatus": {
+            "type": "object",
+            "properties": {
+                "desired_state": {
+                    "type": "string",
+                    "description": "Desired state of a service, for Kubernetes",
+                    "enum": [
+                        "start",
+                        "stop"
+                    ]
+                },
+                "app_count": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing)"
+                },
+                "deploy_status": {
+                    "type": "string",
+                    "description": "Deploy status of a Kubernetes service",
+                    "enum": [
+                        "Running",
+                        "Deploying",
+                        "Stopped",
+                        "Delayed",
+                        "Waiting",
+                        "NotRunning"
+                    ]
+                },
+                "running_instance_count": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The number of actual running instances of the service"
+                },
+                "expected_instance_count": {
+                    "type": "integer",
+                    "format": "int32",
+                    "description": "The number of desired instances of the service"
+                },
+                "active_shas": {
+                    "type": "array",
+                    "description": "List of git/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "x-nullable": true
+                        }
+                    }
                 }
             }
         },

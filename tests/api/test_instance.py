@@ -1253,3 +1253,46 @@ def test_instance_mesh_status_error(
 
     assert expected_msg in excinfo.value.msg
     assert expected_code == excinfo.value.err
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.pik.bounce_status", autospec=True)
+class TestBounceStatus:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.instance.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+        }
+        return request
+
+    def test_success(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        response = instance.bounce_status(mock_request)
+        assert response == mock_pik_bounce_status.return_value
+
+    def test_not_found(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 404
+
+    def test_not_kubernetes(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.return_value = "not_kubernetes"
+        response = instance.bounce_status(mock_request)
+        assert response.status_code == 204
