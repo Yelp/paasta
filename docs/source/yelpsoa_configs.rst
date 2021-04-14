@@ -1090,7 +1090,7 @@ Here is a list of options that PaaSTA will pass through:
    the ``tip`` option.
 
  * ``alert_after``: Time string that represents how long a a check should be
-   failing before an actual alert should be fired. Currently defaults to ``2m``
+   failing before an actual alert should be fired. Currently defaults to ``10m``
    for the replication alert.
 
  * ``realert_every``: An integer (not a time unit) representing how many checks
