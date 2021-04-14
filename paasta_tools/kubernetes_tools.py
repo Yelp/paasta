@@ -296,6 +296,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_path: str
     prometheus_port: int
     routable_ip: bool
+    pod_management_policy: str
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1370,6 +1371,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "check_envoy", system_paasta_config.get_enable_envoy_readiness_check()
         )
 
+    def get_pod_management_policy(self) -> str:
+        """Get sts pod_management_policy from config, default to 'OrderedReady'"""
+        return self.config_dict.get("pod_management_policy", "OrderedReady")
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -1397,6 +1402,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         template=self.get_pod_template_spec(
                             git_sha=git_sha, system_paasta_config=system_paasta_config
                         ),
+                        pod_management_policy=self.get_pod_management_policy(),
                     ),
                 )
             else:
