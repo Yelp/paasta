@@ -1567,7 +1567,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # prometheus_port is used to override the default scrape port in Prometheus
         prometheus_port = self.get_prometheus_port()
         if prometheus_port:
-            annotations["paasta.yelp.com/prometheus_port"] = prometheus_port
+            annotations["paasta.yelp.com/prometheus_port"] = str(prometheus_port)
 
         # Default Pod labels
         labels: Dict[str, Any] = {
@@ -1603,7 +1603,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
             spec=V1PodSpec(**pod_spec_kwargs),
-        )
+        )prometheus_port
 
     def get_node_selector(self) -> Mapping[str, str]:
         """Converts simple node restrictions into node selectors. Unlike node
