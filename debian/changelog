@@ -1,3 +1,12 @@
+paasta-tools (0.98.00) xenial; urgency=medium
+
+  * 0.98.00 tagged with 'make release'
+    Commit: Merge pull request #3103 from Yelp/u/davent/PERES-2872-add-
+    proemtheus-port-annotation  Add prometheus_port and a pod annotation
+    to allow overriding in Prome…
+
+ -- David Avent <davent@yelp.com>  Thu, 15 Apr 2021 02:22:18 -0700
+
 paasta-tools (0.97.99) xenial; urgency=medium
 
   * 0.97.99 tagged with 'make release'
