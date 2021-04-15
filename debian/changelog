@@ -1,3 +1,12 @@
+paasta-tools (0.98.1) xenial; urgency=medium
+
+  * 0.98.1 tagged with 'make release'
+    Commit: Merge pull request #3104 from
+    Yelp/fix_broken_prometheus_port_annotation  Annotation values my be
+    strings
+
+ -- David Avent <davent@yelp.com>  Thu, 15 Apr 2021 07:54:48 -0700
+
 paasta-tools (0.98.00) xenial; urgency=medium
 
   * 0.98.00 tagged with 'make release'
