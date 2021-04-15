@@ -283,6 +283,36 @@ SidecarResourceRequirements = TypedDict(
 )
 
 
+KubePodAnnotations = TypedDict(
+    "KubePodAnnotations",
+    {
+        "autoscaling": str,
+        "iam.amazonaws.com/role": str,
+        "paasta.yelp.com/prometheus_path": str,
+        "paasta.yelp.com/prometheus_port": str,
+        "paasta.yelp.com/routable_ip": str,
+        "smartstack_registrations": str,
+    },
+    total=False,
+)
+
+KubePodLabels = TypedDict(
+    "KubePodLabels",
+    {
+        "paasta.yelp.com/deploy_group": str,
+        "paasta.yelp.com/git_sha": str,
+        "paasta.yelp.com/instance": str,
+        "paasta.yelp.com/prometheus_shard": str,
+        "paasta.yelp.com/scrape_uwsgi_prometheus": str,
+        "paasta.yelp.com/service": str,
+        "yelp.com/paasta_git_sha": str,
+        "yelp.com/paasta_instance": str,
+        "yelp.com/paasta_service": str,
+    },
+    total=False,
+)
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
@@ -1487,7 +1517,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         has_routable_ip = self.has_routable_ip(
             service_namespace_config, system_paasta_config
         )
-        annotations: Dict[str, Any] = {
+        annotations: KubePodAnnotations = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
@@ -1570,7 +1600,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["paasta.yelp.com/prometheus_port"] = str(prometheus_port)
 
         # Default Pod labels
-        labels: Dict[str, Any] = {
+        labels: KubePodLabels = {
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
