@@ -1487,7 +1487,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         has_routable_ip = self.has_routable_ip(
             service_namespace_config, system_paasta_config
         )
-        annotations: Dict[str, Any] = {
+        annotations: Dict[str, str] = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
@@ -1570,7 +1570,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["paasta.yelp.com/prometheus_port"] = str(prometheus_port)
 
         # Default Pod labels
-        labels: Dict[str, Any] = {
+        labels: Dict[str, str] = {
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
