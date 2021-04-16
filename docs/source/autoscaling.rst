@@ -97,9 +97,13 @@ The currently available decicion policies are:
     Float between 0.0 and 1.0, representing expected baseline load for each container.
     Defaults to 0.0.
   :good_enough_window:
+    **Not currently supported**
     An array of two utilization values [low, high].
     If utilization per container at the forecasted total load is within the window, instances will not scale.
     Optional parameter (defaults to None).
+
+    This is not currently supported under Kubernetes (see PAASTA-17262), but Kubernetes has a `global 10% tolerance by default. <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
+    This is equivalent to a good_enough_window of ``[0.9*setpoint, 1.1*setpoint]``
   :moving_average_window_seconds:
     The number of seconds to load data points over in order to calculate the average.
     Defaults to 1800s (30m).
