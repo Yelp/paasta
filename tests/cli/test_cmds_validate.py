@@ -160,11 +160,11 @@ def test_validate_min_max_instances_success(
     assert validate_min_max_instances("fake-service-path") is False
     output, _ = capsys.readouterr()
     assert (
-        "Instance fake_instance1 on cluster fake_cluster has an invalid number of min_instances."
+        "Instance fake_instance1 on cluster fake_cluster has a greater number of min_instances than max_instances."
         in output
     )
     assert (
-        "The number of min_instances (3) must not be higher than the max_instances (1)."
+        "The number of min_instances (3) cannot be greater than the max_instances (1)."
         in output
     )
 

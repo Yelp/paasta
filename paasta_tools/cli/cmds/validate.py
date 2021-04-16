@@ -439,9 +439,9 @@ def validate_min_max_instances(service_path):
                         returncode = False
                         print(
                             failure(
-                                f"Instance {instance} on cluster {cluster} has an invalid number of min_instances."
-                                + f"The number of min_instances ({min_instances}) must not be higher than the max_instances ({max_instances}).",
-                                "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html",
+                                f"Instance {instance} on cluster {cluster} has a greater number of min_instances than max_instances."
+                                + f"The number of min_instances ({min_instances}) cannot be greater than the max_instances ({max_instances}).",
+                                "",
                             )
                         )
 
