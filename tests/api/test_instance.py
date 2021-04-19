@@ -27,7 +27,6 @@ from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.envoy_tools import EnvoyBackend
 from paasta_tools.instance.kubernetes import ServiceMesh
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
@@ -195,13 +194,11 @@ def mock_service_config():
     "paasta_tools.api.views.instance.marathon_tools.get_marathon_app_deploy_status",
     autospec=True,
 )
-@mock.patch("paasta_tools.api.views.instance.get_autoscaling_info", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.get_marathon_dashboard_links", autospec=True
 )
 def test_marathon_job_status(
     mock_get_marathon_dashboard_links,
-    mock_get_autoscaling_info,
     mock_get_marathon_app_deploy_status,
     mock_marathon_app_status,
     mock_service_config,
@@ -212,13 +209,6 @@ def test_marathon_job_status(
     settings.system_paasta_config = mock.create_autospec(SystemPaastaConfig)
 
     mock_get_marathon_app_deploy_status.return_value = 0  # Running status
-    mock_get_autoscaling_info.return_value = ServiceAutoscalingInfo(
-        current_instances=1,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=None,
-        target_instances=3,
-    )
 
     mock_app = mock.Mock(id="/foo.bar.gitabc.config123", tasks_running=2)
     mock_app.container.docker.image = "registry.yelp/servicename-abc"
@@ -230,9 +220,6 @@ def test_marathon_job_status(
         verbose=3,
     )
 
-    expected_autoscaling_info = mock_get_autoscaling_info.return_value._asdict()
-    del expected_autoscaling_info["current_utilization"]
-
     assert job_status == {
         "app_statuses": [mock_marathon_app_status.return_value],
         "app_count": 1,
@@ -242,7 +229,6 @@ def test_marathon_job_status(
         "desired_app_id": "foo.bar.gitabc.config123",
         "deploy_status": "Running",
         "running_instance_count": 2,
-        "autoscaling_info": expected_autoscaling_info,
         "active_shas": [("abc", "123")],
     }
 

@@ -16,7 +16,6 @@
 set -eu
 
 SCRIPTS="am_i_mesos_leader
-autoscale_all_services
 check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
@@ -83,7 +82,6 @@ for scr in $SCRIPTS
 do
   which $scr >/dev/null || (echo "$scr failed to install!"; exit 1)
 done
-setup_marathon_job --help >/dev/null
 
 for srv in $MARATHON_SERVICES
 do
