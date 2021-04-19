@@ -37,11 +37,4 @@ Feature: paasta_api
       And resources GET with groupings "pool" and filters "region:fakeregion" should return 2 groups
       And resources GET with groupings "pool" and filters "ssd:true|region:fakeregion" should return 1 groups
 
-  Scenario: Marathon Dashboard
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And I have yelpsoa-configs for the marathon job "test-service2.main" on shard 0, previous shard 1
-      Then marathon_dashboard GET should return "test-service.main" in cluster "testcluster" with shard 2
-      Then marathon_dashboard GET should return "service.instance2" in cluster "testcluster" with shard 0
-
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

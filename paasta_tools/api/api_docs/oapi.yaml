@@ -846,30 +846,6 @@ components:
           format: int32
           type: integer
       type: object
-    MarathonDashboard:
-      additionalProperties:
-        $ref: '#/components/schemas/MarathonDashboardCluster'
-      description: A list of Marathon service, instance, and shard url for one or
-        more clusters
-      type: object
-    MarathonDashboardCluster:
-      description: List of all the MarathonDashboardItems for a cluster
-      items:
-        $ref: '#/components/schemas/MarathonDashboardItem'
-      type: array
-    MarathonDashboardItem:
-      description: Marathon service, instance, and shard url
-      properties:
-        instance:
-          description: Instance name
-          type: string
-        service:
-          description: Service name
-          type: string
-        shard_url:
-          description: Marathon Shard URL
-          type: string
-      type: object
     MarathonMesosNonrunningTask:
       properties:
         deployed_timestamp:
@@ -1087,20 +1063,6 @@ paths:
                 $ref: '#/components/schemas/DeployQueue'
           description: Contents of deploy queue
       summary: Get deploy queue contents
-  /marathon_dashboard:
-    get:
-      operationId: marathon_dashboard
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarathonDashboard'
-          description: List of service instances and information on their Marathon
-            shard
-      summary: Get marathon service instances and their shards
-      tags:
-      - marathon_dashboard
   /metastatus:
     get:
       operationId: metastatus

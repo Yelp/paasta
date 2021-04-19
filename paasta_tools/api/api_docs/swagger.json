@@ -134,23 +134,6 @@
                 "operationId": "delete_service_autoscaler_pause"
             }
         },
-        "/marathon_dashboard": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "List of service instances and information on their Marathon shard",
-                        "schema": {
-                            "$ref": "#/definitions/MarathonDashboard"
-                        }
-                    }
-                },
-                "summary": "Get marathon service instances and their shards",
-                "operationId": "marathon_dashboard",
-                "tags": [
-                    "marathon_dashboard"
-                ]
-            }
-        },
         "/resources/utilization": {
             "get": {
                 "responses": {
@@ -1909,38 +1892,6 @@
                 "framework_id": {
                     "type": "string",
                     "description": "framework id"
-                }
-            }
-        },
-        "MarathonDashboard": {
-            "type": "object",
-            "description": "A list of Marathon service, instance, and shard url for one or more clusters",
-            "additionalProperties": {
-                "$ref": "#/definitions/MarathonDashboardCluster"
-            }
-        },
-        "MarathonDashboardCluster": {
-            "type": "array",
-            "description": "List of all the MarathonDashboardItems for a cluster",
-            "items": {
-                "$ref": "#/definitions/MarathonDashboardItem"
-            }
-        },
-        "MarathonDashboardItem": {
-            "type": "object",
-            "description": "Marathon service, instance, and shard url",
-            "properties": {
-                "service": {
-                    "type": "string",
-                    "description": "Service name"
-                },
-                "instance": {
-                    "type": "string",
-                    "description": "Instance name"
-                },
-                "shard_url": {
-                    "type": "string",
-                    "description": "Marathon Shard URL"
                 }
             }
         },

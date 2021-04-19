@@ -151,9 +151,6 @@ def make_app(global_config=None):
         request_method="GET",
     )
     config.add_route("version", "/v1/version")
-    config.add_route(
-        "marathon_dashboard", "/v1/marathon_dashboard", request_method="GET"
-    )
     config.add_route("metastatus", "/v1/metastatus")
     config.add_route("deploy_queue.list", "/v1/deploy_queue")
     config.scan()

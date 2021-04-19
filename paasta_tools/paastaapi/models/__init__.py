@@ -45,9 +45,6 @@ from paasta_tools.paastaapi.model.kubernetes_replica_set import KubernetesReplic
 from paasta_tools.paastaapi.model.kubernetes_version import KubernetesVersion
 from paasta_tools.paastaapi.model.marathon_app_status import MarathonAppStatus
 from paasta_tools.paastaapi.model.marathon_autoscaling_info import MarathonAutoscalingInfo
-from paasta_tools.paastaapi.model.marathon_dashboard import MarathonDashboard
-from paasta_tools.paastaapi.model.marathon_dashboard_cluster import MarathonDashboardCluster
-from paasta_tools.paastaapi.model.marathon_dashboard_item import MarathonDashboardItem
 from paasta_tools.paastaapi.model.marathon_mesos_nonrunning_task import MarathonMesosNonrunningTask
 from paasta_tools.paastaapi.model.marathon_mesos_running_task import MarathonMesosRunningTask
 from paasta_tools.paastaapi.model.marathon_mesos_status import MarathonMesosStatus

@@ -71,23 +71,6 @@ def resources_groupings(context, groupings, num):
     return resources_groupings_filters(context, groupings, [], num)
 
 
-@then(
-    'marathon_dashboard GET should return "{service}.{instance}" in cluster "{cluster}" with shard {shard:d}'
-)
-def marathon_dashboard(context, service, instance, cluster, shard):
-    response = context.paasta_api_client.marathon_dashboard.marathon_dashboard()
-    dashboard = response[cluster]
-    shard_url = context.system_paasta_config.get_dashboard_links()[cluster][
-        "Marathon RO"
-    ][shard]
-    for marathon_dashboard_item in dashboard.value:
-        if (
-            marathon_dashboard_item["service"] == service
-            and marathon_dashboard_item["instance"] == instance
-        ):
-            assert marathon_dashboard_item["shard_url"] == shard_url
-
-
 @then('paasta status via the API for "{service}.{instance}" should run successfully')
 def paasta_status_via_api(context, service, instance):
     output = []
