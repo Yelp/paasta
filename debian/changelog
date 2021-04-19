@@ -1,3 +1,10 @@
+paasta-tools (0.99.0) xenial; urgency=medium
+
+  * 0.99.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17097_delete_signalfx_code"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 19 Apr 2021 12:12:50 -0700
+
 paasta-tools (0.98.1) xenial; urgency=medium
 
   * 0.98.1 tagged with 'make release'
