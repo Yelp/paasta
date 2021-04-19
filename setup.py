@@ -66,7 +66,6 @@ setup(
         "paasta_tools/log_task_lifecycle_events.py",
         "paasta_tools/marathon_dashboard.py",
         "paasta_tools/monitoring/check_capacity.py",
-        "paasta_tools/monitoring/check_marathon_has_apps.py",
         "paasta_tools/monitoring/check_mesos_active_frameworks.py",
         "paasta_tools/monitoring/check_mesos_duplicate_frameworks.py",
         "paasta_tools/monitoring/check_mesos_quorum.py",
