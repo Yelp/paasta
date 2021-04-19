@@ -1,4 +1,0 @@
-MAILTO=""
-SHELL=/bin/bash
-PATH=/venv/bin:/usr/local/bin:/usr/local/sbin:/nail/sys/bin:/usr/sbin:/usr/bin:/sbin:/bin
-*/20 * * * * root (bash -c "if am_i_mesos_leader; then cleanup_marathon_jobs; fi") 2>&1 logger -t cron_cleanup_marathon_jobs

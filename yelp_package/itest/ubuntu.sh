@@ -21,7 +21,6 @@ check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
 check_cassandracluster_services_replication
-cleanup_marathon_jobs
 paasta_cleanup_tron_namespaces
 paasta_cleanup_stale_nodes
 paasta_deploy_tron_jobs
