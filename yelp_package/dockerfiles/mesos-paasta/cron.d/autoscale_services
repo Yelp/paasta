@@ -1,4 +1,0 @@
-MAILTO=""
-SHELL=/bin/bash
-PATH=/venv/bin:/usr/local/bin:/usr/local/sbin:/nail/sys/bin:/usr/sbin:/usr/bin:/sbin:/bin
-*/5 * * * * root (bash -c "if am_i_mesos_leader; then autoscale_all_services; fi") 2>&1 logger -t cron_autoscale_all_services

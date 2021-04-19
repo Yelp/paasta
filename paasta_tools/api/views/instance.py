@@ -47,7 +47,6 @@ from paasta_tools import smartstack_tools
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.autoscaling.autoscaling_service_lib import get_autoscaling_info
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
@@ -278,17 +277,6 @@ def marathon_job_status(
         deploy_status_for_desired_app or "Waiting for bounce"
     )
     job_status_fields["running_instance_count"] = tasks_running
-
-    if verbose > 0:
-        autoscaling_info = get_autoscaling_info(marathon_apps_with_clients, job_config)
-        if autoscaling_info is not None:
-            autoscaling_info_dict = autoscaling_info._asdict()
-
-            for field in ("current_utilization", "target_instances"):
-                if autoscaling_info_dict[field] is None:
-                    del autoscaling_info_dict[field]
-
-            job_status_fields["autoscaling_info"] = autoscaling_info_dict
 
     return job_status_fields
 
