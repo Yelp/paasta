@@ -5,7 +5,6 @@ opt/venvs/paasta-tools/bin/check_flink_services_health.py usr/bin/check_flink_se
 opt/venvs/paasta-tools/bin/check_cassandracluster_services_replication.py usr/bin/check_cassandracluster_services_replication
 opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has_apps
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
-opt/venvs/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
 opt/venvs/paasta-tools/bin/check_kubernetes_api.py usr/bin/check_kubernetes_api
 opt/venvs/paasta-tools/bin/check_kubernetes_services_replication.py usr/bin/check_kubernetes_services_replication
 opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks

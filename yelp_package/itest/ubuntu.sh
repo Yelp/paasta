@@ -16,7 +16,6 @@
 set -eu
 
 SCRIPTS="am_i_mesos_leader
-check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
