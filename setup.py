@@ -45,7 +45,6 @@ setup(
         "paasta_tools/autoscale_all_services.py",
         "paasta_tools/check_flink_services_health.py",
         "paasta_tools/check_cassandracluster_services_replication.py",
-        "paasta_tools/check_marathon_services_replication.py",
         "paasta_tools/check_kubernetes_api.py",
         "paasta_tools/check_kubernetes_services_replication.py",
         "paasta_tools/check_oom_events.py",
