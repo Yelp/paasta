@@ -54,7 +54,6 @@ setup(
         "paasta_tools/cleanup_kubernetes_crd.py",
         "paasta_tools/cleanup_kubernetes_jobs.py",
         "paasta_tools/delete_kubernetes_deployments.py",
-        "paasta_tools/deploy_marathon_services",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/generate_all_deployments",
         "paasta_tools/generate_deployments_for_service.py",
@@ -83,7 +82,6 @@ setup(
         "paasta_tools/setup_kubernetes_job.py",
         "paasta_tools/setup_kubernetes_crd.py",
         "paasta_tools/setup_kubernetes_cr.py",
-        "paasta_tools/setup_marathon_job.py",
         "paasta_tools/setup_prometheus_adapter_config.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
     ]
