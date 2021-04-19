@@ -32,7 +32,6 @@ from paasta_tools.paastaapi.model.instance_status_kafkacluster import InstanceSt
 from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStatusKubernetes
 from paasta_tools.paastaapi.model.instance_status_kubernetes_autoscaling_status import InstanceStatusKubernetesAutoscalingStatus
 from paasta_tools.paastaapi.model.instance_status_kubernetes_v2 import InstanceStatusKubernetesV2
-from paasta_tools.paastaapi.model.instance_status_marathon import InstanceStatusMarathon
 from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
 from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 from paasta_tools.paastaapi.model.integer_and_error import IntegerAndError
@@ -43,12 +42,6 @@ from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
 from paasta_tools.paastaapi.model.kubernetes_pod_v2 import KubernetesPodV2
 from paasta_tools.paastaapi.model.kubernetes_replica_set import KubernetesReplicaSet
 from paasta_tools.paastaapi.model.kubernetes_version import KubernetesVersion
-from paasta_tools.paastaapi.model.marathon_app_status import MarathonAppStatus
-from paasta_tools.paastaapi.model.marathon_autoscaling_info import MarathonAutoscalingInfo
-from paasta_tools.paastaapi.model.marathon_mesos_nonrunning_task import MarathonMesosNonrunningTask
-from paasta_tools.paastaapi.model.marathon_mesos_running_task import MarathonMesosRunningTask
-from paasta_tools.paastaapi.model.marathon_mesos_status import MarathonMesosStatus
-from paasta_tools.paastaapi.model.marathon_task import MarathonTask
 from paasta_tools.paastaapi.model.meta_status import MetaStatus
 from paasta_tools.paastaapi.model.resource import Resource
 from paasta_tools.paastaapi.model.resource_item import ResourceItem

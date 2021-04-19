@@ -31,19 +31,16 @@ from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
-from paasta_tools.cli.cmds.status import create_autoscaling_info_table
 from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
 from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
-from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
 from paasta_tools.cli.cmds.status import marathon_app_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_human
 from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
@@ -51,7 +48,6 @@ from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
-from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
@@ -875,37 +871,6 @@ def test_status_with_registration(
 
 
 @pytest.fixture
-def mock_marathon_status(include_envoy=True, include_smartstack=True):
-    kwargs = dict(
-        desired_state="start",
-        desired_app_id="abc.def",
-        app_id="fake_app_id",
-        app_count=1,
-        running_instance_count=2,
-        expected_instance_count=2,
-        deploy_status="Running",
-        bounce_method="crossover",
-        app_statuses=[],
-        mesos=paastamodels.MarathonMesosStatus(
-            running_task_count=2, running_tasks=[], non_running_tasks=[],
-        ),
-    )
-    if include_smartstack:
-        kwargs["smartstack"] = paastamodels.SmartstackStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
-    if include_envoy:
-        kwargs["envoy"] = paastamodels.EnvoyStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
-    return paastamodels.InstanceStatusMarathon(**kwargs)
-
-
-@pytest.fixture
 def mock_kubernetes_status():
     return paastamodels.InstanceStatusKubernetes(
         desired_state="start",
@@ -980,14 +945,14 @@ def mock_kafka_status() -> Mapping[str, Any]:
 
 
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-def test_paasta_status_on_api_endpoint_marathon(
-    mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
+def test_paasta_status_on_api_endpoint_kubernetes_v2(
+    mock_get_paasta_oapi_client, system_paasta_config, mock_kubernetes_status_v2
 ):
     fake_status_obj = paastamodels.InstanceStatus(
         git_sha="fake_git_sha",
         instance="fake_instance",
         service="fake_service",
-        marathon=mock_marathon_status,
+        kubernetes_v2=mock_kubernetes_status_v2,
     )
 
     mock_api = mock_get_paasta_oapi_client.return_value
@@ -1051,118 +1016,6 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         )
 
         assert mock_format_kubernetes_replicaset_table.called
-
-
-class TestPrintMarathonStatus:
-    def test_error(self, mock_marathon_status):
-        mock_marathon_status.error_message = "Things went wrong"
-        output = []
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            marathon_status=mock_marathon_status,
-        )
-
-        assert return_value == 1
-        assert output == ["Things went wrong"]
-
-    def test_successful_return_value(self, mock_marathon_status):
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=[],
-            marathon_status=mock_marathon_status,
-        )
-        assert return_value == 0
-
-    @pytest.mark.parametrize("include_envoy", [True, False])
-    @pytest.mark.parametrize("include_smartstack", [True, False])
-    @pytest.mark.parametrize("include_autoscaling_info", [True, False])
-    @patch("paasta_tools.cli.cmds.status.create_autoscaling_info_table", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.marathon_mesos_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.marathon_app_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.status_marathon_job_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
-    def test_output(
-        self,
-        mock_bouncing_status,
-        mock_desired_state,
-        mock_status_marathon_job_human,
-        mock_marathon_app_status_human,
-        mock_marathon_mesos_status_human,
-        mock_get_envoy_status_human,
-        mock_get_smartstack_status_human,
-        mock_create_autoscaling_info_table,
-        include_autoscaling_info,
-        include_smartstack,
-        include_envoy,
-    ):
-        mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
-            f"{app_status.deploy_status} status 1",
-            f"{app_status.deploy_status} status 2",
-        ]
-        mock_marathon_mesos_status_human.return_value = [
-            "mesos status 1",
-            "mesos status 2",
-        ]
-        mock_get_envoy_status_human.return_value = [
-            "envoy status 1",
-            "envoy status 2",
-        ]
-        mock_get_smartstack_status_human.return_value = [
-            "smartstack status 1",
-            "smartstack status 2",
-        ]
-        mock_create_autoscaling_info_table.return_value = [
-            "autoscaling info 1",
-            "autoscaling info 2",
-        ]
-
-        mms = mock_marathon_status(
-            include_smartstack=include_smartstack, include_envoy=include_envoy
-        )
-        mms.app_statuses = [
-            paastamodels.MarathonAppStatus(deploy_status="app_1"),
-            paastamodels.MarathonAppStatus(deploy_status="app_2"),
-        ]
-        if include_autoscaling_info:
-            mms.autoscaling_info = paastamodels.MarathonAutoscalingInfo()
-
-        output = []
-        print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            marathon_status=mms,
-        )
-
-        expected_output = [
-            f"    Desired state:      {mock_bouncing_status.return_value} and {mock_desired_state.return_value}",
-            f"    {mock_status_marathon_job_human.return_value}",
-        ]
-        if include_autoscaling_info:
-            expected_output += ["      autoscaling info 1", "      autoscaling info 2"]
-        expected_output += [
-            f"      app_1 status 1",
-            f"      app_1 status 2",
-            f"      app_2 status 1",
-            f"      app_2 status 2",
-            f"    mesos status 1",
-            f"    mesos status 2",
-        ]
-        if include_smartstack:
-            expected_output += [f"    smartstack status 1", f"    smartstack status 2"]
-        if include_envoy:
-            expected_output += [f"    envoy status 1", f"    envoy status 2"]
-
-        assert expected_output == output
 
 
 @pytest.fixture
@@ -1558,42 +1411,6 @@ def _formatted_table_to_dict(formatted_table):
     return dict(zip(headers, fields))
 
 
-def test_create_autoscaling_info_table():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=0.6,
-        target_instances=3,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    assert output[0] == "Autoscaling Info:"
-
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-    assert table_headings_to_values == {
-        "Current instances": "2",
-        "Max instances": "5",
-        "Min instances": "1",
-        "Current utilization": "60.0%",
-        "Target instances": "3",
-    }
-
-
-def test_create_autoscaling_info_table_errors():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=None,
-        target_instances=None,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-
-    assert table_headings_to_values["Current utilization"] == "Exception"
-    assert table_headings_to_values["Target instances"] == "Exception"
-
-
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestMarathonAppStatusHuman:
     @pytest.fixture
@@ -1643,47 +1460,6 @@ class TestMarathonAppStatusHuman:
         output = marathon_app_status_human("app_id", mock_app_status)
         expected_lines = ["  Possibly stalled for:", "    reason1: 5", "    reason2: 3"]
         assert output[-3:] == expected_lines
-
-
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestFormatMarathonTaskTable:
-    @pytest.fixture
-    def mock_marathon_task(self):
-        return paastamodels.MarathonTask(
-            id="abc123",
-            host="paasta.cloud",
-            port=4321,
-            deployed_timestamp=1565648600.0,
-            is_healthy=True,
-        )
-
-    def test_format_marathon_task_table(self, mock_naturaltime, mock_marathon_task):
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict == {
-            "Mesos Task ID": "abc123",
-            "Host deployed to": "paasta.cloud:4321",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
-            "Health": PaastaColors.green("Healthy"),
-        }
-
-    def test_no_host(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.host = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Host deployed to"] == "Unknown"
-
-    def test_unhealthy(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = False
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.red("Unhealthy")
-
-    def test_no_health(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.grey("N/A")
 
 
 @patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
@@ -1796,47 +1572,6 @@ class TestFormatKubernetesPodTable:
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
-
-
-@patch("paasta_tools.cli.cmds.status.create_mesos_running_tasks_table", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.status.create_mesos_non_running_tasks_table", autospec=True
-)
-@patch("paasta_tools.cli.cmds.status.marathon_mesos_status_summary", autospec=True)
-def test_marathon_mesos_status_human(
-    mock_marathon_mesos_status_summary,
-    mock_create_mesos_non_running_tasks_table,
-    mock_create_mesos_running_tasks_table,
-):
-    mock_create_mesos_running_tasks_table.return_value = [
-        "running task 1",
-        "running task 2",
-    ]
-    mock_create_mesos_non_running_tasks_table.return_value = ["non-running task 1"]
-
-    running_tasks = [
-        paastamodels.MarathonMesosRunningTask(),
-        paastamodels.MarathonMesosRunningTask(),
-    ]
-    non_running_tasks = [paastamodels.MarathonMesosNonrunningTask()]
-    mesos_status = paastamodels.MarathonMesosStatus(
-        running_task_count=2,
-        running_tasks=running_tasks,
-        non_running_tasks=non_running_tasks,
-    )
-    output = marathon_mesos_status_human(mesos_status, expected_instance_count=2,)
-
-    assert output == [
-        mock_marathon_mesos_status_summary.return_value,
-        "  Running Tasks:",
-        "    running task 1",
-        "    running task 2",
-        PaastaColors.grey("  Non-running Tasks:"),
-        "    non-running task 1",
-    ]
-    mock_marathon_mesos_status_summary.assert_called_once_with(2, 2)
-    mock_create_mesos_running_tasks_table.assert_called_once_with(running_tasks)
-    mock_create_mesos_non_running_tasks_table.assert_called_once_with(non_running_tasks)
 
 
 def test_marathon_mesos_status_summary():
