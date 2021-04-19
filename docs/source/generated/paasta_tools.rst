@@ -10,7 +10,6 @@ Subpackages
    paasta_tools.autoscaling
    paasta_tools.cli
    paasta_tools.contrib
-   paasta_tools.deployd
    paasta_tools.frameworks
    paasta_tools.instance
    paasta_tools.kubernetes
@@ -30,7 +29,6 @@ Submodules
    paasta_tools.am_i_mesos_leader
    paasta_tools.apply_external_resources
    paasta_tools.async_utils
-   paasta_tools.autoscale_all_services
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
@@ -38,7 +36,6 @@ Submodules
    paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
    paasta_tools.check_kubernetes_services_replication
-   paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
    paasta_tools.check_spark_jobs
@@ -46,7 +43,6 @@ Submodules
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
    paasta_tools.cleanup_maintenance
-   paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces
    paasta_tools.clusterman
    paasta_tools.config_utils
@@ -65,18 +61,15 @@ Submodules
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
    paasta_tools.get_mesos_leader
-   paasta_tools.graceful_app_drain
    paasta_tools.hacheck
    paasta_tools.iptables
    paasta_tools.kafkacluster_tools
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
-   paasta_tools.list_marathon_service_instances
    paasta_tools.list_tron_namespaces
    paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
-   paasta_tools.marathon_dashboard
    paasta_tools.marathon_tools
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
@@ -97,7 +90,6 @@ Submodules
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
    paasta_tools.setup_kubernetes_job
-   paasta_tools.setup_marathon_job
    paasta_tools.setup_prometheus_adapter_config
    paasta_tools.setup_tron_namespace
    paasta_tools.slack

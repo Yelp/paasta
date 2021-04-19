@@ -7,7 +7,6 @@ Submodules
 .. toctree::
 
    paasta_tools.monitoring.check_capacity
-   paasta_tools.monitoring.check_marathon_has_apps
    paasta_tools.monitoring.check_mesos_active_frameworks
    paasta_tools.monitoring.check_mesos_duplicate_frameworks
    paasta_tools.monitoring.check_mesos_outdated_tasks

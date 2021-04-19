@@ -27,7 +27,6 @@ Submodules
    paasta_tools.paastaapi.model.instance_status_kubernetes
    paasta_tools.paastaapi.model.instance_status_kubernetes_autoscaling_status
    paasta_tools.paastaapi.model.instance_status_kubernetes_v2
-   paasta_tools.paastaapi.model.instance_status_marathon
    paasta_tools.paastaapi.model.instance_status_tron
    paasta_tools.paastaapi.model.instance_tasks
    paasta_tools.paastaapi.model.integer_and_error
@@ -38,15 +37,6 @@ Submodules
    paasta_tools.paastaapi.model.kubernetes_pod_v2
    paasta_tools.paastaapi.model.kubernetes_replica_set
    paasta_tools.paastaapi.model.kubernetes_version
-   paasta_tools.paastaapi.model.marathon_app_status
-   paasta_tools.paastaapi.model.marathon_autoscaling_info
-   paasta_tools.paastaapi.model.marathon_dashboard
-   paasta_tools.paastaapi.model.marathon_dashboard_cluster
-   paasta_tools.paastaapi.model.marathon_dashboard_item
-   paasta_tools.paastaapi.model.marathon_mesos_nonrunning_task
-   paasta_tools.paastaapi.model.marathon_mesos_running_task
-   paasta_tools.paastaapi.model.marathon_mesos_status
-   paasta_tools.paastaapi.model.marathon_task
    paasta_tools.paastaapi.model.meta_status
    paasta_tools.paastaapi.model.resource
    paasta_tools.paastaapi.model.resource_item

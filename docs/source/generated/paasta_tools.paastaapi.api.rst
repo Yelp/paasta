@@ -8,7 +8,6 @@ Submodules
 
    paasta_tools.paastaapi.api.autoscaler_api
    paasta_tools.paastaapi.api.default_api
-   paasta_tools.paastaapi.api.marathon_dashboard_api
    paasta_tools.paastaapi.api.resources_api
    paasta_tools.paastaapi.api.service_api
 
