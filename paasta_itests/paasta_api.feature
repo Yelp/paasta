@@ -1,22 +1,5 @@
 Feature: paasta_api
 
-  Scenario: paasta status for marathon instance via the API
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon app "test-service.main" with "1" instances
-      And we wait for "test-service.main" to launch exactly 1 tasks
-     Then paasta status via the API for "test-service.main" should run successfully
-
-  Scenario: instance GET shows the marathon status of service.instance
-    Given a working paasta cluster
-      And I have yelpsoa-configs for the marathon job "test-service.main"
-      And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon app "test-service.main" with "1" instances
-     And we wait for "test-service.main" to launch exactly 1 tasks
-    Then instance GET should return app_count "1" and an expected number of running instances for "test-service.main"
-     And instance GET should return error code "404" for "test-service.non-existent"
-
   Scenario: High disk usage
     Given a working paasta cluster
     When an app with id "disktest" using high disk is launched
