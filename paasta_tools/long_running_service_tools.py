@@ -7,10 +7,12 @@ from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import Type
 
 import service_configuration_lib
 from mypy_extensions import TypedDict
 
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -22,6 +24,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
@@ -598,3 +601,34 @@ def get_all_namespaces_for_service(
             name = namespace
         namespace_list.append((name, smartstack[namespace]))
     return namespace_list
+
+
+def get_expected_instance_count_for_namespace(
+    service: str,
+    namespace: str,
+    instance_type_class: Type[LongRunningServiceConfig],
+    cluster: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> int:
+    """Get the number of expected instances for a namespace, based on the number
+    of instances set to run on that namespace as specified in Marathon service
+    configuration files.
+
+    :param service: The service's name
+    :param namespace: The namespace for that service to check
+    instance_type_class: The type of the instance, options are MarathonServiceConfig and KubernetesDeploymentConfig,
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: An integer value of the # of expected instances for the namespace"""
+    total_expected = 0
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+
+    pscl = PaastaServiceConfigLoader(
+        service=service, soa_dir=soa_dir, load_deployments=False
+    )
+    for job_config in pscl.instance_configs(
+        cluster=cluster, instance_type_class=instance_type_class
+    ):
+        if f"{service}.{namespace}" in job_config.get_registrations():
+            total_expected += job_config.get_instances()
+    return total_expected

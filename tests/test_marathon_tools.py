@@ -1738,43 +1738,6 @@ class TestMarathonTools:
                 "expected_slave_attributes in the system paasta configs."
             )
 
-    def test_get_expected_instance_count_for_namespace(self):
-        service = "red"
-        namespace = "rojo"
-        soa_dir = "que_esta"
-        fake_job_configs = [
-            marathon_tools.MarathonServiceConfig(
-                service=service,
-                cluster="fake_cluster",
-                instance="blue",
-                config_dict={"nerve_ns": "rojo", "instances": 11},
-                branch_dict=None,
-            ),
-            marathon_tools.MarathonServiceConfig(
-                service=service,
-                cluster="fake_cluster",
-                instance="green",
-                config_dict={"nerve_ns": "amarillo"},
-                branch_dict=None,
-            ),
-        ]
-
-        with mock.patch(
-            "paasta_tools.marathon_tools.PaastaServiceConfigLoader",
-            autospec=True,
-            return_value=mock.Mock(
-                instance_configs=mock.Mock(return_value=fake_job_configs)
-            ),
-        ) as fake_pscl:
-            actual = marathon_tools.get_expected_instance_count_for_namespace(
-                service, namespace, cluster="fake_cluster", soa_dir=soa_dir
-            )
-            assert actual == 11
-            fake_pscl.return_value.instance_configs.assert_called_once_with(
-                cluster="fake_cluster",
-                instance_type_class=marathon_tools.MarathonServiceConfig,
-            )
-
     def test_get_matching_appids(self):
         apps = [
             mock.Mock(id="/fake--service.fake--instance.bouncingold"),

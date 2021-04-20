@@ -22,9 +22,12 @@ from socket import gethostname
 
 from paasta_tools import mesos_maintenance
 from paasta_tools import utils
-from paasta_tools.marathon_tools import get_expected_instance_count_for_namespace
+from paasta_tools.long_running_service_tools import (
+    get_expected_instance_count_for_namespace,
+)
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import marathon_services_running_here
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import get_replication_for_services
@@ -151,7 +154,7 @@ def synapse_replication_is_low(service, instance, system_paasta_config, local_ba
         system_paasta_config=system_paasta_config,
     )
     expected_count = get_expected_instance_count_for_namespace(
-        service=service, namespace=namespace
+        service=service, namespace=namespace, instance_type_class=MarathonServiceConfig,
     )
     expected_count_per_location = int(expected_count / len(smartstack_replication_info))
 

@@ -27,7 +27,6 @@ from paasta_tools import envoy_tools
 from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
@@ -36,6 +35,9 @@ from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.long_running_service_tools import (
+    get_expected_instance_count_for_namespace,
+)
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
@@ -282,7 +284,7 @@ def mesh_status(
         job_config
     )
 
-    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+    expected_smartstack_count = get_expected_instance_count_for_namespace(
         service=service,
         namespace=job_config.get_nerve_namespace(),
         cluster=settings.cluster,

@@ -42,7 +42,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
     "paasta_tools.api.views.instance.pik.kubernetes_tools.get_all_nodes", autospec=True
 )
 @mock.patch(
-    "paasta_tools.marathon_tools.get_expected_instance_count_for_namespace",
+    "paasta_tools.instance.kubernetes.get_expected_instance_count_for_namespace",
     autospec=True,
 )
 def test_kubernetes_smartstack_status(
