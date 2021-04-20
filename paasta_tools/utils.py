@@ -122,7 +122,6 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
-    "marathon",
     "paasta_native",
     "adhoc",
     "kubernetes",
@@ -217,7 +216,7 @@ UnsafeDeployWhitelist = Optional[Sequence[Union[str, Sequence[str]]]]
 
 Constraint = Sequence[str]
 
-# e.g. ['GROUP_BY', 'habitat', 2]. Marathon doesn't like that so we'll convert to Constraint later.
+# e.g. ['GROUP_BY', 'habitat', 2]. Tron doesn't like that so we'll convert to Constraint later.
 UnstringifiedConstraint = Sequence[Union[str, int, float]]
 
 SecurityConfigDict = Dict  # Todo: define me.
@@ -1744,12 +1743,6 @@ class ResourcePoolSettings(TypedDict):
 PoolToResourcePoolSettingsDict = Dict[str, ResourcePoolSettings]
 
 
-class MarathonConfigDict(TypedDict, total=False):
-    user: str
-    password: str
-    url: List[str]
-
-
 class LocalRunConfig(TypedDict, total=False):
     default_cluster: str
 
@@ -1846,8 +1839,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
-    maintenance_resource_reservation_enabled: bool
-    marathon_servers: List[MarathonConfigDict]
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -1856,9 +1847,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    previous_marathon_servers: List[MarathonConfigDict]
     register_k8s_pods: bool
-    register_marathon_services: bool
     register_native_services: bool
     remote_run_config: RemoteRunConfig
     resource_pool_settings: PoolToResourcePoolSettingsDict
@@ -2246,13 +2235,6 @@ class SystemPaastaConfig:
         :returns A float"""
         return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
 
-    def get_maintenance_resource_reservation_enabled(self) -> bool:
-        """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
-        *and* after tasks are killed in setup_marathon_job etc.
-
-        :returns A bool"""
-        return self.config_dict.get("maintenance_resource_reservation_enabled", True)
-
     def get_cluster_boost_enabled(self) -> bool:
         """ Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
@@ -2269,12 +2251,6 @@ class SystemPaastaConfig:
 
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
-
-    def get_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get("marathon_servers", [])
-
-    def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
-        return self.config_dict.get("previous_marathon_servers", [])
 
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
@@ -2391,10 +2367,6 @@ class SystemPaastaConfig:
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
-
-    def get_register_marathon_services(self) -> bool:
-        """Enable registration of marathon services in nerve"""
-        return self.config_dict.get("register_marathon_services", True)
 
     def get_register_native_services(self) -> bool:
         """Enable registration of native paasta services in nerve"""
@@ -2808,7 +2780,7 @@ def list_clusters(
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
-    Includes every cluster that has a ``marathon-*.yaml`` or ``tron-*.yaml`` file associated with it.
+    Includes every cluster that has a ``kubernetes-*.yaml`` or ``tron-*.yaml`` file associated with it.
 
     :param service: The service name. If unspecified, clusters running any service will be included.
     :returns: A sorted list of cluster names
@@ -2895,7 +2867,7 @@ def get_service_instance_list_no_cache(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2933,7 +2905,7 @@ def get_service_instance_list(
 
     :param service: The service name
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
@@ -2948,7 +2920,7 @@ def get_services_for_cluster(
     """Retrieve all services and instances defined to run in a cluster.
 
     :param cluster: The cluster to read the configuration for
-    :param instance_type: The type of instances to examine: 'marathon', 'tron', or None (default) for both
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, instance)
     """
@@ -3243,7 +3215,7 @@ class NoDockerImageError(Exception):
 
 def get_config_hash(config: Any, force_bounce: str = None) -> str:
     """Create an MD5 hash of the configuration dictionary to be sent to
-    Marathon. Or anything really, so long as str(config) works. Returns
+    Kubernetes. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
 
     :param config: The configuration to hash
@@ -3271,7 +3243,7 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """ code_sha is hash extracted from docker url prefixed with "git", short
-    hash is used because it's embedded in marathon app names and there's length
+    hash is used because it's embedded in mesos task names and there's length
     limit.
     """
     try:
@@ -3305,9 +3277,7 @@ def is_under_replicated(
 def deploy_blacklist_to_constraints(
     deploy_blacklist: DeployBlacklist,
 ) -> List[Constraint]:
-    """Converts a blacklist of locations into marathon appropriate constraints.
-
-    https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
+    """Converts a blacklist of locations into tron appropriate constraints.
 
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
@@ -3322,9 +3292,7 @@ def deploy_blacklist_to_constraints(
 def deploy_whitelist_to_constraints(
     deploy_whitelist: DeployWhitelist,
 ) -> List[Constraint]:
-    """Converts a whitelist of locations into marathon appropriate constraints
-
-    https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
+    """Converts a whitelist of locations into tron appropriate constraints
 
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
