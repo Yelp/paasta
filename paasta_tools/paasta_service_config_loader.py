@@ -45,13 +45,13 @@ class PaastaServiceConfigLoader:
     >>>
     >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
-    >>> for instance in sc.instances(cluster='fake_cluster', instance_type='marathon'):
+    >>> for instance in sc.instances(cluster='fake_cluster', instance_type='kubernetes'):
     ...     print(instance)
     ...
     main
     canary
     >>>
-    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type='marathon'):
+    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type='kubernetes'):
     ...     print(instance_config.get_instance())
     ...
     main
@@ -109,7 +109,7 @@ class PaastaServiceConfigLoader:
 
         :param cluster: The cluster name
         :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
-        :returns: an iterator that yields instances of MarathonServiceConfig, etc.
+        :returns: an iterator that yields instances of KubernetesDeploymentConfig, etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type
         """
         if (cluster, instance_type_class) not in self._framework_configs:
@@ -170,7 +170,7 @@ class PaastaServiceConfigLoader:
         config: utils.InstanceConfigDict,
         config_class: Type[InstanceConfig_T],
     ) -> InstanceConfig_T:
-        """Create a service instance's configuration for marathon.
+        """Create a service instance's configuration for kubernetes.
 
         :param cluster: The cluster to read the configuration for
         :param instance: The instance of the service to retrieve
