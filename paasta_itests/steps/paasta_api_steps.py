@@ -18,18 +18,6 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
 
-@then(
-    'instance GET should return app_count "{app_count}" and an expected number of running instances for "{job_id}"'
-)
-def service_instance_status(context, app_count, job_id):
-    (service, instance, _, __) = decompose_job_id(job_id)
-    response = context.paasta_api_client.service.status_instance(
-        instance=instance, service=service
-    )
-
-    assert response.marathon.app_count == int(app_count), response
-
-
 @then('instance GET should return error code "{error_code}" for "{job_id}"')
 def service_instance_status_error(context, error_code, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)

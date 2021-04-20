@@ -21,15 +21,10 @@ from behave import given
 from behave import when
 from itest_utils import get_service_connection_string
 
-from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_oapi_client_by_url
 from paasta_tools.frameworks import native_scheduler
 from paasta_tools.utils import decompose_job_id
-
-
-def _get_marathon_connection_string(service="marathon"):
-    return "http://%s" % get_service_connection_string(service)
 
 
 def _get_zookeeper_connection_string(chroot):
@@ -46,45 +41,11 @@ def setup_system_paasta_config():
             "docker_registry": "docker-dev.yelpcorp.com",
             "zookeeper": zk_connection_string,
             "synapse_port": 3212,
-            "marathon_servers": [
-                # if you're updating this list, you should update
-                # paasta_tools/yelp_package/dockerfiles/itest/api/marathon.json as well
-                {
-                    "url": _get_marathon_connection_string("marathon"),
-                    "user": None,
-                    "password": None,
-                },
-                {
-                    "url": _get_marathon_connection_string("marathon1"),
-                    "user": None,
-                    "password": None,
-                },
-                {
-                    "url": _get_marathon_connection_string("marathon2"),
-                    "user": None,
-                    "password": None,
-                },
-            ],
-            "dashboard_links": {
-                "testcluster": {
-                    "Marathon RO": [
-                        "http://accessible-marathon",
-                        "http://accessible-marathon1",
-                        "http://accessible-marathon2",
-                    ]
-                }
-            },
+            "dashboard_links": {"testcluster": {}},
         },
         "/some_fake_path_to_config_dir/",
     )
     return system_paasta_config
-
-
-def setup_marathon_clients():
-    system_paasta_config = setup_system_paasta_config()
-    marathon_servers = marathon_tools.get_marathon_servers(system_paasta_config)
-    clients = marathon_tools.get_marathon_clients(marathon_servers)
-    return (clients, marathon_servers, system_paasta_config)
 
 
 def get_paasta_api_url():
@@ -161,18 +122,6 @@ def working_paasta_cluster(context):
 
 @given("a working paasta cluster, with docker registry {docker_registry}")
 def working_paasta_cluster_with_registry(context, docker_registry):
-    """Adds a working marathon_clients for the purposes of
-    interacting with them in the test."""
-
-    if not hasattr(context, "marathon_clients"):
-        (
-            context.marathon_clients,
-            context.marathon_servers,
-            context.system_paasta_config,
-        ) = setup_marathon_clients()
-    else:
-        print("Marathon connections already established")
-
     if not hasattr(context, "paasta_api_client"):
         context.paasta_api_client = setup_paasta_api_client()
 
@@ -182,11 +131,6 @@ def working_paasta_cluster_with_registry(context, docker_registry):
     mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
 
-    write_etc_paasta(
-        context,
-        {"marathon_servers": context.system_paasta_config.get_marathon_servers()},
-        "marathon.json",
-    )
     write_etc_paasta(
         context,
         {
@@ -236,52 +180,9 @@ def working_paasta_cluster_with_registry(context, docker_registry):
         "api_endpoints.json",
     )
     write_etc_paasta(
-        context,
-        {
-            "dashboard_links": {
-                "testcluster": {
-                    "Marathon RO": [
-                        "http://accessible-marathon",
-                        "http://accessible-marathon1",
-                        "http://accessible-marathon2",
-                    ]
-                }
-            }
-        },
-        "dashboard_links.json",
+        context, {"dashboard_links": {"testcluster": {}}}, "dashboard_links.json",
     )
     write_etc_paasta(context, {"deployd_use_zk_queue": True}, "deployd.json")
-
-
-@given(
-    'I have yelpsoa-configs for the marathon job "{job_id}" on shard {shard:d}, previous shard {previous_shard:d}'
-)
-@given('I have yelpsoa-configs for the marathon job "{job_id}"')
-def write_soa_dir_marathon_job(context, job_id, shard=None, previous_shard=None):
-    (service, instance, _, __) = decompose_job_id(job_id)
-    try:
-        soa_dir = context.soa_dir
-    except AttributeError:
-        soa_dir = "/nail/etc/services/"
-    if not os.path.exists(os.path.join(soa_dir, service)):
-        os.makedirs(os.path.join(soa_dir, service))
-
-    soa = {
-        str(instance): {
-            "cpus": 0.1,
-            "mem": 100,
-            "marathon_shard": shard,
-            "previous_marathon_shards": [previous_shard] if previous_shard else None,
-        }
-    }
-    if hasattr(context, "cmd"):
-        soa[instance]["cmd"] = context.cmd
-    with open(
-        os.path.join(soa_dir, service, "marathon-%s.yaml" % context.cluster), "w"
-    ) as f:
-        f.write(yaml.safe_dump(soa))
-
-    context.soa_dir = soa_dir
 
 
 @given('we have yelpsoa-configs for native service "{job_id}"')

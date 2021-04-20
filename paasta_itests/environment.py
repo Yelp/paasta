@@ -14,7 +14,6 @@
 import asyncio
 import os
 import shutil
-import time
 
 import a_sync
 import mock
@@ -23,11 +22,9 @@ from itest_utils import cleanup_file
 from itest_utils import clear_mesos_tools_cache
 from itest_utils import get_service_connection_string
 from itest_utils import setup_mesos_cli_config
-from itest_utils import wait_for_marathon
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
-from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools.mesos_maintenance import load_credentials
 from paasta_tools.mesos_maintenance import undrain
@@ -36,61 +33,11 @@ from paasta_tools.mesos_maintenance import undrain
 def before_all(context):
     context.cluster = "testcluster"
     context.mesos_cli_config = os.path.join(os.getcwd(), "mesos-cli.json")
-    wait_for_marathon()
     setup_mesos_cli_config(context.mesos_cli_config, context.cluster)
 
 
 def after_all(context):
     cleanup_file(context.mesos_cli_config)
-
-
-def _stop_deployd(context):
-    if hasattr(context, "daemon"):
-        print("Stopping deployd...")
-        try:
-            context.daemon.terminate()
-            context.daemon.wait()
-        except OSError:
-            pass
-
-
-def _clean_up_marathon_apps(context):
-    """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
-    if hasattr(context, "marathon_clients"):
-        still_apps = True
-        while still_apps:
-            still_apps = False
-            for client in context.marathon_clients.get_all_clients():
-                apps = marathon_tools.list_all_marathon_app_ids(client)
-                if apps:
-                    still_apps = True
-                else:
-                    continue
-                print(
-                    "after_scenario: Deleting %d apps to prep for the next scenario. %s"
-                    % (len(apps), ",".join(apps))
-                )
-                for app in apps:
-                    if marathon_tools.is_app_id_running(app, client):
-                        print(
-                            "after_scenario: %s does look like it is running. Scaling down and killing it..."
-                            % app
-                        )
-                        client.scale_app(app, instances=0, force=True)
-                        time.sleep(1)
-                        client.delete_app(app, force=True)
-                    else:
-                        print(
-                            "after_scenario: %s showed up in the app_list, but doesn't look like it is running?"
-                            % app
-                        )
-            time.sleep(0.5)
-        for client in context.marathon_clients.get_all_clients():
-            while client.list_deployments():
-                print(
-                    "after_scenario: There are still marathon deployments in progress. sleeping."
-                )
-                time.sleep(0.5)
 
 
 def _clean_up_mesos_cli_config(context):
@@ -178,8 +125,6 @@ def _clean_up_event_loop(context):
 
 
 def after_scenario(context, scenario):
-    _stop_deployd(context)
-    _clean_up_marathon_apps(context)
     _clean_up_maintenance(context)
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)

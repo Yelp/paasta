@@ -1,23 +1,5 @@
 Feature: paasta_api
 
-  Scenario: High disk usage
-    Given a working paasta cluster
-    When an app with id "disktest" using high disk is launched
-     And 3 tasks belonging to the app with id "disktest" are in the task list
-    Then resources GET should show "disk" has 285 used
-
-  Scenario: High memory usage
-    Given a working paasta cluster
-     When an app with id "memtest" using high memory is launched
-      And 3 tasks belonging to the app with id "memtest" are in the task list
-     Then resources GET should show "mem" has 1470 used
-
-  Scenario: High cpu usage
-    Given a working paasta cluster
-     When an app with id "cputest" using high cpu is launched
-      And 3 tasks belonging to the app with id "cputest" are in the task list
-     Then resources GET should show "cpus" has 27.3 used
-
   # Note that the following tests depend on the configuration of docker-compose.yml
   #  in paasta_itests.  This is unfortunate, but seems to be the easiest way to launch
   #  multiple slaves with different attributes
