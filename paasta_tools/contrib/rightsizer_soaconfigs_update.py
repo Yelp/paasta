@@ -149,7 +149,7 @@ def get_recommendations_by_service_file(results, keys_to_apply):
         key = (
             result["service"],
             result["cluster"],
-        )  # e.g. (foo, marathon-norcal-stagef)
+        )  # e.g. (foo, kubernetes-norcal-stagef)
         rec = get_recommendation_from_result(result, keys_to_apply)
         if not rec:
             continue

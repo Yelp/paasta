@@ -133,7 +133,7 @@ def cwd(path):
 
 def get_report_from_splunk(creds, app, filename, criteria_filter):
     """ Expect a table containing at least the following fields:
-    criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
+    criteria (<service> kubernetes-<cluster_name> <instance>)
     service_owner (Optional)
     project (Required to create tickets)
     estimated_monthly_savings (Optional)
@@ -306,8 +306,6 @@ def review(filename, summary, description, publish_review):
 
 
 def edit_soa_configs(filename, instance, cpu, mem, disk):
-    if not os.path.exists(filename):
-        filename = filename.replace("marathon", "kubernetes")
     if os.path.islink(filename):
         real_filename = os.path.realpath(filename)
         os.remove(filename)
@@ -400,9 +398,7 @@ def generate_ticket_content(serv):
         m=serv["money"],
         x=serv["old_cpus"],
         y=serv["cpus"],
-        cluster_param=_get_dashboard_qs_param(
-            "paasta_cluster", serv["cluster"].replace("marathon-", "")
-        ),
+        cluster_param=_get_dashboard_qs_param("paasta_cluster", serv["cluster"]),
         service_param=_get_dashboard_qs_param("paasta_service", serv["service"]),
         instance_param=_get_dashboard_qs_param("paasta_instance", serv["instance"]),
     )
