@@ -40,15 +40,6 @@ services:
       - mesosbase
       - zookeeper
     command: '/start-slave.sh'
-  marathon:
-    ports:
-      - 8080
-  marathon1:
-    ports:
-      - 8080
-  marathon2:
-    ports:
-      - 8080
   itest_xenial:
     build: ../yelp_package/dockerfiles/xenial/
   playground:
@@ -70,9 +61,6 @@ services:
       - registry
       - git
       - mesosslave
-      - marathon
-      - marathon1
-      - marathon2
       - dynamodb
       - paasta_api
   registry:
