@@ -127,12 +127,12 @@ def get_cr_name(si_pods: Sequence[V1Pod]) -> str:
 
 def check_flink_service_health(
     instance_config: FlinkDeploymentConfig,
-    all_tasks_or_pods: Sequence[V1Pod],
+    all_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
 ) -> None:
     si_pods = filter_pods_by_service_instance(
-        pod_list=all_tasks_or_pods,
+        pod_list=all_pods,
         service=instance_config.service,
         instance=instance_config.instance,
     )
