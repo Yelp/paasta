@@ -32,9 +32,6 @@ paasta_metastatus
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
 
-MARATHON_SERVICES="fake_service_uno.main
-fake_service_dos.niam"
-
 SERVICE_NAMESPACES="fake_service_uno.main
 fake_service_uno.canary
 fake_service_dos.all_fake"

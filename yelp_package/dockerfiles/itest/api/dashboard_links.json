@@ -1,11 +1,5 @@
 {
     "dashboard_links": {
-        "testcluster": {
-            "Marathon RO": [
-                "http://accessible-marathon",
-                "http://accessible-marathon1",
-                "http://accessible-marathon2"
-            ]
-        }
+        "testcluster": {}
     }
 }
