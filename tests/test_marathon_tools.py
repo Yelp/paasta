@@ -30,7 +30,6 @@ from paasta_tools.marathon_tools import MarathonContainerInfo
 from paasta_tools.marathon_tools import MarathonServiceConfigDict
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
 from paasta_tools.utils import BranchDictV2
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import SystemPaastaConfig
@@ -847,71 +846,6 @@ class TestMarathonTools:
                 marathon_tools.get_marathon_services_running_here_for_nerve(
                     cluster, soa_dir
                 )
-
-    def test_get_classic_service_information_for_nerve(self):
-        with mock.patch(
-            "service_configuration_lib.read_port", return_value=101, autospec=True
-        ), mock.patch(
-            "paasta_tools.marathon_tools.load_service_namespace_config",
-            autospec=True,
-            return_value={"ten": 10},
-        ):
-            info = marathon_tools.get_classic_service_information_for_nerve(
-                "no_water", "we_are_the_one"
-            )
-            assert info == ("no_water.main", {"ten": 10, "port": 101})
-
-    def test_get_puppet_services_that_run_here(self):
-        with mock.patch(
-            "os.listdir", autospec=True, return_value=["b", "a"]
-        ) as listdir_patch, mock.patch(
-            "os.path.exists",
-            autospec=True,
-            side_effect=lambda x: x
-            in ("/etc/nerve/puppet_services.d", "/etc/nerve/puppet_services.d/a"),
-        ), mock.patch(
-            "paasta_tools.marathon_tools.open",
-            create=True,
-            autospec=None,
-            side_effect=mock.mock_open(read_data='{"namespaces": ["main"]}'),
-        ):
-            puppet_services = marathon_tools.get_puppet_services_that_run_here()
-            assert puppet_services == {"a": ["main"]}
-            listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
-
-    def test_get_puppet_services_running_here_for_nerve(self):
-        with mock.patch(
-            "paasta_tools.marathon_tools.get_puppet_services_that_run_here",
-            autospec=True,
-            side_effect=lambda: {"d": ["main"], "c": ["main", "canary"]},
-        ), mock.patch(
-            "paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve",
-            autospec=True,
-            side_effect=lambda x, y, _: (compose_job_id(x, y), {}),
-        ):
-            assert marathon_tools.get_puppet_services_running_here_for_nerve("foo") == [
-                ("c.main", {}),
-                ("c.canary", {}),
-                ("d.main", {}),
-            ]
-
-    def test_get_classic_services_running_here_for_nerve(self):
-        with mock.patch(
-            "service_configuration_lib.services_that_run_here",
-            autospec=True,
-            side_effect=lambda: {"a", "b"},
-        ), mock.patch(
-            "paasta_tools.marathon_tools.get_all_namespaces_for_service",
-            autospec=True,
-            side_effect=lambda x, y, full_name: [("foo", {})],
-        ), mock.patch(
-            "paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve",
-            autospec=True,
-            side_effect=lambda x, y, _: (compose_job_id(x, y), {}),
-        ):
-            assert marathon_tools.get_classic_services_running_here_for_nerve(
-                "baz"
-            ) == [("a.foo", {}), ("b.foo", {})]
 
     def test_format_marathon_app_dict(self):
         fake_url = "docker-registry/dockervania_from_konami"

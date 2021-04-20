@@ -18,9 +18,7 @@ make the PaaSTA stack work.
 """
 import copy
 import datetime
-import json
 import logging
-import os
 import socket
 from collections import defaultdict
 from math import ceil
@@ -50,7 +48,6 @@ from marathon.models.queue import MarathonQueueItem
 from mypy_extensions import TypedDict
 
 from paasta_tools.long_running_service_tools import BounceMethodConfigDict
-from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -90,7 +87,6 @@ from paasta_tools.utils import ZookeeperPool
 # this spacer, i.e. you can't change it here and expect the world to change
 # with you. We need to know what it is so we can decompose Mesos task ids.
 MESOS_TASK_SPACER = "."
-PUPPET_SERVICE_DIR = "/etc/nerve/puppet_services.d"
 AUTOSCALING_ZK_ROOT = "/autoscaling"
 
 
@@ -1109,77 +1105,6 @@ def get_marathon_services_running_here_for_nerve(
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
-
-
-def get_puppet_services_that_run_here() -> Dict[str, List[str]]:
-    # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
-    # this allows us to (de)register services on a machine by
-    # breaking/healing a symlink placed by Puppet.
-    puppet_service_dir_services = {}
-    if os.path.exists(PUPPET_SERVICE_DIR):
-        for service_name in os.listdir(PUPPET_SERVICE_DIR):
-            if not os.path.exists(os.path.join(PUPPET_SERVICE_DIR, service_name)):
-                continue
-            with open(os.path.join(PUPPET_SERVICE_DIR, service_name)) as f:
-                puppet_service_data = json.load(f)
-                puppet_service_dir_services[service_name] = puppet_service_data[
-                    "namespaces"
-                ]
-
-    return puppet_service_dir_services
-
-
-def get_puppet_services_running_here_for_nerve(
-    soa_dir: str,
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
-    puppet_services = []
-    for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
-        for namespace in namespaces:
-            puppet_services.append(
-                _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir
-                )
-            )
-    return puppet_services
-
-
-def get_classic_service_information_for_nerve(
-    name: str, soa_dir: str
-) -> Tuple[str, ServiceNamespaceConfig]:
-    return _namespaced_get_classic_service_information_for_nerve(name, "main", soa_dir)
-
-
-def _namespaced_get_classic_service_information_for_nerve(
-    name: str, namespace: str, soa_dir: str
-) -> Tuple[str, ServiceNamespaceConfig]:
-    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
-    port_file = os.path.join(soa_dir, name, "port")
-    # If the namespace defines a port, prefer that, otherwise use the
-    # service wide port file.
-    nerve_dict["port"] = nerve_dict.get(
-        "port", None
-    ) or service_configuration_lib.read_port(port_file)
-    nerve_name = compose_job_id(name, namespace)
-    return (nerve_name, nerve_dict)
-
-
-def get_classic_services_running_here_for_nerve(
-    soa_dir: str,
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
-    classic_services = []
-    classic_services_here = service_configuration_lib.services_that_run_here()
-    for service in sorted(classic_services_here):
-        namespaces = [
-            x[0]
-            for x in get_all_namespaces_for_service(service, soa_dir, full_name=False)
-        ]
-        for namespace in namespaces:
-            classic_services.append(
-                _namespaced_get_classic_service_information_for_nerve(
-                    service, namespace, soa_dir
-                )
-            )
-    return classic_services
 
 
 def list_all_marathon_app_ids(client: MarathonClient,) -> Sequence[str]:
