@@ -426,7 +426,7 @@ def check_replication_for_instance(
     emitting events to Sensu based on the fraction available and the thresholds defined in
     the corresponding yelpsoa config.
 
-    :param instance_config: an instance of MarathonServiceConfig
+    :param instance_config: an instance of LongRunningServiceConfig
     :param replication_checker: an instance of ReplicationChecker
     :param dry_run: Print Sensu event and metrics instead of emitting them
     """
