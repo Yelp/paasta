@@ -79,10 +79,6 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_start_deadline: float
 
 
-# Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
-BounceMethodConfigDict = TypedDict("BounceMethodConfigDict", {"instances": int})
-
-
 class ServiceNamespaceConfig(dict):
     def get_healthcheck_mode(self) -> str:
         """Get the healthcheck mode for the service. In most cases, this will match the mode

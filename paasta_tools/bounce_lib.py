@@ -24,8 +24,6 @@ from mypy_extensions import Arg
 from mypy_extensions import DefaultArg
 from mypy_extensions import TypedDict
 
-from paasta_tools.long_running_service_tools import BounceMethodConfigDict
-
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -36,6 +34,7 @@ ZK_LOCK_PATH = "/bounce"
 WAIT_CREATE_S = 3
 WAIT_DELETE_S = 5
 
+BounceMethodConfigDict = TypedDict("BounceMethodConfigDict", {"instances": int})
 
 BounceMethodResult = TypedDict(
     "BounceMethodResult", {"create_app": bool, "tasks_to_drain": Set}
