@@ -741,20 +741,10 @@ class InstanceConfig:
         if security is None:
             return True, ""
 
-        inbound_firewall = security.get("inbound_firewall")
         outbound_firewall = security.get("outbound_firewall")
 
-        if inbound_firewall is None and outbound_firewall is None:
+        if outbound_firewall is None:
             return True, ""
-
-        if inbound_firewall is not None and inbound_firewall not in (
-            "allow",
-            "reject",
-        ):
-            return (
-                False,
-                'Unrecognized inbound_firewall value "%s"' % inbound_firewall,
-            )
 
         if outbound_firewall is not None and outbound_firewall not in (
             "block",
@@ -766,7 +756,6 @@ class InstanceConfig:
             )
 
         unknown_keys = set(security.keys()) - {
-            "inbound_firewall",
             "outbound_firewall",
         }
         if unknown_keys:
@@ -918,22 +907,6 @@ class InstanceConfig:
             return None
         dependency_ref = self.get_dependencies_reference() or "main"
         return dependencies.get(dependency_ref)
-
-    def get_inbound_firewall(self) -> Optional[str]:
-        """Return 'allow', 'reject', or None as configured in security->inbound_firewall
-        Defaults to None if not specified in the config
-
-        Setting this to a value other than `allow` is uncommon, as doing so will restrict the
-        availability of your service. The only other supported value is `reject` currently,
-        which will reject all remaining inbound traffic to the service port after all other rules.
-
-        This option exists primarily for sensitive services that wish to opt into this functionality.
-
-        :returns: A string specified in the config, None if not specified"""
-        security = self.config_dict.get("security")
-        if not security:
-            return None
-        return security.get("inbound_firewall")
 
     def get_outbound_firewall(self) -> Optional[str]:
         """Return 'block', 'monitor', or None as configured in security->outbound_firewall
