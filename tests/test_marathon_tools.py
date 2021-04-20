@@ -212,58 +212,6 @@ class TestMarathonTools:
                 fake_name, fake_instance, "marathon", fake_cluster, soa_dir=fake_dir,
             )
 
-    def test_get_all_namespaces_for_service(self):
-        name = "vvvvvv"
-        soa_dir = "^_^"
-        t1_dict = {"hollo": "werld", "smark": "stact"}
-        t2_dict = {"vataman": "witir", "sin": "chaps"}
-        fake_smartstack = {"smartstack": {"t1": t1_dict, "t2": t2_dict}}
-        expected = [("vvvvvv.t2", t2_dict), ("vvvvvv.t1", t1_dict)]
-        expected_short = [("t2", t2_dict), ("t1", t1_dict)]
-        with mock.patch(
-            "service_configuration_lib.read_service_configuration",
-            autospec=True,
-            return_value=fake_smartstack,
-        ) as read_service_configuration_patch:
-            actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
-            read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert sorted(expected) == sorted(actual)
-
-            actual_short = marathon_tools.get_all_namespaces_for_service(
-                name, soa_dir, False
-            )
-            read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert sorted(expected_short) == sorted(actual_short)
-
-    def test_get_all_namespaces(self):
-        soa_dir = "carbon"
-        namespaces = [
-            [("aluminum", {"hydrogen": 1}), ("potassium", {"helium": 2})],
-            [("uranium", {"lithium": 3}), ("gold", {"boron": 5})],
-        ]
-        expected = [
-            ("uranium", {"lithium": 3}),
-            ("gold", {"boron": 5}),
-            ("aluminum", {"hydrogen": 1}),
-            ("potassium", {"helium": 2}),
-        ]
-        with mock.patch(
-            "os.path.abspath", autospec=True, return_value="oxygen"
-        ) as abspath_patch, mock.patch(
-            "os.listdir", autospec=True, return_value=["rid1", "rid2"]
-        ) as listdir_patch, mock.patch(
-            "paasta_tools.marathon_tools.get_all_namespaces_for_service",
-            autospec=True,
-            side_effect=lambda a, b: namespaces.pop(),
-        ) as get_namespaces_patch:
-            actual = marathon_tools.get_all_namespaces(soa_dir)
-            assert expected == actual
-            abspath_patch.assert_called_once_with(soa_dir)
-            listdir_patch.assert_called_once_with("oxygen")
-            get_namespaces_patch.assert_any_call("rid1", soa_dir)
-            get_namespaces_patch.assert_any_call("rid2", soa_dir)
-            assert get_namespaces_patch.call_count == 2
-
     def test_read_service_namespace_config_exists(self):
         name = "eman"
         namespace = "ecapseman"

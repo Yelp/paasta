@@ -28,7 +28,7 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
-from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -167,7 +167,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting.
 
-    :param instance_type: one of 'marathon', 'adhoc'
+    :param instance_type: one of the entries in utils.INSTANCE_TYPES
     :param service: the service name
     :param soa_dir: The SOA configuration directory to read from
 
@@ -198,7 +198,7 @@ def get_deploy_groups_used_by_framework(instance_type, service, soa_dir):
 
 
 def deployments_check(service, soa_dir):
-    """Checks for consistency between deploy.yaml and the marathon yamls"""
+    """Checks for consistency between deploy.yaml and the kubernetes/etc yamls"""
     the_return = True
     pipeline_deploy_groups = get_pipeline_deploy_groups(
         service=service, soa_dir=soa_dir
@@ -233,7 +233,7 @@ def deployments_check(service, soa_dir):
             "%s There are some instance(s) in deploy.yaml that are not referenced"
             % x_mark()
         )
-        print("  by any marathon or adhoc instance:")
+        print("  by any instance:")
         print("  %s" % PaastaColors.bold((", ".join(in_deploy_not_frameworks))))
         print(
             "  You should probably delete these deploy.yaml entries if they are unused."

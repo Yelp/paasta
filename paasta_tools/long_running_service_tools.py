@@ -1,9 +1,11 @@
 import logging
+import os
 import socket
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 
 import service_configuration_lib
@@ -555,3 +557,44 @@ def host_passes_whitelist(
         log.error("I will assume the host does not pass\nError was: %s" % e)
         return False
     return False
+
+
+def get_all_namespaces(
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+    """Get all the smartstack namespaces across all services.
+    This is mostly so synapse can get everything it needs in one call.
+
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of the form (service.namespace, namespace_config)"""
+    rootdir = os.path.abspath(soa_dir)
+    namespace_list: List[Tuple[str, ServiceNamespaceConfig]] = []
+    for srv_dir in os.listdir(rootdir):
+        namespace_list.extend(get_all_namespaces_for_service(srv_dir, soa_dir))
+    return namespace_list
+
+
+def get_all_namespaces_for_service(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR, full_name: bool = True
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+    """Get all the smartstack namespaces listed for a given service name.
+
+    :param service: The service name
+    :param soa_dir: The SOA config directory to read from
+    :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
+                      returned tuples as described below (Default: True)
+    :returns: A list of tuples of the form (service<SPACER>namespace, namespace_config) if full_name is true,
+              otherwise of the form (namespace, namespace_config)
+    """
+    service_config = service_configuration_lib.read_service_configuration(
+        service, soa_dir
+    )
+    smartstack = service_config.get("smartstack", {})
+    namespace_list = []
+    for namespace in smartstack:
+        if full_name:
+            name = compose_job_id(service, namespace)
+        else:
+            name = namespace
+        namespace_list.append((name, smartstack[namespace]))
+    return namespace_list
