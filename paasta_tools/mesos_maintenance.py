@@ -555,7 +555,7 @@ def _make_operator_reservation_request_payload(slave_id, payload, request_type):
 
 
 def reserve(slave_id, resources):
-    """Dynamically reserve resources in marathon to prevent tasks from using them.
+    """Dynamically reserve resources in mesos to prevent tasks from using them.
     :param slave_id: the id of the mesos slave
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
@@ -576,7 +576,7 @@ def reserve(slave_id, resources):
 
 
 def unreserve(slave_id, resources):
-    """Dynamically unreserve resources in marathon to allow tasks to using them.
+    """Dynamically unreserve resources in mesos to allow tasks to using them.
     :param slave_id: the id of the mesos slave
     :param resources: list of Resource named tuples specifying the name and amount of the resource to (un)reserve
     :returns: boolean where 0 represents success and 1 is a failure
