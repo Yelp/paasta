@@ -1134,13 +1134,6 @@ LOG_COMPONENTS: Mapping[str, Mapping[str, Any]] = OrderedDict(
             },
         ),
         (
-            "marathon",
-            {
-                "color": PaastaColors.magenta,
-                "help": "Logs from Marathon for the service (deprecated).",
-            },
-        ),
-        (
             "app_output",
             {
                 "color": compose(PaastaColors.yellow, PaastaColors.bold),

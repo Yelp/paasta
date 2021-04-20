@@ -50,7 +50,6 @@ except ImportError:
 
 from pytimeparse.timeparse import timeparse
 
-from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -61,7 +60,6 @@ from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
@@ -280,7 +278,7 @@ def paasta_log_line_passes_filter(
     displayed given the provided levels, components, and clusters; return False
     otherwise.
 
-    NOTE: Pods are optional as services that use Marathon do not operate with pods.
+    NOTE: Pods are optional as services that use Mesos do not operate with pods.
     """
     try:
         parsed_line = json.loads(line)
@@ -356,48 +354,6 @@ def extract_utc_timestamp_from_log_line(line: str) -> datetime.datetime:
     dt = isodate.parse_datetime(timestamp)
     utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, tz.tzutc())
     return utc_timestamp
-
-
-def parse_marathon_log_line(line: str, clusters: Sequence[str], service: str) -> str:
-    utc_timestamp = extract_utc_timestamp_from_log_line(line)
-    if not utc_timestamp:
-        return ""
-    else:
-        return format_log_line(
-            level="event",
-            cluster=clusters[0],
-            service=service,
-            instance="ALL",
-            component="marathon",
-            line=line.strip(),
-            timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-        )
-
-
-def marathon_log_line_passes_filter(
-    line: str,
-    levels: Sequence[str],
-    service: str,
-    components: Iterable[str],
-    clusters: Sequence[str],
-    instances: Iterable[str],
-    pods: Iterable[str] = None,
-    start_time: datetime.datetime = None,
-    end_time: datetime.datetime = None,
-) -> bool:
-    """Given a (JSON-formatted) log line where the message is a Marathon log line,
-    return True if the line should be displayed given the provided service; return False
-    otherwise."""
-    try:
-        parsed_line = json.loads(line)
-    except ValueError:
-        log.debug("Trouble parsing line as json. Skipping. Line: %r" % line)
-        return False
-
-    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
-    if not check_timestamp_in_range(timestamp, start_time, end_time):
-        return False
-    return format_job_id(service, "") in parsed_line.get("message", "")
 
 
 def print_log(
@@ -619,12 +575,6 @@ class ScribeLogReader(LogReader):
             filter_fn=paasta_app_output_passes_filter,
             parse_fn=None,
         ),
-        "marathon": ScribeComponentStreamInfo(
-            per_cluster=True,
-            stream_name_fn=lambda service, cluster: "stream_marathon_%s" % cluster,
-            filter_fn=marathon_log_line_passes_filter,
-            parse_fn=parse_marathon_log_line,
-        ),
     }
 
     def __init__(self, cluster_map: Mapping[str, Any]) -> None:
@@ -838,15 +788,6 @@ class ScribeLogReader(LogReader):
         strip_headers: bool,
     ) -> None:
         aggregated_logs: List[Dict[str, Any]] = []
-
-        if "marathon" in components:
-            print(
-                PaastaColors.red(
-                    "Warning, you have chosen to get marathon logs based "
-                    "on time. This command may take a dozen minutes or so to run.\n"
-                ),
-                file=sys.stderr,
-            )
 
         def callback(
             components: Iterable[str],
