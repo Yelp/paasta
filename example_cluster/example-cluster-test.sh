@@ -22,6 +22,5 @@ cd dockercloud-hello-world
 try_and_retry /work/example_cluster/tests/check-metastatus.sh
 try_and_retry /work/example_cluster/tests/check-status.sh
 try_and_retry /work/example_cluster/tests/check-api.sh
-paasta stop -s hello-world -c testcluster -i main
 paasta stop -s hello-world -c testcluster -i remote
 sleep 30
