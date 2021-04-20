@@ -26,7 +26,7 @@ from mock import Mock
 from mock import patch
 
 import paasta_tools.paastaapi.models as paastamodels
-from paasta_tools import marathon_tools
+from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import apply_args_filters
@@ -40,8 +40,6 @@ from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
-from paasta_tools.cli.cmds.status import marathon_app_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
@@ -1411,57 +1409,6 @@ def _formatted_table_to_dict(formatted_table):
     return dict(zip(headers, fields))
 
 
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestMarathonAppStatusHuman:
-    @pytest.fixture
-    def mock_app_status(self):
-        return Struct(
-            tasks_running=5,
-            tasks_healthy=4,
-            tasks_staged=3,
-            tasks_total=12,
-            create_timestamp=1565731681,
-            deploy_status="Deploying",
-            dashboard_url="http://paasta.party",
-            backoff_seconds=2,
-            unused_offer_reason_counts=None,
-            tasks=[],
-        )
-
-    def test_marathon_app_status_human(self, mock_naturaltime, mock_app_status):
-        output = marathon_app_status_human("app_id", mock_app_status)
-        uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-
-        assert uncolored_output == [
-            f"Dashboard: {mock_app_status.dashboard_url}",
-            f"  5 running, 4 healthy, 3 staged out of 12",
-            f"  App created: 2019-08-13 21:28:01 ({mock_naturaltime.return_value})",
-            f"  Status: Deploying",
-        ]
-
-    def test_no_dashboard_url(self, mock_naturaltime, mock_app_status):
-        mock_app_status.dashboard_url = None
-        output = marathon_app_status_human("app_id", mock_app_status)
-        assert remove_ansi_escape_sequences(output[0]) == "App ID: app_id"
-
-    @patch("paasta_tools.cli.cmds.status.format_marathon_task_table", autospec=True)
-    def test_tasks_list(
-        self, mock_format_marathon_task_table, mock_naturaltime, mock_app_status
-    ):
-        mock_app_status.tasks = [Struct()]
-        mock_format_marathon_task_table.return_value = ["task table 1", "task table 2"]
-        output = marathon_app_status_human("app_id", mock_app_status)
-
-        expected_task_table_lines = ["  Tasks:", "    task table 1", "    task table 2"]
-        assert output[-3:] == expected_task_table_lines
-
-    def test_unused_offers(self, mock_naturaltime, mock_app_status):
-        mock_app_status.unused_offer_reason_counts = {"reason1": 5, "reason2": 3}
-        output = marathon_app_status_human("app_id", mock_app_status)
-        expected_lines = ["  Possibly stalled for:", "    reason1: 5", "    reason2: 3"]
-        assert output[-3:] == expected_lines
-
-
 @patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestFormatKubernetesPodTable:
@@ -1572,15 +1519,6 @@ class TestFormatKubernetesPodTable:
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
-
-
-def test_marathon_mesos_status_summary():
-    status_summary = marathon_mesos_status_summary(
-        mesos_task_count=3, expected_instance_count=2
-    )
-    expected_status = PaastaColors.green("Healthy")
-    expected_count = PaastaColors.green(f"(3/2)")
-    assert f"{expected_status} - {expected_count}" in status_summary
 
 
 @patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
@@ -1815,7 +1753,7 @@ class TestBuildSmartstackBackendsTable:
 
 
 def test_get_desired_state_human():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -1828,7 +1766,7 @@ def test_get_desired_state_human():
 
 
 def test_get_desired_state_human_started_with_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -1841,7 +1779,7 @@ def test_get_desired_state_human_started_with_instances():
 
 
 def test_get_desired_state_human_with_0_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",

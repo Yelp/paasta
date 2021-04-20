@@ -57,8 +57,6 @@ from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.marathon_tools import MarathonDeployStatus
-from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
@@ -86,7 +84,6 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     AdhocJobConfig,
-    MarathonServiceConfig,
     TronActionConfig,
 ]
 
@@ -282,10 +279,7 @@ def paasta_status_on_api_endpoint(
             cluster, service, instance, output, service_status_value, verbose
         )
     else:
-        print(
-            "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
-            % instance
-        )
+        print("Not implemented: Looks like %s is not a Kubernetes instance" % instance)
         return 0
 
 
@@ -330,73 +324,6 @@ def print_adhoc_status(
     return 0
 
 
-def print_marathon_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    marathon_status,
-    verbose: int = 0,
-) -> int:
-    if marathon_status.error_message:
-        output.append(marathon_status.error_message)
-        return 1
-
-    bouncing_status = bouncing_status_human(
-        marathon_status.app_count, marathon_status.bounce_method
-    )
-    desired_state = desired_state_human(
-        marathon_status.desired_state, marathon_status.expected_instance_count
-    )
-    output.append(f"    Desired state:      {bouncing_status} and {desired_state}")
-
-    job_status_human = status_marathon_job_human(
-        service=service,
-        instance=instance,
-        deploy_status=marathon_status.deploy_status,
-        desired_app_id=marathon_status.desired_app_id,
-        app_count=marathon_status.app_count,
-        running_instances=marathon_status.running_instance_count,
-        normal_instance_count=marathon_status.expected_instance_count,
-    )
-    output.append(f"    {job_status_human}")
-
-    if marathon_status.autoscaling_info:
-        autoscaling_info_table = create_autoscaling_info_table(
-            marathon_status.autoscaling_info
-        )
-        output.extend([f"      {line}" for line in autoscaling_info_table])
-
-    for app_status in marathon_status.app_statuses:
-        app_status_human = marathon_app_status_human(
-            marathon_status.desired_app_id, app_status
-        )
-        output.extend([f"      {line}" for line in app_status_human])
-
-    mesos_status_human = marathon_mesos_status_human(
-        marathon_status.mesos, marathon_status.expected_instance_count
-    )
-    output.extend([f"    {line}" for line in mesos_status_human])
-
-    smartstack = marathon_status.smartstack
-    if smartstack is not None:
-        smartstack_status_human = get_smartstack_status_human(
-            smartstack.registration,
-            smartstack.expected_backends_per_location,
-            smartstack.locations,
-        )
-        output.extend([f"    {line}" for line in smartstack_status_human])
-
-    envoy = marathon_status.envoy
-    if envoy is not None:
-        envoy_status_human = get_envoy_status_human(
-            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
-        )
-        output.extend([f"    {line}" for line in envoy_status_human])
-
-    return 0
-
-
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
@@ -428,35 +355,6 @@ def create_autoscaling_info_table(autoscaling_info):
     row = [str(e) for e in row]
     table = [f"  {line}" for line in format_table([headers, row])]
     output.extend(table)
-    return output
-
-
-def marathon_mesos_status_human(
-    mesos_status, expected_instance_count,
-):
-    if mesos_status.error_message:
-        return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
-
-    output = []
-    output.append(
-        marathon_mesos_status_summary(
-            mesos_status.get("running_task_count", 0), expected_instance_count
-        )
-    )
-
-    running_tasks = mesos_status.running_tasks
-    non_running_tasks = mesos_status.non_running_tasks
-    if running_tasks or non_running_tasks:
-        output.append("  Running Tasks:")
-        running_tasks_table = create_mesos_running_tasks_table(running_tasks)
-        output.extend([f"    {line}" for line in running_tasks_table])
-
-        output.append(PaastaColors.grey("  Non-running Tasks:"))
-        non_running_tasks_table = create_mesos_non_running_tasks_table(
-            non_running_tasks
-        )
-        output.extend([f"    {line}" for line in non_running_tasks_table])
-
     return output
 
 
@@ -549,109 +447,6 @@ def create_mesos_non_running_tasks_table(non_running_tasks):
 
     table = format_table(rows)
     return [PaastaColors.grey(formatted_row) for formatted_row in table]
-
-
-def marathon_mesos_status_summary(mesos_task_count, expected_instance_count) -> str:
-    if mesos_task_count >= expected_instance_count:
-        status = PaastaColors.green("Healthy")
-        count_str = PaastaColors.green(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    elif mesos_task_count == 0:
-        status = PaastaColors.red("Critical")
-        count_str = PaastaColors.red(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    else:
-        status = PaastaColors.yellow("Warning")
-        count_str = PaastaColors.yellow(
-            "(%d/%d)" % (mesos_task_count, expected_instance_count)
-        )
-    running_string = PaastaColors.bold("TASK_RUNNING")
-    return f"Mesos:      {status} - {count_str} tasks in the {running_string} state."
-
-
-def marathon_app_status_human(app_id, app_status) -> List[str]:
-    output = []
-
-    if app_status.dashboard_url:
-        output.append(f"Dashboard: {PaastaColors.blue(app_status.dashboard_url)}")
-    else:
-        output.append(f"App ID: {PaastaColors.blue(app_id)}")
-
-    output.append(
-        "  "
-        + " ".join(
-            [
-                f"{app_status.tasks_running} running,",
-                f"{app_status.tasks_healthy} healthy,",
-                f"{app_status.tasks_staged} staged",
-                f"out of {app_status.tasks_total}",
-            ]
-        )
-    )
-
-    create_datetime = datetime.fromtimestamp(app_status.create_timestamp)
-    output.append(
-        "  App created: {} ({})".format(
-            create_datetime, humanize.naturaltime(create_datetime)
-        )
-    )
-
-    deploy_status = MarathonDeployStatus.fromstring(app_status.deploy_status)
-    deploy_status_human = marathon_app_deploy_status_human(
-        deploy_status, app_status.backoff_seconds
-    )
-    output.append(f"  Status: {deploy_status_human}")
-
-    if "tasks" in app_status and app_status.tasks:
-        output.append("  Tasks:")
-        tasks_table = format_marathon_task_table(app_status.tasks)
-        output.extend([f"    {line}" for line in tasks_table])
-
-    if app_status.unused_offer_reason_counts is not None:
-        output.append("  Possibly stalled for:")
-        output.extend(
-            [
-                f"    {reason}: {count}"
-                for reason, count in app_status.unused_offer_reason_counts.items()
-            ]
-        )
-
-    return output
-
-
-def format_marathon_task_table(tasks):
-    rows = [
-        ("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")
-    ]
-    for task in tasks:
-        local_deployed_datetime = datetime.fromtimestamp(task.deployed_timestamp)
-        if task.host is not None:
-            hostname = f"{task.host}:{task.port}"
-        else:
-            hostname = "Unknown"
-
-        if task.is_healthy is None:
-            health_check_status = PaastaColors.grey("N/A")
-        elif task.is_healthy:
-            health_check_status = PaastaColors.green("Healthy")
-        else:
-            health_check_status = PaastaColors.red("Unhealthy")
-
-        rows.append(
-            (
-                task.id,
-                hostname,
-                "{} ({})".format(
-                    local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
-                    humanize.naturaltime(local_deployed_datetime),
-                ),
-                health_check_status,
-            )
-        )
-
-    return format_table(rows)
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
@@ -2008,71 +1803,9 @@ def _backend_report(
     return f"{status} - in {system_name} with {count} total backends {up_string} in this namespace."
 
 
-def marathon_app_deploy_status_human(status, backoff_seconds=None):
-    status_string = MarathonDeployStatus.tostring(status)
-
-    if status == MarathonDeployStatus.Waiting:
-        deploy_status = (
-            "%s (new tasks waiting for capacity to become available)"
-            % PaastaColors.red(status_string)
-        )
-    elif status == MarathonDeployStatus.Delayed:
-        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-            PaastaColors.red(status_string), backoff_seconds
-        )
-    elif status == MarathonDeployStatus.Deploying:
-        deploy_status = PaastaColors.yellow(status_string)
-    elif status == MarathonDeployStatus.Stopped:
-        deploy_status = PaastaColors.grey(status_string)
-    elif status == MarathonDeployStatus.Running:
-        deploy_status = PaastaColors.bold(status_string)
-    else:
-        deploy_status = status_string
-
-    return deploy_status
-
-
-def status_marathon_job_human(
-    service: str,
-    instance: str,
-    deploy_status: str,
-    desired_app_id: str,
-    app_count: int,
-    running_instances: int,
-    normal_instance_count: int,
-) -> str:
-    name = PaastaColors.cyan(compose_job_id(service, instance))
-
-    if app_count >= 0:
-        if running_instances >= normal_instance_count:
-            status = PaastaColors.green("Healthy")
-            instance_count = PaastaColors.green(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        elif running_instances == 0:
-            status = PaastaColors.yellow("Critical")
-            instance_count = PaastaColors.red(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        else:
-            status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.yellow(
-                "(%d/%d)" % (running_instances, normal_instance_count)
-            )
-        return "Marathon:   {} - up with {} instances. Status: {}".format(
-            status, instance_count, deploy_status
-        )
-    else:
-        status = PaastaColors.yellow("Warning")
-        return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
-            status, name, desired_app_id
-        )
-
-
 # Add other custom status writers here
 # See `print_tron_status` for reference
 INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
-    marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
     kubernetes_v2=print_kubernetes_status_v2,
     tron=print_tron_status,
