@@ -1,7 +1,7 @@
 ---
-# Marathon is the PaaSTA component that takes a command and keeps copies of it running.
+# Kubernetes is the PaaSTA component that takes a command and keeps copies of it running.
 # You can see all the options for this file here:
-# http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#marathon-clustername-yaml
+# http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#kubernetes-clustername-yaml
 
 # In PaaSTA you can have different "instances" of the service that can run in different
 # modes. Out of Yelp convention, the "main" instance is the primary one and serves main
@@ -24,7 +24,7 @@ main:
   cpus: .1
   #
   # Mem is hard limit and at Yelp we don't allow swap. The service will OOM and die
-  # if it goes over the limit. Luckily Marathon will restart the service ASAP if that
+  # if it goes over the limit. Luckily Kubernetes will restart the service ASAP if that
   # happens. If it happens too much you will lose replication and get an alert. Again
   # use the Signalfx graphs to keep an eye on it and give yourself headroom.
   mem: 1000
