@@ -37,6 +37,7 @@ from task_processing.plugins.persistence.dynamodb_persistence import (
 )  # noreorder
 from task_processing.runners.sync import Sync  # noreorder
 from task_processing.task_processor import TaskProcessor  # noreorder
+from typing import Tuple
 
 from paasta_tools import mesos_tools
 from paasta_tools.cli.cmds.remote_run import add_list_parser
@@ -49,6 +50,7 @@ from paasta_tools.frameworks.native_service_config import load_paasta_native_job
 from paasta_tools.mesos_tools import get_all_frameworks
 from paasta_tools.mesos_tools import get_mesos_master
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -730,6 +732,23 @@ def remote_run_list(args, frameworks=None):
     return remote_run_list_report(
         service=service, instance=instance, cluster=cluster, frameworks=frameworks
     )
+
+
+def deformat_job_id(job_id: str) -> Tuple[str, str, str, str]:
+    job_id = job_id.replace("--", "_")
+    return decompose_job_id(job_id)
+
+
+def get_app_id_and_task_uuid_from_executor_id(executor_id: str) -> Tuple[str, str]:
+    """Parse the marathon executor ID and return the (app id, task uuid)"""
+    app_id, task_uuid = executor_id.rsplit(".", 1)
+    return app_id, task_uuid
+
+
+def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:
+    app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(task_id)
+    (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
+    return srv_name, srv_instance
 
 
 def main(argv):
