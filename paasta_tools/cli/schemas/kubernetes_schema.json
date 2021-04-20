@@ -361,13 +361,6 @@
                     },
                     "additionalProperties": true
                 },
-                "marathon_shard": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "previous_marathon_shards": {
-                    "type": "array"
-                },
                 "aws_ebs_volumes": {
                     "type": "array",
                     "items": {
