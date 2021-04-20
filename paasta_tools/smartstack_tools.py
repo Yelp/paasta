@@ -15,7 +15,6 @@ import abc
 import collections
 import csv
 import logging
-import socket
 from typing import Any
 from typing import cast
 from typing import Collection
@@ -38,7 +37,7 @@ from mypy_extensions import TypedDict
 
 from paasta_tools import envoy_tools
 from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
+from paasta_tools import long_running_service_tools
 from paasta_tools import mesos_tools
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.mesos.exceptions import NoSlavesAvailableError
@@ -196,7 +195,7 @@ def load_smartstack_info_for_service(
         }
 
     """
-    service_namespace_config = marathon_tools.load_service_namespace_config(
+    service_namespace_config = long_running_service_tools.load_service_namespace_config(
         service=service, namespace=namespace, soa_dir=soa_dir
     )
     discover_location_type = service_namespace_config.get_discover()
@@ -339,38 +338,6 @@ def ip_port_hostname_from_svname(svname: str) -> Tuple[str, int, str]:
     return ip, int(port), hostname
 
 
-def get_registered_marathon_tasks(
-    synapse_host: str,
-    synapse_port: int,
-    synapse_haproxy_url_format: str,
-    service: str,
-    marathon_tasks: Iterable[marathon_tools.MarathonTask],
-) -> List[marathon_tools.MarathonTask]:
-    """Returns the marathon tasks that are registered in haproxy under a given service (nerve_ns).
-
-    :param synapse_host: The host that this check should contact for replication information.
-    :param synapse_port: The port that this check should contact for replication information.
-    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
-    :param service: A list of strings that are the service names that should be checked for replication.
-    :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
-    """
-    backends = get_multiple_backends(
-        [service],
-        synapse_host=synapse_host,
-        synapse_port=synapse_port,
-        synapse_haproxy_url_format=synapse_haproxy_url_format,
-    )
-    healthy_tasks = []
-    for backend, task in match_backends_and_tasks(backends, marathon_tasks):
-        if (
-            backend is not None
-            and task is not None
-            and backend["status"].startswith("UP")
-        ):
-            healthy_tasks.append(task)
-    return healthy_tasks
-
-
 def are_services_up_on_ip_port(
     synapse_host: str,
     synapse_port: int,
@@ -403,42 +370,6 @@ def are_services_up_on_ip_port(
             if be["pxname"] == service and backend_is_up(be):
                 services_with_atleast_one_backend_up[service] = True
     return all(services_with_atleast_one_backend_up.values())
-
-
-def match_backends_and_tasks(
-    backends: Iterable[HaproxyBackend], tasks: Iterable[marathon_tools.MarathonTask]
-) -> List[Tuple[Optional[HaproxyBackend], Optional[marathon_tools.MarathonTask]]]:
-    """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
-    once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
-    be included. If a task's port does not match with any backends, (None, task) will be included.
-
-    :param backends: An iterable of haproxy backend dictionaries, e.g. the list returned by
-                     smartstack_tools.get_multiple_backends.
-    :param tasks: An iterable of MarathonTask objects.
-    """
-
-    # { (ip, port) : [backend1, backend2], ... }
-    backends_by_ip_port: DefaultDict[
-        Tuple[str, int], List[HaproxyBackend]
-    ] = collections.defaultdict(list)
-    backend_task_pairs = []
-
-    for backend in backends:
-        ip, port, _ = ip_port_hostname_from_svname(backend["svname"])
-        backends_by_ip_port[ip, port].append(backend)
-
-    for task in tasks:
-        ip = socket.gethostbyname(task.host)
-        for port in task.ports:
-            for backend in backends_by_ip_port.pop((ip, port), [None]):
-                backend_task_pairs.append((backend, task))
-
-    # we've been popping in the above loop, so anything left didn't match a marathon task.
-    for backends in backends_by_ip_port.values():
-        for backend in backends:
-            backend_task_pairs.append((backend, None))
-
-    return backend_task_pairs
 
 
 def match_backends_and_pods(
@@ -580,7 +511,7 @@ class BaseReplicationChecker(ReplicationChecker):
         """Returns the number of registered instances in each discoverable
         location for each service dicrovery provider.
 
-        :param instance_config: An instance of MarathonServiceConfig.
+        :param instance_config: An instance of LongRunningServiceConfig.
         :returns: a dict {'service_discovery_provider': {'location_type': {'service.instance': int}}}
         """
         replication_infos = {}
@@ -636,7 +567,7 @@ class BaseReplicationChecker(ReplicationChecker):
 
         :param location: A string that identifies a habitat, a region and etc.
         :param hostname: A mesos slave hostname to read replication information from.
-        :param instance_config: An instance of MarathonServiceConfig.
+        :param instance_config: An instance of LongRunningServiceConfig.
         :returns: A dict {"service.instance": number_of_instances}.
         """
         full_name = compose_job_id(instance_config.service, instance_config.instance)
@@ -646,71 +577,6 @@ class BaseReplicationChecker(ReplicationChecker):
             replication_info = provider.get_replication_for_all_services(hostname)
             self._cache[key] = replication_info
         return {full_name: replication_info[full_name]}
-
-
-class MesosSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
-    """Retrieves the number of registered instances in each discoverable location.
-
-    Based on SmartstackReplicationChecker takes mesos slaves as an argument to filter
-    which services are allowed to run where.
-    :Example:
-
-    >>> from paasta_tools.mesos_tools import get_slaves
-    >>> from paasta_tools.utils import load_system_paasta_config
-    >>> from paasta_tools.marathon_tools import load_marathon_service_config
-    >>> from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
-    >>>
-    >>> mesos_slaves = get_slaves()
-    >>> system_paasta_config = load_system_paasta_config()
-    >>> instance_config = load_marathon_service_config(service='fake_service',
-    ...                       instance='fake_instance', cluster='norcal-stagef')
-    >>>
-    >>> c = MesosSmartstackEnvoyReplicationChecker(mesos_slaves, system_paasta_config)
-    >>> c.get_replication_for_instance(instance_config)
-    {'Smartstack': {'uswest1-stagef': {'fake_service.fake_instance': 2}}
-    'Envoy': {'uswest1-stagef': {'fake_service.fake_instance': 2}}}
-    >>>
-    """
-
-    def __init__(
-        self,
-        mesos_slaves: List[_MesosSlaveDict],
-        system_paasta_config: SystemPaastaConfig,
-    ) -> None:
-        self._mesos_slaves = mesos_slaves
-        super().__init__(
-            system_paasta_config=system_paasta_config,
-            service_discovery_providers=get_service_discovery_providers(
-                system_paasta_config
-            ),
-        )
-
-    def get_allowed_locations_and_hosts(
-        self, instance_config: LongRunningServiceConfig
-    ) -> Dict[str, Sequence[DiscoveredHost]]:
-        """Returns a dict of locations and lists of corresponding mesos slaves
-        where deployment of the instance is allowed.
-
-        :param instance_config: An instance of MarathonServiceConfig
-        :returns: A dict {"uswest1-prod": [DiscoveredHost(), DiscoveredHost(), ...]}
-        """
-        discover_location_type = marathon_tools.load_service_namespace_config(
-            service=instance_config.service,
-            namespace=instance_config.get_nerve_namespace(),
-            soa_dir=instance_config.soa_dir,
-        ).get_discover()
-        attribute_to_slaves = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-            slaves=self._mesos_slaves, attribute=discover_location_type
-        )
-        ret: Dict[str, Sequence[DiscoveredHost]] = {}
-        for attr, slaves in attribute_to_slaves.items():
-            ret[attr] = [
-                DiscoveredHost(
-                    hostname=slave["hostname"], pool=slave["attributes"]["pool"]
-                )
-                for slave in slaves
-            ]
-        return ret
 
 
 class KubeSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
@@ -751,12 +617,7 @@ class KubeSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
 
 def build_smartstack_location_dict(
     location: str,
-    matched_backends_and_tasks: List[
-        Tuple[
-            Optional[HaproxyBackend],
-            Optional[Union[marathon_tools.MarathonTask, V1Pod]],
-        ]
-    ],
+    matched_backends_and_tasks: List[Tuple[Optional[HaproxyBackend], Optional[V1Pod],]],
     should_return_individual_backends: bool = False,
 ) -> MutableMapping[str, Any]:
     running_backends_count = 0
@@ -777,8 +638,7 @@ def build_smartstack_location_dict(
 
 
 def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend,
-    task: Union[V1Pod, Optional[marathon_tools.MarathonTask]],
+    smartstack_backend: HaproxyBackend, task: Union[V1Pod],
 ) -> MutableMapping[str, Any]:
     svname = smartstack_backend["svname"]
     if isinstance(task, V1Pod):
