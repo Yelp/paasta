@@ -24,7 +24,7 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.cli.utils import verify_instances
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -317,14 +317,14 @@ def test_git_sha_validation():
 @patch("paasta_tools.cli.utils.get_instance_configs_for_service", autospec=True)
 def test_list_deploy_groups_parses_configs(mock_get_instance_configs_for_service,):
     mock_get_instance_configs_for_service.return_value = [
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="",
             instance="",
             config_dict={"deploy_group": "fake_deploy_group"},
             branch_dict=None,
         ),
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="fake_cluster",
             instance="fake_instance",

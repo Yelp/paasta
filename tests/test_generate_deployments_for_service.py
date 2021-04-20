@@ -14,7 +14,7 @@
 import mock
 
 from paasta_tools import generate_deployments_for_service
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 
 
 def test_get_deploy_group_mappings():
@@ -22,14 +22,14 @@ def test_get_deploy_group_mappings():
     fake_soa_dir = "/no/yes/maybe"
 
     fake_service_configs = [
-        MarathonServiceConfig(
+        LongRunningServiceConfig(
             service=fake_service,
             cluster="clusterA",
             instance="main",
             branch_dict=None,
             config_dict={"deploy_group": "no_thanks"},
         ),
-        MarathonServiceConfig(
+        LongRunningServiceConfig(
             service=fake_service,
             cluster="clusterB",
             instance="main",

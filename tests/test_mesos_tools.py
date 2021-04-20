@@ -25,7 +25,6 @@ from pytest import raises
 from paasta_tools import mesos
 from paasta_tools import mesos_tools
 from paasta_tools import utils
-from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.utils import PaastaColors
 
 
@@ -52,7 +51,7 @@ def test_filter_not_running_tasks():
 )
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
-    filter_string = format_job_id("fake_service", "fake_instance")
+    filter_string = "fake--service.fake--instance"
 
     with asynctest.patch(
         "paasta_tools.mesos_tools.get_cached_list_of_running_tasks_from_frameworks",

@@ -15,8 +15,7 @@ from mock import patch
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.adhoc_tools import load_adhoc_job_config
-from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DeploymentsJsonV2
 
@@ -73,7 +72,7 @@ def deployment_json():
     )
 
 
-def marathon_cluster_config():
+def kubernetes_cluster_config():
     """Return a sample dict to mock paasta_tools.utils.load_service_instance_configs"""
     return {
         "main": {
@@ -114,17 +113,17 @@ def adhoc_cluster_config():
     "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
-def test_marathon_instances(mock_load_service_instance_configs):
-    mock_load_service_instance_configs.return_value = marathon_cluster_config()
+def test_kubernetes_instances(mock_load_service_instance_configs):
+    mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
     s = create_test_service()
-    assert list(s.instances(TEST_CLUSTER_NAME, MarathonServiceConfig)) == [
+    assert list(s.instances(TEST_CLUSTER_NAME, KubernetesDeploymentConfig)) == [
         "main",
         "canary",
         "not_deployed",
     ]
     mock_load_service_instance_configs.assert_called_once_with(
         service=TEST_SERVICE_NAME,
-        instance_type="marathon",
+        instance_type="kubernetes",
         cluster=TEST_CLUSTER_NAME,
         soa_dir=TEST_SOA_DIR,
     )
@@ -137,14 +136,14 @@ def test_marathon_instances(mock_load_service_instance_configs):
     "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
     autospec=True,
 )
-def test_marathon_instances_configs(
+def test_kubernetes_instances_configs(
     mock_load_service_instance_configs, mock_load_deployments_json
 ):
-    mock_load_service_instance_configs.return_value = marathon_cluster_config()
+    mock_load_service_instance_configs.return_value = kubernetes_cluster_config()
     mock_load_deployments_json.return_value = deployment_json()
     s = create_test_service()
     expected = [
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service=TEST_SERVICE_NAME,
             cluster=TEST_CLUSTER_NAME,
             instance="main",
@@ -168,7 +167,7 @@ def test_marathon_instances_configs(
             },
             soa_dir=TEST_SOA_DIR,
         ),
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service=TEST_SERVICE_NAME,
             cluster=TEST_CLUSTER_NAME,
             instance="canary",
@@ -194,11 +193,12 @@ def test_marathon_instances_configs(
         ),
     ]
     assert (
-        list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
+        list(s.instance_configs(TEST_CLUSTER_NAME, KubernetesDeploymentConfig))
+        == expected
     )
     mock_load_service_instance_configs.assert_called_once_with(
         service=TEST_SERVICE_NAME,
-        instance_type="marathon",
+        instance_type="kubernetes",
         cluster=TEST_CLUSTER_NAME,
         soa_dir=TEST_SOA_DIR,
     )
@@ -279,52 +279,6 @@ def test_adhoc_instances_configs(
     )
     mock_load_deployments_json.assert_called_once_with(
         TEST_SERVICE_NAME, soa_dir=TEST_SOA_DIR
-    )
-
-
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_v2_deployments_json", autospec=True
-)
-@patch("paasta_tools.marathon_tools.load_v2_deployments_json", autospec=True)
-@patch(
-    "paasta_tools.paasta_service_config_loader.load_service_instance_configs",
-    autospec=True,
-)
-@patch(
-    "paasta_tools.marathon_tools.load_service_instance_config", autospec=True,
-)
-def test_old_and_new_ways_load_the_same_marathon_configs(
-    mock_marathon_tools_load_service_instance_config,
-    mock_load_service_instance_configs,
-    mock_marathon_tools_load_deployments_json,
-    mock_load_deployments_json,
-):
-    mock_load_service_instance_configs.return_value = marathon_cluster_config()
-    mock_marathon_tools_load_service_instance_config.side_effect = [
-        marathon_cluster_config().get("main"),
-        marathon_cluster_config().get("canary"),
-    ]
-    mock_load_deployments_json.return_value = deployment_json()
-    mock_marathon_tools_load_deployments_json.return_value = deployment_json()
-    s = create_test_service()
-    expected = [
-        load_marathon_service_config(
-            service=TEST_SERVICE_NAME,
-            instance="main",
-            cluster=TEST_CLUSTER_NAME,
-            load_deployments=True,
-            soa_dir=TEST_SOA_DIR,
-        ),
-        load_marathon_service_config(
-            service=TEST_SERVICE_NAME,
-            instance="canary",
-            cluster=TEST_CLUSTER_NAME,
-            load_deployments=True,
-            soa_dir=TEST_SOA_DIR,
-        ),
-    ]
-    assert (
-        list(s.instance_configs(TEST_CLUSTER_NAME, MarathonServiceConfig)) == expected
     )
 
 
