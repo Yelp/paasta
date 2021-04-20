@@ -616,21 +616,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
     }
-    if framework == "marathon":
-        env["MARATHON_PORT"] = str(port0)
-        env["MARATHON_PORT0"] = str(port0)
-        env["MARATHON_PORTS"] = str(port0)
-        env["MARATHON_PORT_%d" % instance_config.get_container_port()] = str(port0)
-        env["MARATHON_APP_VERSION"] = "simulated_marathon_app_version"
-        env["MARATHON_APP_RESOURCE_CPUS"] = str(instance_config.get_cpus())
-        env["MARATHON_APP_DOCKER_IMAGE"] = docker_image
-        env["MARATHON_APP_RESOURCE_MEM"] = str(instance_config.get_mem())
-        env["MARATHON_APP_RESOURCE_DISK"] = str(instance_config.get_disk())
-        env["MARATHON_APP_LABELS"] = ""
-        env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
-        env["MARATHON_HOST"] = hostname
-        env["PAASTA_HOST"] = hostname
-        env["PAASTA_PORT"] = str(port0)
 
     return env
 

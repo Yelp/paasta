@@ -34,7 +34,7 @@ from paasta_tools.cli.cmds.local_run import perform_tcp_healthcheck
 from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
@@ -1083,7 +1083,7 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     mock_docker_client.inspect_container.return_value = {
         "State": {"ExitCode": 666, "Running": True}
     }
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     run_docker_container(
         docker_client=mock_docker_client,
@@ -1135,7 +1135,7 @@ def test_run_docker_container_interactive(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     return_code = run_docker_container(
         docker_client=mock_docker_client,
@@ -1200,7 +1200,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     mock_docker_client.inspect_container.return_value = {
         "State": {"ExitCode": 99, "Running": True}
@@ -1253,7 +1253,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_docker_client.inspect_container.return_value = {
         "State": {"ExitCode": 99, "Running": True}
     }
@@ -1314,7 +1314,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     with raises(SystemExit) as excinfo:
         run_docker_container(
@@ -1380,7 +1380,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     with raises(SystemExit) as excinfo:
         run_docker_container(
@@ -1445,7 +1445,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     with raises(SystemExit) as excinfo:
         run_docker_container(
@@ -1494,7 +1494,7 @@ def test_run_docker_container_with_user_specified_port(
 ):
     mock_pick_random_port.return_value = 666  # we dont want it running on this port
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.get_net.return_value = "bridge"
     mock_service_manifest.get_env_dictionary.return_value = {}
     mock_service_manifest.get_container_port.return_value = 8888
@@ -1524,7 +1524,7 @@ def test_run_docker_container_with_user_specified_port(
 @mock.patch("time.sleep", autospec=True)
 def test_simulate_healthcheck_on_service_disabled(mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
     fake_container_id = "fake_container_id"
     fake_mode = "http"
     fake_url = "http://fake_host/fake_status_path"
@@ -1546,7 +1546,7 @@ def test_simulate_healthcheck_on_service_enabled_success(
     mock_run_healthcheck_on_container, mock_sleep
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig(
+    mock_service_manifest = KubernetesDeploymentConfig(
         service="fake_name",
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1575,7 +1575,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(
     mock_run_healthcheck_on_container, mock_sleep
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig(
+    mock_service_manifest = KubernetesDeploymentConfig(
         service="fake_name",
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1614,7 +1614,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(
         (True, ""),
     ]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig(
+    mock_service_manifest = KubernetesDeploymentConfig(
         service="fake_name",
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1651,7 +1651,7 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     # prevent grace period from ending
     mock_time.side_effect = [0, 0]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig(
+    mock_service_manifest = KubernetesDeploymentConfig(
         service="fake_name",
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1691,7 +1691,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
 
     mock_time.side_effect = [0, 1, 5]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig(
+    mock_service_manifest = KubernetesDeploymentConfig(
         service="fake_name",
         cluster="fake_cluster",
         instance="fake_instance",
@@ -1733,7 +1733,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
         mock_client.inspect_container.return_value = {
             "State": {"Running": False, "ExitCode": 127}
         }
-        fake_service_manifest = MarathonServiceConfig(
+        fake_service_manifest = KubernetesDeploymentConfig(
             service="fake_name",
             cluster="fake_cluster",
             instance="fake_instance",
@@ -1808,30 +1808,7 @@ def test_format_command_for_tron(mock_datetime, mock_parse_time_variables):
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_marathon(mock_getfqdn,):
-    mock_instance_config = mock.MagicMock(spec_set=MarathonServiceConfig)
-    mock_instance_config.get_mem.return_value = 123
-    mock_instance_config.get_disk.return_value = 123
-    mock_instance_config.get_cpus.return_value = 123
-    mock_instance_config.get_docker_image.return_value = "fake_docker_image"
-
-    actual = get_local_run_environment_vars(
-        instance_config=mock_instance_config, port0=1234, framework="marathon"
-    )
-    assert actual["MARATHON_PORT"] == "1234"
-    assert actual["MARATHON_PORT0"] == "1234"
-    assert actual["MARATHON_HOST"] == "fake_host"
-    assert actual["MARATHON_APP_RESOURCE_CPUS"] == "123"
-    assert actual["MARATHON_APP_RESOURCE_MEM"] == "123"
-    assert actual["MARATHON_APP_RESOURCE_DISK"] == "123"
-
-
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.socket.getfqdn",
-    autospec=True,
-    return_value="fake_host",
-)
-def test_get_local_run_environment_vars_other(mock_getfqdn,):
+def test_get_local_run_environment_vars(mock_getfqdn,):
     mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
     mock_instance_config.get_mem.return_value = 123
     mock_instance_config.get_disk.return_value = 123
@@ -1842,7 +1819,6 @@ def test_get_local_run_environment_vars_other(mock_getfqdn,):
         instance_config=mock_instance_config, port0=1234, framework="adhoc"
     )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
-    assert "MARATHON_PORT" not in actual
 
 
 @mock.patch(
@@ -1856,7 +1832,7 @@ def test_volumes_are_deduped(mock_exists):
     ) as mock_get_instance_config, mock.patch(
         "paasta_tools.cli.cmds.local_run.validate_service_instance",
         autospec=True,
-        return_value="marathon",
+        return_value="kubernetes",
     ):
 
         mock_get_instance_config.return_value = InstanceConfig(
@@ -1911,7 +1887,7 @@ def test_missing_volumes_skipped(mock_exists):
     ) as mock_get_instance_config, mock.patch(
         "paasta_tools.cli.cmds.local_run.validate_service_instance",
         autospec=True,
-        return_value="marathon",
+        return_value="kubernetes",
     ):
 
         mock_get_instance_config.return_value = InstanceConfig(
