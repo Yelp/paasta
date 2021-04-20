@@ -15,7 +15,6 @@
 import sys
 
 from paasta_tools.kubernetes_tools import get_all_kubernetes_services_running_here
-from paasta_tools.marathon_tools import marathon_services_running_here
 from paasta_tools.mesos_tools import MesosSlaveConnectionError
 from paasta_tools.tron_tools import tron_jobs_running_here
 from paasta_tools.utils import _log
@@ -43,11 +42,6 @@ def broadcast_log_all_services_running_here(line: str, soa_dir=DEFAULT_SOA_DIR) 
 
 def get_all_services_running_here(cluster, soa_dir):
     try:
-        marathon_services = marathon_services_running_here()
-    except MesosSlaveConnectionError:
-        marathon_services = []
-
-    try:
         tron_services = tron_jobs_running_here()
     except MesosSlaveConnectionError:
         tron_services = []
@@ -57,7 +51,7 @@ def get_all_services_running_here(cluster, soa_dir):
     except Exception:
         kubernetes_services = []
 
-    return marathon_services + tron_services + kubernetes_services
+    return tron_services + kubernetes_services
 
 
 def main() -> None:
