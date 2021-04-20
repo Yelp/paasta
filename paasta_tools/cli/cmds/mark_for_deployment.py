@@ -56,7 +56,6 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
@@ -1223,8 +1222,6 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
 
         long_running_status = None
         if status:
-            if status.marathon:
-                long_running_status = status.marathon
             if status.kubernetes:
                 long_running_status = status.kubernetes
         if not status:
@@ -1237,7 +1234,7 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             instances_out.put(instance_config)
         elif not long_running_status:
             log.debug(
-                "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
+                "{}.{} in {} is not a Kubernetes job. Marked as deployed.".format(
                     cluster_data.service, instance, cluster_data.cluster
                 )
             )
@@ -1397,7 +1394,6 @@ def _run_cluster_worker(cluster_data, green_light):
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
-    MarathonServiceConfig,
     KubernetesDeploymentConfig,
     CassandraClusterDeploymentConfig,
 ]
@@ -1420,7 +1416,7 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
             )
             raise NoSuchCluster
 
-        # Currently only marathon, kubernetes and cassandra instances are
+        # Currently only kubernetes and cassandra instances are
         # supported for wait_for_deployment because they are the only thing
         # that are worth waiting on.
         instances_queue = Queue()
@@ -1564,7 +1560,7 @@ def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_s
 
 
 class NoSuchCluster(Exception):
-    """To be raised by wait_for_deployment() when a service has a marathon or
+    """To be raised by wait_for_deployment() when a service has a
     kubernetes config for a cluster that is not listed in /etc/paasta/api_endpoints.json.
     """
 

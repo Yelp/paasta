@@ -24,7 +24,7 @@ from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
 from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha_is_latest
 from paasta_tools.cli.utils import NoSuchService
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import TimeoutError
@@ -45,15 +45,15 @@ def mock_status_instance_side_effect(
 ):
     if instance in ["instance1", "instance6", "notaninstance", "api_error"]:
         # valid completed instance
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Running",
             expected_instance_count=2,
             running_instance_count=2,
         )
     if instance == "instance2":
-        # too many marathon apps
-        mock_mstatus = Mock(
+        # too many kubernetes apps
+        mock_kstatus = Mock(
             app_count=2,
             deploy_status="Running",
             expected_instance_count=2,
@@ -61,7 +61,7 @@ def mock_status_instance_side_effect(
         )
     if instance == "instance3":
         # too many running instances
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Running",
             expected_instance_count=2,
@@ -69,7 +69,7 @@ def mock_status_instance_side_effect(
         )
     if instance == "instance4":
         # still Deploying
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Deploying",
             expected_instance_count=2,
@@ -77,18 +77,18 @@ def mock_status_instance_side_effect(
         )
     if instance == "instance4.1":
         # still Deploying
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Waiting",
             expected_instance_count=2,
             running_instance_count=2,
         )
     if instance == "instance5":
-        # not a marathon instance
-        mock_mstatus = None
+        # not a kubernetes instance
+        mock_kstatus = None
     if instance == "instance7":
         # paasta stop'd
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Stopped",
             expected_instance_count=0,
@@ -97,7 +97,7 @@ def mock_status_instance_side_effect(
         )
     if instance == "instance8":
         # paasta has autoscaled to 0
-        mock_mstatus = Mock(
+        mock_kstatus = Mock(
             app_count=1,
             deploy_status="Stopped",
             expected_instance_count=0,
@@ -108,8 +108,7 @@ def mock_status_instance_side_effect(
     if instance == "instance6":
         # running the wrong version
         mock_status.git_sha = "anothersha"
-    mock_status.marathon = mock_mstatus
-    mock_status.kubernetes = None
+    mock_status.kubernetes = mock_kstatus
 
     if instance == "notaninstance":
         # not an instance paasta can find
@@ -143,15 +142,15 @@ def test_instances_deployed(mock_get_paasta_oapi_client, mock__log):
         git_sha="somesha",
         instances_queue=Queue(),
     )
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance1"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance1"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance1"))
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance2"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance1"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance2"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
@@ -165,57 +164,57 @@ def test_instances_deployed(mock_get_paasta_oapi_client, mock__log):
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance4"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance4"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance4.1"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance4.1"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance5"))
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance1"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance5"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance1"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance6"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance6"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False).get_instance() == "instance6"
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("notaninstance"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("notaninstance"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False).get_instance() == "notaninstance"
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("api_error"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("api_error"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.get(block=False).get_instance() == "api_error"
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance7"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance7"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
     assert instances_out.empty()
 
     cluster_data.instances_queue = Queue()
-    cluster_data.instances_queue.put(mock_marathon_instance_config("instance8"))
+    cluster_data.instances_queue.put(mock_kubernetes_deployment_config("instance8"))
     instances_out = Queue()
     f(cluster_data, instances_out, e)
     assert cluster_data.instances_queue.empty()
@@ -246,9 +245,9 @@ def test_wait_for_deployment(
 ):
     mock_paasta_service_config_loader.return_value.clusters = ["cluster1"]
     mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
-        mock_marathon_instance_config("instance1"),
-        mock_marathon_instance_config("instance2"),
-        mock_marathon_instance_config("instance3"),
+        mock_kubernetes_deployment_config("instance1"),
+        mock_kubernetes_deployment_config("instance2"),
+        mock_kubernetes_deployment_config("instance3"),
     ]
     mock_instances_deployed.side_effect = instances_deployed_side_effect
 
@@ -268,12 +267,12 @@ def test_wait_for_deployment(
     # TODO: mock clusters_data_to_wait_for instead of this
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
         [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
         [],
         [],
@@ -292,12 +291,12 @@ def test_wait_for_deployment(
     # TODO: mock clusters_data_to_wait_for instead of this
     mock_paasta_service_config_loader.return_value.instance_configs.side_effect = [
         [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance2"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance2"),
         ],
         [
-            mock_marathon_instance_config("instance1"),
-            mock_marathon_instance_config("instance3"),
+            mock_kubernetes_deployment_config("instance1"),
+            mock_kubernetes_deployment_config("instance3"),
         ],
         [],
         [],
@@ -389,7 +388,7 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock__log2.return_value = None
     mock_load_system_paasta_config.return_value = system_paasta_config
     mock_paasta_service_config_loader.return_value.instance_configs.return_value = [
-        mock_marathon_instance_config("some_instance")
+        mock_kubernetes_deployment_config("some_instance")
     ]
     mock_list_deploy_groups.return_value = {"test_deploy_group"}
     assert paasta_wait_for_deployment(fake_args) == 0
@@ -430,8 +429,8 @@ def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs, 
     )
 
 
-def mock_marathon_instance_config(fake_name) -> "MarathonServiceConfig":
-    return MarathonServiceConfig(
+def mock_kubernetes_deployment_config(fake_name) -> "KubernetesDeploymentConfig":
+    return KubernetesDeploymentConfig(
         service="fake_service",
         cluster="fake_cluster",
         instance=fake_name,
@@ -451,8 +450,8 @@ def test_compose_timeout_message():
             instances_queue=Queue(),
         )
     )
-    clusters_data[0].instances_queue.put(mock_marathon_instance_config("instance1"))
-    clusters_data[0].instances_queue.put(mock_marathon_instance_config("instance2"))
+    clusters_data[0].instances_queue.put(mock_kubernetes_deployment_config("instance1"))
+    clusters_data[0].instances_queue.put(mock_kubernetes_deployment_config("instance2"))
     clusters_data.append(
         mark_for_deployment.ClusterData(
             cluster="cluster2",
@@ -461,7 +460,7 @@ def test_compose_timeout_message():
             instances_queue=Queue(),
         )
     )
-    clusters_data[1].instances_queue.put(mock_marathon_instance_config("instance3"))
+    clusters_data[1].instances_queue.put(mock_kubernetes_deployment_config("instance3"))
     clusters_data.append(
         mark_for_deployment.ClusterData(
             cluster="cluster3",
