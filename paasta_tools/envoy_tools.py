@@ -28,14 +28,12 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
-from typing import Union
 
 import requests
 import yaml
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
 
-from paasta_tools import marathon_tools
 from paasta_tools.utils import get_user_agent
 
 
@@ -303,49 +301,10 @@ def match_backends_and_pods(
     return backend_pod_pairs
 
 
-def match_backends_and_tasks(
-    backends: Iterable[EnvoyBackend], tasks: Iterable[marathon_tools.MarathonTask]
-) -> List[Tuple[Optional[EnvoyBackend], Optional[marathon_tools.MarathonTask]]]:
-    """Returns tuples of matching (backend, task) pairs, as matched by IP and port. Each backend will be listed exactly
-    once, and each task will be listed once per port. If a backend does not match with a task, (backend, None) will
-    be included. If a task's port does not match with any backends, (None, task) will be included.
-
-    :param backends: An iterable of Envoy backend dictionaries, e.g. the list returned by
-                     envoy_tools.get_multiple_backends.
-    :param tasks: An iterable of MarathonTask objects.
-    """
-
-    # { (ip, port) : [backend1, backend2], ... }
-    backends_by_ip_port: DefaultDict[
-        Tuple[str, int], List[EnvoyBackend]
-    ] = collections.defaultdict(list)
-    backend_task_pairs = []
-
-    for backend in backends:
-        ip = backend["address"]
-        port = backend["port_value"]
-        backends_by_ip_port[ip, port].append(backend)
-
-    for task in tasks:
-        ip = socket.gethostbyname(task.host)
-        for port in task.ports:
-            for backend in backends_by_ip_port.pop((ip, port), [None]):
-                backend_task_pairs.append((backend, task))
-
-    # we've been popping in the above loop, so anything left didn't match a marathon task.
-    for backends in backends_by_ip_port.values():
-        for backend in backends:
-            backend_task_pairs.append((backend, None))
-
-    return backend_task_pairs
-
-
 def build_envoy_location_dict(
     location: str,
     matched_envoy_backends_and_tasks: Sequence[
-        Tuple[
-            Optional[EnvoyBackend], Optional[Union[marathon_tools.MarathonTask, V1Pod]]
-        ]
+        Tuple[Optional[EnvoyBackend], Optional[V1Pod]]
     ],
     should_return_individual_backends: bool,
     casper_proxied_backends: AbstractSet[Tuple[str, int]],

@@ -24,7 +24,6 @@ from paasta_tools.envoy_tools import get_backends
 from paasta_tools.envoy_tools import get_backends_from_eds
 from paasta_tools.envoy_tools import get_casper_endpoints
 from paasta_tools.envoy_tools import match_backends_and_pods
-from paasta_tools.envoy_tools import match_backends_and_tasks
 
 
 def test_get_backends():
@@ -124,43 +123,6 @@ def mock_backends():
             "has_associated_task": False,
         },
     ]
-
-
-def test_match_backends_and_tasks(mock_backends):
-    backends = mock_backends
-
-    good_task1 = mock.Mock(host="box4", ports=[31000])
-    good_task2 = mock.Mock(host="box5", ports=[31001])
-    bad_task = mock.Mock(host="box7", ports=[31000])
-    tasks = [good_task1, good_task2, bad_task]
-
-    hostnames = {
-        "box4": "10.50.2.4",
-        "box5": "10.50.2.5",
-        "box6": "10.50.2.6",
-        "box7": "10.50.2.7",
-        "box8": "10.50.2.8",
-    }
-
-    with mock.patch(
-        "paasta_tools.envoy_tools.socket.gethostbyname",
-        side_effect=lambda x: hostnames[x],
-        autospec=True,
-    ):
-        expected = [
-            (backends[0], good_task1),
-            (backends[1], good_task2),
-            (None, bad_task),
-            (backends[2], None),
-            (backends[3], None),
-            (backends[4], None),
-        ]
-        actual = match_backends_and_tasks(backends, tasks)
-
-        def keyfunc(t):
-            return tuple(sorted((t[0] or {}).items())), t[1]
-
-        assert sorted(actual, key=keyfunc) == sorted(expected, key=keyfunc)
 
 
 def test_match_backends_and_pods(mock_backends):
