@@ -30,7 +30,7 @@ a value of 'master', the key would be paasta_test:master instead, and the SHA
 would be the SHA at the tip of master.
 
 This is done for all services in the SOA configuration directory, across any
-service configuration files (filename is 'marathon-\*.yaml').
+service configuration files (filename is 'kubernetes-\*.yaml').
 
 Command line options:
 
@@ -77,7 +77,9 @@ DeploymentsDict = TypedDict(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Creates marathon jobs.")
+    parser = argparse.ArgumentParser(
+        description="Creates deployments.json for paasta services."
+    )
     parser.add_argument(
         "-d",
         "--soa-dir",
