@@ -16,7 +16,6 @@ from pyramid import testing
 
 from paasta_tools.api.views import autoscaler
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 @mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
@@ -30,26 +29,6 @@ def test_get_autoscaler_count(mock_get_instance_config):
     response = autoscaler.get_autoscaler_count(request)
     assert response.json_body["desired_instances"] == 123
     assert response.json_body["calculated_instances"] == 123
-
-
-@mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
-def test_update_autoscaler_count_marathon(mock_get_instance_config):
-    request = testing.DummyRequest()
-    request.swagger_data = {
-        "service": "fake_marathon_service",
-        "instance": "fake_marathon_instance",
-        "json_body": {"desired_instances": 123},
-    }
-
-    mock_get_instance_config.return_value = mock.MagicMock(
-        get_min_instances=mock.MagicMock(return_value=100),
-        get_max_instances=mock.MagicMock(return_value=200),
-        spec=MarathonServiceConfig,
-    )
-
-    response = autoscaler.update_autoscaler_count(request)
-    assert response.json_body["desired_instances"] == 123
-    assert response.status_code == 202
 
 
 @mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
