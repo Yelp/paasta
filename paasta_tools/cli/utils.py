@@ -44,7 +44,6 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log
@@ -168,8 +167,6 @@ class PaastaCheckMessages:
     )
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
-
-    MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
@@ -748,9 +745,6 @@ class LongRunningInstanceTypeHandler(NamedTuple):
 
 INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     lambda: InstanceTypeHandler(None, None),
-    marathon=InstanceTypeHandler(
-        get_service_instance_list, load_marathon_service_config
-    ),
     adhoc=InstanceTypeHandler(get_service_instance_list, load_adhoc_job_config),
     kubernetes=InstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
@@ -772,9 +766,6 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     str, LongRunningInstanceTypeHandler
 ] = defaultdict(
     lambda: LongRunningInstanceTypeHandler(None, None),
-    marathon=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_marathon_service_config
-    ),
     kubernetes=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
     ),
@@ -802,7 +793,7 @@ def get_instance_config(
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
     """ Returns the InstanceConfig object for whatever type of instance
-    it is. (marathon) """
+    it is. (kubernetes) """
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
@@ -961,14 +952,6 @@ def get_subparser(subparsers, function, command, help_text, description):
     )
     new_parser.set_defaults(command=function)
     return new_parser
-
-
-def pick_slave_from_status(status, host=None):
-    if host:
-        return host
-    else:
-        slaves = status.marathon.slaves
-        return slaves[0]
 
 
 def get_instance_configs_for_service(

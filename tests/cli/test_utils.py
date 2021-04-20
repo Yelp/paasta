@@ -302,13 +302,6 @@ def test_get_subparser():
     )
 
 
-def test_pick_slave_from_status():
-    mock_slaves = [1, 2]
-    mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
-    assert utils.pick_slave_from_status(mock_status, host=None) == 1
-    assert utils.pick_slave_from_status(mock_status, host="lolhost") == "lolhost"
-
-
 def test_git_sha_validation():
     assert (
         utils.validate_full_git_sha("060ce8bc10efe0030c048a4711ad5dd85de5adac")

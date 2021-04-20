@@ -86,14 +86,16 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
     soa_dir = tmpdir.mkdir("yelpsoa")
     myservice_dir = soa_dir.mkdir("myservice")
 
-    marathon_config = {
+    kubernetes_config = {
         "hassecurityoutbound": {
             "dependencies_reference": "my_ref",
             "security": {"outbound_firewall": "block"},
         },
         "nosecurity": {"dependencies_reference": "my_ref"},
     }
-    myservice_dir.join("marathon-mycluster.yaml").write(yaml.safe_dump(marathon_config))
+    myservice_dir.join("kubernetes-mycluster.yaml").write(
+        yaml.safe_dump(kubernetes_config)
+    )
 
     dependencies_config = {
         "my_ref": [
