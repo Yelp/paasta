@@ -30,7 +30,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -132,7 +132,7 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
     log_event(service_config=service_config, desired_state=desired_state)
 
 
-def print_marathon_message(desired_state):
+def print_kubernetes_message(desired_state):
     if desired_state == "start":
         print(
             "This service will soon be gracefully started/restarted, replacing old instances according "
@@ -217,7 +217,7 @@ def paasta_start_or_stop(args, desired_state):
             return 1
 
     invalid_deploy_groups = []
-    marathon_message_printed = False
+    kubernetes_message_printed = False
     affected_flinks = []
 
     if args.clusters is None or args.instances is None:
@@ -261,11 +261,11 @@ def paasta_start_or_stop(args, desired_state):
                 else:
                     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
                     if (
-                        isinstance(service_config, MarathonServiceConfig)
-                        and not marathon_message_printed
+                        isinstance(service_config, KubernetesDeploymentConfig)
+                        and not kubernetes_message_printed
                     ):
-                        print_marathon_message(desired_state)
-                        marathon_message_printed = True
+                        print_kubernetes_message(desired_state)
+                        kubernetes_message_printed = True
 
                     issue_state_change_for_service(
                         service_config=service_config,
