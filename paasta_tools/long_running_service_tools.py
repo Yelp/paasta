@@ -28,7 +28,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
-logging.getLogger("marathon").setLevel(logging.WARNING)
+logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)
 
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
@@ -180,7 +180,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
 
     def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
-        """Get the drain method specified in the service's marathon configuration.
+        """Get the drain method specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain method specified in the config, or 'noop' if not specified"""
@@ -193,7 +193,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_drain_method_params(
         self, service_namespace_config: ServiceNamespaceConfig
     ) -> Dict:
-        """Get the drain method parameters specified in the service's marathon configuration.
+        """Get the drain method parameters specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
@@ -264,10 +264,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_healthcheck_grace_period_seconds(self) -> float:
         """
-        Grace periods indicate different things on kubernetes/marathon: on
-        marathon, it indicates how long marathon will tolerate failing
-        healthchecks; on kubernetes, how long before kubernetes will start
-        sending healthcheck and liveness probes.
+        How long before kubernetes will start sending healthcheck and liveness probes.
         """
         return self.config_dict.get("healthcheck_grace_period_seconds", 60)
 
@@ -325,7 +322,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return self.config_dict.get("max_instances", None)
 
     def get_desired_instances(self) -> int:
-        """Get the number of instances specified in zookeeper or the service's marathon configuration.
+        """Get the number of instances specified in zookeeper or the service's configuration.
         If the number of instances in zookeeper is less than min_instances, returns min_instances.
         If the number of instances in zookeeper is greater than max_instances, returns max_instances.
 
@@ -611,12 +608,11 @@ def get_expected_instance_count_for_namespace(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> int:
     """Get the number of expected instances for a namespace, based on the number
-    of instances set to run on that namespace as specified in Marathon service
-    configuration files.
+    of instances set to run on that namespace as specified in service configuration files.
 
     :param service: The service's name
     :param namespace: The namespace for that service to check
-    instance_type_class: The type of the instance, options are MarathonServiceConfig and KubernetesDeploymentConfig,
+    instance_type_class: The type of the instance, options are e.g. KubernetesDeploymentConfig,
     :param soa_dir: The SOA configuration directory to read from
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
