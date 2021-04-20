@@ -186,6 +186,9 @@ def get_cluster_dashboards(cluster: str,) -> str:
         else:
             output = [PaastaColors.red("No dashboards configured!")]
     else:
+        if len(dashboards) == 0:
+            return PaastaColors.red("No dashboards configured!")
+
         output = ["Dashboards:"]
         spacing = max((len(label) for label in dashboards.keys())) + 1
         for label, urls in dashboards.items():
