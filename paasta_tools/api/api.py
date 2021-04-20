@@ -29,7 +29,6 @@ from wsgicors import CORS
 
 import paasta_tools.api
 from paasta_tools import kubernetes_tools
-from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.tweens import request_logger
 from paasta_tools.utils import load_system_paasta_config
@@ -189,17 +188,6 @@ def setup_paasta_api():
         settings.cluster = os.environ.get("PAASTA_API_CLUSTER")
     else:
         settings.cluster = settings.system_paasta_config.get_cluster()
-
-    settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_tools.get_marathon_servers(settings.system_paasta_config)
-    )
-
-    settings.marathon_servers = marathon_tools.get_marathon_servers(
-        system_paasta_config=settings.system_paasta_config
-    )
-    settings.marathon_clients = marathon_tools.get_marathon_clients(
-        marathon_servers=settings.marathon_servers, cached=False
-    )
 
     try:
         settings.kubernetes_client = kubernetes_tools.KubeClient()
