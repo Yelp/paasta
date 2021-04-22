@@ -91,13 +91,15 @@ def add_subparser(subparsers) -> None:
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         "-c",
-        "--clusters",
-        help="The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        "--cluster",
+        help="The cluster to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        nargs=1,
     ).completer = completer_clusters
     status_parser.add_argument(
         "-i",
-        "--instances",
-        help="The instances to see relevant logs for. Defaults to all instances for this service.",
+        "--instance",
+        help="The instance to see relevant logs for. Defaults to all instances for this service.",
+        type=str,
     ).completer = completer_clusters
     pod_help = (
         "The pods to see relevant logs for. Defaults to all pods for this service."
@@ -411,7 +413,9 @@ def print_log(
         # suppress trailing newline since scribereader already attached one
         print(line, end=" ", flush=True)
     else:
-        print(prettify_log_line(line, requested_levels, strip_headers), flush=True)
+        print(
+            prettify_log_line(line, requested_levels, strip_headers), flush=True,
+        )
 
 
 def prettify_timestamp(timestamp: datetime.datetime) -> str:
@@ -461,7 +465,6 @@ def prettify_log_line(
         return "Invalid JSON: %s" % line
 
     try:
-        pretty_level = prettify_level(parsed_line["level"], requested_levels)
         if strip_headers:
             return "%(timestamp)s %(message)s" % (
                 {
@@ -470,18 +473,12 @@ def prettify_log_line(
                 }
             )
         else:
-            return (
-                "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s"
-                % (
-                    {
-                        "timestamp": prettify_timestamp(parsed_line["timestamp"]),
-                        "component": prettify_component(parsed_line["component"]),
-                        "cluster": "[%s]" % parsed_line["cluster"],
-                        "instance": "[%s]" % parsed_line["instance"],
-                        "level": "%s" % pretty_level,
-                        "message": parsed_line["message"],
-                    }
-                )
+            return "%(timestamp)s %(component)s - %(message)s" % (
+                {
+                    "timestamp": prettify_timestamp(parsed_line["timestamp"]),
+                    "component": prettify_component(parsed_line["component"]),
+                    "message": parsed_line["message"],
+                }
             )
     except KeyError:
         log.debug(
@@ -890,6 +887,7 @@ class ScribeLogReader(LogReader):
             {line["raw_line"]: line for line in aggregated_logs}.values()
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
         for line in aggregated_logs:
             print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
@@ -942,6 +940,7 @@ class ScribeLogReader(LogReader):
             {line["raw_line"]: line for line in aggregated_logs}.values()
         )
         aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
         for line in aggregated_logs:
             print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
@@ -1369,18 +1368,22 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     service = figure_out_service_name(args, soa_dir)
 
-    if args.clusters is None:
-        clusters = list_clusters(service, soa_dir=soa_dir)
-    else:
-        clusters = args.clusters.split(",")
+    cluster = args.cluster
+    if (
+        args.cluster is None
+        or args.instance is None
+        or len(args.instance.split(",")) > 2
+    ):
+        print(
+            PaastaColors.red("You must specify one cluster and one instance."),
+            file=sys.stderr,
+        )
+        return 1
 
-    if args.instances is None:
-        instances = None
-    else:
-        instances = args.instances.split(",")
+    if verify_instances(args.instance, service, cluster):
+        return 1
 
-        if verify_instances(args.instances, service, clusters):
-            return 1
+    instance = args.instance
 
     if args.pods is None:
         pods = None
@@ -1400,7 +1403,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     levels = [DEFAULT_LOGLEVEL, "debug"]
 
-    log.debug(f"Going to get logs for {service} on clusters {clusters}")
+    log.debug(f"Going to get logs for {service} on cluster {cluster}")
 
     log_reader = get_log_reader()
 
@@ -1409,7 +1412,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
     # They haven't specified what kind of filtering they want, decide for them
     if args.line_count is None and args.time_from is None and not args.tail:
         return pick_default_log_mode(
-            args, log_reader, service, levels, components, clusters, instances, pods
+            args, log_reader, service, levels, components, cluster, instance, pods
         )
     if args.tail:
         print(
@@ -1419,8 +1422,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             service=service,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
@@ -1440,8 +1443,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_count=args.line_count,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
@@ -1454,8 +1457,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_offset=args.line_offset,
             levels=levels,
             components=components,
-            clusters=clusters,
-            instances=instances,
+            clusters=cluster,
+            instances=instance,
             pods=pods,
             raw_mode=args.raw_mode,
             strip_headers=args.strip_headers,
@@ -1475,8 +1478,8 @@ def paasta_logs(args: argparse.Namespace) -> int:
         end_time=end_time,
         levels=levels,
         components=components,
-        clusters=clusters,
-        instances=instances,
+        clusters=cluster,
+        instances=instance,
         pods=pods,
         raw_mode=args.raw_mode,
         strip_headers=args.strip_headers,

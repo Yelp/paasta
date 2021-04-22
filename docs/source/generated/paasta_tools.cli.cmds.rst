@@ -20,6 +20,7 @@ Submodules
    paasta_tools.cli.cmds.local_run
    paasta_tools.cli.cmds.logs
    paasta_tools.cli.cmds.mark_for_deployment
+   paasta_tools.cli.cmds.mesh_status
    paasta_tools.cli.cmds.metastatus
    paasta_tools.cli.cmds.pause_service_autoscaler
    paasta_tools.cli.cmds.performance_check

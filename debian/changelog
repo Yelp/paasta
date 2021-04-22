@@ -1,3 +1,62 @@
+paasta-tools (0.99.0) xenial; urgency=medium
+
+  * 0.99.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17097_delete_signalfx_code"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 19 Apr 2021 12:12:50 -0700
+
+paasta-tools (0.98.1) xenial; urgency=medium
+
+  * 0.98.1 tagged with 'make release'
+    Commit: Merge pull request #3104 from
+    Yelp/fix_broken_prometheus_port_annotation  Annotation values my be
+    strings
+
+ -- David Avent <davent@yelp.com>  Thu, 15 Apr 2021 07:54:48 -0700
+
+paasta-tools (0.98.00) xenial; urgency=medium
+
+  * 0.98.00 tagged with 'make release'
+    Commit: Merge pull request #3103 from Yelp/u/davent/PERES-2872-add-
+    proemtheus-port-annotation  Add prometheus_port and a pod annotation
+    to allow overriding in Prome…
+
+ -- David Avent <davent@yelp.com>  Thu, 15 Apr 2021 02:22:18 -0700
+
+paasta-tools (0.97.99) xenial; urgency=medium
+
+  * 0.97.99 tagged with 'make release'
+    Commit: Merge pull request #3096 from zhaoyanh1202/u/zhaoyanh/MONK-
+    2327-add-pod-management-policy-to-sts  MONK-2327 Add pod management
+    policy support to StatefuleSets
+
+ -- Zhaoyang Huang <zhaoyanh@yelp.com>  Wed, 14 Apr 2021 02:13:50 -0700
+
+paasta-tools (0.97.98) xenial; urgency=medium
+
+  * 0.97.98 tagged with 'make release'
+    Commit: Set default for use_signalfx to False. PAASTA-17097.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 08 Apr 2021 14:00:30 -0700
+
+paasta-tools (0.97.97) xenial; urgency=medium
+
+  * 0.97.97 tagged with 'make release'
+    Commit: Merge pull request #3072 from Yelp/PAASTA-17310-
+    ReplaceHostnameWithPodandContainer  PAASTA-17310- Shorten Log Line
+    Preamble in Paasta Logs by Removing Instance and Cluster in Log
+    Line, and Enforce User to Input One Cluster and One Instance
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Tue, 06 Apr 2021 14:09:26 -0700
+
+paasta-tools (0.97.96) xenial; urgency=medium
+
+  * 0.97.96 tagged with 'make release'
+    Commit: Merge branch
+    "u/krall/run_uwsgi_exporter_when_use_prometheus_is_default"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 05 Apr 2021 11:27:11 -0700
+
 paasta-tools (0.97.95) xenial; urgency=medium
 
   * 0.97.95 tagged with 'make release'

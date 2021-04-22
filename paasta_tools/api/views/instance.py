@@ -69,6 +69,7 @@ from paasta_tools.mesos_tools import results_or_unknown
 from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.utils import calculate_tail_lines
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
@@ -612,6 +613,13 @@ async def get_mesos_non_running_task_dict(
     return task_dict
 
 
+def no_configuration_for_service_message(cluster, service, instance):
+    return (
+        f"No instance named '{compose_job_id(service, instance)}' has been "
+        f"configured to run in the {settings.cluster} cluster"
+    )
+
+
 @view_config(
     route_name="service.instance.status", request_method="GET", renderer="json"
 )
@@ -638,9 +646,8 @@ def instance_status(request):
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = (
-            "Deployment key %s not found.  Try to execute the corresponding pipeline if it's a fresh instance"
-            % ".".join([settings.cluster, instance])
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -724,8 +731,8 @@ def instance_set_state(request,) -> None:
             service, instance, settings.cluster, settings.soa_dir
         )
     except NoConfigurationForServiceError:
-        error_message = "deployment key %s not found" % ".".join(
-            [settings.cluster, instance]
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -813,6 +820,39 @@ def instance_delay(request):
         return response
 
 
+@view_config(
+    route_name="service.instance.bounce_status", request_method="GET", renderer="json",
+)
+def bounce_status(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = no_configuration_for_service_message(
+            settings.cluster, service, instance,
+        )
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    if instance_type != "kubernetes":
+        # We are using HTTP 204 to indicate that the instance exists but has
+        # no bounce status to be returned.  The client should just mark the
+        # instance as bounced.
+        response = Response()
+        response.status_int = 204
+        return response
+
+    try:
+        return pik.bounce_status(service, instance, settings)
+    except Exception as e:
+        raise ApiFailure(e, 500)
+
+
 def add_executor_info(task):
     task._Task__items["executor"] = a_sync.block(task.executor).copy()
     task._Task__items["executor"].pop("tasks", None)
@@ -845,3 +885,50 @@ def get_deployment_version(
 ) -> Optional[str]:
     key = ".".join((cluster, instance))
     return actual_deployments[key][:8] if key in actual_deployments else None
+
+
+@view_config(
+    route_name="service.instance.mesh_status", request_method="GET", renderer="json",
+)
+def instance_mesh_status(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    include_smartstack = request.swagger_data.get("include_smartstack")
+    include_envoy = request.swagger_data.get("include_envoy")
+
+    instance_mesh: Dict[str, Any] = {}
+    instance_mesh["service"] = service
+    instance_mesh["instance"] = instance
+
+    try:
+        instance_type = validate_service_instance(
+            service, instance, settings.cluster, settings.soa_dir
+        )
+    except NoConfigurationForServiceError:
+        error_message = (
+            f"No instance named '{compose_job_id(service, instance)}' has been "
+            f"configured to run in the {settings.cluster} cluster"
+        )
+        raise ApiFailure(error_message, 404)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    try:
+        instance_mesh.update(
+            pik.kubernetes_mesh_status(
+                service=service,
+                instance=instance,
+                instance_type=instance_type,
+                settings=settings,
+                include_smartstack=include_smartstack,
+                include_envoy=include_envoy,
+            )
+        )
+    except RuntimeError as e:
+        raise ApiFailure(str(e), 405)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
+
+    return instance_mesh

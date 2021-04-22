@@ -50,7 +50,6 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
-from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 from kubernetes.client import V2beta2MetricIdentifier
@@ -767,18 +766,43 @@ class TestKubernetesDeploymentConfig:
             default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=False)
         )
 
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_enabled
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=False,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
             )
-            is True
-        )
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(
-                system_paasta_config_disabled
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is False
             )
-            is False
-        )
+
+        # If the default for use_prometheus is True and config_dict doesn't specify use_prometheus, we should run
+        # uwsgi_exporter regardless of default_should_run_uwsgi_exporter_sidecar.
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
+            autospec=False,
+            new=True,
+        ):
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
+            )
+            assert (
+                self.deployment.should_run_uwsgi_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is True
+            )
 
     def test_get_container_env(self):
         with mock.patch(
@@ -1337,6 +1361,7 @@ class TestKubernetesDeploymentConfig:
                     revision_history_limit=0,
                     template=mock_get_pod_template_spec.return_value,
                     volume_claim_templates=mock_get_volumes_claim_templates.return_value,
+                    pod_management_policy="OrderedReady",
                 ),
             )
             assert ret == expected
@@ -1882,7 +1907,7 @@ class TestKubernetesDeploymentConfig:
             get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
         ),
     )
-    def test_get_autoscaling_metric_spec_offset_and_averaging(
+    def test_get_autoscaling_metric_spec_uwsgi_prometheus(
         self, fake_system_paasta_config
     ):
         config_dict = KubernetesDeploymentConfigDict(
@@ -1911,11 +1936,7 @@ class TestKubernetesDeploymentConfig:
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name="fake_name",
-                namespace="paasta",
-                annotations={
-                    "signalfx.com.external.metric/service-instance-uwsgi": "fake_signalflow_query",
-                },
+                name="fake_name", namespace="paasta", annotations={},
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
@@ -1933,15 +1954,6 @@ class TestKubernetesDeploymentConfig:
                                 kind="Deployment",
                                 name="fake_name",
                             ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name="service-instance-uwsgi",
-                            ),
-                            target=V2beta2MetricTarget(type="Value", value=1,),
                         ),
                     ),
                 ],
@@ -2773,42 +2785,46 @@ def test_update_stateful_set():
     )
 
 
-@pytest.mark.asyncio
-async def test_get_kubernetes_app_deploy_status():
-    mock_client = mock.Mock()
+def test_get_kubernetes_app_deploy_status():
     mock_status = mock.Mock(replicas=1, ready_replicas=1, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Running, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=1) == (
+        KubernetesDeployStatus.Running,
+        "",
+    )
 
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Waiting, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=2) == (
+        KubernetesDeployStatus.Waiting,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=2, updated_replicas=1)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=2
-    ) == (KubernetesDeployStatus.Deploying, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=2) == (
+        KubernetesDeployStatus.Deploying,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=0, ready_replicas=None, updated_replicas=0)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=0) == (
+        KubernetesDeployStatus.Stopped,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=0, ready_replicas=0, updated_replicas=0)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=0
-    ) == (KubernetesDeployStatus.Stopped, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=0) == (
+        KubernetesDeployStatus.Stopped,
+        "",
+    )
 
     mock_status = mock.Mock(replicas=1, ready_replicas=None, updated_replicas=None)
     mock_app = mock.Mock(status=mock_status)
-    assert await get_kubernetes_app_deploy_status(
-        mock_app, mock_client, desired_instances=1
-    ) == (KubernetesDeployStatus.Waiting, "")
+    assert get_kubernetes_app_deploy_status(mock_app, desired_instances=1) == (
+        KubernetesDeployStatus.Waiting,
+        "",
+    )
 
 
 def test_parse_container_resources():
@@ -3371,12 +3387,22 @@ def test_running_task_allocation_get_kubernetes_metadata():
         "yelp.com/paasta_instance": "instance1",
         "paasta.yelp.com/service": "srv1",
         "paasta.yelp.com/instance": "instance1",
+        "paasta.yelp.com/git_sha": "30cc51cff849871c7de3cc39ed951a7914894dac",
+        "paasta.yelp.com/config_sha": "config399d26e6",
     }
     mock_pod.metadata.name = "pod_1"
     mock_pod.status.pod_ip = "10.10.10.10"
     mock_pod.status.host_ip = "10.10.10.11"
     ret = task_allocation_get_kubernetes_metadata(mock_pod)
-    assert ret == ("srv1", "instance1", "pod_1", "10.10.10.10", "10.10.10.11",)
+    assert ret == (
+        "srv1",
+        "instance1",
+        "pod_1",
+        "10.10.10.10",
+        "10.10.10.11",
+        "30cc51cff849871c7de3cc39ed951a7914894dac",
+        "config399d26e6",
+    )
 
 
 def test_running_task_allocation_get_pod_pool():
@@ -3393,3 +3419,18 @@ def test_running_task_allocation_get_pod_pool():
 
         ret = task_allocation_get_pod_pool(mock.Mock(), mock.Mock())
         assert ret == "default"
+
+    @pytest.mark.parametrize(
+        "config_dict, expected_management_policy",
+        [({"pod_management_policy": "Parallel"}, "Parallel"), ({}, "OrderedReady"),],
+    )
+    def test_get_pod_management_policy(self, config_dict, expected_management_policy):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        assert deployment.get_pod_management_policy() == expected_management_policy

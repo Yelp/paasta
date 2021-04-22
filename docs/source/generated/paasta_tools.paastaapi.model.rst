@@ -18,6 +18,8 @@ Submodules
    paasta_tools.paastaapi.model.inline_object
    paasta_tools.paastaapi.model.inline_response200
    paasta_tools.paastaapi.model.inline_response2001
+   paasta_tools.paastaapi.model.instance_bounce_status
+   paasta_tools.paastaapi.model.instance_mesh_status
    paasta_tools.paastaapi.model.instance_status
    paasta_tools.paastaapi.model.instance_status_adhoc
    paasta_tools.paastaapi.model.instance_status_flink

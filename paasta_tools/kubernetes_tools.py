@@ -96,7 +96,6 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
-from kubernetes.client import V2beta2ExternalMetricSource
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
@@ -111,9 +110,6 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
-from paasta_tools.long_running_service_tools import (
-    DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-)
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -182,7 +178,6 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
-DEFAULT_USE_SIGNALFX_UWSGI = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
@@ -280,6 +275,36 @@ SidecarResourceRequirements = TypedDict(
 )
 
 
+KubePodAnnotations = TypedDict(
+    "KubePodAnnotations",
+    {
+        "autoscaling": str,
+        "iam.amazonaws.com/role": str,
+        "paasta.yelp.com/prometheus_path": str,
+        "paasta.yelp.com/prometheus_port": str,
+        "paasta.yelp.com/routable_ip": str,
+        "smartstack_registrations": str,
+    },
+    total=False,
+)
+
+KubePodLabels = TypedDict(
+    "KubePodLabels",
+    {
+        "paasta.yelp.com/deploy_group": str,
+        "paasta.yelp.com/git_sha": str,
+        "paasta.yelp.com/instance": str,
+        "paasta.yelp.com/prometheus_shard": str,
+        "paasta.yelp.com/scrape_uwsgi_prometheus": str,
+        "paasta.yelp.com/service": str,
+        "yelp.com/paasta_git_sha": str,
+        "yelp.com/paasta_instance": str,
+        "yelp.com/paasta_service": str,
+    },
+    total=False,
+)
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_margin_factor: float
@@ -293,6 +318,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_path: str
     prometheus_port: int
     routable_ip: bool
+    pod_management_policy: str
 
 
 def load_kubernetes_service_config_no_cache(
@@ -618,44 +644,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-
-            use_signalfx = autoscaling_params.get(
-                "use_signalfx", DEFAULT_USE_SIGNALFX_UWSGI
-            )
-
-            if use_signalfx:
-                hpa_metric_name = self.namespace_external_metric_name(metrics_provider)
-                legacy_autoscaling_signalflow = (
-                    load_system_paasta_config().get_legacy_autoscaling_signalflow()
-                )
-                signalflow = legacy_autoscaling_signalflow.format(
-                    setpoint=target,
-                    offset=autoscaling_params.get("offset", 0),
-                    moving_average_window_seconds=autoscaling_params.get(
-                        "moving_average_window_seconds",
-                        DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-                    ),
-                    paasta_service=self.get_service(),
-                    paasta_instance=self.get_instance(),
-                    paasta_cluster=self.get_cluster(),
-                    signalfx_metric_name=metrics_provider,
-                )
-                annotations[
-                    f"signalfx.com.external.metric/{hpa_metric_name}"
-                ] = signalflow
-
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="External",
-                        external=V2beta2ExternalMetricSource(
-                            metric=V2beta2MetricIdentifier(name=hpa_metric_name,),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=1,  # see comments on signalflow template above
-                            ),
-                        ),
-                    )
-                )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
@@ -887,7 +875,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if autoscaling_params["metrics_provider"] == "uwsgi":
                 if autoscaling_params.get(
                     "use_prometheus",
-                    system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                    DEFAULT_USE_PROMETHEUS_UWSGI
+                    or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
         return False
@@ -1366,6 +1355,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "check_envoy", system_paasta_config.get_enable_envoy_readiness_check()
         )
 
+    def get_pod_management_policy(self) -> str:
+        """Get sts pod_management_policy from config, default to 'OrderedReady'"""
+        return self.config_dict.get("pod_management_policy", "OrderedReady")
+
     def format_kubernetes_app(self) -> Union[V1Deployment, V1StatefulSet]:
         """Create the configuration that will be passed to the Kubernetes REST API."""
 
@@ -1393,6 +1386,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         template=self.get_pod_template_spec(
                             git_sha=git_sha, system_paasta_config=system_paasta_config
                         ),
+                        pod_management_policy=self.get_pod_management_policy(),
                     ),
                 )
             else:
@@ -1477,7 +1471,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         has_routable_ip = self.has_routable_ip(
             service_namespace_config, system_paasta_config
         )
-        annotations: Dict[str, Any] = {
+        annotations: KubePodAnnotations = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
@@ -1554,8 +1548,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if prometheus_path:
             annotations["paasta.yelp.com/prometheus_path"] = prometheus_path
 
+        # prometheus_port is used to override the default scrape port in Prometheus
+        prometheus_port = self.get_prometheus_port()
+        if prometheus_port:
+            annotations["paasta.yelp.com/prometheus_port"] = str(prometheus_port)
+
         # Default Pod labels
-        labels: Dict[str, Any] = {
+        labels: KubePodLabels = {
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
@@ -2565,10 +2564,8 @@ async def get_events_for_object(
         return []
 
 
-async def get_kubernetes_app_deploy_status(
-    app: Union[V1Deployment, V1StatefulSet],
-    kube_client: KubeClient,
-    desired_instances: int,
+def get_kubernetes_app_deploy_status(
+    app: Union[V1Deployment, V1StatefulSet], desired_instances: int,
 ) -> Tuple[int, str]:
     if app.status.ready_replicas is None:
         if desired_instances == 0:

@@ -169,7 +169,62 @@ components:
           description: setpoint/target_value as specified in yelpsoa_configs
           type: string
       type: object
+    InstanceBounceStatus:
+      properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+        app_count:
+          description: The number of different running versions of the same service
+            (0 for stopped, 1 for running and 1+ for bouncing)
+          format: int32
+          type: integer
+        deploy_status:
+          description: Deploy status of a Kubernetes service
+          enum:
+          - Running
+          - Deploying
+          - Stopped
+          - Delayed
+          - Waiting
+          - NotRunning
+          type: string
+        desired_state:
+          description: Desired state of a service, for Kubernetes
+          enum:
+          - start
+          - stop
+          type: string
+        expected_instance_count:
+          description: The number of desired instances of the service
+          format: int32
+          type: integer
+        running_instance_count:
+          description: The number of actual running instances of the service
+          format: int32
+          type: integer
+      type: object
     InstanceDelay:
+      type: object
+    InstanceMeshStatus:
+      properties:
+        instance:
+          description: Instance name
+          type: string
+        service:
+          description: Service name
+          type: string
+        smartstack:
+          $ref: '#/components/schemas/SmartstackStatus'
+          description: Status of the service in smartstack
+        envoy:
+          $ref: '#/components/schemas/EnvoyStatus'
+          description: Status of the service in Envoy
       type: object
     InstanceMetadataKafkaCluster:
       description: Kafka instance metadata
@@ -1372,6 +1427,38 @@ paths:
       summary: Change state of service_name.instance_name
       tags:
       - service
+  /services/{service}/{instance}/bounce_status:
+    get:
+      operationId: bounce_status_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceBounceStatus'
+          description: Bounce status of an instance
+        "204":
+          description: Instance is not bounceable and therefore has no bounce status
+        "404":
+          description: Deployment key not found
+        "500":
+          description: Instance failure
+      summary: Get bounce status of service_name.instance_name
+      tags:
+      - service
   /services/{service}/{instance}/status:
     get:
       operationId: status_instance
@@ -1431,6 +1518,52 @@ paths:
         "500":
           description: Instance failure
       summary: Get status of service_name.instance_name
+      tags:
+      - service
+  /services/{service}/{instance}/mesh_status:
+    get:
+      operationId: mesh_instance
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Include Smartstack information
+        in: query
+        name: include_smartstack
+        required: false
+        schema:
+          type: boolean
+          default: true
+      - description: Include Envoy information
+        in: query
+        name: include_envoy
+        required: false
+        schema:
+          type: boolean
+          default: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceMeshStatus'
+          description: Mesh status of an instance
+        "404":
+          description: Deployment key not found
+        "405":
+          description: Instance type not supported
+        "500":
+          description: Instance failure
+      summary: Get mesh status for service_name.instance_name
       tags:
       - service
   /services/{service}/{instance}/tasks:

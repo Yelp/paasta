@@ -1206,6 +1206,8 @@ def _run_instance_worker(cluster_data, instances_out, green_light):
             )
         except api.api_error as e:
             if e.status == 404:
+                # TODO(PAASTA-17290): just print the error message so that we
+                # can distinguish between sources of 404s
                 log.warning(
                     "Can't get status for instance {}, service {} in "
                     "cluster {}. This is normally because it is a new "

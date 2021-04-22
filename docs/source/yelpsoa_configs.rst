@@ -236,6 +236,14 @@ For more information on selector operators, see the official Kubernetes
 documentation on `node affinities
 <https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity>`_.
 
+  * ``pod_management_policy``: An option for applications managed with `StatefulSets <https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/>`_ to determine if the pods are managed in parallel or in order.
+
+    The default value is `OrderedReady <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#orderedready-pod-management>`_.
+    It can be set to `Parallel <https://kubernetes.io/docs/tutorials/stateful-application/basic-stateful-set/#parallel-pod-management>`_. For example::
+
+      pod_management_policy: Parallel
+
+
 .. _mesos-placement-options:
 
 Mesos
@@ -291,7 +299,8 @@ instance MAY have:
     kubernetes will create for a service. Defaults to 1.
 
   * ``max_instances``: When autoscaling, the maximum number of instances that
-    kubernetes will create for a service
+    kubernetes will create for this service.
+    If specified, ``instances`` is ignored.
 
   * ``registrations``: A list of SmartStack registrations (service.namespace)
     where instances of this PaaSTA service ought register in. In SmartStack,
@@ -357,7 +366,13 @@ instance MAY have:
 
   * ``monitoring``: See the `monitoring.yaml`_ section for details.
 
-  * ``autoscaling``: TBD
+  * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for details
+
+    * ``metrics_provider``: Which method the autoscaler will use to determine a service's utilization.
+      Should be ``cpu`` or ``uwsgi``.
+
+    * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
+      Should be ``proportional`` or ``bespoke``.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value

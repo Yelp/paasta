@@ -26,6 +26,7 @@ from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
+from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
 from paasta_tools.envoy_tools import EnvoyBackend
 from paasta_tools.instance.kubernetes import ServiceMesh
@@ -36,6 +37,7 @@ from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
@@ -1173,3 +1175,124 @@ def test_get_marathon_dashboard_links():
     assert instance.get_marathon_dashboard_links(
         marathon_clients, system_paasta_config
     ) == {"client": "http://marathon", "client1": "http://marathon1"}
+
+
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+def test_instance_mesh_status(
+    mock_validate_service_instance, mock_kubernetes_mesh_status,
+):
+    mock_validate_service_instance.return_value = "flink"
+    mock_kubernetes_mesh_status.return_value = {
+        "smartstack": "smtstk status",
+        "envoy": "envoy status",
+    }
+
+    request = testing.DummyRequest()
+    request.swagger_data = {
+        "service": "fake_service",
+        "instance": "fake_inst",
+        "include_smartstack": False,
+    }
+    instance_mesh = instance.instance_mesh_status(request)
+
+    assert instance_mesh == {
+        "service": "fake_service",
+        "instance": "fake_inst",
+        "smartstack": "smtstk status",
+        "envoy": "envoy status",
+    }
+    assert mock_kubernetes_mesh_status.call_args_list == [
+        mock.call(
+            service="fake_service",
+            instance="fake_inst",
+            instance_type="flink",
+            settings=settings,
+            include_smartstack=False,
+            include_envoy=None,  # default of true in api specs
+        ),
+    ]
+
+
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+@pytest.mark.parametrize(
+    "validate_side_eft,mesh_status_side_eft,expected_msg,expected_code",
+    [
+        (
+            NoConfigurationForServiceError(),
+            {"envoy": None},
+            "No instance named 'fake_service.fake_inst' has been configured",
+            404,
+        ),
+        (Exception(), {"envoy": None}, "Traceback", 500),
+        ("flink", RuntimeError("runtimeerror"), "runtimeerror", 405),
+        ("flink", Exception(), "Traceback", 500),
+    ],
+)
+def test_instance_mesh_status_error(
+    mock_validate_service_instance,
+    mock_kubernetes_mesh_status,
+    validate_side_eft,
+    mesh_status_side_eft,
+    expected_msg,
+    expected_code,
+):
+    mock_validate_service_instance.side_effect = [validate_side_eft]
+    mock_kubernetes_mesh_status.side_effect = [mesh_status_side_eft]
+
+    request = testing.DummyRequest()
+    request.swagger_data = {
+        "service": "fake_service",
+        "instance": "fake_inst",
+        "include_smartstack": False,
+    }
+
+    with pytest.raises(ApiFailure) as excinfo:
+        instance.instance_mesh_status(request)
+
+    assert expected_msg in excinfo.value.msg
+    assert expected_code == excinfo.value.err
+
+
+@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
+@mock.patch("paasta_tools.api.views.instance.pik.bounce_status", autospec=True)
+class TestBounceStatus:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.instance.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+        }
+        return request
+
+    def test_success(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        response = instance.bounce_status(mock_request)
+        assert response == mock_pik_bounce_status.return_value
+
+    def test_not_found(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 404
+
+    def test_not_kubernetes(
+        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+    ):
+        mock_validate_service_instance.return_value = "not_kubernetes"
+        response = instance.bounce_status(mock_request)
+        assert response.status_code == 204

@@ -26,6 +26,7 @@ from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import validate_instance_names
+from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
@@ -34,6 +35,7 @@ from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 
 
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_all_schemas", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_tron", autospec=True)
@@ -48,6 +50,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_all_schemas,
     mock_validate_paasta_objects,
     mock_validate_unique_instance_names,
+    mock_validate_min_max_instances,
 ):
     # Ensure each check in 'paasta_validate' is called
 
@@ -58,6 +61,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_tron.return_value = True
     mock_validate_paasta_objects.return_value = True
     mock_validate_unique_instance_names.return_value = True
+    mock_validate_min_max_instances.return_value = True
 
     args = mock.MagicMock()
     args.service = "test"
@@ -130,6 +134,39 @@ def test_validate_unknown_service_service_path():
     service = "unused"
 
     assert not paasta_validate_soa_configs(service, service_path)
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_min_max_instances_success(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+    capsys,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="fake_type"),
+        get_min_instances=mock.Mock(return_value=3),
+        get_max_instances=mock.Mock(return_value=1),
+    )
+
+    assert validate_min_max_instances("fake-service-path") is False
+    output, _ = capsys.readouterr()
+    assert (
+        "Instance fake_instance1 on cluster fake_cluster has a greater number of min_instances than max_instances."
+        in output
+    )
+    assert (
+        "The number of min_instances (3) cannot be greater than the max_instances (1)."
+        in output
+    )
 
 
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)

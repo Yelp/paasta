@@ -114,6 +114,7 @@ PAASTA_SUBCOMMANDS = {
     "local-run": "local_run",
     "logs": "logs",
     "mark-for-deployment": "mark_for_deployment",
+    "mesh-status": "mesh_status",
     "metastatus": "metastatus",
     "pause_service_autoscaler": "pause_service_autoscaler",
     "performance-check": "performance_check",

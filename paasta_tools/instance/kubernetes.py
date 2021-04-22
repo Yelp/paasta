@@ -250,8 +250,8 @@ async def job_status(
     desired_instances = (
         job_config.get_instances() if job_config.get_desired_state() != "stop" else 0
     )
-    deploy_status, message = await kubernetes_tools.get_kubernetes_app_deploy_status(
-        app=app, kube_client=client, desired_instances=desired_instances,
+    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+        app=app, desired_instances=desired_instances,
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
         deploy_status
@@ -426,6 +426,65 @@ def filter_actually_running_replicasets(
         for rs in replicaset_list
         if not (rs.spec.replicas == 0 and ready_replicas_from_replicaset(rs) == 0)
     ]
+
+
+def bounce_status(
+    service: str, instance: str, settings: Any,
+):
+    status: Dict[str, Any] = {}
+    job_config = kubernetes_tools.load_kubernetes_service_config(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=True,
+    )
+    expected_instance_count = job_config.get_instances()
+    status["expected_instance_count"] = expected_instance_count
+    desired_state = job_config.get_desired_state()
+    status["desired_state"] = desired_state
+
+    kube_client = settings.kubernetes_client
+    if kube_client is None:
+        raise RuntimeError("Could not load Kubernetes client!")
+
+    app = kubernetes_tools.get_kubernetes_app_by_name(
+        name=job_config.get_sanitised_deployment_name(),
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+    status["running_instance_count"] = (
+        app.status.ready_replicas if app.status.ready_replicas else 0
+    )
+
+    deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
+        app=app,
+        desired_instances=(expected_instance_count if desired_state != "stop" else 0),
+    )
+    status["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
+        deploy_status
+    )
+
+    if job_config.get_persistent_volumes():
+        version_objects = kubernetes_tools.controller_revisions_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+    else:
+        replicasets = kubernetes_tools.replicasets_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+        version_objects = filter_actually_running_replicasets(replicasets)
+
+    active_shas = kubernetes_tools.get_active_shas_for_service([app, *version_objects],)
+    status["active_shas"] = list(active_shas)
+    status["app_count"] = len(active_shas)
+    return status
 
 
 def kubernetes_status_v2(
@@ -983,3 +1042,67 @@ def ready_replicas_from_replicaset(replicaset: V1ReplicaSet) -> int:
         ready_replicas = 0
 
     return ready_replicas
+
+
+def kubernetes_mesh_status(
+    service: str,
+    instance: str,
+    instance_type: str,
+    settings: Any,
+    include_smartstack: bool = True,
+    include_envoy: bool = True,
+) -> Mapping[str, Any]:
+
+    if not include_smartstack and not include_envoy:
+        raise RuntimeError("No mesh types specified when requesting mesh status")
+    if instance_type not in LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
+        raise RuntimeError(
+            f"Getting mesh status for {instance_type} instances is not supported"
+        )
+
+    config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
+    job_config = config_loader(
+        service=service,
+        instance=instance,
+        cluster=settings.cluster,
+        soa_dir=settings.soa_dir,
+        load_deployments=True,
+    )
+    service_namespace_config = kubernetes_tools.load_service_namespace_config(
+        service=service,
+        namespace=job_config.get_nerve_namespace(),
+        soa_dir=settings.soa_dir,
+    )
+    if "proxy_port" not in service_namespace_config:
+        raise RuntimeError(
+            f"Instance '{service}.{instance}' is not configured for the mesh"
+        )
+
+    kube_client = settings.kubernetes_client
+    pod_list = kubernetes_tools.pods_for_service_instance(
+        service=job_config.service,
+        instance=job_config.instance,
+        kube_client=kube_client,
+        namespace=job_config.get_kubernetes_namespace(),
+    )
+
+    kmesh: Dict[str, Any] = {}
+    mesh_status_kwargs = dict(
+        service=service,
+        instance=job_config.get_nerve_namespace(),
+        job_config=job_config,
+        service_namespace_config=service_namespace_config,
+        pods=pod_list,
+        should_return_individual_backends=True,
+        settings=settings,
+    )
+    if include_smartstack:
+        kmesh["smartstack"] = mesh_status(
+            service_mesh=ServiceMesh.SMARTSTACK, **mesh_status_kwargs,
+        )
+    if include_envoy:
+        kmesh["envoy"] = mesh_status(
+            service_mesh=ServiceMesh.ENVOY, **mesh_status_kwargs,
+        )
+
+    return kmesh
