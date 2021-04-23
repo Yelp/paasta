@@ -1,3 +1,13 @@
+paasta-tools (0.100.0) xenial; urgency=medium
+
+  * 0.100.0 tagged with 'make release'
+    Commit: Merge pull request #3093 from
+    Yelp/u/jfong/new_paasta_status_vv  Update new status with
+    events/logs/autoscaling information, and fix event handling in
+    kubernetes status
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 23 Apr 2021 09:41:14 -0700
+
 paasta-tools (0.99.0) xenial; urgency=medium
 
   * 0.99.0 tagged with 'make release'
