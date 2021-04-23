@@ -319,7 +319,7 @@ components:
               description: timestamp of last autoscale
               type: string
             max_instances:
-              description: min_instances as specified in yelpsoa_configs
+              description: max_instances as specified in yelpsoa_configs
               type: integer
             metrics:
               description: Current metrics
@@ -411,6 +411,27 @@ components:
         app_name:
           description: Name of Kubernetes Deployment or Statefulset for instance
           type: string
+        autoscaling_status:
+          description: HPA associated to this app
+          properties:
+            desired_replicas:
+              description: desired number of _instances as calculated by HPA
+              type: integer
+            last_scale_time:
+              description: timestamp of last autoscale
+              type: string
+            max_instances:
+              description: max_instances as specified in yelpsoa_configs
+              type: integer
+            metrics:
+              description: Current metrics
+              items:
+                $ref: '#/components/schemas/HPAMetric'
+              type: array
+            min_instances:
+              description: min_instances as specified in yelpsoa_configs
+              type: integer
+          type: object
         desired_state:
           description: Desired state of the app (start or stop)
           type: string
@@ -614,17 +635,40 @@ components:
           format: float
           type: number
           nullable: true
+        last_timestamp:
+          description: Unix timestamp at which last state began
+          format: float
+          type: number
+          nullable: true
         timestamp:
           description: Unix timestamp at which current state began
           format: float
           type: number
           nullable: true
         healthcheck_grace_period:
-          description: Time in seconds for healthcheck grace period
-          format: float
-          type: number
+          description: Time in seconds for healthcheck grace period, 0 otherwise
+          format: int32
+          type: integer
+        healthcheck_cmd:
+          description: Healthcheck for this pod
+          $ref: '#/components/schemas/KubernetesHealthcheck'
           nullable: true
+        tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Stdout and stderr tail of the container
       type: object
+    KubernetesHealthcheck:
+      type: object
+      properties:
+        http_url:
+          type: string
+          nullable: true
+        tcp_port:
+          type: string
+          nullable: true
+        cmd:
+          type: string
+          nullable: true
     KubernetesPod:
       properties:
         containers:
@@ -690,8 +734,12 @@ components:
           description: The lifecycle phase of the pod
           type: string
         ready:
-          description: Whether or not the pod is ready and/or registered in the mesh
+          description: Whether or not the pod is ready in Kubernetes
           type: boolean
+        mesh_ready:
+          description: Whether or not the pod is ready in the service mesh
+          type: boolean
+          nullable: true
         scheduled:
           description: Whether or not the pod is scheduled
           type: boolean
@@ -703,6 +751,11 @@ components:
           description: short message with details about the pod's state
           nullable: true
           type: string
+        events:
+          description: Kubernetes pod events
+          type: array
+          items:
+            $ref: '#/components/schemas/KubernetesPodEvent'
         containers:
           items:
             $ref: '#/components/schemas/KubernetesContainerV2'
@@ -716,6 +769,9 @@ components:
           type: string
         timeStamp:
           type: string
+        error:
+          type: string
+          nullable: true
     KubernetesReplicaSet:
       properties:
         create_timestamp:

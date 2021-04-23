@@ -10,6 +10,7 @@ Subpackages
    paasta_tools.paastaapi.apis
    paasta_tools.paastaapi.model
    paasta_tools.paastaapi.models
+   paasta_tools.paastaapi.paastaapi
 
 Submodules
 ----------

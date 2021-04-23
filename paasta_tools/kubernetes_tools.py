@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import base64
 import copy
 import hashlib
@@ -35,7 +34,6 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
-import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -106,7 +104,6 @@ from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
-from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -1040,7 +1037,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         else:
             raise InvalidHealthcheckMode(
-                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp"
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp/cmd"
                 % mode
             )
 
@@ -1994,21 +1991,12 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
-@a_sync.to_async
-def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
-    try:
-        pod_events = kube_client.core.list_namespaced_event(
-            namespace=pod.metadata.namespace,
-            field_selector=f"involvedObject.name={pod.metadata.name}",
-        )
-        return pod_events.items if pod_events else []
-    except ApiException:
-        return []
-
-
-@async_timeout()
-async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
-    pod_events = await get_pod_events(kube_client, pod)
+async def get_pod_event_messages(
+    kube_client: KubeClient, pod: V1Pod, max_age_in_seconds: Optional[int] = None
+) -> List[Dict]:
+    pod_events = await get_events_for_object(
+        kube_client, pod, "Pod", max_age_in_seconds
+    )
     pod_event_messages = []
     if pod_events:
         for event in pod_events:
@@ -2026,9 +2014,12 @@ def format_pod_event_messages(
     rows: List[str] = list()
     rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
     for message in pod_event_messages:
-        timestamp = message.get("timeStamp", "unknown time")
-        message_text = message.get("message", "")
-        rows.append(f"   Event at {timestamp}: {message_text}")
+        if "error" in message:
+            rows.append(PaastaColors.yellow(f'   Error: {message["error"]}'))
+        else:
+            timestamp = message.get("time_stamp", "unknown time")
+            message_text = message.get("message", "")
+            rows.append(f"   Event at {timestamp}: {message_text}")
     return rows
 
 
@@ -2536,83 +2527,41 @@ def update_stateful_set(
     )
 
 
-@a_sync.to_async
-def get_events_for_object(
+def get_event_timestamp(event: V1Event) -> Optional[float]:
+    # Cycle through timestamp attributes in order of preference
+    for ts_attr in ["last_timestamp", "event_time", "first_timestamp"]:
+        ts = getattr(event, ts_attr)
+        if ts:
+            return ts.timestamp()
+    return None
+
+
+@async_timeout()
+async def get_events_for_object(
     kube_client: KubeClient,
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
+    max_age_in_seconds: Optional[int] = None,
 ) -> List[V1Event]:
-    host = KubeConfiguration().host
 
-    # The python kubernetes client doesn't support the V1Events API
-    # yet, so we have to make the request by hand (we need the V1Events
-    # API so that we can query by the involvedObject.name/kind)
-    #
-    # Also, as best as I can tell, the list_namespaced_event API call under the
-    # CoreV1 API does _not_ return the events that we're interested in.
-    events = kube_client.request(
-        "GET",
-        f"{host}/api/v1/namespaces/{obj.metadata.namespace}/events",
-        query_params={
-            "fieldSelector": f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
-            "limit": MAX_EVENTS_TO_RETRIEVE,
-        },
-    )
-    parsed_events = json.loads(events.data)
-    return parsed_events["items"]
-
-
-async def get_all_events_for_service(
-    app: Union[V1Deployment, V1StatefulSet], kube_client: KubeClient
-) -> List[V1Event]:
-    """ There is no universal API for getting all the events pertaining to
-    a particular object and all its sub-objects, so here we just enumerate
-    all the kinds of objects that we care about, and get all the relevent
-    events for each of those kinds """
-    events: List[V1Event] = []
-    ls = (
-        f'paasta.yelp.com/service={app.metadata.labels["paasta.yelp.com/service"]},'
-        f'paasta.yelp.com/instance={app.metadata.labels["paasta.yelp.com/instance"]}'
-    )
-
-    pod_coros = []
-    for pod in kube_client.core.list_namespaced_pod(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        pod_coros.append(get_events_for_object(kube_client, pod, "Pod"))
-
-    depl_coros = []
-    for depl in kube_client.deployments.list_namespaced_deployment(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        depl_coros.append(get_events_for_object(kube_client, depl, "Deployment"))
-
-    rs_coros = []
-    for rs in kube_client.deployments.list_namespaced_replica_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        rs_coros.append(get_events_for_object(kube_client, rs, "ReplicaSet"))
-
-    ss_coros = []
-    for ss in kube_client.deployments.list_namespaced_stateful_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        ss_coros.append(get_events_for_object(kube_client, ss, "StatefulSet"))
-
-    for event_list in await asyncio.gather(
-        *pod_coros, *depl_coros, *rs_coros, *ss_coros
-    ):
-        events.extend(event_list)
-
-    return sorted(
-        events,
-        key=lambda x: (
-            x.get("lastTimestamp")
-            or x.get("eventTime")
-            or x.get("firstTimestamp")
-            or 0  # prevent errors in case none of the fields exist
-        ),
-    )
+    try:
+        events = kube_client.core.list_namespaced_event(
+            namespace=obj.metadata.namespace,
+            field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
+            limit=MAX_EVENTS_TO_RETRIEVE,
+        )
+        events = events.items if events else []
+        if max_age_in_seconds and max_age_in_seconds > 0:
+            min_timestamp = datetime.now().timestamp() - max_age_in_seconds
+            events = [
+                evt
+                for evt in events
+                if get_event_timestamp(evt) is None
+                or get_event_timestamp(evt) > min_timestamp
+            ]
+        return events
+    except ApiException:
+        return []
 
 
 def get_kubernetes_app_deploy_status(
