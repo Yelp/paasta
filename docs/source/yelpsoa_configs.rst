@@ -374,7 +374,7 @@ instance MAY have:
 
   * ``replication_threshold``: An integer representing the percentage of instances that
     need to be available for monitoring purposes. If less than ``replication_threshold``
-    percent instances of a service's backends are not available, the monitoring
+    percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
