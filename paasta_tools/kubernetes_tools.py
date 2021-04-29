@@ -156,9 +156,14 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "downthenup": "Recreate",
     "brutal": "RollingUpdate",
 }
+ENVOY_SWAP_HEADERS_POD_NAME = "envoy-swap-headers"
 HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
-SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
+SIDECAR_CONTAINER_NAMES = [
+    ENVOY_SWAP_HEADERS_POD_NAME,
+    HACHECK_POD_NAME,
+    UWSGI_EXPORTER_POD_NAME,
+]
 KUBERNETES_NAMESPACE = "paasta"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
@@ -306,6 +311,7 @@ KubePodLabels = TypedDict(
 
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
+    appmesh_routing: bool
     bounce_method: str
     bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
@@ -766,6 +772,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_namespace_config: ServiceNamespaceConfig,
         hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
+        envoy_swap_headers_container = self.get_envoy_swap_headers_sidecar_container(
+            system_paasta_config
+        )
         hacheck_container = self.get_hacheck_sidecar_container(
             system_paasta_config, service_namespace_config, hacheck_sidecar_volumes,
         )
@@ -774,11 +783,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
         sidecars = []
+        if envoy_swap_headers_container:
+            sidecars.append(envoy_swap_headers_container)
         if hacheck_container:
             sidecars.append(hacheck_container)
         if uwsgi_exporter_container:
             sidecars.append(uwsgi_exporter_container)
         return sidecars
+
+    def get_envoy_swap_headers_sidecar_container(
+        self, system_paasta_config: SystemPaastaConfig,
+    ) -> Optional[V1Container]:
+        if self.is_appmesh_enabled():
+            return V1Container(
+                image="docker-dev.yelpcorp.com:443/envoy_swap_headers-k8s-sidecar:v1.0.0",
+                resources=V1ResourceRequirements(
+                    requests={"cpu": "10m", "memory": "32Mi"},
+                    # We need to run some tests and set these values right.
+                    limits={"cpu": "250m", "memory": "50Mi"},
+                ),
+                name=ENVOY_SWAP_HEADERS_POD_NAME,
+            )
+
+        return None
+
+    def is_appmesh_enabled(self) -> bool:
+        return self.config_dict.get("appmesh_routing", False)
 
     def get_hacheck_sidecar_container(
         self,
