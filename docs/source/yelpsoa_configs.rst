@@ -381,7 +381,7 @@ instance MAY have:
 
   * ``replication_threshold``: An integer representing the percentage of instances that
     need to be available for monitoring purposes. If less than ``replication_threshold``
-    percent instances of a service's backends are not available, the monitoring
+    percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
@@ -1097,7 +1097,7 @@ Here is a list of options that PaaSTA will pass through:
    the ``tip`` option.
 
  * ``alert_after``: Time string that represents how long a a check should be
-   failing before an actual alert should be fired. Currently defaults to ``2m``
+   failing before an actual alert should be fired. Currently defaults to ``10m``
    for the replication alert.
 
  * ``realert_every``: An integer (not a time unit) representing how many checks
