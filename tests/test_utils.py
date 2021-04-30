@@ -1869,7 +1869,7 @@ class TestInstanceConfig:
             {"containerPath": "/a", "hostPath": "/a", "mode": "RO"}
         ]
 
-    def test_get_volumes_dedupes_respects_hostpath(self):
+    def test_get_volumes_dedupes_by_containerpath(self):
         fake_conf = utils.InstanceConfig(
             service="",
             cluster="",
@@ -1883,10 +1883,9 @@ class TestInstanceConfig:
             branch_dict=None,
         )
         system_volumes: List[utils.DockerVolume] = [
-            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"}
+            {"containerPath": "/a", "hostPath": "/yet_another_a", "mode": "RO"}
         ]
         assert fake_conf.get_volumes(system_volumes) == [
-            {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
             {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
         ]
 
