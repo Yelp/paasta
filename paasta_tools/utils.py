@@ -98,6 +98,7 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "performance-check",
     "push-to-registry",
 )
+BOTO_SOURCE_DIR = "/etc/boto_cfg_private/"
 # Default values for _log
 ANY_CLUSTER = "N/A"
 ANY_INSTANCE = "N/A"
@@ -853,6 +854,33 @@ class InstanceConfig:
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
         return self.config_dict.get("extra_volumes", [])
 
+    def get_boto_mount(self):
+        try:
+            instance_config = load_service_instance_config(
+                self.service,
+                self.instance,
+                self.get_instance_type(),
+                self.cluster,
+                self.soa_dir,
+            )
+        except paasta_tools.utils.NoConfigurationForServiceError:
+            return []
+        boto_keys = instance_config.get("boto_keys")
+        if not boto_keys:
+            return []
+        service_name = self.service + "." + self.instance
+        create_service_boto_folder(service_name, boto_keys)
+        boto_mount_path = BOTO_SOURCE_DIR + service_name
+        if os.path.exists(boto_mount_path):
+            return [
+                {
+                    "containerPath": "/etc/boto_cfg",
+                    "hostPath": boto_mount_path,
+                    "mode": "RO",
+                }
+            ]
+        return []
+
     def get_aws_ebs_volumes(self) -> List[AwsEbsVolume]:
         return self.config_dict.get("aws_ebs_volumes", [])
 
@@ -892,7 +920,11 @@ class InstanceConfig:
         return self.config_dict.get("net", "bridge")
 
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
-        volumes = list(system_volumes) + list(self.get_extra_volumes())
+        volumes = (
+            list(system_volumes)
+            + list(self.get_extra_volumes())
+            + list(self.get_boto_mount())
+        )
         return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
@@ -3088,6 +3120,23 @@ def get_running_mesos_docker_containers() -> List[Dict]:
         for container in running_containers
         if "mesos-" in container["Names"][0]
     ]
+
+
+def create_service_boto_folder(service, keys):
+    service_folder = os.path.join(BOTO_SOURCE_DIR, service)
+    if not os.path.exists(service_folder):
+        os.mkdir(service_folder)
+    try:
+        for filename in os.listdir(BOTO_SOURCE_DIR):
+            if filename.split(".")[0] in keys:
+                os.link(
+                    os.path.join(BOTO_SOURCE_DIR, filename),
+                    os.path.join(BOTO_SOURCE_DIR, service, filename),
+                )
+    except OSError:
+        # Either BOTO_SOURCE_DIR is absent, or the keys inside already exist
+        # In either case, doing nothing is OK
+        pass
 
 
 class TimeoutError(Exception):
