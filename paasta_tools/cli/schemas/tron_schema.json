@@ -64,6 +64,12 @@
                         "type": "string"
                     }
                 },
+                "boto_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "mem": {
                     "type": "number",
                     "minimum": 32,

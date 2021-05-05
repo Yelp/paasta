@@ -74,6 +74,12 @@
                         "type": "string"
                     }
                 },
+                "boto_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "cfs_period_us": {
                     "type": "integer",
                     "minimum": 1000,
