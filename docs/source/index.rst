@@ -15,6 +15,7 @@ Directions (For PaaSTA Users)
    workflow
    autoscaling
    hpa
+   deploy_groups
 
 About PaaSTA's Architecture
 ---------------------------
