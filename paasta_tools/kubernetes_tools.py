@@ -873,12 +873,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 resources=V1ResourceRequirements(
                     requests={
                         "cpu": self.config_dict.get("appmesh_cpu_req", "10m"),
-                        "memory": self.config_dict.get("appmesh_mem_req", "32Mi"),
+                        "memory": self.config_dict.get("appmesh_mem_req", "128Mi"),
                     },
                     # We need to run some tests and set these values right.
                     limits={
                         "cpu": self.config_dict.get("appmesh_cpu_limit", "250m"),
-                        "memory": self.config_dict.get("appmesh_mem_limit", "50Mi"),
+                        "memory": self.config_dict.get("appmesh_mem_limit", "512Mi"),
                     },
                 ),
                 readiness_probe=V1Probe(
