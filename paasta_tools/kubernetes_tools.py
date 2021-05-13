@@ -299,6 +299,14 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     appmesh_routing: bool
+    init_enabled: bool
+    appmesh_preview: str
+    appmesh_loglevel: str
+    appmesh_admin_port: str
+    appmesh_cpu_req: str
+    appmesh_mem_req: str
+    appmesh_cpu_limit: str
+    appmesh_mem_limit: str
 
 
 def load_kubernetes_service_config_no_cache(
@@ -803,7 +811,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_kubernetes_init_containers(self) -> Sequence[V1Container]:
         init_containers = []
-        if self.is_appmesh_enabled():
+        if self.is_appmesh_enabled() and self.is_init_enabled():
             container = V1Container(
                 image="docker-paasta.yelpcorp.com:443/appmesh_route_manager:latest",
                 name=ROUTE_MANAGER_POD_NAME,
@@ -834,33 +842,44 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> Optional[V1Container]:
         if self.is_appmesh_enabled():
             paasta_cluster = system_paasta_config.get_cluster()
-            paasta_service = self.get_service()
-            paasta_instance = self.get_instance()
             return V1Container(
                 image="docker-paasta.yelpcorp.com:443/aws-appmesh-envoy:v1.16.1.0-prod",
                 name=ENVOY_POD_NAME,
                 env=[
-                    V1EnvVar(name="APPMESH_PREVIEW", value="0"),
-                    V1EnvVar(name="ENVOY_LOG_LEVEL", value="info"),
-                    V1EnvVar(name="ENVOY_ADMIN_ACCESS_PORT", value="9901"),
+                    V1EnvVar(
+                        name="APPMESH_PREVIEW",
+                        value=self.config_dict.get("appmesh_preview", "0"),
+                    ),
+                    V1EnvVar(
+                        name="ENVOY_LOG_LEVEL",
+                        value=self.config_dict.get("appmesh_loglevel", "info"),
+                    ),
+                    V1EnvVar(
+                        name="ENVOY_ADMIN_ACCESS_PORT",
+                        value=self.config_dict.get("appmesh_admin_port", "9901"),
+                    ),
                     V1EnvVar(
                         name="ENVOY_ADMIN_ACCESS_LOG_FILE",
                         value="/tmp/envoy_admin_access.log",
                     ),
                     V1EnvVar(
                         name="APPMESH_VIRTUAL_NODE_NAME",
-                        value=f"mesh/{paasta_cluster}/virtualNode/{paasta_service}.{paasta_instance}",
+                        value=f"mesh/{paasta_cluster}/virtualNode/{self.get_sanitised_deployment_name()}_paasta",
                     ),
                     # If we don't set this env var, it will be fetched from the metadata service by the container boot script
-                    # V1EnvVar(
-                    #     name="AWS_REGION",
-                    #     value="us-west-1",
-                    # ),
-                ],
+                    V1EnvVar(name="AWS_REGION", value="us-west-1",),
+                ]
+                + self.get_kubernetes_environment(),
                 resources=V1ResourceRequirements(
-                    requests={"cpu": "10m", "memory": "32Mi"},
+                    requests={
+                        "cpu": self.config_dict.get("appmesh_cpu_req", "10m"),
+                        "memory": self.config_dict.get("appmesh_mem_req", "32Mi"),
+                    },
                     # We need to run some tests and set these values right.
-                    limits={"cpu": "250m", "memory": "50Mi"},
+                    limits={
+                        "cpu": self.config_dict.get("appmesh_cpu_limit", "250m"),
+                        "memory": self.config_dict.get("appmesh_mem_limit", "50Mi"),
+                    },
                 ),
                 readiness_probe=V1Probe(
                     _exec=V1ExecAction(
@@ -871,10 +890,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ]
                     ),
                     failure_threshold=3,
-                    initial_delay_seconds=1,
-                    period_seconds=10,
+                    initial_delay_seconds=self.config_dict.get(
+                        "appmesh_readiness_probe_initial_delay", 1
+                    ),
+                    period_seconds=self.config_dict.get(
+                        "appmesh_readiness_probe_period", 10
+                    ),
                     success_threshold=1,
                     timeout_seconds=1,
+                ),
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "sh",
+                                "-c",
+                                "sleep",
+                                f'{self.config_dict.get("appmesh_pre_stop_sleep", 20)}',
+                            ]
+                        )
+                    )
                 ),
                 security_context=V1SecurityContext(run_as_user=1337),
                 termination_message_path="/dev/termination-log",
@@ -885,6 +920,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def is_appmesh_enabled(self) -> bool:
         return self.config_dict.get("appmesh_routing", False)
+
+    def is_init_enabled(self) -> bool:
+        return self.config_dict.get("init_enabled", False)
 
     def get_hacheck_sidecar_container(
         self,
