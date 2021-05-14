@@ -671,7 +671,7 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 
 .. _doc: deploy_groups.html
 
-``tron-[tron-clustername].yaml``
+``tron-[clustername].yaml``
 --------------------------------
 
 This file stores configuration for periodically scheduled jobs for execution on

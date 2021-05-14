@@ -6,7 +6,8 @@ What are deploy groups?
 ========================
 
 A deploy group is a group of PaaSTA instances that will be deployed together.
-The ``kubernetes-cluster.yaml``, ``tron-cluster.yaml``, and ``adhoc-cluster.yaml`` files should have a ``deploy_group`` field on each instance.
+They provide a way to control how new versions of your service are deployed to production and other environments.
+The ``kubernetes-[clustername].yaml``, ``tron-[clustername].yaml``, and ``adhoc-[clustername].yaml`` files should have a ``deploy_group`` field on each instance.
 The ``paasta mark-for-deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells PaaSTA that you want a deploy group to run a specific version of your service.
 In ``deploy.yaml``, you specify the order in which the deploy groups pick up new changes.
 
