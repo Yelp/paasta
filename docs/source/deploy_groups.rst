@@ -5,9 +5,9 @@ Deploy Groups
 What are deploy groups?
 ========================
 
-A deploy group is a group of Paasta instances that will be deployed together.
+A deploy group is a group of PaaSTA instances that will be deployed together.
 The ``kubernetes-cluster.yaml``, ``tron-cluster.yaml``, and ``adhoc-cluster.yaml`` files should have a ``deploy_group`` field on each instance.
-The ``paasta mark-for-deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells Paasta that you want a deploy group to run a specific version of your service.
+The ``paasta mark-for-deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells PaaSTA that you want a deploy group to run a specific version of your service.
 In ``deploy.yaml``, you specify the order in which the deploy groups pick up new changes.
 
 As an example, consider a service with the following deploy.yaml:
@@ -40,7 +40,7 @@ Deploy groups in kubernetes/tron yamls and deploy.yaml should match
 -------------------------------------------------------------------
 
 In almost all cases, you want the list of deploy groups in ``deploy.yaml`` (the ``step`` entries under ``pipeline``, except for the special build/test steps) to match the set of ``deploy_group``s defined in your kubernetes.yaml / tron.yaml / adhoc.yaml.
-If an instance has a ``deploy_group`` that is not defined in deploy.yaml, or your Jenkins pipeline has not run since you added the deploy.yaml entry, Paasta won't know what version of your container image this instance should run.
+If an instance has a ``deploy_group`` that is not defined in deploy.yaml, or your Jenkins pipeline has not run since you added the deploy.yaml entry, PaaSTA won't know what version of your container image this instance should run.
 If a deploy group is specified as a ``step`` in deploy.yaml but is not referenced in any kubernetes/adhoc/tron.yaml, this deployment step will have no effect.
 
 The ``paasta validate`` command can help you check that the ``deploy_group`` parameter on each of your instances is defined in deploy.yaml.
@@ -59,10 +59,10 @@ However, some common conventions have arisen with deploy groups at Yelp:
    In environments where you only intend to have one deploy group (often dev and stage), you can use ``deploy_group: <environment>.everything``.
  - For simple services, where you want to deploy changes to all instances in all clusters at the same time, use the same deploy group name on all instances, usually ``everything``.
 
-Paasta does not parse these names -- to Paasta, they are just opaque strings.
+PaaSTA does not parse these names -- to PaaSTA, they are just opaque strings.
 This means nothing technically prevents you from putting a prod instance into the ``dev-stage.everything`` deploy group, or making an ``everything`` deploy group that doesn't actually contain everything.
 
-One important caveat is that software besides Paasta may try to interpret the deploy group name.
+One important caveat is that software besides PaaSTA may try to interpret the deploy group name.
 For example, the srv-configs library used by many services at Yelp will pick up new configuration changes earlier for instances that belong to a deploy group containing the string ``canary``.
 
 Canary instances
@@ -71,7 +71,7 @@ Canary instances
 Many services at Yelp have canary instances, which are configured similarly to the non-canary instances, but have fewer copies running.
 Typically, canaries are put into a separate deploy group, which is listed before the non-canary deploy group in ``deploy.yaml``.
 This means the canary will run a new version of code before the non-canary instances do, which allows you to look for errors on canary before deploying to non-canary.
-For HTTP or TCP services that use Smartstack, usually the canary and main instance have the same ``registrations``.
+For HTTP or TCP services that use SmartStack, usually the canary and main instance have the same ``registrations``.
 Since each running copy with a given registration will receive a roughly equal fraction of traffic, the proportion of traffic sent to canary instances is ``(number of running canary copies) / (total number of running copies)``.
 Typically canary instances will be configured to have a smaller number of running copies (``instances``), so that this traffic proportion is small.
 
