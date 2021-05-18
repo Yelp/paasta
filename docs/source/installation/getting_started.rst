@@ -160,8 +160,6 @@ Hacheck provides several behaviors that are useful for Paasta:
     (This is implemented in the
     `HacheckDrainMethod <../generated/paasta_tools.drain_lib.html#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
 
-Packages for nerve-tools and synapse-tools are available in our `bintray repo <https://bintray.com/yelp/paasta>`_.
-
 Sensu
 -----
 

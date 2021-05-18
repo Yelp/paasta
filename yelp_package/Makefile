@@ -43,7 +43,7 @@ build_%_docker:
 	fi
 
 .SECONDEXPANSION:
-itest_%: package_$$* bintray_$$*
+itest_%: package_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 PTG_VERSION=0.0.12
@@ -81,14 +81,6 @@ package_%: build_$$*_docker go_entrypoint
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
-
-DATE := $(shell date +'%Y-%m-%d' -d "`dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`")
-PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
-bintray_%: bintray.json.in ../debian/changelog
-	sed -e 's/@DATE@/$(DATE)/g' \
-	    -e 's/@PAASTAVERSION@/$(PAASTAVERSION)/g' \
-	    -e 's/@DISTRIBUTION@/$*/g' \
-	    bintray.json.in > bintray.json
 
 clean:
 	rm -rf dist/
