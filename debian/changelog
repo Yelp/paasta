@@ -1,3 +1,16 @@
+paasta-tools (0.100.1) xenial; urgency=medium
+
+  * 0.100.1 tagged with 'make release'
+    Commit: Add autoscaling configuration validation (#3118)  * Add
+    autoscaling configuration validation  Let"s ensure that people don"t
+    try to set a (setpoint, offset) pair that is invalid.  NOTE: I"ve
+    deleted the existing autoscaling validation code as it was only
+    checking for an autoscaling configuration that we moved away from
+    (`horizontal_autoscaling`) - see #2582 for the initial
+    implementation of this and #2979 for its removal.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 21 May 2021 13:10:31 -0700
+
 paasta-tools (0.100.0) xenial; urgency=medium
 
   * 0.100.0 tagged with 'make release'
