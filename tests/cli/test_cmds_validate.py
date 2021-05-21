@@ -804,3 +804,28 @@ def test_validate_autoscaling_configs(
     )
 
     assert validate_autoscaling_configs("fake-service-path") is expected
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs_no_offset_specified(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={"metrics_provider": "uwsgi", "setpoint": 0.8,}
+        ),
+    )
+
+    assert validate_autoscaling_configs("fake-service-path") is True

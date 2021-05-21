@@ -402,8 +402,11 @@ def validate_autoscaling_configs(service_path):
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
                 if autoscaling_params["metrics_provider"] in {"uwsgi", "http"}:
+                    # a service may omit both of these keys, but we provide our own
+                    # default setpoint for all metrics providers so we are safe to
+                    # unconditionally read it
                     setpoint = autoscaling_params["setpoint"]
-                    offset = autoscaling_params["offset"]
+                    offset = autoscaling_params.get("offset", 0)
                     if setpoint - offset <= 0:
                         returncode = False
                         print(
