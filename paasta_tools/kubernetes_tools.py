@@ -890,8 +890,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                             command=[
                                 "sh",
                                 "-c",
-                                "sleep",
-                                f'{self.config_dict.get("appmesh_pre_stop_sleep", 20)}',
+                                f'sleep {self.config_dict.get("appmesh_pre_stop_sleep", 20)}',
                             ]
                         )
                     )
