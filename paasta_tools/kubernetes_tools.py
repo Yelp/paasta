@@ -852,7 +852,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         value=f"mesh/{paasta_cluster}/virtualNode/{self.get_sanitised_deployment_name()}_paasta",
                     ),
                     # If we don't set this env var, it will be fetched from the metadata service by the container boot script
-                    V1EnvVar(name="AWS_REGION", value="us-west-1",),
+                    # V1EnvVar(name="AWS_REGION", value="us-west-1",),
                 ]
                 + self.get_kubernetes_environment(),
                 resources=V1ResourceRequirements(
