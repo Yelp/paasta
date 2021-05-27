@@ -2735,6 +2735,22 @@ def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, 
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
+class RegistrationNotInSmartstackError(Exception):
+    pass
+
+
+def check_registration_in_smartstack(registration: str, smartstack: dict, spacer: str = SPACER) -> bool:
+    """Checks if a registration is defined in the smartstack.
+
+    :param registration: A str from a registration
+    :param smartstack: The smartstack dict
+    :returns: true if the registration exist on the smartstack
+    """
+    if spacer in registration and registration.split(spacer)[1] not in smartstack:
+        raise RegistrationNotInSmartstackError("Registration %s does not exist in smartstack" % registration)
+    return True
+
+
 def build_docker_image_name(service: str) -> str:
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.

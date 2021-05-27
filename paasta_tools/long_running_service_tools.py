@@ -10,6 +10,7 @@ import service_configuration_lib
 from mypy_extensions import TypedDict
 
 from paasta_tools.utils import BranchDictV2
+from paasta_tools.utils import check_registration_in_smartstack
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
@@ -20,6 +21,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import RegistrationNotInSmartstackError
 from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
@@ -219,12 +221,29 @@ class LongRunningServiceConfig(InstanceConfig):
 
         return registrations or [compose_job_id(self.service, self.instance)]
 
+    def get_registrations_not_in_smartstack(self) -> List[str]:
+        registrations = self.config_dict.get("registrations", [])
+        smartstack = self.config_dict.get("smartstack", {})
+        invalid_registrations: List[str] = []
+        if smartstack:
+            invalid_registrations: List[str] = []
+            for registration in registrations:
+                try:
+                    check_registration_in_smartstack(registration, smartstack)
+                except RegistrationNotInSmartstackError:
+                    invalid_registrations.append(registration)
+            return invalid_registrations
+        else:
+            return invalid_registrations
+
     def get_invalid_registrations(self) -> List[str]:
         registrations = self.config_dict.get("registrations", [])
         invalid_registrations: List[str] = []
         for registration in registrations:
             try:
-                decompose_job_id(registration)
+                if decompose_job_id(registration)[2] is not None and \
+                        decompose_job_id(registration)[3] is not None:
+                    invalid_registrations.append(registration)
             except InvalidJobNameError:
                 invalid_registrations.append(registration)
         return invalid_registrations
@@ -357,11 +376,20 @@ class LongRunningServiceConfig(InstanceConfig):
     def validate(self, params: Optional[List[str]] = None,) -> List[str]:
         error_messages = super().validate(params=params)
         invalid_registrations = self.get_invalid_registrations()
+        registrations_not_in_smartstack = self.get_registrations_not_in_smartstack()
         if invalid_registrations:
             service_instance = compose_job_id(self.service, self.instance)
             registrations_str = ", ".join(invalid_registrations)
             error_messages.append(
                 f"Service registrations must be of the form service.registration. "
+                f"The following registrations for {service_instance} are "
+                f"invalid: {registrations_str}"
+            )
+        if registrations_not_in_smartstack:
+            service_instance = compose_job_id(self.service, self.instance)
+            registrations_str = ", ".join(registrations_not_in_smartstack)
+            error_messages.append(
+                f"Service registrations must exist in the smartstack. "
                 f"The following registrations for {service_instance} are "
                 f"invalid: {registrations_str}"
             )
