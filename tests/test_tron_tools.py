@@ -364,12 +364,16 @@ class TestTronJobConfig:
         job_config = tron_tools.TronJobConfig(
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
-        result = tron_tools.format_tron_job_dict(job_config)
+        result = tron_tools.format_tron_job_dict(
+            job_config=job_config, k8s_enabled=False
+        )
 
         mock_get_action_config.assert_called_once_with(
             job_config, action_name, action_dict
         )
-        mock_format_action.assert_called_once_with(mock_get_action_config.return_value)
+        mock_format_action.assert_called_once_with(
+            action_config=mock_get_action_config.return_value, use_k8s=False,
+        )
 
         assert result == {
             "node": "batch_server",
@@ -380,6 +384,57 @@ class TestTronJobConfig:
             },
             "expected_runtime": "1h",
             "monitoring": {"team": "noop"},
+            "use_k8s": False,
+        }
+
+    @mock.patch(
+        "paasta_tools.tron_tools.TronJobConfig._get_action_config", autospec=True
+    )
+    @mock.patch("paasta_tools.tron_tools.format_tron_action_dict", autospec=True)
+    def test_format_tron_job_dict_k8s_enabled(
+        self, mock_format_action, mock_get_action_config
+    ):
+        action_name = "normal"
+        action_dict = {"command": "echo first"}
+        actions = {action_name: action_dict}
+
+        job_dict = {
+            "use_k8s": True,
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "max_runtime": "2h",
+            "actions": actions,
+            "expected_runtime": "1h",
+            "monitoring": {"team": "noop"},
+        }
+        soa_dir = "/other_dir"
+        cluster = "paasta-dev"
+        job_config = tron_tools.TronJobConfig(
+            "my_job", job_dict, cluster, soa_dir=soa_dir
+        )
+        result = tron_tools.format_tron_job_dict(
+            job_config=job_config, k8s_enabled=True
+        )
+
+        mock_get_action_config.assert_called_once_with(
+            job_config, action_name, action_dict
+        )
+        mock_format_action.assert_called_once_with(
+            action_config=mock_get_action_config.return_value, use_k8s=True,
+        )
+
+        assert result == {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "max_runtime": "2h",
+            "actions": {
+                mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value
+            },
+            "expected_runtime": "1h",
+            "monitoring": {"team": "noop"},
+            "use_k8s": True,
         }
 
     @mock.patch(
@@ -401,7 +456,7 @@ class TestTronJobConfig:
         }
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "paasta-dev")
 
-        result = tron_tools.format_tron_job_dict(job_config)
+        result = tron_tools.format_tron_job_dict(job_config, k8s_enabled=False)
 
         assert mock_get_action_config.call_args_list == [
             mock.call(job_config, "normal", job_dict["actions"]["normal"]),
@@ -417,6 +472,7 @@ class TestTronJobConfig:
             },
             "cleanup_action": mock_format_action.return_value,
             "monitoring": {"team": "noop"},
+            "use_k8s": False,
         }
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
@@ -966,6 +1022,7 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("paasta_tools.tron_tools.yaml.dump", autospec=True)
     @pytest.mark.parametrize("service", [MASTER_NAMESPACE, "my_app"])
+    @pytest.mark.parametrize("k8s_enabled", (True, False))
     def test_create_complete_config(
         self,
         mock_yaml_dump,
@@ -974,6 +1031,7 @@ class TestTronTools:
         mock_tron_system_config,
         mock_system_config,
         service,
+        k8s_enabled,
     ):
         job_config = tron_tools.TronJobConfig("my_job", {}, "fake-cluster")
         mock_tron_service_config.return_value = [job_config]
@@ -982,14 +1040,19 @@ class TestTronTools:
 
         assert (
             tron_tools.create_complete_config(
-                service=service, cluster=cluster, soa_dir=soa_dir
+                service=service,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                k8s_enabled=k8s_enabled,
             )
             == mock_yaml_dump.return_value
         )
         mock_tron_service_config.assert_called_once_with(
             service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
         )
-        mock_format_job.assert_called_once_with(job_config)
+        mock_format_job.assert_called_once_with(
+            job_config=job_config, k8s_enabled=k8s_enabled
+        )
         complete_config = {"jobs": {"my_job": mock_format_job.return_value}}
         mock_yaml_dump.assert_called_once_with(
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY

@@ -24,6 +24,8 @@ import argparse
 import logging
 import sys
 
+import ruamel.yaml as yaml
+
 from paasta_tools import tron_tools
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 
@@ -110,10 +112,16 @@ def main():
             skipped.append(MASTER_NAMESPACE)
             log.debug(f"Skipped {MASTER_NAMESPACE}")
 
+    k8s_enabled_for_cluster = (
+        yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
+    )
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
-                cluster=args.cluster, service=service, soa_dir=args.soa_dir
+                cluster=args.cluster,
+                service=service,
+                soa_dir=args.soa_dir,
+                k8s_enabled=k8s_enabled_for_cluster,
             )
             if args.dry_run:
                 log.info(f"Would update {service} to:")
