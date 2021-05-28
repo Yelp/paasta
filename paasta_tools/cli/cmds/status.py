@@ -1478,14 +1478,25 @@ def create_replica_table(
                         f"  Restarted at {humanized_timestamp}. {main_container.restart_count} restarts since starting"
                     )
                 )
-            if main_container.reason == "OOMKilled":
+            if (
+                main_container.reason == "OOMKilled"
+                or main_container.last_reason == "OOMKilled"
+            ):
+                if main_container.reason == "OOMKilled":
+                    oom_kill_timestamp = timestamp
+                    human_oom_kill_timestamp = humanized_timestamp
+                elif main_container.last_reason == "OOMKilled":
+                    oom_kill_timestamp = datetime.fromtimestamp(
+                        main_container.last_timestamp
+                    )
+                    human_oom_kill_timestamp = humanize.naturaltime(oom_kill_timestamp)
                 table.extend(
                     [
                         PaastaColors.red(
-                            f"  OOM Killed at {humanized_timestamp}.  {main_container.restart_count} restarts since starting"
+                            f"  OOM Killed {human_oom_kill_timestamp} ({oom_kill_timestamp})."
                         ),
                         PaastaColors.red(
-                            f"  Check y/check-oom-events and consider increasing memory in yelpsoa_configs"
+                            f"    Check y/check-oom-events and consider increasing memory in yelpsoa_configs"
                         ),
                     ]
                 )
