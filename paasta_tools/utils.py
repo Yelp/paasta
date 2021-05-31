@@ -2739,7 +2739,9 @@ class RegistrationNotInSmartstackError(Exception):
     pass
 
 
-def check_registration_in_smartstack(registration: str, smartstack: dict, spacer: str = SPACER) -> bool:
+def check_registration_in_smartstack(
+    registration: str, smartstack: dict, spacer: str = SPACER
+) -> bool:
     """Checks if a registration is defined in the smartstack.
 
     :param registration: A str from a registration
@@ -2747,7 +2749,9 @@ def check_registration_in_smartstack(registration: str, smartstack: dict, spacer
     :returns: true if the registration exist on the smartstack
     """
     if spacer in registration and registration.split(spacer)[1] not in smartstack:
-        raise RegistrationNotInSmartstackError("Registration %s does not exist in smartstack" % registration)
+        raise RegistrationNotInSmartstackError(
+            "Registration %s does not exist in smartstack" % registration
+        )
     return True
 
 

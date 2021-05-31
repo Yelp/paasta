@@ -74,6 +74,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     registrations: List[str]
     replication_threshold: int
     bounce_start_deadline: float
+    smartstack: dict
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -226,7 +227,6 @@ class LongRunningServiceConfig(InstanceConfig):
         smartstack = self.config_dict.get("smartstack", {})
         invalid_registrations: List[str] = []
         if smartstack:
-            invalid_registrations: List[str] = []
             for registration in registrations:
                 try:
                     check_registration_in_smartstack(registration, smartstack)
@@ -241,8 +241,10 @@ class LongRunningServiceConfig(InstanceConfig):
         invalid_registrations: List[str] = []
         for registration in registrations:
             try:
-                if decompose_job_id(registration)[2] is not None and \
-                        decompose_job_id(registration)[3] is not None:
+                if (
+                    decompose_job_id(registration)[2] is not None
+                    and decompose_job_id(registration)[3] is not None
+                ):
                     invalid_registrations.append(registration)
             except InvalidJobNameError:
                 invalid_registrations.append(registration)
@@ -347,7 +349,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'.
-                  """
+        """
         if self.get_desired_state() == "start":
             return self.get_instances()
         else:

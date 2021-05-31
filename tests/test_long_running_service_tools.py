@@ -282,14 +282,20 @@ class TestLongRunningServiceConfig:
             cluster="fake_cluster",
             instance="fake_instance",
             config_dict={
-                "registrations": ["fake_name.fake_instance.something.something", "valid.valid"],
+                "registrations": [
+                    "fake_name.fake_instance.something.something",
+                    "valid.valid",
+                ],
                 "deploy_group": None,
             },
             branch_dict=None,
         )
         error_messages = fake_conf.validate()
-        assert 'Service registrations must be of the form service.registration. The following registrations for ' \
-               'fake_name.fake_instance are invalid: fake_name.fake_instance.something.something' in error_messages[0]
+        assert (
+            "Service registrations must be of the form service.registration. The following registrations for "
+            "fake_name.fake_instance are invalid: fake_name.fake_instance.something.something"
+            in error_messages[0]
+        )
 
     def test_validate_registration_not_in_smartstack(self):
         fake_conf = long_running_service_tools.LongRunningServiceConfig(
@@ -299,18 +305,29 @@ class TestLongRunningServiceConfig:
             config_dict={
                 "registrations": ["fake_name.fake_instance"],
                 "deploy_group": None,
-                'smartstack': {'fake_smartstack': {'proxy_port': 20783, 'timeout_client_ms': 60000,
-                                                'timeout_server_ms': 60000, 'is_proxy': True,
-                                                'advertise': ['habitat', 'region'], 'discover': 'habitat',
-                                                'extra_advertise': {
-                                                    'ecosystem:devc': ['ecosystem:devc', 'ecosystem:testopia'],
-                                                    'region:uswest2-prod': ['superregion:pnw-yrprod']}}}
+                "smartstack": {
+                    "fake_smartstack": {
+                        "proxy_port": 20783,
+                        "timeout_client_ms": 60000,
+                        "timeout_server_ms": 60000,
+                        "is_proxy": True,
+                        "advertise": ["habitat", "region"],
+                        "discover": "habitat",
+                        "extra_advertise": {
+                            "ecosystem:devc": ["ecosystem:devc", "ecosystem:testopia"],
+                            "region:uswest2-prod": ["superregion:pnw-yrprod"],
+                        },
+                    }
+                },
             },
             branch_dict=None,
         )
         error_messages = fake_conf.validate()
-        assert 'Service registrations must exist in the smartstack. The following registrations for ' \
-               'fake_name.fake_instance are invalid: fake_name.fake_instance' in error_messages[0]
+        assert (
+            "Service registrations must exist in the smartstack. The following registrations for "
+            "fake_name.fake_instance are invalid: fake_name.fake_instance"
+            in error_messages[0]
+        )
 
 
 class TestServiceNamespaceConfig:
