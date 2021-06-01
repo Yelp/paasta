@@ -4,10 +4,20 @@ import mock
 import pytest
 
 from paasta_tools import tron_tools
+from paasta_tools import utils
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
+
+MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
+    {
+        "docker_registry": "mock_registry",
+        "volumes": [],
+        "dockercfg_location": "/mock/dockercfg",
+    },
+    "/mock/system/configs",
+)
 
 
 class TestTronConfig:
@@ -1091,7 +1101,12 @@ class TestTronTools:
             returncode=1, stdout="tronfig error", stderr=""
         )
 
-        result = tron_tools.validate_complete_config("a_service", "a-cluster")
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.validate_complete_config("a_service", "a-cluster")
 
         assert mock_load_config.call_count == 1
         assert mock_format_job.call_count == 1
@@ -1102,7 +1117,7 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("subprocess.run", autospec=True)
     def test_validate_complete_config_passes(
-        self, mock_run, mock_format_job, mock_load_config
+        self, mock_run, mock_format_job, mock_load_config,
     ):
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = "my_job"
@@ -1111,7 +1126,12 @@ class TestTronTools:
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
 
-        result = tron_tools.validate_complete_config("a_service", "a-cluster")
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.validate_complete_config("a_service", "a-cluster")
 
         assert mock_load_config.call_count == 1
         assert mock_format_job.call_count == 1
