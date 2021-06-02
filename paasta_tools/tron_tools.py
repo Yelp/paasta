@@ -77,7 +77,7 @@ VALID_MONITORING_KEYS = set(
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
-KUBERNETES_EXECUTOR_NAMES = "paasta"
+KUBERNETES_EXECUTOR_NAMES = ("paasta",)
 DEFAULT_AWS_REGION = "us-west-2"
 clusterman_metrics, _ = get_clusterman_metrics()
 
@@ -687,28 +687,33 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
     }
-    if executor in MESOS_EXECUTOR_NAMES or executor in KUBERNETES_EXECUTOR_NAMES:
-        # while we're tranisitioning, we want to cleanly fallback to Mesos, so we'll
-        # default to k8s unless a job has opted-out/k8s been toggled off for a cluster
-        # in which case we'll just revert to the status quo of using Mesos
-        if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
-            result["executor"] = "kubernetes"
-        else:
-            result["executor"] = "mesos"
 
-            constraint_labels = ["attribute", "operator", "value"]
-            # TODO(TRON-1609): we'll want to either have this spit out a nodeSelector
-            # or add a new field for k8s usage since Mesos-style constraints aren't a thing
-            result["constraints"] = [
-                dict(zip(constraint_labels, constraint))
-                for constraint in action_config.get_calculated_constraints()
-            ]
-            # TODO(TRON-1583): we need to figure out if (and what) needs to be
-            # ported here for k8s
-            result["docker_parameters"] = [
-                {"key": param["key"], "value": param["value"]}
-                for param in action_config.format_docker_parameters()
-            ]
+    # while we're tranisitioning, we want to be able to cleanly fallback to Mesos
+    # so we'll default to Mesos unless k8s usage is enabled for both the cluster
+    # and job.
+    # there are slight differences between k8s and Mesos configs, so we'll translate
+    # whatever is in soaconfigs to the k8s equivalent here as well.
+    if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
+        result["executor"] = "kubernetes"
+    elif executor in MESOS_EXECUTOR_NAMES:
+        result["executor"] = "mesos"
+        constraint_labels = ["attribute", "operator", "value"]
+        # TODO(TRON-1609): we'll want to either have this spit out a nodeSelector
+        # or add a new field for k8s usage since Mesos-style constraints aren't a thing
+        result["constraints"] = [
+            dict(zip(constraint_labels, constraint))
+            for constraint in action_config.get_calculated_constraints()
+        ]
+        # TODO(TRON-1583): we need to figure out if (and what) needs to be
+        # ported here for k8s
+        result["docker_parameters"] = [
+            {"key": param["key"], "value": param["value"]}
+            for param in action_config.format_docker_parameters()
+        ]
+
+    # the following config is only valid for k8s/Mesos since we're not running SSH actions
+    # in a containerized fashion
+    if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
