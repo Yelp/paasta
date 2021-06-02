@@ -825,6 +825,74 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
+    def test_format_tron_action_dict_paasta_k8s(self):
+        action_dict = {
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "paasta",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "pool": "special_pool",
+            "env": {"SHELL": "/bin/bash"},
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+
+        assert result == {
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "docker_image": mock.ANY,
+            "executor": "kubernetes",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "env": mock.ANY,
+            "extra_volumes": [
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["SHELL"] == "/bin/bash"
+
     def test_format_tron_action_dict_paasta_no_branch_dict(self):
         action_dict = {
             "command": "echo something",
