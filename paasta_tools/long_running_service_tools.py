@@ -74,7 +74,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     registrations: List[str]
     replication_threshold: int
     bounce_start_deadline: float
-    smartstack: dict
+    smartstack: Dict
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -241,10 +241,10 @@ class LongRunningServiceConfig(InstanceConfig):
         invalid_registrations: List[str] = []
         for registration in registrations:
             try:
-                if (
-                    decompose_job_id(registration)[2] is not None
-                    and decompose_job_id(registration)[3] is not None
-                ):
+                service, instance, git_hash, config_hash = decompose_job_id(
+                    registration
+                )
+                if git_hash is not None and config_hash is not None:
                     invalid_registrations.append(registration)
             except InvalidJobNameError:
                 invalid_registrations.append(registration)
