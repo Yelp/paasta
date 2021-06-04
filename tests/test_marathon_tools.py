@@ -1627,10 +1627,10 @@ class TestMarathonTools:
             service="fake_name",
             cluster="fake_cluster",
             instance="fake_instance",
-            config_dict={"monitoring": {"test": "foo"}},
+            config_dict={"monitoring": {"notification_email": "foo"}},
             branch_dict=None,
         )
-        assert fake_conf.get_monitoring() == {"test": "foo"}
+        assert fake_conf.get_monitoring() == {"notification_email": "foo"}
 
     def test_get_marathon_client(self):
         fake_url = ["nothing_for_me_to_do_but_dance"]

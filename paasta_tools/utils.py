@@ -258,6 +258,25 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
+class MonitoringDict(TypedDict, total=False):
+    alert_after: Union[str, float]
+    check_every: str
+    check_oom_events: bool
+    component: str
+    description: str
+    notification_email: Union[str, bool]
+    page: bool
+    priority: str
+    project: str
+    realert_every: float
+    runbook: str
+    slack_channels: Union[str, List[str]]
+    tags: List[str]
+    team: str
+    ticket: bool
+    tip: str
+
+
 class InstanceConfigDict(TypedDict, total=False):
     deploy_group: str
     mem: float
@@ -269,7 +288,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cpu_burst_add: float
     cap_add: List
     env: Dict[str, str]
-    monitoring: Dict[str, str]
+    monitoring: MonitoringDict
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     pool: str
@@ -628,7 +647,7 @@ class InstanceConfig:
                     "Instance configuration can specify cmd or args, but not both."
                 )
 
-    def get_monitoring(self) -> Dict[str, Any]:
+    def get_monitoring(self) -> MonitoringDict:
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get("monitoring", {})
 
