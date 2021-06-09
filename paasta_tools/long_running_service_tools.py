@@ -391,7 +391,7 @@ class LongRunningServiceConfig(InstanceConfig):
             service_instance = compose_job_id(self.service, self.instance)
             registrations_str = ", ".join(registrations_not_in_smartstack)
             error_messages.append(
-                f"Service registrations must exist in the smartstack. "
+                f"Service registrations must exist in smartstack.yaml. "
                 f"The following registrations for {service_instance} are "
                 f"invalid: {registrations_str}"
             )
