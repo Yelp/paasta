@@ -324,7 +324,7 @@ class TestLongRunningServiceConfig:
         )
         error_messages = fake_conf.validate()
         assert (
-            "Service registrations must exist in the smartstack. The following registrations for "
+            "Service registrations must exist in smartstack.yaml. The following registrations for "
             "fake_name.fake_instance are invalid: fake_name.fake_instance"
             in error_messages[0]
         )
