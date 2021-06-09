@@ -238,7 +238,7 @@ def test_format_custom_resource():
                 "annotations": {
                     "yelp.com/desired_state": "running",
                     "paasta.yelp.com/desired_state": "running",
-                    "paasta.yelp.com/dashboard_base_url": "http://flink.k8s.mycluster.paasta:31080/",
+                    "paasta.yelp.com/dashboard_base_url": "http://flink.k8s.paasta-mycluster.yelp:31080/",
                 },
             },
             "spec": {"dummy": "conf"},
@@ -266,12 +266,12 @@ def test_paasta_config_flink_dashboard_base_url():
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             {
                 "dashboard_links": {
-                    "mycluster": {"Flink": "http://flink.mycluster.paasta"}
+                    "mycluster": {"Flink": "http://flink.paasta-mycluster.yelp"}
                 }
             },
             "",
         )
-        expected = "http://flink.mycluster.paasta/"
+        expected = "http://flink.paasta-mycluster.yelp/"
         assert (
             setup_kubernetes_cr.get_dashboard_base_url(
                 kind="flink", cluster="mycluster",

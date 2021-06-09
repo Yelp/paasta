@@ -19,7 +19,7 @@ import paasta_tools.flink_tools as flink_tools
 def test_get_flink_ingress_url_root():
     assert (
         flink_tools.get_flink_ingress_url_root("mycluster")
-        == "http://flink.k8s.mycluster.paasta:31080/"
+        == "http://flink.k8s.paasta-mycluster.yelp:31080/"
     )
 
 
