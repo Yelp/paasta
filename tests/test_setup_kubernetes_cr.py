@@ -271,7 +271,7 @@ def test_paasta_config_flink_dashboard_base_url():
             },
             "",
         )
-        expected = "http://flink.paasta-mycluster.yelp/"
+        expected = "http://flink.mycluster.paasta/"
         assert (
             setup_kubernetes_cr.get_dashboard_base_url(
                 kind="flink", cluster="mycluster",
