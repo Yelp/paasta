@@ -266,7 +266,7 @@ def test_paasta_config_flink_dashboard_base_url():
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             {
                 "dashboard_links": {
-                    "mycluster": {"Flink": "http://flink.paasta-mycluster.yelp"}
+                    "mycluster": {"Flink": "http://flink.mycluster.paasta"}
                 }
             },
             "",
