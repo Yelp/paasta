@@ -162,16 +162,17 @@ def sync_secrets(
             boto_keys.sort()
             secret_data = {}
             for key in boto_keys:
+                sanitised_key = key.replace(".", "-").replace("_", "--")
                 try:
                     with open(f"/etc/boto_cfg/{key}") as f:
-                        secret_data[key] = f.read()
+                        secret_data[sanitised_key] = f.read()
                 except IOError:
                     pass
             if not secret_data:
                 continue
             secret = f"paasta-boto-key-{service}-{instance}"
             hashable_data = "".join([secret_data.get(key, "") for key in boto_keys])
-            signature = hashlib.sha1(hashable_data)
+            signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
             kubernetes_signature = get_kubernetes_secret_signature(
                 kube_client=kube_client, secret=secret, service=service
             )
