@@ -1183,7 +1183,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        pod_volumes.append(self.get_boto_volume())
         return pod_volumes
+
+    def get_boto_volume(self):
+        # Hard coded values for testing, since we otherwise need schema updates to ship to yelpsoa-configs
+        required_boto_keys = ["scribereader.yaml", "boto_test.sh"]
+        # required_boto_keys self.config_dict.get('boto_keys', []):
+        # Create items
+        items = []
+        for boto_key in required_boto_keys:
+            secret_name = boto_key.replace(".", "-").replace("_", "--")
+            item = V1KeyToPath(
+                key=secret_name, mode=mode_to_int("0444"), path=boto_key,
+            )
+            items.append(item)
+        # Is there a better way to get this?
+        service_name = (
+            self.get_sanitised_service_name() + "-" + self.get_sanitised_instance_name()
+        )
+        volume = V1Volume(
+            name=f"secret-boto-key-{service_name}",
+            secret=V1SecretVolumeSource(
+                secret_name=f"paasta-boto-key-{service_name}",
+                default_mode=mode_to_int("0444"),
+                items=items,
+            ),
+        )
+        return volume
 
     def get_volume_mounts(
         self,
@@ -1192,7 +1219,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
     ) -> Sequence[V1VolumeMount]:
-        return (
+        volume_mounts = (
             [
                 V1VolumeMount(
                     mount_path=docker_volume["containerPath"],
@@ -1226,6 +1253,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 for volume in secret_volumes
             ]
         )
+        # if self.config_dict.get('boto_keys', []):
+        if True:
+            service_name = (
+                self.get_sanitised_service_name()
+                + "-"
+                + self.get_sanitised_instance_name()
+            )
+            mount = V1VolumeMount(
+                mount_path="/etc/boto_cfg_new",
+                name=f"secret-boto-key-{service_name}",
+                read_only=True,
+            )
+            volume_mounts.append(mount)
+        return volume_mounts
 
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())
@@ -1732,7 +1773,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         calculation of config hash.
 
         :param config: complete_config hash to sanitize
-        :returns: sanitized copy of complete_config hash
+        :returns: sanitised copy of complete_config hash
         """
         ahash = {
             key: copy.deepcopy(value)
@@ -2640,6 +2681,26 @@ def create_secret(
     )
 
 
+def create_plaintext_dict_secret(
+    kube_client: KubeClient, secret_name: str, secret_data: dict, service: str,
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.create_namespaced_secret(
+        namespace="paasta",
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
+        ),
+    )
+
+
 def update_secret(
     kube_client: KubeClient,
     secret: str,
@@ -2664,6 +2725,27 @@ def update_secret(
                     secret_provider.decrypt_secret_raw(secret)
                 ).decode("utf-8")
             },
+        ),
+    )
+
+
+def update_plaintext_dict_secret(
+    kube_client: KubeClient, secret_name: str, secret_data: dict, service: str,
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.replace_namespaced_secret(
+        name=sanitised_secret,
+        namespace="paasta",
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
         ),
     )
 

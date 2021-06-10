@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -20,13 +21,16 @@ import sys
 from typing import Mapping
 from typing import Sequence
 
+import yaml
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import create_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -141,6 +145,73 @@ def sync_secrets(
     if not os.path.isdir(secret_dir):
         log.debug(f"No secrets dir for {service}")
         return True
+
+    # Update boto key secrets
+    service_dir = os.path.join(soa_dir, service)
+    kubernetes_config_file = f"kubernetes-{cluster}.yaml"
+    full_config_path = os.path.join(service_dir, kubernetes_config_file)
+    if os.path.exists(full_config_path):
+        with open(full_config_path) as f:
+            kubernetes_config = yaml.load(f.read())
+        for instance, instance_config in kubernetes_config.items():
+            if instance.startswith("_"):
+                continue
+            boto_keys = instance_config.get("boto_keys", [])
+            if not boto_keys:
+                continue
+            boto_keys.sort()
+            secret_data = {}
+            for key in boto_keys:
+                try:
+                    with open(f"/etc/boto_cfg/{key}") as f:
+                        secret_data[key] = f.read()
+                except IOError:
+                    pass
+            if not secret_data:
+                continue
+            secret = f"paasta-boto-key-{service}-{instance}"
+            hashable_data = "".join([secret_data.get(key, "") for key in boto_keys])
+            signature = hashlib.sha1(hashable_data)
+            kubernetes_signature = get_kubernetes_secret_signature(
+                kube_client=kube_client, secret=secret, service=service
+            )
+            if not kubernetes_signature:
+                log.info(f"{secret} for {service} not found, creating")
+                try:
+                    create_plaintext_dict_secret(
+                        kube_client=kube_client,
+                        secret_name=secret,
+                        secret_data=secret_data,
+                        service=service,
+                    )
+                except ApiException as e:
+                    if e.status == 409:
+                        log.warning(f"Secret {secret} for {service} already exists")
+                    else:
+                        raise
+                create_kubernetes_secret_signature(
+                    kube_client=kube_client,
+                    secret=secret,
+                    service=service,
+                    secret_signature=signature,
+                )
+            elif signature != kubernetes_signature:
+                log.info(f"{secret} for {service} needs updating as signature changed")
+                update_plaintext_dict_secret(
+                    kube_client=kube_client,
+                    secret_name=secret,
+                    secret_data=secret_data,
+                    service=service,
+                )
+                update_kubernetes_secret_signature(
+                    kube_client=kube_client,
+                    secret=secret,
+                    service=service,
+                    secret_signature=signature,
+                )
+            else:
+                log.info(f"{secret} for {service} up to date")
+
     with os.scandir(secret_dir) as secret_file_paths:
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith("json"):
