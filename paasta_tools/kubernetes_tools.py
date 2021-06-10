@@ -1187,10 +1187,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return pod_volumes
 
     def get_boto_volume(self):
-        # Hard coded values for testing, since we otherwise need schema updates to ship to yelpsoa-configs
-        required_boto_keys = ["scribereader.yaml", "boto_test.sh"]
-        # required_boto_keys self.config_dict.get('boto_keys', []):
-        # Create items
+        required_boto_keys = self.config_dict.get("boto_keys", [])
         items = []
         for boto_key in required_boto_keys:
             secret_name = boto_key.replace(".", "-").replace("_", "--")
@@ -1253,8 +1250,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 for volume in secret_volumes
             ]
         )
-        # if self.config_dict.get('boto_keys', []):
-        if True:
+        if self.config_dict.get("boto_keys", []):
             service_name = (
                 self.get_sanitised_service_name()
                 + "-"
