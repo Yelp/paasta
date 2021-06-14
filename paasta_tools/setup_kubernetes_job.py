@@ -168,8 +168,7 @@ def setup_kube_deployments(
                 log.info(f"Ensuring related API objects for {app} are in sync")
                 app.update_related_api_objects(kube_client)
             except Exception:
-                log.error(f"Error while processing: {app}")
-                log.error(traceback.format_exc())
+                log.exception(f"Error while processing: {app}")
         if rate_limit > 0 and api_updates >= rate_limit:
             log.info(
                 f"Not doing any further updates as we reached the limit ({api_updates})"
