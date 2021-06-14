@@ -23,7 +23,6 @@ Command line options:
 import argparse
 import logging
 import sys
-import traceback
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
