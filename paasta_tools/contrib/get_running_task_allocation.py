@@ -3,6 +3,7 @@ import argparse
 import time
 from typing import Any
 from typing import Iterable
+from typing import Dict
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -123,10 +124,10 @@ def get_all_running_kubernetes_pods(
 
 def get_kubernetes_resource_request(
     resources: V1ResourceRequirements,
-) -> Mapping[str, float]:
+) -> Dict[str, float]:
     if not resources:
-        requests: Mapping[str, str] = {}
-        limits: Mapping[str, str] = {}
+        requests: Dict[str, str] = {}
+        limits: Dict[str, str] = {}
     else:
         requests = resources.requests or {}
         limits = resources.limits or {}
