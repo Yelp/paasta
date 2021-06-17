@@ -1291,7 +1291,7 @@ class TestInstanceConfig:
         assert actual == expect
 
     def test_get_monitoring(self):
-        fake_info = {"fake_key": "fake_value"}
+        fake_info: utils.MonitoringDict = {"notification_email": "fake_value"}
         assert (
             utils.InstanceConfig(
                 service="",
