@@ -391,3 +391,31 @@ def test_setup_kube_deployments_rate_limit():
             rate_limit=0,
         )
         assert fake_app.create.call_count == 3
+
+
+def test_setup_kube_deployments_skip_malformed_apps():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+    ) as mock_create_application_object, mock.patch(
+        "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
+        mock_client = mock.Mock()
+        mock_service_instances = ["fake.instance"]
+        fake_app = mock.Mock(create=mock.Mock())
+        fake_app.create = mock.Mock(side_effect=Exception("Kaboom!"))
+        fake_app.__str__ = mock.Mock(return_value="fake_app")
+        mock_create_application_object.return_value = (True, fake_app)
+
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instances=mock_service_instances,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            rate_limit=0,
+        )
+        assert fake_app.create.call_count == 1
+        assert mock_log_obj.exception.call_args_list[0] == mock.call(
+            "Error while processing: fake_app"
+        )
