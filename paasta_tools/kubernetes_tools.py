@@ -34,6 +34,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -2545,7 +2546,11 @@ async def get_events_for_object(
 ) -> List[V1Event]:
 
     try:
-        events = kube_client.core.list_namespaced_event(
+        # this is a blocking call since it does network I/O and can end up significantly blocking the
+        # asyncio event loop when doing things like getting events for all the Pods for a service with
+        # a large amount of replicas. therefore, we need to wrap the kubernetes client into something
+        # that's awaitable so that we can actually do things concurrently and not serially
+        events = await a_sync.to_async(kube_client.core.list_namespaced_event)(
             namespace=obj.metadata.namespace,
             field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
             limit=MAX_EVENTS_TO_RETRIEVE,
