@@ -1,3 +1,17 @@
+paasta-tools (0.100.2) xenial; urgency=medium
+
+  * 0.100.2 tagged with 'make release'
+    Commit: Stop calling a blocking function in get_events_for_object()
+    (#3132)  Calling kube_client.core.list_namespaced_event() was
+    blocking the asyncio event loop and making `paasta status -v` for
+    services with a large amount of Pods hang forever as the gunicorn
+    worker serving the request would eventually hit a timeout and die.
+    This PR wraps list_namespaced_event() into an awaitable and allows
+    us to actually make N concurrent requests instead of doing these
+    serially.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 21 Jun 2021 12:42:54 -0700
+
 paasta-tools (0.100.1) xenial; urgency=medium
 
   * 0.100.1 tagged with 'make release'
