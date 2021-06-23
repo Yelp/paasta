@@ -1480,6 +1480,9 @@ class TestKubernetesDeploymentConfig:
         mock_get_node_affinity.return_value = node_affinity
         mock_get_pod_anti_affinity.return_value = anti_affinity
         mock_system_paasta_config = mock.Mock()
+        mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
+            True
+        )
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
@@ -1511,6 +1514,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
+                    "paasta.yelp.com/registrations/kurupt.fm": "true",
                 },
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',

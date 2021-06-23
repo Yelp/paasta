@@ -1889,6 +1889,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
+    kubernetes_add_registration_labels: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -2437,6 +2438,9 @@ class SystemPaastaConfig:
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get("register_k8s_pods", False)
+
+    def get_kubernetes_add_registration_labels(self) -> bool:
+        return self.config_dict.get("kubernetes_add_registration_labels", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
         """List of custom resources that should be synced by setup_kubernetes_cr """

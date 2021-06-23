@@ -1570,6 +1570,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
 
+        if system_paasta_config.get_kubernetes_add_registration_labels():
+            # Allow Kubernetes Services to easily find
+            # pods belonging to a certain smartstack namespace
+            for registration in self.get_registrations():
+                labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
+
         # not all services use uwsgi autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
         if self.should_run_uwsgi_exporter_sidecar(
