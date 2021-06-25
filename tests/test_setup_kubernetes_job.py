@@ -402,9 +402,11 @@ def test_setup_kube_deployments_skip_malformed_apps():
         "paasta_tools.setup_kubernetes_job.log", autospec=True
     ) as mock_log_obj:
         mock_client = mock.Mock()
-        mock_service_instances = ["fake.instance"]
+        mock_service_instances = ["fake.instance", "mock.instance"]
         fake_app = mock.Mock(create=mock.Mock())
-        fake_app.create = mock.Mock(side_effect=Exception("Kaboom!"))
+        fake_app.create = mock.Mock(
+            side_effect=[Exception("Kaboom!"), mock.Mock(create=mock.Mock())]
+        )
         fake_app.__str__ = mock.Mock(return_value="fake_app")
         mock_create_application_object.return_value = (True, fake_app)
 
@@ -415,7 +417,8 @@ def test_setup_kube_deployments_skip_malformed_apps():
             soa_dir="/nail/blah",
             rate_limit=0,
         )
-        assert fake_app.create.call_count == 1
+        assert fake_app.create.call_count == 2
+        assert len(mock_log_obj.exception.call_args_list) == 1
         assert mock_log_obj.exception.call_args_list[0] == mock.call(
             "Error while processing: fake_app"
         )
