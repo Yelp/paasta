@@ -1,3 +1,12 @@
+paasta-tools (0.100.3) xenial; urgency=medium
+
+  * 0.100.3 tagged with 'make release'
+    Commit: Revert "Revert "PAASTA-17389. (#3127)" (#3128)" (#3134)
+    This reverts commit 36c1b6db8a95991b5387be8e61dd0966092cf9ae.  Co-
+    authored-by: mykhailo <mykhailo@yelp.com>
+
+ -- Mykhailo Yeromenko <mykhailo@yelp.com>  Fri, 25 Jun 2021 04:46:24 -0700
+
 paasta-tools (0.100.2) xenial; urgency=medium
 
   * 0.100.2 tagged with 'make release'
