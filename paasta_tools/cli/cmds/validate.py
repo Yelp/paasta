@@ -381,37 +381,41 @@ def validate_autoscaling_configs(service_path):
 
     :param service_path: Path to directory containing soa conf yaml files for service
     """
-    path = os.path.join(service_path, "*.yaml")
+    soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
-    instances = {}
-    # Read and store all instance configuration in instances dict
-    for file_name in glob(path):
-        if os.path.islink(file_name):
-            continue
-        basename = os.path.basename(file_name)
-        if basename.startswith("kubernetes"):
-            cluster = basename[basename.rfind("kuernetes-") + 1 :]
-            instances[cluster] = get_config_file_dict(file_name)
-    # Validate autoscaling configurations for all instances
-    for cluster_name, cluster in instances.items():
-        for instance_name, instance in cluster.items():
-            for metric, params in instance.get("new_autoscaling", {}).items():
-                if len(metric) > 63:
-                    returncode = False
-                    print(f"length of metric name {metric} exceeds 63")
-                    continue
-                if metric in {"http", "uwsgi"} and "dimensions" in params:
-                    for k, v in params["dimensions"].items():
-                        if len(k) > 128:
-                            returncode = False
-                            print(
-                                f"length of dimension key {k} of instance {instance_name} in {cluster_name} cannot exceed 128"
+
+    for cluster in list_clusters(service, soa_dir):
+        for instance in list_all_instances_for_service(
+            service=service, clusters=[cluster], soa_dir=soa_dir
+        ):
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+
+            if (
+                instance_config.get_instance_type() == "kubernetes"
+                and instance_config.is_autoscaling_enabled()
+            ):
+                autoscaling_params = instance_config.get_autoscaling_params()
+                if autoscaling_params["metrics_provider"] in {"uwsgi", "http"}:
+                    # a service may omit both of these keys, but we provide our own
+                    # default setpoint for all metrics providers so we are safe to
+                    # unconditionally read it
+                    setpoint = autoscaling_params["setpoint"]
+                    offset = autoscaling_params.get("offset", 0)
+                    if setpoint - offset <= 0:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: offset must be "
+                                f"smaller than setpoint\n\t(setpoint: {setpoint} | offset: {offset})",
+                                link="",
                             )
-                        if len(v) > 256:
-                            returncode = False
-                            print(
-                                f"length of dimension value {v} of instance {instance_name} in {cluster_name} cannot exceed 256"
-                            )
+                        )
 
     return returncode
 

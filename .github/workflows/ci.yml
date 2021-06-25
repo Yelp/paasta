@@ -1,6 +1,13 @@
 ---
 name: paasta-ci
-on: [push, release]
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  release:
+
 jobs:
   tox:
     runs-on: ubuntu-20.04

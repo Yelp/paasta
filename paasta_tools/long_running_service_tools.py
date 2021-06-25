@@ -47,6 +47,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     use_resource_metrics: bool
     uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
+    good_enough_window: List[float]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
