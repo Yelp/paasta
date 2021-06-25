@@ -156,7 +156,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
 
 
 def get_flink_ingress_url_root(cluster: str) -> str:
-    return f"http://flink.k8s.paasta-{cluster}.yelp:{FLINK_INGRESS_PORT}/"
+    return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
 
 
 def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
