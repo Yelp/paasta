@@ -1,3 +1,17 @@
+paasta-tools (0.100.4) xenial; urgency=medium
+
+  * 0.100.4 tagged with 'make release'
+    Commit: PAASTA-17337 - capturing instance misconfiguration
+    exceptions for setup_kubernetes_job (#3124)  * PAASTA-17337 -
+    capturing instance misconfiguration exceptions for
+    setup_kubernetes_job  * Update paasta_tools/setup_kubernetes_job.py
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  * Removing unused
+    import  * PAASTA-17337 - Adding test  * PAASTA-17337 - Fixing test
+    Co-authored-by: Dave Cuza <duza@yelp.com> Co-authored-by: Luis Pérez
+    <luisp@yelp.com>
+
+ -- David Cuza Del Pino <dcuza@yelp.com>  Fri, 25 Jun 2021 10:36:06 -0700
+
 paasta-tools (0.100.3) xenial; urgency=medium
 
   * 0.100.3 tagged with 'make release'
