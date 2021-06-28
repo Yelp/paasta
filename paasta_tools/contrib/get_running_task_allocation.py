@@ -2,6 +2,7 @@
 import argparse
 import time
 from typing import Any
+from typing import Dict
 from typing import Iterable
 from typing import Mapping
 from typing import MutableMapping
@@ -121,19 +122,23 @@ def get_all_running_kubernetes_pods(
     return running
 
 
-def get_kubernetes_resource_request(
+def get_kubernetes_resource_request_limit(
     resources: V1ResourceRequirements,
-) -> Mapping[str, float]:
+) -> Dict[str, float]:
     if not resources:
-        requests: Mapping[str, str] = {}
+        requests: Dict[str, str] = {}
+        limits: Dict[str, str] = {}
     else:
         requests = resources.requests or {}
+        limits = resources.limits or {}
 
-    parsed = kubernetes_tools.parse_container_resources(requests)
+    parsed_requests = kubernetes_tools.parse_container_resources(requests)
+    parsed_limits = kubernetes_tools.parse_container_resources(limits)
     return {
-        "cpus": parsed.cpus,
-        "mem": parsed.mem,
-        "disk": parsed.disk,
+        "cpus": parsed_requests.cpus,
+        "mem": parsed_requests.mem,
+        "disk": parsed_requests.disk,
+        "cpus_limit": parsed_limits.cpus,
     }
 
 
@@ -199,7 +204,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
         name_to_info: MutableMapping[str, Any] = {}
         for container in pod.spec.containers:
             name_to_info[container.name] = {
-                "resources": get_kubernetes_resource_request(container.resources),
+                "resources": get_kubernetes_resource_request_limit(container.resources),
                 "container_type": get_container_type(container.name, instance),
                 "pod_name": pod_name,
                 "pod_ip": pod_ip,
