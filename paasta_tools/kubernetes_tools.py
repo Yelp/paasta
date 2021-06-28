@@ -321,7 +321,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
-    sidecar_injection: bool
+    is_istio_sidecar_injection_enabled: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1442,10 +1442,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
-    def is_injection_eanbled(self):
-        if self.config_dict.get("sidecar_injection"):
-            return "true"
-        return "false"
+    def is_istio_sidecar_injection_enabled(self):
+        return self.config_dict.get("is_istio_sidecar_injection_enabled")
 
     def has_routable_ip(
         self,
@@ -1569,7 +1567,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
-            "sidecar.istio.io/inject": self.is_injection_eanbled(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
@@ -1583,6 +1580,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # pods belonging to a certain smartstack namespace
             for registration in self.get_registrations():
                 labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
+
+        # Add istio sidecar injection label
+        sidecar_injection_enabled = self.is_istio_sidecar_injection_enabled()
+        if sidecar_injection_enabled:
+            labels["sidecar.istio.io/inject"] = "true"
 
         # not all services use uwsgi autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
