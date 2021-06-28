@@ -122,7 +122,7 @@ def get_all_running_kubernetes_pods(
     return running
 
 
-def get_kubernetes_resource_request(
+def get_kubernetes_resource_request_limit(
     resources: V1ResourceRequirements,
 ) -> Dict[str, float]:
     if not resources:
@@ -204,7 +204,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
         name_to_info: MutableMapping[str, Any] = {}
         for container in pod.spec.containers:
             name_to_info[container.name] = {
-                "resources": get_kubernetes_resource_request(container.resources),
+                "resources": get_kubernetes_resource_request_limit(container.resources),
                 "container_type": get_container_type(container.name, instance),
                 "pod_name": pod_name,
                 "pod_ip": pod_ip,
