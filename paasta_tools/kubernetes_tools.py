@@ -301,6 +301,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "sidecar.istio.io/inject": str,
     },
     total=False,
 )
@@ -320,6 +321,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
+    sidecar_injection: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1440,6 +1442,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def is_injection_eanbled(self):
+        if self.config_dict.get("sidecar_injection"):
+            return "true"
+        return "false"
+
     def has_routable_ip(
         self,
         service_namespace_config: ServiceNamespaceConfig,
@@ -1562,6 +1569,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
+            "sidecar.istio.io/inject": self.is_injection_eanbled(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
