@@ -1581,8 +1581,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
 
         # Add istio sidecar injection label
-        sidecar_injection_enabled = self.is_istio_sidecar_injection_enabled()
-        if sidecar_injection_enabled:
+        if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
 
         # not all services use uwsgi autoscaling, so we label those that do in order to have
