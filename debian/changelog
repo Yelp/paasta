@@ -1,3 +1,11 @@
+paasta-tools (0.101.1) xenial; urgency=medium
+
+  * 0.101.1 tagged with 'make release'
+    Commit: Merge pull request #3136 from Yelp/u/msingh/MESH-1144-add-
+    envoy-sidecars-option  U/msingh/mesh 1144 add envoy sidecars option
+
+ -- Manvendra Singh <msingh@yelp.com>  Tue, 29 Jun 2021 05:20:55 -0700
+
 paasta-tools (0.100.5) xenial; urgency=medium
 
   * 0.100.5 tagged with 'make release'
