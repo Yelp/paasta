@@ -301,6 +301,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "sidecar.istio.io/inject": str,
     },
     total=False,
 )
@@ -1580,7 +1581,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for registration in self.get_registrations():
                 labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
 
-        # Add istio sidecar injection label
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
 
