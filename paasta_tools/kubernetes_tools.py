@@ -301,6 +301,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "sidecar.istio.io/inject": str,
     },
     total=False,
 )
@@ -320,6 +321,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
+    is_istio_sidecar_injection_enabled: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1440,6 +1442,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def is_istio_sidecar_injection_enabled(self) -> bool:
+        return self.config_dict.get("is_istio_sidecar_injection_enabled", False)
+
     def has_routable_ip(
         self,
         service_namespace_config: ServiceNamespaceConfig,
@@ -1575,6 +1580,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # pods belonging to a certain smartstack namespace
             for registration in self.get_registrations():
                 labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
+
+        if self.is_istio_sidecar_injection_enabled():
+            labels["sidecar.istio.io/inject"] = "true"
 
         # not all services use uwsgi autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
