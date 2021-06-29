@@ -1442,7 +1442,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("service_account_name", None)
 
     def is_istio_sidecar_injection_enabled(self) -> bool:
-        return self.config_dict.get("is_istio_sidecar_injection_enabled")
+        return self.config_dict.get("is_istio_sidecar_injection_enabled", False)
 
     def has_routable_ip(
         self,
