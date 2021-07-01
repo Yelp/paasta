@@ -1433,6 +1433,23 @@ class TestGetVersionsTable:
             ]
         )
 
+    def test_restart_tip(self, mock_replicasets, mock_bad_container):
+        mock_bad_container.timestamp = None
+        mock_bad_container.last_timestamp = datetime.datetime.now().timestamp() - 60
+        mock_replicasets[1].pods[1].phase = "Running"
+        mock_replicasets[1].pods[1].ready = False
+        mock_replicasets[1].pods[1].containers = [mock_bad_container]
+
+        with mock.patch(
+            "paasta_tools.cli.cmds.status.recent_container_restart", autospec=True
+        ) as mock_recent_container_restart:
+            mock_recent_container_restart.return_value = True
+            versions_table = get_versions_table(
+                mock_replicasets, "service", "instance", "cluster", verbose=1
+            )
+        assert any(["Restarted a minute ago" in row for row in versions_table])
+        assert any(["100 restarts" in row for row in versions_table])
+
     def test_unschedulable(self, mock_replicasets):
         mock_replicasets[1].pods[0].phase = "Pending"
         mock_replicasets[1].pods[0].scheduled = False

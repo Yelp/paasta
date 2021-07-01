@@ -1465,17 +1465,19 @@ def create_replica_table(
 
         main_container = get_main_container(pod)
         if main_container:
-            # If container has no timestamp, use pod's creation
-            timestamp = (
-                datetime.fromtimestamp(main_container.timestamp)
-                if main_container.timestamp
-                else start_datetime
-            )
+            if main_container.timestamp:
+                timestamp = datetime.fromtimestamp(main_container.timestamp)
+            elif main_container.last_timestamp:
+                timestamp = datetime.fromtimestamp(main_container.last_timestamp)
+            else:
+                # if no container timestamps are found, use pod's creation
+                timestamp = start_datetime
+
             humanized_timestamp = humanize.naturaltime(timestamp)
             if recent_container_restart(main_container):
                 table.append(
                     PaastaColors.red(
-                        f"  Restarted at {humanized_timestamp}. {main_container.restart_count} restarts since starting"
+                        f"  Restarted {humanized_timestamp}. {main_container.restart_count} restarts since starting"
                     )
                 )
             if (
