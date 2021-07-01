@@ -1,3 +1,12 @@
+paasta-tools (0.101.2) xenial; urgency=medium
+
+  * 0.101.2 tagged with 'make release'
+    Commit: Merge pull request #3137 from Yelp/u/msingh/MESH-1144-update-
+    paasta-schema  update schema for is_istio_sidecar_injection_enabled
+    option
+
+ -- Manvendra Singh <msingh@yelp.com>  Thu, 01 Jul 2021 05:42:59 -0700
+
 paasta-tools (0.101.1) xenial; urgency=medium
 
   * 0.101.1 tagged with 'make release'
