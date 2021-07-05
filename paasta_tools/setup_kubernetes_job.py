@@ -38,11 +38,11 @@ from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
+from paasta_tools.utils import validate_registration_name
 
 log = logging.getLogger(__name__)
 
@@ -106,17 +106,6 @@ def main() -> None:
     sys.exit(0 if setup_kube_succeeded else 1)
 
 
-def validate_job_name(service_instance: str) -> bool:
-    try:
-        service, instance, _, __ = decompose_job_id(service_instance)
-    except InvalidJobNameError:
-        log.error(
-            "Invalid service instance specified. Format is service%sinstance." % SPACER
-        )
-        return False
-    return True
-
-
 def setup_kube_deployments(
     kube_client: KubeClient,
     service_instances: Sequence[str],
@@ -133,7 +122,7 @@ def setup_kube_deployments(
     service_instances_with_valid_names = [
         decompose_job_id(service_instance)
         for service_instance in service_instances
-        if validate_job_name(service_instance)
+        if validate_registration_name(service_instance)
     ]
     applications = [
         create_application_object(

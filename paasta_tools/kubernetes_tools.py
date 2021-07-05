@@ -238,6 +238,11 @@ class KubernetesServiceRegistration(NamedTuple):
     registrations: Sequence[str]
 
 
+class KubernetesService(NamedTuple):
+    name: str
+    labels: Dict[str, str]
+
+
 class CustomResourceDefinition(NamedTuple):
     file_prefix: str
     version: str
@@ -1961,6 +1966,15 @@ def list_deployments(
             replicas=item.spec.replicas,
         )
         for item in deployments.items + stateful_sets.items
+    ]
+
+
+def list_kubernetes_services(kube_client: KubeClient,) -> Sequence[KubernetesService]:
+    services = kube_client.core.list_namespaced_service(namespace="paasta")
+
+    return [
+        KubernetesService(name=item.metadata.name, labels=item.metadata.labels)
+        for item in services.items
     ]
 
 
