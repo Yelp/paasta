@@ -1579,7 +1579,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # Allow Kubernetes Services to easily find
             # pods belonging to a certain smartstack namespace
             for registration in self.get_registrations():
-                labels[f"paasta.yelp.com/registrations/{registration}"] = "true"  # type: ignore
+                labels[f"registrations.paasta.yelp.com/{registration}"] = "true"  # type: ignore
 
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
