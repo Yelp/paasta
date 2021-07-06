@@ -100,7 +100,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.kubernetes_tools import KubeService
+from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -2234,7 +2234,7 @@ def test_get_kubernetes_services_running_here():
             ]
         }
         assert get_kubernetes_services_running_here() == [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
@@ -2263,21 +2263,21 @@ def test_get_kubernetes_services_running_here_for_nerve():
             name=namespace
         )
         mock_get_kubernetes_services_running_here.return_value = [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="unkurupt",
                 instance="garage",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="garage",
                 port=8888,

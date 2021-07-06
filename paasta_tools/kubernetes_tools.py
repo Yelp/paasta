@@ -230,7 +230,7 @@ class KubeContainerResources(NamedTuple):
     disk: float  # mb
 
 
-class KubeService(NamedTuple):
+class KubernetesServiceRegistration(NamedTuple):
     name: str
     instance: str
     port: int
@@ -1825,7 +1825,7 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
     return services
 
 
-def get_kubernetes_services_running_here() -> Sequence[KubeService]:
+def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
     try:
         pods = get_k8s_pods()
@@ -1844,7 +1844,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
                     port = container["ports"][0]["containerPort"]
                     break
             services.append(
-                KubeService(
+                KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
                     instance=pod["metadata"]["labels"]["paasta.yelp.com/instance"],
                     port=port,
