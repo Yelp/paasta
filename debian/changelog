@@ -1,3 +1,18 @@
+paasta-tools (0.101.3) xenial; urgency=medium
+
+  * 0.101.3 tagged with 'make release'
+    Commit: Change the label keys for registrations (#3139)  Change the
+    label keys for registrations  According to
+    https://kubernetes.io/docs/concepts/overview/working-with-
+    objects/labels/, labels can only have one /. I"m using
+    registrations.paasta instead of something like
+    paasta.yelp.com/registrations_service_name because there"s also a
+    maximum of 63 characters allowed to the label"s name section, which
+    is whatever follows the slash, so using a subdomain seems to be a
+    wiser solution.
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Thu, 08 Jul 2021 04:36:54 -0700
+
 paasta-tools (0.101.2) xenial; urgency=medium
 
   * 0.101.2 tagged with 'make release'
