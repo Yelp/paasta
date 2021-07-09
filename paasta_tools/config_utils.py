@@ -28,7 +28,7 @@ def write_auto_config_data(
     data: Dict[str, Any],
     soa_dir: str = DEFAULT_SOA_DIR,
     sub_dir: Optional[str] = None,
-    comment: Optional[str] = "",
+    comment: Optional[str] = None,
 ) -> Optional[str]:
     """
     Replaces the contents of an automated config file for a service, or creates the file if it does not exist.
@@ -46,8 +46,12 @@ def write_auto_config_data(
         os.mkdir(subdir)
     filename = f"{subdir}/{extra_info}.yaml"
     with open(filename, "w") as f:
-        content = yaml.round_trip_load(
-            comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+        content = (
+            yaml.round_trip_load(
+                comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+            )
+            if comment
+            else {}
         )
         content.update(data)
         f.write(yaml.round_trip_dump(content))
