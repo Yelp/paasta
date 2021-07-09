@@ -768,7 +768,7 @@ def paasta_spark_run(args):
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
-    needs_docker_cfg = not args.build and not args.image
+    needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(args.spark_args)
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
