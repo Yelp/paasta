@@ -48,7 +48,11 @@ def test_write_auto_config_data_new_file(tmpdir):
 
     tmpdir.mkdir(service)
     result = config_utils.write_auto_config_data(
-        service=service, extra_info=conf_file, data=data, soa_dir=tmpdir,
+        service=service,
+        extra_info=conf_file,
+        data=data,
+        soa_dir=tmpdir,
+        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
     )
     expected_path = (
         f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
@@ -64,11 +68,19 @@ def test_write_auto_config_data_file_exists(tmpdir):
 
     tmpdir.mkdir(service)
     config_utils.write_auto_config_data(
-        service=service, extra_info=conf_file, data={"a": 1}, soa_dir=tmpdir,
+        service=service,
+        extra_info=conf_file,
+        data={"a": 1},
+        soa_dir=tmpdir,
+        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
     )
     # Contents should be replaced on second write
     result = config_utils.write_auto_config_data(
-        service=service, extra_info=conf_file, data={"a": 2}, soa_dir=tmpdir,
+        service=service,
+        extra_info=conf_file,
+        data={"a": 2},
+        soa_dir=tmpdir,
+        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
     )
     expected_path = (
         f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
