@@ -173,7 +173,7 @@ def get_recommendations_by_service_file(results, keys_to_apply):
 
 
 def get_extra_message(splunk_search_string):
-    return f"""This review is based on results from the following Splunk search:\n
+    return f"""Updated {AUTO_SOACONFIG_SUBDIR}. This review is based on results from the following Splunk search:\n
     {splunk_search_string}
     """
 
