@@ -115,7 +115,6 @@ def main(args):
             )
 
         if args.deploy_group not in deploy_groups:
-            # hardcode 1 instance for now
             kube_file[args.deploy_group] = {
                 "deploy_group": f"{args.deploy_group_prefix}.{args.deploy_group}",
                 "instances": args.instance_count,
