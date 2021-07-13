@@ -1,3 +1,12 @@
+paasta-tools (0.101.4) xenial; urgency=medium
+
+  * 0.101.4 tagged with 'make release'
+    Commit: adds script to automatically add deploy groups (#3142)  Adds
+    script to automatically add deploy group given CLI args  Co-authored-
+    by: Kedar Vaidya <kedar@yelp.com>
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Tue, 13 Jul 2021 09:40:27 -0700
+
 paasta-tools (0.101.3) xenial; urgency=medium
 
   * 0.101.3 tagged with 'make release'
