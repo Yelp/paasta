@@ -113,8 +113,9 @@ def main(args):
             log.error(
                 f"deploy groups {deploy_groups.keys()} did not match deploy steps {pipeline_steps}. cannot proceed until these files are in agreement"
             )
+            return
 
-        if args.deploy_group not in deploy_groups:
+        if f"{args.deploy_group_prefix}.{args.deploy_group}" not in deploy_groups:
             kube_file[args.deploy_group] = {
                 "deploy_group": f"{args.deploy_group_prefix}.{args.deploy_group}",
                 "instances": args.instance_count,
@@ -131,6 +132,10 @@ def main(args):
             updater.write_configs(args.service, args.kube_file, kube_file)
 
             updater.commit_to_remote(validate=False)
+        else:
+            log.info(
+                f"{args.deploy_group_prefix}.{args.deploy_group} is in deploy groups already, skipping."
+            )
 
 
 if __name__ == "__main__":
