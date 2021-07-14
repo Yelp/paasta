@@ -34,6 +34,7 @@ from typing import Set
 from typing import Tuple
 from typing import Union
 
+import a_sync
 import requests
 import service_configuration_lib
 from humanfriendly import parse_size
@@ -300,6 +301,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "sidecar.istio.io/inject": str,
     },
     total=False,
 )
@@ -319,6 +321,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
+    is_istio_sidecar_injection_enabled: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1476,6 +1479,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def is_istio_sidecar_injection_enabled(self) -> bool:
+        return self.config_dict.get("is_istio_sidecar_injection_enabled", False)
+
     def has_routable_ip(
         self,
         service_namespace_config: ServiceNamespaceConfig,
@@ -1605,6 +1611,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
+        if system_paasta_config.get_kubernetes_add_registration_labels():
+            # Allow Kubernetes Services to easily find
+            # pods belonging to a certain smartstack namespace
+            for registration in self.get_registrations():
+                labels[f"registrations.paasta.yelp.com/{registration}"] = "true"  # type: ignore
+
+        if self.is_istio_sidecar_injection_enabled():
+            labels["sidecar.istio.io/inject"] = "true"
 
         # not all services use uwsgi autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
@@ -2582,7 +2597,11 @@ async def get_events_for_object(
 ) -> List[V1Event]:
 
     try:
-        events = kube_client.core.list_namespaced_event(
+        # this is a blocking call since it does network I/O and can end up significantly blocking the
+        # asyncio event loop when doing things like getting events for all the Pods for a service with
+        # a large amount of replicas. therefore, we need to wrap the kubernetes client into something
+        # that's awaitable so that we can actually do things concurrently and not serially
+        events = await a_sync.to_async(kube_client.core.list_namespaced_event)(
             namespace=obj.metadata.namespace,
             field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
             limit=MAX_EVENTS_TO_RETRIEVE,

@@ -11,6 +11,7 @@ Submodules
    paasta_tools.contrib.check_orphans
    paasta_tools.contrib.create_dynamodb_table
    paasta_tools.contrib.delete_old_marathon_deployments
+   paasta_tools.contrib.deploy_group_update
    paasta_tools.contrib.emit_allocated_cpu_metrics
    paasta_tools.contrib.get_running_task_allocation
    paasta_tools.contrib.graceful_container_drain

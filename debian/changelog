@@ -1,3 +1,91 @@
+paasta-tools (0.101.4) xenial; urgency=medium
+
+  * 0.101.4 tagged with 'make release'
+    Commit: adds script to automatically add deploy groups (#3142)  Adds
+    script to automatically add deploy group given CLI args  Co-authored-
+    by: Kedar Vaidya <kedar@yelp.com>
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Tue, 13 Jul 2021 09:40:27 -0700
+
+paasta-tools (0.101.3) xenial; urgency=medium
+
+  * 0.101.3 tagged with 'make release'
+    Commit: Change the label keys for registrations (#3139)  Change the
+    label keys for registrations  According to
+    https://kubernetes.io/docs/concepts/overview/working-with-
+    objects/labels/, labels can only have one /. I"m using
+    registrations.paasta instead of something like
+    paasta.yelp.com/registrations_service_name because there"s also a
+    maximum of 63 characters allowed to the label"s name section, which
+    is whatever follows the slash, so using a subdomain seems to be a
+    wiser solution.
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Thu, 08 Jul 2021 04:36:54 -0700
+
+paasta-tools (0.101.2) xenial; urgency=medium
+
+  * 0.101.2 tagged with 'make release'
+    Commit: Merge pull request #3137 from Yelp/u/msingh/MESH-1144-update-
+    paasta-schema  update schema for is_istio_sidecar_injection_enabled
+    option
+
+ -- Manvendra Singh <msingh@yelp.com>  Thu, 01 Jul 2021 05:42:59 -0700
+
+paasta-tools (0.101.1) xenial; urgency=medium
+
+  * 0.101.1 tagged with 'make release'
+    Commit: Merge pull request #3136 from Yelp/u/msingh/MESH-1144-add-
+    envoy-sidecars-option  U/msingh/mesh 1144 add envoy sidecars option
+
+ -- Manvendra Singh <msingh@yelp.com>  Tue, 29 Jun 2021 05:20:55 -0700
+
+paasta-tools (0.100.5) xenial; urgency=medium
+
+  * 0.100.5 tagged with 'make release'
+    Commit: Add cpus_limit to paasta allocation (#3091)  * Add
+    cpus_limit to paasta allocation * Use Dict as return type * Fix code
+    format * Update function name Co-authored-by: Ning Wei
+    <ningwei@yelp.com>
+
+ -- Ning Wei <ningwei@yelp.com>  Mon, 28 Jun 2021 11:54:28 -0700
+
+paasta-tools (0.100.4) xenial; urgency=medium
+
+  * 0.100.4 tagged with 'make release'
+    Commit: PAASTA-17337 - capturing instance misconfiguration
+    exceptions for setup_kubernetes_job (#3124)  * PAASTA-17337 -
+    capturing instance misconfiguration exceptions for
+    setup_kubernetes_job  * Update paasta_tools/setup_kubernetes_job.py
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  * Removing unused
+    import  * PAASTA-17337 - Adding test  * PAASTA-17337 - Fixing test
+    Co-authored-by: Dave Cuza <duza@yelp.com> Co-authored-by: Luis Pérez
+    <luisp@yelp.com>
+
+ -- David Cuza Del Pino <dcuza@yelp.com>  Fri, 25 Jun 2021 10:36:06 -0700
+
+paasta-tools (0.100.3) xenial; urgency=medium
+
+  * 0.100.3 tagged with 'make release'
+    Commit: Revert "Revert "PAASTA-17389. (#3127)" (#3128)" (#3134)
+    This reverts commit 36c1b6db8a95991b5387be8e61dd0966092cf9ae.  Co-
+    authored-by: mykhailo <mykhailo@yelp.com>
+
+ -- Mykhailo Yeromenko <mykhailo@yelp.com>  Fri, 25 Jun 2021 04:46:24 -0700
+
+paasta-tools (0.100.2) xenial; urgency=medium
+
+  * 0.100.2 tagged with 'make release'
+    Commit: Stop calling a blocking function in get_events_for_object()
+    (#3132)  Calling kube_client.core.list_namespaced_event() was
+    blocking the asyncio event loop and making `paasta status -v` for
+    services with a large amount of Pods hang forever as the gunicorn
+    worker serving the request would eventually hit a timeout and die.
+    This PR wraps list_namespaced_event() into an awaitable and allows
+    us to actually make N concurrent requests instead of doing these
+    serially.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 21 Jun 2021 12:42:54 -0700
+
 paasta-tools (0.100.1) xenial; urgency=medium
 
   * 0.100.1 tagged with 'make release'

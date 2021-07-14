@@ -258,6 +258,25 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
+class MonitoringDict(TypedDict, total=False):
+    alert_after: Union[str, float]
+    check_every: str
+    check_oom_events: bool
+    component: str
+    description: str
+    notification_email: Union[str, bool]
+    page: bool
+    priority: str
+    project: str
+    realert_every: float
+    runbook: str
+    slack_channels: Union[str, List[str]]
+    tags: List[str]
+    team: str
+    ticket: bool
+    tip: str
+
+
 class InstanceConfigDict(TypedDict, total=False):
     deploy_group: str
     mem: float
@@ -269,7 +288,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cpu_burst_add: float
     cap_add: List
     env: Dict[str, str]
-    monitoring: Dict[str, str]
+    monitoring: MonitoringDict
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     pool: str
@@ -628,7 +647,7 @@ class InstanceConfig:
                     "Instance configuration can specify cmd or args, but not both."
                 )
 
-    def get_monitoring(self) -> Dict[str, Any]:
+    def get_monitoring(self) -> MonitoringDict:
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get("monitoring", {})
 
@@ -1870,6 +1889,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
+    kubernetes_add_registration_labels: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -2418,6 +2438,9 @@ class SystemPaastaConfig:
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get("register_k8s_pods", False)
+
+    def get_kubernetes_add_registration_labels(self) -> bool:
+        return self.config_dict.get("kubernetes_add_registration_labels", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
         """List of custom resources that should be synced by setup_kubernetes_cr """
