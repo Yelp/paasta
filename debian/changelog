@@ -1,3 +1,11 @@
+paasta-tools (0.101.5) xenial; urgency=medium
+
+  * 0.101.5 tagged with 'make release'
+    Commit: Merge pull request #3144 from kedarv/resolve-
+    deploy_group_update-bug  Fix deploy_group_update script bugs
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 15 Jul 2021 10:04:00 -0700
+
 paasta-tools (0.101.4) xenial; urgency=medium
 
   * 0.101.4 tagged with 'make release'
