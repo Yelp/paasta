@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
@@ -100,11 +102,12 @@ def main(args):
         do_clone=args.local_dir is None,
     )
     with updater:
-        deploy = updater.get_existing_configs(args.service, "deploy")
+        deploy_file = updater.get_existing_configs(args.service, "deploy")
         kube_file = updater.get_existing_configs(args.service, args.kube_file)
+        smartstack_file = updater.get_existing_configs(args.service, "smartstack")
 
         deploy_groups = {data["deploy_group"]: name for name, data in kube_file.items()}
-        pipeline_steps = {step["step"] for step in deploy["pipeline"]}.difference(
+        pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}.difference(
             set(args.non_relevant_steps)
         )
 
@@ -116,22 +119,30 @@ def main(args):
             return
 
         if f"{args.deploy_group_prefix}.{args.deploy_group}" not in deploy_groups:
+            port = suggest_smartstack_proxy_port(updater.working_dir)
             kube_file[args.deploy_group] = {
                 "deploy_group": f"{args.deploy_group_prefix}.{args.deploy_group}",
                 "instances": args.instance_count,
             }
-            deploy["pipeline"].append(
+            deploy_file["pipeline"].append(
                 {
                     "step": f"{args.deploy_group_prefix}.{args.deploy_group}",
                     "wait_for_deployment": True,
                     "disabled": True,
                 }
             )
+            smartstack_file[args.deploy_group] = {
+                "proxy_port": port,
+                "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
+            }
 
-            updater.write_configs(args.service, "deploy", deploy)
+            updater.write_configs(args.service, "deploy", deploy_file)
             updater.write_configs(args.service, args.kube_file, kube_file)
-
+            updater.write_configs(args.service, "smartstack", smartstack_file)
             updater.commit_to_remote(validate=False)
+
+            trigger_deploys(args.service)
+
         else:
             log.info(
                 f"{args.deploy_group_prefix}.{args.deploy_group} is in deploy groups already, skipping."
