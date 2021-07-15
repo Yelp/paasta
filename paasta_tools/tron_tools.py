@@ -654,7 +654,6 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
     k8s_options = master_config.get("k8s_options", {})
     if k8s_options:
         # Only add default volumes if we already have k8s_options
-        # TODO: Gate this on whether k8s on tron is enabled
         k8s_options.update(
             {"default_volumes": format_volumes(default_volumes),}
         )
