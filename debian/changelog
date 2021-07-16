@@ -1,3 +1,11 @@
+paasta-tools (0.101.7) xenial; urgency=medium
+
+  * 0.101.7 tagged with 'make release'
+    Commit: Merge pull request #3148 from Yelp/u/amashaal/cut-release
+    Released 0.101.6 via make release
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Fri, 16 Jul 2021 11:48:03 -0700
+
 paasta-tools (0.101.6) xenial; urgency=medium
 
   * 0.101.6 tagged with 'make release'
