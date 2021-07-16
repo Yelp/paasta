@@ -1,3 +1,11 @@
+paasta-tools (0.101.6) xenial; urgency=medium
+
+  * 0.101.6 tagged with 'make release'
+    Commit: Merge pull request #3146 from kedarv/modify-smartstack
+    automatically edit smartstack, call trigger_deploys
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Fri, 16 Jul 2021 09:03:24 -0700
+
 paasta-tools (0.101.5) xenial; urgency=medium
 
   * 0.101.5 tagged with 'make release'

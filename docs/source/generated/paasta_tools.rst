@@ -97,6 +97,7 @@ Submodules
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
    paasta_tools.setup_kubernetes_job
+   paasta_tools.setup_kubernetes_services
    paasta_tools.setup_marathon_job
    paasta_tools.setup_prometheus_adapter_config
    paasta_tools.setup_tron_namespace
