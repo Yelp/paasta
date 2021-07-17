@@ -309,7 +309,6 @@ KubePodLabels = TypedDict(
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
-    bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
@@ -1764,9 +1763,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.get_service(), environment_variables=self.get_env()
         )
         return ahash
-
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
 
     def get_termination_grace_period(self) -> Optional[int]:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(

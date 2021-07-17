@@ -15,7 +15,10 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import asyncio
+import concurrent
 import datetime
+import functools
 import getpass
 import logging
 import math
@@ -25,16 +28,17 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from queue import Empty
-from queue import Queue
 from threading import Event
 from threading import Thread
 from typing import Collection
 from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Tuple
 
+import a_sync
 import humanize
 import progressbar
 from service_configuration_lib import read_deploy
@@ -56,6 +60,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.slack import get_slack_client
@@ -1107,293 +1112,187 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         )
 
 
-class ClusterData:
-    """An auxiliary data transfer class.
-
-    Used by _query_clusters(), instances_deployed(),
-    _run_cluster_worker(), _run_instance_worker().
-
-    :param cluster: the name of the cluster.
-    :param service: the name of the service.
-    :param git_sha: git sha marked for deployment.
-    :param instances_queue: a thread-safe queue. Should contain all cluster
-                            instances that need to be checked.
-    :type instances_queue: Queue
-    """
-
-    def __init__(self, cluster, service, git_sha, instances_queue):
-        self.cluster = cluster
-        self.service = service
-        self.git_sha = git_sha
-        self.instances_queue = instances_queue
-
-    def __repr__(self):
-        return (
-            f"ClusterData(cluster={self.cluster}, service={self.service}, "
-            f"git_sha={self.git_sha}, instances_queue={self.instances_queue})"
-        )
-
-
-def instances_deployed(cluster_data, instances_out, green_light):
-    """Create a thread pool to run _run_instance_worker()
-
-    :param cluster_data: an instance of ClusterData.
-    :param instances_out: a empty thread-safe queue. I will contain
-                          instances that are not deployed yet.
-    :type instances_out: Queue
-    :param green_light: See the docstring for _query_clusters().
-    """
-    num_threads = min(5, cluster_data.instances_queue.qsize())
-
-    workers_launched = []
-    for _ in range(num_threads):
-        worker = Thread(
-            target=_run_instance_worker, args=(cluster_data, instances_out, green_light)
-        )
-        worker.start()
-        workers_launched.append(worker)
-
-    for worker in workers_launched:
-        worker.join()
+async def wait_until_instance_is_done(
+    pool,
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+) -> Tuple[str, str]:
+    loop = asyncio.get_running_loop()
+    while not await loop.run_in_executor(
+        pool,
+        functools.partial(
+            check_if_instance_is_done,
+            service,
+            instance,
+            cluster,
+            git_sha,
+            instance_config,
+        ),
+    ):
+        await asyncio.sleep(5)
+    return (
+        cluster,
+        instance,
+    )  # for the convenience of the caller, to know which future is finishing.
 
 
-def _run_instance_worker(cluster_data, instances_out, green_light):
-    """Get instances from the instances_in queue and check them one by one.
-
-    If an instance isn't deployed, add it to the instances_out queue
-    to re-check it later.
-
-    :param cluster_data: an instance of ClusterData.
-    :param instances_out: See the docstring for instances_deployed().
-    :param green_light: See the docstring for _query_clusters().
-    """
-
-    api = client.get_paasta_oapi_client(cluster=cluster_data.cluster)
-    if not api:
-        log.warning(
-            "Couldn't reach the PaaSTA api for {}! Assuming it is not "
-            "deployed there yet.".format(cluster_data.cluster)
-        )
-        while not cluster_data.instances_queue.empty():
-            try:
-                instance_config = cluster_data.instances_queue.get(block=False)
-            except Empty:
-                return
-            cluster_data.instances_queue.task_done()
-            instances_out.put(instance_config)
-
-    while not cluster_data.instances_queue.empty() and green_light.is_set():
-        try:
-            instance_config = cluster_data.instances_queue.get(block=False)
-        except Empty:
-            return
-
-        instance = instance_config.get_instance()
-
-        log.debug(
-            "Inspecting the deployment status of {}.{} on {}".format(
-                cluster_data.service, instance, cluster_data.cluster
+def check_if_instance_is_done(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+    api: Optional[client.PaastaOApiClient] = None,
+) -> bool:
+    if api is None:
+        api = client.get_paasta_oapi_client(cluster=cluster)
+        if not api:
+            log.warning(
+                "Couldn't reach the PaaSTA api for {}! Assuming it is not "
+                "deployed there yet.".format(cluster)
             )
-        )
-        try:
-            status = None
-            status = api.service.status_instance(
-                service=cluster_data.service,
-                instance=instance,
-                include_smartstack=False,
-                include_envoy=False,
-                include_mesos=False,
-            )
-        except api.api_error as e:
-            if e.status == 404:
-                # TODO(PAASTA-17290): just print the error message so that we
-                # can distinguish between sources of 404s
-                log.warning(
-                    "Can't get status for instance {}, service {} in "
-                    "cluster {}. This is normally because it is a new "
-                    "service that hasn't been deployed by PaaSTA yet".format(
-                        instance, cluster_data.service, cluster_data.cluster
-                    )
-                )
-            else:
-                log.warning(
-                    "Error getting service status from PaaSTA API for "
-                    f"{cluster_data.cluster}: {e.status} {e.reason}"
-                )
+            return False
 
-        long_running_status = None
-        if status:
-            if status.marathon:
-                long_running_status = status.marathon
-            if status.kubernetes:
-                long_running_status = status.kubernetes
-        if not status:
-            log.debug(
-                "No status for {}.{}, in {}. Not deployed yet.".format(
-                    cluster_data.service, instance, cluster_data.cluster
-                )
-            )
-            cluster_data.instances_queue.task_done()
-            instances_out.put(instance_config)
-        elif not long_running_status:
-            log.debug(
-                "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
-                    cluster_data.service, instance, cluster_data.cluster
-                )
-            )
-        elif (
-            long_running_status.expected_instance_count == 0
-            or long_running_status.desired_state == "stop"
-        ):
-            log.debug(
-                "{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                    cluster_data.service, status.instance, cluster_data.cluster
+    log.debug(
+        "Inspecting the deployment status of {}.{} on {}".format(
+            service, instance, cluster
+        )
+    )
+    try:
+        status = None
+        status = api.service.status_instance(
+            service=service,
+            instance=instance,
+            include_smartstack=False,
+            include_envoy=False,
+            include_mesos=False,
+        )
+    except api.api_error as e:
+        if e.status == 404:
+            # TODO(PAASTA-17290): just print the error message so that we
+            # can distinguish between sources of 404s
+            log.warning(
+                "Can't get status for instance {}, service {} in "
+                "cluster {}. This is normally because it is a new "
+                "service that hasn't been deployed by PaaSTA yet".format(
+                    instance, service, cluster
                 )
             )
         else:
-            if long_running_status.app_count != 1:
-                print(
-                    "  {}.{} on {} is still bouncing, {} versions "
-                    "running".format(
-                        cluster_data.service,
-                        status.instance,
-                        cluster_data.cluster,
-                        long_running_status.app_count,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-            if not cluster_data.git_sha.startswith(status.git_sha):
-                print(
-                    "  {}.{} on {} doesn't have the right sha yet: {}".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        status.git_sha,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-            if long_running_status.deploy_status not in [
-                "Running",
-                "Deploying",
-                "Waiting",
-            ]:
-                print(
-                    "  {}.{} on {} isn't running yet: {}".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        long_running_status.deploy_status,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-
-            # The bounce margin factor defines what proportion of instances we need to be "safe",
-            # so consider it scaled up "enough" if we have that proportion of instances ready.
-            required_instance_count = int(
-                math.ceil(
-                    instance_config.get_bounce_margin_factor()
-                    * long_running_status.expected_instance_count
-                )
+            log.warning(
+                "Error getting service status from PaaSTA API for "
+                f"{cluster}: {e.status} {e.reason}"
             )
-            if required_instance_count > long_running_status.running_instance_count:
-                print(
-                    "  {}.{} on {} isn't scaled up yet, "
-                    "has {} out of {} required instances (out of a total of {})".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        long_running_status.running_instance_count,
-                        required_instance_count,
-                        long_running_status.expected_instance_count,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
 
-            # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
-            if long_running_status.active_shas is not None:
-                active_git_shas = {g for g, c in long_running_status.active_shas}
-
-                if cluster_data.git_sha not in active_git_shas:
-                    print(
-                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} not yet running {cluster_data.git_sha}."
-                    )
-                    cluster_data.instances_queue.task_done()
-                    instances_out.put(instance_config)
-                    continue
-
-                # theoretically this case should be caught by the check on long_running_status.app_count
-                if len(active_git_shas) > 1:
-                    print(
-                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} is running multiple versions: {active_git_shas}"
-                    )
-                    cluster_data.instances_queue.task_done()
-                    instances_out.put(instance_config)
-                    continue
-
+    long_running_status = None
+    if status:
+        if status.marathon:
+            long_running_status = status.marathon
+        if status.kubernetes:
+            long_running_status = status.kubernetes
+    if not status:
+        log.debug(
+            "No status for {}.{}, in {}. Not deployed yet.".format(
+                service, instance, cluster
+            )
+        )
+        return False
+    elif not long_running_status:
+        log.debug(
+            "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
+                service, instance, cluster
+            )
+        )
+        return True
+    elif (
+        long_running_status.expected_instance_count == 0
+        or long_running_status.desired_state == "stop"
+    ):
+        log.debug(
+            "{}.{} in {} is marked as stopped. Marked as deployed.".format(
+                service, status.instance, cluster
+            )
+        )
+        return True
+    else:
+        if long_running_status.app_count != 1:
             print(
-                "Complete: {}.{} on {} looks 100% deployed at {} "
-                "instances on {}".format(
-                    cluster_data.service,
-                    instance,
-                    cluster_data.cluster,
-                    long_running_status.running_instance_count,
-                    status.git_sha,
+                "  {}.{} on {} is still bouncing, {} versions "
+                "running".format(
+                    service, status.instance, cluster, long_running_status.app_count,
                 )
             )
-            cluster_data.instances_queue.task_done()
-
-
-def _query_clusters(clusters_data, green_light):
-    """Run _run_cluster_worker() in a separate thread for each paasta cluster
-
-    :param clusters_data: a list of ClusterData instances.
-    :param green_light: an instance of threading.Event().
-                        It is supposed to be cleared when KeyboardInterrupt is
-                        received. All running threads should check it
-                        periodically and exit when it is cleared.
-    """
-    workers_launched = []
-
-    for cluster_data in clusters_data:
-        if not cluster_data.instances_queue.empty():
-            worker = Thread(
-                target=_run_cluster_worker, args=(cluster_data, green_light)
+            return False
+        if not git_sha.startswith(status.git_sha):
+            print(
+                "  {}.{} on {} doesn't have the right sha yet: {}".format(
+                    service, instance, cluster, status.git_sha,
+                )
             )
-            worker.start()
-            workers_launched.append(worker)
+            return False
+        if long_running_status.deploy_status not in [
+            "Running",
+            "Deploying",
+            "Waiting",
+        ]:
+            print(
+                "  {}.{} on {} isn't running yet: {}".format(
+                    service, instance, cluster, long_running_status.deploy_status,
+                )
+            )
+            return False
 
-    for worker in workers_launched:
-        try:
-            while green_light.is_set() and worker.isAlive():
-                time.sleep(0.2)
-        except (KeyboardInterrupt, SystemExit):
-            green_light.clear()
-            print("KeyboardInterrupt received. Terminating..")
-        worker.join()
+        # The bounce margin factor defines what proportion of instances we need to be "safe",
+        # so consider it scaled up "enough" if we have that proportion of instances ready.
+        required_instance_count = int(
+            math.ceil(
+                instance_config.get_bounce_margin_factor()
+                * long_running_status.expected_instance_count
+            )
+        )
+        if required_instance_count > long_running_status.running_instance_count:
+            print(
+                "  {}.{} on {} isn't scaled up yet, "
+                "has {} out of {} required instances (out of a total of {})".format(
+                    service,
+                    instance,
+                    cluster,
+                    long_running_status.running_instance_count,
+                    required_instance_count,
+                    long_running_status.expected_instance_count,
+                )
+            )
+            return False
 
+        # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
+        if long_running_status.active_shas is not None:
+            active_git_shas = {g for g, c in long_running_status.active_shas}
 
-def _run_cluster_worker(cluster_data, green_light):
-    """Run instances_deployed() for a cluster
+            if git_sha not in active_git_shas:
+                print(f"{service}.{instance} on {cluster} not yet running {git_sha}.")
+                return False
 
-    :param cluster_data: an instance of ClusterData.
-    :param green_light: See the docstring for _query_clusters().
-    """
-    instances_out = Queue()
-    instances_deployed(
-        cluster_data=cluster_data, instances_out=instances_out, green_light=green_light
-    )
-    cluster_data.instances_queue = instances_out
-    if cluster_data.instances_queue.empty():
-        print(f"Deploy to {cluster_data.cluster} complete!")
-    return cluster_data
+            # theoretically this case should be caught by the check on long_running_status.app_count
+            if len(active_git_shas) > 1:
+                print(
+                    f"{service}.{instance} on {cluster} is running multiple versions: {active_git_shas}"
+                )
+                return False
+
+        print(
+            "Complete: {}.{} on {} looks 100% deployed at {} "
+            "instances on {}".format(
+                service,
+                instance,
+                cluster,
+                long_running_status.running_instance_count,
+                status.git_sha,
+            )
+        )
+        return True
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
@@ -1403,13 +1302,26 @@ WAIT_FOR_INSTANCE_CLASSES = [
 ]
 
 
-def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
+def get_instance_configs_for_service_in_cluster_and_deploy_group(
+    service_configs: PaastaServiceConfigLoader, cluster: str, deploy_group: str
+) -> Iterator[LongRunningServiceConfig]:
+    for instance_class in WAIT_FOR_INSTANCE_CLASSES:
+        for instance_config in service_configs.instance_configs(
+            cluster=cluster, instance_type_class=instance_class
+        ):
+            if instance_config.get_deploy_group() == deploy_group:
+                yield instance_config
+
+
+def get_instance_configs_for_service_in_deploy_group_all_clusters(
+    service: str, deploy_group: str, git_sha: str, soa_dir: str
+) -> Dict[str, List[LongRunningServiceConfig]]:
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
     )
 
-    total_instances = 0
-    clusters_data = []
+    ret = {}
+
     api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in service_configs.clusters:
         if cluster not in api_endpoints:
@@ -1420,39 +1332,33 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
             )
             raise NoSuchCluster
 
-        # Currently only marathon, kubernetes and cassandra instances are
-        # supported for wait_for_deployment because they are the only thing
-        # that are worth waiting on.
-        instances_queue = Queue()
-        for instance_class in WAIT_FOR_INSTANCE_CLASSES:
-            for instance_config in service_configs.instance_configs(
-                cluster=cluster, instance_type_class=instance_class
-            ):
-                if instance_config.get_deploy_group() == deploy_group:
-                    instances_queue.put(instance_config)
-                    total_instances += 1
-
-        if not instances_queue.empty():
-            clusters_data.append(
-                ClusterData(
-                    cluster=cluster,
-                    service=service,
-                    git_sha=git_sha,
-                    instances_queue=instances_queue,
-                )
+        ret[cluster] = list(
+            get_instance_configs_for_service_in_cluster_and_deploy_group(
+                service_configs, cluster, deploy_group
             )
+        )
 
-    return clusters_data, total_instances
+    return ret
 
 
-def wait_for_deployment(
-    service, deploy_group, git_sha, soa_dir, timeout, green_light=None, progress=None
-):
-    clusters_data, total_instances = clusters_data_to_wait_for(
+@a_sync.to_blocking
+async def wait_for_deployment(
+    service: str,
+    deploy_group: str,
+    git_sha: str,
+    soa_dir: str,
+    timeout: float,
+    green_light: Optional[Event] = None,
+    progress: Optional[Progress] = None,
+) -> Optional[int]:
+    instance_configs_per_cluster: Dict[
+        str, List[LongRunningServiceConfig]
+    ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
         service, deploy_group, git_sha, soa_dir
     )
+    total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
-    if not clusters_data:
+    if not instance_configs_per_cluster:
         _log(
             service=service,
             component="deploy",
@@ -1463,7 +1369,7 @@ def wait_for_deployment(
             ),
             level="event",
         )
-        return
+        return None
 
     print(
         "Waiting for deployment of {} for '{}' to complete...".format(
@@ -1471,60 +1377,65 @@ def wait_for_deployment(
         )
     )
 
-    deadline = time.time() + timeout
-    if green_light is None:
-        green_light = Event()
-    green_light.set()
-
     with progressbar.ProgressBar(maxval=total_instances) as bar:
-        while time.time() < deadline:
-            _query_clusters(clusters_data, green_light)
-            if not green_light.is_set():
-                raise KeyboardInterrupt
+        instance_done_futures = []
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            for cluster, instance_configs in instance_configs_per_cluster.items():
+                for instance_config in instance_configs:
+                    instance_done_futures.append(
+                        asyncio.ensure_future(
+                            wait_until_instance_is_done(
+                                pool,
+                                service,
+                                instance_config.get_instance(),
+                                cluster,
+                                git_sha,
+                                instance_config,
+                            ),
+                        )
+                    )
 
-            finished_instances = total_instances - sum(
-                (c.instances_queue.qsize() for c in clusters_data)
-            )
-            bar.update(finished_instances)
-            if progress is not None:
-                progress.percent = bar.percentage
-                progress.waiting_on = {
-                    c.cluster: list(c.instances_queue.queue) for c in clusters_data
-                }
+            remaining_instances: Dict[str, List[str]] = {
+                cluster: [ic.get_instance() for ic in instance_configs]
+                for cluster, instance_configs in instance_configs_per_cluster.items()
+            }
+            finished_instances = 0
 
-            if all((cluster.instances_queue.empty() for cluster in clusters_data)):
+            try:
+                for coro in asyncio.as_completed(
+                    instance_done_futures, timeout=timeout
+                ):
+                    finished_instances += 1
+                    bar.update(finished_instances)
+                    cluster, instance = await coro
+                    if progress is not None:
+                        progress.percent = bar.percentage
+                        remaining_instances[cluster].remove(instance)
+                        progress.waiting_on = remaining_instances
+            except asyncio.TimeoutError:
+                _log(
+                    service=service,
+                    component="deploy",
+                    line=compose_timeout_message(
+                        remaining_instances, timeout, deploy_group, service, git_sha
+                    ),
+                    level="event",
+                )
+                raise TimeoutError
+            else:
                 sys.stdout.flush()
                 if progress is not None:
                     progress.percent = 100.0
                     progress.waiting_on = None
                 return 0
-            else:
-                time.sleep(min(60, timeout))
-            sys.stdout.flush()
-
-    _log(
-        service=service,
-        component="deploy",
-        line=compose_timeout_message(
-            clusters_data, timeout, deploy_group, service, git_sha
-        ),
-        level="event",
-    )
-    raise TimeoutError
 
 
-def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha):
-    cluster_instances = {}
-    for c_d in clusters_data:
-        while c_d.instances_queue.qsize() > 0:
-            cluster_instances.setdefault(c_d.cluster, []).append(
-                c_d.instances_queue.get(block=False).get_instance()
-            )
-            c_d.instances_queue.task_done()
-
+def compose_timeout_message(
+    remaining_instances: Dict[str, List[str]], timeout, deploy_group, service, git_sha
+):
     paasta_status = []
     paasta_logs = []
-    for cluster, instances in sorted(cluster_instances.items()):
+    for cluster, instances in sorted(remaining_instances.items()):
         if instances:
             joined_instances = ",".join(instances)
             paasta_status.append(

@@ -37,7 +37,6 @@ log.addHandler(logging.NullHandler())
 
 
 class CassandraClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
-    bounce_margin_factor: float
     replicas: int
 
 
@@ -111,9 +110,6 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         crossover is the closest
         """
         return "crossover"
-
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
 
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())
