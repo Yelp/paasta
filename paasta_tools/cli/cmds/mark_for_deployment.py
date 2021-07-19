@@ -1405,9 +1405,9 @@ async def wait_for_deployment(
                 for coro in asyncio.as_completed(
                     instance_done_futures, timeout=timeout
                 ):
+                    cluster, instance = await coro
                     finished_instances += 1
                     bar.update(finished_instances)
-                    cluster, instance = await coro
                     if progress is not None:
                         progress.percent = bar.percentage
                         remaining_instances[cluster].remove(instance)
