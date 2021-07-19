@@ -1401,6 +1401,15 @@ async def wait_for_deployment(
             }
             finished_instances = 0
 
+            async def periodically_update_progressbar():
+                while True:
+                    await asyncio.sleep(60)
+                    bar.update(finished_instances)
+
+            periodically_update_progressbar_task = asyncio.create_task(
+                periodically_update_progressbar()
+            )
+
             try:
                 for coro in asyncio.as_completed(
                     instance_done_futures, timeout=timeout
@@ -1428,6 +1437,8 @@ async def wait_for_deployment(
                     progress.percent = 100.0
                     progress.waiting_on = None
                 return 0
+            finally:
+                periodically_update_progressbar_task.cancel()
 
 
 def compose_timeout_message(
