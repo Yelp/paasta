@@ -355,6 +355,7 @@ class StatusArgs:
         verbose,
         service_instance=None,
         new=False,
+        old=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -366,6 +367,7 @@ class StatusArgs:
         self.verbose = verbose
         self.service_instance = service_instance
         self.new = new
+        self.old = old
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
