@@ -50,6 +50,7 @@ from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.cmds.status import get_version_table_entry
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -83,6 +84,9 @@ DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
+
+TIME_BEFORE_FIRST_DIAGNOSIS = 300
+TIME_BETWEEN_DIAGNOSES = 60
 
 log = logging.getLogger(__name__)
 
@@ -1121,22 +1125,103 @@ async def wait_until_instance_is_done(
     instance_config: LongRunningServiceConfig,
 ) -> Tuple[str, str]:
     loop = asyncio.get_running_loop()
-    while not await loop.run_in_executor(
-        pool,
-        functools.partial(
-            check_if_instance_is_done,
+    diagnosis_task = asyncio.create_task(
+        periodically_diagnose_instance(
+            pool, service, instance, cluster, git_sha, instance_config
+        )
+    )
+    try:
+        while not await loop.run_in_executor(
+            pool,
+            functools.partial(
+                check_if_instance_is_done,
+                service,
+                instance,
+                cluster,
+                git_sha,
+                instance_config,
+            ),
+        ):
+            await asyncio.sleep(5)
+        return (
+            cluster,
+            instance,
+        )  # for the convenience of the caller, to know which future is finishing.
+    finally:
+        diagnosis_task.cancel()
+
+
+async def periodically_diagnose_instance(
+    pool,
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+) -> None:
+    await asyncio.sleep(TIME_BEFORE_FIRST_DIAGNOSIS)
+    loop = asyncio.get_running_loop()
+    while True:
+        try:
+            await loop.run_in_executor(
+                pool,
+                functools.partial(
+                    diagnose_why_instance_is_stuck,
+                    service,
+                    instance,
+                    cluster,
+                    git_sha,
+                    instance_config,
+                ),
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            print("Couldn't get status of {service}.{instance}:")
+            traceback.print_exc()
+        await asyncio.sleep(TIME_BETWEEN_DIAGNOSES)
+
+
+def diagnose_why_instance_is_stuck(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+) -> None:
+    api = client.get_paasta_oapi_client(cluster=cluster)
+    try:
+        status = api.service.status_instance(
+            service=service,
+            instance=instance,
+            include_smartstack=False,
+            include_envoy=False,
+            include_mesos=False,
+            new=True,
+        )
+    except api.api_error as e:
+        log.warning(
+            "Error getting service status from PaaSTA API for "
+            f"{cluster}: {e.status} {e.reason}"
+        )
+        return
+
+    print(f"  Status for {service}.{instance} in {cluster}:")
+    for version in status.kubernetes_v2.versions:
+        # We call get_version_table_entry directly so that we can set version_name_suffix based on git_sha instead of
+        # creation time of the version (which is what get_versions_table does.)
+        # Without this, we'd call the old version "new" until the new version is actually created, which would be confusing.
+        for line in get_version_table_entry(
+            version,
             service,
             instance,
             cluster,
-            git_sha,
-            instance_config,
-        ),
-    ):
-        await asyncio.sleep(5)
-    return (
-        cluster,
-        instance,
-    )  # for the convenience of the caller, to know which future is finishing.
+            version_name_suffix="new" if version.git_sha == git_sha else "old",
+            show_config_sha=True,
+            verbose=0,
+        ):
+            print(f"    {line}")
+    print("")
 
 
 def check_if_instance_is_done(
@@ -1272,7 +1357,7 @@ def check_if_instance_is_done(
             active_git_shas = {g for g, c in long_running_status.active_shas}
 
             if git_sha not in active_git_shas:
-                print(f"{service}.{instance} on {cluster} not yet running {git_sha}.")
+                print(f"  {service}.{instance} on {cluster} not yet running {git_sha}.")
                 return False
 
             # theoretically this case should be caught by the check on long_running_status.app_count
@@ -1405,6 +1490,7 @@ async def wait_for_deployment(
                 while True:
                     await asyncio.sleep(60)
                     bar.update(finished_instances)
+                    print()
 
             periodically_update_progressbar_task = asyncio.create_task(
                 periodically_update_progressbar()
