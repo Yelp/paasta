@@ -193,6 +193,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         auto_rollback = True
         block = True
         timeout = 600
+        warn = 80  # % of timeout to warn at
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
@@ -314,6 +315,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -358,6 +360,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -398,6 +401,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -436,6 +440,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -478,6 +483,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -523,6 +529,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -566,6 +573,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -639,6 +647,7 @@ def test_MarkForDeployProcess_happy_path(
         block=True,
         soa_dir="soa_dir",
         timeout=3600,
+        warn_pct=50,
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
@@ -684,6 +693,7 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
         block=True,
         soa_dir="soa_dir",
         timeout=3600,
+        warn_pct=50,
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
