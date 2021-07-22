@@ -1,3 +1,11 @@
+paasta-tools (0.101.8) xenial; urgency=medium
+
+  * 0.101.8 tagged with 'make release'
+    Commit: Merge pull request #3151 from Yelp/TRON-1631-tron-secrets
+    Update paasta secret sync to support other namespaces
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 22 Jul 2021 10:40:57 -0700
+
 paasta-tools (0.101.7) xenial; urgency=medium
 
   * 0.101.7 tagged with 'make release'
