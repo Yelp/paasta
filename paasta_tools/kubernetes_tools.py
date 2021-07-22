@@ -1191,17 +1191,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_boto_volume(self):
         required_boto_keys = self.config_dict.get("boto_keys", [])
+        service_name = self.get_sanitised_deployment_name()
         items = []
         for boto_key in required_boto_keys:
-            secret_name = boto_key.replace(".", "-").replace("_", "--")
-            item = V1KeyToPath(
-                key=secret_name, mode=mode_to_int("0444"), path=boto_key,
-            )
-            items.append(item)
-        # Is there a better way to get this?
-        service_name = (
-            self.get_sanitised_service_name() + "-" + self.get_sanitised_instance_name()
-        )
+            for filetype in ["sh", "yaml", "cfg", "json"]:
+                this_key = boto_key + "." + filetype
+                secret_name = this_key.replace(".", "-").replace("_", "--")
+                item = V1KeyToPath(
+                    key=secret_name, mode=mode_to_int("0444"), path=this_key,
+                )
+                items.append(item)
         volume = V1Volume(
             name=f"secret-boto-key-{service_name}",
             secret=V1SecretVolumeSource(
@@ -1260,10 +1259,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 + self.get_sanitised_instance_name()
             )
             mount = V1VolumeMount(
-                mount_path="/etc/boto_cfg_new",
+                mount_path="/etc/boto_cfg",
                 name=f"secret-boto-key-{service_name}",
                 read_only=True,
             )
+            for existing_mount in volume_mounts:
+                if existing_mount.mount_path == "/etc/boto_cfg":
+                    volume_mounts.remove(existing_mount)
+                    break
             volume_mounts.append(mount)
         return volume_mounts
 
@@ -1783,7 +1786,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Removes some data from config to make it suitable for
         calculation of config hash.
 
-        :param config: complete_config hash to sanitize
+        :param config: complete_config hash to sanitise
         :returns: sanitised copy of complete_config hash
         """
         ahash = {

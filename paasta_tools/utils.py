@@ -3746,5 +3746,7 @@ def ldap_user_search(
 
 
 def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
-    deduped = {v["containerPath"].rstrip("/"): v for v in volumes}.values()
+    deduped = {
+        v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
+    }.values()
     return sort_dicts(deduped)
