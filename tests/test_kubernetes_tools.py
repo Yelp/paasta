@@ -1213,6 +1213,35 @@ class TestKubernetesDeploymentConfig:
                 == expected_volumes
             )
 
+    @pytest.mark.parametrize(
+        "config_dict",
+        [
+            {"boto_keys": ["scribereader"]},
+            {"boto_keys": ["scribereader", "foobar"]},
+            {},
+        ],
+    )
+    def test_get_boto_volume(self, config_dict):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        volumes = deployment.get_boto_volume()
+        if config_dict:
+            assert (
+                volumes.secret.secret_name == "paasta-boto-key-my-service-my-instance"
+            )
+            assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
+            assert any(
+                [item.path == "scribereader.yaml" for item in volumes.secret.items]
+            )
+        else:
+            assert volumes is None
+
     def test_get_sanitised_service_name(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
