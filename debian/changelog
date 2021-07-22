@@ -1,3 +1,11 @@
+paasta-tools (0.101.9) xenial; urgency=medium
+
+  * 0.101.9 tagged with 'make release'
+    Commit: Merge pull request #3153 from Yelp/u/kawaiwan/deploy-warn-
+    configurable  Make wait-for-deployment warn pct time configurable
+
+ -- Charles Wan <kawaiwan@yelp.com>  Thu, 22 Jul 2021 16:10:30 -0700
+
 paasta-tools (0.101.8) xenial; urgency=medium
 
   * 0.101.8 tagged with 'make release'
