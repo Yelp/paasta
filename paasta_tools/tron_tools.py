@@ -23,6 +23,7 @@ import subprocess
 import traceback
 from string import Formatter
 from typing import List
+from typing import Mapping
 from typing import Tuple
 
 import yaml
@@ -57,6 +58,11 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.secret_tools import is_shared_secret
+from paasta_tools.secret_tools import get_secret_name_from_ref
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 
@@ -343,6 +349,23 @@ class TronActionConfig(InstanceConfig):
                 env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
 
         return env
+
+    def get_secret_env(self) -> Mapping[str, dict]:
+        base_env = self.config_dict.get("env", {})
+        secret_env = {}
+        for k, v in base_env.items():
+            if is_secret_ref(v):
+                secret = get_secret_name_from_ref(v)
+                sanitised_secret = sanitise_kubernetes_name(secret)
+                service = (
+                    self.service if not is_shared_secret(v) else SHARED_SECRET_SERVICE
+                )
+                sanitised_service = sanitise_kubernetes_name(service)
+                secret_env[k] = {
+                    "secret": f"tron-secret-{sanitised_service}-{sanitised_secret}",
+                    "key": secret,
+                }
+        return secret_env
 
     def get_extra_volumes(self):
         extra_volumes = super().get_extra_volumes()
@@ -695,6 +718,11 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     # whatever is in soaconfigs to the k8s equivalent here as well.
     if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
         result["executor"] = "kubernetes"
+        result["secret_env"] = action_config.get_secret_env()
+        # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
+        all_env = action_config.get_env()
+        result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
+
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
         constraint_labels = ["attribute", "operator", "value"]
@@ -710,6 +738,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             {"key": param["key"], "value": param["value"]}
             for param in action_config.format_docker_parameters()
         ]
+        result["env"] = action_config.get_env()
 
     # the following config is only valid for k8s/Mesos since we're not running SSH actions
     # in a containerized fashion
@@ -717,7 +746,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
-        result["env"] = action_config.get_env()
         result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_image"] = action_config.get_docker_url()
 

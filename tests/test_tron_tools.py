@@ -191,6 +191,37 @@ class TestTronActionConfig:
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
+    @pytest.mark.parametrize(
+        "test_env,expected_env",
+        (
+            (
+                {
+                    "TEST_SECRET": "SECRET(a_service_secret)",
+                    "TEST_NONSECRET": "not a secret",
+                },
+                {
+                    "TEST_SECRET": {
+                        "secret": "tron-secret-my--service-a--service--secret",
+                        "key": "a_service_secret",
+                    }
+                },
+            ),
+            (
+                {"TEST_SECRET": "SHARED_SECRET(a_shared_secret)"},
+                {
+                    "TEST_SECRET": {
+                        "secret": "tron-secret-underscore-shared-a--shared--secret",
+                        "key": "a_shared_secret",
+                    }
+                },
+            ),
+        ),
+    )
+    def test_get_secret_env(self, action_config, test_env, expected_env):
+        action_config.config_dict["env"] = test_env
+        secret_env = action_config.get_secret_env()
+        assert secret_env == expected_env
+
     def test_spark_get_cmd(self, action_config):
         action_config.config_dict["executor"] = "spark"
         with mock.patch.object(
@@ -836,7 +867,7 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "pool": "special_pool",
-            "env": {"SHELL": "/bin/bash"},
+            "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
             "extra_volumes": [
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
             ],
@@ -878,6 +909,12 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "secret_env": {
+                "SOME_SECRET": {
+                    "secret": "tron-secret-my--service-secret--name",
+                    "key": "secret_name",
+                }
+            },
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
@@ -890,6 +927,7 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
+        assert "SOME_SECRET" not in result["env"]
 
     def test_format_tron_action_dict_paasta_no_branch_dict(self):
         action_dict = {
