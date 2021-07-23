@@ -37,6 +37,7 @@ from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import a_sync
@@ -1165,7 +1166,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
 
 async def wait_until_instance_is_done(
-    pool,
+    executor: concurrent.futures.Executor,
     service: str,
     instance: str,
     cluster: str,
@@ -1178,7 +1179,7 @@ async def wait_until_instance_is_done(
     loop = asyncio.get_running_loop()
     diagnosis_task = asyncio.create_task(
         periodically_diagnose_instance(
-            pool,
+            executor,
             service,
             instance,
             cluster,
@@ -1190,7 +1191,7 @@ async def wait_until_instance_is_done(
     )
     try:
         while not await loop.run_in_executor(
-            pool,
+            executor,
             functools.partial(
                 check_if_instance_is_done,
                 service,
@@ -1210,7 +1211,7 @@ async def wait_until_instance_is_done(
 
 
 async def periodically_diagnose_instance(
-    pool,
+    executor: concurrent.futures.Executor,
     service: str,
     instance: str,
     cluster: str,
@@ -1224,7 +1225,7 @@ async def periodically_diagnose_instance(
     while True:
         try:
             await loop.run_in_executor(
-                pool,
+                executor,
                 functools.partial(
                     diagnose_why_instance_is_stuck,
                     service,
@@ -1465,7 +1466,7 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
         service=service, soa_dir=soa_dir, load_deployments=False
     )
 
-    ret = {}
+    instance_configs_per_cluster = {}
 
     api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in service_configs.clusters:
@@ -1477,13 +1478,13 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
             )
             raise NoSuchCluster
 
-        ret[cluster] = list(
+        instance_configs_per_cluster[cluster] = list(
             get_instance_configs_for_service_in_cluster_and_deploy_group(
                 service_configs, cluster, deploy_group
             )
         )
 
-    return ret
+    return instance_configs_per_cluster
 
 
 @a_sync.to_blocking
@@ -1542,13 +1543,13 @@ async def wait_for_deployment(
 
     with progressbar.ProgressBar(maxval=total_instances) as bar:
         instance_done_futures = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             for cluster, instance_configs in instance_configs_per_cluster.items():
                 for instance_config in instance_configs:
                     instance_done_futures.append(
                         asyncio.ensure_future(
                             wait_until_instance_is_done(
-                                pool,
+                                executor,
                                 service,
                                 instance_config.get_instance(),
                                 cluster,
@@ -1561,8 +1562,8 @@ async def wait_for_deployment(
                         )
                     )
 
-            remaining_instances: Dict[str, List[str]] = {
-                cluster: [ic.get_instance() for ic in instance_configs]
+            remaining_instances: Dict[str, Set[str]] = {
+                cluster: {ic.get_instance() for ic in instance_configs}
                 for cluster, instance_configs in instance_configs_per_cluster.items()
             }
             finished_instances = 0
@@ -1609,7 +1610,11 @@ async def wait_for_deployment(
 
 
 def compose_timeout_message(
-    remaining_instances: Dict[str, List[str]], timeout, deploy_group, service, git_sha
+    remaining_instances: Mapping[str, Collection[str]],
+    timeout,
+    deploy_group,
+    service,
+    git_sha,
 ):
     paasta_status = []
     paasta_logs = []
