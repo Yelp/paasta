@@ -1,3 +1,43 @@
+paasta-tools (0.101.9) xenial; urgency=medium
+
+  * 0.101.9 tagged with 'make release'
+    Commit: Merge pull request #3153 from Yelp/u/kawaiwan/deploy-warn-
+    configurable  Make wait-for-deployment warn pct time configurable
+
+ -- Charles Wan <kawaiwan@yelp.com>  Thu, 22 Jul 2021 16:10:30 -0700
+
+paasta-tools (0.101.8) xenial; urgency=medium
+
+  * 0.101.8 tagged with 'make release'
+    Commit: Merge pull request #3151 from Yelp/TRON-1631-tron-secrets
+    Update paasta secret sync to support other namespaces
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 22 Jul 2021 10:40:57 -0700
+
+paasta-tools (0.101.7) xenial; urgency=medium
+
+  * 0.101.7 tagged with 'make release'
+    Commit: Merge pull request #3148 from Yelp/u/amashaal/cut-release
+    Released 0.101.6 via make release
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Fri, 16 Jul 2021 11:48:03 -0700
+
+paasta-tools (0.101.6) xenial; urgency=medium
+
+  * 0.101.6 tagged with 'make release'
+    Commit: Merge pull request #3146 from kedarv/modify-smartstack
+    automatically edit smartstack, call trigger_deploys
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Fri, 16 Jul 2021 09:03:24 -0700
+
+paasta-tools (0.101.5) xenial; urgency=medium
+
+  * 0.101.5 tagged with 'make release'
+    Commit: Merge pull request #3144 from kedarv/resolve-
+    deploy_group_update-bug  Fix deploy_group_update script bugs
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 15 Jul 2021 10:04:00 -0700
+
 paasta-tools (0.101.4) xenial; urgency=medium
 
   * 0.101.4 tagged with 'make release'

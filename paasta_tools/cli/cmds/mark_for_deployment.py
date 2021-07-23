@@ -83,6 +83,7 @@ from paasta_tools.utils import TimeoutError
 
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
+DEFAULT_WARN_PERCENT = 50
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
@@ -163,6 +164,18 @@ def add_subparser(subparsers):
             "Time in seconds to wait for paasta to deploy the service. "
             "If the timeout is exceeded we return 1. "
             "Default is %(default)s seconds."
+        ),
+    )
+    list_parser.add_argument(
+        "-w",
+        "--warn",
+        dest="warn",
+        type=int,
+        default=DEFAULT_WARN_PERCENT,
+        help=(
+            "Percent of timeout to warn at if the deployment hasn't finished. "
+            "For example, --warn=75 will warn at 75%% of the timeout. "
+            "Defaults to %(default)s."
         ),
     )
     list_parser.add_argument(
@@ -446,6 +459,7 @@ def paasta_mark_for_deployment(args):
         block=args.block,
         soa_dir=args.soa_dir,
         timeout=args.timeout,
+        warn_pct=args.warn,
         auto_certify_delay=args.auto_certify_delay,
         auto_abandon_delay=args.auto_abandon_delay,
         auto_rollback_delay=args.auto_rollback_delay,
@@ -489,7 +503,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
-    timeout_percentage_before_reminding = 75
 
     def __init__(
         self,
@@ -503,6 +516,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         block: bool,
         soa_dir: str,
         timeout: float,
+        warn_pct: float,
         auto_certify_delay: float,
         auto_abandon_delay: float,
         auto_rollback_delay: float,
@@ -524,6 +538,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
+        self.warn_pct = warn_pct
         self.mark_for_deployment_return_code = -1
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
@@ -680,7 +695,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
                     self.notify_users(
                         (
-                            f"It has been {self.timeout_percentage_before_reminding}% of the "
+                            f"It has been {self.warn_pct}% of the "
                             f"maximum deploy time ({human_max_deploy_time}), "
                             "which means the deployment may be stuck. "
                             "Here are some things you can try:\n\n"
@@ -696,9 +711,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 )
 
         def schedule_callback():
-            time_to_notify = self.timeout * (
-                self.timeout_percentage_before_reminding / 100
-            )
+            time_to_notify = self.timeout * self.warn_pct / 100
             self.paasta_status_reminder_handle = self.event_loop.call_later(
                 time_to_notify, times_up
             )

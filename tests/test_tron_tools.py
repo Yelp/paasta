@@ -641,6 +641,25 @@ class TestTronTools:
             },
         }
 
+        master_config["k8s_options"] = {
+            "kubeconfig_path": "/var/lib/tron/kubeconfig.conf"
+        }
+
+        result = tron_tools.format_master_config(
+            master_config, paasta_volumes, dockercfg
+        )
+
+        assert result["k8s_options"] == {
+            "kubeconfig_path": "/var/lib/tron/kubeconfig.conf",
+            "default_volumes": [
+                {
+                    "container_path": "/nail/other",
+                    "host_path": "/other/home",
+                    "mode": "RW",
+                }
+            ],
+        }
+
     def test_format_tron_action_dict_default_executor(self):
         action_dict = {
             "command": "echo something",

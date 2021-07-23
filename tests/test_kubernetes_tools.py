@@ -100,7 +100,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.kubernetes_tools import KubeService
+from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -2234,7 +2234,7 @@ def test_get_kubernetes_services_running_here():
             ]
         }
         assert get_kubernetes_services_running_here() == [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
@@ -2263,21 +2263,21 @@ def test_get_kubernetes_services_running_here_for_nerve():
             name=namespace
         )
         mock_get_kubernetes_services_running_here.return_value = [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="unkurupt",
                 instance="garage",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="garage",
                 port=8888,
@@ -3134,6 +3134,18 @@ def test_create_kubernetes_secret_signature():
         secret_signature="ab1234",
     )
     assert mock_client.core.create_namespaced_config_map.called
+    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+
+    create_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-fate",
+        service="universe",
+        secret_signature="ab1234",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
 
 
 def test_update_kubernetes_secret_signature():
@@ -3145,6 +3157,18 @@ def test_update_kubernetes_secret_signature():
         secret_signature="ab1234",
     )
     assert mock_client.core.replace_namespaced_config_map.called
+    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+
+    update_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-fate",
+        service="universe",
+        secret_signature="ab1234",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
 
 
 def test_get_kubernetes_secret_signature():
@@ -3152,12 +3176,24 @@ def test_get_kubernetes_secret_signature():
     mock_client.core.read_namespaced_config_map.return_value = mock.Mock(
         data={"signature": "hancock"}
     )
-    assert (
-        get_kubernetes_secret_signature(
-            kube_client=mock_client, secret="mortys-morty", service="universe"
-        )
-        == "hancock"
+
+    secret_sig = get_kubernetes_secret_signature(
+        kube_client=mock_client, secret="mortys-morty", service="universe"
     )
+    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+    assert secret_sig == "hancock"
+
+    secret_sig = get_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-morty",
+        service="universe",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
+    assert secret_sig == "hancock"
+
     mock_client.core.read_namespaced_config_map.side_effect = ApiException(404)
     assert (
         get_kubernetes_secret_signature(
@@ -3183,6 +3219,8 @@ def test_create_secret():
         secret_provider=mock_secret_provider,
     )
     assert mock_client.core.create_namespaced_secret.called
+    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
 
     create_secret(
@@ -3191,6 +3229,17 @@ def test_create_secret():
         secret="mortys_fate",
         secret_provider=mock_secret_provider,
     )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
+
+    create_secret(
+        kube_client=mock_client,
+        service="universe",
+        secret="mortys_fate",
+        secret_provider=mock_secret_provider,
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[2]
+    assert kwargs.get("namespace") == "tron"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 
@@ -3206,6 +3255,8 @@ def test_update_secret():
         secret_provider=mock_secret_provider,
     )
     assert mock_client.core.replace_namespaced_secret.called
+    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
 
     update_secret(
@@ -3214,6 +3265,17 @@ def test_update_secret():
         secret="mortys_fate",
         secret_provider=mock_secret_provider,
     )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
+
+    update_secret(
+        kube_client=mock_client,
+        service="universe",
+        secret="mortys_fate",
+        secret_provider=mock_secret_provider,
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[2]
+    assert kwargs.get("namespace") == "tron"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 
