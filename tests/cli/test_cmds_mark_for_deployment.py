@@ -193,6 +193,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         auto_rollback = True
         block = True
         timeout = 600
+        polling_interval = 15
+        diagnosis_interval = 15
+        time_before_first_diagnosis = 15
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()

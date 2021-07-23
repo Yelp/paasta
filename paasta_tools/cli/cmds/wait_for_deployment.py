@@ -121,6 +121,27 @@ def add_subparser(subparsers):
         default=0,
         help="Print out more output.",
     )
+    list_parser.add_argument(
+        "--polling-interval",
+        dest="polling_interval",
+        type=float,
+        default=None,
+        help="How long to wait between each time we check to see if an instance is done deploying.",
+    )
+    list_parser.add_argument(
+        "--diagnosis-interval",
+        dest="diagnosis_interval",
+        type=float,
+        default=None,
+        help="How long to wait between diagnoses of why the bounce isn't done.",
+    )
+    list_parser.add_argument(
+        "--time-before-first-diagnosis",
+        dest="time_before_first_diagnosis",
+        type=float,
+        default=None,
+        help="Wait this long before trying to diagnose why the bounce isn't done.",
+    )
 
     list_parser.set_defaults(command=paasta_wait_for_deployment)
 
@@ -222,6 +243,9 @@ def paasta_wait_for_deployment(args):
             git_sha=args.commit,
             soa_dir=args.soa_dir,
             timeout=args.timeout,
+            polling_interval=args.polling_interval,
+            diagnosis_interval=args.diagnosis_interval,
+            time_before_first_diagnosis=args.time_before_first_diagnosis,
         )
         _log(
             service=service,

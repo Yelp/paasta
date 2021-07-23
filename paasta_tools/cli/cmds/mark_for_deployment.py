@@ -31,6 +31,7 @@ from collections import defaultdict
 from threading import Event
 from threading import Thread
 from typing import Collection
+from typing import DefaultDict
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -45,6 +46,7 @@ from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
 from sticht.slo import SLOSlackDeploymentProcess
+from sticht.slo import SLOWatcher
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -85,8 +87,6 @@ DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 
-TIME_BEFORE_FIRST_DIAGNOSIS = 300
-TIME_BETWEEN_DIAGNOSES = 60
 
 log = logging.getLogger(__name__)
 
@@ -219,6 +219,27 @@ def add_subparser(subparsers):
         action="append",
         help="Additional author(s) of the deploy, who will be pinged in Slack",
     )
+    list_parser.add_argument(
+        "--polling-interval",
+        dest="polling_interval",
+        type=float,
+        default=None,
+        help="How long to wait between each time we check to see if an instance is done deploying.",
+    )
+    list_parser.add_argument(
+        "--diagnosis-interval",
+        dest="diagnosis_interval",
+        type=float,
+        default=None,
+        help="How long to wait between diagnoses of why the bounce isn't done.",
+    )
+    list_parser.add_argument(
+        "--time-before-first-diagnosis",
+        dest="time_before_first_diagnosis",
+        type=float,
+        default=None,
+        help="Wait this long before trying to diagnose why the bounce isn't done.",
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -334,7 +355,7 @@ def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
     return False
 
 
-def get_deploy_info(service, soa_dir):
+def get_deploy_info(service, soa_dir) -> Dict:
     file_path = os.path.join(soa_dir, service, "deploy.yaml")
     return read_deploy(file_path)
 
@@ -429,6 +450,9 @@ def paasta_mark_for_deployment(args):
         auto_abandon_delay=args.auto_abandon_delay,
         auto_rollback_delay=args.auto_rollback_delay,
         authors=args.authors,
+        polling_interval=args.polling_interval,
+        diagnosis_interval=args.diagnosis_interval,
+        time_before_first_diagnosis=args.time_before_first_diagnosis,
     )
     ret = deploy_process.run()
     return ret
@@ -469,21 +493,24 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def __init__(
         self,
-        service,
-        deploy_info,
-        deploy_group,
-        commit,
-        old_git_sha,
-        git_url,
-        auto_rollback,
-        block,
-        soa_dir,
-        timeout,
-        auto_certify_delay,
-        auto_abandon_delay,
-        auto_rollback_delay,
-        authors=None,
-    ):
+        service: str,
+        deploy_info: Dict,
+        deploy_group: str,
+        commit: str,
+        old_git_sha: str,
+        git_url: str,
+        auto_rollback: bool,
+        block: bool,
+        soa_dir: str,
+        timeout: float,
+        auto_certify_delay: float,
+        auto_abandon_delay: float,
+        auto_rollback_delay: float,
+        authors: Optional[List[str]] = None,
+        polling_interval: float = None,
+        diagnosis_interval: float = None,
+        time_before_first_diagnosis: float = None,
+    ) -> None:
         self.service = service
         self.deploy_info = deploy_info
         self.deploy_group = deploy_group
@@ -502,15 +529,20 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.auto_abandon_delay = auto_abandon_delay
         self.auto_rollback_delay = auto_rollback_delay
         self.authors = authors
+        self.polling_interval = polling_interval
+        self.diagnosis_interval = diagnosis_interval
+        self.time_before_first_diagnosis = time_before_first_diagnosis
 
         # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
         # and quickly launch wait_for_deployment for another commit without causing a race condition.
-        self.wait_for_deployment_green_lights = defaultdict(Event)
+        self.wait_for_deployment_green_lights: DefaultDict[str, Event] = defaultdict(
+            Event
+        )
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
         self.last_action = None
-        self.slo_watchers = []
+        self.slo_watchers: List[SLOWatcher] = []
 
         self.start_slo_watcher_threads(self.service, self.soa_dir)
         # Initialize Slack threads and send the first message
@@ -981,6 +1013,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 timeout=self.timeout,
                 green_light=self.wait_for_deployment_green_lights[target_commit],
                 progress=self.progress,
+                polling_interval=self.polling_interval,
+                diagnosis_interval=self.diagnosis_interval,
+                time_before_first_diagnosis=self.time_before_first_diagnosis,
             )
             self.update_slack_thread(
                 f"Finished waiting for deployment of {target_commit}"
@@ -1123,11 +1158,21 @@ async def wait_until_instance_is_done(
     cluster: str,
     git_sha: str,
     instance_config: LongRunningServiceConfig,
+    polling_interval: float,
+    diagnosis_interval: float,
+    time_before_first_diagnosis: float,
 ) -> Tuple[str, str]:
     loop = asyncio.get_running_loop()
     diagnosis_task = asyncio.create_task(
         periodically_diagnose_instance(
-            pool, service, instance, cluster, git_sha, instance_config
+            pool,
+            service,
+            instance,
+            cluster,
+            git_sha,
+            instance_config,
+            diagnosis_interval,
+            time_before_first_diagnosis,
         )
     )
     try:
@@ -1142,7 +1187,7 @@ async def wait_until_instance_is_done(
                 instance_config,
             ),
         ):
-            await asyncio.sleep(5)
+            await asyncio.sleep(polling_interval)
         return (
             cluster,
             instance,
@@ -1158,8 +1203,10 @@ async def periodically_diagnose_instance(
     cluster: str,
     git_sha: str,
     instance_config: LongRunningServiceConfig,
+    diagnosis_interval: float,
+    time_before_first_diagnosis: float,
 ) -> None:
-    await asyncio.sleep(TIME_BEFORE_FIRST_DIAGNOSIS)
+    await asyncio.sleep(time_before_first_diagnosis)
     loop = asyncio.get_running_loop()
     while True:
         try:
@@ -1179,7 +1226,7 @@ async def periodically_diagnose_instance(
         except Exception:
             print("Couldn't get status of {service}.{instance}:")
             traceback.print_exc()
-        await asyncio.sleep(TIME_BETWEEN_DIAGNOSES)
+        await asyncio.sleep(diagnosis_interval)
 
 
 def diagnose_why_instance_is_stuck(
@@ -1435,6 +1482,9 @@ async def wait_for_deployment(
     timeout: float,
     green_light: Optional[Event] = None,
     progress: Optional[Progress] = None,
+    polling_interval: float = None,
+    diagnosis_interval: float = None,
+    time_before_first_diagnosis: float = None,
 ) -> Optional[int]:
     instance_configs_per_cluster: Dict[
         str, List[LongRunningServiceConfig]
@@ -1462,9 +1512,24 @@ async def wait_for_deployment(
         )
     )
 
+    system_paasta_config = load_system_paasta_config()
+    max_workers = system_paasta_config.get_mark_for_deployment_max_polling_threads()
+    if polling_interval is None:
+        polling_interval = (
+            system_paasta_config.get_mark_for_deployment_default_polling_interval()
+        )
+    if diagnosis_interval is None:
+        diagnosis_interval = (
+            system_paasta_config.get_mark_for_deployment_default_diagnosis_interval()
+        )
+    if time_before_first_diagnosis is None:
+        time_before_first_diagnosis = (
+            system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
+        )
+
     with progressbar.ProgressBar(maxval=total_instances) as bar:
         instance_done_futures = []
-        with concurrent.futures.ThreadPoolExecutor() as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:
             for cluster, instance_configs in instance_configs_per_cluster.items():
                 for instance_config in instance_configs:
                     instance_done_futures.append(
@@ -1476,6 +1541,9 @@ async def wait_for_deployment(
                                 cluster,
                                 git_sha,
                                 instance_config,
+                                polling_interval=polling_interval,
+                                diagnosis_interval=diagnosis_interval,
+                                time_before_first_diagnosis=time_before_first_diagnosis,
                             ),
                         )
                     )

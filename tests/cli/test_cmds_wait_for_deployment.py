@@ -37,6 +37,9 @@ class fake_args:
     soa_dir = "fake_soa_dir"
     timeout = 0
     verbose = False
+    polling_interval = 5
+    diagnosis_interval = 15
+    time_before_first_diagnosis = 15
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
@@ -226,6 +229,10 @@ def test_wait_for_deployment(
         "cluster1": "some_url_1",
         "cluster2": "some_url_2",
     }
+
+    mock_load_system_paasta_config.return_value.get_mark_for_deployment_max_polling_threads.return_value = (
+        4
+    )
 
     with raises(TimeoutError):
         with patch(
