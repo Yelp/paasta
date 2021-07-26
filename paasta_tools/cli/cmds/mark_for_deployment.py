@@ -474,29 +474,33 @@ def paasta_mark_for_deployment(args):
 
 
 class Progress:
+    waiting_on: Mapping[str, Collection[str]]
+    percent: float
+
     def __init__(self, percent=0, waiting_on=None, eta=None):
         self.percent = percent
         self.waiting_on = waiting_on
 
-    def human_readable(self, summary: bool):
+    def human_readable(self, summary: bool) -> str:
         if self.percent != 0 and self.percent != 100 and not summary:
             s = f"{round(self.percent)}% (Waiting on {self.human_waiting_on()})"
         else:
             s = f"{round(self.percent)}%"
         return s
 
-    def human_waiting_on(self):
+    def human_waiting_on(self) -> str:
         if self.waiting_on is None:
             return "N/A"
         things = []
-        for cluster, queue in self.waiting_on.items():
-            queue_length = len(queue)
-            if queue_length == 0:
+        for cluster, instances in self.waiting_on.items():
+            num_instances = len(instances)
+            if num_instances == 0:
                 continue
-            elif queue_length == 1:
-                things.append(f"`{cluster}`: `{queue[0].get_instance()}`")
+            elif num_instances == 1:
+                (one_instance,) = instances
+                things.append(f"`{cluster}`: `{one_instance}`")
             else:
-                things.append(f"`{cluster}`: {len(queue)} instances")
+                things.append(f"`{cluster}`: {len(instances)} instances")
         return ", ".join(things)
 
 
@@ -664,18 +668,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("mfd_succeeded")
 
     def schedule_paasta_status_reminder(self):
-        def waiting_on_to_status(waiting_on):
+        def waiting_on_to_status(waiting_on: Mapping[str, Collection[str]]):
             if waiting_on is None:
                 return [
                     f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
                 ]
             commands = []
-            for cluster, queue in waiting_on.items():
-                queue_length = len(queue)
-                if queue_length == 0:
+            for cluster, instances in waiting_on.items():
+                num_instances = len(instances)
+                if num_instances == 0:
                     continue
                 else:
-                    instances = [q.get_instance() for q in queue]
                     commands.append(
                         f"`paasta status --service {self.service} --cluster {cluster} --instance {','.join(instances)} -vv`"
                     )
