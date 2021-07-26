@@ -753,8 +753,13 @@ def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
         "max_runtime": job_config.get_max_runtime(),
         "time_zone": job_config.get_time_zone(),
         "expected_runtime": job_config.get_expected_runtime(),
-        "use_k8s": job_config.get_use_k8s(),
     }
+    # TODO: this should be directly inlined, but we need to update tron everywhere first so it'll
+    # be slightly less tedious to just conditionally send this now until we clean things up on the
+    # removal of all the Mesos code
+    if job_config.get_use_k8s():
+        result["use_k8s"] = job_config.get_use_k8s()
+
     cleanup_config = job_config.get_cleanup_action()
     if cleanup_config:
         cleanup_action = format_tron_action_dict(

@@ -394,7 +394,6 @@ class TestTronJobConfig:
             },
             "expected_runtime": "1h",
             "monitoring": {"team": "noop"},
-            "use_k8s": False,
         }
 
     @mock.patch(
@@ -482,7 +481,6 @@ class TestTronJobConfig:
             },
             "cleanup_action": mock_format_action.return_value,
             "monitoring": {"team": "noop"},
-            "use_k8s": False,
         }
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
