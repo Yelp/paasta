@@ -2103,7 +2103,7 @@ def paasta_status(args) -> int:
                 actual_deployments = get_actual_deployments(service, soa_dir)
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-                new = _get_paasta_status_version(args, system_paasta_config)
+                new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(
                     (
                         report_status_for_cluster,
@@ -2253,7 +2253,7 @@ def status_marathon_job_human(
         )
 
 
-def _get_paasta_status_version(args, system_paasta_config) -> bool:
+def _use_new_paasta_status(args, system_paasta_config) -> bool:
     if args.new:
         return True
     elif args.old:
