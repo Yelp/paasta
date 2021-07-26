@@ -1,3 +1,11 @@
+paasta-tools (0.101.10) xenial; urgency=medium
+
+  * 0.101.10 tagged with 'make release'
+    Commit: Merge branch "u/krall/refactor_wait_for_deployment_asyncio"
+    into u/krall/PAASTA-17415_simple_polling
+
+ -- Evan Krall <krall@yelp.com>  Mon, 26 Jul 2021 11:16:11 -0700
+
 paasta-tools (0.101.9) xenial; urgency=medium
 
   * 0.101.9 tagged with 'make release'
