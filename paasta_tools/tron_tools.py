@@ -362,7 +362,7 @@ class TronActionConfig(InstanceConfig):
                 )
                 sanitised_service = sanitise_kubernetes_name(service)
                 secret_env[k] = {
-                    "secret": f"tron-secret-{sanitised_service}-{sanitised_secret}",
+                    "secret_name": f"tron-secret-{sanitised_service}-{sanitised_secret}",
                     "key": secret,
                 }
         return secret_env

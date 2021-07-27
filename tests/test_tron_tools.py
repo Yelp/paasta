@@ -201,7 +201,7 @@ class TestTronActionConfig:
                 },
                 {
                     "TEST_SECRET": {
-                        "secret": "tron-secret-my--service-a--service--secret",
+                        "secret_name": "tron-secret-my--service-a--service--secret",
                         "key": "a_service_secret",
                     }
                 },
@@ -210,7 +210,7 @@ class TestTronActionConfig:
                 {"TEST_SECRET": "SHARED_SECRET(a_shared_secret)"},
                 {
                     "TEST_SECRET": {
-                        "secret": "tron-secret-underscore-shared-a--shared--secret",
+                        "secret_name": "tron-secret-underscore-shared-a--shared--secret",
                         "key": "a_shared_secret",
                     }
                 },
@@ -911,7 +911,7 @@ class TestTronTools:
             "env": mock.ANY,
             "secret_env": {
                 "SOME_SECRET": {
-                    "secret": "tron-secret-my--service-secret--name",
+                    "secret_name": "tron-secret-my--service-secret--name",
                     "key": "secret_name",
                 }
             },
