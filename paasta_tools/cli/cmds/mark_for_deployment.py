@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import argparse
 import asyncio
 import concurrent
 import datetime
@@ -30,6 +31,7 @@ import traceback
 from collections import defaultdict
 from threading import Event
 from threading import Thread
+from typing import Any
 from typing import Collection
 from typing import DefaultDict
 from typing import Dict
@@ -93,7 +95,7 @@ DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 log = logging.getLogger(__name__)
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "mark-for-deployment",
         help="Mark a docker image for deployment in git",
@@ -124,7 +126,7 @@ def add_subparser(subparsers):
         required=True,
         type=validate_short_git_sha,
     )
-    list_parser.add_argument(
+    arg_deploy_group = list_parser.add_argument(
         "-l",
         "--deploy-group",
         "--clusterinstance",
@@ -132,14 +134,16 @@ def add_subparser(subparsers):
         "cluster1.canary, cluster2.main). --clusterinstance is deprecated and "
         "should be replaced with --deploy-group",
         required=True,
-    ).completer = lazy_choices_completer(list_deploy_groups)
-    list_parser.add_argument(
+    )
+    arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+    arg_service = list_parser.add_argument(
         "-s",
         "--service",
         help="Name of the service which you wish to mark for deployment. Leading "
         '"services-" will be stripped.',
         required=True,
-    ).completer = lazy_choices_completer(list_services)
+    )
+    arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     list_parser.add_argument(
         "--verify-image-exists",
         help="Check the docker registry and verify the image has been pushed",
@@ -258,7 +262,9 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit):
+def mark_for_deployment(
+    git_url: str, deploy_group: str, service: str, commit: str
+) -> int:
     """Mark a docker image for deployment"""
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
@@ -296,7 +302,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     return 1
 
 
-def deploy_authz_check(deploy_info, service):
+def deploy_authz_check(deploy_info: Dict[str, Any], service: str) -> None:
     deploy_username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
@@ -325,7 +331,7 @@ def deploy_authz_check(deploy_info, service):
             sys.exit(1)
 
 
-def report_waiting_aborted(service, deploy_group):
+def report_waiting_aborted(service: str, deploy_group: str) -> None:
     print(
         PaastaColors.red(
             "Waiting for deployment aborted."
@@ -338,7 +344,9 @@ def report_waiting_aborted(service, deploy_group):
     print()
 
 
-def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
+def get_authors_to_be_notified(
+    git_url: str, from_sha: str, to_sha: str, authors: Optional[Collection[str]]
+) -> str:
     if from_sha is None:
         return ""
 
@@ -361,7 +369,9 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
     return f"^ {slacky_authors}"
 
 
-def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
+def deploy_group_is_set_to_notify(
+    deploy_info: Dict[str, Any], deploy_group: str, notify_type: str
+) -> bool:
     for step in deploy_info.get("pipeline", []):
         if step.get("step", "") == deploy_group:
             # Use the specific notify_type if available else use slack_notify
@@ -369,12 +379,14 @@ def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
     return False
 
 
-def get_deploy_info(service, soa_dir) -> Dict:
+def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     file_path = os.path.join(soa_dir, service, "deploy.yaml")
     return read_deploy(file_path)
 
 
-def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group):
+def print_rollback_cmd(
+    old_git_sha: str, commit: str, auto_rollback: bool, service: str, deploy_group: str
+) -> None:
     if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
         print()
         print("If you wish to roll back, you can run:")
@@ -388,7 +400,7 @@ def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group
         )
 
 
-def paasta_mark_for_deployment(args):
+def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
     """Wrapping mark_for_deployment"""
     if args.verbose:
         log.setLevel(level=logging.DEBUG)
@@ -474,29 +486,35 @@ def paasta_mark_for_deployment(args):
 
 
 class Progress:
-    def __init__(self, percent=0, waiting_on=None, eta=None):
+    waiting_on: Mapping[str, Collection[str]]
+    percent: float
+
+    def __init__(
+        self, percent: float = 0, waiting_on: Mapping[str, Collection[str]] = None
+    ) -> None:
         self.percent = percent
         self.waiting_on = waiting_on
 
-    def human_readable(self, summary: bool):
+    def human_readable(self, summary: bool) -> str:
         if self.percent != 0 and self.percent != 100 and not summary:
             s = f"{round(self.percent)}% (Waiting on {self.human_waiting_on()})"
         else:
             s = f"{round(self.percent)}%"
         return s
 
-    def human_waiting_on(self):
+    def human_waiting_on(self) -> str:
         if self.waiting_on is None:
             return "N/A"
         things = []
-        for cluster, queue in self.waiting_on.items():
-            queue_length = len(queue)
-            if queue_length == 0:
+        for cluster, instances in self.waiting_on.items():
+            num_instances = len(instances)
+            if num_instances == 0:
                 continue
-            elif queue_length == 1:
-                things.append(f"`{cluster}`: `{queue[0].get_instance()}`")
+            elif num_instances == 1:
+                (one_instance,) = instances
+                things.append(f"`{cluster}`: `{one_instance}`")
             else:
-                things.append(f"`{cluster}`: {len(queue)} instances")
+                things.append(f"`{cluster}`: {len(instances)} instances")
         return ", ".join(things)
 
 
@@ -504,6 +522,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
+
+    paasta_status_reminder_handle: asyncio.TimerHandle
 
     def __init__(
         self,
@@ -566,10 +586,10 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.ping_authors()
         self.print_who_is_running_this()
 
-    def get_progress(self, summary=False) -> str:
+    def get_progress(self, summary: bool = False) -> str:
         return self.progress.human_readable(summary)
 
-    def print_who_is_running_this(self):
+    def print_who_is_running_this(self) -> None:
         build_url = get_jenkins_build_output_url()
         if build_url is not None:
             message = f"(<{build_url}|Jenkins Job>)"
@@ -639,7 +659,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def get_deployment_name(self) -> str:
         return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
 
-    def on_enter_start_deploy(self):
+    def on_enter_start_deploy(self) -> None:
         self.update_slack_status(
             f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}..."
         )
@@ -663,25 +683,26 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             log.debug("triggering mfd_succeeded")
             self.trigger("mfd_succeeded")
 
-    def schedule_paasta_status_reminder(self):
-        def waiting_on_to_status(waiting_on):
+    def schedule_paasta_status_reminder(self) -> None:
+        def waiting_on_to_status(
+            waiting_on: Mapping[str, Collection[str]]
+        ) -> List[str]:
             if waiting_on is None:
                 return [
                     f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
                 ]
             commands = []
-            for cluster, queue in waiting_on.items():
-                queue_length = len(queue)
-                if queue_length == 0:
+            for cluster, instances in waiting_on.items():
+                num_instances = len(instances)
+                if num_instances == 0:
                     continue
                 else:
-                    instances = [q.get_instance() for q in queue]
                     commands.append(
                         f"`paasta status --service {self.service} --cluster {cluster} --instance {','.join(instances)} -vv`"
                     )
             return commands
 
-        def times_up():
+        def times_up() -> None:
             try:
                 if self.state == "deploying":
                     human_max_deploy_time = humanize.naturaldelta(
@@ -711,7 +732,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     f"Non-fatal exception encountered when processing the status reminder: {e}"
                 )
 
-        def schedule_callback():
+        def schedule_callback() -> None:
             time_to_notify = self.timeout * self.warn_pct / 100
             self.paasta_status_reminder_handle = self.event_loop.call_later(
                 time_to_notify, times_up
@@ -724,7 +745,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"Non-fatal error encountered scheduling the status reminder callback: {e}"
             )
 
-    def cancel_paasta_status_reminder(self):
+    def cancel_paasta_status_reminder(self) -> None:
         try:
             handle = self.get_paasta_status_reminder_handle()
             if handle is not None:
@@ -735,7 +756,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"Non-fatal error encountered when canceling the paasta status reminder: {e}"
             )
 
-    def get_paasta_status_reminder_handle(self):
+    def get_paasta_status_reminder_handle(self) -> Optional[asyncio.TimerHandle]:
         try:
             return self.paasta_status_reminder_handle
         except AttributeError:
@@ -887,14 +908,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self):
+    def disable_auto_rollbacks(self) -> None:
         self.cancel_auto_rollback_countdown()
         self.auto_rollback = False
         self.update_slack_status(
             f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
         )
 
-    def enable_auto_rollbacks(self):
+    def enable_auto_rollbacks(self) -> None:
         self.auto_rollback = True
         self.auto_rollbacks_ever_enabled = True
         self.update_slack_status(
@@ -948,12 +969,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             "rolled_back": None,
         }.get(self.state)
 
-    def on_enter_mfd_failed(self):
+    def on_enter_mfd_failed(self) -> None:
         self.update_slack_status(
             f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
 
-    def on_enter_deploying(self):
+    def on_enter_deploying(self) -> None:
         # if self.block is False, then deploying is a terminal state so we will promptly exit.
         # Don't bother starting the background thread in this case.
         if self.block:
@@ -964,11 +985,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.cancel_paasta_status_reminder()
             self.schedule_paasta_status_reminder()
 
-    def on_exit_deploying(self):
+    def on_exit_deploying(self) -> None:
         self.wait_for_deployment_green_lights[self.commit].clear()
         self.cancel_paasta_status_reminder()
 
-    def on_enter_start_rollback(self):
+    def on_enter_start_rollback(self) -> None:
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_git_sha}"
         )
@@ -993,7 +1014,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
             self.trigger("mfd_succeeded")
 
-    def on_enter_rolling_back(self):
+    def on_enter_rolling_back(self) -> None:
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
@@ -1002,21 +1023,21 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             )
             thread.start()
 
-    def on_exit_rolling_back(self):
+    def on_exit_rolling_back(self) -> None:
         self.wait_for_deployment_green_lights[self.old_git_sha].clear()
 
-    def on_enter_deploy_errored(self):
+    def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
         self.update_slack_status(f"Deploy aborted, but it will still try to converge.")
         self.send_manual_rollback_instructions()
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy errored")
 
-    def on_enter_deploy_cancelled(self):
+    def on_enter_deploy_cancelled(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy cancelled")
 
-    def do_wait_for_deployment(self, target_commit: str):
+    def do_wait_for_deployment(self, target_commit: str) -> None:
         try:
             self.wait_for_deployment_green_lights[target_commit].set()
             wait_for_deployment(
@@ -1048,7 +1069,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             log.error(traceback.format_exc())
             self.trigger("deploy_errored")
 
-    def on_enter_rolled_back(self):
+    def on_enter_rolled_back(self) -> None:
         self.update_slack_status(
             f"Finished rolling back to `{self.old_git_sha[:8]}` in {self.deploy_group}"
         )
@@ -1056,7 +1077,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
-    def on_enter_deployed(self):
+    def on_enter_deployed(self) -> None:
         self.update_slack_status(
             f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}"
         )
@@ -1071,11 +1092,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
                     self.ping_authors()
 
-    def on_enter_complete(self):
+    def on_enter_complete(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
             self.ping_authors()
 
-    def send_manual_rollback_instructions(self):
+    def send_manual_rollback_instructions(self) -> None:
         if self.old_git_sha != self.commit:
             message = (
                 "If you need to roll back manually, run: "
@@ -1085,7 +1106,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.update_slack_thread(message)
             print(message)
 
-    def after_state_change(self):
+    def after_state_change(self) -> None:
         self.update_slack()
         super().after_state_change()
 
@@ -1096,7 +1117,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             .get("signalfx_api_key", None)
         )
 
-    def get_button_text(self, button, is_active) -> str:
+    def get_button_text(self, button: str, is_active: bool) -> str:
         active_button_texts = {
             "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
         }
@@ -1121,7 +1142,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, extra_text="") -> None:
+    def start_auto_rollback_countdown(self, extra_text: str = "") -> None:
         cancel_button_text = self.get_button_text(
             "disable_auto_rollbacks", is_active=False
         )
@@ -1131,7 +1152,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
 
-    def deploy_group_is_set_to_notify(self, notify_type):
+    def deploy_group_is_set_to_notify(self, notify_type: str) -> bool:
         return deploy_group_is_set_to_notify(
             self.deploy_info, self.deploy_group, notify_type
         )
@@ -1568,7 +1589,7 @@ async def wait_for_deployment(
             }
             finished_instances = 0
 
-            async def periodically_update_progressbar():
+            async def periodically_update_progressbar() -> None:
                 while True:
                     await asyncio.sleep(60)
                     bar.update(finished_instances)
@@ -1611,11 +1632,11 @@ async def wait_for_deployment(
 
 def compose_timeout_message(
     remaining_instances: Mapping[str, Collection[str]],
-    timeout,
-    deploy_group,
-    service,
-    git_sha,
-):
+    timeout: float,
+    deploy_group: str,
+    service: str,
+    git_sha: str,
+) -> str:
     paasta_status = []
     paasta_logs = []
     for cluster, instances in sorted(remaining_instances.items()):
