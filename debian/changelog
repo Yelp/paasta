@@ -1,3 +1,11 @@
+paasta-tools (0.101.11) xenial; urgency=medium
+
+  * 0.101.11 tagged with 'make release'
+    Commit: Merge pull request #3150 from Yelp/u/dcuza/PAASTA-17414
+    PAASTA-17414 make paasta status --new the default
+
+ -- David Cuza Del Pino <dcuza@yelp.com>  Tue, 27 Jul 2021 09:43:04 -0700
+
 paasta-tools (0.101.10) xenial; urgency=medium
 
   * 0.101.10 tagged with 'make release'
