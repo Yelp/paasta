@@ -1911,6 +1911,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     paasta_native: PaastaNativeConfig
+    paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
@@ -2333,6 +2334,12 @@ class SystemPaastaConfig:
 
     def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get("previous_marathon_servers", [])
+
+    def get_paasta_status_version(self) -> str:
+        """Get paasta status version string (new | old). Defaults to 'old'.
+
+        :returns: A string with the version desired version of paasta status."""
+        return self.config_dict.get("paasta_status_version", "old")
 
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
