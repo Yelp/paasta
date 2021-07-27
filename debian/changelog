@@ -1,3 +1,11 @@
+paasta-tools (0.101.12) xenial; urgency=medium
+
+  * 0.101.12 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-
+    17415_fix_set_not_subscriptable"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 27 Jul 2021 10:35:22 -0700
+
 paasta-tools (0.101.11) xenial; urgency=medium
 
   * 0.101.11 tagged with 'make release'
