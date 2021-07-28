@@ -1,3 +1,12 @@
+paasta-tools (0.102.1) xenial; urgency=medium
+
+  * 0.102.1 tagged with 'make release'
+    Commit: Merge pull request #3154 from Yelp/jfong/TRON-1738-
+    setup_tron_namespace_secrets  TRON-1738: Setup k8s env secrets in
+    setup_tron_namespace
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 28 Jul 2021 13:57:21 -0700
+
 paasta-tools (0.102.0) xenial; urgency=medium
 
   * 0.102.0 tagged with 'make release'
