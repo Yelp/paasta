@@ -54,10 +54,10 @@ def parse_args():
         dest="instance_count",
     )
     parser.add_argument(
-        "--service-name",
-        help="Service shard name to add if it does not exist",
+        "--shard-name",
+        help="Shard name to add if it does not exist",
         required=True,
-        dest="service_name",
+        dest="shard_name",
     )
     return parser.parse_args()
 
@@ -93,7 +93,7 @@ def main(args):
         deploy_file = updater.get_existing_configs(args.service, "deploy")
         smartstack_file = updater.get_existing_configs(args.service, "smartstack")
         shard_deploy_groups = {
-            f"{prefix}.{args.service_name}" for prefix in DEPLOY_MAPPINGS.keys()
+            f"{prefix}.{args.shard_name}" for prefix in DEPLOY_MAPPINGS.keys()
         }
         pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}
 
@@ -115,30 +115,30 @@ def main(args):
                     kube_file = updater.get_existing_configs(args.service, config_path)
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
-                    if args.service_name not in kube_file.keys():
-                        kube_file[args.service_name] = {
-                            "deploy_group": f"{deploy_prefix}.{args.service_name}",
+                    if args.shard_name not in kube_file.keys():
+                        kube_file[args.shard_name] = {
+                            "deploy_group": f"{deploy_prefix}.{args.shard_name}",
                             "instances": args.instance_count,
                         }
                         updater.write_configs(args.service, config_path, kube_file)
                         log.info(
-                            f"{deploy_prefix}.{args.service_name} added to {config_path}"
+                            f"{deploy_prefix}.{args.shard_name} added to {config_path}"
                         )
         else:
-            log.info(f"{args.service_name} is in deploy config already.")
+            log.info(f"{args.shard_name} is in deploy config already.")
 
         # If the service shard is not defined in smartstack
         # Add the definition with a suggested proxy port
-        if args.service_name not in smartstack_file.keys():
+        if args.shard_name not in smartstack_file.keys():
             changes_made = True
             port = suggest_smartstack_proxy_port(updater.working_dir)
-            smartstack_file[args.service_name] = {
+            smartstack_file[args.shard_name] = {
                 "proxy_port": port,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
             updater.write_configs(args.service, "smartstack", smartstack_file)
         else:
-            log.info(f"{args.service_name} is in smartstack config already, skipping.")
+            log.info(f"{args.shard_name} is in smartstack config already, skipping.")
 
         # Only commit to remote if changes were made
         if changes_made:
