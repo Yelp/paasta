@@ -131,24 +131,6 @@ def add_subparser(subparsers,) -> None:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
-
-    version = status_parser.add_mutually_exclusive_group()
-
-    version.add_argument(
-        "--new",
-        dest="new",
-        action="store_true",
-        default=False,
-        help="Use experimental new version of paasta status for services",
-    )
-    version.add_argument(
-        "--old",
-        dest="old",
-        default=False,
-        action="store_true",
-        help="Use the old version of paasta status for services",
-    )
-
     add_instance_filter_arguments(status_parser)
     status_parser.set_defaults(command=paasta_status)
 
@@ -255,19 +237,20 @@ def paasta_status_on_api_endpoint(
     output: List[str],
     system_paasta_config: SystemPaastaConfig,
     verbose: int,
-    new: bool = False,
 ) -> int:
     output.append("    instance: %s" % PaastaColors.cyan(instance))
     client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
+
     try:
         status = client.service.status_instance(
             service=service,
             instance=instance,
             verbose=verbose,
-            new=new,
+            # remove once deprecated on server side
+            new=(system_paasta_config.get_paasta_status_version() == "new"),
             include_smartstack=False,
         )
     except client.api_error as exc:
@@ -1852,7 +1835,6 @@ def report_status_for_cluster(
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     verbose: int = 0,
-    new: bool = False,
 ) -> Tuple[int, Sequence[str]]:
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
@@ -1903,7 +1885,6 @@ def report_status_for_cluster(
             output=output,
             system_paasta_config=system_paasta_config,
             verbose=verbose,
-            new=new,
         )
         for deployed_instance in instances
     ]
@@ -2105,7 +2086,6 @@ def paasta_status(args) -> int:
                 actual_deployments = get_actual_deployments(service, soa_dir)
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-                new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(
                     (
                         report_status_for_cluster,
@@ -2117,7 +2097,6 @@ def paasta_status(args) -> int:
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
                             verbose=args.verbose,
-                            new=new,
                         ),
                     )
                 )
@@ -2253,20 +2232,6 @@ def status_marathon_job_human(
         return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
             status, name, desired_app_id
         )
-
-
-def _use_new_paasta_status(args, system_paasta_config) -> bool:
-    if args.new:
-        return True
-    elif args.old:
-        return False
-    else:
-        if system_paasta_config.get_paasta_status_version() == "old":
-            return False
-        elif system_paasta_config.get_paasta_status_version() == "new":
-            return True
-        else:
-            return True
 
 
 # Add other custom status writers here

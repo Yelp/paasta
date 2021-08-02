@@ -306,7 +306,6 @@ def test_status_calls_sergeants(
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None
-    args.new = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -320,7 +319,6 @@ def test_status_calls_sergeants(
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
         verbose=False,
-        new=False,
     )
 
 
@@ -855,7 +853,6 @@ def test_status_with_registration(
         soa_dir="/fake/soa/dir",
         verbose=False,
         service_instance=None,
-        new=False,
     )
     return_value = paasta_status(args)
 
@@ -872,7 +869,6 @@ def test_status_with_registration(
         },
         system_paasta_config=system_paasta_config,
         verbose=args.verbose,
-        new=False,
     )
 
 
