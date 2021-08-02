@@ -718,11 +718,15 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     # whatever is in soaconfigs to the k8s equivalent here as well.
     if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
         result["executor"] = "kubernetes"
+
         result["secret_env"] = action_config.get_secret_env()
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
         all_env = action_config.get_env()
         result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
 
+        # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
+        result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
+        result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
         constraint_labels = ["attribute", "operator", "value"]
@@ -732,8 +736,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
-        # TODO(TRON-1583): we need to figure out if (and what) needs to be
-        # ported here for k8s
         result["docker_parameters"] = [
             {"key": param["key"], "value": param["value"]}
             for param in action_config.format_docker_parameters()
