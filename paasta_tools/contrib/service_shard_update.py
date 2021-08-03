@@ -47,12 +47,6 @@ def parse_args():
         "--service", help="Service to modify", required=True, dest="service",
     )
     parser.add_argument(
-        "--deploy-prefix",
-        help="Prefix to prepend to deploy groups",
-        required=True,
-        dest="deploy_group_prefix",
-    )
-    parser.add_argument(
         "--instance-count",
         help="If a deploy group is added, the default instance count to create it with",
         required=False,
@@ -60,24 +54,10 @@ def parse_args():
         dest="instance_count",
     )
     parser.add_argument(
-        "--kube-file",
-        help="Kubernetes configuration file to inspect and potentially modify",
+        "--shard-name",
+        help="Shard name to add if it does not exist",
         required=True,
-        dest="kube_file",
-    )
-    parser.add_argument(
-        "--deploy-group",
-        help="Deploy group to add if it does not exist",
-        required=True,
-        dest="deploy_group",
-    )
-    parser.add_argument(
-        "--non-relevant-steps",
-        nargs="+",
-        help="pipeline steps that are unrelated to deploy groups",
-        required=False,
-        default=[],
-        dest="non_relevant_steps",
+        dest="shard_name",
     )
     return parser.parse_args()
 
@@ -93,7 +73,15 @@ def get_default_git_remote():
     return default_git_remote
 
 
+DEPLOY_MAPPINGS = {
+    "dev": ["kubernetes-norcal-devc"],
+    "stage": ["kubernetes-norcal-stagef", "kubernetes-norcal-stageg"],
+    "prod": ["kubernetes-nova-prod", "kubernetes-pnw-prod"],
+}
+
+
 def main(args):
+    changes_made = False
     updater = AutoConfigUpdater(
         config_source=args.source_id,
         git_remote=args.git_remote or get_default_git_remote(),
@@ -103,50 +91,59 @@ def main(args):
     )
     with updater:
         deploy_file = updater.get_existing_configs(args.service, "deploy")
-        kube_file = updater.get_existing_configs(args.service, args.kube_file)
         smartstack_file = updater.get_existing_configs(args.service, "smartstack")
+        shard_deploy_groups = {
+            f"{prefix}.{args.shard_name}" for prefix in DEPLOY_MAPPINGS.keys()
+        }
+        pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}
 
-        deploy_groups = {data["deploy_group"]: name for name, data in kube_file.items()}
-        pipeline_steps = {step["step"] for step in deploy_file["pipeline"]}.difference(
-            set(args.non_relevant_steps)
-        )
+        if not shard_deploy_groups.issubset(pipeline_steps):
+            changes_made = True
+            steps_to_add = shard_deploy_groups - pipeline_steps
 
-        # Ensure that deploy steps and groups agree before proceeding
-        if deploy_groups.keys() != pipeline_steps:
-            log.error(
-                f"deploy groups {deploy_groups.keys()} did not match deploy steps {pipeline_steps}. cannot proceed until these files are in agreement"
-            )
-            return
+            # If the pipeline does not contain deploy groups for the service shard
+            # Add the missing steps and write to deploy config
+            for step in steps_to_add:
+                deploy_file["pipeline"].append(
+                    {"step": step, "wait_for_deployment": True, "disabled": True,}
+                )
+                log.info(f"{step} added to deploy config")
+            updater.write_configs(args.service, "deploy", deploy_file)
 
-        if f"{args.deploy_group_prefix}.{args.deploy_group}" not in deploy_groups:
+            for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
+                for config_path in config_paths:
+                    kube_file = updater.get_existing_configs(args.service, config_path)
+                    # If the service config does not contain definitions for the shard in each ecosystem
+                    # Add the missing definition and write to the corresponding config
+                    if args.shard_name not in kube_file.keys():
+                        kube_file[args.shard_name] = {
+                            "deploy_group": f"{deploy_prefix}.{args.shard_name}",
+                            "instances": args.instance_count,
+                        }
+                        updater.write_configs(args.service, config_path, kube_file)
+                        log.info(
+                            f"{deploy_prefix}.{args.shard_name} added to {config_path}"
+                        )
+        else:
+            log.info(f"{args.shard_name} is in deploy config already.")
+
+        # If the service shard is not defined in smartstack
+        # Add the definition with a suggested proxy port
+        if args.shard_name not in smartstack_file.keys():
+            changes_made = True
             port = suggest_smartstack_proxy_port(updater.working_dir)
-            kube_file[args.deploy_group] = {
-                "deploy_group": f"{args.deploy_group_prefix}.{args.deploy_group}",
-                "instances": args.instance_count,
-            }
-            deploy_file["pipeline"].append(
-                {
-                    "step": f"{args.deploy_group_prefix}.{args.deploy_group}",
-                    "wait_for_deployment": True,
-                    "disabled": True,
-                }
-            )
-            smartstack_file[args.deploy_group] = {
+            smartstack_file[args.shard_name] = {
                 "proxy_port": port,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
-
-            updater.write_configs(args.service, "deploy", deploy_file)
-            updater.write_configs(args.service, args.kube_file, kube_file)
             updater.write_configs(args.service, "smartstack", smartstack_file)
-            updater.commit_to_remote(validate=False)
-
-            trigger_deploys(args.service)
-
         else:
-            log.info(
-                f"{args.deploy_group_prefix}.{args.deploy_group} is in deploy groups already, skipping."
-            )
+            log.info(f"{args.shard_name} is in smartstack config already, skipping.")
+
+        # Only commit to remote if changes were made
+        if changes_made:
+            updater.commit_to_remote(validate=False)
+            trigger_deploys(args.service)
 
 
 if __name__ == "__main__":
