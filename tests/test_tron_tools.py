@@ -191,31 +191,6 @@ class TestTronActionConfig:
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
 
-    def test_get_env_kubernetes(self, action_config, monkeypatch):
-        monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
-        action_config.config_dict["executor"] = "paasta"
-        with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
-        ), mock.patch(
-            "paasta_tools.tron_tools.get_aws_credentials",
-            autospec=True,
-            return_value=("access", "secret", "token"),
-        ), mock.patch(
-            "paasta_tools.tron_tools.generate_clusterman_metrics_entries",
-            autospec=True,
-            return_value={
-                "cpus": ("cpus|dimension=2", 1900),
-                "mem": ("mem|dimension=1", "42"),
-            },
-        ):
-            env = action_config.get_env(use_k8s=True)
-            assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
-            assert env.get("TRON_ENABLE_LOGSPOUT") == "1"
-
     @pytest.mark.parametrize(
         "test_env,expected_env",
         (
@@ -952,6 +927,7 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["TRON_ENABLE_LOGSPOUT"] == "1"
         assert "SOME_SECRET" not in result["env"]
 
     def test_format_tron_action_dict_paasta_no_branch_dict(self):

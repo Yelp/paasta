@@ -306,14 +306,8 @@ class TronActionConfig(InstanceConfig):
     def get_spark_cluster_manager(self):
         return self.config_dict.get("spark_cluster_manager", "mesos")
 
-    def get_env(self, use_k8s: bool = False) -> Dict[str, str]:
+    def get_env(self):
         env = super().get_env()
-        # for Tron-on-K8s, we want to ship tronjob output through logspout
-        # such that this output eventually makes it into our per-instance
-        # log streams automatically
-        if use_k8s:
-            env["TRON_ENABLE_LOGSPOUT"] = "1"
-
         if self.get_executor() == "spark":
             spark_config_dict = self.get_spark_config_dict()
             env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
@@ -726,9 +720,13 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["executor"] = "kubernetes"
 
         result["secret_env"] = action_config.get_secret_env()
-        all_env = action_config.get_env(use_k8s=True)
+        all_env = action_config.get_env()
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
         result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
+        # for Tron-on-K8s, we want to ship tronjob output through logspout
+        # such that this output eventually makes it into our per-instance
+        # log streams automatically
+        result["env"]["TRON_ENABLE_LOGSPOUT"] = "1"
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
