@@ -726,7 +726,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["executor"] = "kubernetes"
 
         result["secret_env"] = action_config.get_secret_env()
-
         all_env = action_config.get_env(use_k8s=True)
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
         result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
