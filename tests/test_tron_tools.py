@@ -927,6 +927,7 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["TRON_ENABLE_PER_INSTANCE_LOGSPOUT"] == "1"
         assert "SOME_SECRET" not in result["env"]
 
     def test_format_tron_action_dict_paasta_no_branch_dict(self):
