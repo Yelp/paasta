@@ -1,3 +1,15 @@
+paasta-tools (0.102.3) xenial; urgency=medium
+
+  * 0.102.3 tagged with 'make release'
+    Commit: Add logspout feature flag to all tron on k8s containers
+    (#3160)  We don"t want to turn this on for existing Mesos tronjobs
+    since the logs won"t be used in that case.  We"ll be using logspout
+    to ship tronjob logs to our logging streams and then displaying
+    those in Tron rather than doing what we did with Tron-on-Mesos and
+    asking Mesos (or, in this case, K8s) to feed us logs periodically.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 04 Aug 2021 10:15:58 -0700
+
 paasta-tools (0.102.2) xenial; urgency=medium
 
   * 0.102.2 tagged with 'make release'
