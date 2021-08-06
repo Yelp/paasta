@@ -1259,6 +1259,12 @@ class TestGetInstanceState:
         mock_kubernetes_status_v2.desired_state = "stop"
         assert "Stop" in get_instance_state(mock_kubernetes_status_v2)
 
+    def test_stop_if_0_desired_instances(self, mock_kubernetes_status_v2):
+        mock_kubernetes_status_v2.desired_state = "start"
+        mock_kubernetes_status_v2.versions = []
+        mock_kubernetes_status_v2.desired_instances = 0
+        assert "Stop" in get_instance_state(mock_kubernetes_status_v2)
+
     def test_running(self, mock_kubernetes_status_v2):
         mock_kubernetes_status_v2.desired_state = "start"
         instance_state = get_instance_state(mock_kubernetes_status_v2)
