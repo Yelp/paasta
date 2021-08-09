@@ -1,3 +1,12 @@
+paasta-tools (0.102.5) xenial; urgency=medium
+
+  * 0.102.5 tagged with 'make release'
+    Commit: Merge pull request #3162 from Yelp/d/manpreet/COREML-
+    2403_fix_docker_image_issue  Get docker configuration even if image
+    is not provided
+
+ -- Manpreet Singh <manpreet@yelp.com>  Mon, 09 Aug 2021 15:47:25 -0700
+
 paasta-tools (0.102.4) xenial; urgency=medium
 
   * 0.102.4 tagged with 'make release'
