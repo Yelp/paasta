@@ -1374,6 +1374,7 @@ def recent_container_restart(
     if (
         container.restart_count > 0
         and container.last_state == "terminated"
+        and container.last_timestamp is not None
         and container.last_timestamp > min_timestamp
     ):
         return True

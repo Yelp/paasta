@@ -52,6 +52,7 @@ from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
 from paasta_tools.cli.cmds.status import print_marathon_status
+from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
@@ -1295,6 +1296,16 @@ class TestGetInstanceState:
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111"
+
+
+def test_recent_container_restart_no_last_timestamp():
+    # we have seen occasional tracebacks where the restart_count and last_state
+    # are set but there is no last timestamp.  This is just a smoke test to
+    # make sure we don't blow up in that case.
+    container = paastamodels.KubernetesContainerV2(
+        last_state="terminated", restart_count=1
+    )
+    recent_container_restart(container)
 
 
 class TestGetVersionsTable:
