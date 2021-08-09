@@ -26,6 +26,7 @@ isodate >= 0.5.0
 jsonschema[format]
 kazoo >= 2.0.0
 kubernetes >= 12.0.0
+ldap3
 manhole
 marathon >= 0.12.0
 mypy-extensions >= 0.3.0
