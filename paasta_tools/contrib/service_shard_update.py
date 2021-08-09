@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
@@ -131,9 +130,8 @@ def main(args):
         # Add the definition with a suggested proxy port
         if args.shard_name not in smartstack_file.keys():
             changes_made = True
-            port = suggest_smartstack_proxy_port(updater.working_dir)
             smartstack_file[args.shard_name] = {
-                "proxy_port": port,
+                "proxy_port": None,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
             updater.write_configs(args.service, "smartstack", smartstack_file)
