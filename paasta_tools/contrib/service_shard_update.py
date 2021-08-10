@@ -140,7 +140,7 @@ def main(args):
 
         # Only commit to remote if changes were made
         if changes_made:
-            updater.commit_to_remote(validate=False)
+            updater.commit_to_remote()
             trigger_deploys(args.service)
 
 
