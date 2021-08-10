@@ -1,3 +1,12 @@
+paasta-tools (0.102.6) xenial; urgency=medium
+
+  * 0.102.6 tagged with 'make release'
+    Commit: Make Logspout per-instance logging flag generic (#3166)
+    After some discussion on an internal PR, we"ve decided that we"d
+    rather have a single toggle for per-instance log routing.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Aug 2021 10:35:07 -0700
+
 paasta-tools (0.102.5) xenial; urgency=medium
 
   * 0.102.5 tagged with 'make release'
