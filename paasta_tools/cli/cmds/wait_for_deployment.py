@@ -15,6 +15,7 @@
 """Contains methods used by the paasta client to wait for deployment
 of a docker image to a cluster.instance.
 """
+import asyncio
 import logging
 
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
@@ -237,15 +238,17 @@ def paasta_wait_for_deployment(args):
         return 1
 
     try:
-        wait_for_deployment(
-            service=service,
-            deploy_group=args.deploy_group,
-            git_sha=args.commit,
-            soa_dir=args.soa_dir,
-            timeout=args.timeout,
-            polling_interval=args.polling_interval,
-            diagnosis_interval=args.diagnosis_interval,
-            time_before_first_diagnosis=args.time_before_first_diagnosis,
+        asyncio.run(
+            wait_for_deployment(
+                service=service,
+                deploy_group=args.deploy_group,
+                git_sha=args.commit,
+                soa_dir=args.soa_dir,
+                timeout=args.timeout,
+                polling_interval=args.polling_interval,
+                diagnosis_interval=args.diagnosis_interval,
+                time_before_first_diagnosis=args.time_before_first_diagnosis,
+            )
         )
         _log(
             service=service,
