@@ -726,7 +726,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # for Tron-on-K8s, we want to ship tronjob output through logspout
         # such that this output eventually makes it into our per-instance
         # log streams automatically
-        result["env"]["TRON_ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
