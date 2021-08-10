@@ -85,8 +85,8 @@ from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
-DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
-DEFAULT_WARN_PERCENT = 50
+DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
+DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
