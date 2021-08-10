@@ -53,11 +53,9 @@ def test_write_auto_config_data_new_file(tmpdir):
         extra_info=conf_file,
         data=data,
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
-    expected_path = (
-        f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
-    )
+    expected_path = f"{tmpdir}/{service}/{AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
     assert result == expected_path
     with open(expected_path) as f:
         assert yaml.safe_load(f) == data
@@ -73,7 +71,7 @@ def test_write_auto_config_data_file_exists(tmpdir):
         extra_info=conf_file,
         data={"a": 1},
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
     # Contents should be replaced on second write
     result = config_utils.write_auto_config_data(
@@ -81,11 +79,9 @@ def test_write_auto_config_data_file_exists(tmpdir):
         extra_info=conf_file,
         data={"a": 2},
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
-    expected_path = (
-        f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
-    )
+    expected_path = f"{tmpdir}/{service}/{AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
     assert result == expected_path
     with open(expected_path) as f:
         assert yaml.safe_load(f) == {"a": 2}
