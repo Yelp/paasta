@@ -1,3 +1,12 @@
+paasta-tools (0.102.8) xenial; urgency=medium
+
+  * 0.102.8 tagged with 'make release'
+    Commit: Merge pull request #3173 from
+    Yelp/landon_remove_upper_pin_requests_cache  Remove upper pin on
+    requests-cache
+
+ -- Landon Sterk <landon@yelp.com>  Wed, 11 Aug 2021 16:01:10 -0700
+
 paasta-tools (0.102.7) xenial; urgency=medium
 
   * 0.102.7 tagged with 'make release'
