@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.config_utils import AutoConfigUpdater
@@ -142,6 +143,9 @@ def main(args):
         if changes_made:
             updater.commit_to_remote()
             trigger_deploys(args.service)
+        else:
+            # exit with code to indicate nothing was changed
+            sys.exit(129)
 
 
 if __name__ == "__main__":

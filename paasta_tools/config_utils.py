@@ -21,6 +21,10 @@ log = logging.getLogger(__name__)
 KNOWN_CONFIG_TYPES = ("marathon", "kubernetes", "deploy", "smartstack")
 
 
+def my_represent_none(self, data):
+    return self.represent_scalar("tag:yaml.org,2002:null", "null")
+
+
 def write_auto_config_data(
     service: str,
     extra_info: str,
@@ -34,6 +38,7 @@ def write_auto_config_data(
 
     Returns the filename of the modified file, or None if no file was written.
     """
+    yaml.YAML().representer.add_representer(type(None), my_represent_none)
     service_dir = f"{soa_dir}/{service}"
     if not os.path.exists(service_dir):
         log.warning(
