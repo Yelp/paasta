@@ -45,6 +45,9 @@
                     "timeout": {
                         "type": "integer"
                     },
+                    "warn": {
+                        "type": "integer"
+                    },
                     "command": {
                         "type": "string"
                     },
