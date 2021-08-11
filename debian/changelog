@@ -1,3 +1,11 @@
+paasta-tools (0.102.7) xenial; urgency=medium
+
+  * 0.102.7 tagged with 'make release'
+    Commit: Merge pull request #3168 from kedarv/convert-None-to-null
+    convert None to null instead of empty node
+
+ -- Kedar Vaidya <kedar@yelp.com>  Wed, 11 Aug 2021 09:09:50 -0700
+
 paasta-tools (0.102.6) xenial; urgency=medium
 
   * 0.102.6 tagged with 'make release'
