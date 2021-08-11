@@ -51,6 +51,9 @@ DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
+CLUSTER_MANAGER_MESOS = "mesos"
+CLUSTER_MANAGER_K8S = "kubernetes"
+CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
 
 deprecated_opts = {
@@ -202,6 +205,14 @@ def add_subparser(subparsers):
         help="Pass Spark arguments to invoked command in the format expected by mrjobs",
         action="store_true",
         default=False,
+    )
+
+    list_parser.add_argument(
+        "--cluster-manager",
+        help="Specify which cluster manager to use. Support for certain cluster managers may be experimental",
+        dest="cluster_manager",
+        choices=CLUSTER_MANAGERS,
+        default=CLUSTER_MANAGER_MESOS,
     )
 
     if clusterman_metrics:
@@ -537,14 +548,29 @@ def configure_and_run_docker_container(
     system_paasta_config: SystemPaastaConfig,
     spark_conf: Mapping[str, str],
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
+    cluster_manager: str,
 ) -> int:
 
     # driver specific volumes
-    volumes = (
-        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
-        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
-        else []
-    )
+    if cluster_manager == CLUSTER_MANAGER_MESOS:
+        volumes = (
+            spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+            if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
+            else []
+        )
+    elif cluster_manager == CLUSTER_MANAGER_K8S:
+        volumes = []
+        volume_names = [
+            re.match('spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path', key).group(1)
+            for key in spark_conf.keys()
+            if 'spark.kubernetes.executor.volumes.hostPath.' in key and '.mount.path' in key
+        ]
+        for volume_name in volume_names:
+            read_only = 'ro' if spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly') == 'true' else 'rw'
+            container_path = spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path')
+            host_path = spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path')
+            volumes.append(f"{host_path}:{container_path}:{read_only}")
+
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
@@ -772,7 +798,7 @@ def paasta_spark_run(args):
     user_spark_opts = _parse_user_spark_args(args.spark_args)
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
-        cluster_manager="mesos",
+        cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
         docker_img=docker_image,
         user_spark_opts=user_spark_opts,
@@ -791,4 +817,5 @@ def paasta_spark_run(args):
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,
         aws_creds=aws_creds,
+        cluster_manager=args.cluster_manager,
     )
