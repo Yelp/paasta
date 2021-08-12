@@ -12,6 +12,7 @@ def main():
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, "tron")
     minutes_until_termination = 10
+    seconds_per_minute = 60
     for pod in pods:
         if is_pod_completed(pod):
             time_finished = get_pod_condition(
@@ -19,7 +20,7 @@ def main():
             ).last_transition_time
             time_now = datetime.now(tzutc())
             # convert total seconds since completion to minutes
-            completed_since = (time_now - time_finished).total_seconds() / 60
+            completed_since = (time_now - time_finished).total_seconds() / seconds_per_minute
 
             if completed_since > minutes_until_termination:
                 kube_client.core.delete_namespaced_pod(
