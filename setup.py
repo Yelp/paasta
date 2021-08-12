@@ -95,6 +95,7 @@ setup(
             "paasta-api=paasta_tools.api.api:main",
             "paasta-deployd=paasta_tools.deployd.master:main",
             "paasta-fsm=paasta_tools.cli.fsm_cmd:main",
+            "paasta_cleanup_tron_completed_pods=paasta_tools.cleanup_tron_completed_pods:main",
             "paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main",
             "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
             "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",
