@@ -1034,7 +1034,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def stop_waiting_for_deployment(self, target_commit: str) -> None:
         try:
             self.wait_for_deployment_tasks[target_commit].cancel()
-        except KeyError:
+            del self.wait_for_deployment_tasks[target_commit]
+        except (KeyError, asyncio.InvalidStateError):
             pass
 
     @a_sync.to_blocking
