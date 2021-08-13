@@ -2327,7 +2327,7 @@ is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
 
 
-def is_pod_completed(pod: V1Pod):
+def is_pod_completed(pod: V1Pod) -> bool:
     condition = get_pod_condition(pod, "ContainersReady")
     return condition.reason == "PodCompleted" if condition else False
 
