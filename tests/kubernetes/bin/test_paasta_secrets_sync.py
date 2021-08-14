@@ -2,15 +2,15 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import main
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
+from paasta_tools.paastak8s.bin.paasta_secrets_sync import main
+from paasta_tools.paastak8s.bin.paasta_secrets_sync import parse_args
+from paasta_tools.paastak8s.bin.paasta_secrets_sync import sync_all_secrets
+from paasta_tools.paastak8s.bin.paasta_secrets_sync import sync_secrets
 
 
 def test_parse_args():
     with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.argparse.ArgumentParser",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.argparse.ArgumentParser",
         autospec=True,
     ):
         assert parse_args()
@@ -18,14 +18,14 @@ def test_parse_args():
 
 def test_main():
     with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.parse_args", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.parse_args", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.load_system_paasta_config",
         autospec=True,
     ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.KubeClient", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.KubeClient", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_all_secrets",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.sync_all_secrets",
         autospec=True,
     ) as mock_sync_all_secrets:
         mock_sync_all_secrets.return_value = True
@@ -41,7 +41,7 @@ def test_main():
 @pytest.mark.parametrize("namespace", [None, "tron"])
 def test_sync_all_secrets(namespace):
     with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.sync_secrets", autospec=True
     ) as mock_sync_secrets:
         mock_sync_secrets.side_effect = [True, True]
         assert sync_all_secrets(
@@ -80,29 +80,29 @@ def test_sync_all_secrets(namespace):
 @pytest.mark.parametrize("namespace", [None, "tron"])
 def test_sync_secrets(namespace):
     with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
     ) as mock_get_secret_provider, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.os.scandir", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.os.scandir", autospec=True
     ) as mock_scandir, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.open",
         create=True,
         autospec=False,
     ), mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
         autospec=True,
     ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.create_secret", autospec=True
     ) as mock_create_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_kubernetes_secret_signature",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.create_kubernetes_secret_signature",
         autospec=True,
     ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.update_secret", autospec=True
     ) as mock_update_secret, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_kubernetes_secret_signature",
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.update_kubernetes_secret_signature",
         autospec=True,
     ) as mock_update_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
+        "paasta_tools.paastak8s.bin.paasta_secrets_sync.json.load", autospec=True
     ), mock.patch(
         "os.path.isdir", autospec=True, return_value=True
     ):

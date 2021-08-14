@@ -2,16 +2,16 @@ import mock
 from kubernetes.client import V1DeleteOptions
 from pysensu_yelp import Status
 
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import (
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import (
     evicted_pods_per_service,
 )
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import EvictedPod
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import get_evicted_pods
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import get_pod_service
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import (
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import EvictedPod
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import get_evicted_pods
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import get_pod_service
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import (
     notify_service_owners,
 )
-from paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods import remove_pods
+from paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods import remove_pods
 
 
 def test_get_evicted_pods():
@@ -62,7 +62,7 @@ def test_notify_service_owners():
     check_output = "The following pods have been evicted and will be removed from the cluster:\n- pod1: Ran out of disk\n- pod2: Ran out of mem\n"
 
     with mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.send_event",
+        "paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods.send_event",
         autospec=True,
     ) as mock_send_event:
         notify_service_owners(service_map, "/soa_dir", False)
@@ -84,10 +84,10 @@ def test_notify_service_ownersi_dry_run():
         ]
     }
     with mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.send_event",
+        "paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods.send_event",
         autospec=True,
     ) as mock_send_event, mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.log", autospec=True
+        "paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods.log", autospec=True
     ) as mock_logging:
         notify_service_owners(service_map, "/soa_dir", True)
         assert mock_send_event.call_count == 0
@@ -135,7 +135,7 @@ def test_remove_pods_dry_run():
     }
     mock_client = mock.MagicMock()
     with mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.log", autospec=True
+        "paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods.log", autospec=True
     ) as mock_logging:
         remove_pods(mock_client, service_map, True)
         assert mock_client.core.delete_namespaced_pod.call_count == 0
@@ -174,7 +174,7 @@ def test_evicted_pods_per_service():
 
     mock_client = mock.MagicMock()
     with mock.patch(
-        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.get_all_pods",
+        "paasta_tools.paastak8s.bin.kubernetes_remove_evicted_pods.get_all_pods",
         autospec=True,
     ) as mock_get_all_pods:
         mock_get_all_pods.return_value = [pod1, pod2, pod3]

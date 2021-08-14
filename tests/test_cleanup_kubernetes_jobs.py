@@ -21,7 +21,7 @@ from pytest import raises
 from paasta_tools.cleanup_kubernetes_jobs import cleanup_unused_apps
 from paasta_tools.cleanup_kubernetes_jobs import DontKillEverythingError
 from paasta_tools.cleanup_kubernetes_jobs import main
-from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
+from paasta_tools.paastak8s.application.controller_wrappers import DeploymentWrapper
 
 
 @fixture

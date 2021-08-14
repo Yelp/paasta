@@ -5,9 +5,9 @@ from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 from pytest import raises
 
-from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.paastak8s.application.controller_wrappers import Application
 from paasta_tools.setup_kubernetes_job import create_application_object
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
@@ -82,13 +82,13 @@ def test_create_application_object():
     ) as mock_load_kubernetes_service_config_no_cache, mock.patch(
         "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.Application.load_local_config",
+        "paasta_tools.paastak8s.application.controller_wrappers.Application.load_local_config",
         autospec=True,
     ), mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.DeploymentWrapper",
+        "paasta_tools.paastak8s.application.controller_wrappers.DeploymentWrapper",
         autospec=True,
     ) as mock_deployment_wrapper, mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.StatefulSetWrapper",
+        "paasta_tools.paastak8s.application.controller_wrappers.StatefulSetWrapper",
         autospec=True,
     ) as mock_stateful_set_wrapper:
         mock_kube_client = mock.Mock()

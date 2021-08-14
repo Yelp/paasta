@@ -2,15 +2,15 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes.application.controller_wrappers import Application
-from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.paastak8s.application.controller_wrappers import Application
+from paasta_tools.paastak8s.application.controller_wrappers import DeploymentWrapper
 
 
 @pytest.fixture
 def mock_pdr_for_service_instance():
     with mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.pod_disruption_budget_for_service_instance",
+        "paasta_tools.paastak8s.application.controller_wrappers.pod_disruption_budget_for_service_instance",
         autospec=True,
     ) as mock_pdr_for_service_instance:
         yield mock_pdr_for_service_instance
@@ -19,7 +19,7 @@ def mock_pdr_for_service_instance():
 @pytest.fixture
 def mock_load_system_paasta_config():
     with mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.load_system_paasta_config",
+        "paasta_tools.paastak8s.application.controller_wrappers.load_system_paasta_config",
         autospec=True,
     ) as mock_load_system_paasta_config:
         yield mock_load_system_paasta_config
@@ -30,12 +30,12 @@ def test_brutal_bounce(mock_load_system_paasta_config):
     mock_cloned_client = mock.MagicMock()
 
     with mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.KubeClient",
+        "paasta_tools.paastak8s.application.controller_wrappers.KubeClient",
         return_value=mock_cloned_client,
         autospec=True,
     ):
         with mock.patch(
-            "paasta_tools.kubernetes.application.controller_wrappers.threading.Thread",
+            "paasta_tools.paastak8s.application.controller_wrappers.threading.Thread",
             autospec=True,
         ) as mock_deep_delete_and_create:
             mock_client = mock.MagicMock()
@@ -163,7 +163,7 @@ def setup_app(config_dict, exists_hpa):
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_no_autoscaling(mock_autoscaling_is_paused):
@@ -184,7 +184,7 @@ def test_sync_horizontal_pod_autoscaler_no_autoscaling(mock_autoscaling_is_pause
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_delete_hpa_when_no_autoscaling(
@@ -209,7 +209,7 @@ def test_sync_horizontal_pod_autoscaler_delete_hpa_when_no_autoscaling(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
@@ -234,7 +234,7 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_paused(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
@@ -258,7 +258,7 @@ def test_sync_horizontal_pod_autoscaler_when_autoscaling_is_resumed(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
@@ -285,7 +285,7 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
     return_value=False,
 )
@@ -311,7 +311,7 @@ def test_sync_horizontal_pod_autoscaler_do_not_create_hpa_bespoke(
 
 
 @mock.patch(
-    "paasta_tools.kubernetes.application.controller_wrappers.autoscaling_is_paused",
+    "paasta_tools.paastak8s.application.controller_wrappers.autoscaling_is_paused",
     autospec=True,
 )
 def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):

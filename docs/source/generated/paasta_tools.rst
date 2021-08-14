@@ -13,11 +13,11 @@ Subpackages
    paasta_tools.deployd
    paasta_tools.frameworks
    paasta_tools.instance
-   paasta_tools.kubernetes
    paasta_tools.mesos
    paasta_tools.metrics
    paasta_tools.monitoring
    paasta_tools.paastaapi
+   paasta_tools.paastak8s
    paasta_tools.secret_providers
    paasta_tools.tron
 
