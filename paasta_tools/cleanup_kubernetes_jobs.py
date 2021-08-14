@@ -41,11 +41,11 @@ from typing import Generator
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.application.tools import Application  # type: ignore
-from paasta_tools.kubernetes.application.tools import (
+from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.paastak8s.application.tools import Application  # type: ignore
+from paasta_tools.paastak8s.application.tools import (
     list_namespaced_applications,
 )  # type: ignore
-from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster

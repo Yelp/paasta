@@ -27,15 +27,15 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
-from paasta_tools.kubernetes.application.controller_wrappers import Application
-from paasta_tools.kubernetes.application.controller_wrappers import (
-    get_application_wrapper,
-)
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.paastak8s.application.controller_wrappers import Application
+from paasta_tools.paastak8s.application.controller_wrappers import (
+    get_application_wrapper,
+)
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError

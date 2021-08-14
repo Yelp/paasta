@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-from paasta_tools.kubernetes.application.controller_wrappers import (
-    get_application_wrapper,
-)
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastak8s.application.controller_wrappers import (
+    get_application_wrapper,
+)
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 

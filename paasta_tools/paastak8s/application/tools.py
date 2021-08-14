@@ -5,11 +5,11 @@ from typing import Sequence
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.application.controller_wrappers import Application
-from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
-from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.paastak8s.application.controller_wrappers import Application
+from paasta_tools.paastak8s.application.controller_wrappers import DeploymentWrapper
+from paasta_tools.paastak8s.application.controller_wrappers import StatefulSetWrapper
 
 log = logging.getLogger(__name__)
 
