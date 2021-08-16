@@ -1,3 +1,11 @@
+paasta-tools (0.102.9) xenial; urgency=medium
+
+  * 0.102.9 tagged with 'make release'
+    Commit: Merge pull request #3175 from Yelp/u/mmb/PAASTA-17466  Stop
+    returning no services if kubelet down
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 16 Aug 2021 03:49:22 -0700
+
 paasta-tools (0.102.8) xenial; urgency=medium
 
   * 0.102.8 tagged with 'make release'
