@@ -238,8 +238,10 @@ def test_wait_for_deployment(
         with patch(
             "asyncio.as_completed", side_effect=[asyncio.TimeoutError], autospec=True
         ):
-            mark_for_deployment.wait_for_deployment(
-                "service", "fake_deploy_group", "somesha", "/nail/soa", 1
+            asyncio.run(
+                mark_for_deployment.wait_for_deployment(
+                    "service", "fake_deploy_group", "somesha", "/nail/soa", 1
+                )
             )
 
     mock_get_instance_configs_for_service_in_deploy_group_all_clusters.return_value = {
@@ -254,8 +256,10 @@ def test_wait_for_deployment(
     }
     with patch("sys.stdout", autospec=True, flush=Mock()):
         assert (
-            mark_for_deployment.wait_for_deployment(
-                "service", "fake_deploy_group", "somesha", "/nail/soa", 5
+            asyncio.run(
+                mark_for_deployment.wait_for_deployment(
+                    "service", "fake_deploy_group", "somesha", "/nail/soa", 5
+                )
             )
             == 0
         )
@@ -271,8 +275,10 @@ def test_wait_for_deployment(
         ],
     }
     with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment(
-            "service", "fake_deploy_group", "somesha", "/nail/soa", 0
+        asyncio.run(
+            mark_for_deployment.wait_for_deployment(
+                "service", "fake_deploy_group", "somesha", "/nail/soa", 0
+            )
         )
 
 
@@ -293,8 +299,10 @@ def test_wait_for_deployment_raise_no_such_cluster(
 
     mock_paasta_service_config_loader.return_value.clusters = ["cluster3"]
     with raises(NoSuchCluster):
-        mark_for_deployment.wait_for_deployment(
-            "service", "deploy_group_3", "somesha", "/nail/soa", 0
+        asyncio.run(
+            mark_for_deployment.wait_for_deployment(
+                "service", "deploy_group_3", "somesha", "/nail/soa", 0
+            )
         )
 
 
