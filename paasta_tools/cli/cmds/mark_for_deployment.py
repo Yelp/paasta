@@ -1068,7 +1068,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("deploy_errored")
         except asyncio.CancelledError:
             # Don't trigger deploy_errored when someone calls stop_waiting_for_deployment.
-            raise
+            pass
         except Exception:
             log.error("Caught exception in wait_for_deployment:")
             log.error(traceback.format_exc())
@@ -1623,6 +1623,15 @@ async def wait_for_deployment(
                     level="event",
                 )
                 raise TimeoutError
+            except asyncio.CancelledError:
+                # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
+                for coro in instance_done_futures:
+                    coro.cancel()
+                    try:
+                        await coro
+                    except asyncio.CancelledError:
+                        pass
+                raise
             else:
                 sys.stdout.flush()
                 if progress is not None:
