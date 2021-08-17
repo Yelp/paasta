@@ -32,6 +32,7 @@ from collections import defaultdict
 from threading import Event
 from threading import Thread
 from typing import Any
+from typing import Callable
 from typing import Collection
 from typing import DefaultDict
 from typing import Dict
@@ -55,7 +56,9 @@ from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
+from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -69,6 +72,8 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
+from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -1051,6 +1056,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 polling_interval=self.polling_interval,
                 diagnosis_interval=self.diagnosis_interval,
                 time_before_first_diagnosis=self.time_before_first_diagnosis,
+                notify_fn=self.ping_authors,
             )
             self.update_slack_thread(
                 f"Finished waiting for deployment of {target_commit}"
@@ -1196,6 +1202,8 @@ async def wait_until_instance_is_done(
     polling_interval: float,
     diagnosis_interval: float,
     time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Tuple[str, str]:
     loop = asyncio.get_running_loop()
     diagnosis_task = asyncio.create_task(
@@ -1208,6 +1216,8 @@ async def wait_until_instance_is_done(
             instance_config,
             diagnosis_interval,
             time_before_first_diagnosis,
+            should_ping_for_unhealthy_pods,
+            notify_fn,
         )
     )
     try:
@@ -1240,6 +1250,8 @@ async def periodically_diagnose_instance(
     instance_config: LongRunningServiceConfig,
     diagnosis_interval: float,
     time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> None:
     await asyncio.sleep(time_before_first_diagnosis)
     loop = asyncio.get_running_loop()
@@ -1254,6 +1266,8 @@ async def periodically_diagnose_instance(
                     cluster,
                     git_sha,
                     instance_config,
+                    should_ping_for_unhealthy_pods,
+                    notify_fn,
                 ),
             )
         except asyncio.CancelledError:
@@ -1270,6 +1284,8 @@ def diagnose_why_instance_is_stuck(
     cluster: str,
     git_sha: str,
     instance_config: LongRunningServiceConfig,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> None:
     api = client.get_paasta_oapi_client(cluster=cluster)
     try:
@@ -1304,6 +1320,76 @@ def diagnose_why_instance_is_stuck(
         ):
             print(f"    {line}")
     print("")
+
+    if should_ping_for_unhealthy_pods:
+        maybe_ping_for_unhealthy_pods(
+            service, instance, cluster, git_sha, status, notify_fn
+        )
+
+
+already_pinged = False
+
+
+def maybe_ping_for_unhealthy_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    status: InstanceStatusKubernetesV2,
+    notify_fn: Optional[Callable[[str], None]] = None,
+) -> None:
+    if notify_fn and not already_pinged:
+        # there can be multiple current versions, e.g. if someone changes yelpsoa-configs during a bounce.
+        current_versions = [
+            v for v in status.kubernetes_v2.versions if v.git_sha == git_sha
+        ]
+        pingable_pods = [
+            pod
+            for version in current_versions
+            for pod in version.pods
+            if should_ping_for_pod(pod)
+        ]
+        if pingable_pods:
+            ping_for_pods(service, instance, cluster, pingable_pods, notify_fn)
+
+
+def should_ping_for_pod(pod: KubernetesPodV2) -> bool:
+    return recent_container_restart(get_main_container(pod))
+
+
+def ping_for_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    pods: List[KubernetesPodV2],
+    notify_fn: Callable[[str], None],
+) -> None:
+    global already_pinged
+    already_pinged = True
+
+    pods_by_reason: Dict[str, List[KubernetesPodV2]] = {}
+    for pod in pods:
+        pods_by_reason.setdefault(get_main_container(pod).reason, []).append(pod)
+
+    for reason, pods_with_reason in pods_by_reason.items():
+        explanation = {
+            "Error": "crashed on startup",
+            "OOMKilled": "run out of memory",
+            "CrashLoopBackOff": "crashed on startup several times, and Kubernetes is backing off restarting them",
+        }.get(reason, f"restarted ({reason})")
+
+        tip = {
+            "Error": (
+                "This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. "
+                f"Take a look at the output of your unhealthy pods with `paasta status -s {service} -i {instance} -c {cluster} -vv` (more -v for more output.)"
+            ),
+            "CrashLoopBackOff": "This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs.",
+            "OOMKilled": "This probably means your new version of code requires more memory than the old version. You may want to increase memory in yelpsoa-configs or roll back.",
+        }.get(reason, "")
+
+        notify_fn(
+            f"Some of the replicas of your new version have {explanation}: {', '.join(f'`{p.name}`' for p in pods_with_reason)}\n{tip}"
+        )
 
 
 def check_if_instance_is_done(
@@ -1520,6 +1606,7 @@ async def wait_for_deployment(
     polling_interval: float = None,
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
     instance_configs_per_cluster: Dict[
         str, List[LongRunningServiceConfig]
@@ -1579,6 +1666,10 @@ async def wait_for_deployment(
                                 polling_interval=polling_interval,
                                 diagnosis_interval=diagnosis_interval,
                                 time_before_first_diagnosis=time_before_first_diagnosis,
+                                should_ping_for_unhealthy_pods=instance_config.get_should_ping_for_unhealthy_pods(
+                                    system_paasta_config.get_mark_for_deployment_should_ping_for_unhealthy_pods()
+                                ),
+                                notify_fn=notify_fn,
                             ),
                         )
                     )
