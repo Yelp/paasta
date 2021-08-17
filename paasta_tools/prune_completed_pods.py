@@ -15,21 +15,23 @@ from paasta_tools.kubernetes_tools import KubeClient
 
 log = logging.getLogger(__name__)
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Terminates completed pods based on namespace and minutes since completion"
     )
     parser.add_argument(
-        "-n", "--namespace", 
+        "-n",
+        "--namespace",
         help="Namespace of the pods to terminate from",
-        required=True
+        required=True,
     )
     parser.add_argument(
         "-m",
         "--minutes",
         default=0,
         help="Minutes since the pods' completion. Terminates pods based on time since completion.",
-        required=True
+        required=True,
     )
     parser.add_argument(
         "--dry-run",
@@ -38,14 +40,11 @@ def parse_args():
         help="Print pods to be terminated, instead of terminating them",
     )
     parser.add_argument(
-        "-v",
-        "--verbose",
-        dest="verbose",
-        action="store_true",
-        default=False
+        "-v", "--verbose", dest="verbose", action="store_true", default=False
     )
     args = parser.parse_args()
     return args
+
 
 def setup_logging(verbose):
     level = logging.DEBUG if verbose else logging.WARNING
@@ -77,7 +76,7 @@ def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
             successes.append(pod.metadata.name)
         except Exception as e:
             errors.append((pod.metadata.name, e))
-    
+
     return (successes, errors)
 
 
@@ -100,12 +99,11 @@ def main():
         sys.exit(1)
 
     if args.dry_run:
-        log.debug("Dry run - {} would have terminated the following completed pods:\n ".format(socket.gethostname())
-            + "\n ".join(
-                [
-                    pod.metadata.name for pod in completed_pods
-                ]
+        log.debug(
+            "Dry run - {} would have terminated the following completed pods:\n ".format(
+                socket.gethostname()
             )
+            + "\n ".join([pod.metadata.name for pod in completed_pods])
         )
         sys.exit(1)
 
@@ -113,13 +111,15 @@ def main():
 
     if successes:
         log.debug(
-            socket.gethostname() + " successfully terminated the following completed pods:\n"
+            socket.gethostname()
+            + " successfully terminated the following completed pods:\n"
             + "\n ".join(successes)
         )
 
     if errors:
         log.error(
-            socket.gethostname() + " failed to terminate the following completed pods:\n"
+            socket.gethostname()
+            + " failed to terminate the following completed pods:\n"
             + "\n  ".join(
                 [
                     "{pod_name}: {error}".format(pod_name=pod_name, error=str(error))
