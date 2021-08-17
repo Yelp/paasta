@@ -51,7 +51,7 @@ def setup_logging(verbose):
     logging.basicConfig(level=level)
 
 
-def completed_since(pod: V1Pod, allowed_uptime_minutes: int) -> bool:
+def _completed_since(pod: V1Pod, allowed_uptime_minutes: int) -> bool:
     seconds_per_minute = 60
     time_finished = get_pod_condition(pod, "ContainersReady").last_transition_time
     time_now = datetime.now(tzutc())
@@ -91,7 +91,7 @@ def main():
     setup_logging(args.verbose)
 
     for pod in pods:
-        if is_pod_completed(pod) and completed_since(pod, allowed_uptime_minutes):
+        if is_pod_completed(pod) and _completed_since(pod, allowed_uptime_minutes):
             completed_pods.append(pod)
 
     if len(completed_pods) < 1:
