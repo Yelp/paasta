@@ -27,16 +27,26 @@ from typing import Sequence
 
 from kubernetes.client import V1APIService
 from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1Service
+from kubernetes.client import V1ServicePort
 from kubernetes.client import V1ServiceSpec
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_kubernetes_services
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SPACER
-from paasta_tools.utils import validate_registration_name
 
 log = logging.getLogger(__name__)
+
+UNIFIED_K8S_SVC_NAME = "paasta-routing"
+UNIFIED_SVC_PORT = 1337
+PAASTA_SVC_PORT = 8888
+
+
+class ErrorCreatingUnifiedService(Exception):
+    pass
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,54 +60,98 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False,
     )
+
+    parser.add_argument(
+        "--dry-run", action="store_true", dest="dry_run", default=False,
+    )
+
+    parser.add_argument(
+        "-l",
+        "--rate-limit",
+        dest="rate_limit",
+        default=0,
+        metavar="LIMIT",
+        type=int,
+        help="Update or create up to this number of service instances. Default is 0 (no limit).",
+    )
     args = parser.parse_args()
     return args
 
 
+def setup_unified_service(kube_client: KubeClient) -> V1Service:
+    service_meta = V1ObjectMeta(name=UNIFIED_K8S_SVC_NAME)
+    service_spec = V1ServiceSpec(
+        ports=[
+            V1ServicePort(
+                name=f"p{UNIFIED_SVC_PORT}",
+                port=UNIFIED_SVC_PORT,
+                protocol="TCP",
+                target_port=UNIFIED_SVC_PORT,
+            )
+        ]
+    )
+    service_object = V1APIService(metadata=service_meta, spec=service_spec)
+    return kube_client.core.create_namespaced_service("paasta", service_object)
+
+
 def setup_kube_services(
-    kube_client: KubeClient, service_instances: Sequence[str], rate_limit: int = 0,
+    kube_client: KubeClient,
+    service_instances: Sequence[str],
+    rate_limit: int = 0,
+    dry_run: bool = False,
 ) -> bool:
     if service_instances:
         existing_kube_services = list_kubernetes_services(kube_client)
-        existing_kube_services_names = {
-            decompose_job_id(item.name) for item in existing_kube_services
-        }
+        print(existing_kube_services)
+        existing_kube_services_names = {item.name for item in existing_kube_services}
 
-    service_instances_with_valid_names = [
-        decompose_job_id(service_instance)
-        for service_instance in service_instances
-        if validate_registration_name(service_instance)
-    ]
+    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
+        resp_svc = setup_unified_service(kube_client=kube_client)
+        if not isinstance(resp_svc, V1Service):
+            raise ErrorCreatingUnifiedService(
+                "Can't setup unified service on port 1337"
+            )
 
-    if len(service_instances) != len(service_instances_with_valid_names):
-        return False
+    paasta_service_list: Sequence = set()
+
+    for service_instance in service_instances:
+        service_name = decompose_job_id(service_instance)[0]
+        if service_name not in paasta_service_list:
+            paasta_service_list.add(service_name)
 
     api_updates = 0
 
-    for service in service_instances_with_valid_names:
-        service_name = f"{service[0]}.{service[1]}"
-
+    for service in paasta_service_list:
+        service = sanitise_kubernetes_name(service)
         if rate_limit > 0 and api_updates >= rate_limit:
             log.info(
                 f"Not doing any further updates as we reached the limit ({api_updates})"
             )
             break
 
-        if service_name in existing_kube_services_names:
-            log.info(f"Service {service_name} alredy exists, skipping")
+        if service in existing_kube_services_names:
+            log.info(f"Service {service} alredy exists, skipping")
             continue
 
-        log.info(f"Creating {service_name} because it does not exist yet.")
+        log.info(f"Creating {service} because it does not exist yet.")
 
-        service_meta = V1ObjectMeta(name=service_name)
+        service_meta = V1ObjectMeta(name=service)
 
         service_spec = V1ServiceSpec(
-            selector={f"registrations.paasta.yelp.com/{service_name}": True}
+            selector={f"paasta.yelp.com/service": service},
+            ports=[V1ServicePort(name="http", port=8888, protocol="TCP")],
         )
+        service_object = V1APIService(metadata=service_meta, spec=service_spec)
+        if dry_run:
+            service_resp = kube_client.core.create_namespaced_service(
+                "paasta", service_object, dry_run="All"
+            )
+        else:
+            service_resp = kube_client.core.create_namespaced_service(
+                "paasta", service_object
+            )
 
-        service_instance = V1APIService(metadata=service_meta, spec=service_spec)
-
-        kube_client.core.create_namespaced_service("paasta", service_instance)
+        log.debug(f"service_resp is {service_resp}")
 
         api_updates += 1
 
@@ -119,6 +173,7 @@ def main() -> None:
         kube_client=kube_client,
         service_instances=args.service_instance_list,
         rate_limit=args.rate_limit,
+        dry_run=args.dry_run,
     )
 
     sys.exit(0 if setup_kube_succeeded else 1)
