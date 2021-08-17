@@ -1,3 +1,12 @@
+paasta-tools (0.102.11) xenial; urgency=medium
+
+  * 0.102.11 tagged with 'make release'
+    Commit: Ignore CancelledError in do_wait_for_deployment, and wait
+    until all wait_until_instance_is_done tasks are fully cancelled
+    before tearing down the ThreadPoolExecutor.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 17 Aug 2021 11:25:07 -0700
+
 paasta-tools (0.102.10) xenial; urgency=medium
 
   * 0.102.10 tagged with 'make release'
