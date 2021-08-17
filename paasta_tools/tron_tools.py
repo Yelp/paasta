@@ -367,23 +367,6 @@ class TronActionConfig(InstanceConfig):
                 }
         return secret_env
 
-    def get_extra_volumes(self):
-        extra_volumes = super().get_extra_volumes()
-        if (
-            self.get_executor() == "spark"
-            and self.get_spark_cluster_manager() == "kubernetes"
-        ):
-            extra_volumes.append(
-                DockerVolume(
-                    {
-                        "hostPath": "/etc/pki/spark",
-                        "containerPath": K8S_AUTH_FOLDER,
-                        "mode": "RO",
-                    }
-                )
-            )
-        return extra_volumes
-
     def get_cpu_burst_add(self) -> float:
         """ For Tron jobs, we don't let them burst by default, because they
         don't represent "real-time" workloads, and should not impact

@@ -131,11 +131,6 @@ class TestTronActionConfig:
                 expected_mesos_leader = None
                 expected_extra_volumes = [
                     {
-                        "hostPath": "/etc/pki/spark",
-                        "containerPath": "/etc/spark_k8s_secrets",
-                        "mode": "RO",
-                    },
-                    {
                         "containerPath": "/nail/tmp",
                         "hostPath": "/nail/tmp",
                         "mode": "RW",
@@ -1030,11 +1025,6 @@ class TestTronTools:
                         "container_path": "/nail/tmp",
                         "host_path": "/nail/tmp",
                         "mode": "RW",
-                    },
-                    {
-                        "container_path": "/etc/spark_k8s_secrets",
-                        "host_path": "/etc/pki/spark",
-                        "mode": "RO",
                     },
                 ],
             ),
