@@ -393,6 +393,7 @@ class TestConfigureAndRunDockerContainer:
         args.dry_run = True
         args.mrjob = False
         args.nvidia = False
+        args.cluster_manager = "mesos"
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -403,6 +404,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
+                cluster_manager=args.cluster_manager,
             )
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
@@ -454,6 +456,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
+                cluster_manager="mesos",
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -489,6 +492,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
+                cluster_manager="mesos",
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -528,6 +532,7 @@ class TestConfigureAndRunDockerContainer:
                     system_paasta_config=self.system_paasta_config,
                     aws_creds=("id", "secret", "token"),
                     spark_conf=spark_conf,
+                    cluster_manager="mesos",
                 )
 
             # make sure we don't blow up when this setting is True
@@ -539,6 +544,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
+                cluster_manager="mesos",
             )
 
     def test_dont_emit_metrics_for_inappropriate_commands(
@@ -565,6 +571,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf={"spark.ui.port": "1234", "spark.app.name": "fake_app"},
+                cluster_manager="mesos",
             )
             assert not mock_send_and_calculate_resources_cost.called
 
@@ -663,6 +670,7 @@ def test_paasta_spark_run(
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager="mesos",
     )
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
@@ -706,4 +714,5 @@ def test_paasta_spark_run(
         system_paasta_config=mock_load_system_paasta_config.return_value,
         spark_conf=mock_get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
+        cluster_manager="mesos",
     )
