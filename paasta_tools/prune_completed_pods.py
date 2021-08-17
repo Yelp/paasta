@@ -1,6 +1,5 @@
 import argparse
 import logging
-import socket
 import sys
 from datetime import datetime
 from typing import Sequence
@@ -49,6 +48,8 @@ def parse_args():
 def setup_logging(verbose):
     level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(level=level)
+    # Remove pod metadata logs
+    logging.getLogger('kubernetes.client.rest').setLevel(logging.ERROR)
 
 
 def _completed_since(pod: V1Pod, allowed_uptime_minutes: int) -> bool:
@@ -82,44 +83,39 @@ def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
 
 def main():
     args = parse_args()
+    setup_logging(args.verbose)
 
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, args.namespace)
     allowed_uptime_minutes = int(args.minutes)
     completed_pods = []
 
-    setup_logging(args.verbose)
-
     for pod in pods:
         if is_pod_completed(pod) and _completed_since(pod, allowed_uptime_minutes):
             completed_pods.append(pod)
 
-    if len(completed_pods) < 1:
+    if not len(completed_pods):
         log.debug("No completed pods to terminate.")
         sys.exit(1)
 
     if args.dry_run:
         log.debug(
-            "Dry run - {} would have terminated the following completed pods:\n ".format(
-                socket.gethostname()
-            )
+            "Dry run would have terminated the following completed pods:\n "
             + "\n ".join([pod.metadata.name for pod in completed_pods])
         )
         sys.exit(1)
 
     successes, errors = terminate_pods(completed_pods, kube_client)
-
+    
     if successes:
         log.debug(
-            socket.gethostname()
-            + " successfully terminated the following completed pods:\n"
+            "Successfully terminated the following completed pods:\n"
             + "\n ".join(successes)
         )
 
     if errors:
         log.error(
-            socket.gethostname()
-            + " failed to terminate the following completed pods:\n"
+            "Failed to terminate the following completed pods:\n"
             + "\n  ".join(
                 [
                     "{pod_name}: {error}".format(pod_name=pod_name, error=str(error))
