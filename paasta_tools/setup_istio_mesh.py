@@ -55,19 +55,11 @@ class ErrorGettingServiceList(Exception):
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates Kubernetes services.")
     parser.add_argument(
-        "service_instance_list",
-        nargs="+",
-        help="The list of Kubernetes service instances to create or update services for",
-        metavar="SERVICE%sINSTANCE" % SPACER,
-    )
-    parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False,
     )
-
     parser.add_argument(
         "--dry-run", action="store_true", dest="dry_run", default=False,
     )
-
     parser.add_argument(
         "-l",
         "--rate-limit",
