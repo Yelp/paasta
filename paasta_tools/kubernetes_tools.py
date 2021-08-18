@@ -443,6 +443,62 @@ class KubeClient:
         self.jsonify = self.api_client.sanitize_for_serialization
 
 
+def allowlist_denylist_to_requirements(
+    allowlist: DeployWhitelist, denylist: DeployBlacklist
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts deploy_whitelist and deploy_blacklist to a list of
+    requirements, which can be converted to node affinities.
+    """
+    requirements = []
+    # convert whitelist into a node selector req
+    if allowlist:
+        location_type, alloweds = allowlist
+        requirements.append((to_node_label(location_type), "In", alloweds))
+    # convert blacklist into multiple node selector reqs
+    if denylist:
+        # not going to prune for duplicates, or group blacklist items for
+        # same location_type. makes testing easier and k8s can handle it.
+        for location_type, not_allowed in denylist:
+            requirements.append((to_node_label(location_type), "NotIn", [not_allowed]))
+    return requirements
+
+
+def raw_selectors_to_requirements(
+    raw_selectors: Mapping[str, any]
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts certain node_selectors into requirements, which can be
+    converted to node affinities.
+    """
+    requirements = []
+
+    for label, configs in raw_selectors.items():
+        if type(configs) is not list or len(configs) == 0:
+            continue
+        elif type(configs[0]) is str:
+            # specifying an array/list of strings for a label is shorthand
+            # for the "In" operator
+            configs = [{"operator": "In", "values": configs}]
+
+        label = to_node_label(label)
+        for config in configs:
+            if config["operator"] in {"In", "NotIn"}:
+                values = config["values"]
+            elif config["operator"] in {"Exists", "DoesNotExist"}:
+                values = []
+            elif config["operator"] in {"Gt", "Lt"}:
+                # config["value"] is validated by jsonschema to be an int. but,
+                # k8s expects singleton list of the int represented as a str
+                # for these operators.
+                values = [str(config["value"])]
+            else:
+                raise ValueError(
+                    f"Unknown k8s node affinity operator: {config['operator']}"
+                )
+            requirements.append((label, config["operator"], values))
+
+    return requirements
+
+
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
     config_dict: KubernetesDeploymentConfigDict
 
@@ -1622,8 +1678,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         note: At the time of writing, `kubectl describe` does not show affinities,
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
-        requirements = self._whitelist_blacklist_to_requirements()
-        requirements.extend(self._raw_selectors_to_requirements())
+        requirements = allowlist_denylist_to_requirements(
+            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=self.config_dict.get("node_selectors", {}),
+            )
+        )
         # package everything into a node affinity - lots of layers :P
         if len(requirements) == 0:
             return None
@@ -1683,61 +1745,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if "instance" in condition:
             labels[PAASTA_ATTRIBUTE_PREFIX + "instance"] = condition.get("instance")
         return V1LabelSelector(match_labels=labels) if labels else None
-
-    def _whitelist_blacklist_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts deploy_whitelist and deploy_blacklist to a list of
-        requirements, which can be converted to node affinities.
-        """
-        requirements = []
-        # convert whitelist into a node selector req
-        whitelist = self.get_deploy_whitelist()
-        if whitelist:
-            location_type, alloweds = whitelist
-            requirements.append((to_node_label(location_type), "In", alloweds))
-        # convert blacklist into multiple node selector reqs
-        blacklist = self.get_deploy_blacklist()
-        if blacklist:
-            # not going to prune for duplicates, or group blacklist items for
-            # same location_type. makes testing easier and k8s can handle it.
-            for location_type, not_allowed in blacklist:
-                requirements.append(
-                    (to_node_label(location_type), "NotIn", [not_allowed])
-                )
-        return requirements
-
-    def _raw_selectors_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts certain node_selectors into requirements, which can be
-        converted to node affinities.
-        """
-        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
-        requirements = []
-
-        for label, configs in raw_selectors.items():
-            if type(configs) is not list or len(configs) == 0:
-                continue
-            elif type(configs[0]) is str:
-                # specifying an array/list of strings for a label is shorthand
-                # for the "In" operator
-                configs = [{"operator": "In", "values": configs}]
-
-            label = to_node_label(label)
-            for config in configs:
-                if config["operator"] in {"In", "NotIn"}:
-                    values = config["values"]
-                elif config["operator"] in {"Exists", "DoesNotExist"}:
-                    values = []
-                elif config["operator"] in {"Gt", "Lt"}:
-                    # config["value"] is validated by jsonschema to be an int. but,
-                    # k8s expects singleton list of the int represented as a str
-                    # for these operators.
-                    values = [str(config["value"])]
-                else:
-                    raise ValueError(
-                        f"Unknown k8s node affinity operator: {config['operator']}"
-                    )
-                requirements.append((label, config["operator"], values))
-
-        return requirements
 
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]

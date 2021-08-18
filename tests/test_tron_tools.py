@@ -853,6 +853,7 @@ class TestTronTools:
     def test_format_tron_action_dict_paasta_k8s(self):
         action_dict = {
             "command": "echo something",
+            "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
             "requires": ["required_action"],
             "retries": 2,
             "retries_delay": "5m",
@@ -906,6 +907,14 @@ class TestTronTools:
             "disk": 42,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "node_affinities": [
+                (
+                    "node.kubernetes.io/instance-type",
+                    "In",
+                    ["c5.2xlarge", "c5n.17xlarge"],
+                )
+            ],
             "env": mock.ANY,
             "secret_env": {
                 "SOME_SECRET": {
