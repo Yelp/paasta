@@ -238,7 +238,6 @@ class KubernetesServiceRegistration(NamedTuple):
     registrations: Sequence[str]
 
 
-
 class CustomResourceDefinition(NamedTuple):
     file_prefix: str
     version: str
