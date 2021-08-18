@@ -28,13 +28,10 @@ import socket
 import sys
 import time
 import traceback
-from collections import defaultdict
-from threading import Event
 from threading import Thread
 from typing import Any
 from typing import Callable
 from typing import Collection
-from typing import DefaultDict
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -90,8 +87,8 @@ from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
-DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
-DEFAULT_WARN_PERCENT = 50
+DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
+DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
@@ -574,11 +571,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
 
-        # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
-        # and quickly launch wait_for_deployment for another commit without causing a race condition.
-        self.wait_for_deployment_green_lights: DefaultDict[str, Event] = defaultdict(
-            Event
-        )
+        # Keep track of each wait_for_deployment task so we can cancel it.
+        self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -991,7 +985,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.schedule_paasta_status_reminder()
 
     def on_exit_deploying(self) -> None:
-        self.wait_for_deployment_green_lights[self.commit].clear()
+        self.stop_waiting_for_deployment(self.commit)
         self.cancel_paasta_status_reminder()
 
     def on_enter_start_rollback(self) -> None:
@@ -1029,7 +1023,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             thread.start()
 
     def on_exit_rolling_back(self) -> None:
-        self.wait_for_deployment_green_lights[self.old_git_sha].clear()
+        self.stop_waiting_for_deployment(self.old_git_sha)
 
     def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
@@ -1042,34 +1036,45 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy cancelled")
 
-    def do_wait_for_deployment(self, target_commit: str) -> None:
+    def stop_waiting_for_deployment(self, target_commit: str) -> None:
         try:
-            self.wait_for_deployment_green_lights[target_commit].set()
-            wait_for_deployment(
-                service=self.service,
-                deploy_group=self.deploy_group,
-                git_sha=target_commit,
-                soa_dir=self.soa_dir,
-                timeout=self.timeout,
-                green_light=self.wait_for_deployment_green_lights[target_commit],
-                progress=self.progress,
-                polling_interval=self.polling_interval,
-                diagnosis_interval=self.diagnosis_interval,
-                time_before_first_diagnosis=self.time_before_first_diagnosis,
-                notify_fn=self.ping_authors,
+            self.wait_for_deployment_tasks[target_commit].cancel()
+            del self.wait_for_deployment_tasks[target_commit]
+        except (KeyError, asyncio.InvalidStateError):
+            pass
+
+    @a_sync.to_blocking
+    async def do_wait_for_deployment(self, target_commit: str) -> None:
+        try:
+            self.stop_waiting_for_deployment(target_commit)
+            wait_for_deployment_task = asyncio.create_task(
+                wait_for_deployment(
+                    service=self.service,
+                    deploy_group=self.deploy_group,
+                    git_sha=target_commit,
+                    soa_dir=self.soa_dir,
+                    timeout=self.timeout,
+                    progress=self.progress,
+                    polling_interval=self.polling_interval,
+                    diagnosis_interval=self.diagnosis_interval,
+                    time_before_first_diagnosis=self.time_before_first_diagnosis,
+                    notify_fn=self.ping_authors,
+                )
             )
+            self.wait_for_deployment_tasks[target_commit] = wait_for_deployment_task
+            await wait_for_deployment_task
             self.update_slack_thread(
                 f"Finished waiting for deployment of {target_commit}"
             )
             self.trigger("deploy_finished")
 
         except (KeyboardInterrupt, TimeoutError):
-            if self.wait_for_deployment_green_lights[target_commit].is_set():
-                # When we manually trigger a rollback, we clear the green_light, which causes wait_for_deployment to
-                # raise KeyboardInterrupt. Don't trigger deploy_cancelled in this case.
-                self.trigger("deploy_cancelled")
+            self.trigger("deploy_cancelled")
         except NoSuchCluster:
             self.trigger("deploy_errored")
+        except asyncio.CancelledError:
+            # Don't trigger deploy_errored when someone calls stop_waiting_for_deployment.
+            pass
         except Exception:
             log.error("Caught exception in wait_for_deployment:")
             log.error(traceback.format_exc())
@@ -1594,14 +1599,12 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
     return instance_configs_per_cluster
 
 
-@a_sync.to_blocking
 async def wait_for_deployment(
     service: str,
     deploy_group: str,
     git_sha: str,
     soa_dir: str,
     timeout: float,
-    green_light: Optional[Event] = None,
     progress: Optional[Progress] = None,
     polling_interval: float = None,
     diagnosis_interval: float = None,
@@ -1711,6 +1714,15 @@ async def wait_for_deployment(
                     level="event",
                 )
                 raise TimeoutError
+            except asyncio.CancelledError:
+                # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
+                for coro in instance_done_futures:
+                    coro.cancel()
+                    try:
+                        await coro
+                    except asyncio.CancelledError:
+                        pass
+                raise
             else:
                 sys.stdout.flush()
                 if progress is not None:

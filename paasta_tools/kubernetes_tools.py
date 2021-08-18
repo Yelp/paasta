@@ -1823,11 +1823,7 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
 
 def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
-    try:
-        pods = get_k8s_pods()
-    except requests.exceptions.ConnectionError:
-        log.debug("Failed to connect to the kublet when trying to get pods")
-        return []
+    pods = get_k8s_pods()
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"

@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 import paasta_tools.config_utils as config_utils
+from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 
 
 @pytest.fixture(autouse=True)
@@ -52,11 +53,9 @@ def test_write_auto_config_data_new_file(tmpdir):
         extra_info=conf_file,
         data=data,
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
-    expected_path = (
-        f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
-    )
+    expected_path = f"{tmpdir}/{service}/{AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
     assert result == expected_path
     with open(expected_path) as f:
         assert yaml.safe_load(f) == data
@@ -72,7 +71,7 @@ def test_write_auto_config_data_file_exists(tmpdir):
         extra_info=conf_file,
         data={"a": 1},
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
     # Contents should be replaced on second write
     result = config_utils.write_auto_config_data(
@@ -80,11 +79,9 @@ def test_write_auto_config_data_file_exists(tmpdir):
         extra_info=conf_file,
         data={"a": 2},
         soa_dir=tmpdir,
-        sub_dir=config_utils.AUTO_SOACONFIG_SUBDIR,
+        sub_dir=AUTO_SOACONFIG_SUBDIR,
     )
-    expected_path = (
-        f"{tmpdir}/{service}/{config_utils.AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
-    )
+    expected_path = f"{tmpdir}/{service}/{AUTO_SOACONFIG_SUBDIR}/{conf_file}.yaml"
     assert result == expected_path
     with open(expected_path) as f:
         assert yaml.safe_load(f) == {"a": 2}
@@ -94,13 +91,15 @@ def test_write_auto_config_data_file_exists(tmpdir):
 def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
     for config_type in config_utils.KNOWN_CONFIG_TYPES:
         filepath = f"service/{config_type}-cluster.yaml"
-        config_utils.validate_auto_config_file(filepath)
+        config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
         mock_validate.assert_called_with(filepath, f"autotuned_defaults/{config_type}")
 
 
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
 def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
-    assert not config_utils.validate_auto_config_file("service/unknown-thing.yaml")
+    assert not config_utils.validate_auto_config_file(
+        "service/unknown-thing.yaml", AUTO_SOACONFIG_SUBDIR
+    )
 
 
 @pytest.mark.parametrize(
@@ -125,7 +124,10 @@ def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
     filepath = config_utils.write_auto_config_data(
         service=service, extra_info=conf_file, data=data, soa_dir=tmpdir,
     )
-    assert config_utils.validate_auto_config_file(filepath) == is_valid
+    assert (
+        config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
+        == is_valid
+    )
 
 
 @pytest.mark.parametrize("branch", ["master", "other_test"])

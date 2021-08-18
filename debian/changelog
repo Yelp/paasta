@@ -1,3 +1,118 @@
+paasta-tools (0.102.11) xenial; urgency=medium
+
+  * 0.102.11 tagged with 'make release'
+    Commit: Ignore CancelledError in do_wait_for_deployment, and wait
+    until all wait_until_instance_is_done tasks are fully cancelled
+    before tearing down the ThreadPoolExecutor.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 17 Aug 2021 11:25:07 -0700
+
+paasta-tools (0.102.10) xenial; urgency=medium
+
+  * 0.102.10 tagged with 'make release'
+    Commit: Merge branch
+    "u/krall/cant_trigger_deploy_finished_from_deployed"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 16 Aug 2021 13:09:53 -0700
+
+paasta-tools (0.102.9) xenial; urgency=medium
+
+  * 0.102.9 tagged with 'make release'
+    Commit: Merge pull request #3175 from Yelp/u/mmb/PAASTA-17466  Stop
+    returning no services if kubelet down
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 16 Aug 2021 03:49:22 -0700
+
+paasta-tools (0.102.8) xenial; urgency=medium
+
+  * 0.102.8 tagged with 'make release'
+    Commit: Merge pull request #3173 from
+    Yelp/landon_remove_upper_pin_requests_cache  Remove upper pin on
+    requests-cache
+
+ -- Landon Sterk <landon@yelp.com>  Wed, 11 Aug 2021 16:01:10 -0700
+
+paasta-tools (0.102.7) xenial; urgency=medium
+
+  * 0.102.7 tagged with 'make release'
+    Commit: Merge pull request #3168 from kedarv/convert-None-to-null
+    convert None to null instead of empty node
+
+ -- Kedar Vaidya <kedar@yelp.com>  Wed, 11 Aug 2021 09:09:50 -0700
+
+paasta-tools (0.102.6) xenial; urgency=medium
+
+  * 0.102.6 tagged with 'make release'
+    Commit: Make Logspout per-instance logging flag generic (#3166)
+    After some discussion on an internal PR, we"ve decided that we"d
+    rather have a single toggle for per-instance log routing.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Aug 2021 10:35:07 -0700
+
+paasta-tools (0.102.5) xenial; urgency=medium
+
+  * 0.102.5 tagged with 'make release'
+    Commit: Merge pull request #3162 from Yelp/d/manpreet/COREML-
+    2403_fix_docker_image_issue  Get docker configuration even if image
+    is not provided
+
+ -- Manpreet Singh <manpreet@yelp.com>  Mon, 09 Aug 2021 15:47:25 -0700
+
+paasta-tools (0.102.4) xenial; urgency=medium
+
+  * 0.102.4 tagged with 'make release'
+    Commit: Merge pull request #3164 from Yelp/PAASTA-
+    17442_recent_container_restart_bug  Handle case where container has
+    non-zero restart count but no last_ti…
+
+ -- Stuart Elston <selston@yelp.com>  Mon, 09 Aug 2021 11:34:51 -0700
+
+paasta-tools (0.102.3) xenial; urgency=medium
+
+  * 0.102.3 tagged with 'make release'
+    Commit: Add logspout feature flag to all tron on k8s containers
+    (#3160)  We don"t want to turn this on for existing Mesos tronjobs
+    since the logs won"t be used in that case.  We"ll be using logspout
+    to ship tronjob logs to our logging streams and then displaying
+    those in Tron rather than doing what we did with Tron-on-Mesos and
+    asking Mesos (or, in this case, K8s) to feed us logs periodically.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 04 Aug 2021 10:15:58 -0700
+
+paasta-tools (0.102.2) xenial; urgency=medium
+
+  * 0.102.2 tagged with 'make release'
+    Commit: Merge pull request #3157 from kedarv/rework-shard-script
+    rework service sharding script
+
+ -- Evan Krall <krall@yelp.com>  Tue, 03 Aug 2021 13:50:52 -0700
+
+paasta-tools (0.102.1) xenial; urgency=medium
+
+  * 0.102.1 tagged with 'make release'
+    Commit: Merge pull request #3154 from Yelp/jfong/TRON-1738-
+    setup_tron_namespace_secrets  TRON-1738: Setup k8s env secrets in
+    setup_tron_namespace
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 28 Jul 2021 13:57:21 -0700
+
+paasta-tools (0.102.0) xenial; urgency=medium
+
+  * 0.102.0 tagged with 'make release'
+    Commit: Scaffold out the k8s toggles for tronjobs (#3121)  We"re
+    handling the toggles in PaaSTA rather than Tron since the cluster-
+    level config isn"t easily available when setting up an ActionRun, so
+    we will instead use setup_tron_namespace to configure Tron to use
+    either Mesos or Kubernetes.  Additionally, we"ll need to add some
+    translation layers for things like Mesos constraints/Docker
+    parameters, so we might as well centralize that here rather than
+    setup Mesos here and Kubernetes in Tron.  We normally are more
+    cautious with tron upgrades, so we"ll only conditionally send
+    use_k8s so that we don"t need to worry too much about what versions
+    of PaaSTA/Tron are running in our different clusters
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 27 Jul 2021 13:16:48 -0700
+
 paasta-tools (0.101.12) xenial; urgency=medium
 
   * 0.101.12 tagged with 'make release'
