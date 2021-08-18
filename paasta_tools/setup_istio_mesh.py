@@ -31,7 +31,6 @@ import kubernetes.client as k8s
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubernetesService
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.utils import SPACER
 
