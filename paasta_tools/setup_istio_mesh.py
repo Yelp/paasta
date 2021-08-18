@@ -117,11 +117,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Sequence:
     if not service_objects:
         raise ErrorGettingServiceList("Error retrieving services list from k8s api")
 
-    existing_kube_services = [
-        KubernetesService(name=item.metadata.name, labels=item.metadata.labels)
-        for item in service_objects.items
-    ]
-    return {item.name for item in existing_kube_services}
+    return {item.metadata.name for item in service_objects.items}
 
 
 def setup_unified_service(
