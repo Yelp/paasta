@@ -30,7 +30,7 @@ def parse_args():
         "--minutes",
         help="Minutes since the pods' completion. Terminates pods based on time since completion.",
         required=True,
-        type=int
+        type=int,
     )
     parser.add_argument(
         "--dry-run",
