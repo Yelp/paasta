@@ -146,7 +146,6 @@ def setup_kube_services(
     existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
 
     paasta_namespaces: Mapping = build_port_namespace_mapping(file_path)
-    print(paasta_namespaces)
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
         resp_svc = setup_unified_service(
             kube_client=kube_client, port_list=paasta_namespaces.keys()
