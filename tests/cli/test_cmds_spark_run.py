@@ -370,6 +370,21 @@ class TestConfigureAndRunDockerContainer:
         ) as _mock_create_spark_config_str:
             yield _mock_create_spark_config_str
 
+    @pytest.mark.parametrize(
+        ["cluster_manager", "spark_args_volumes", "expected_volumes"],
+        [
+            ("mesos", {"spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"}, ["/mesos/volume:/mesos/volume:rw"]),
+            ("kubernetes", {
+                "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0", 
+                "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1", 
+            },
+            ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"]),
+        ],
+    )
     def test_configure_and_run_docker_container(
         self,
         mock_get_history_url,
@@ -380,9 +395,12 @@ class TestConfigureAndRunDockerContainer:
         mock_send_and_calculate_resources_cost,
         mock_run_docker_container,
         mock_get_username,
+        cluster_manager,
+        spark_args_volumes,
+        expected_volumes
     ):
         mock_get_username.return_value = "fake_user"
-        spark_conf = {"spark.app.name": "fake_app", "spark.ui.port": "1234"}
+        spark_conf = {"spark.app.name": "fake_app", "spark.ui.port": "1234", **spark_args_volumes}
         mock_run_docker_container.return_value = 0
 
         args = mock.MagicMock()
@@ -393,7 +411,7 @@ class TestConfigureAndRunDockerContainer:
         args.dry_run = True
         args.mrjob = False
         args.nvidia = False
-        args.cluster_manager = "mesos"
+        args.cluster_manager = cluster_manager
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -404,12 +422,12 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
-                cluster_manager=args.cluster_manager,
+                cluster_manager=cluster_manager,
             )
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
-            volumes=["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw",],
+            volumes=expected_volumes + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"],
             environment={
                 "env1": "val1",
                 "AWS_ACCESS_KEY_ID": "id",

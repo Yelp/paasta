@@ -552,6 +552,7 @@ def configure_and_run_docker_container(
 ) -> int:
 
     # driver specific volumes
+    volumes: List[str] = []
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = (
             spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
@@ -559,7 +560,6 @@ def configure_and_run_docker_container(
             else []
         )
     elif cluster_manager == CLUSTER_MANAGER_K8S:
-        volumes = []
         volume_names = [
             re.match('spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path', key).group(1)
             for key in spark_conf.keys()
