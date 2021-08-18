@@ -594,6 +594,7 @@ def configure_and_run_docker_container(
             print(
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
             )
+    print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_emit_resource_requirements(
         docker_cmd, args.mrjob

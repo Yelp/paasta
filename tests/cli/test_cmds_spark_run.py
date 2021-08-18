@@ -373,14 +373,14 @@ class TestConfigureAndRunDockerContainer:
     @pytest.mark.parametrize(
         ["cluster_manager", "spark_args_volumes", "expected_volumes"],
         [
-            ("mesos", {"spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"}, ["/mesos/volume:/mesos/volume:rw"]),
-            ("kubernetes", {
+            (spark_run.CLUSTER_MANAGER_MESOS, {"spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"}, ["/mesos/volume:/mesos/volume:rw"]),
+            (spark_run.CLUSTER_MANAGER_K8S, {
                 "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
                 "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
-                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0", 
+                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
                 "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
                 "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
-                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1", 
+                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
             },
             ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"]),
         ],
@@ -474,7 +474,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
-                cluster_manager="mesos",
+                cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -510,7 +510,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
-                cluster_manager="mesos",
+                cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -550,7 +550,7 @@ class TestConfigureAndRunDockerContainer:
                     system_paasta_config=self.system_paasta_config,
                     aws_creds=("id", "secret", "token"),
                     spark_conf=spark_conf,
-                    cluster_manager="mesos",
+                    cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
                 )
 
             # make sure we don't blow up when this setting is True
@@ -562,7 +562,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
-                cluster_manager="mesos",
+                cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
             )
 
     def test_dont_emit_metrics_for_inappropriate_commands(
@@ -589,7 +589,7 @@ class TestConfigureAndRunDockerContainer:
                 system_paasta_config=self.system_paasta_config,
                 aws_creds=("id", "secret", "token"),
                 spark_conf={"spark.ui.port": "1234", "spark.app.name": "fake_app"},
-                cluster_manager="mesos",
+                cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
             )
             assert not mock_send_and_calculate_resources_cost.called
 
@@ -688,7 +688,7 @@ def test_paasta_spark_run(
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
-        cluster_manager="mesos",
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
     )
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
@@ -713,7 +713,7 @@ def test_paasta_spark_run(
         "spark.cores.max=100 spark.executor.cores=10"
     )
     mock_get_spark_conf.assert_called_once_with(
-        cluster_manager="mesos",
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         spark_app_base_name=mock_get_spark_app_name.return_value,
         docker_img=mock_get_docker_image.return_value,
         user_spark_opts=mock_parse_user_spark_args.return_value,
@@ -732,5 +732,5 @@ def test_paasta_spark_run(
         system_paasta_config=mock_load_system_paasta_config.return_value,
         spark_conf=mock_get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
-        cluster_manager="mesos",
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
     )
