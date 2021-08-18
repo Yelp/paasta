@@ -49,7 +49,7 @@ def setup_logging(verbose):
     level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(level=level)
     # Remove pod metadata logs
-    logging.getLogger('kubernetes.client.rest').setLevel(logging.ERROR)
+    logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
 def _completed_since(pod: V1Pod, allowed_uptime_minutes: int) -> bool:
@@ -106,7 +106,7 @@ def main():
         sys.exit(1)
 
     successes, errors = terminate_pods(completed_pods, kube_client)
-    
+
     if successes:
         log.debug(
             "Successfully terminated the following completed pods:\n"
