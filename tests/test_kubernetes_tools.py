@@ -1613,7 +1613,6 @@ class TestKubernetesDeploymentConfig:
                                     operator="In",
                                     values=["a1.1xlarge"],
                                 ),
-                                "node_selectors",
                             ]
                         )
                     ],
