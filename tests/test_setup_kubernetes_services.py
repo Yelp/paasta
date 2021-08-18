@@ -1,6 +1,5 @@
 import mock
 
-from paasta_tools.kubernetes_tools import KubernetesService
 from paasta_tools.setup_istio_mesh import setup_kube_services
 
 
@@ -12,9 +11,9 @@ def test_setup_kube_service():
     ):
         mock_client = mock.Mock()
 
-        mock_list_services.return_value = [
-            KubernetesService(name="kurupt.f_m", labels={})
-        ]
+        mock_list_services.return_value = mock.Mock(
+            items=[mock.Mock(metadata=mock.Mock(name="kurupt.f_m"))]
+        )
 
         mock_service_instances = ["kurupt.f_m"]
 
@@ -40,9 +39,9 @@ def test_setup_kube_service_invalid_job_name():
     ):
         mock_client = mock.Mock()
 
-        mock_list_services.return_value = [
-            KubernetesService(name="kurupt.f_m", labels={})
-        ]
+        mock_list_services.return_value = mock.Mock(
+            items=[mock.Mock(metadata=mock.Mock(name="kurupt.f_m"))]
+        )
 
         mock_service_instances = ["kuruptf_m"]
 
