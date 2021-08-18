@@ -100,13 +100,6 @@ def build_namespace_port_mapping(file_path: str) -> Mapping:
     return paasta_namespaces
 
 
-def format_service_tuple(services: k8s.V1ServiceList) -> Sequence[KubernetesService]:
-    return [
-        KubernetesService(name=item.metadata.name, labels=item.metadata.labels)
-        for item in services.items
-    ]
-
-
 def sanitise_kubernetes_service_name(name: str) -> str:
     name = sanitise_kubernetes_name(name)
     return name.replace(".", "--")
