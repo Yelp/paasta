@@ -1590,49 +1590,47 @@ class TestKubernetesDeploymentConfig:
             self.deployment.config_dict["node_selectors"] = raw_selectors
         assert self.deployment.get_node_selector() == expected
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
-        mock.Mock(return_value=[("habitat", "In", ["habitat_a"])]),
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
-        mock.Mock(return_value=[("instance_type", "In", ["a1.1xlarge"])]),
-        autospec=True,
-    )
     def test_get_node_affinity_with_reqs(self):
-        assert self.deployment.get_node_affinity() == V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[
-                    V1NodeSelectorTerm(
-                        match_expressions=[
-                            V1NodeSelectorRequirement(
-                                key="habitat", operator="In", values=["habitat_a"],
-                            ),
-                            V1NodeSelectorRequirement(
-                                key="instance_type",
-                                operator="In",
-                                values=["a1.1xlarge"],
-                            ),
-                            "node_selectors",
-                        ]
-                    )
-                ],
-            ),
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
+            return_value=[("habitat", "In", ["habitat_a"])],
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
+            return_value=[("instance_type", "In", ["a1.1xlarge"])],
+            autospec=True,
+        ):
+            assert self.deployment.get_node_affinity() == V1NodeAffinity(
+                required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                    node_selector_terms=[
+                        V1NodeSelectorTerm(
+                            match_expressions=[
+                                V1NodeSelectorRequirement(
+                                    key="habitat", operator="In", values=["habitat_a"],
+                                ),
+                                V1NodeSelectorRequirement(
+                                    key="instance_type",
+                                    operator="In",
+                                    values=["a1.1xlarge"],
+                                ),
+                                "node_selectors",
+                            ]
+                        )
+                    ],
+                ),
+            )
 
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
-        mock.Mock(return_value=[]),
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
-        mock.Mock(return_value=[]),
-        autospec=True,
-    )
     def test_get_node_affinity_no_reqs(self):
-        assert self.deployment.get_node_affinity() is None
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
+            return_value=[],
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
+            return_value=[],
+            autospec=True,
+        ):
+            assert self.deployment.get_node_affinity() is None
 
     @pytest.mark.parametrize(
         "anti_affinity,expected",
