@@ -57,11 +57,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False,
     )
-
     parser.add_argument(
         "--dry-run", action="store_true", dest="dry_run", default=False,
     )
-
     parser.add_argument(
         "-l",
         "--rate-limit",
