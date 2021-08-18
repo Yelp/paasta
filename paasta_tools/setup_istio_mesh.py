@@ -31,9 +31,8 @@ import kubernetes.client as k8s
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubernetesService
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.utils import SPACER
+
 
 log = logging.getLogger(__name__)
 
@@ -55,12 +54,6 @@ class ErrorGettingServiceList(Exception):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates Kubernetes services.")
-    parser.add_argument(
-        "service_instance_list",
-        nargs="+",
-        help="The list of Kubernetes service instances to create or update services for",
-        metavar="SERVICE%sINSTANCE" % SPACER,
-    )
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False,
     )
@@ -91,12 +84,12 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def build_namespace_port_mapping(file_path: str) -> Mapping:
+def build_port_namespace_mapping(file_path: str) -> Mapping:
     paasta_namespaces = {}
     with open(file_path) as service_file:
         smartstack_namespaces = json.load(service_file)
         for namespace, endpoint in smartstack_namespaces.items():
-            paasta_namespaces[namespace] = endpoint["port"]
+            paasta_namespaces[endpoint["port"]] = namespace
     return paasta_namespaces
 
 
@@ -149,20 +142,16 @@ def setup_unified_service(
 
 def setup_kube_services(
     kube_client: KubeClient,
-    service_instances: Sequence[str],
     rate_limit: int = 0,
     file_path: str = "/nail/etc/services/services.json",
 ) -> bool:
-    if service_instances:
-        existing_kube_services_names = get_existing_kubernetes_service_names(
-            kube_client
-        )
+    existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
 
-    paasta_namespaces: Mapping = build_namespace_port_mapping(file_path)
-
+    paasta_namespaces: Mapping = build_port_namespace_mapping(file_path)
+    print(paasta_namespaces)
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
         resp_svc = setup_unified_service(
-            kube_client=kube_client, port_list=paasta_namespaces.values()
+            kube_client=kube_client, port_list=paasta_namespaces.keys()
         )
         if not isinstance(resp_svc, k8s.V1Service):
             raise ErrorCreatingUnifiedService(
@@ -171,7 +160,7 @@ def setup_kube_services(
 
     api_updates = 0
 
-    for namespace in paasta_namespaces.keys():
+    for namespace in paasta_namespaces.values():
         service = sanitise_kubernetes_service_name(namespace)
         if rate_limit > 0 and api_updates >= rate_limit:
             log.info(
@@ -216,10 +205,7 @@ def main() -> None:
     ensure_namespace(kube_client, namespace="paasta")
 
     setup_kube_succeeded = setup_kube_services(
-        kube_client=kube_client,
-        service_instances=args.service_instance_list,
-        rate_limit=args.rate_limit,
-        file_path=args.file_path,
+        kube_client=kube_client, rate_limit=args.rate_limit, file_path=args.file_path,
     )
 
     sys.exit(0 if setup_kube_succeeded else 1)
