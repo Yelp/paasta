@@ -137,6 +137,7 @@ def setup_unified_service(
             port=UNIFIED_SVC_PORT,
             protocol="TCP",
             target_port=PAASTA_SVC_PORT,
+            appProtocol="http",
         )
     ]
 
@@ -144,7 +145,11 @@ def setup_unified_service(
     # Directly without need of setting x-yelp-svc header
     for port in port_list:
         port_spec = k8s.V1ServicePort(
-            name=f"p{port}", port=port, protocol="TCP", target_port=PAASTA_SVC_PORT
+            name=f"p{port}",
+            port=port,
+            protocol="TCP",
+            target_port=PAASTA_SVC_PORT,
+            appProtocol="http",
         )
         ports.append(port_spec)
 
