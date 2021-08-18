@@ -1,7 +1,7 @@
 import mock
 
 from paasta_tools.kubernetes_tools import KubernetesService
-from paasta_tools.setup_kubernetes_services import setup_kube_services
+from paasta_tools.setup_istio_mesh import setup_kube_services
 
 
 def test_setup_kube_service():
