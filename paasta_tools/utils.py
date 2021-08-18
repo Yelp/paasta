@@ -861,7 +861,7 @@ class InstanceConfig:
             if deploy_group not in pipeline_deploy_groups:
                 return (
                     False,
-                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but it is not deploy.yaml",
+                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but {deploy_group} is not deployed to in deploy.yaml",
                 )  # noqa: E501
         return True, ""
 
