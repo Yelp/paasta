@@ -28,9 +28,9 @@ def parse_args():
     parser.add_argument(
         "-m",
         "--minutes",
-        default=0,
         help="Minutes since the pods' completion. Terminates pods based on time since completion.",
         required=True,
+        type=int
     )
     parser.add_argument(
         "--dry-run",
@@ -87,7 +87,7 @@ def main():
 
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, args.namespace)
-    allowed_uptime_minutes = int(args.minutes)
+    allowed_uptime_minutes = args.minutes
     completed_pods = []
 
     for pod in pods:
@@ -96,14 +96,14 @@ def main():
 
     if not len(completed_pods):
         log.debug("No completed pods to terminate.")
-        sys.exit(1)
+        sys.exit(0)
 
     if args.dry_run:
         log.debug(
             "Dry run would have terminated the following completed pods:\n "
             + "\n ".join([pod.metadata.name for pod in completed_pods])
         )
-        sys.exit(1)
+        sys.exit(0)
 
     successes, errors = terminate_pods(completed_pods, kube_client)
 
