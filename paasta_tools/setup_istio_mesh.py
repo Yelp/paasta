@@ -103,7 +103,10 @@ def sanitise_kubernetes_service_name(name: str) -> str:
 
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Sequence:
-    service_objects = kube_client.core.list_namespaced_service("paasta")
+    label_selector = "paasta.yelp.com/owner=istio"
+    service_objects = kube_client.core.list_namespaced_service(
+        "paasta", label_selector=label_selector
+    )
     if not service_objects:
         raise ErrorGettingServiceList("Error retrieving services list from k8s api")
 
