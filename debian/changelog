@@ -1,3 +1,10 @@
+paasta-tools (0.102.12) xenial; urgency=medium
+
+  * 0.102.12 tagged with 'make release'
+    Commit: Released 0.102.12 via make release
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 19 Aug 2021 11:04:41 -0700
+
 paasta-tools (0.102.11) xenial; urgency=medium
 
   * 0.102.11 tagged with 'make release'
