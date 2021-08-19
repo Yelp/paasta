@@ -152,24 +152,14 @@ def setup_unified_service(
     return kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
 
 
-def setup_kube_services(
+def setup_paasta_namespace_service(
     kube_client: KubeClient,
+    paasta_namespaces: Mapping,
+    existing_kube_services_names: Sequence = set(),
     rate_limit: int = 0,
-    file_path: str = "/nail/etc/services/services.json",
 ) -> bool:
-    existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
-
-    paasta_namespaces: Mapping = build_port_namespace_mapping(file_path)
-    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
-        resp_svc = setup_unified_service(
-            kube_client=kube_client, port_list=paasta_namespaces.keys()
-        )
-        if not isinstance(resp_svc, k8s.V1Service):
-            raise ErrorCreatingUnifiedService(
-                "Can't setup unified service on port 1337"
-            )
-
     api_updates = 0
+    status = True
 
     for namespace in paasta_namespaces.values():
         service = sanitise_kubernetes_service_name(namespace)
@@ -194,15 +184,39 @@ def setup_kube_services(
             ],
         )
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-        service_resp = kube_client.core.create_namespaced_service(
-            PAASTA_NAMESPACE, service_object
-        )
-
-        log.debug(f"service_resp is {service_resp}")
+        try:
+            kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
+        except k8s.ApiException as Error:
+            log.warning(
+                f"""got {Error} error  while setting up
+                        k8s service for {namespace}"""
+            )
+            status = False
 
         api_updates += 1
+    return status
 
-    return True
+
+def setup_kube_services(
+    kube_client: KubeClient,
+    rate_limit: int = 0,
+    file_path: str = "/nail/etc/services/services.json",
+) -> bool:
+    existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
+
+    paasta_namespaces: Mapping = build_port_namespace_mapping(file_path)
+    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
+        try:
+            setup_unified_service(
+                kube_client=kube_client, port_list=paasta_namespaces.keys()
+            )
+        except k8s.ApiException as Error:
+            log.error(f"""got {Error} while setting up unified service""")
+            return False
+
+    return setup_paasta_namespace_service(
+        kube_client, paasta_namespaces, existing_kube_services_names, rate_limit
+    )
 
 
 def main() -> None:
