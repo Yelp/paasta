@@ -561,14 +561,28 @@ def configure_and_run_docker_container(
         )
     elif cluster_manager == CLUSTER_MANAGER_K8S:
         volume_names = [
-            re.match('spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path', key).group(1)
+            re.match(
+                r"spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path", key
+            ).group(1)
             for key in spark_conf.keys()
-            if 'spark.kubernetes.executor.volumes.hostPath.' in key and '.mount.path' in key
+            if "spark.kubernetes.executor.volumes.hostPath." in key
+            and ".mount.path" in key
         ]
         for volume_name in volume_names:
-            read_only = 'ro' if spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly') == 'true' else 'rw'
-            container_path = spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path')
-            host_path = spark_conf.get(f'spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path')
+            read_only = (
+                "ro"
+                if spark_conf.get(
+                    f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly"
+                )
+                == "true"
+                else "rw"
+            )
+            container_path = spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path"
+            )
+            host_path = spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path"
+            )
             volumes.append(f"{host_path}:{container_path}:{read_only}")
 
     volumes.append("%s:rw" % args.work_dir)

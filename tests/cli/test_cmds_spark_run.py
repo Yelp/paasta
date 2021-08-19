@@ -373,16 +373,25 @@ class TestConfigureAndRunDockerContainer:
     @pytest.mark.parametrize(
         ["cluster_manager", "spark_args_volumes", "expected_volumes"],
         [
-            (spark_run.CLUSTER_MANAGER_MESOS, {"spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"}, ["/mesos/volume:/mesos/volume:rw"]),
-            (spark_run.CLUSTER_MANAGER_K8S, {
-                "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
-                "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
-                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
-                "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
-                "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
-                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
-            },
-            ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"]),
+            (
+                spark_run.CLUSTER_MANAGER_MESOS,
+                {
+                    "spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"
+                },
+                ["/mesos/volume:/mesos/volume:rw"],
+            ),
+            (
+                spark_run.CLUSTER_MANAGER_K8S,
+                {
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                    "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
+                },
+                ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+            ),
         ],
     )
     def test_configure_and_run_docker_container(
@@ -397,10 +406,14 @@ class TestConfigureAndRunDockerContainer:
         mock_get_username,
         cluster_manager,
         spark_args_volumes,
-        expected_volumes
+        expected_volumes,
     ):
         mock_get_username.return_value = "fake_user"
-        spark_conf = {"spark.app.name": "fake_app", "spark.ui.port": "1234", **spark_args_volumes}
+        spark_conf = {
+            "spark.app.name": "fake_app",
+            "spark.ui.port": "1234",
+            **spark_args_volumes,
+        }
         mock_run_docker_container.return_value = 0
 
         args = mock.MagicMock()
@@ -427,7 +440,10 @@ class TestConfigureAndRunDockerContainer:
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
-            volumes=expected_volumes + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"],
+            volumes=(
+                expected_volumes
+                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+            ),
             environment={
                 "env1": "val1",
                 "AWS_ACCESS_KEY_ID": "id",
