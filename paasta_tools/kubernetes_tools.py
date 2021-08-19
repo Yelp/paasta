@@ -464,7 +464,7 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, any]
+    raw_selectors: Mapping[str, Any]
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.

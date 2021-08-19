@@ -413,7 +413,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get("use_k8s", False)
 
     def get_node_selectors(self) -> Dict[str, str]:
-        raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})
+        raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})  # type: ignore
         node_selectors = {
             to_node_label(label): value
             for label, value in raw_selectors.items()
@@ -422,7 +422,7 @@ class TronActionConfig(InstanceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinities(self) -> Optional[List[Tuple[str, str, List[str]]]]:
+    def get_node_affinities(self) -> Optional[List[Any]]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -433,14 +433,16 @@ class TronActionConfig(InstanceConfig):
         )
         requirements.extend(
             raw_selectors_to_requirements(
-                raw_selectors=self.config_dict.get("node_selectors", {}),
+                raw_selectors=self.config_dict.get("node_selectors", {}),  # type: ignore
             )
         )
-        # package everything into a node affinity - lots of layers :P
-        if len(requirements) == 0:
+        if not requirements:
             return None
 
-        return requirements
+        return [
+            {"key": key, "operator": op, "value": value}
+            for key, op, value in requirements
+        ]
 
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
