@@ -1,3 +1,12 @@
+paasta-tools (0.102.13) xenial; urgency=medium
+
+  * 0.102.13 tagged with 'make release'
+    Commit: Merge pull request #3174 from Yelp/gcoll_COREML-
+    2506_spark_run_k8s_master  Add new option to spark-run to choose
+    which cluster manager to use
+
+ -- Giulio Collura <gcoll@yelp.com>  Thu, 19 Aug 2021 11:44:31 -0700
+
 paasta-tools (0.102.12) xenial; urgency=medium
 
   * 0.102.12 tagged with 'make release'
