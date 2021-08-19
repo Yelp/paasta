@@ -30,6 +30,7 @@ opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
 opt/venvs/paasta-tools/bin/paasta-fsm usr/bin/paasta-fsm
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
 opt/venvs/paasta-tools/bin/paasta_cleanup_stale_nodes.py usr/bin/paasta_cleanup_stale_nodes
+opt/venvs/paasta-tools/bin/paasta_prune_completed_pods usr/bin/paasta_prune_completed_pods
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_cluster_boost.py usr/bin/paasta_cluster_boost
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs

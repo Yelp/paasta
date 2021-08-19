@@ -2323,6 +2323,11 @@ is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
 
 
+def is_pod_completed(pod: V1Pod) -> bool:
+    condition = get_pod_condition(pod, "ContainersReady")
+    return condition.reason == "PodCompleted" if condition else False
+
+
 def is_pod_scheduled(pod: V1Pod) -> bool:
     scheduled_condition = get_pod_condition(pod, "PodScheduled")
     return scheduled_condition.status == "True" if scheduled_condition else False
