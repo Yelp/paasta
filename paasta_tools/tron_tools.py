@@ -33,7 +33,6 @@ from service_configuration_lib.spark_config import generate_clusterman_metrics_e
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_conf
-from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -48,7 +47,6 @@ from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
-from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -366,23 +364,6 @@ class TronActionConfig(InstanceConfig):
                     "key": secret,
                 }
         return secret_env
-
-    def get_extra_volumes(self):
-        extra_volumes = super().get_extra_volumes()
-        if (
-            self.get_executor() == "spark"
-            and self.get_spark_cluster_manager() == "kubernetes"
-        ):
-            extra_volumes.append(
-                DockerVolume(
-                    {
-                        "hostPath": "/etc/pki/spark",
-                        "containerPath": K8S_AUTH_FOLDER,
-                        "mode": "RO",
-                    }
-                )
-            )
-        return extra_volumes
 
     def get_cpu_burst_add(self) -> float:
         """ For Tron jobs, we don't let them burst by default, because they
