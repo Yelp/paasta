@@ -909,11 +909,11 @@ class TestTronTools:
             "cap_drop": CAPS_DROP,
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
-                (
-                    "node.kubernetes.io/instance-type",
-                    "In",
-                    ["c5.2xlarge", "c5n.17xlarge"],
-                )
+                {
+                    "key": "node.kubernetes.io/instance-type",
+                    "operator": "In",
+                    "value": ["c5.2xlarge", "c5n.17xlarge"],
+                }
             ],
             "env": mock.ANY,
             "secret_env": {

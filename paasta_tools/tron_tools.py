@@ -25,6 +25,7 @@ from string import Formatter
 from typing import List
 from typing import Mapping
 from typing import Tuple
+from typing import Union
 
 import yaml
 from service_configuration_lib import read_extra_service_information
@@ -422,7 +423,7 @@ class TronActionConfig(InstanceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinities(self) -> Optional[List[Any]]:
+    def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
