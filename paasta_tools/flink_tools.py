@@ -23,12 +23,12 @@ from mypy_extensions import TypedDict
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
-
 
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
@@ -36,7 +36,9 @@ FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
 
 class TaskManagerConfig(TypedDict, total=False):
     instances: int
-
+    max_instances: int
+    min_instances: int
+    autoscaling: AutoscalingParamsDict
 
 class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     taskmanager: TaskManagerConfig
@@ -64,6 +66,18 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             soa_dir=soa_dir,
             config_dict=config_dict,
             branch_dict=branch_dict,
+        )
+
+    def get_autoscaling_params(self) -> AutoscalingParamsDict:
+        default_params: AutoscalingParamsDict = {
+            "metrics_provider": "mesos_cpu",
+            "decision_policy": "proportional",
+            "setpoint": 0.8,
+        }
+        tm = self.config_dict.get("taskmanager", TaskManagerConfig({}))
+        return deep_merge_dictionaries(
+            overrides=tm.get("autoscaling",  AutoscalingParamsDict({})),
+            defaults=default_params,
         )
 
     def validate(

@@ -19,10 +19,12 @@ import logging
 import sys
 from pathlib import Path
 from typing import cast
+from typing import Type
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Callable
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -31,6 +33,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -49,6 +52,7 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import InstanceConfig_T
 
 log = logging.getLogger(__name__)
 
@@ -510,32 +514,24 @@ def create_prometheus_adapter_config(
         * uwsgi
     """
     rules: List[PrometheusAdapterRule] = []
-    # get_services_for_cluster() returns a list of (service, instance) tuples, but this
-    # is not great for us: if we were to iterate over that we'd end up getting duplicates
-    # for every service as PaastaServiceConfigLoader does not expose a way to get configs
-    # for a single instance by name. instead, we get the unique set of service names and then
-    # let PaastaServiceConfigLoader iterate over instances for us later
-    services = {
-        service_name
-        for service_name, _ in get_services_for_cluster(
-            cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
+    rules.extend(
+        create_scaling_rules(
+            paasta_cluster,
+            soa_dir,
+            "kubernetes",
+            KubernetesDeploymentConfig,
+            lambda instance_name: instance_name,
         )
-    }
-    for service_name in services:
-        config_loader = PaastaServiceConfigLoader(
-            service=service_name, soa_dir=str(soa_dir)
+    )
+    rules.extend(
+        create_scaling_rules(
+            paasta_cluster,
+            soa_dir,
+            "flink",
+            FlinkDeploymentConfig,
+            lambda instance_name: f"{instance_name}-taskmanager",
         )
-        for instance_config in config_loader.instance_configs(
-            cluster=paasta_cluster, instance_type_class=KubernetesDeploymentConfig,
-        ):
-            rules.extend(
-                get_rules_for_service_instance(
-                    service_name=service_name,
-                    instance_name=instance_config.instance,
-                    autoscaling_config=instance_config.get_autoscaling_params(),
-                    paasta_cluster=paasta_cluster,
-                )
-            )
+    )
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps
@@ -544,6 +540,48 @@ def create_prometheus_adapter_config(
         # way and can add rules in any arbitrary order
         "rules": sorted(rules, key=lambda rule: rule["name"]["as"]),
     }
+
+def create_scaling_rules(
+    paasta_cluster: str,
+    soa_dir: Path,
+    instance_type: str,
+    instance_type_class: Type[InstanceConfig_T],
+    instnace_name_func: Callable[[str], str],
+) -> List[PrometheusAdapterRule]:
+    """
+    Given a paasta cluster and a soaconfigs directory, create the necessary Prometheus adapter
+    config to autoscale services.
+    Currently supports the followinn g metrics providers:
+        * uwsgi
+    """
+    rules: List[PrometheusAdapterRule] = []
+    # get_services_for_cluster() returns a list of (service, instance) tuples, but this
+    # is not great for us: if we were to iterate over that we'd end up getting duplicates
+    # for every service as PaastaServiceConfigLoader does not expose a way to get configs
+    # for a single instance by name. instead, we get the unique set of service names and then
+    # let PaastaServiceConfigLoader iterate over instances for us later
+    services = {
+         service_name
+         for service_name, _ in get_services_for_cluster(
+             cluster=paasta_cluster, instance_type=instance_type, soa_dir=str(soa_dir)
+         )
+     }
+    for service_name in services:
+        config_loader = PaastaServiceConfigLoader(
+            service=service_name, soa_dir=str(soa_dir)
+        )
+        for instance_config in config_loader.instance_configs(
+            cluster=paasta_cluster, instance_type_class=instance_type_class,
+        ):
+            rules.extend(
+                get_rules_for_service_instance(
+                    service_name=service_name,
+                    instance_name=instnace_name_func(instance_config.instance),
+                    autoscaling_config=instance_config.get_autoscaling_params(),
+                    paasta_cluster=paasta_cluster,
+                   )
+                )
+    return rules
 
 
 def update_prometheus_adapter_configmap(
