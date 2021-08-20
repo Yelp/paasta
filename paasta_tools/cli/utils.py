@@ -25,6 +25,7 @@ import subprocess
 from collections import defaultdict
 from shlex import quote
 from typing import Callable
+from typing import Collection
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -851,7 +852,7 @@ def list_deploy_groups(
 
 
 def validate_given_deploy_groups(
-    all_deploy_groups: Sequence[str], args_deploy_groups: Sequence[str]
+    all_deploy_groups: Collection[str], args_deploy_groups: Collection[str]
 ) -> Tuple[Set[str], Set[str]]:
     """Given two lists of deploy groups, return the intersection and difference between them.
 

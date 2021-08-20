@@ -73,6 +73,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     registrations: List[str]
     replication_threshold: int
     bounce_start_deadline: float
+    bounce_margin_factor: float
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -367,6 +368,9 @@ class LongRunningServiceConfig(InstanceConfig):
                 f"invalid: {registrations_str}"
             )
         return error_messages
+
+    def get_bounce_margin_factor(self) -> float:
+        return self.config_dict.get("bounce_margin_factor", 1.0)
 
 
 class InvalidHealthcheckMode(Exception):

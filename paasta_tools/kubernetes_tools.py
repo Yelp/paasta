@@ -309,7 +309,6 @@ KubePodLabels = TypedDict(
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
-    bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
@@ -1765,9 +1764,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return ahash
 
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
-
     def get_termination_grace_period(self) -> Optional[int]:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "termination_grace_period_seconds"
@@ -1827,11 +1823,7 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
 
 def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
-    try:
-        pods = get_k8s_pods()
-    except requests.exceptions.ConnectionError:
-        log.debug("Failed to connect to the kublet when trying to get pods")
-        return []
+    pods = get_k8s_pods()
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"
@@ -2329,6 +2321,11 @@ def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
 
 is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
+
+
+def is_pod_completed(pod: V1Pod) -> bool:
+    condition = get_pod_condition(pod, "ContainersReady")
+    return condition.reason == "PodCompleted" if condition else False
 
 
 def is_pod_scheduled(pod: V1Pod) -> bool:

@@ -52,6 +52,7 @@ from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
 from paasta_tools.cli.cmds.status import print_marathon_status
+from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
@@ -355,6 +356,7 @@ class StatusArgs:
         verbose,
         service_instance=None,
         new=False,
+        old=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -366,6 +368,7 @@ class StatusArgs:
         self.verbose = verbose
         self.service_instance = service_instance
         self.new = new
+        self.old = old
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -1257,6 +1260,12 @@ class TestGetInstanceState:
         mock_kubernetes_status_v2.desired_state = "stop"
         assert "Stop" in get_instance_state(mock_kubernetes_status_v2)
 
+    def test_stop_if_0_desired_instances(self, mock_kubernetes_status_v2):
+        mock_kubernetes_status_v2.desired_state = "start"
+        mock_kubernetes_status_v2.versions = []
+        mock_kubernetes_status_v2.desired_instances = 0
+        assert "Stop" in get_instance_state(mock_kubernetes_status_v2)
+
     def test_running(self, mock_kubernetes_status_v2):
         mock_kubernetes_status_v2.desired_state = "start"
         instance_state = get_instance_state(mock_kubernetes_status_v2)
@@ -1287,6 +1296,16 @@ class TestGetInstanceState:
         instance_state = get_instance_state(mock_kubernetes_status_v2)
         instance_state = remove_ansi_escape_sequences(instance_state)
         assert instance_state == "Bouncing to bbb111"
+
+
+def test_recent_container_restart_no_last_timestamp():
+    # we have seen occasional tracebacks where the restart_count and last_state
+    # are set but there is no last timestamp.  This is just a smoke test to
+    # make sure we don't blow up in that case.
+    container = paastamodels.KubernetesContainerV2(
+        last_state="terminated", restart_count=1
+    )
+    recent_container_restart(container)
 
 
 class TestGetVersionsTable:
