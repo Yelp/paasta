@@ -125,7 +125,7 @@ def setup_unified_service(
             port=UNIFIED_SVC_PORT,
             protocol="TCP",
             target_port=PAASTA_SVC_PORT,
-            appProtocol="http",
+            app_protocol="http",
         )
     ]
 
@@ -137,7 +137,7 @@ def setup_unified_service(
             port=port,
             protocol="TCP",
             target_port=PAASTA_SVC_PORT,
-            appProtocol="http",
+            app_protocol="http",
         )
         ports.append(port_spec)
 
