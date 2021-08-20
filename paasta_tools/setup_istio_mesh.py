@@ -24,8 +24,9 @@ import argparse
 import json
 import logging
 import sys
+from typing import AbstractSet
 from typing import Mapping
-from typing import Sequence
+from typing import Set
 
 import kubernetes.client as k8s
 from mypy_extensions import TypedDict
@@ -102,7 +103,7 @@ def sanitise_kubernetes_service_name(name: str) -> str:
     return name.replace(".", "--")
 
 
-def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Sequence:
+def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     label_selector = "paasta.yelp.com/owner=istio"
     service_objects = kube_client.core.list_namespaced_service(
         "paasta", label_selector=label_selector
@@ -114,7 +115,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Sequence:
 
 
 def setup_unified_service(
-    kube_client: KubeClient, port_list: Sequence
+    kube_client: KubeClient, port_list: AbstractSet
 ) -> k8s.V1Service:
 
     # Add port 1337 for envoy unified listener.
@@ -155,7 +156,7 @@ def setup_unified_service(
 def setup_paasta_namespace_service(
     kube_client: KubeClient,
     paasta_namespaces: Mapping,
-    existing_kube_services_names: Sequence = set(),
+    existing_kube_services_names: Set[str] = set(),
     rate_limit: int = 0,
 ) -> bool:
     api_updates = 0
@@ -175,7 +176,10 @@ def setup_paasta_namespace_service(
 
         log.info(f"Creating {service} because it does not exist yet.")
 
-        service_labels: KubeSvcLabels = {"paasta.yelp.com/owner": "istio"}
+        service_labels: KubeSvcLabels = {
+            "paasta.yelp.com/owner": "istio",
+            "paasta.yelp.com/unified_service": "false",
+        }
         service_meta = k8s.V1ObjectMeta(name=service, labels=service_labels)
         service_spec = k8s.V1ServiceSpec(
             selector={f"{PAATA_REGISTRATION_PREFIX}/{namespace}": "true"},
