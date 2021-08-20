@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
+
 import asynctest
 import mock
 from mock import ANY
@@ -194,6 +196,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         block = True
         timeout = 600
         warn = 80  # % of timeout to warn at
+        polling_interval = 15
+        diagnosis_interval = 15
+        time_before_first_diagnosis = 15
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
@@ -235,22 +240,28 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, target_commit="d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, target_commit="old-sha")
+    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha")
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
     assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 def test_mark_for_deployment_yelpy_repo(
-    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+    mock_load_system_paasta_config,
+    mock_trigger_deploys,
+    mock_create_remote_refs,
+    mock__log,
+    mock__log_audit,
 ):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
@@ -264,13 +275,19 @@ def test_mark_for_deployment_yelpy_repo(
     mock_trigger_deploys.assert_called_once_with(service="fake_service")
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 def test_mark_for_deployment_nonyelpy_repo(
-    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+    mock_load_system_paasta_config,
+    mock_trigger_deploys,
+    mock_create_remote_refs,
+    mock__log,
+    mock__log_audit,
 ):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
@@ -635,6 +652,9 @@ def test_MarkForDeployProcess_happy_path(
     mock_mark_for_deployment,
     mock_periodically_update_slack,
 ):
+    mock_wait_for_deployment.return_value = asyncio.sleep(
+        0
+    )  # make mock wait_for_deployment awaitable.
     mock_log.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
@@ -680,6 +700,9 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     mock_mark_for_deployment,
     mock_periodically_update_slack,
 ):
+    mock_wait_for_deployment.return_value = asyncio.sleep(
+        0
+    )  # make mock wait_for_deployment awaitable.
     mock__log1.return_value = None
     mock__log2.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(

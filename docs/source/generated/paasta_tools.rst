@@ -91,6 +91,7 @@ Submodules
    paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
+   paasta_tools.prune_completed_pods
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.secret_tools

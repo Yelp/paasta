@@ -219,7 +219,6 @@ class MarathonServiceConfigDict(LongRunningServiceConfigDict, total=False):
     max_launch_delay_seconds: float
     bounce_method: str
     bounce_health_params: Dict[str, Any]
-    bounce_margin_factor: float
     accepted_resource_roles: Optional[List[str]]
     host_port: int
     marathon_shard: int
@@ -855,9 +854,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         if service_namespace_config.is_in_smartstack():
             default = {"check_haproxy": True}
         return self.config_dict.get("bounce_health_params", default)
-
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
 
     def get_accepted_resource_roles(self) -> Optional[List[str]]:
         return self.config_dict.get("accepted_resource_roles", None)

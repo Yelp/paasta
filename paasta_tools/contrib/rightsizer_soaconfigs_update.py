@@ -193,6 +193,7 @@ def main(args):
         branch=args.branch,
         working_dir=args.local_dir or "/nail/tmp",
         do_clone=args.local_dir is None,
+        validation_schema_path=AUTO_SOACONFIG_SUBDIR,
     )
     with updater:
         for (service, extra_info), instance_recommendations in results.items():
