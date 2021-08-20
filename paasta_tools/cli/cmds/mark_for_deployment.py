@@ -1326,7 +1326,7 @@ def diagnose_why_instance_is_stuck(
             print(f"    {line}")
     print("")
 
-    if should_ping_for_unhealthy_pods:
+    if should_ping_for_unhealthy_pods and notify_fn:
         maybe_ping_for_unhealthy_pods(
             service, instance, cluster, git_sha, status, notify_fn
         )
@@ -1341,9 +1341,11 @@ def maybe_ping_for_unhealthy_pods(
     cluster: str,
     git_sha: str,
     status: InstanceStatusKubernetesV2,
-    notify_fn: Optional[Callable[[str], None]] = None,
+    notify_fn: Callable[[str], None],
 ) -> None:
-    if notify_fn and not already_pinged:
+    global already_pinged
+
+    if not already_pinged:
         # there can be multiple current versions, e.g. if someone changes yelpsoa-configs during a bounce.
         current_versions = [
             v for v in status.kubernetes_v2.versions if v.git_sha == git_sha
@@ -1355,6 +1357,7 @@ def maybe_ping_for_unhealthy_pods(
             if should_ping_for_pod(pod)
         ]
         if pingable_pods:
+            already_pinged = True
             ping_for_pods(service, instance, cluster, pingable_pods, notify_fn)
 
 
@@ -1369,9 +1372,6 @@ def ping_for_pods(
     pods: List[KubernetesPodV2],
     notify_fn: Callable[[str], None],
 ) -> None:
-    global already_pinged
-    already_pinged = True
-
     pods_by_reason: Dict[str, List[KubernetesPodV2]] = {}
     for pod in pods:
         pods_by_reason.setdefault(get_main_container(pod).reason, []).append(pod)
@@ -1383,13 +1383,20 @@ def ping_for_pods(
             "CrashLoopBackOff": "crashed on startup several times, and Kubernetes is backing off restarting them",
         }.get(reason, f"restarted ({reason})")
 
+        status_tip = f"Take a look at the output of your unhealthy pods with `paasta status -s {service} -i {instance} -c {cluster} -vv` (more -v for more output.)"
+
         tip = {
             "Error": (
-                "This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. "
-                f"Take a look at the output of your unhealthy pods with `paasta status -s {service} -i {instance} -c {cluster} -vv` (more -v for more output.)"
+                f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}"
             ),
-            "CrashLoopBackOff": "This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs.",
-            "OOMKilled": "This probably means your new version of code requires more memory than the old version. You may want to increase memory in yelpsoa-configs or roll back.",
+            "CrashLoopBackOff": f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}",
+            "OOMKilled": " ".join(
+                (
+                    "This probably means your new version of code requires more memory than the old version."
+                    "You may want to increase memory in yelpsoa-configs or roll back."
+                    "Ask #paasta if you need help with this.",
+                )
+            ),
         }.get(reason, "")
 
         notify_fn(
