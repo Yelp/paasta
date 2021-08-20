@@ -2585,7 +2585,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
 
     def get_mark_for_deployment_default_polling_interval(self) -> float:
-        return self.config_dict.get("mark_for_deployment_default_polling_interval", 5)
+        return self.config_dict.get("mark_for_deployment_default_polling_interval", 60)
 
     def get_mark_for_deployment_default_diagnosis_interval(self) -> float:
         return self.config_dict.get(
