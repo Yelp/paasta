@@ -22,8 +22,8 @@ Command line options:
 """
 import argparse
 import base64
-import json
 import hashlib
+import json
 import logging
 import sys
 from typing import AbstractSet
@@ -33,10 +33,10 @@ from typing import Set
 import kubernetes.client as k8s
 
 from paasta_tools.kubernetes_tools import ensure_namespace
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import registration_prefixed
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 
 
 log = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ UNIFIED_K8S_SVC_NAME = "paasta-routing"
 UNIFIED_SVC_PORT = 1337
 PAASTA_SVC_PORT = 8888
 PAASTA_NAMESPACE = "paasta"
-ANNOTATIONS = {paasta_prefixed("managed_by"): "setup_istio_mesh"},
+ANNOTATIONS = {paasta_prefixed("managed_by"): "setup_istio_mesh"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -92,8 +92,8 @@ def sanitise_kubernetes_service_name(name: str) -> str:
     name = name.replace(".", "---")
     if len(name) > 63:
         digest = hashlib.md5(name.encode("utf-8")).digest()
-        hash = base64.b64encode(digest, altchars=b'ps')[0:6].decode("utf-8")
-        hash.replace('=', '')
+        hash = base64.b64encode(digest, altchars=b"ps")[0:6].decode("utf-8")
+        hash.replace("=", "")
         name = f"{name[0:56]}-{hash}"
     return name
 

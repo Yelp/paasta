@@ -1,7 +1,7 @@
 import mock
 
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import registration_prefixed
+from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_service
 from paasta_tools.setup_istio_mesh import setup_unified_service
 from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
