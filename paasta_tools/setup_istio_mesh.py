@@ -31,7 +31,6 @@ from typing import Mapping
 from typing import Set
 
 import kubernetes.client as k8s
-from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import paasta_prefixed
