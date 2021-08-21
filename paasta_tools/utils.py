@@ -2785,17 +2785,6 @@ def decompose_job_id(job_id: str, spacer: str = SPACER) -> Tuple[str, str, str, 
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def validate_registration_name(service_instance: str) -> bool:
-    try:
-        service, instance, _, __ = decompose_job_id(service_instance)
-    except InvalidJobNameError:
-        log.error(
-            "Invalid service instance specified. Format is service%sinstance." % SPACER
-        )
-        return False
-    return True
-
-
 def build_docker_image_name(service: str) -> str:
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
