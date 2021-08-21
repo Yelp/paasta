@@ -21,7 +21,9 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import base64
 import json
+import hashlib
 import logging
 import sys
 from typing import AbstractSet
@@ -32,6 +34,7 @@ import kubernetes.client as k8s
 from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import registration_prefixed
@@ -43,11 +46,7 @@ UNIFIED_K8S_SVC_NAME = "paasta-routing"
 UNIFIED_SVC_PORT = 1337
 PAASTA_SVC_PORT = 8888
 PAASTA_NAMESPACE = "paasta"
-
-KubeSvcLabels = TypedDict(
-    "KubeSvcLabels",
-    {"paasta.yelp.com/owner": str, "paasta.yelp.com/unified_service": str},
-)
+ANNOTATIONS = {paasta_prefixed("managed_by"): "setup_istio_mesh"},
 
 
 def parse_args() -> argparse.Namespace:
@@ -91,18 +90,25 @@ def build_port_namespace_mapping(file_path: str) -> Mapping:
 
 def sanitise_kubernetes_service_name(name: str) -> str:
     name = sanitise_kubernetes_name(name)
-    return name.replace(".", "--")
+    name = name.replace(".", "---")
+    if len(name) > 63:
+        digest = hashlib.md5(name.encode("utf-8")).digest()
+        hash = base64.b64encode(digest, altchars=b'ps')[0:6].decode("utf-8")
+        hash.replace('=', '')
+        name = f"{name[0:56]}-{hash}"
+    return name
 
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
-    label_selector = "paasta.yelp.com/owner=istio"
-    service_objects = kube_client.core.list_namespaced_service(
-        "paasta", label_selector=label_selector
-    )
+    service_objects = kube_client.core.list_namespaced_service("paasta")
     if not service_objects:
         raise RuntimeError("Error retrieving services list from k8s api")
 
-    return {item.metadata.name for item in service_objects.items}
+    return {
+        item.metadata.name
+        for item in service_objects.items
+        if item.annotations.get(paasta_prefixed("managed_by")) == "setup_istio_mesh"
+    }
 
 
 def setup_unified_service(
@@ -124,12 +130,7 @@ def setup_unified_service(
         for port in [1337, *port_list]
     ]
 
-    service_labels: KubeSvcLabels = {
-        "paasta.yelp.com/owner": "istio",
-        "paasta.yelp.com/unified_service": "true",
-    }
-
-    service_meta = k8s.V1ObjectMeta(name=UNIFIED_K8S_SVC_NAME, labels=service_labels)
+    service_meta = k8s.V1ObjectMeta(name=UNIFIED_K8S_SVC_NAME, annotations=ANNOTATIONS)
     service_spec = k8s.V1ServiceSpec(ports=ports)
     service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
     return kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
@@ -158,28 +159,21 @@ def setup_paasta_namespace_service(
 
         log.info(f"Creating {service} because it does not exist yet.")
 
-        service_labels: KubeSvcLabels = {
-            "paasta.yelp.com/owner": "istio",
-            "paasta.yelp.com/unified_service": "false",
-        }
-        service_meta = k8s.V1ObjectMeta(name=service, labels=service_labels)
+        service_meta = k8s.V1ObjectMeta(name=service, annotations=ANNOTATIONS)
+        port_spec = k8s.V1ServicePort(
+            name="http", port=PAASTA_SVC_PORT, protocol="TCP", app_protocol="http"
+        )
         service_spec = k8s.V1ServiceSpec(
-            selector={registration_prefixed(namespace): "true"},
-            ports=[
-                k8s.V1ServicePort(name="http", port=PAASTA_SVC_PORT, protocol="TCP")
-            ],
+            selector={registration_prefixed(namespace): "true"}, ports=[port_spec]
         )
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
         try:
             kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
-        except k8s.ApiException as Error:
-            log.warning(
-                f"""got {Error} error  while setting up
-                        k8s service for {namespace}"""
-            )
+            api_updates += 1
+        except Exception as err:
+            log.warning(f"{err} while setting up k8s service for {namespace}")
             status = False
 
-        api_updates += 1
     return status
 
 
@@ -196,8 +190,8 @@ def setup_kube_services(
             setup_unified_service(
                 kube_client=kube_client, port_list=paasta_namespaces.keys()
             )
-        except k8s.ApiException as Error:
-            log.error(f"""got {Error} while setting up unified service""")
+        except Exception as err:
+            log.error(f"{err} while setting up unified service")
             return False
 
     return setup_paasta_namespace_service(
