@@ -1,7 +1,7 @@
 import mock
 
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.setup_istio_mesh import PAATA_REGISTRATION_PREFIX
+from paasta_tools.kubernetes_tools import registration_prefixed
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_service
 from paasta_tools.setup_istio_mesh import setup_unified_service
 from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
@@ -26,7 +26,7 @@ def test_setup_kube_service():
         == sanitized_service_name
     )
     assert mock_client.core.create_namespaced_service.call_args[0][1].spec.selector == {
-        f"{PAATA_REGISTRATION_PREFIX}/{sanitized_service_name}": "true"
+        registration_prefixed(sanitized_service_name): "true"
     }
 
 

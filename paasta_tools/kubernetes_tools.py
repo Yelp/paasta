@@ -2446,6 +2446,10 @@ def paasta_prefixed(attribute: str,) -> str:
         return PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
+def registration_prefixed(namespace: str) -> str:
+    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}"
+
+
 def get_nodes_grouped_by_attribute(
     nodes: Sequence[V1Node], attribute: str
 ) -> Mapping[str, Sequence[V1Node]]:

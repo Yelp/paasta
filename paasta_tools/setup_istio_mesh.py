@@ -34,6 +34,7 @@ from mypy_extensions import TypedDict
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import registration_prefixed
 
 
 log = logging.getLogger(__name__)
@@ -41,22 +42,12 @@ log = logging.getLogger(__name__)
 UNIFIED_K8S_SVC_NAME = "paasta-routing"
 UNIFIED_SVC_PORT = 1337
 PAASTA_SVC_PORT = 8888
-PAATA_REGISTRATION_PREFIX = "registrations.paasta.yelp.com"
-PAASTA_SERVICE_FILE = "/nail/etc/"
 PAASTA_NAMESPACE = "paasta"
 
 KubeSvcLabels = TypedDict(
     "KubeSvcLabels",
     {"paasta.yelp.com/owner": str, "paasta.yelp.com/unified_service": str},
 )
-
-
-class ErrorCreatingUnifiedService(Exception):
-    pass
-
-
-class ErrorGettingServiceList(Exception):
-    pass
 
 
 def parse_args() -> argparse.Namespace:
@@ -109,7 +100,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
         "paasta", label_selector=label_selector
     )
     if not service_objects:
-        raise ErrorGettingServiceList("Error retrieving services list from k8s api")
+        raise RuntimeError("Error retrieving services list from k8s api")
 
     return {item.metadata.name for item in service_objects.items}
 
@@ -182,7 +173,7 @@ def setup_paasta_namespace_service(
         }
         service_meta = k8s.V1ObjectMeta(name=service, labels=service_labels)
         service_spec = k8s.V1ServiceSpec(
-            selector={f"{PAATA_REGISTRATION_PREFIX}/{namespace}": "true"},
+            selector={registration_prefixed(namespace): "true"},
             ports=[
                 k8s.V1ServicePort(name="http", port=PAASTA_SVC_PORT, protocol="TCP")
             ],
