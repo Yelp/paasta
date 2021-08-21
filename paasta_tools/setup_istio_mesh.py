@@ -108,30 +108,21 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
 def setup_unified_service(
     kube_client: KubeClient, port_list: AbstractSet
 ) -> k8s.V1Service:
-
     # Add port 1337 for envoy unified listener.
     # Clients can connect to this listenner and set x-yelp-svc header for routing
-    ports = [
-        k8s.V1ServicePort(
-            name=f"p{UNIFIED_SVC_PORT}",
-            port=UNIFIED_SVC_PORT,
-            protocol="TCP",
-            target_port=PAASTA_SVC_PORT,
-            app_protocol="http",
-        )
-    ]
 
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
-    for port in port_list:
-        port_spec = k8s.V1ServicePort(
+    ports = [
+        k8s.V1ServicePort(
             name=f"p{port}",
             port=port,
             protocol="TCP",
             target_port=PAASTA_SVC_PORT,
             app_protocol="http",
         )
-        ports.append(port_spec)
+        for port in [1337, *port_list]
+    ]
 
     service_labels: KubeSvcLabels = {
         "paasta.yelp.com/owner": "istio",
