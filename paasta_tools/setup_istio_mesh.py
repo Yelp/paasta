@@ -26,7 +26,7 @@ import hashlib
 import json
 import logging
 import sys
-from typing import AbstractSet, List
+from typing import List
 from typing import Mapping
 from typing import Set
 
@@ -106,9 +106,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     }
 
 
-def setup_unified_service(
-    kube_client: KubeClient, port_list: List
-) -> k8s.V1Service:
+def setup_unified_service(kube_client: KubeClient, port_list: List) -> k8s.V1Service:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
     # Add port 1337 for envoy unified listener.

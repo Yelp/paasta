@@ -1,8 +1,8 @@
 import mock
 
 from paasta_tools.kubernetes_tools import registration_prefixed
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.setup_istio_mesh import setup_paasta_namespace_service
+from paasta_tools.setup_istio_mesh import sanitise_kubernetes_service_name
+from paasta_tools.setup_istio_mesh import setup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import setup_unified_service
 from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
 
@@ -11,12 +11,11 @@ MOCK_PORT_NUMBER = 20508
 
 def test_setup_kube_service():
     mock_client = mock.Mock()
+    service_name = "compute-infra-test-service.main"
+    mock_paasta_namespaces = {service_name: {"port": 20508}}
+    sanitized_service_name = sanitise_kubernetes_service_name(service_name)
 
-    mock_paasta_namespaces = {"20508": "compute-infra-test-service"}
-
-    sanitized_service_name = sanitise_kubernetes_name(mock_paasta_namespaces["20508"])
-
-    setup_paasta_namespace_service(
+    setup_paasta_namespace_services(
         kube_client=mock_client, paasta_namespaces=mock_paasta_namespaces
     )
 
@@ -26,7 +25,7 @@ def test_setup_kube_service():
         == sanitized_service_name
     )
     assert mock_client.core.create_namespaced_service.call_args[0][1].spec.selector == {
-        registration_prefixed(sanitized_service_name): "true"
+        registration_prefixed(service_name): "true"
     }
 
 
