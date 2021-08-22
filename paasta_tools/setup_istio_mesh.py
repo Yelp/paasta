@@ -26,7 +26,7 @@ import hashlib
 import json
 import logging
 import sys
-from typing import AbstractSet
+from typing import AbstractSet, List
 from typing import Mapping
 from typing import Set
 
@@ -78,13 +78,9 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def build_port_namespace_mapping(file_path: str) -> Mapping:
-    paasta_namespaces = {}
+def load_smartstack_namespaces(file_path: str) -> Mapping:
     with open(file_path) as service_file:
-        smartstack_namespaces = json.load(service_file)
-        for namespace, endpoint in smartstack_namespaces.items():
-            paasta_namespaces[endpoint["port"]] = namespace
-    return paasta_namespaces
+        return json.load(service_file)
 
 
 def sanitise_kubernetes_service_name(name: str) -> str:
@@ -111,13 +107,12 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
 
 
 def setup_unified_service(
-    kube_client: KubeClient, port_list: AbstractSet
+    kube_client: KubeClient, port_list: List
 ) -> k8s.V1Service:
-    # Add port 1337 for envoy unified listener.
-    # Clients can connect to this listenner and set x-yelp-svc header for routing
-
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
+    # Add port 1337 for envoy unified listener.
+    # Clients can connect to this listenner and set x-yelp-svc header for routing
     ports = [
         k8s.V1ServicePort(
             name=f"p{port}",
@@ -135,7 +130,7 @@ def setup_unified_service(
     return kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
 
 
-def setup_paasta_namespace_service(
+def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: Mapping,
     existing_kube_services_names: Set[str] = set(),
@@ -144,7 +139,7 @@ def setup_paasta_namespace_service(
     api_updates = 0
     status = True
 
-    for namespace in paasta_namespaces.values():
+    for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
         if rate_limit > 0 and api_updates >= rate_limit:
             log.info(
@@ -183,18 +178,19 @@ def setup_kube_services(
 ) -> bool:
     existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
 
-    paasta_namespaces: Mapping = build_port_namespace_mapping(file_path)
+    namespaces = load_smartstack_namespaces(file_path)
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
         try:
             setup_unified_service(
-                kube_client=kube_client, port_list=paasta_namespaces.keys()
+                kube_client=kube_client,
+                port_list=sorted(val["port"] for val in namespaces.values()),
             )
         except Exception as err:
             log.error(f"{err} while setting up unified service")
             return False
 
-    return setup_paasta_namespace_service(
-        kube_client, paasta_namespaces, existing_kube_services_names, rate_limit
+    return setup_paasta_namespace_services(
+        kube_client, namespaces.keys(), existing_kube_services_names, rate_limit
     )
 
 
