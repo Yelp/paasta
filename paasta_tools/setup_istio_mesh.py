@@ -26,6 +26,7 @@ import hashlib
 import json
 import logging
 import sys
+from typing import AbstractSet
 from typing import List
 from typing import Mapping
 from typing import Set
@@ -130,7 +131,7 @@ def setup_unified_service(kube_client: KubeClient, port_list: List) -> k8s.V1Ser
 
 def setup_paasta_namespace_services(
     kube_client: KubeClient,
-    paasta_namespaces: Mapping,
+    paasta_namespaces: AbstractSet,
     existing_kube_services_names: Set[str] = set(),
     rate_limit: int = 0,
 ) -> bool:
