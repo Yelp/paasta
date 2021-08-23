@@ -1906,6 +1906,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_polling_interval: float
     mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
+    mark_for_deployment_should_ping_for_unhealthy_pods: bool
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
@@ -2594,6 +2595,11 @@ class SystemPaastaConfig:
     def get_mark_for_deployment_default_time_before_first_diagnosis(self) -> float:
         return self.config_dict.get(
             "mark_for_deployment_default_default_time_before_first_diagnosis", 300
+        )
+
+    def get_mark_for_deployment_should_ping_for_unhealthy_pods(self) -> bool:
+        return self.config_dict.get(
+            "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
 
