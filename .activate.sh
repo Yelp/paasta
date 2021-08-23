@@ -1,1 +1,1 @@
-.tox/py36-linux/bin/activate
+.tox/py37-linux/bin/activate
