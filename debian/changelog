@@ -1,3 +1,12 @@
+paasta-tools (0.103.1) xenial; urgency=medium
+
+  * 0.103.1 tagged with 'make release'
+    Commit: Merge pull request #3180 from Yelp/jfong/PAASTA-17447-paasta-
+    logs-instance-match  PAASTA-17447: Fix paasta logs to match correct
+    instance name
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 24 Aug 2021 12:53:39 -0700
+
 paasta-tools (0.103.0) xenial; urgency=medium
 
   * 0.103.0 tagged with 'make release'
