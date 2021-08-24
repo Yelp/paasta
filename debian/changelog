@@ -1,3 +1,11 @@
+paasta-tools (0.104.0) xenial; urgency=medium
+
+  * 0.104.0 tagged with 'make release'
+    Commit: Merge pull request #3171 from Yelp/u/kawaiwan/mfd-on-new-
+    endpoint  Make m-f-d poll bounce status endpoint for progress
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 24 Aug 2021 13:27:15 -0700
+
 paasta-tools (0.103.1) xenial; urgency=medium
 
   * 0.103.1 tagged with 'make release'
