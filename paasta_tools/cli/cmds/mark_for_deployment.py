@@ -1421,143 +1421,100 @@ def check_if_instance_is_done(
             )
             return False
 
-    log.debug(
-        "Inspecting the deployment status of {}.{} on {}".format(
-            service, instance, cluster
-        )
-    )
+    inst_str = f"{service}.{instance} in {cluster}"
+    log.debug(f"Inspecting the deployment status of {inst_str}")
+
+    status = None
     try:
-        status = None
-        status = api.service.status_instance(
-            service=service,
-            instance=instance,
-            include_smartstack=False,
-            include_envoy=False,
-            include_mesos=False,
-        )
+        status = api.service.bounce_status_instance(service=service, instance=instance)
     except api.api_error as e:
-        if e.status == 404:
+        if e.status == 404:  # non-existent instance
             # TODO(PAASTA-17290): just print the error message so that we
             # can distinguish between sources of 404s
             log.warning(
                 "Can't get status for instance {}, service {} in "
                 "cluster {}. This is normally because it is a new "
-                "service that hasn't been deployed by PaaSTA yet".format(
+                "service that hasn't been deployed by PaaSTA yet.".format(
                     instance, service, cluster
                 )
             )
-        else:
+        else:  # 500 - error talking to api
             log.warning(
                 "Error getting service status from PaaSTA API for "
                 f"{cluster}: {e.status} {e.reason}"
             )
 
-    long_running_status = None
-    if status:
-        if status.marathon:
-            long_running_status = status.marathon
-        if status.kubernetes:
-            long_running_status = status.kubernetes
-    if not status:
+        log.debug(f"No status for {inst_str}. Not deployed yet.")
+        return False
+
+    if not status:  # 204 - instance is not bounceable
         log.debug(
-            "No status for {}.{}, in {}. Not deployed yet.".format(
-                service, instance, cluster
+            f"{inst_str} is not a supported bounceable instance. "
+            "Only long-running instances running on Kubernetes are currently "
+            "supported. Continuing without watching."
+        )
+        return True
+
+    # Case: instance is stopped
+    if status.expected_instance_count == 0 or status.desired_state == "stop":
+        log.debug(f"{inst_str} is marked as stopped. Ignoring it.")
+        return True
+
+    short_git_sha = git_sha[:8]
+    active_shas = {g[:8] for g, c in status.active_shas}
+    if short_git_sha in active_shas:
+        non_desired_shas = active_shas.difference({short_git_sha})
+        # Case: bounce in-progress
+        if len(non_desired_shas) == 1:
+            (other_sha,) = non_desired_shas
+            print(
+                f"  {inst_str} is still bouncing, from {other_sha} to {short_git_sha}"
             )
+            return False
+
+        # Case: previous bounces not yet finished when this one was triggered
+        elif len(non_desired_shas) > 1:
+            print(
+                f"  {inst_str} is still bouncing to {short_git_sha}, but there are "
+                f"multiple other bouncing versions running: {non_desired_shas}"
+            )
+            return False
+    else:
+        # Case: bounce not yet started
+        print(
+            f"  {inst_str} hasn't started bouncing to {short_git_sha}; "
+            f"only the following versions are running: {active_shas}"
         )
         return False
-    elif not long_running_status:
-        log.debug(
-            "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
-                service, instance, cluster
-            )
-        )
-        return True
-    elif (
-        long_running_status.expected_instance_count == 0
-        or long_running_status.desired_state == "stop"
-    ):
-        log.debug(
-            "{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                service, status.instance, cluster
-            )
-        )
-        return True
-    else:
-        if long_running_status.app_count != 1:
-            print(
-                "  {}.{} on {} is still bouncing, {} versions "
-                "running".format(
-                    service, status.instance, cluster, long_running_status.app_count,
-                )
-            )
-            return False
-        if not git_sha.startswith(status.git_sha):
-            print(
-                "  {}.{} on {} doesn't have the right sha yet: {}".format(
-                    service, instance, cluster, status.git_sha,
-                )
-            )
-            return False
-        if long_running_status.deploy_status not in [
-            "Running",
-            "Deploying",
-            "Waiting",
-        ]:
-            print(
-                "  {}.{} on {} isn't running yet: {}".format(
-                    service, instance, cluster, long_running_status.deploy_status,
-                )
-            )
-            return False
 
-        # The bounce margin factor defines what proportion of instances we need to be "safe",
-        # so consider it scaled up "enough" if we have that proportion of instances ready.
-        required_instance_count = int(
-            math.ceil(
-                instance_config.get_bounce_margin_factor()
-                * long_running_status.expected_instance_count
-            )
-        )
-        if required_instance_count > long_running_status.running_instance_count:
-            print(
-                "  {}.{} on {} isn't scaled up yet, "
-                "has {} out of {} required instances (out of a total of {})".format(
-                    service,
-                    instance,
-                    cluster,
-                    long_running_status.running_instance_count,
-                    required_instance_count,
-                    long_running_status.expected_instance_count,
-                )
-            )
-            return False
-
-        # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
-        if long_running_status.active_shas is not None:
-            active_git_shas = {g for g, c in long_running_status.active_shas}
-
-            if git_sha not in active_git_shas:
-                print(f"  {service}.{instance} on {cluster} not yet running {git_sha}.")
-                return False
-
-            # theoretically this case should be caught by the check on long_running_status.app_count
-            if len(active_git_shas) > 1:
-                print(
-                    f"{service}.{instance} on {cluster} is running multiple versions: {active_git_shas}"
-                )
-                return False
-
+    # Case: instance is in not running
+    if status.deploy_status not in {"Running", "Deploying", "Waiting"}:
         print(
-            "Complete: {}.{} on {} looks 100% deployed at {} "
-            "instances on {}".format(
-                service,
-                instance,
-                cluster,
-                long_running_status.running_instance_count,
-                status.git_sha,
-            )
+            f"  {inst_str} isn't running yet; it is in the state: {status.deploy_status}"
         )
-        return True
+        return False
+
+    # Case: not enough replicas are up for the instance to be considered bounced
+    # The bounce margin factor defines what proportion of instances we need to be "safe",
+    # so consider it scaled up "enough" if we have that proportion of instances ready.
+    required_instance_count = int(
+        math.ceil(
+            instance_config.get_bounce_margin_factor() * status.expected_instance_count
+        )
+    )
+    if required_instance_count > status.running_instance_count:
+        print(
+            f"  {inst_str} has only {status.running_instance_count} replicas up, "
+            f"below the required minimum of {required_instance_count}"
+        )
+        return False
+
+    # Case: completed
+    print(
+        f"Complete: {service}.{instance} on {cluster} is 100% deployed at "
+        f"{status.running_instance_count} replicas on {status.active_shas[0][0]}"
+    )
+    return True
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
