@@ -48,6 +48,7 @@ from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
@@ -982,6 +983,69 @@ def mock_kafka_status() -> Mapping[str, Any]:
     )
 
 
+@pytest.fixture
+def mock_flink_status() -> Mapping[str, Any]:
+    return defaultdict(
+        metadata=dict(
+            annotations={
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.cluster.paasta:31080/app-9bf849b89/"
+            },
+            labels={"paasta.yelp.com/config_sha": "fakeconfig00000"},
+        ),
+        status=dict(
+            config={
+                "flink-version": "1.11.3",
+                "flink-revision": "2020-12-12T12:13:25+01:00",
+            },
+            state="running",
+            pod_status=[
+                {
+                    "name": "app-9bf849b89-jobmanager-54f69dbfc9-cz52m",
+                    "phase": "Runinng",
+                    "container_state": "Running",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+                {
+                    "name": "app-9bf849b89-supervisor-f2tgd",
+                    "phase": "runinng",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+                {
+                    "name": "app-9bf849b89-taskmanager-6c99d7c6dd-44rvd",
+                    "phase": "runinng",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+            ],
+            overview={
+                "jobs-running": 1,
+                "jobs-finished": 0,
+                "jobs-failed": 0,
+                "jobs-cancelled": 0,
+                "taskmanagers": 1,
+                "slots-available": 3,
+                "slots-total": 4,
+            },
+            jobs=[
+                {
+                    "jid": "15ee4f8db6e9171489fae6f2178dbd54",
+                    "name": "test_flink_job",
+                    "state": "RUNNING",
+                    "start-time": 1629821714,
+                }
+            ],
+        ),
+    )
+
+
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
 def test_paasta_status_on_api_endpoint_marathon(
     mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
@@ -1755,6 +1819,66 @@ class TestPrintKafkaStatus:
             f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
+
+
+class TestPrintFlinkStatus:
+    def test_error(self, mock_flink_status):
+        mock_flink_status["status"] = None
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_Cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+
+    def test_successful_return_value(self, mock_flink_status):
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            flink=mock_flink_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+    # @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    # def test_output(
+    #     self, mock_naturaltime, mock_kafka_status,
+    # ):
+    #     mock_naturaltime.return_value = "one day ago"
+    #     output = []
+    #     print_kafka_status(
+    #         cluster="fake_cluster",
+    #         service="fake_service",
+    #         instance="fake_instance",
+    #         output=output,
+    #         kafka_status=mock_kafka_status,
+    #         verbose=0,
+    #     )
+
+    #     status = mock_kafka_status["status"]
+    #     expected_output = [
+    #         f"    Kafka View Url: {status['kafka_view_url']}",
+    #         f"    Zookeeper: {status['zookeeper']}",
+    #         f"    State: testing",
+    #         f"    Ready: {str(status['cluster_ready']).lower()}",
+    #         f"    Health: {PaastaColors.red('unhealthy')}",
+    #         f"     Reason: {status['health']['message']}",
+    #         f"     Offline Partitions: {status['health']['offline_partitions']}",
+    #         f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
+    #         f"    Brokers:",
+    #         f"     Id  Phase    Started",
+    #         f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+    #         f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
+    #     ]
+    #     assert expected_output == output
 
 
 def _formatted_table_to_dict(formatted_table):
