@@ -52,6 +52,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import get_flink_job_exceptions
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -1023,6 +1024,9 @@ def print_flink_status(
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
+    # get custom resource name to use later in getting exceptions
+    cr_name = ""
+
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -1035,6 +1039,9 @@ def print_flink_status(
             if pod_evicted_count > 0
             else f"{pod_evicted_count}"
         )
+        if "jobmanager" in pod["name"]:
+            cr_name = pod["name"].split("-jobmanager-")[0]
+
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
@@ -1135,8 +1142,8 @@ def print_flink_status(
             )
             break
 
-        if verbose > 1 and job_id in status["exceptions"]:
-            exceptions = status["exceptions"][job_id]
+        if verbose > 1:
+            exceptions = get_flink_job_exceptions(cr_name, cluster, job_id)
             root_exception = exceptions["root-exception"]
             if root_exception is not None:
                 output.append(f"        Exception: {root_exception}")
@@ -1148,7 +1155,7 @@ def print_flink_status(
                     )
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
-    if verbose == 1 and status["exceptions"]:
+    if verbose == 1:
         output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
