@@ -988,9 +988,9 @@ def mock_flink_status() -> Mapping[str, Any]:
     return defaultdict(
         metadata=dict(
             annotations={
-                "flink.yelp.com/dashboard_url": "http://flink.k8s.cluster.paasta:31080/app-9bf849b89/"
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.fake_cluster.paasta:31080/app-9bf849b89"
             },
-            labels={"paasta.yelp.com/config_sha": "fakeconfig00000"},
+            labels={"paasta.yelp.com/config_sha": "config00000"},
         ),
         status=dict(
             config={
@@ -1001,7 +1001,7 @@ def mock_flink_status() -> Mapping[str, Any]:
             pod_status=[
                 {
                     "name": "app-9bf849b89-jobmanager-54f69dbfc9-cz52m",
-                    "phase": "Runinng",
+                    "phase": "Running",
                     "container_state": "Running",
                     "container_state_reason": "",
                     "host": "fake_host",
@@ -1010,7 +1010,8 @@ def mock_flink_status() -> Mapping[str, Any]:
                 },
                 {
                     "name": "app-9bf849b89-supervisor-f2tgd",
-                    "phase": "runinng",
+                    "phase": "Running",
+                    "container_state": "Running",
                     "container_state_reason": "",
                     "host": "fake_host",
                     "deployed_timestamp": "2021-08-25T07:20:52Z",
@@ -1018,7 +1019,8 @@ def mock_flink_status() -> Mapping[str, Any]:
                 },
                 {
                     "name": "app-9bf849b89-taskmanager-6c99d7c6dd-44rvd",
-                    "phase": "runinng",
+                    "phase": "Running",
+                    "container_state": "Running",
                     "container_state_reason": "",
                     "host": "fake_host",
                     "deployed_timestamp": "2021-08-25T07:20:52Z",
@@ -1848,37 +1850,36 @@ class TestPrintFlinkStatus:
         )
         assert return_value == 0
 
-    # @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    # def test_output(
-    #     self, mock_naturaltime, mock_kafka_status,
-    # ):
-    #     mock_naturaltime.return_value = "one day ago"
-    #     output = []
-    #     print_kafka_status(
-    #         cluster="fake_cluster",
-    #         service="fake_service",
-    #         instance="fake_instance",
-    #         output=output,
-    #         kafka_status=mock_kafka_status,
-    #         verbose=0,
-    #     )
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=0,
+        )
 
-    #     status = mock_kafka_status["status"]
-    #     expected_output = [
-    #         f"    Kafka View Url: {status['kafka_view_url']}",
-    #         f"    Zookeeper: {status['zookeeper']}",
-    #         f"    State: testing",
-    #         f"    Ready: {str(status['cluster_ready']).lower()}",
-    #         f"    Health: {PaastaColors.red('unhealthy')}",
-    #         f"     Reason: {status['health']['message']}",
-    #         f"     Offline Partitions: {status['health']['offline_partitions']}",
-    #         f"     Under Replicated Partitions: {status['health']['under_replicated_partitions']}",
-    #         f"    Brokers:",
-    #         f"     Id  Phase    Started",
-    #         f"     0   {PaastaColors.green('Running')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
-    #         f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
-    #     ]
-    #     assert expected_output == output
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        expected_output = [
+            f"    Config SHA: 00000",
+            f"    Flink version: {status['config']['flink-version']}",
+            f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Started",
+            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
+        ]
+        assert expected_output == output
 
 
 def _formatted_table_to_dict(formatted_table):
