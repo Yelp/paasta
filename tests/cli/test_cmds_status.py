@@ -29,6 +29,7 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
 from paasta_tools.cli.cmds.status import create_autoscaling_info_table
@@ -1851,7 +1852,7 @@ class TestPrintFlinkStatus:
         assert return_value == 0
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    def test_output(
+    def test_output_0_verbose(
         self, mock_naturaltime, mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
@@ -1879,6 +1880,39 @@ class TestPrintFlinkStatus:
             f"      Job Name       State       Started",
             f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
         ]
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output_1_verbose(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        expected_output = [
+            f"    Config SHA: 00000",
+            f"    Flink version: {status['config']['flink-version']} {status['config']['flink-revision']}",
+            f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Started",
+            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
+        ]
+        append_pod_status(status["pod_status"], expected_output)
+        expected_output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
         assert expected_output == output
 
 
