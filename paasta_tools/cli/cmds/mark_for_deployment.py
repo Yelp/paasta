@@ -673,6 +673,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         else:
             self.update_slack_thread(
                 f"Marked `{self.commit[:8]}` for {self.deploy_group}."
+                + (
+                    "\n" + self.get_authors()
+                    if self.deploy_group_is_set_to_notify("notify_after_mark")
+                    else ""
+                )
             )
             log.debug("triggering mfd_succeeded")
             self.trigger("mfd_succeeded")
@@ -999,6 +1004,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         else:
             self.update_slack_thread(
                 f"Marked `{self.old_git_sha[:8]}` for {self.deploy_group}."
+                + (
+                    "\n" + self.get_authors()
+                    if self.deploy_group_is_set_to_notify("notify_after_mark")
+                    else ""
+                )
             )
 
             self.trigger("mfd_succeeded")
