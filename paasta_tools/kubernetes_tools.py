@@ -1823,11 +1823,7 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
 
 def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
-    try:
-        pods = get_k8s_pods()
-    except requests.exceptions.ConnectionError:
-        log.debug("Failed to connect to the kublet when trying to get pods")
-        return []
+    pods = get_k8s_pods()
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"
@@ -2327,6 +2323,11 @@ is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
 
 
+def is_pod_completed(pod: V1Pod) -> bool:
+    condition = get_pod_condition(pod, "ContainersReady")
+    return condition.reason == "PodCompleted" if condition else False
+
+
 def is_pod_scheduled(pod: V1Pod) -> bool:
     scheduled_condition = get_pod_condition(pod, "PodScheduled")
     return scheduled_condition.status == "True" if scheduled_condition else False
@@ -2443,6 +2444,10 @@ def paasta_prefixed(attribute: str,) -> str:
         return attribute
     else:
         return PAASTA_ATTRIBUTE_PREFIX + attribute
+
+
+def registration_prefixed(namespace: str) -> str:
+    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}"
 
 
 def get_nodes_grouped_by_attribute(

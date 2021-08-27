@@ -28,12 +28,10 @@ import socket
 import sys
 import time
 import traceback
-from collections import defaultdict
-from threading import Event
 from threading import Thread
 from typing import Any
+from typing import Callable
 from typing import Collection
-from typing import DefaultDict
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -55,7 +53,9 @@ from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
+from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -69,6 +69,8 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
+from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -569,11 +571,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
 
-        # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
-        # and quickly launch wait_for_deployment for another commit without causing a race condition.
-        self.wait_for_deployment_green_lights: DefaultDict[str, Event] = defaultdict(
-            Event
-        )
+        # Keep track of each wait_for_deployment task so we can cancel it.
+        self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -985,7 +984,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.schedule_paasta_status_reminder()
 
     def on_exit_deploying(self) -> None:
-        self.wait_for_deployment_green_lights[self.commit].clear()
+        self.stop_waiting_for_deployment(self.commit)
         self.cancel_paasta_status_reminder()
 
     def on_enter_start_rollback(self) -> None:
@@ -1023,7 +1022,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             thread.start()
 
     def on_exit_rolling_back(self) -> None:
-        self.wait_for_deployment_green_lights[self.old_git_sha].clear()
+        self.stop_waiting_for_deployment(self.old_git_sha)
 
     def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
@@ -1036,32 +1035,48 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy cancelled")
 
-    def do_wait_for_deployment(self, target_commit: str) -> None:
+    def stop_waiting_for_deployment(self, target_commit: str) -> None:
         try:
-            self.wait_for_deployment_green_lights[target_commit].set()
-            wait_for_deployment(
-                service=self.service,
-                deploy_group=self.deploy_group,
-                git_sha=target_commit,
-                soa_dir=self.soa_dir,
-                timeout=self.timeout,
-                green_light=self.wait_for_deployment_green_lights[target_commit],
-                progress=self.progress,
-                polling_interval=self.polling_interval,
-                diagnosis_interval=self.diagnosis_interval,
-                time_before_first_diagnosis=self.time_before_first_diagnosis,
+            self.wait_for_deployment_tasks[target_commit].cancel()
+            del self.wait_for_deployment_tasks[target_commit]
+        except (KeyError, asyncio.InvalidStateError):
+            pass
+
+    @a_sync.to_blocking
+    async def do_wait_for_deployment(self, target_commit: str) -> None:
+        try:
+            self.stop_waiting_for_deployment(target_commit)
+            wait_for_deployment_task = asyncio.create_task(
+                wait_for_deployment(
+                    service=self.service,
+                    deploy_group=self.deploy_group,
+                    git_sha=target_commit,
+                    soa_dir=self.soa_dir,
+                    timeout=self.timeout,
+                    progress=self.progress,
+                    polling_interval=self.polling_interval,
+                    diagnosis_interval=self.diagnosis_interval,
+                    time_before_first_diagnosis=self.time_before_first_diagnosis,
+                    notify_fn=self.ping_authors,
+                )
             )
+            self.wait_for_deployment_tasks[target_commit] = wait_for_deployment_task
+            await wait_for_deployment_task
             if self.deploy_group_is_set_to_notify("notify_after_wait"):
                 self.ping_authors(f"Finished waiting for deployment of {target_commit}")
+            else:
+                self.update_slack_thread(
+                    f"Finished waiting for deployment of {target_commit}"
+                )
             self.trigger("deploy_finished")
 
         except (KeyboardInterrupt, TimeoutError):
-            if self.wait_for_deployment_green_lights[target_commit].is_set():
-                # When we manually trigger a rollback, we clear the green_light, which causes wait_for_deployment to
-                # raise KeyboardInterrupt. Don't trigger deploy_cancelled in this case.
-                self.trigger("deploy_cancelled")
+            self.trigger("deploy_cancelled")
         except NoSuchCluster:
             self.trigger("deploy_errored")
+        except asyncio.CancelledError:
+            # Don't trigger deploy_errored when someone calls stop_waiting_for_deployment.
+            pass
         except Exception:
             log.error("Caught exception in wait_for_deployment:")
             log.error(traceback.format_exc())
@@ -1194,6 +1209,8 @@ async def wait_until_instance_is_done(
     polling_interval: float,
     diagnosis_interval: float,
     time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Tuple[str, str]:
     loop = asyncio.get_running_loop()
     diagnosis_task = asyncio.create_task(
@@ -1206,6 +1223,8 @@ async def wait_until_instance_is_done(
             instance_config,
             diagnosis_interval,
             time_before_first_diagnosis,
+            should_ping_for_unhealthy_pods,
+            notify_fn,
         )
     )
     try:
@@ -1238,6 +1257,8 @@ async def periodically_diagnose_instance(
     instance_config: LongRunningServiceConfig,
     diagnosis_interval: float,
     time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> None:
     await asyncio.sleep(time_before_first_diagnosis)
     loop = asyncio.get_running_loop()
@@ -1252,6 +1273,8 @@ async def periodically_diagnose_instance(
                     cluster,
                     git_sha,
                     instance_config,
+                    should_ping_for_unhealthy_pods,
+                    notify_fn,
                 ),
             )
         except asyncio.CancelledError:
@@ -1268,6 +1291,8 @@ def diagnose_why_instance_is_stuck(
     cluster: str,
     git_sha: str,
     instance_config: LongRunningServiceConfig,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> None:
     api = client.get_paasta_oapi_client(cluster=cluster)
     try:
@@ -1303,6 +1328,83 @@ def diagnose_why_instance_is_stuck(
             print(f"    {line}")
     print("")
 
+    if should_ping_for_unhealthy_pods and notify_fn:
+        maybe_ping_for_unhealthy_pods(
+            service, instance, cluster, git_sha, status, notify_fn
+        )
+
+
+already_pinged = False
+
+
+def maybe_ping_for_unhealthy_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    status: InstanceStatusKubernetesV2,
+    notify_fn: Callable[[str], None],
+) -> None:
+    global already_pinged
+
+    if not already_pinged:
+        # there can be multiple current versions, e.g. if someone changes yelpsoa-configs during a bounce.
+        current_versions = [
+            v for v in status.kubernetes_v2.versions if v.git_sha == git_sha
+        ]
+        pingable_pods = [
+            pod
+            for version in current_versions
+            for pod in version.pods
+            if should_ping_for_pod(pod)
+        ]
+        if pingable_pods:
+            already_pinged = True
+            ping_for_pods(service, instance, cluster, pingable_pods, notify_fn)
+
+
+def should_ping_for_pod(pod: KubernetesPodV2) -> bool:
+    return recent_container_restart(get_main_container(pod))
+
+
+def ping_for_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    pods: List[KubernetesPodV2],
+    notify_fn: Callable[[str], None],
+) -> None:
+    pods_by_reason: Dict[str, List[KubernetesPodV2]] = {}
+    for pod in pods:
+        pods_by_reason.setdefault(get_main_container(pod).reason, []).append(pod)
+
+    for reason, pods_with_reason in pods_by_reason.items():
+        explanation = {
+            "Error": "crashed on startup",
+            "OOMKilled": "run out of memory",
+            "CrashLoopBackOff": "crashed on startup several times, and Kubernetes is backing off restarting them",
+        }.get(reason, f"restarted ({reason})")
+
+        status_tip = f"Take a look at the output of your unhealthy pods with `paasta status -s {service} -i {instance} -c {cluster} -vv` (more -v for more output.)"
+
+        tip = {
+            "Error": (
+                f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}"
+            ),
+            "CrashLoopBackOff": f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}",
+            "OOMKilled": " ".join(
+                (
+                    "This probably means your new version of code requires more memory than the old version."
+                    "You may want to increase memory in yelpsoa-configs or roll back."
+                    "Ask #paasta if you need help with this.",
+                )
+            ),
+        }.get(reason, "")
+
+        notify_fn(
+            f"Some of the replicas of your new version have {explanation}: {', '.join(f'`{p.name}`' for p in pods_with_reason)}\n{tip}"
+        )
+
 
 def check_if_instance_is_done(
     service: str,
@@ -1321,143 +1423,100 @@ def check_if_instance_is_done(
             )
             return False
 
-    log.debug(
-        "Inspecting the deployment status of {}.{} on {}".format(
-            service, instance, cluster
-        )
-    )
+    inst_str = f"{service}.{instance} in {cluster}"
+    log.debug(f"Inspecting the deployment status of {inst_str}")
+
+    status = None
     try:
-        status = None
-        status = api.service.status_instance(
-            service=service,
-            instance=instance,
-            include_smartstack=False,
-            include_envoy=False,
-            include_mesos=False,
-        )
+        status = api.service.bounce_status_instance(service=service, instance=instance)
     except api.api_error as e:
-        if e.status == 404:
+        if e.status == 404:  # non-existent instance
             # TODO(PAASTA-17290): just print the error message so that we
             # can distinguish between sources of 404s
             log.warning(
                 "Can't get status for instance {}, service {} in "
                 "cluster {}. This is normally because it is a new "
-                "service that hasn't been deployed by PaaSTA yet".format(
+                "service that hasn't been deployed by PaaSTA yet.".format(
                     instance, service, cluster
                 )
             )
-        else:
+        else:  # 500 - error talking to api
             log.warning(
                 "Error getting service status from PaaSTA API for "
                 f"{cluster}: {e.status} {e.reason}"
             )
 
-    long_running_status = None
-    if status:
-        if status.marathon:
-            long_running_status = status.marathon
-        if status.kubernetes:
-            long_running_status = status.kubernetes
-    if not status:
+        log.debug(f"No status for {inst_str}. Not deployed yet.")
+        return False
+
+    if not status:  # 204 - instance is not bounceable
         log.debug(
-            "No status for {}.{}, in {}. Not deployed yet.".format(
-                service, instance, cluster
+            f"{inst_str} is not a supported bounceable instance. "
+            "Only long-running instances running on Kubernetes are currently "
+            "supported. Continuing without watching."
+        )
+        return True
+
+    # Case: instance is stopped
+    if status.expected_instance_count == 0 or status.desired_state == "stop":
+        log.debug(f"{inst_str} is marked as stopped. Ignoring it.")
+        return True
+
+    short_git_sha = git_sha[:8]
+    active_shas = {g[:8] for g, c in status.active_shas}
+    if short_git_sha in active_shas:
+        non_desired_shas = active_shas.difference({short_git_sha})
+        # Case: bounce in-progress
+        if len(non_desired_shas) == 1:
+            (other_sha,) = non_desired_shas
+            print(
+                f"  {inst_str} is still bouncing, from {other_sha} to {short_git_sha}"
             )
+            return False
+
+        # Case: previous bounces not yet finished when this one was triggered
+        elif len(non_desired_shas) > 1:
+            print(
+                f"  {inst_str} is still bouncing to {short_git_sha}, but there are "
+                f"multiple other bouncing versions running: {non_desired_shas}"
+            )
+            return False
+    else:
+        # Case: bounce not yet started
+        print(
+            f"  {inst_str} hasn't started bouncing to {short_git_sha}; "
+            f"only the following versions are running: {active_shas}"
         )
         return False
-    elif not long_running_status:
-        log.debug(
-            "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
-                service, instance, cluster
-            )
-        )
-        return True
-    elif (
-        long_running_status.expected_instance_count == 0
-        or long_running_status.desired_state == "stop"
-    ):
-        log.debug(
-            "{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                service, status.instance, cluster
-            )
-        )
-        return True
-    else:
-        if long_running_status.app_count != 1:
-            print(
-                "  {}.{} on {} is still bouncing, {} versions "
-                "running".format(
-                    service, status.instance, cluster, long_running_status.app_count,
-                )
-            )
-            return False
-        if not git_sha.startswith(status.git_sha):
-            print(
-                "  {}.{} on {} doesn't have the right sha yet: {}".format(
-                    service, instance, cluster, status.git_sha,
-                )
-            )
-            return False
-        if long_running_status.deploy_status not in [
-            "Running",
-            "Deploying",
-            "Waiting",
-        ]:
-            print(
-                "  {}.{} on {} isn't running yet: {}".format(
-                    service, instance, cluster, long_running_status.deploy_status,
-                )
-            )
-            return False
 
-        # The bounce margin factor defines what proportion of instances we need to be "safe",
-        # so consider it scaled up "enough" if we have that proportion of instances ready.
-        required_instance_count = int(
-            math.ceil(
-                instance_config.get_bounce_margin_factor()
-                * long_running_status.expected_instance_count
-            )
-        )
-        if required_instance_count > long_running_status.running_instance_count:
-            print(
-                "  {}.{} on {} isn't scaled up yet, "
-                "has {} out of {} required instances (out of a total of {})".format(
-                    service,
-                    instance,
-                    cluster,
-                    long_running_status.running_instance_count,
-                    required_instance_count,
-                    long_running_status.expected_instance_count,
-                )
-            )
-            return False
-
-        # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
-        if long_running_status.active_shas is not None:
-            active_git_shas = {g for g, c in long_running_status.active_shas}
-
-            if git_sha not in active_git_shas:
-                print(f"  {service}.{instance} on {cluster} not yet running {git_sha}.")
-                return False
-
-            # theoretically this case should be caught by the check on long_running_status.app_count
-            if len(active_git_shas) > 1:
-                print(
-                    f"{service}.{instance} on {cluster} is running multiple versions: {active_git_shas}"
-                )
-                return False
-
+    # Case: instance is in not running
+    if status.deploy_status not in {"Running", "Deploying", "Waiting"}:
         print(
-            "Complete: {}.{} on {} looks 100% deployed at {} "
-            "instances on {}".format(
-                service,
-                instance,
-                cluster,
-                long_running_status.running_instance_count,
-                status.git_sha,
-            )
+            f"  {inst_str} isn't running yet; it is in the state: {status.deploy_status}"
         )
-        return True
+        return False
+
+    # Case: not enough replicas are up for the instance to be considered bounced
+    # The bounce margin factor defines what proportion of instances we need to be "safe",
+    # so consider it scaled up "enough" if we have that proportion of instances ready.
+    required_instance_count = int(
+        math.ceil(
+            instance_config.get_bounce_margin_factor() * status.expected_instance_count
+        )
+    )
+    if required_instance_count > status.running_instance_count:
+        print(
+            f"  {inst_str} has only {status.running_instance_count} replicas up, "
+            f"below the required minimum of {required_instance_count}"
+        )
+        return False
+
+    # Case: completed
+    print(
+        f"Complete: {service}.{instance} on {cluster} is 100% deployed at "
+        f"{status.running_instance_count} replicas on {status.active_shas[0][0]}"
+    )
+    return True
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
@@ -1506,18 +1565,17 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
     return instance_configs_per_cluster
 
 
-@a_sync.to_blocking
 async def wait_for_deployment(
     service: str,
     deploy_group: str,
     git_sha: str,
     soa_dir: str,
     timeout: float,
-    green_light: Optional[Event] = None,
     progress: Optional[Progress] = None,
     polling_interval: float = None,
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
+    notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
     instance_configs_per_cluster: Dict[
         str, List[LongRunningServiceConfig]
@@ -1577,6 +1635,10 @@ async def wait_for_deployment(
                                 polling_interval=polling_interval,
                                 diagnosis_interval=diagnosis_interval,
                                 time_before_first_diagnosis=time_before_first_diagnosis,
+                                should_ping_for_unhealthy_pods=instance_config.get_should_ping_for_unhealthy_pods(
+                                    system_paasta_config.get_mark_for_deployment_should_ping_for_unhealthy_pods()
+                                ),
+                                notify_fn=notify_fn,
                             ),
                         )
                     )
@@ -1618,6 +1680,15 @@ async def wait_for_deployment(
                     level="event",
                 )
                 raise TimeoutError
+            except asyncio.CancelledError:
+                # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
+                for coro in instance_done_futures:
+                    coro.cancel()
+                    try:
+                        await coro
+                    except asyncio.CancelledError:
+                        pass
+                raise
             else:
                 sys.stdout.flush()
                 if progress is not None:

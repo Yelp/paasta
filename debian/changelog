@@ -1,3 +1,84 @@
+paasta-tools (0.105.0) xenial; urgency=medium
+
+  * 0.105.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/proxy_port_null"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Aug 2021 14:15:19 -0700
+
+paasta-tools (0.104.0) xenial; urgency=medium
+
+  * 0.104.0 tagged with 'make release'
+    Commit: Merge pull request #3171 from Yelp/u/kawaiwan/mfd-on-new-
+    endpoint  Make m-f-d poll bounce status endpoint for progress
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 24 Aug 2021 13:27:15 -0700
+
+paasta-tools (0.103.1) xenial; urgency=medium
+
+  * 0.103.1 tagged with 'make release'
+    Commit: Merge pull request #3180 from Yelp/jfong/PAASTA-17447-paasta-
+    logs-instance-match  PAASTA-17447: Fix paasta logs to match correct
+    instance name
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 24 Aug 2021 12:53:39 -0700
+
+paasta-tools (0.103.0) xenial; urgency=medium
+
+  * 0.103.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17416_ping_on_problem"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 23 Aug 2021 11:09:21 -0700
+
+paasta-tools (0.102.13) xenial; urgency=medium
+
+  * 0.102.13 tagged with 'make release'
+    Commit: Merge pull request #3174 from Yelp/gcoll_COREML-
+    2506_spark_run_k8s_master  Add new option to spark-run to choose
+    which cluster manager to use
+
+ -- Giulio Collura <gcoll@yelp.com>  Thu, 19 Aug 2021 11:44:31 -0700
+
+paasta-tools (0.102.12) xenial; urgency=medium
+
+  * 0.102.12 tagged with 'make release'
+    Commit: Released 0.102.12 via make release
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 19 Aug 2021 11:04:41 -0700
+
+paasta-tools (0.102.11) xenial; urgency=medium
+
+  * 0.102.11 tagged with 'make release'
+    Commit: Ignore CancelledError in do_wait_for_deployment, and wait
+    until all wait_until_instance_is_done tasks are fully cancelled
+    before tearing down the ThreadPoolExecutor.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 17 Aug 2021 11:25:07 -0700
+
+paasta-tools (0.102.10) xenial; urgency=medium
+
+  * 0.102.10 tagged with 'make release'
+    Commit: Merge branch
+    "u/krall/cant_trigger_deploy_finished_from_deployed"
+
+ -- Evan Krall <krall@yelp.com>  Mon, 16 Aug 2021 13:09:53 -0700
+
+paasta-tools (0.102.9) xenial; urgency=medium
+
+  * 0.102.9 tagged with 'make release'
+    Commit: Merge pull request #3175 from Yelp/u/mmb/PAASTA-17466  Stop
+    returning no services if kubelet down
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Mon, 16 Aug 2021 03:49:22 -0700
+
+paasta-tools (0.102.8) xenial; urgency=medium
+
+  * 0.102.8 tagged with 'make release'
+    Commit: Merge pull request #3173 from
+    Yelp/landon_remove_upper_pin_requests_cache  Remove upper pin on
+    requests-cache
+
+ -- Landon Sterk <landon@yelp.com>  Wed, 11 Aug 2021 16:01:10 -0700
+
 paasta-tools (0.102.7) xenial; urgency=medium
 
   * 0.102.7 tagged with 'make release'

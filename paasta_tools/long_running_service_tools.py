@@ -74,6 +74,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     replication_threshold: int
     bounce_start_deadline: float
     bounce_margin_factor: float
+    should_ping_for_unhealthy_pods: bool
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -117,10 +118,7 @@ class ServiceNamespaceConfig(dict):
         return self.get("discover", "region")
 
     def is_in_smartstack(self) -> bool:
-        if self.get("proxy_port") is not None:
-            return True
-        else:
-            return False
+        return "proxy_port" in self
 
 
 class LongRunningServiceConfig(InstanceConfig):
@@ -371,6 +369,9 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_bounce_margin_factor(self) -> float:
         return self.config_dict.get("bounce_margin_factor", 1.0)
+
+    def get_should_ping_for_unhealthy_pods(self, default: bool) -> bool:
+        return self.config_dict.get("should_ping_for_unhealthy_pods", default)
 
 
 class InvalidHealthcheckMode(Exception):

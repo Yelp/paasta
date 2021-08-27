@@ -166,6 +166,22 @@ _app = None
 
 
 def application(env, start_response):
+    # # ==============debug block===========================================
+    # import sys
+    #
+    # sys.path.append("/nail/home/dcuza/.debug/pydevd-pycharm.egg")
+    # import pydevd_pycharm
+    #
+    # pydevd_pycharm.settrace(
+    #     "127.0.0.1",
+    #     port=12345,
+    #     stdoutToServer=True,
+    #     stderrToServer=True,
+    #     suspend=False,
+    #     patch_multiprocessing=True,
+    # )
+    # # =====================================================================
+
     """For uwsgi or gunicorn."""
     global _app
     if not _app:

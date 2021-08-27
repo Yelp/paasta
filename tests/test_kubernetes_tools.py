@@ -60,6 +60,7 @@ from kubernetes.client.models.v2beta2_object_metric_source import (
     V2beta2ObjectMetricSource,
 )
 from kubernetes.client.rest import ApiException
+from requests.exceptions import ConnectionError
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.contrib.get_running_task_allocation import (
@@ -2242,6 +2243,11 @@ def test_get_kubernetes_services_running_here():
                 registrations=[],
             )
         ]
+        # if the kubelet is down we don't want to reconfigure nerve until it comes back
+        # and we can be sure what is running or not
+        mock_requests_get.side_effect = ConnectionError
+        with pytest.raises(ConnectionError):
+            get_kubernetes_services_running_here()
 
 
 class MockNerveDict(dict):

@@ -13,6 +13,7 @@
 # limitations under the License.
 import asyncio
 
+import pytest
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -42,155 +43,86 @@ class fake_args:
     time_before_first_diagnosis = 15
 
 
+def fake_bounce_status_resp(**kwargs):
+    response = Mock(  # default is a good response
+        expected_instance_count=1,
+        running_instance_count=1,
+        desired_state="start",
+        app_count=1,
+        active_shas=[["abc123", "cfg"]],
+        deploy_status="Running",
+    )
+    for k, v in kwargs.items():
+        setattr(response, k, v)
+    return response
+
+
+@pytest.mark.parametrize(
+    "side_effect,expected",
+    [
+        (ApiException(status=500, reason=""), False),  # api bad
+        (ApiException(status=404, reason=""), False),  # instance dne
+        ([""], True),  # status=204 produces empty response
+        (  # instance stopped
+            [fake_bounce_status_resp(expected_instance_count=0)],
+            True,
+        ),
+        ([fake_bounce_status_resp(desired_state="stop")], True),  # instance stopped
+        (  # bounce in-progress
+            [
+                fake_bounce_status_resp(
+                    active_shas=[["wrong1", "cfg"], ["abc123", "cfg"]]
+                )
+            ],
+            False,
+        ),
+        (  # previous bounces not yet finished
+            [
+                fake_bounce_status_resp(
+                    active_shas=[
+                        ["wrong1", "cfg"],
+                        ["wrong2", "cfg"],
+                        ["abc123", "cfg"],
+                    ]
+                )
+            ],
+            False,
+        ),
+        (  # bounce not started
+            [fake_bounce_status_resp(active_shas=[["wrong1", "cfg"]])],
+            False,
+        ),
+        (  # instance not running
+            [fake_bounce_status_resp(deploy_status="NotRunning")],
+            False,
+        ),
+        (  # not enough instances up
+            [fake_bounce_status_resp(expected_instance_count=10)],
+            False,
+        ),
+        ([fake_bounce_status_resp()], True),  # completed
+    ],
+)
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.client.get_paasta_oapi_client",
     autospec=True,
 )
-def test_check_if_instance_is_done(mock_get_paasta_oapi_client, mock__log):
+def test_check_if_instance_is_done(
+    mock_get_paasta_oapi_client, mock__log, side_effect, expected
+):
     mock_paasta_api_client = Mock()
     mock_paasta_api_client.api_error = ApiException
+    mock_paasta_api_client.service.bounce_status_instance.side_effect = side_effect
     mock_get_paasta_oapi_client.return_value = mock_paasta_api_client
 
-    def check_instance(instance_config):
-        return mark_for_deployment.check_if_instance_is_done(
-            service="service1",
-            instance=instance_config.get_instance(),
-            cluster="cluster",
-            git_sha="somesha",
-            instance_config=instance_config,
-        )
-
-    # valid completed instance
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Running",
-            expected_instance_count=2,
-            running_instance_count=2,
-        ),
+    assert expected == mark_for_deployment.check_if_instance_is_done(
+        service="fake_service",
+        instance="fake_instance",
+        cluster="fake_cluster",
+        git_sha="abc123",
+        instance_config=mock_marathon_instance_config("fake_instance"),
     )
-    assert check_instance(mock_marathon_instance_config("instance1"))
-
-    # too many marathon apps
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=2,
-            active_shas=None,
-            deploy_status="Running",
-            expected_instance_count=2,
-            running_instance_count=2,
-        ),
-    )
-    assert not check_instance(mock_marathon_instance_config("instance2"))
-
-    # too many running instances
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Running",
-            expected_instance_count=2,
-            running_instance_count=4,
-        ),
-    )
-    assert check_instance(mock_marathon_instance_config("instance3"))
-
-    # still Deploying
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Deploying",
-            expected_instance_count=2,
-            running_instance_count=2,
-        ),
-    )
-    assert check_instance(mock_marathon_instance_config("instance4"))
-
-    # still Deploying
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Waiting",
-            expected_instance_count=2,
-            running_instance_count=2,
-        ),
-    )
-    assert check_instance(mock_marathon_instance_config("instance4.1"))
-
-    # not a marathon instance
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha", kubernetes=None, marathon=None,
-    )
-    assert check_instance(mock_marathon_instance_config("instance5"))
-
-    # wrong sha
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="anothersha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Running",
-            expected_instance_count=2,
-            running_instance_count=2,
-        ),
-    )
-    assert not check_instance(mock_marathon_instance_config("instance6"))
-
-    # paasta stop'd
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Stopped",
-            expected_instance_count=0,
-            running_instance_count=0,
-            desired_state="stop",
-        ),
-    )
-    assert check_instance(mock_marathon_instance_config("instance7"))
-
-    # paasta has autoscaled to 0
-    mock_paasta_api_client.service.status_instance.return_value = Mock(
-        git_sha="somesha",
-        kubernetes=None,
-        marathon=Mock(
-            app_count=1,
-            active_shas=None,
-            deploy_status="Stopped",
-            expected_instance_count=0,
-            running_instance_count=0,
-        ),
-    )
-    assert check_instance(mock_marathon_instance_config("instance8"))
-
-    # not found -> maybe this is the first time we're deploying it, and it's not up yet.
-    mock_paasta_api_client.service.status_instance.side_effect = ApiException(
-        status=404, reason=""
-    )
-    assert not check_instance(mock_marathon_instance_config("notaninstance"))
-
-    # crash -> consider it not done yet, hope it stops crashing later
-    mock_paasta_api_client.service.status_instance.side_effect = ApiException(
-        status=500, reason=""
-    )
-    assert not check_instance(mock_marathon_instance_config("api_error"))
 
 
 @patch(
@@ -238,8 +170,10 @@ def test_wait_for_deployment(
         with patch(
             "asyncio.as_completed", side_effect=[asyncio.TimeoutError], autospec=True
         ):
-            mark_for_deployment.wait_for_deployment(
-                "service", "fake_deploy_group", "somesha", "/nail/soa", 1
+            asyncio.run(
+                mark_for_deployment.wait_for_deployment(
+                    "service", "fake_deploy_group", "somesha", "/nail/soa", 1
+                )
             )
 
     mock_get_instance_configs_for_service_in_deploy_group_all_clusters.return_value = {
@@ -254,8 +188,10 @@ def test_wait_for_deployment(
     }
     with patch("sys.stdout", autospec=True, flush=Mock()):
         assert (
-            mark_for_deployment.wait_for_deployment(
-                "service", "fake_deploy_group", "somesha", "/nail/soa", 5
+            asyncio.run(
+                mark_for_deployment.wait_for_deployment(
+                    "service", "fake_deploy_group", "somesha", "/nail/soa", 5
+                )
             )
             == 0
         )
@@ -271,8 +207,10 @@ def test_wait_for_deployment(
         ],
     }
     with raises(TimeoutError):
-        mark_for_deployment.wait_for_deployment(
-            "service", "fake_deploy_group", "somesha", "/nail/soa", 0
+        asyncio.run(
+            mark_for_deployment.wait_for_deployment(
+                "service", "fake_deploy_group", "somesha", "/nail/soa", 0
+            )
         )
 
 
@@ -293,8 +231,10 @@ def test_wait_for_deployment_raise_no_such_cluster(
 
     mock_paasta_service_config_loader.return_value.clusters = ["cluster3"]
     with raises(NoSuchCluster):
-        mark_for_deployment.wait_for_deployment(
-            "service", "deploy_group_3", "somesha", "/nail/soa", 0
+        asyncio.run(
+            mark_for_deployment.wait_for_deployment(
+                "service", "deploy_group_3", "somesha", "/nail/soa", 0
+            )
         )
 
 
