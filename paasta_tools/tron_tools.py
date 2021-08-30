@@ -709,6 +709,9 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # log streams automatically
         result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
 
+        # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
+        result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
+        result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
         constraint_labels = ["attribute", "operator", "value"]
@@ -718,8 +721,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
-        # TODO(TRON-1583): we need to figure out if (and what) needs to be
-        # ported here for k8s
         result["docker_parameters"] = [
             {"key": param["key"], "value": param["value"]}
             for param in action_config.format_docker_parameters()

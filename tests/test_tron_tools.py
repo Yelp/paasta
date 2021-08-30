@@ -7,6 +7,7 @@ from paasta_tools import tron_tools
 from paasta_tools import utils
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
+from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
@@ -903,6 +904,8 @@ class TestTronTools:
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
+            "cap_add": [],
+            "cap_drop": CAPS_DROP,
             "env": mock.ANY,
             "secret_env": {
                 "SOME_SECRET": {
