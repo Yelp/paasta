@@ -1,3 +1,18 @@
+paasta-tools (0.106.0) xenial; urgency=medium
+
+  * 0.106.0 tagged with 'make release'
+    Commit: Send node selectors and affinities to tron (#3183)  Just
+    like we do for normal paasta services, we only expose a
+    `node_selectors` key and then translate that into the correct format
+    internally. However, unlike paasta services, we don"t turn these
+    into the corresponding k8s representation since this is meant to be
+    POSTed to the Tron API.  I refactored some of the existing
+    selector/affinity code for k8s services in order to be able to reuse
+    them as I didn"t want to have to duplicate those functions just so
+    that we could use them for Tron.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 30 Aug 2021 12:44:09 -0700
+
 paasta-tools (0.105.0) xenial; urgency=medium
 
   * 0.105.0 tagged with 'make release'
