@@ -25,6 +25,7 @@ from string import Formatter
 from typing import List
 from typing import Mapping
 from typing import Tuple
+from typing import Union
 
 import yaml
 from service_configuration_lib import read_extra_service_information
@@ -56,7 +57,12 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import (
+    allowlist_denylist_to_requirements,
+    raw_selectors_to_requirements,
+    sanitise_kubernetes_name,
+    to_node_label,
+)
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
@@ -407,6 +413,38 @@ class TronActionConfig(InstanceConfig):
     def get_use_k8s(self):
         return self.config_dict.get("use_k8s", False)
 
+    def get_node_selectors(self) -> Dict[str, str]:
+        raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})  # type: ignore
+        node_selectors = {
+            to_node_label(label): value
+            for label, value in raw_selectors.items()
+            if isinstance(value, str)
+        }
+        node_selectors["yelp.com/pool"] = self.get_pool()
+        return node_selectors
+
+    def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
+        """Converts deploy_whitelist and deploy_blacklist in node affinities.
+
+        note: At the time of writing, `kubectl describe` does not show affinities,
+        only selectors. To see affinities, use `kubectl get pod -o json` instead.
+        """
+        requirements = allowlist_denylist_to_requirements(
+            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=self.config_dict.get("node_selectors", {}),  # type: ignore
+            )
+        )
+        if not requirements:
+            return None
+
+        return [
+            {"key": key, "operator": op, "value": value}
+            for key, op, value in requirements
+        ]
+
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
         constraints = self.get_constraints()
@@ -708,6 +746,8 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # such that this output eventually makes it into our per-instance
         # log streams automatically
         result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        result["node_selectors"] = action_config.get_node_selectors()
+        result["node_affinities"] = action_config.get_node_affinities()
 
         # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
         result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
@@ -715,8 +755,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
         constraint_labels = ["attribute", "operator", "value"]
-        # TODO(TRON-1609): we'll want to either have this spit out a nodeSelector
-        # or add a new field for k8s usage since Mesos-style constraints aren't a thing
         result["constraints"] = [
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
