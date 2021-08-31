@@ -1,3 +1,11 @@
+paasta-tools (0.106.1) xenial; urgency=medium
+
+  * 0.106.1 tagged with 'make release'
+    Commit: Merge pull request #3190 from Yelp/u/msingh/MESH-1151-add-
+    service-creation  U/msingh/mesh 1151 add service creation
+
+ -- Manvendra Singh <msingh@yelp.com>  Tue, 31 Aug 2021 08:30:45 -0700
+
 paasta-tools (0.106.0) xenial; urgency=medium
 
   * 0.106.0 tagged with 'make release'
