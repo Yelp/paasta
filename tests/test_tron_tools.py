@@ -862,6 +862,7 @@ class TestTronTools:
             "executor": "paasta",
             "cpus": 2,
             "mem": 1200,
+            "monitoring": {"team": "some_sensu_team",},
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
@@ -907,6 +908,13 @@ class TestTronTools:
             "disk": 42,
             "cap_add": [],
             "cap_drop": CAPS_DROP,
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "some_sensu_team",
+            },
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
                 {

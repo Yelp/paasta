@@ -752,6 +752,17 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
         result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
         result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
+
+        result["labels"] = {
+            "paasta.yelp.com/cluster": action_config.get_cluster(),
+            "paasta.yelp.com/pool": action_config.get_pool(),
+            "paasta.yelp.com/service": action_config.get_service(),
+            "paasta.yelp.com/instance": action_config.get_instance(),
+        }
+
+        if action_config.get_team() is not None:
+            result["labels"]["yelp.com/owner"] = action_config.get_team()
+
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
         constraint_labels = ["attribute", "operator", "value"]
