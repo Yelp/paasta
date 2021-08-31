@@ -103,7 +103,9 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     return {
         item.metadata.name
         for item in service_objects.items
-        if item.annotations.get(paasta_prefixed("managed_by")) == "setup_istio_mesh"
+        if item.metadata.annotations
+        if item.metadata.annotations.get(paasta_prefixed("managed_by"))
+        == "setup_istio_mesh"
     }
 
 
