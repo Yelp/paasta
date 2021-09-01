@@ -174,15 +174,11 @@ def cleanup_paasta_namespace_services(
     paasta_namespaces: AbstractSet,
     existing_namespace_services: Set[str],
 ) -> Iterator:
-    declared_services = {
-        sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces
-    }
+    declared_services = {sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces}
     for service in existing_namespace_services:
         if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
             continue
-        log.info(
-            f"Garbage collecting {service} since there is no reference in services.yaml"
-        )
+        log.info(f"Garbage collecting {service} since there is no reference in services.yaml")
         yield kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
 
 
