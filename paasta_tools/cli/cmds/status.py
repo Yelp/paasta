@@ -1143,24 +1143,31 @@ def print_flink_status(
             break
 
         if verbose > 1:
-            try:
-                exceptions = get_flink_job_exceptions(cr_name, cluster, job_id)
-                if exceptions is not None:
-                    root_exception = exceptions["root-exception"]
-                    if root_exception is not None:
-                        output.append(f"        Exception: {root_exception}")
-                        ts = exceptions["timestamp"]
-                        if ts is not None:
-                            exc_ts = datetime.fromtimestamp(int(ts) // 1000)
-                            output.append(
-                                f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
-                            )
-            except ValueError as e:
-                output.append(
-                    PaastaColors.red(
-                        f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {str(e)}"
+            # This condition is intended for testing purposes and should be removed later.
+            # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+            exceptions = None
+            if "exceptions" in status and job_id in status["exceptions"]:
+                exceptions = status["exceptions"][job_id]
+            else:
+                try:
+                    exceptions = get_flink_job_exceptions(cr_name, cluster, job_id)
+                except ValueError as e:
+                    output.append(
+                        PaastaColors.red(
+                            f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {str(e)}"
+                        )
                     )
-                )
+            if exceptions is not None:
+                root_exception = exceptions["root-exception"]
+                if root_exception is not None:
+                    output.append(f"        Exception: {root_exception}")
+                    ts = exceptions["timestamp"]
+                    if ts is not None:
+                        exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+                        output.append(
+                            f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                        )
+
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
     if verbose == 1:
