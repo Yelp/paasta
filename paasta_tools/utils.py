@@ -76,6 +76,7 @@ from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
+from service_configuration_lib import ServiceInfoDict
 
 import paasta_tools.cli.fsm
 
@@ -258,7 +259,7 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
-class InstanceConfigDict(TypedDict, total=False):
+class InstanceConfigDict(ServiceInfoDict, total=False):
     deploy_group: str
     mem: float
     cpus: float
