@@ -1146,8 +1146,9 @@ def print_flink_status(
             # This condition is intended for testing purposes and should be removed later.
             # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
             exceptions = None
-            if "exceptions" in status and job_id in status["exceptions"]:
-                exceptions = status["exceptions"][job_id]
+            if "exceptions" in status:
+                if job_id in status["exceptions"]:
+                    exceptions = status["exceptions"][job_id]
             else:
                 try:
                     exceptions = get_flink_job_exceptions(cr_name, cluster, job_id)
