@@ -144,12 +144,12 @@ def setup_unified_service(kube_client: KubeClient, port_list: List) -> Iterator:
 def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
-    existing_kube_services_names: Set[str] = set(),
+    existing_namespace_services: Set[str] = set(),
 ) -> Iterator:
     for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
 
-        if service in existing_kube_services_names:
+        if service in existing_namespace_services:
             log.debug(f"Service {service} alredy exists, skipping")
             continue
 
@@ -169,13 +169,30 @@ def setup_paasta_namespace_services(
         )
 
 
-def setup_kube_services(
-    kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR,
+def cleanup_paasta_namespace_services(
+    kube_client: KubeClient,
+    paasta_namespaces: AbstractSet,
+    existing_namespace_services: Set[str],
 ) -> Iterator:
-    existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
+    declared_services = {
+        sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces
+    }
+    for service in existing_namespace_services:
+        if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
+            continue
+        log.info(
+            f"Garbage collecting {service} since there is no reference in services.yaml"
+        )
+        yield kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+
+
+def process_kube_services(
+    kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
+) -> Iterator:
+    existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
     namespaces = load_smartstack_namespaces(soa_dir)
 
-    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
+    if UNIFIED_K8S_SVC_NAME not in existing_namespace_services:
         log.info(f"Creating {UNIFIED_K8S_SVC_NAME} because it does not exist yet.")
         yield from setup_unified_service(
             kube_client=kube_client,
@@ -187,7 +204,11 @@ def setup_kube_services(
         )
 
     yield from setup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_kube_services_names
+        kube_client, namespaces.keys(), existing_namespace_services
+    )
+
+    yield from cleanup_paasta_namespace_services(
+        kube_client, namespaces.keys(), existing_namespace_services
     )
 
 
@@ -203,7 +224,9 @@ def main() -> None:
     ensure_namespace(kube_client, namespace="paasta")
     delay = 0 if args.rate_limit == 0 else 1.0 / float(args.rate_limit)
     success = True
-    for (fn, args) in setup_kube_services(kube_client, args.soa_dir):
+    for (fn, args) in process_kube_services(
+        kube_client=kube_client, soa_dir=args.soa_dir
+    ):
         time.sleep(delay)
         try:
             fn(*args)
