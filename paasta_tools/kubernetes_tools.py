@@ -1988,12 +1988,28 @@ def list_deployments(
     ]
 
 
+def recent_container_restart(
+    restart_count: int,
+    last_state: Optional[str],
+    last_timestamp: Optional[int],
+    time_window_s: int = 900,  # 15 mins
+) -> bool:
+    min_timestamp = datetime.now().timestamp() - time_window_s
+    return (
+        restart_count > 0
+        and last_state == "terminated"
+        and last_timestamp is not None
+        and last_timestamp > min_timestamp
+    )
+
+
 @async_timeout()
 async def get_tail_lines_for_kubernetes_container(
     kube_client: KubeClient,
     pod: V1Pod,
     container: V1ContainerStatus,
     num_tail_lines: int,
+    previous: bool = False,
 ) -> MutableMapping[str, Any]:
     tail_lines: MutableMapping[str, Any] = {
         "stdout": [],
@@ -2016,6 +2032,7 @@ async def get_tail_lines_for_kubernetes_container(
                     namespace=pod.metadata.namespace,
                     container=container.name,
                     tail_lines=num_tail_lines,
+                    previous=previous,
                 )
                 tail_lines["stdout"].extend(log.split("\n"))
         except ApiException as e:
@@ -2051,39 +2068,56 @@ def format_pod_event_messages(
     pod_event_messages: List[Dict], pod_name: str
 ) -> List[str]:
     rows: List[str] = list()
-    rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
+    rows.append(PaastaColors.blue(f"  Pod Events for {pod_name}"))
     for message in pod_event_messages:
         if "error" in message:
             rows.append(PaastaColors.yellow(f'   Error: {message["error"]}'))
         else:
             timestamp = message.get("time_stamp", "unknown time")
             message_text = message.get("message", "")
-            rows.append(f"   Event at {timestamp}: {message_text}")
+            rows.append(f"    Event at {timestamp}: {message_text}")
     return rows
 
 
 def format_tail_lines_for_kubernetes_pod(
     pod_containers: Sequence, pod_name: str,
 ) -> List[str]:
-    rows: List[str] = []
-    for container in pod_containers:
-        if container.tail_lines.error_message:
-            rows.append(
-                PaastaColors.blue(
-                    f"errors for container {container.name} in pod {pod_name}"
-                )
-            )
-            rows.append(PaastaColors.red(f"  {container.tail_lines.error_message}"))
+    errors: List[str] = []
+    lines: List[str] = []
+    prefixes = (
+        ("", "current"),
+        ("last_", "previous (pre-restart)"),
+    )
 
-        for stream_name in ("stdout", "stderr"):
-            stream_lines = getattr(container.tail_lines, stream_name, [])
-            if len(stream_lines) > 0:
-                rows.append(
-                    PaastaColors.blue(
-                        f"{stream_name} tail for {container.name} in pod {pod_name}"
+    for container in pod_containers:
+        for tail_prefix, stream_prefix in prefixes:
+            tail_lines = getattr(container, tail_prefix + "tail_lines", None)
+            if tail_lines is None:
+                break
+            if tail_lines.error_message:
+                errors.append(PaastaColors.red(f"    {tail_lines.error_message}"))
+
+            for stream_name in ("stdout", "stderr"):
+                stream_lines = getattr(tail_lines, stream_name, [])
+                if len(stream_lines) > 0:
+                    lines.append(
+                        PaastaColors.blue(
+                            f"  {stream_prefix} {stream_name} tail for {container.name} "
+                            f"in pod {pod_name}"
+                        )
                     )
-                )
-                rows.extend(f"  {line}" for line in stream_lines)
+                    lines.extend(f"    {line}" for line in stream_lines)
+
+    rows: List[str] = []
+    if errors:
+        rows.append(
+            PaastaColors.blue(
+                f"  errors for container {container.name} in pod {pod_name}"
+            )
+        )
+        rows.extend(errors)
+        rows.append("")
+    rows.extend(lines)
     return rows
 
 

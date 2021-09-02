@@ -640,6 +640,10 @@ components:
           format: float
           type: number
           nullable: true
+        last_tail_lines:
+          $ref: '#/components/schemas/TaskTailLines'
+          description: Previous container's stdout and stderr tail
+          nullable: true
         timestamp:
           description: Unix timestamp at which current state began
           format: float

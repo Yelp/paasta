@@ -22,6 +22,75 @@ from paasta_tools import utils
 from tests.conftest import Struct
 
 
+@pytest.fixture
+def mock_pod():
+    return Struct(
+        metadata=Struct(
+            owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
+            name="pod_1",
+            namespace="paasta",
+            creation_timestamp=datetime.datetime(2021, 3, 6),
+            deletion_timestamp=None,
+            labels={
+                "paasta.yelp.com/git_sha": "aaa000",
+                "paasta.yelp.com/config_sha": "config000",
+                "paasta.yelp.com/service": "service",
+                "paasta.yelp.com/instance": "instance",
+            },
+        ),
+        status=Struct(
+            pod_ip="1.2.3.4",
+            host_ip="4.3.2.1",
+            phase="Running",
+            reason=None,
+            message=None,
+            conditions=[
+                Struct(type="Ready", status="True",),
+                Struct(type="PodScheduled", status="True",),
+            ],
+            container_statuses=[
+                Struct(
+                    name="main_container",
+                    restart_count=0,
+                    state=Struct(
+                        running=Struct(
+                            reason="a_state_reason",
+                            message="a_state_message",
+                            started_at=datetime.datetime(2021, 3, 6),
+                        ),
+                        waiting=None,
+                        terminated=None,
+                    ),
+                    last_state=Struct(
+                        running=None,
+                        waiting=None,
+                        terminated=dict(
+                            reason="a_last_state_reason",
+                            message="a_last_state_message",
+                            started_at=datetime.datetime(2021, 3, 4),
+                            finished_at=datetime.datetime(2021, 3, 5),
+                        ),
+                    ),
+                ),
+            ],
+        ),
+        spec=Struct(
+            containers=[
+                Struct(
+                    name="main_container",
+                    liveness_probe=Struct(
+                        initial_delay_seconds=1,
+                        failure_threshold=2,
+                        period_seconds=3,
+                        timeout_seconds=4,
+                        http_get=Struct(port=8080, path="/healthcheck",),
+                    ),
+                )
+            ]
+        ),
+    )
+
+
 def test_instance_types_integrity():
     for it in pik.INSTANCE_TYPES:
         assert it in utils.INSTANCE_TYPES
@@ -128,61 +197,6 @@ def test_kubernetes_status(
     autospec=True,
 )
 class TestKubernetesStatusV2:
-    @pytest.fixture
-    def mock_pod(self):
-        return Struct(
-            metadata=Struct(
-                owner_references=[Struct(kind="ReplicaSet", name="replicaset_1")],
-                name="pod_1",
-                namespace="paasta",
-                creation_timestamp=datetime.datetime(2021, 3, 6),
-                deletion_timestamp=None,
-                labels={
-                    "paasta.yelp.com/git_sha": "aaa000",
-                    "paasta.yelp.com/config_sha": "config000",
-                    "paasta.yelp.com/service": "service",
-                    "paasta.yelp.com/instance": "instance",
-                },
-            ),
-            status=Struct(
-                pod_ip="1.2.3.4",
-                host_ip="4.3.2.1",
-                phase="Running",
-                reason=None,
-                message=None,
-                conditions=[
-                    Struct(type="Ready", status="True",),
-                    Struct(type="PodScheduled", status="True",),
-                ],
-                container_statuses=[
-                    Struct(
-                        name="main_container",
-                        restart_count=0,
-                        state=Struct(
-                            running=Struct(started_at=datetime.datetime(2021, 3, 6)),
-                            waiting=None,
-                            terminated=None,
-                        ),
-                        last_state=Struct(running=None, waiting=None, terminated=None,),
-                    ),
-                ],
-            ),
-            spec=Struct(
-                containers=[
-                    Struct(
-                        name="main_container",
-                        liveness_probe=Struct(
-                            initial_delay_seconds=1,
-                            failure_threshold=2,
-                            period_seconds=3,
-                            timeout_seconds=4,
-                            http_get=Struct(port=8080, path="/healthcheck",),
-                        ),
-                    )
-                ]
-            ),
-        )
-
     @mock.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
     )
@@ -270,13 +284,16 @@ class TestKubernetesStatusV2:
                                     "name": "main_container",
                                     "restart_count": 0,
                                     "state": "running",
-                                    "reason": None,
-                                    "message": None,
-                                    "last_state": None,
-                                    "last_reason": None,
-                                    "last_message": None,
-                                    "last_duration": None,
-                                    "last_timestamp": None,
+                                    "reason": "a_state_reason",
+                                    "message": "a_state_message",
+                                    "last_state": "terminated",
+                                    "last_reason": "a_last_state_reason",
+                                    "last_message": "a_last_state_message",
+                                    "last_duration": 86400.0,
+                                    "last_timestamp": datetime.datetime(
+                                        2021, 3, 4
+                                    ).timestamp(),
+                                    "last_tail_lines": None,
                                     "timestamp": datetime.datetime(
                                         2021, 3, 6
                                     ).timestamp(),
@@ -666,3 +683,39 @@ def test_bounce_status(mock_kubernetes_tools):
         "active_shas": [("aaa", "config_aaa"), ("bbb", "config_bbb"),],
         "app_count": 2,
     }
+
+
+@pytest.mark.asyncio
+async def test_get_pod_containers(mock_pod):
+    mock_client = mock.Mock()
+
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.get_tail_lines_for_kubernetes_container",
+        side_effect=[["current"], ["previous"]],
+        autospec=None,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.recent_container_restart",
+        return_value=True,
+        autospec=None,
+    ):
+        containers = await pik.get_pod_containers(mock_pod, mock_client, 10)
+
+    assert containers == [
+        dict(
+            name="main_container",
+            restart_count=0,
+            state="running",
+            reason="a_state_reason",
+            message="a_state_message",
+            last_state="terminated",
+            last_reason="a_last_state_reason",
+            last_message="a_last_state_message",
+            last_duration=86400.0,
+            last_timestamp=datetime.datetime(2021, 3, 4).timestamp(),
+            last_tail_lines=["previous"],
+            timestamp=datetime.datetime(2021, 3, 6).timestamp(),
+            healthcheck_grace_period=1,
+            healthcheck_cmd={"http_url": "http://1.2.3.4:8080/healthcheck"},
+            tail_lines=["current"],
+        ),
+    ]
