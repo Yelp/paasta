@@ -179,3 +179,19 @@ def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, An
         raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
     except ConnectionError as e:
         raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
+
+
+def get_flink_job_exceptions(
+    cr_name: str, cluster: str, job_id: str
+) -> Mapping[str, Any]:
+    try:
+        response = _dashboard_get(cr_name, cluster, f"/jobs/{job_id}/exceptions")
+        return json.loads(response)
+    except requests.RequestException as e:
+        url = e.request.url
+        err = e.response or str(e)
+        raise ValueError(f"failed HTTP request to job exceptions {url}: {err}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON decoding error from job exceptions: {e}")
+    except ConnectionError as e:
+        raise ValueError(f"failed HTTP request to job exceptions: {e}")
