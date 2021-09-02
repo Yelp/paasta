@@ -6,6 +6,7 @@ import re
 import shlex
 import socket
 import sys
+import yaml
 from typing import Any
 from typing import Dict
 from typing import List
@@ -110,7 +111,13 @@ def add_subparser(subparsers):
         "--image",
         help="Use the provided image to start the Spark driver and executors.",
     )
-
+    list_parser.add_argument(
+        "-a",
+        "--autogen",
+        help="Auto generate pod template used in executors.",
+        action="store_true",
+        default=False,
+    )
     list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
@@ -514,7 +521,7 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
+def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen=False) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
         shlex.split(original_docker_cmd)
@@ -536,8 +543,39 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
 
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
-
     spark_app_name += f"_{get_username()}"
+    if autogen:
+        document = """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    spark: exec
+spec:
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 95
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: spark
+              operator: In
+              values:
+              - exec
+          topologyKey: topology.kubernetes.io/hostname
+"""
+        parsed_pod_template = yaml.load(document)
+        print(parsed_pod_template)
+        parsed_pod_template['metadata']['labels']['spark'] += "-" + spark_app_name
+        parsed_pod_template['spec']['affinity'] \
+            ['podAffinity']['preferredDuringSchedulingIgnoredDuringExecution'][0] \
+            ['podAffinityTerm']['labelSelector']['matchExpressions'][0]['values'][0] \
+            = parsed_pod_template['metadata']['labels']['spark']
+        print(get_username())
+        f = open("/nail/home/"+get_username()+"/podTemplate.yaml", "w")
+        f.write(yaml.dump(parsed_pod_template))
+        f.close()
     return spark_app_name
 
 
@@ -808,7 +846,7 @@ def paasta_spark_run(args):
         return 1
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
-    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
+    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.autogen)
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(args.spark_args)
     paasta_instance = get_smart_paasta_instance_name(args)
