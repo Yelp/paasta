@@ -2053,6 +2053,9 @@ class TestPrintFlinkStatus:
             f"            {job_start_time} ({mock_naturaltime.return_value})"
         )
         append_pod_status(status["pod_status"], expected_output)
+        mock__dashboard_get.assert_called_once_with(
+            "app-9bf849b89", "fake_cluster", f"/jobs/{job_id}/exceptions"
+        )
         assert expected_output == output
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
