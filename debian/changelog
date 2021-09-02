@@ -1,3 +1,11 @@
+paasta-tools (0.107.0) xenial; urgency=medium
+
+  * 0.107.0 tagged with 'make release'
+    Commit: Merge pull request #3188 from Yelp/u/asoliman/FLINK-3725
+    FLINK-3725 Query flink REST API for exceptions
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Thu, 02 Sep 2021 03:16:50 -0700
+
 paasta-tools (0.106.1) xenial; urgency=medium
 
   * 0.106.1 tagged with 'make release'
