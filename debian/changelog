@@ -1,3 +1,12 @@
+paasta-tools (0.107.1) xenial; urgency=medium
+
+  * 0.107.1 tagged with 'make release'
+    Commit: Merge pull request #3196 from Yelp/gcoll_COREML-
+    2570_paasta_spark_run_check_k8s_volumes  [COREML-2570] fix k8s
+    volumes being mounted twice
+
+ -- Giulio Collura <gcoll@yelp.com>  Fri, 03 Sep 2021 02:21:59 -0700
+
 paasta-tools (0.107.0) xenial; urgency=medium
 
   * 0.107.0 tagged with 'make release'
