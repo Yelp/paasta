@@ -197,7 +197,11 @@ def setup_kube_services(
         try:
             setup_unified_service(
                 kube_client=kube_client,
-                port_list=sorted(val["proxy_port"] for val in namespaces.values()),
+                port_list=sorted(
+                    val["proxy_port"]
+                    for val in namespaces.values()
+                    if val.get("proxy_port")
+                ),
             )
         except Exception as err:
             log.error(f"{err} while setting up unified service")
