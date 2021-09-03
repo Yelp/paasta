@@ -14,7 +14,6 @@
 # limitations under the License.
 import concurrent.futures
 import difflib
-import logging
 import shutil
 import sys
 from collections import Counter
@@ -84,7 +83,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
-log = logging.getLogger(__name__)
 
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
@@ -2314,11 +2312,8 @@ def _use_new_paasta_status(args, system_paasta_config) -> bool:
             return True
 
 
-def _print_flink_jobs_exceptions_from_api(unique_jobs, cr_name, cluster):
-    jobs = unique_jobs
-    log.debug("......entered.....")
+def _print_flink_jobs_exceptions_from_api(jobs, cr_name, cluster):
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        log.debug("entered concurrent....")
         job_exceptions = {}
         future_job_mapping = {
             executor.submit(get_flink_job_exceptions, cr_name, cluster, job["jid"]): job
@@ -2333,7 +2328,6 @@ def _print_flink_jobs_exceptions_from_api(unique_jobs, cr_name, cluster):
                 job_exceptions[job_id]["timestamp"] = exceptions["timestamp"]
             except ValueError as e:
                 job_exceptions[job_id]["error"] = str(e)
-    log.debug(job_exceptions)
     return job_exceptions
 
 
