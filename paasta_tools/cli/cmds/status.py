@@ -83,7 +83,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
-
+FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -2313,7 +2313,9 @@ def _use_new_paasta_status(args, system_paasta_config) -> bool:
 
 
 def _print_flink_jobs_exceptions_from_api(jobs, cr_name, cluster):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=FLINK_STATUS_MAX_THREAD_POOL_WORKERS
+    ) as executor:
         job_exceptions = {}
         future_job_mapping = {
             executor.submit(get_flink_job_exceptions, cr_name, cluster, job["jid"]): job
