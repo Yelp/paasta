@@ -26,6 +26,7 @@ import hashlib
 import logging
 import os
 import sys
+import time
 from typing import AbstractSet
 from typing import List
 from typing import Mapping
@@ -65,8 +66,8 @@ def parse_args() -> argparse.Namespace:
         dest="rate_limit",
         default=0,
         metavar="LIMIT",
-        type=int,
-        help="Update or create up to this number of service instances. Default is 0 (no limit).",
+        type=float,
+        help="Maximum number of write calls to k8s per second. Default is 0 (no limit).",
     )
     parser.add_argument(
         "-d",
@@ -144,25 +145,16 @@ def setup_unified_service(kube_client: KubeClient, port_list: List) -> k8s.V1Ser
     service_meta = k8s.V1ObjectMeta(name=UNIFIED_K8S_SVC_NAME, annotations=ANNOTATIONS)
     service_spec = k8s.V1ServiceSpec(ports=ports)
     service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-    return kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
+    yield kube_client.core.create_namespaced_service, (PAASTA_NAMESPACE, service_object)
 
 
 def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
     existing_kube_services_names: Set[str] = set(),
-    rate_limit: int = 0,
 ) -> bool:
-    api_updates = 0
-    status = True
-
     for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
-        if rate_limit > 0 and api_updates >= rate_limit:
-            log.info(
-                f"Not doing any further updates as we reached the limit ({api_updates})"
-            )
-            break
 
         if service in existing_kube_services_names:
             log.info(f"Service {service} alredy exists, skipping")
@@ -178,37 +170,30 @@ def setup_paasta_namespace_services(
             selector={registration_prefixed(namespace): "true"}, ports=[port_spec]
         )
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-        try:
-            kube_client.core.create_namespaced_service(PAASTA_NAMESPACE, service_object)
-            api_updates += 1
-        except Exception as err:
-            log.warning(f"{err} while setting up k8s service for {namespace}")
-            status = False
-
-    return status
+        yield kube_client.core.create_namespaced_service, (
+            PAASTA_NAMESPACE,
+            service_object,
+        )
 
 
 def setup_kube_services(
-    kube_client: KubeClient, rate_limit: int = 0, soa_dir: str = DEFAULT_SOA_DIR,
+    kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
     namespaces = load_smartstack_namespaces(soa_dir)
-    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
-        try:
-            setup_unified_service(
-                kube_client=kube_client,
-                port_list=sorted(
-                    val["proxy_port"]
-                    for val in namespaces.values()
-                    if val.get("proxy_port")
-                ),
-            )
-        except Exception as err:
-            log.error(f"{err} while setting up unified service")
-            return False
 
-    return setup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_kube_services_names, rate_limit
+    if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
+        setup_unified_service(
+            kube_client=kube_client,
+            port_list=sorted(
+                val["proxy_port"]
+                for val in namespaces.values()
+                if val.get("proxy_port")
+            ),
+        )
+
+    setup_paasta_namespace_services(
+        kube_client, namespaces.keys(), existing_kube_services_names
     )
 
 
@@ -222,12 +207,17 @@ def main() -> None:
 
     kube_client = KubeClient()
     ensure_namespace(kube_client, namespace="paasta")
+    delay = 0 if args.rate_limit == 0 else 1.0 / float(args.rate_limit)
+    success = True
+    for (fn, args) in setup_kube_services(kube_client, args.soa_dir):
+        time.sleep(delay)
+        try:
+            fn(*args)
+        except Exception:
+            success = False
+            log.exception(f"Failed setting up {fn}({args})")
 
-    setup_kube_succeeded = setup_kube_services(
-        kube_client=kube_client, rate_limit=args.rate_limit, soa_dir=args.soa_dir,
-    )
-
-    sys.exit(0 if setup_kube_succeeded else 1)
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":
