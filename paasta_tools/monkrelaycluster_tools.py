@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -25,11 +24,6 @@ from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
-
-KUBERNETES_NAMESPACE = "paasta-monkrelayclusters"
-
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
 
 
 class MonkRelayClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
