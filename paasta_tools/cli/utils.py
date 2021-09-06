@@ -795,7 +795,7 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
-    monkrelaycluster=InstanceTypeHandler(
+    monkrelaycluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
 )
