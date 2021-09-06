@@ -144,6 +144,6 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
         group="yelp.com",
         version="v1alpha1",
         namespace="paasta-monkrelayclusters",
-        plural="monkrelayclusters",
+        plural="monkrelays",
         name=sanitised_cr_name(service, instance),
     )
