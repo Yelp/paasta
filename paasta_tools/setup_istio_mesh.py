@@ -28,6 +28,7 @@ import os
 import sys
 import time
 from typing import AbstractSet
+from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Set
@@ -126,7 +127,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     }
 
 
-def setup_unified_service(kube_client: KubeClient, port_list: List) -> k8s.V1Service:
+def setup_unified_service(kube_client: KubeClient, port_list: List) -> Iterator:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
     # Add port 1337 for envoy unified listener.
@@ -152,7 +153,7 @@ def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
     existing_kube_services_names: Set[str] = set(),
-) -> bool:
+) -> Iterator:
     for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
 
@@ -178,12 +179,12 @@ def setup_paasta_namespace_services(
 
 def setup_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR,
-) -> bool:
+) -> Iterator:
     existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
     namespaces = load_smartstack_namespaces(soa_dir)
 
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
-        setup_unified_service(
+        yield from setup_unified_service(
             kube_client=kube_client,
             port_list=sorted(
                 val["proxy_port"]
@@ -192,7 +193,7 @@ def setup_kube_services(
             ),
         )
 
-    setup_paasta_namespace_services(
+    yield from setup_paasta_namespace_services(
         kube_client, namespaces.keys(), existing_kube_services_names
     )
 
