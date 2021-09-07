@@ -328,7 +328,7 @@ def create_instance_cpu_scaling_rule(
         kube_deployment_labels{{
             deployment='{deployment_name}',
             paasta_cluster='{paasta_cluster}',
-            namespace='paasta'
+            k8s_namespace='paasta'
         }}
     """
 
@@ -336,7 +336,7 @@ def create_instance_cpu_scaling_rule(
         avg(
             irate(
                 container_cpu_usage_seconds_total{{
-                    namespace='paasta',
+                    k8s_namespace='paasta',
                     container='{sanitized_instance_name}',
                     paasta_cluster='{paasta_cluster}'
                 }}[1m]
@@ -347,12 +347,12 @@ def create_instance_cpu_scaling_rule(
     cpus_available = f"""
         sum(
             container_spec_cpu_quota{{
-                namespace='paasta',
+                k8s_namespace='paasta',
                 container='{sanitized_instance_name}',
                 paasta_cluster='{paasta_cluster}'
             }}
             / container_spec_cpu_period{{
-                namespace='paasta',
+                k8s_namespace='paasta',
                 paasta_cluster='{paasta_cluster}'
             }}
         ) by (pod, container)
@@ -372,7 +372,7 @@ def create_instance_cpu_scaling_rule(
             k8s:pod:info{{
                 created_by_name=~'{deployment_name}.*',
                 created_by_kind='ReplicaSet',
-                namespace='paasta',
+                k8s_namespace='paasta',
                 paasta_cluster='{paasta_cluster}',
                 phase='Running'
             }},
@@ -431,7 +431,7 @@ def create_instance_cpu_scaling_rule(
                 '',
                 ''
             ),
-            'namespace',
+            'k8s_namespace',
             'paasta',
             '',
             ''
@@ -444,7 +444,7 @@ def create_instance_cpu_scaling_rule(
         "metricsQuery": _minify_promql(metrics_query),
         "resources": {
             "overrides": {
-                "namespace": {"resource": "namespace"},
+                "k8s_namespace": {"resource": "namespace"},
                 "deployment": {"group": "apps", "resource": "deployments"},
             },
         },
