@@ -29,6 +29,7 @@ from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
+from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
@@ -54,6 +55,7 @@ INSTANCE_TYPE_CR_ID = dict(
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
+    monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
 
 
