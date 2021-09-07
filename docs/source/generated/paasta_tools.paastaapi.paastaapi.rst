@@ -17,7 +17,6 @@ Submodules
 .. toctree::
 
    paasta_tools.paastaapi.paastaapi.api_client
-   paasta_tools.paastaapi.paastaapi.configuration
    paasta_tools.paastaapi.paastaapi.exceptions
    paasta_tools.paastaapi.paastaapi.model_utils
    paasta_tools.paastaapi.paastaapi.rest
