@@ -83,6 +83,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
+FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -1108,7 +1109,20 @@ def print_flink_status(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
-    for job in unique_jobs:
+
+    # This is important because the generator might be exhausted inside the api function call
+    unique_jobs_list = list(unique_jobs)
+
+    job_exceptions = None
+    if verbose > 1:
+        # This condition is intended for testing purposes and should be removed later.
+        # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+        if "exceptions" not in status:
+            job_exceptions = _print_flink_jobs_exceptions_from_api(
+                unique_jobs_list, cr_name, cluster
+            )
+
+    for job in unique_jobs_list:
         job_id = job["jid"]
         if verbose > 1:
             fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
@@ -1150,24 +1164,26 @@ def print_flink_status(
                 if job_id in status["exceptions"]:
                     exceptions = status["exceptions"][job_id]
             else:
-                try:
-                    exceptions = get_flink_job_exceptions(cr_name, cluster, job_id)
-                except ValueError as e:
+                exceptions = job_exceptions[job_id]
+
+            if exceptions is not None:
+                if "error" in exceptions:
+                    error = exceptions["error"]
                     output.append(
                         PaastaColors.red(
-                            f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {str(e)}"
+                            f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {error}"
                         )
                     )
-            if exceptions is not None:
-                root_exception = exceptions["root-exception"]
-                if root_exception is not None:
-                    output.append(f"        Exception: {root_exception}")
-                    ts = exceptions["timestamp"]
-                    if ts is not None:
-                        exc_ts = datetime.fromtimestamp(int(ts) // 1000)
-                        output.append(
-                            f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
-                        )
+                else:
+                    root_exception = exceptions["root-exception"]
+                    if root_exception is not None:
+                        output.append(f"        Exception: {root_exception}")
+                        ts = exceptions["timestamp"]
+                        if ts is not None:
+                            exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+                            output.append(
+                                f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                            )
 
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
@@ -2294,6 +2310,27 @@ def _use_new_paasta_status(args, system_paasta_config) -> bool:
             return True
         else:
             return True
+
+
+def _print_flink_jobs_exceptions_from_api(jobs, cr_name, cluster):
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=FLINK_STATUS_MAX_THREAD_POOL_WORKERS
+    ) as executor:
+        job_exceptions = {}
+        future_job_mapping = {
+            executor.submit(get_flink_job_exceptions, cr_name, cluster, job["jid"]): job
+            for job in jobs
+        }
+        for future in concurrent.futures.as_completed(future_job_mapping):
+            job_id = future_job_mapping[future]["jid"]
+            job_exceptions[job_id] = {}
+            try:
+                exceptions = future.result()
+                job_exceptions[job_id]["root-exception"] = exceptions["root-exception"]
+                job_exceptions[job_id]["timestamp"] = exceptions["timestamp"]
+            except ValueError as e:
+                job_exceptions[job_id]["error"] = str(e)
+    return job_exceptions
 
 
 # Add other custom status writers here
