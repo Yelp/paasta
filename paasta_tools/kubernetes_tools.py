@@ -406,6 +406,22 @@ def load_kubernetes_service_config(
     )
 
 
+def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
+    """ Returns `name` unchanged if it's length does not exceed the `limit`.
+        Otherwise, returns truncated `name` with it's hash of size `suffix`
+        appended.
+
+        base32 encoding is chosen as it satisfies the common requirement in
+        various k8s names to be alphanumeric.
+    """
+    if len(name) > limit:
+        digest = hashlib.md5(name.encode()).digest()
+        hash = base64.b32encode(digest).decode().replace("=", "").lower()
+        return f"{name[:(limit-suffix-1)]}-{hash[:suffix]}"
+    else:
+        return name
+
+
 class InvalidKubernetesConfig(Exception):
     def __init__(self, exception: Exception, service: str, instance: str) -> None:
         super().__init__(
@@ -497,6 +513,13 @@ def raw_selectors_to_requirements(
             requirements.append((label, config["operator"], values))
 
     return requirements
+
+
+def registration_label(namespace: str) -> str:
+    """ Returns namespace prefixed with registrations.paasta.yelp.com/,
+        truncated to 63 characters with hash as suffix if needed.
+    """
+    return limit_size_with_hash(f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}")
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -1634,7 +1657,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # Allow Kubernetes Services to easily find
             # pods belonging to a certain smartstack namespace
             for registration in self.get_registrations():
-                labels[f"registrations.paasta.yelp.com/{registration}"] = "true"  # type: ignore
+                labels[registration_label(registration)] = "true"  # type: ignore
 
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
@@ -2451,10 +2474,6 @@ def paasta_prefixed(attribute: str,) -> str:
         return attribute
     else:
         return PAASTA_ATTRIBUTE_PREFIX + attribute
-
-
-def registration_prefixed(namespace: str) -> str:
-    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}"
 
 
 def get_nodes_grouped_by_attribute(

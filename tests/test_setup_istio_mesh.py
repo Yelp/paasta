@@ -1,6 +1,6 @@
 import mock
 
-from paasta_tools.kubernetes_tools import registration_prefixed
+from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.setup_istio_mesh import sanitise_kubernetes_service_name
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import setup_unified_service
@@ -22,7 +22,7 @@ def test_setup_kube_service():
     assert len(rest) == 0
     assert k8s_fn is mock_client.core.create_namespaced_service
     assert k8s_svc.metadata.name == sanitized_service_name
-    assert k8s_svc.spec.selector == {registration_prefixed(service_name): "true"}
+    assert k8s_svc.spec.selector == {registration_label(service_name): "true"}
 
 
 def test_setup_unified_service():

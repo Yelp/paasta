@@ -21,8 +21,6 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
-import base64
-import hashlib
 import logging
 import os
 import sys
@@ -38,8 +36,9 @@ import yaml
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.kubernetes_tools import registration_prefixed
+from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
@@ -103,14 +102,7 @@ def load_smartstack_namespaces(soa_dir: str = DEFAULT_SOA_DIR) -> Mapping:
 
 
 def sanitise_kubernetes_service_name(name: str) -> str:
-    name = sanitise_kubernetes_name(name)
-    name = name.replace(".", "---")
-    if len(name) > 63:
-        digest = hashlib.md5(name.encode("utf-8")).digest()
-        hash = base64.b64encode(digest, altchars=b"ps")[0:6].decode("utf-8")
-        hash.replace("=", "")
-        name = f"{name[0:56]}-{hash}"
-    return name
+    return limit_size_with_hash(sanitise_kubernetes_name(name).replace(".", "---"))
 
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
@@ -158,7 +150,7 @@ def setup_paasta_namespace_services(
         service = sanitise_kubernetes_service_name(namespace)
 
         if service in existing_kube_services_names:
-            log.info(f"Service {service} alredy exists, skipping")
+            log.debug(f"Service {service} alredy exists, skipping")
             continue
 
         log.info(f"Creating {service} because it does not exist yet.")
@@ -168,7 +160,7 @@ def setup_paasta_namespace_services(
             name="http", port=PAASTA_SVC_PORT, protocol="TCP", app_protocol="http"
         )
         service_spec = k8s.V1ServiceSpec(
-            selector={registration_prefixed(namespace): "true"}, ports=[port_spec]
+            selector={registration_label(namespace): "true"}, ports=[port_spec]
         )
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
         yield kube_client.core.create_namespaced_service, (
