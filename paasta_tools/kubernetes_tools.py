@@ -516,10 +516,10 @@ def raw_selectors_to_requirements(
 
 
 def registration_label(namespace: str) -> str:
-    """ Returns namespace prefixed with registrations.paasta.yelp.com/,
+    """ Returns namespace prefixed with regs.{paasta_prefix}/,
         truncated to 63 characters with hash as suffix if needed.
     """
-    return limit_size_with_hash(f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}")
+    return limit_size_with_hash(f"regs.{PAASTA_ATTRIBUTE_PREFIX}{namespace}")
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):

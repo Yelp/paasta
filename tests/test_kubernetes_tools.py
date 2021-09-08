@@ -1517,7 +1517,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
-                    "registrations.paasta.yelp.com/kurupt.fm": "true",
+                    "regs.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',
