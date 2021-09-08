@@ -1,3 +1,12 @@
+paasta-tools (0.107.3) xenial; urgency=medium
+
+  * 0.107.3 tagged with 'make release'
+    Commit: Merge pull request #3200 from Yelp/u/asoliman/FLINK-
+    3725_add_concurrency  FLINK-3725: Add concurrency in getting flink
+    job exceptions
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 08 Sep 2021 07:25:44 -0700
+
 paasta-tools (0.107.1) xenial; urgency=medium
 
   * 0.107.1 tagged with 'make release'
