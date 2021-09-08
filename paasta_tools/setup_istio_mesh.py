@@ -176,6 +176,7 @@ def setup_kube_services(
     namespaces = load_smartstack_namespaces(soa_dir)
 
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
+        log.info(f"Creating {UNIFIED_K8S_SVC_NAME} because it does not exist yet.")
         yield from setup_unified_service(
             kube_client=kube_client,
             port_list=sorted(
