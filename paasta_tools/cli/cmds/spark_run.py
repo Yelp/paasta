@@ -850,7 +850,10 @@ def paasta_spark_run(args):
 
     if args.autogen:
         pod_template_path = "/nail/home/"+get_username()+"/podTemplate.yaml"
-        args.spark_args += f" spark.kubernetes.executor.podTemplateFile=${pod_template_path}"
+        if args.spark_args:
+            args.spark_args += f" spark.kubernetes.executor.podTemplateFile={pod_template_path}"
+        else:
+            args.spark_args = f"spark.kubernetes.executor.podTemplateFile={pod_template_path}"
 
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(args.spark_args)
