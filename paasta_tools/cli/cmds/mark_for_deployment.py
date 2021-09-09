@@ -1095,7 +1095,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
-        if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
+        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+            self.ping_authors(
+                "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+            )
+        else:
             if self.get_auto_certify_delay() > 0:
                 self.start_timer(
                     self.get_auto_certify_delay(), "auto_certify", "certify"
