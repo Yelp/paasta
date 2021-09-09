@@ -52,6 +52,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import get_flink_job_exceptions
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -82,6 +83,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
+FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -1023,6 +1025,9 @@ def print_flink_status(
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
+    # get custom resource name to use later in getting exceptions
+    cr_name = ""
+
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -1035,6 +1040,9 @@ def print_flink_status(
             if pod_evicted_count > 0
             else f"{pod_evicted_count}"
         )
+        if "jobmanager" in pod["name"]:
+            cr_name = pod["name"].split("-jobmanager-")[0]
+
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
@@ -1101,7 +1109,20 @@ def print_flink_status(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
-    for job in unique_jobs:
+
+    # This is important because the generator might be exhausted inside the api function call
+    unique_jobs_list = list(unique_jobs)
+
+    job_exceptions = None
+    if verbose > 1:
+        # This condition is intended for testing purposes and should be removed later.
+        # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+        if "exceptions" not in status:
+            job_exceptions = _print_flink_jobs_exceptions_from_api(
+                unique_jobs_list, cr_name, cluster
+            )
+
+    for job in unique_jobs_list:
         job_id = job["jid"]
         if verbose > 1:
             fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
@@ -1135,20 +1156,38 @@ def print_flink_status(
             )
             break
 
-        if verbose > 1 and job_id in status["exceptions"]:
-            exceptions = status["exceptions"][job_id]
-            root_exception = exceptions["root-exception"]
-            if root_exception is not None:
-                output.append(f"        Exception: {root_exception}")
-                ts = exceptions["timestamp"]
-                if ts is not None:
-                    exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+        if verbose > 1:
+            # This condition is intended for testing purposes and should be removed later.
+            # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+            exceptions = None
+            if "exceptions" in status:
+                if job_id in status["exceptions"]:
+                    exceptions = status["exceptions"][job_id]
+            else:
+                exceptions = job_exceptions[job_id]
+
+            if exceptions is not None:
+                if "error" in exceptions:
+                    error = exceptions["error"]
                     output.append(
-                        f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                        PaastaColors.red(
+                            f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {error}"
+                        )
                     )
+                else:
+                    root_exception = exceptions["root-exception"]
+                    if root_exception is not None:
+                        output.append(f"        Exception: {root_exception}")
+                        ts = exceptions["timestamp"]
+                        if ts is not None:
+                            exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+                            output.append(
+                                f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                            )
+
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
-    if verbose == 1 and status["exceptions"]:
+    if verbose == 1:
         output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
@@ -2271,6 +2310,27 @@ def _use_new_paasta_status(args, system_paasta_config) -> bool:
             return True
         else:
             return True
+
+
+def _print_flink_jobs_exceptions_from_api(jobs, cr_name, cluster):
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=FLINK_STATUS_MAX_THREAD_POOL_WORKERS
+    ) as executor:
+        job_exceptions = {}
+        future_job_mapping = {
+            executor.submit(get_flink_job_exceptions, cr_name, cluster, job["jid"]): job
+            for job in jobs
+        }
+        for future in concurrent.futures.as_completed(future_job_mapping):
+            job_id = future_job_mapping[future]["jid"]
+            job_exceptions[job_id] = {}
+            try:
+                exceptions = future.result()
+                job_exceptions[job_id]["root-exception"] = exceptions["root-exception"]
+                job_exceptions[job_id]["timestamp"] = exceptions["timestamp"]
+            except ValueError as e:
+                job_exceptions[job_id]["error"] = str(e)
+    return job_exceptions
 
 
 # Add other custom status writers here

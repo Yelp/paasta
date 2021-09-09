@@ -23,8 +23,8 @@ Command line options:
 import argparse
 import base64
 import hashlib
-import json
 import logging
+import os
 import sys
 from typing import AbstractSet
 from typing import List
@@ -32,12 +32,14 @@ from typing import Mapping
 from typing import Set
 
 import kubernetes.client as k8s
+import yaml
 
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import registration_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 log = logging.getLogger(__name__)
@@ -67,21 +69,35 @@ def parse_args() -> argparse.Namespace:
         help="Update or create up to this number of service instances. Default is 0 (no limit).",
     )
     parser.add_argument(
-        "-f",
-        "--file-path",
-        dest="file_path",
-        default="/nail/etc/services/services.json",
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        default=DEFAULT_SOA_DIR,
         metavar="LIMIT",
         type=str,
-        help="services file to use for smartstack namespace. Default file is /nail/etc/services/services.json",
+        help=f"Directory with service declarations. Default is {DEFAULT_SOA_DIR}",
     )
     args = parser.parse_args()
     return args
 
 
-def load_smartstack_namespaces(file_path: str) -> Mapping:
-    with open(file_path) as service_file:
-        return json.load(service_file)
+def load_smartstack_namespaces(soa_dir: str = DEFAULT_SOA_DIR) -> Mapping:
+    namespaces = {}
+
+    _, dirs, _ = next(os.walk(soa_dir))
+    for dir in dirs:
+        file_path = f"{soa_dir}/{dir}/smartstack.yaml"
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path) as f:
+                svc_namespaces = yaml.load(f, Loader=yaml.CSafeLoader)
+                for (ns, details) in svc_namespaces.items():
+                    namespaces[f"{dir}.{ns}"] = details
+        except Exception as err:
+            log.warn(f"Failed to load namespaces for {dir}: {err}")
+
+    return namespaces
 
 
 def sanitise_kubernetes_service_name(name: str) -> str:
@@ -96,7 +112,7 @@ def sanitise_kubernetes_service_name(name: str) -> str:
 
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
-    service_objects = kube_client.core.list_namespaced_service("paasta")
+    service_objects = kube_client.core.list_namespaced_service(PAASTA_NAMESPACE)
     if not service_objects:
         raise RuntimeError("Error retrieving services list from k8s api")
 
@@ -173,18 +189,19 @@ def setup_paasta_namespace_services(
 
 
 def setup_kube_services(
-    kube_client: KubeClient,
-    rate_limit: int = 0,
-    file_path: str = "/nail/etc/services/services.json",
+    kube_client: KubeClient, rate_limit: int = 0, soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     existing_kube_services_names = get_existing_kubernetes_service_names(kube_client)
-
-    namespaces = load_smartstack_namespaces(file_path)
+    namespaces = load_smartstack_namespaces(soa_dir)
     if UNIFIED_K8S_SVC_NAME not in existing_kube_services_names:
         try:
             setup_unified_service(
                 kube_client=kube_client,
-                port_list=sorted(val["port"] for val in namespaces.values()),
+                port_list=sorted(
+                    val["proxy_port"]
+                    for val in namespaces.values()
+                    if val.get("proxy_port")
+                ),
             )
         except Exception as err:
             log.error(f"{err} while setting up unified service")
@@ -207,7 +224,7 @@ def main() -> None:
     ensure_namespace(kube_client, namespace="paasta")
 
     setup_kube_succeeded = setup_kube_services(
-        kube_client=kube_client, rate_limit=args.rate_limit, file_path=args.file_path,
+        kube_client=kube_client, rate_limit=args.rate_limit, soa_dir=args.soa_dir,
     )
 
     sys.exit(0 if setup_kube_succeeded else 1)

@@ -29,6 +29,7 @@ import paasta_tools.paastaapi.models as paastamodels
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
 from paasta_tools.cli.cmds.status import create_autoscaling_info_table
@@ -48,6 +49,7 @@ from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
@@ -982,6 +984,71 @@ def mock_kafka_status() -> Mapping[str, Any]:
     )
 
 
+@pytest.fixture
+def mock_flink_status() -> Mapping[str, Any]:
+    return defaultdict(
+        metadata=dict(
+            annotations={
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.fake_cluster.paasta:31080/app-9bf849b89"
+            },
+            labels={"paasta.yelp.com/config_sha": "config00000"},
+        ),
+        status=dict(
+            config={
+                "flink-version": "1.11.3",
+                "flink-revision": "2020-12-12T12:13:25+01:00",
+            },
+            state="running",
+            pod_status=[
+                {
+                    "name": "app-9bf849b89-jobmanager-54f69dbfc9-cz52m",
+                    "phase": "Running",
+                    "container_state": "Running",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+                {
+                    "name": "app-9bf849b89-supervisor-f2tgd",
+                    "phase": "Running",
+                    "container_state": "Running",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+                {
+                    "name": "app-9bf849b89-taskmanager-6c99d7c6dd-44rvd",
+                    "phase": "Running",
+                    "container_state": "Running",
+                    "container_state_reason": "",
+                    "host": "fake_host",
+                    "deployed_timestamp": "2021-08-25T07:20:52Z",
+                    "reason": "",
+                },
+            ],
+            overview={
+                "jobs-running": 1,
+                "jobs-finished": 0,
+                "jobs-failed": 0,
+                "jobs-cancelled": 0,
+                "taskmanagers": 1,
+                "slots-available": 3,
+                "slots-total": 4,
+            },
+            jobs=[
+                {
+                    "jid": "15ee4f8db6e9171489fae6f2178dbd54",
+                    "name": "test_flink_job",
+                    "state": "RUNNING",
+                    "start-time": 1629900637343,
+                }
+            ],
+        ),
+    )
+
+
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
 def test_paasta_status_on_api_endpoint_marathon(
     mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
@@ -1755,6 +1822,357 @@ class TestPrintKafkaStatus:
             f"     1   {PaastaColors.red('Pending')}  2020-03-25 16:24:21 ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
+
+
+class TestPrintFlinkStatus:
+    def test_error(self, mock_flink_status):
+        mock_flink_status["status"] = None
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_Cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+
+    def test_successful_return_value(self, mock_flink_status):
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            flink=mock_flink_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output_0_verbose(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=0,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        expected_output = _get_base_status_verbose_0(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Started",
+            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
+        ]
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output_stopping_jobmanager(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        mock_flink_status["status"]["state"] = "Stoppingjobmanager"
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.yellow(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+        ]
+        append_pod_status(status["pod_status"], expected_output)
+        expected_output.append(
+            "    No other information available in non-running state"
+        )
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output_stopping_taskmanagers(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
+        mock_flink_status["status"]["pod_status"] = mock_flink_status["status"][
+            "pod_status"
+        ][2:]
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.yellow(status['state'].title())}",
+            f"    Pods: 1 running, 0 evicted, 0 other",
+        ]
+        append_pod_status(status["pod_status"], expected_output)
+        expected_output.append(
+            "    No other information available in non-running state"
+        )
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output_1_verbose(
+        self, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        job_start_time = str(
+            datetime.datetime.fromtimestamp(
+                int(status["jobs"][0]["start-time"]) // 1000
+            )
+        )
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Started",
+            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
+        ]
+        append_pod_status(status["pod_status"], expected_output)
+        expected_output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.flink_tools._dashboard_get", autospec=True)
+    def test_output_2_verbose_no_exceptions(
+        self, mock__dashboard_get, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        mock__dashboard_get.return_value = '{"root-exception":null,"timestamp":null,"all-exceptions":[],"truncated":false}'
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=2,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        dashboard_url = metadata["annotations"]["flink.yelp.com/dashboard_url"]
+        job_start_time = str(
+            datetime.datetime.fromtimestamp(
+                int(status["jobs"][0]["start-time"]) // 1000
+            )
+        )
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Job ID                           Started",
+            f"""      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {status['jobs'][0]['jid']} {job_start_time} ({mock_naturaltime.return_value})
+        {PaastaColors.grey(f"{dashboard_url}/#/jobs/{status['jobs'][0]['jid']}")}""",
+        ]
+        append_pod_status(status["pod_status"], expected_output)
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.flink_tools._dashboard_get", autospec=True)
+    def test_output_2_verbose_with_exceptions(
+        self, mock__dashboard_get, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        mock__dashboard_get.return_value = '{"root-exception": "org.apache.flink.runtime.fake_exception", "timestamp": 1629900637343, "all-exceptions": [], "truncated": false}'
+        mock_flink_status["status"]["jobs"][0]["state"] = "Restarting"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=2,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        dashboard_url = metadata["annotations"]["flink.yelp.com/dashboard_url"]
+        job_id = status["jobs"][0]["jid"]
+        job_start_time = str(
+            datetime.datetime.fromtimestamp(
+                int(status["jobs"][0]["start-time"]) // 1000
+            )
+        )
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Job ID                           Started",
+            f"""      {status['jobs'][0]['name']} {PaastaColors.yellow('Restarting')} {job_id} {job_start_time} ({mock_naturaltime.return_value})
+        {PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}")}""",
+        ]
+        expected_output.append(
+            "        Exception: org.apache.flink.runtime.fake_exception"
+        )
+        expected_output.append(
+            f"            {job_start_time} ({mock_naturaltime.return_value})"
+        )
+        append_pod_status(status["pod_status"], expected_output)
+        mock__dashboard_get.assert_called_once_with(
+            "app-9bf849b89", "fake_cluster", f"/jobs/{job_id}/exceptions"
+        )
+        assert expected_output == output
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.flink_tools._dashboard_get", autospec=True)
+    def test_output_2_verbose_with_exception_handling(
+        self, mock__dashboard_get, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        mock__dashboard_get.side_effect = ConnectionError()
+        mock_flink_status["status"]["jobs"][0]["state"] = "Restarting"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=2,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        dashboard_url = metadata["annotations"]["flink.yelp.com/dashboard_url"]
+        job_id = status["jobs"][0]["jid"]
+        job_start_time = str(
+            datetime.datetime.fromtimestamp(
+                int(status["jobs"][0]["start-time"]) // 1000
+            )
+        )
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Job ID                           Started",
+            f"""      {status['jobs'][0]['name']} {PaastaColors.yellow('Restarting')} {job_id} {job_start_time} ({mock_naturaltime.return_value})
+        {PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}")}""",
+        ]
+        expected_output.append(
+            PaastaColors.red(
+                f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error failed HTTP request to job exceptions: "
+            )
+        )
+        append_pod_status(status["pod_status"], expected_output)
+        assert expected_output == output
+
+    # Test to check that getting exceptions from status object is still possible
+    # Should be removed later
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @patch("paasta_tools.flink_tools._dashboard_get", autospec=True)
+    def test_output_2_verbose_with_exceptions_from_status_object(
+        self, mock__dashboard_get, mock_naturaltime, mock_flink_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        mock_flink_status["status"]["exceptions"] = {
+            "15ee4f8db6e9171489fae6f2178dbd54": {
+                "root-exception": "org.apache.flink.runtime.fake_exception",
+                "timestamp": 1629900637343,
+                "all-exceptions": [],
+            }
+        }
+        mock_flink_status["status"]["jobs"][0]["state"] = "Restarting"
+        output = []
+        print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=2,
+        )
+
+        status = mock_flink_status["status"]
+        metadata = mock_flink_status["metadata"]
+        dashboard_url = metadata["annotations"]["flink.yelp.com/dashboard_url"]
+        job_id = status["jobs"][0]["jid"]
+        job_start_time = str(
+            datetime.datetime.fromtimestamp(
+                int(status["jobs"][0]["start-time"]) // 1000
+            )
+        )
+        expected_output = _get_base_status_verbose_1(status, metadata) + [
+            f"    State: {PaastaColors.green(status['state'].title())}",
+            f"    Pods: 3 running, 0 evicted, 0 other",
+            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
+            f"    1 taskmanagers, 3/4 slots available",
+            f"    Jobs:",
+            f"      Job Name       State       Job ID                           Started",
+            f"""      {status['jobs'][0]['name']} {PaastaColors.yellow('Restarting')} {job_id} {job_start_time} ({mock_naturaltime.return_value})
+        {PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}")}""",
+        ]
+        expected_output.append(
+            "        Exception: org.apache.flink.runtime.fake_exception"
+        )
+        expected_output.append(
+            f"            {job_start_time} ({mock_naturaltime.return_value})"
+        )
+        append_pod_status(status["pod_status"], expected_output)
+        assert mock__dashboard_get.call_count == 0
+        assert expected_output == output
+
+
+def _get_base_status_verbose_0(status, metadata):
+    return [
+        f"    Config SHA: 00000",
+        f"    Flink version: {status['config']['flink-version']}",
+        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
+    ]
+
+
+def _get_base_status_verbose_1(status, metadata):
+    return [
+        f"    Config SHA: 00000",
+        f"    Flink version: {status['config']['flink-version']} {status['config']['flink-revision']}",
+        f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
+    ]
 
 
 def _formatted_table_to_dict(formatted_table):

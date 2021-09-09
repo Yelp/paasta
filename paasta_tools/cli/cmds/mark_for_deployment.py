@@ -1282,7 +1282,7 @@ async def periodically_diagnose_instance(
         except asyncio.CancelledError:
             raise
         except Exception:
-            print("Couldn't get status of {service}.{instance}:")
+            print(f"Couldn't get status of {service}.{instance}:")
             traceback.print_exc()
         await asyncio.sleep(diagnosis_interval)
 

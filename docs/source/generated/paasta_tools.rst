@@ -81,6 +81,7 @@ Submodules
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
+   paasta_tools.monkrelaycluster_tools
    paasta_tools.native_mesos_scheduler
    paasta_tools.nrtsearchservice_tools
    paasta_tools.oom_logger

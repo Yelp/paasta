@@ -1,3 +1,29 @@
+paasta-tools (0.107.3) xenial; urgency=medium
+
+  * 0.107.3 tagged with 'make release'
+    Commit: Merge pull request #3200 from Yelp/u/asoliman/FLINK-
+    3725_add_concurrency  FLINK-3725: Add concurrency in getting flink
+    job exceptions
+
+ -- Robert Johnson <robj@yelp.com>  Wed, 08 Sep 2021 07:25:44 -0700
+
+paasta-tools (0.107.1) xenial; urgency=medium
+
+  * 0.107.1 tagged with 'make release'
+    Commit: Merge pull request #3196 from Yelp/gcoll_COREML-
+    2570_paasta_spark_run_check_k8s_volumes  [COREML-2570] fix k8s
+    volumes being mounted twice
+
+ -- Giulio Collura <gcoll@yelp.com>  Fri, 03 Sep 2021 02:21:59 -0700
+
+paasta-tools (0.107.0) xenial; urgency=medium
+
+  * 0.107.0 tagged with 'make release'
+    Commit: Merge pull request #3188 from Yelp/u/asoliman/FLINK-3725
+    FLINK-3725 Query flink REST API for exceptions
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Thu, 02 Sep 2021 03:16:50 -0700
+
 paasta-tools (0.106.1) xenial; urgency=medium
 
   * 0.106.1 tagged with 'make release'

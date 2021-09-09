@@ -10,15 +10,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
-from typing import Any
 from typing import List
 from typing import Mapping
 from typing import Optional
 
-import requests
 import service_configuration_lib
-from mypy_extensions import TypedDict
 
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -30,29 +26,21 @@ from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
 
-FLINK_INGRESS_PORT = 31080
-FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
+class MonkRelayClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
+    replicas: int
 
 
-class TaskManagerConfig(TypedDict, total=False):
-    instances: int
+class MonkRelayClusterDeploymentConfig(LongRunningServiceConfig):
+    config_dict: MonkRelayClusterDeploymentConfigDict
 
-
-class FlinkDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
-    taskmanager: TaskManagerConfig
-
-
-class FlinkDeploymentConfig(LongRunningServiceConfig):
-    config_dict: FlinkDeploymentConfigDict
-
-    config_filename_prefix = "flink"
+    config_filename_prefix = "monkrelaycluster"
 
     def __init__(
         self,
         service: str,
         cluster: str,
         instance: str,
-        config_dict: FlinkDeploymentConfigDict,
+        config_dict: MonkRelayClusterDeploymentConfigDict,
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
@@ -66,17 +54,21 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
-    def validate(
-        self,
-        params: List[str] = [
-            "cpus",
-            "mem",
-            "security",
-            "dependencies_reference",
-            "deploy_group",
-        ],
-    ) -> List[str]:
+    def get_instances(self, with_limit: bool = True) -> int:
+        return self.config_dict.get("replicas", 1)
+
+    def validate(self, params: List[str] = None,) -> List[str]:
         # Use InstanceConfig to validate shared config keys like cpus and mem
+        # TODO: add mem back to this list once we fix PAASTA-15582 and
+        # move to using the same units as flink/marathon etc.
+        if params is None:
+            params = [
+                "cpus",
+                "security",
+                "dependencies_reference",
+                "deploy_group",
+            ]
+
         error_msgs = super().validate(params=params)
 
         if error_msgs:
@@ -85,19 +77,15 @@ class FlinkDeploymentConfig(LongRunningServiceConfig):
         else:
             return []
 
-    # Since Flink services are stateful, losing capacity is not transparent to the users
-    def get_replication_crit_percentage(self) -> int:
-        return self.config_dict.get("replication_threshold", 100)
 
-
-def load_flink_instance_config(
+def load_monkrelaycluster_instance_config(
     service: str,
     instance: str,
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> FlinkDeploymentConfig:
-    """Read a service instance's configuration for Flink.
+) -> MonkRelayClusterDeploymentConfig:
+    """Read a service instance's configuration for MonkRelayCluster.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
     paasta-${cluster}.${instance}.
@@ -113,7 +101,7 @@ def load_flink_instance_config(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "flink", cluster, soa_dir=soa_dir
+        service, instance, "monkrelaycluster", cluster, soa_dir=soa_dir
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -122,7 +110,7 @@ def load_flink_instance_config(
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        temp_instance_config = FlinkDeploymentConfig(
+        temp_instance_config = MonkRelayClusterDeploymentConfig(
             service=service,
             cluster=cluster,
             instance=instance,
@@ -134,7 +122,7 @@ def load_flink_instance_config(
         deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
-    return FlinkDeploymentConfig(
+    return MonkRelayClusterDeploymentConfig(
         service=service,
         cluster=cluster,
         instance=instance,
@@ -149,49 +137,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-flinks",
-        plural="flinks",
+        namespace="paasta-monkrelayclusters",
+        plural="monkrelays",
         name=sanitised_cr_name(service, instance),
     )
-
-
-def get_flink_ingress_url_root(cluster: str) -> str:
-    return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
-
-
-def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
-    root = get_flink_ingress_url_root(cluster)
-    url = f"{root}{cr_name}/{path}"
-    response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-    response.raise_for_status()
-    return response.text
-
-
-def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
-    try:
-        response = _dashboard_get(cr_name, cluster, "overview")
-        return json.loads(response)
-    except requests.RequestException as e:
-        url = e.request.url
-        err = e.response or str(e)
-        raise ValueError(f"failed HTTP request to Jobmanager dashboard {url}: {err}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
-    except ConnectionError as e:
-        raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
-
-
-def get_flink_job_exceptions(
-    cr_name: str, cluster: str, job_id: str
-) -> Mapping[str, Any]:
-    try:
-        response = _dashboard_get(cr_name, cluster, f"/jobs/{job_id}/exceptions")
-        return json.loads(response)
-    except requests.RequestException as e:
-        url = e.request.url
-        err = e.response or str(e)
-        raise ValueError(f"failed HTTP request to job exceptions {url}: {err}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"JSON decoding error from job exceptions: {e}")
-    except ConnectionError as e:
-        raise ValueError(f"failed HTTP request to job exceptions: {e}")
