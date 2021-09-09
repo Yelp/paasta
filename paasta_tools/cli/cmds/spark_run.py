@@ -115,8 +115,7 @@ def add_subparser(subparsers):
         "-a",
         "--autogen",
         help="Auto generate pod template used in executors.",
-        action="store_true",
-        default=False,
+        default='-1',
     )
     list_parser.add_argument(
         "--docker-registry",
@@ -521,7 +520,7 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen=False) -> str:
+def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen='-1') -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
         shlex.split(original_docker_cmd)
@@ -544,8 +543,8 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen=
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
     spark_app_name += f"_{get_username()}"
-    if autogen:
-        document = """
+    if autogen != '-1':
+        document = f"""
 apiVersion: v1
 kind: Pod
 metadata:
@@ -555,7 +554,7 @@ spec:
   affinity:
     podAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 95
+      - weight: {autogen}
         podAffinityTerm:
           labelSelector:
             matchExpressions:
@@ -566,13 +565,11 @@ spec:
           topologyKey: topology.kubernetes.io/hostname
 """
         parsed_pod_template = yaml.load(document)
-        print(parsed_pod_template)
         parsed_pod_template['metadata']['labels']['spark'] += "-" + spark_app_name
         parsed_pod_template['spec']['affinity'] \
             ['podAffinity']['preferredDuringSchedulingIgnoredDuringExecution'][0] \
             ['podAffinityTerm']['labelSelector']['matchExpressions'][0]['values'][0] \
             = parsed_pod_template['metadata']['labels']['spark']
-        print(get_username())
         f = open("/nail/home/"+get_username()+"/podTemplate.yaml", "w")
         f.write(yaml.dump(parsed_pod_template))
         f.close()
@@ -848,12 +845,14 @@ def paasta_spark_run(args):
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.autogen)
 
-    if args.autogen:
+    if args.autogen != '-1':
         pod_template_path = "/nail/home/"+get_username()+"/podTemplate.yaml"
         if args.spark_args:
             args.spark_args += f" spark.kubernetes.executor.podTemplateFile={pod_template_path}"
+            args.spark_args += f" spark.kubernetes.allocation.batch.size=2"
         else:
             args.spark_args = f"spark.kubernetes.executor.podTemplateFile={pod_template_path}"
+            args.spark_args += f" spark.kubernetes.allocation.batch.size=2"
 
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(args.spark_args)
