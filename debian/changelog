@@ -1,3 +1,11 @@
+paasta-tools (0.107.4) xenial; urgency=medium
+
+  * 0.107.4 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-
+    17453_better_instructions_when_not_starting_timer"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 09 Sep 2021 10:05:34 -0700
+
 paasta-tools (0.107.3) xenial; urgency=medium
 
   * 0.107.3 tagged with 'make release'
