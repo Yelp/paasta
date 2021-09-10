@@ -149,7 +149,7 @@ class InstanceStatusKubernetesAutoscalingStatus(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             desired_replicas (int): desired number of _instances as calculated by HPA. [optional]  # noqa: E501
             last_scale_time (str): timestamp of last autoscale. [optional]  # noqa: E501
-            max_instances (int): min_instances as specified in yelpsoa_configs. [optional]  # noqa: E501
+            max_instances (int): max_instances as specified in yelpsoa_configs. [optional]  # noqa: E501
             metrics ([HPAMetric]): Current metrics. [optional]  # noqa: E501
             min_instances (int): min_instances as specified in yelpsoa_configs. [optional]  # noqa: E501
         """

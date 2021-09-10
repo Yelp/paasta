@@ -30,6 +30,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Mapping
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
@@ -51,6 +52,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import get_flink_job_exceptions
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -61,6 +63,7 @@ from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
+from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.paastaapi.models import KubernetesVersion
 from paasta_tools.tron_tools import TronActionConfig
@@ -78,6 +81,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
+FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -126,13 +130,24 @@ def add_subparser(subparsers,) -> None:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
-    status_parser.add_argument(
+
+    version = status_parser.add_mutually_exclusive_group()
+
+    version.add_argument(
         "--new",
         dest="new",
         action="store_true",
         default=False,
         help="Use experimental new version of paasta status for services",
     )
+    version.add_argument(
+        "--old",
+        dest="old",
+        default=False,
+        action="store_true",
+        help="Use the old version of paasta status for services",
+    )
+
     add_instance_filter_arguments(status_parser)
     status_parser.set_defaults(command=paasta_status)
 
@@ -805,6 +820,9 @@ def print_flink_status(
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
+    # get custom resource name to use later in getting exceptions
+    cr_name = ""
+
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -817,6 +835,9 @@ def print_flink_status(
             if pod_evicted_count > 0
             else f"{pod_evicted_count}"
         )
+        if "jobmanager" in pod["name"]:
+            cr_name = pod["name"].split("-jobmanager-")[0]
+
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
@@ -883,7 +904,20 @@ def print_flink_status(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
-    for job in unique_jobs:
+
+    # This is important because the generator might be exhausted inside the api function call
+    unique_jobs_list = list(unique_jobs)
+
+    job_exceptions = None
+    if verbose > 1:
+        # This condition is intended for testing purposes and should be removed later.
+        # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+        if "exceptions" not in status:
+            job_exceptions = _print_flink_jobs_exceptions_from_api(
+                unique_jobs_list, cr_name, cluster
+            )
+
+    for job in unique_jobs_list:
         job_id = job["jid"]
         if verbose > 1:
             fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
@@ -917,20 +951,38 @@ def print_flink_status(
             )
             break
 
-        if verbose > 1 and job_id in status["exceptions"]:
-            exceptions = status["exceptions"][job_id]
-            root_exception = exceptions["root-exception"]
-            if root_exception is not None:
-                output.append(f"        Exception: {root_exception}")
-                ts = exceptions["timestamp"]
-                if ts is not None:
-                    exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+        if verbose > 1:
+            # This condition is intended for testing purposes and should be removed later.
+            # If the status object contains exceptions, then use it. Otherwise try to get it from calling the API
+            exceptions = None
+            if "exceptions" in status:
+                if job_id in status["exceptions"]:
+                    exceptions = status["exceptions"][job_id]
+            else:
+                exceptions = job_exceptions[job_id]
+
+            if exceptions is not None:
+                if "error" in exceptions:
+                    error = exceptions["error"]
                     output.append(
-                        f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                        PaastaColors.red(
+                            f"        Failed to fetch exceptions for job {job_id} from jobmanager due to error {error}"
+                        )
                     )
+                else:
+                    root_exception = exceptions["root-exception"]
+                    if root_exception is not None:
+                        output.append(f"        Exception: {root_exception}")
+                        ts = exceptions["timestamp"]
+                        if ts is not None:
+                            exc_ts = datetime.fromtimestamp(int(ts) // 1000)
+                            output.append(
+                                f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
+                            )
+
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
-    if verbose == 1 and status["exceptions"]:
+    if verbose == 1:
         output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
@@ -958,8 +1010,17 @@ def print_kubernetes_status_v2(
             )
         )
     output.extend(
-        [f"      {line}" for line in get_versions_table(status.versions, verbose)]
+        [
+            f"      {line}"
+            for line in get_versions_table(
+                status.versions, service, instance, cluster, verbose
+            )
+        ]
     )
+
+    if verbose > 1:
+        output.extend(get_autoscaling_table(status.autoscaling_status, verbose))
+
     if status.error_message:
         output.append("    " + PaastaColors.red(status.error_message))
         return 1
@@ -978,7 +1039,10 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
             return PaastaColors.red("Stopping")
     elif status.desired_state == "start":
         if num_versions == 0:
-            return PaastaColors.yellow("Starting")
+            if status.desired_instances == 0:
+                return PaastaColors.red("Stopped")
+            else:
+                return PaastaColors.yellow("Starting")
         if num_versions == 1:
             if num_ready_replicas < status.desired_instances:
                 return PaastaColors.yellow("Launching replicas")
@@ -1001,13 +1065,18 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
 
 
 def get_versions_table(
-    versions: List[KubernetesVersion], verbose: int = 0,
+    versions: List[KubernetesVersion],
+    service: str,
+    instance: str,
+    cluster: str,
+    verbose: int = 0,
 ) -> List[str]:
-    # TODO: why are replicasets w/ 0 desired pods still listed
     if len(versions) == 0:
         return [PaastaColors.red("There are no running versions for this instance")]
     elif len(versions) == 1:
-        return get_version_table_entry(versions[0], verbose=verbose)
+        return get_version_table_entry(
+            versions[0], service, instance, cluster, verbose=verbose
+        )
     else:
         versions = sorted(versions, key=lambda x: x.create_timestamp, reverse=True)
         config_shas = {v.config_sha for v in versions}
@@ -1020,6 +1089,9 @@ def get_versions_table(
         table.extend(
             get_version_table_entry(
                 versions[0],
+                service,
+                instance,
+                cluster,
                 version_name_suffix="new",
                 show_config_sha=show_config_sha,
                 verbose=verbose,
@@ -1029,6 +1101,9 @@ def get_versions_table(
             table.extend(
                 get_version_table_entry(
                     version,
+                    service,
+                    instance,
+                    cluster,
                     version_name_suffix="old",
                     show_config_sha=show_config_sha,
                     verbose=verbose,
@@ -1039,12 +1114,15 @@ def get_versions_table(
 
 def get_version_table_entry(
     version: KubernetesVersion,
+    service: str,
+    instance: str,
+    cluster: str,
     version_name_suffix: str = None,
     show_config_sha: bool = False,
     verbose: int = 0,
 ) -> List[str]:
     version_name = version.git_sha[:8]
-    if show_config_sha:
+    if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
@@ -1062,8 +1140,9 @@ def get_version_table_entry(
         # If no replica_states, there were no pods found
         replica_state_counts = Counter([state for state, pod in replica_states])
         replica_state_display = [
-            state.color(f"{count} {state.value}")
-            for state, count in replica_state_counts.items()
+            state.color(f"{replica_state_counts[state]} {state.message}")
+            for state in ReplicaState
+            if state in replica_state_counts
         ]
         entry.append(f"  Replica States: {' / '.join(replica_state_display)}")
         if not verbose:
@@ -1072,41 +1151,79 @@ def get_version_table_entry(
             ]
             if unhealthy_replicas:
                 entry.append(f"    Unhealthy Replicas:")
-                replica_table = create_replica_table(unhealthy_replicas)
+                replica_table = create_replica_table(
+                    unhealthy_replicas, service, instance, cluster, verbose
+                )
                 for line in replica_table:
                     entry.append(f"      {line}")
         else:
-            replica_table = create_replica_table(replica_states)
+            replica_table = create_replica_table(
+                replica_states, service, instance, cluster, verbose
+            )
             for line in replica_table:
                 entry.append(f"    {line}")
     return entry
 
 
 class ReplicaState(Enum):
-    RUNNING = "Healthy"
-    UNSCHEDULED = "Unscheduled"
-    STARTING = "Starting"
-    WARMING_UP = "Warming Up"
-    TERMINATING = "Terminating"
-    HEALTHCHECK_FAILING = "Healthcheck Failing"
-    UNREACHABLE = "Unreachable"
-    UNHEALTHY = "Unhealthy"
-    UNKNOWN = "Unknown"
+    # Order will be preserved in count summary
+    RUNNING = "Healthy", PaastaColors.green
+    UNREACHABLE = "Unreachable", PaastaColors.red
+    NOT_RUNNING = "Not Running", PaastaColors.red
+    WARNING = "Warning", PaastaColors.yellow
+    UNSCHEDULED = "Unscheduled", PaastaColors.yellow
+    STARTING = "Starting", PaastaColors.yellow
+    WARMING_UP = "Warming Up", PaastaColors.cyan
+    TERMINATING = "Terminating", PaastaColors.cyan
+    UNKNOWN = "Unknown", PaastaColors.yellow
 
     def is_unhealthy(self):
-        return self in ReplicaState.unhealthy_states()
+        return self.name in ["UNREACHABLE", "NOT_RUNNING"]
 
     @property
-    def color(self):
-        if self.is_unhealthy():
-            return PaastaColors.red
-        elif self.name == "RUNNING":
-            return PaastaColors.green
-        return PaastaColors.yellow
+    def color(self) -> Callable:
+        return self.value[1]
 
-    @classmethod
-    def unhealthy_states(cls):
-        return [cls.UNHEALTHY, cls.UNREACHABLE, cls.HEALTHCHECK_FAILING]
+    @property
+    def formatted_message(self):
+        return self.value[1](self.value[0])
+
+    @property
+    def message(self):
+        return self.value[0]
+
+
+def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
+    if not pod.events:
+        return False
+    return any(
+        [evt for evt in pod.events if "Liveness probe failed" in evt.get("message", "")]
+    )
+
+
+def recent_container_restart(
+    container: KubernetesContainerV2, time_window: int = 900
+) -> bool:
+    min_timestamp = datetime.now().timestamp() - time_window
+    if (
+        container.restart_count > 0
+        and container.last_state == "terminated"
+        and container.last_timestamp is not None
+        and container.last_timestamp > min_timestamp
+    ):
+        return True
+    return False
+
+
+def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
+    return next(
+        (
+            c
+            for c in pod.containers
+            if c.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES
+        ),
+        None,
+    )
 
 
 def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
@@ -1120,35 +1237,43 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         if not pod.containers or all([c.state == "waiting" for c in pod.containers]):
             state = ReplicaState.STARTING
         else:
-            state = ReplicaState.UNHEALTHY
+            state = ReplicaState.NOT_RUNNING
     elif phase == "Running":
-        if not pod.ready:
-            # TODO: Take sidecar containers into account
-            #   This logic likely needs refining
-            state = ReplicaState.UNREACHABLE
-            main_container = [
-                c
-                for c in pod.containers
-                if c.name not in kubernetes_tools.SIDECAR_CONTAINER_NAMES
-            ]
-            if main_container:
-                if main_container[0].restart_count > 0:
-                    if (
-                        pod.create_timestamp
-                        + main_container[0].healthcheck_grace_period
-                        > datetime.utcnow().timestamp()
-                    ):
-                        state = ReplicaState.WARMING_UP
-                    else:
-                        state = ReplicaState.HEALTHCHECK_FAILING
+        ####
+        # TODO: Take sidecar containers into account
+        #   This logic likely needs refining
+        main_container = get_main_container(pod)
+        if main_container:
+            # K8s API is returning timestamps in YST, so we use now() instead of utcnow()
+            warming_up = (
+                pod.create_timestamp + main_container.healthcheck_grace_period
+                > datetime.now().timestamp()
+            )
+            if pod.mesh_ready is False:
+                if main_container.state != "running":
+                    state = ReplicaState.NOT_RUNNING
                 else:
-                    # No restarts yet, still warming up?
-                    state = ReplicaState.WARMING_UP
+                    state = ReplicaState.UNREACHABLE
+            elif not pod.ready:
+                state = ReplicaState.NOT_RUNNING
+            else:
+                if recent_liveness_failure(pod) or recent_container_restart(
+                    main_container
+                ):
+                    state = ReplicaState.WARNING
+                else:
+                    state = ReplicaState.RUNNING
+
+            if state != ReplicaState.RUNNING and warming_up:
+                state = ReplicaState.WARMING_UP
+
         else:
-            state = ReplicaState.RUNNING
+            state = ReplicaState.UNKNOWN
+
+        # Catch
     elif phase == "Failed":
         # e.g. pod.reason == evicted
-        state = ReplicaState.UNHEALTHY
+        state = ReplicaState.NOT_RUNNING
     return state
 
 
@@ -1160,6 +1285,10 @@ def get_replica_states(
 
 def create_replica_table(
     pods: List[Tuple[ReplicaState, KubernetesPodV2]],
+    service: str,
+    instance: str,
+    cluster: str,
+    verbose: int = 0,
 ) -> List[str]:
     header = ["ID", "IP/Port", "Host deployed to", "Started at what localtime", "State"]
     table: List[Union[List[str], str]] = [header]
@@ -1171,53 +1300,152 @@ def create_replica_table(
             f"{pod.ip}:8888" if pod.ip else "None",
             pod.host or "None",
             humanized_start_time,
-            state.color(state.value),
+            state.formatted_message,
         ]
         table.append(row)
-        if state.is_unhealthy():
-            # Need per-container details eg start time + restart count
-            if pod.reason == "Evicted":
+
+        # Adding additional context/tips
+        if pod.reason == "Evicted":
+            table.append(
+                PaastaColors.red(
+                    f'  Evicted: {pod.message if pod.message else "Unknown reason"}'
+                )
+            )
+
+        main_container = get_main_container(pod)
+        if main_container:
+            if main_container.timestamp:
+                timestamp = datetime.fromtimestamp(main_container.timestamp)
+            elif main_container.last_timestamp:
+                timestamp = datetime.fromtimestamp(main_container.last_timestamp)
+            else:
+                # if no container timestamps are found, use pod's creation
+                timestamp = start_datetime
+
+            humanized_timestamp = humanize.naturaltime(timestamp)
+            if recent_container_restart(main_container):
                 table.append(
                     PaastaColors.red(
-                        f'  Evicted: {pod.message if pod.message else "Unknown reason"}'
+                        f"  Restarted {humanized_timestamp}. {main_container.restart_count} restarts since starting"
                     )
                 )
-            for c in pod.containers:
-                # If container has no timestamp, use pod's creation
-                timestamp = (
-                    datetime.fromtimestamp(c.timestamp)
-                    if c.timestamp
-                    else start_datetime
+            if (
+                main_container.reason == "OOMKilled"
+                or main_container.last_reason == "OOMKilled"
+            ):
+                if main_container.reason == "OOMKilled":
+                    oom_kill_timestamp = timestamp
+                    human_oom_kill_timestamp = humanized_timestamp
+                elif main_container.last_reason == "OOMKilled":
+                    oom_kill_timestamp = datetime.fromtimestamp(
+                        main_container.last_timestamp
+                    )
+                    human_oom_kill_timestamp = humanize.naturaltime(oom_kill_timestamp)
+                table.extend(
+                    [
+                        PaastaColors.red(
+                            f"  OOM Killed {human_oom_kill_timestamp} ({oom_kill_timestamp})."
+                        ),
+                        PaastaColors.red(
+                            f"    Check y/check-oom-events and consider increasing memory in yelpsoa_configs"
+                        ),
+                    ]
                 )
-                humanized_timestamp = humanize.naturaltime(timestamp)
-                if c.restart_count > 0:
-                    if c.state != "running" or c.last_reason == "CrashLoopBackOff":
-                        table.append(
-                            PaastaColors.red(
-                                f"Restarted at {humanized_timestamp}. {c.restart_count} restarts since starting"
-                            )
+            if state == ReplicaState.WARMING_UP:
+                if verbose > 0:
+                    warmup_duration = datetime.now().timestamp() - pod.create_timestamp
+                    humanized_duration = humanize.naturaldelta(
+                        timedelta(seconds=warmup_duration)
+                    )
+                    grace_period_remaining = (
+                        pod.create_timestamp
+                        + main_container.healthcheck_grace_period
+                        - datetime.now().timestamp()
+                    )
+                    humanized_remaining = humanize.naturaldelta(
+                        timedelta(seconds=grace_period_remaining)
+                    )
+                    table.append(
+                        PaastaColors.cyan(
+                            f"  Still warming up, {humanized_duration} elapsed, {humanized_remaining} before healthchecking starts"
                         )
-                    if c.reason == "OOMKilled":
-                        table.append(
-                            PaastaColors.red(
-                                f"  OOM Killed at {humanized_timestamp}.  {c.restart_count} restarts since starting"
-                            )
-                        )
-            if state == ReplicaState.HEALTHCHECK_FAILING:
-                # TODO: Use actual container.liveness_probe port or healthcheck from config
+                    )
+        if recent_liveness_failure(pod) and state != ReplicaState.TERMINATING:
+            healthcheck_string = (
+                "check your healthcheck configuration in yelpsoa_configs"
+            )
+            if main_container and main_container.healthcheck_cmd:
+                if main_container.healthcheck_cmd.http_url:
+                    healthcheck_string = (
+                        f"run `curl {main_container.healthcheck_cmd.http_url}`"
+                    )
+                elif main_container.healthcheck_cmd.tcp_port:
+                    healthcheck_string = f"verify your service is listening on {main_container.healthcheck_cmd.tcp_port}"
+                elif main_container.healthcheck_cmd.cmd:
+                    healthcheck_string = f"check why the following may be failing: `{main_container.healthcheck_cmd.cmd}`"
+            table.append(
+                PaastaColors.red(
+                    f"  Healthchecks are failing. To investigate further, {healthcheck_string}"
+                )
+            )
+        if state.is_unhealthy():
+            if verbose < 2:
                 table.append(
                     PaastaColors.red(
-                        f"  To test healthcheck directly, run `curl {pod.ip}:8888/status`"
+                        f"  Consider checking logs with `paasta logs -c {cluster} -s {service} -i {instance} -p {pod.name}`"
                     )
                 )
             else:
-                # TODO: Specify full paasta logs cmd once pod filtering is available
-                table.append(
-                    PaastaColors.red(f"  Consider checking logs with `paasta logs`")
-                )
+                if pod.events:
+                    table.extend(format_pod_event_messages(pod.events, pod.name))
+                if len(pod.containers) > 0:
+                    table.extend(
+                        format_tail_lines_for_kubernetes_pod(pod.containers, pod.name)
+                    )
         elif state == ReplicaState.UNSCHEDULED:
             if pod.reason == "Unschedulable":
                 table.append(PaastaColors.red(f"  Pod is unschedulable: {pod.message}"))
+        elif state == ReplicaState.UNKNOWN:
+            table.append(
+                PaastaColors.red(
+                    f"  Cannot determine pod state, please try again. If you continue to see this state, please contact #paasta"
+                )
+            )
+    return format_table(table)
+
+
+def get_autoscaling_table(
+    autoscaling_status: Dict[str, Any], verbose: int = 0
+) -> List[str]:
+    table = []
+    if autoscaling_status and verbose > 1:
+        table.append("    Autoscaling status:")
+        table.append(f"       min_instances: {autoscaling_status['min_instances']}")
+        table.append(f"       max_instances: {autoscaling_status['max_instances']}")
+        table.append(
+            f"       Desired instances: {autoscaling_status['desired_replicas']}"
+        )
+        table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
+        table.append(f"       Dashboard: y/sfx-autoscaling")
+        NA = PaastaColors.red("N/A")
+        if len(autoscaling_status["metrics"]) > 0:
+            table.append(f"       Metrics:")
+
+        metrics_table: List[List[str]] = [["Metric", "Current", "Target"]]
+        for metric in autoscaling_status["metrics"]:
+            current_metric = (
+                NA
+                if getattr(metric, "current_value") is None
+                else getattr(metric, "current_value")
+            )
+            target_metric = (
+                NA
+                if getattr(metric, "target_value") is None
+                else getattr(metric, "target_value")
+            )
+            metrics_table.append([metric["name"], current_metric, target_metric])
+        table.extend(["         " + s for s in format_table(metrics_table)])
+
     return format_table(table)
 
 
@@ -1715,6 +1943,7 @@ def paasta_status(args) -> int:
                 actual_deployments = get_actual_deployments(service, soa_dir)
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
+                new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(
                     (
                         report_status_for_cluster,
@@ -1726,7 +1955,7 @@ def paasta_status(args) -> int:
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
                             verbose=args.verbose,
-                            new=args.new,
+                            new=new,
                         ),
                     )
                 )
@@ -1801,6 +2030,41 @@ def _backend_report(
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold("UP")
     return f"{status} - in {system_name} with {count} total backends {up_string} in this namespace."
+
+
+def _use_new_paasta_status(args, system_paasta_config) -> bool:
+    if args.new:
+        return True
+    elif args.old:
+        return False
+    else:
+        if system_paasta_config.get_paasta_status_version() == "old":
+            return False
+        elif system_paasta_config.get_paasta_status_version() == "new":
+            return True
+        else:
+            return True
+
+
+def _print_flink_jobs_exceptions_from_api(jobs, cr_name, cluster):
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=FLINK_STATUS_MAX_THREAD_POOL_WORKERS
+    ) as executor:
+        job_exceptions = {}
+        future_job_mapping = {
+            executor.submit(get_flink_job_exceptions, cr_name, cluster, job["jid"]): job
+            for job in jobs
+        }
+        for future in concurrent.futures.as_completed(future_job_mapping):
+            job_id = future_job_mapping[future]["jid"]
+            job_exceptions[job_id] = {}
+            try:
+                exceptions = future.result()
+                job_exceptions[job_id]["root-exception"] = exceptions["root-exception"]
+                job_exceptions[job_id]["timestamp"] = exceptions["timestamp"]
+            except ValueError as e:
+                job_exceptions[job_id]["error"] = str(e)
+    return job_exceptions
 
 
 # Add other custom status writers here

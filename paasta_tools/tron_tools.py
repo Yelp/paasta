@@ -23,7 +23,9 @@ import subprocess
 import traceback
 from string import Formatter
 from typing import List
+from typing import Mapping
 from typing import Tuple
+from typing import Union
 
 import yaml
 from service_configuration_lib import read_extra_service_information
@@ -32,7 +34,6 @@ from service_configuration_lib.spark_config import generate_clusterman_metrics_e
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_spark_conf
-from service_configuration_lib.spark_config import K8S_AUTH_FOLDER
 from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -47,7 +48,6 @@ from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DockerParameter
-from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -57,6 +57,16 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.kubernetes_tools import (
+    allowlist_denylist_to_requirements,
+    raw_selectors_to_requirements,
+    sanitise_kubernetes_name,
+    to_node_label,
+)
+from paasta_tools.secret_tools import is_secret_ref
+from paasta_tools.secret_tools import is_shared_secret
+from paasta_tools.secret_tools import get_secret_name_from_ref
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 
@@ -77,6 +87,7 @@ VALID_MONITORING_KEYS = set(
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
+KUBERNETES_EXECUTOR_NAMES = ("paasta",)
 DEFAULT_AWS_REGION = "us-west-2"
 clusterman_metrics, _ = get_clusterman_metrics()
 
@@ -343,22 +354,22 @@ class TronActionConfig(InstanceConfig):
 
         return env
 
-    def get_extra_volumes(self):
-        extra_volumes = super().get_extra_volumes()
-        if (
-            self.get_executor() == "spark"
-            and self.get_spark_cluster_manager() == "kubernetes"
-        ):
-            extra_volumes.append(
-                DockerVolume(
-                    {
-                        "hostPath": "/etc/pki/spark",
-                        "containerPath": K8S_AUTH_FOLDER,
-                        "mode": "RO",
-                    }
+    def get_secret_env(self) -> Mapping[str, dict]:
+        base_env = self.config_dict.get("env", {})
+        secret_env = {}
+        for k, v in base_env.items():
+            if is_secret_ref(v):
+                secret = get_secret_name_from_ref(v)
+                sanitised_secret = sanitise_kubernetes_name(secret)
+                service = (
+                    self.service if not is_shared_secret(v) else SHARED_SECRET_SERVICE
                 )
-            )
-        return extra_volumes
+                sanitised_service = sanitise_kubernetes_name(service)
+                secret_env[k] = {
+                    "secret_name": f"tron-secret-{sanitised_service}-{sanitised_secret}",
+                    "key": secret,
+                }
+        return secret_env
 
     def get_cpu_burst_add(self) -> float:
         """ For Tron jobs, we don't let them burst by default, because they
@@ -398,6 +409,41 @@ class TronActionConfig(InstanceConfig):
 
     def get_trigger_timeout(self):
         return self.config_dict.get("trigger_timeout", None)
+
+    def get_use_k8s(self):
+        return self.config_dict.get("use_k8s", False)
+
+    def get_node_selectors(self) -> Dict[str, str]:
+        raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})  # type: ignore
+        node_selectors = {
+            to_node_label(label): value
+            for label, value in raw_selectors.items()
+            if isinstance(value, str)
+        }
+        node_selectors["yelp.com/pool"] = self.get_pool()
+        return node_selectors
+
+    def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
+        """Converts deploy_whitelist and deploy_blacklist in node affinities.
+
+        note: At the time of writing, `kubectl describe` does not show affinities,
+        only selectors. To see affinities, use `kubectl get pod -o json` instead.
+        """
+        requirements = allowlist_denylist_to_requirements(
+            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=self.config_dict.get("node_selectors", {}),  # type: ignore
+            )
+        )
+        if not requirements:
+            return None
+
+        return [
+            {"key": key, "operator": op, "value": value}
+            for key, op, value in requirements
+        ]
 
     def get_calculated_constraints(self):
         """Combine all configured Mesos constraints."""
@@ -472,6 +518,9 @@ class TronJobConfig:
         self.soa_dir = soa_dir
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
+
+    def get_use_k8s(self) -> bool:
+        return self.config_dict.get("use_k8s", False)
 
     def get_name(self):
         return self.name
@@ -650,10 +699,18 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
         }
     )
     master_config["mesos_options"] = mesos_options
+
+    k8s_options = master_config.get("k8s_options", {})
+    if k8s_options:
+        # Only add default volumes if we already have k8s_options
+        k8s_options.update(
+            {"default_volumes": format_volumes(default_volumes),}
+        )
+        master_config["k8s_options"] = k8s_options
     return master_config
 
 
-def format_tron_action_dict(action_config):
+def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = False):
     """Generate a dict of tronfig for an action, from the TronActionConfig.
 
     :param job_config: TronActionConfig
@@ -672,36 +729,67 @@ def format_tron_action_dict(action_config):
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
     }
-    if executor in MESOS_EXECUTOR_NAMES:
+
+    # while we're tranisitioning, we want to be able to cleanly fallback to Mesos
+    # so we'll default to Mesos unless k8s usage is enabled for both the cluster
+    # and job.
+    # there are slight differences between k8s and Mesos configs, so we'll translate
+    # whatever is in soaconfigs to the k8s equivalent here as well.
+    if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
+        result["executor"] = "kubernetes"
+
+        result["secret_env"] = action_config.get_secret_env()
+        all_env = action_config.get_env()
+        # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
+        result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
+        # for Tron-on-K8s, we want to ship tronjob output through logspout
+        # such that this output eventually makes it into our per-instance
+        # log streams automatically
+        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        result["node_selectors"] = action_config.get_node_selectors()
+        result["node_affinities"] = action_config.get_node_affinities()
+
+        # XXX: once we're off mesos we can make get_cap_* return just the cap names as a list
+        result["cap_add"] = [cap["value"] for cap in action_config.get_cap_add()]
+        result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
+    elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
-        result["cpus"] = action_config.get_cpus()
-        result["mem"] = action_config.get_mem()
-        result["disk"] = action_config.get_disk()
-        result["env"] = action_config.get_env()
-        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
-        result["docker_parameters"] = [
-            {"key": param["key"], "value": param["value"]}
-            for param in action_config.format_docker_parameters()
-        ]
         constraint_labels = ["attribute", "operator", "value"]
         result["constraints"] = [
             dict(zip(constraint_labels, constraint))
             for constraint in action_config.get_calculated_constraints()
         ]
+        result["docker_parameters"] = [
+            {"key": param["key"], "value": param["value"]}
+            for param in action_config.format_docker_parameters()
+        ]
+        result["env"] = action_config.get_env()
 
+    # the following config is only valid for k8s/Mesos since we're not running SSH actions
+    # in a containerized fashion
+    if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
+        result["cpus"] = action_config.get_cpus()
+        result["mem"] = action_config.get_mem()
+        result["disk"] = action_config.get_disk()
+        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
     return {key: val for key, val in result.items() if val is not None}
 
 
-def format_tron_job_dict(job_config):
+def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
     """Generate a dict of tronfig for a job, from the TronJobConfig.
 
     :param job_config: TronJobConfig
     """
+
+    # TODO: this use_k8s flag should be removed once we've fully migrated off of mesos
+    use_k8s = job_config.get_use_k8s() and k8s_enabled
     action_dict = {
-        action_config.get_action_name(): format_tron_action_dict(action_config)
+        action_config.get_action_name(): format_tron_action_dict(
+            action_config=action_config, use_k8s=use_k8s
+        )
         for action_config in job_config.get_actions()
     }
 
@@ -719,9 +807,17 @@ def format_tron_job_dict(job_config):
         "time_zone": job_config.get_time_zone(),
         "expected_runtime": job_config.get_expected_runtime(),
     }
+    # TODO: this should be directly inlined, but we need to update tron everywhere first so it'll
+    # be slightly less tedious to just conditionally send this now until we clean things up on the
+    # removal of all the Mesos code
+    if job_config.get_use_k8s():
+        result["use_k8s"] = job_config.get_use_k8s()
+
     cleanup_config = job_config.get_cleanup_action()
     if cleanup_config:
-        cleanup_action = format_tron_action_dict(cleanup_config)
+        cleanup_action = format_tron_action_dict(
+            action_config=cleanup_config, use_k8s=use_k8s
+        )
         result["cleanup_action"] = cleanup_action
 
     # Only pass non-None values, so Tron will use defaults for others
@@ -804,14 +900,21 @@ def create_complete_master_config(cluster, soa_dir=DEFAULT_SOA_DIR):
     return yaml.dump(master_config, Dumper=Dumper, default_flow_style=False)
 
 
-def create_complete_config(service, cluster, soa_dir=DEFAULT_SOA_DIR):
+def create_complete_config(
+    service: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+    k8s_enabled: bool = False,
+):
     """Generate a namespace configuration file for Tron, for a service."""
     job_configs = load_tron_service_config(
-        service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
+        service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir,
     )
     preproccessed_config = {}
     preproccessed_config["jobs"] = {
-        job_config.get_name(): format_tron_job_dict(job_config)
+        job_config.get_name(): format_tron_job_dict(
+            job_config=job_config, k8s_enabled=k8s_enabled
+        )
         for job_config in job_configs
     }
     return yaml.dump(preproccessed_config, Dumper=Dumper, default_flow_style=False)
@@ -838,10 +941,22 @@ def validate_complete_config(
         os.path.abspath(soa_dir), "tron", cluster, MASTER_NAMESPACE + ".yaml"
     )
 
+    # TODO: remove creating the master config here once we're fully off of mesos
+    # since we only have it here to verify that the generated tronfig will be valid
+    # given that the kill-switch will affect PaaSTA's setup_tron_namespace script (we're
+    # not reading the kill-switch in Tron since it's not easily accessible at the point
+    # at which we'd like to fallback to Mesos if toggled)
+    master_config = yaml.safe_load(
+        create_complete_master_config(cluster=cluster, soa_dir=soa_dir)
+    )
+    k8s_enabled_for_cluster = master_config.get("k8s_options", {}).get("enabled", False)
+
     preproccessed_config = {}
     # Use Tronfig on generated config from PaaSTA to validate the rest
     preproccessed_config["jobs"] = {
-        job_config.get_name(): format_tron_job_dict(job_config)
+        job_config.get_name(): format_tron_job_dict(
+            job_config=job_config, k8s_enabled=k8s_enabled_for_cluster
+        )
         for job_config in job_configs
     }
 

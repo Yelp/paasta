@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
 import base64
 import copy
 import hashlib
@@ -106,7 +105,6 @@ from kubernetes.client import V2beta2MetricSpec
 from kubernetes.client import V2beta2MetricTarget
 from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
-from kubernetes.client.configuration import Configuration as KubeConfiguration
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
@@ -232,7 +230,7 @@ class KubeContainerResources(NamedTuple):
     disk: float  # mb
 
 
-class KubeService(NamedTuple):
+class KubernetesServiceRegistration(NamedTuple):
     name: str
     instance: str
     port: int
@@ -303,6 +301,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "sidecar.istio.io/inject": str,
     },
     total=False,
 )
@@ -310,7 +309,6 @@ KubePodLabels = TypedDict(
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
-    bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
@@ -322,6 +320,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_port: int
     routable_ip: bool
     pod_management_policy: str
+    is_istio_sidecar_injection_enabled: bool
 
 
 def load_kubernetes_service_config_no_cache(
@@ -442,6 +441,62 @@ class KubeClient:
         # to monkey-patch the JSON data with configs the api supports, but the
         # Python client lib may not yet.
         self.jsonify = self.api_client.sanitize_for_serialization
+
+
+def allowlist_denylist_to_requirements(
+    allowlist: DeployWhitelist, denylist: DeployBlacklist
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts deploy_whitelist and deploy_blacklist to a list of
+    requirements, which can be converted to node affinities.
+    """
+    requirements = []
+    # convert whitelist into a node selector req
+    if allowlist:
+        location_type, alloweds = allowlist
+        requirements.append((to_node_label(location_type), "In", alloweds))
+    # convert blacklist into multiple node selector reqs
+    if denylist:
+        # not going to prune for duplicates, or group blacklist items for
+        # same location_type. makes testing easier and k8s can handle it.
+        for location_type, not_allowed in denylist:
+            requirements.append((to_node_label(location_type), "NotIn", [not_allowed]))
+    return requirements
+
+
+def raw_selectors_to_requirements(
+    raw_selectors: Mapping[str, Any]
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts certain node_selectors into requirements, which can be
+    converted to node affinities.
+    """
+    requirements = []
+
+    for label, configs in raw_selectors.items():
+        if type(configs) is not list or len(configs) == 0:
+            continue
+        elif type(configs[0]) is str:
+            # specifying an array/list of strings for a label is shorthand
+            # for the "In" operator
+            configs = [{"operator": "In", "values": configs}]
+
+        label = to_node_label(label)
+        for config in configs:
+            if config["operator"] in {"In", "NotIn"}:
+                values = config["values"]
+            elif config["operator"] in {"Exists", "DoesNotExist"}:
+                values = []
+            elif config["operator"] in {"Gt", "Lt"}:
+                # config["value"] is validated by jsonschema to be an int. but,
+                # k8s expects singleton list of the int represented as a str
+                # for these operators.
+                values = [str(config["value"])]
+            else:
+                raise ValueError(
+                    f"Unknown k8s node affinity operator: {config['operator']}"
+                )
+            requirements.append((label, config["operator"], values))
+
+    return requirements
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -1040,7 +1095,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         else:
             raise InvalidHealthcheckMode(
-                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp"
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/https/tcp/cmd"
                 % mode
             )
 
@@ -1442,6 +1497,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name", None)
 
+    def is_istio_sidecar_injection_enabled(self) -> bool:
+        return self.config_dict.get("is_istio_sidecar_injection_enabled", False)
+
     def has_routable_ip(
         self,
         service_namespace_config: ServiceNamespaceConfig,
@@ -1572,6 +1630,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
 
+        if system_paasta_config.get_kubernetes_add_registration_labels():
+            # Allow Kubernetes Services to easily find
+            # pods belonging to a certain smartstack namespace
+            for registration in self.get_registrations():
+                labels[f"registrations.paasta.yelp.com/{registration}"] = "true"  # type: ignore
+
+        if self.is_istio_sidecar_injection_enabled():
+            labels["sidecar.istio.io/inject"] = "true"
+
         # not all services use uwsgi autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
         if self.should_run_uwsgi_exporter_sidecar(
@@ -1611,8 +1678,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         note: At the time of writing, `kubectl describe` does not show affinities,
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
-        requirements = self._whitelist_blacklist_to_requirements()
-        requirements.extend(self._raw_selectors_to_requirements())
+        requirements = allowlist_denylist_to_requirements(
+            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=self.config_dict.get("node_selectors", {}),
+            )
+        )
         # package everything into a node affinity - lots of layers :P
         if len(requirements) == 0:
             return None
@@ -1673,61 +1746,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             labels[PAASTA_ATTRIBUTE_PREFIX + "instance"] = condition.get("instance")
         return V1LabelSelector(match_labels=labels) if labels else None
 
-    def _whitelist_blacklist_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts deploy_whitelist and deploy_blacklist to a list of
-        requirements, which can be converted to node affinities.
-        """
-        requirements = []
-        # convert whitelist into a node selector req
-        whitelist = self.get_deploy_whitelist()
-        if whitelist:
-            location_type, alloweds = whitelist
-            requirements.append((to_node_label(location_type), "In", alloweds))
-        # convert blacklist into multiple node selector reqs
-        blacklist = self.get_deploy_blacklist()
-        if blacklist:
-            # not going to prune for duplicates, or group blacklist items for
-            # same location_type. makes testing easier and k8s can handle it.
-            for location_type, not_allowed in blacklist:
-                requirements.append(
-                    (to_node_label(location_type), "NotIn", [not_allowed])
-                )
-        return requirements
-
-    def _raw_selectors_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts certain node_selectors into requirements, which can be
-        converted to node affinities.
-        """
-        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
-        requirements = []
-
-        for label, configs in raw_selectors.items():
-            if type(configs) is not list or len(configs) == 0:
-                continue
-            elif type(configs[0]) is str:
-                # specifying an array/list of strings for a label is shorthand
-                # for the "In" operator
-                configs = [{"operator": "In", "values": configs}]
-
-            label = to_node_label(label)
-            for config in configs:
-                if config["operator"] in {"In", "NotIn"}:
-                    values = config["values"]
-                elif config["operator"] in {"Exists", "DoesNotExist"}:
-                    values = []
-                elif config["operator"] in {"Gt", "Lt"}:
-                    # config["value"] is validated by jsonschema to be an int. but,
-                    # k8s expects singleton list of the int represented as a str
-                    # for these operators.
-                    values = [str(config["value"])]
-                else:
-                    raise ValueError(
-                        f"Unknown k8s node affinity operator: {config['operator']}"
-                    )
-                requirements.append((label, config["operator"], values))
-
-        return requirements
-
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]
     ) -> Mapping[str, Any]:
@@ -1752,9 +1770,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.get_service(), environment_variables=self.get_env()
         )
         return ahash
-
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
 
     def get_termination_grace_period(self) -> Optional[int]:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
@@ -1813,13 +1828,9 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
     return services
 
 
-def get_kubernetes_services_running_here() -> Sequence[KubeService]:
+def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
-    try:
-        pods = get_k8s_pods()
-    except requests.exceptions.ConnectionError:
-        log.debug("Failed to connect to the kublet when trying to get pods")
-        return []
+    pods = get_k8s_pods()
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"
@@ -1832,7 +1843,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
                     port = container["ports"][0]["containerPort"]
                     break
             services.append(
-                KubeService(
+                KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
                     instance=pod["metadata"]["labels"]["paasta.yelp.com/instance"],
                     port=port,
@@ -1994,21 +2005,12 @@ async def get_tail_lines_for_kubernetes_container(
     return tail_lines
 
 
-@a_sync.to_async
-def get_pod_events(kube_client: KubeClient, pod: V1Pod) -> List[V1Event]:
-    try:
-        pod_events = kube_client.core.list_namespaced_event(
-            namespace=pod.metadata.namespace,
-            field_selector=f"involvedObject.name={pod.metadata.name}",
-        )
-        return pod_events.items if pod_events else []
-    except ApiException:
-        return []
-
-
-@async_timeout()
-async def get_pod_event_messages(kube_client: KubeClient, pod: V1Pod) -> List[Dict]:
-    pod_events = await get_pod_events(kube_client, pod)
+async def get_pod_event_messages(
+    kube_client: KubeClient, pod: V1Pod, max_age_in_seconds: Optional[int] = None
+) -> List[Dict]:
+    pod_events = await get_events_for_object(
+        kube_client, pod, "Pod", max_age_in_seconds
+    )
     pod_event_messages = []
     if pod_events:
         for event in pod_events:
@@ -2026,9 +2028,12 @@ def format_pod_event_messages(
     rows: List[str] = list()
     rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
     for message in pod_event_messages:
-        timestamp = message.get("timeStamp", "unknown time")
-        message_text = message.get("message", "")
-        rows.append(f"   Event at {timestamp}: {message_text}")
+        if "error" in message:
+            rows.append(PaastaColors.yellow(f'   Error: {message["error"]}'))
+        else:
+            timestamp = message.get("time_stamp", "unknown time")
+            message_text = message.get("message", "")
+            rows.append(f"   Event at {timestamp}: {message_text}")
     return rows
 
 
@@ -2325,6 +2330,11 @@ is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
 
 
+def is_pod_completed(pod: V1Pod) -> bool:
+    condition = get_pod_condition(pod, "ContainersReady")
+    return condition.reason == "PodCompleted" if condition else False
+
+
 def is_pod_scheduled(pod: V1Pod) -> bool:
     scheduled_condition = get_pod_condition(pod, "PodScheduled")
     return scheduled_condition.status == "True" if scheduled_condition else False
@@ -2443,6 +2453,10 @@ def paasta_prefixed(attribute: str,) -> str:
         return PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
+def registration_prefixed(namespace: str) -> str:
+    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{namespace}"
+
+
 def get_nodes_grouped_by_attribute(
     nodes: Sequence[V1Node], attribute: str
 ) -> Mapping[str, Sequence[V1Node]]:
@@ -2536,83 +2550,45 @@ def update_stateful_set(
     )
 
 
-@a_sync.to_async
-def get_events_for_object(
+def get_event_timestamp(event: V1Event) -> Optional[float]:
+    # Cycle through timestamp attributes in order of preference
+    for ts_attr in ["last_timestamp", "event_time", "first_timestamp"]:
+        ts = getattr(event, ts_attr)
+        if ts:
+            return ts.timestamp()
+    return None
+
+
+@async_timeout()
+async def get_events_for_object(
     kube_client: KubeClient,
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
+    max_age_in_seconds: Optional[int] = None,
 ) -> List[V1Event]:
-    host = KubeConfiguration().host
 
-    # The python kubernetes client doesn't support the V1Events API
-    # yet, so we have to make the request by hand (we need the V1Events
-    # API so that we can query by the involvedObject.name/kind)
-    #
-    # Also, as best as I can tell, the list_namespaced_event API call under the
-    # CoreV1 API does _not_ return the events that we're interested in.
-    events = kube_client.request(
-        "GET",
-        f"{host}/api/v1/namespaces/{obj.metadata.namespace}/events",
-        query_params={
-            "fieldSelector": f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
-            "limit": MAX_EVENTS_TO_RETRIEVE,
-        },
-    )
-    parsed_events = json.loads(events.data)
-    return parsed_events["items"]
-
-
-async def get_all_events_for_service(
-    app: Union[V1Deployment, V1StatefulSet], kube_client: KubeClient
-) -> List[V1Event]:
-    """ There is no universal API for getting all the events pertaining to
-    a particular object and all its sub-objects, so here we just enumerate
-    all the kinds of objects that we care about, and get all the relevent
-    events for each of those kinds """
-    events: List[V1Event] = []
-    ls = (
-        f'paasta.yelp.com/service={app.metadata.labels["paasta.yelp.com/service"]},'
-        f'paasta.yelp.com/instance={app.metadata.labels["paasta.yelp.com/instance"]}'
-    )
-
-    pod_coros = []
-    for pod in kube_client.core.list_namespaced_pod(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        pod_coros.append(get_events_for_object(kube_client, pod, "Pod"))
-
-    depl_coros = []
-    for depl in kube_client.deployments.list_namespaced_deployment(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        depl_coros.append(get_events_for_object(kube_client, depl, "Deployment"))
-
-    rs_coros = []
-    for rs in kube_client.deployments.list_namespaced_replica_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        rs_coros.append(get_events_for_object(kube_client, rs, "ReplicaSet"))
-
-    ss_coros = []
-    for ss in kube_client.deployments.list_namespaced_stateful_set(
-        app.metadata.namespace, label_selector=ls,
-    ).items:
-        ss_coros.append(get_events_for_object(kube_client, ss, "StatefulSet"))
-
-    for event_list in await asyncio.gather(
-        *pod_coros, *depl_coros, *rs_coros, *ss_coros
-    ):
-        events.extend(event_list)
-
-    return sorted(
-        events,
-        key=lambda x: (
-            x.get("lastTimestamp")
-            or x.get("eventTime")
-            or x.get("firstTimestamp")
-            or 0  # prevent errors in case none of the fields exist
-        ),
-    )
+    try:
+        # this is a blocking call since it does network I/O and can end up significantly blocking the
+        # asyncio event loop when doing things like getting events for all the Pods for a service with
+        # a large amount of replicas. therefore, we need to wrap the kubernetes client into something
+        # that's awaitable so that we can actually do things concurrently and not serially
+        events = await a_sync.to_async(kube_client.core.list_namespaced_event)(
+            namespace=obj.metadata.namespace,
+            field_selector=f"involvedObject.name={obj.metadata.name},involvedObject.kind={kind}",
+            limit=MAX_EVENTS_TO_RETRIEVE,
+        )
+        events = events.items if events else []
+        if max_age_in_seconds and max_age_in_seconds > 0:
+            min_timestamp = datetime.now().timestamp() - max_age_in_seconds
+            events = [
+                evt
+                for evt in events
+                if get_event_timestamp(evt) is None
+                or get_event_timestamp(evt) > min_timestamp
+            ]
+        return events
+    except ApiException:
+        return []
 
 
 def get_kubernetes_app_deploy_status(
@@ -2669,14 +2645,15 @@ def create_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_secret(
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{sanitised_secret}",
+                name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2696,15 +2673,16 @@ def update_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_secret(
-        name=f"paasta-secret-{service}-{sanitised_secret}",
-        namespace="paasta",
+        name=f"{namespace}-secret-{service}-{sanitised_secret}",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{sanitised_secret}",
+                name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2720,13 +2698,13 @@ def update_secret(
 
 
 def get_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str
+    kube_client: KubeClient, secret: str, service: str, namespace: str = "paasta",
 ) -> Optional[str]:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     try:
         signature = kube_client.core.read_namespaced_config_map(
-            name=f"paasta-secret-{service}-{secret}-signature", namespace="paasta"
+            name=f"{namespace}-secret-{service}-{secret}-signature", namespace=namespace
         )
     except ApiException as e:
         if e.status == 404:
@@ -2740,16 +2718,20 @@ def get_kubernetes_secret_signature(
 
 
 def update_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_config_map(
-        name=f"paasta-secret-{service}-{secret}-signature",
-        namespace="paasta",
+        name=f"{namespace}-secret-{service}-{secret}-signature",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}-signature",
+                name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2761,15 +2743,19 @@ def update_kubernetes_secret_signature(
 
 
 def create_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_config_map(
-        namespace="paasta",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}-signature",
+                name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,

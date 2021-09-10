@@ -73,6 +73,7 @@ Submodules
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
+   paasta_tools.monkrelaycluster_tools
    paasta_tools.native_mesos_scheduler
    paasta_tools.nrtsearchservice_tools
    paasta_tools.oom_logger
@@ -84,9 +85,11 @@ Submodules
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
    paasta_tools.puppet_service_tools
+   paasta_tools.prune_completed_pods
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.secret_tools
+   paasta_tools.setup_istio_mesh
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
    paasta_tools.setup_kubernetes_job

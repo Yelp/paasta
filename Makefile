@@ -16,9 +16,11 @@
 # Otherwise, set ENV to the FQDN
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
+	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 	PAASTA_ENV ?= YELP
 else
 	export PIP_INDEX_URL ?= https://pypi.python.org/simple
+	export DOCKER_REGISTRY ?= ""
 	PAASTA_ENV ?= $(shell hostname -f)
 endif
 

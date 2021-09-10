@@ -129,6 +129,7 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
     "kafkacluster",
+    "monkrelaycluster",
     "nrtsearchservice",
 )
 
@@ -257,6 +258,25 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
+class MonitoringDict(TypedDict, total=False):
+    alert_after: Union[str, float]
+    check_every: str
+    check_oom_events: bool
+    component: str
+    description: str
+    notification_email: Union[str, bool]
+    page: bool
+    priority: str
+    project: str
+    realert_every: float
+    runbook: str
+    slack_channels: Union[str, List[str]]
+    tags: List[str]
+    team: str
+    ticket: bool
+    tip: str
+
+
 class InstanceConfigDict(TypedDict, total=False):
     deploy_group: str
     mem: float
@@ -268,7 +288,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cpu_burst_add: float
     cap_add: List
     env: Dict[str, str]
-    monitoring: Dict[str, str]
+    monitoring: MonitoringDict
     deploy_blacklist: UnsafeDeployBlacklist
     deploy_whitelist: UnsafeDeployWhitelist
     pool: str
@@ -627,7 +647,7 @@ class InstanceConfig:
                     "Instance configuration can specify cmd or args, but not both."
                 )
 
-    def get_monitoring(self) -> Dict[str, Any]:
+    def get_monitoring(self) -> MonitoringDict:
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get("monitoring", {})
 
@@ -1829,6 +1849,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     git_config: Dict
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
+    kubernetes_add_registration_labels: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
     ldap_host: str
@@ -1839,11 +1860,18 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
+    maintenance_resource_reservation_enabled: bool
+    mark_for_deployment_max_polling_threads: int
+    mark_for_deployment_default_polling_interval: float
+    mark_for_deployment_default_diagnosis_interval: float
+    mark_for_deployment_default_default_time_before_first_diagnosis: float
+    mark_for_deployment_should_ping_for_unhealthy_pods: bool
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     paasta_native: PaastaNativeConfig
+    paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
@@ -2252,6 +2280,12 @@ class SystemPaastaConfig:
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
 
+    def get_paasta_status_version(self) -> str:
+        """Get paasta status version string (new | old). Defaults to 'old'.
+
+        :returns: A string with the version desired version of paasta status."""
+        return self.config_dict.get("paasta_status_version", "old")
+
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
 
@@ -2360,6 +2394,9 @@ class SystemPaastaConfig:
     def get_register_k8s_pods(self) -> bool:
         """Enable registration of k8s services in nerve"""
         return self.config_dict.get("register_k8s_pods", False)
+
+    def get_kubernetes_add_registration_labels(self) -> bool:
+        return self.config_dict.get("kubernetes_add_registration_labels", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
         """List of custom resources that should be synced by setup_kubernetes_cr """
@@ -2483,6 +2520,27 @@ class SystemPaastaConfig:
 
     def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
         return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+
+    def get_mark_for_deployment_max_polling_threads(self) -> int:
+        return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
+
+    def get_mark_for_deployment_default_polling_interval(self) -> float:
+        return self.config_dict.get("mark_for_deployment_default_polling_interval", 60)
+
+    def get_mark_for_deployment_default_diagnosis_interval(self) -> float:
+        return self.config_dict.get(
+            "mark_for_deployment_default_diagnosis_interval", 60
+        )
+
+    def get_mark_for_deployment_default_time_before_first_diagnosis(self) -> float:
+        return self.config_dict.get(
+            "mark_for_deployment_default_default_time_before_first_diagnosis", 300
+        )
+
+    def get_mark_for_deployment_should_ping_for_unhealthy_pods(self) -> bool:
+        return self.config_dict.get(
+            "mark_for_deployment_should_ping_for_unhealthy_pods", True
+        )
 
 
 def _run(

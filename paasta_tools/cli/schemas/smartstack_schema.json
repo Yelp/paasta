@@ -1,0 +1,232 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "smartstack config schema",
+    "type": "object",
+    "minProperties": 1,
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "proxy_port": {
+                "type": [
+                    "integer",
+                    "null"
+                ],
+                "minimum": 19000,
+                "maximum": 21000
+            },
+            "port": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+            },
+            "healthcheck_uri": {
+                "type": "string",
+                "pattern": "^/[-_0-9a-zA-Z/\\?&\\.=]*$"
+            },
+            "healthcheck_timeout_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+            },
+            "updown_timeout_s": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86400000
+            },
+            "healthcheck_mode": {
+                "enum": [
+                    "http",
+                    "https",
+                    "tcp"
+                ]
+            },
+            "healthcheck_port": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 65535
+            },
+            "healthcheck_body_expect": {
+                "type": "string"
+            },
+            "retries": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10
+            },
+            "allredisp": {
+                "type": "boolean"
+            },
+            "timeout_connect_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60000
+            },
+            "timeout_client_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86400000
+            },
+            "timeout_server_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86400000
+            },
+            "idle_timeout": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 86400000
+            },
+            "balance": {
+                "type": "string",
+                "pattern": "^(leastconn|roundrobin)$"
+            },
+            "advertise": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "discover": {
+                "type": "string"
+            },
+            "extra_advertise": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "extra_headers": {
+                "type": "object"
+            },
+            "extra_healthcheck_headers": {
+                "type": "object",
+                "properties": {
+                    "Host": {
+                        "type": "string"
+                    },
+                    "X-ProxiedSSL": {
+                        "type": "string"
+                    },
+                    "X-Source-Id": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": {
+                    "type": "string"
+                }
+            },
+            "mode": {
+                "enum": [
+                    "http",
+                    "https",
+                    "tcp"
+                ]
+            },
+            "chaos": {
+                "type": "object",
+                "additionalProperties": {
+                    "ecosystem": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "habitat": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "host": {
+                        "type": "object",
+                        "additionalProperties": true
+                    },
+                    "runtimeenv": {
+                        "type": "object",
+                        "additionalProperties": true
+                    }
+                }
+            },
+            "proxied_through": {
+                "type": "string"
+            },
+            "fixed_delay": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                        "duration_ms": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 86400000
+                        },
+                        "percent": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100
+                        }
+                    },
+                    "required": [
+                        "duration_ms",
+                        "percent"
+                    ]
+                }
+            },
+            "is_proxy": {
+                "type": "boolean"
+            },
+            "plugins": {
+                "type": "object",
+                "properties": {
+                    "source_required": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "enabled"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "logging": {
+                        "type": "object",
+                        "properties": {
+                            "enabled": {
+                                "type": "boolean"
+                            },
+                            "sample_rate": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                            }
+                        },
+                        "required": [
+                            "enabled"
+                        ],
+                        "additionalProperties": true
+                    }
+                },
+                "additionalProperties": true
+            },
+            "endpoint_timeouts": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "allow_websocket_upgrade": {
+                "type": "boolean"
+            },
+            "vip_upgrade": {
+                "type": "string",
+                "description": "The service namespace that this namespace will route to (via Envoy) if a request has the X-Ctx-Vip header."
+            }
+        },
+        "required": [
+            "proxy_port"
+        ],
+        "additionalProperties": false
+    }
+}

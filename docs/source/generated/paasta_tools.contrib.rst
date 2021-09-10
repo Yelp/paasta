@@ -17,6 +17,7 @@ Submodules
    paasta_tools.contrib.mock_patch_checker
    paasta_tools.contrib.paasta_update_soa_memcpu
    paasta_tools.contrib.rightsizer_soaconfigs_update
+   paasta_tools.contrib.service_shard_update
    paasta_tools.contrib.shared_ip_check
    paasta_tools.contrib.utilization_check
 

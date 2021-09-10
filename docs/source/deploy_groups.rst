@@ -2,17 +2,16 @@
 Deploy Groups
 =============
 
-What are deploy groups?:
+What are deploy groups?
 ========================
 
-Deploy groups are a way to allow tron jobs and marathon services to share docker containers, git branches and deployment steps. Deploy groups also shorten your jenkins pipeline and make it run faster (or save you time if you manually mark your changes for deployment)!
+A deploy group is a group of PaaSTA instances that will be deployed together.
+They provide a way to control how new versions of your service are deployed to production and other environments.
+The ``kubernetes-[clustername].yaml``, ``tron-[clustername].yaml``, and ``adhoc-[clustername].yaml`` files should have a ``deploy_group`` field on each instance.
+The ``paasta mark-for-deployment`` command (usually run by Jenkins) operates on deploy groups -- it tells PaaSTA that you want a deploy group to run a specific version of your service.
+In ``deploy.yaml``, you specify the order in which the deploy groups pick up new changes.
 
-Deploy groups work by linking together multiple paasta instances under a single deployment step in ``deploy.yaml``.
-
-Deploy group tutorial
----------------------
-
-Deploy groups are specified in your soa configs. Let’s take a look in ``example_service`` in ``yelpsoa_configs``. With deploy groups, a ``deploy.yaml`` file can look like this:
+As an example, consider a service with the following deploy.yaml:
 
 .. sourcecode:: yaml
 
@@ -28,74 +27,101 @@ Deploy groups are specified in your soa configs. Let’s take a look in ``exampl
      trigger_next_step_manually: true
    - step: prod.non_canary
 
-You can see we have three deploy groups here: ``dev-stage.everything``, ``prod.canary`` and ``prod.non_canary``. They each refer to a number of instances that all share the same docker container, and will all be deployed at the same time.
+This pipeline will:
 
-Now let’s take a look at how instances are linked to a deploy group by taking a look in a sample config, ``marathon-norcal-devc.yaml``:
+1. Run ``itest``, ``security-check``, ``push-to-registry``, and ``performance-check`` steps, which are build and testing steps.
+   During ``itest`` phase, a new container image is built (per the `Paasta Contract <about/contract.html>`_).
+   This image is pushed to Paasta's Docker registry in the ``push-to-registry`` step.
+2. Deploy the new container image to all instances with ``deploy_group: dev-stage.everything``, and wait for someone to click a button in Jenkins before continuing.
+3. Deploy the new container image to all instances with ``deploy_group: prod.canary``, and wait for someone to click a button in Jenkins before continuing.
+4. Deploy the new container image to all instances with ``prod.non_canary``.
+
+
+Deploy groups in kubernetes/tron yamls and deploy.yaml should match
+-------------------------------------------------------------------
+
+In almost all cases, you want the list of deploy groups in ``deploy.yaml`` (the ``step`` entries under ``pipeline``, except for the special build/test steps) to match the set of ``deploy_group``s defined in your kubernetes.yaml / tron.yaml / adhoc.yaml.
+If an instance has a ``deploy_group`` that is not defined in deploy.yaml, or your Jenkins pipeline has not run since you added the deploy.yaml entry, PaaSTA won't know what version of your container image this instance should run.
+If a deploy group is specified as a ``step`` in deploy.yaml but is not referenced in any kubernetes/adhoc/tron.yaml, this deployment step will have no effect.
+
+The ``paasta validate`` command can help you check that the ``deploy_group`` parameter on each of your instances is defined in deploy.yaml.
+
+Deploy group names are (mostly) just arbitrary strings
+------------------------------------------------------
+
+Deploy group names can be any string you like -- they do not need to match any pattern.
+However, some common conventions have arisen with deploy groups at Yelp:
+
+ - Most deploy group names are alphanumeric with underscores, dots, and hyphens.
+   This makes them easy to pass to the ``paasta`` command line tool without worrying about quoting whitespace and special characters.
+ - A common pattern (seen in the example ``deploy.yaml`` above) is to use ``<environment>.canary`` and ``<environment>.non_canary`` (where ``<environment>`` is ``prod``, ``stage``, ``dev``, a more specific name such as ``pnw-prod`` or ``devc``, or multiple environments, such as ``dev-stage``).
+   In this pattern, all your canary instances in an environment should have ``deploy_group: <environment>.canary``.
+   Everything else in that environment should have ``deploy_group: <environment>.non_canary``.
+   In environments where you only intend to have one deploy group (often dev and stage), you can use ``deploy_group: <environment>.everything``.
+ - For simple services, where you want to deploy changes to all instances in all clusters at the same time, use the same deploy group name on all instances, usually ``everything``.
+
+PaaSTA does not parse these names -- to PaaSTA, they are just opaque strings.
+This means nothing technically prevents you from putting a prod instance into the ``dev-stage.everything`` deploy group, or making an ``everything`` deploy group that doesn't actually contain everything.
+
+One important caveat is that software besides PaaSTA may try to interpret the deploy group name.
+For example, the srv-configs library used by many services at Yelp will pick up new configuration changes earlier for instances that belong to a deploy group containing the string ``canary``.
+
+Canary instances
+----------------
+
+Many services at Yelp have canary instances, which are configured similarly to the non-canary instances, but have fewer copies running.
+Typically, canaries are put into a separate deploy group, which is listed before the non-canary deploy group in ``deploy.yaml``.
+This means the canary will run a new version of code before the non-canary instances do, which allows you to look for errors on canary before deploying to non-canary.
+For HTTP or TCP services that use SmartStack, usually the canary and main instance have the same ``registrations``.
+Since each running copy with a given registration will receive a roughly equal fraction of traffic, the proportion of traffic sent to canary instances is ``(number of running canary copies) / (total number of running copies)``.
+Typically canary instances will be configured to have a smaller number of running copies (``instances``), so that this traffic proportion is small.
+
+In the following example, the proportion of traffic going to ``canary`` is somewhere between 1.5% and 10%, depending on autoscaling on the ``main`` instance.
 
 .. sourcecode:: yaml
 
-   ---
-   canary:
-     cpus: .1
-     mem: 301
-     registrations: ['service.main']
-     instances: 1
-     deploy_group: dev-stage.everything
+   # my-cool-service/kubernetes-pnw-prod.yaml
    main:
-     cpus: 1
-     mem: 300
+     min_instances: 30
+     max_instances: 200
+     cpus: 2
+     mem: 2000
+     registrations: ['my-cool-service.main']
+     deploy_group: prod.non-canary
+
+   canary:
      instances: 3
-     deploy_group: dev-stage.everything
+     cpus: 2
+     mem: 2000
+     registrations: ['my-cool-service.main']  # Same as main
+     deploy_group: prod.canary  # Different from main
 
-This is repeated for each ``marathon-*.yaml`` and ``tron-*.yaml`` file. In example_service, we create three different files - ``marathon-PROD.yaml``, ``marathon-STAGE.yaml`` and ``marathon-DEV.yaml`` and use symlinks to create the files we need. This is similar to the current ``marathon-SHARED.yaml`` file. Feel free to look at example_service in ``yelpsoa_configs`` for an example on how to use deploy groups.
+With a ``deploy.yaml`` that looks like this, the ``canary`` instance will deploy before the ``main`` instance.
+After deploying the ``canary`` instance, Jenkins will wait until you click a button before starting to deploy the ``main`` instance.
 
-If no value for ``deploy_group`` is given, it defaults to ``CLUSTER_NAME.INSTANCE_NAME``. This is to support legacy services that don't use deploy groups.
+.. sourcecode:: yaml
 
-What deploy groups aren't
--------------------------
+   # my-cool-service/deploy.yaml
+   ---
+   pipeline:
+   ...
+   - step: prod.canary
+     trigger_next_step_manually: true
+   - step: prod.non_canary
 
-Deploy groups are not a way to control your instances -- tools such as ``paasta start/stop/restart`` do not support deploy groups: you can’t stop all an entire deploy group by running ``paasta stop DEPLOY_GROUP_NAME``. Deploy groups also do not share other configuration elements such as memory and cpu allocation.
+For an HTTP or TCP service, you'll also need a ``main`` entry in ``smartstack.yaml``, corresponding to the ``registrations`` entries in the ``kubernetes-pnw-prod.yaml`` file above.
 
-How to use deploy groups
-========================
+.. sourcecode:: yaml
 
-New service
------------
+   # my-cool-service/smartstack.yaml
+   ---
+   main:
+     advertise: [region]
+     discover: [region]
+     proxy_port: 19284
 
-When you run ``paasta fsm`` to generate the boilerplate configs for your paasta service, the default configs will have four deploy groups: ``dev.everything``, ``stage.everything``, ``prod.canary`` and ``prod.non_canary``. You can change these deploy groups around to suit your needs, and also change their deploy order by editing ``deploy.yaml``. Then, edit your soa configs and generate your pipeline like normal.
-
-Existing service
-----------------
-
-#. Plan out how you want to divide your service into deploy groups
-
-#. Append deployment steps for these deploy groups to the end of your service's ``deploy.yaml`` file
-
-#. Push your changes to the soa configs repo
-
-#. Make sure your jenkins pipeline marks every deploy group for deployment (i.e. your pipeline runs all the way through)
-
-#. Remove the deployment steps that were replaced by deploy groups from ``deploy.yaml``
-
-#. Edit your service's ``marathon-*.yaml`` and ``tron-*.yaml`` files to specify which instances belong to which deploy group
-
-#. Push your changes to the soa configs repo
-
-Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy-group`` flag to manually mark each of your deploy groups.
 
 String interpolation
 --------------------
 
 Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the variable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
-
-What if I don’t want to use deploy groups on my existing service?
------------------------------------------------------------------
-
-No changes are required -- your service should work as-is. Since the default deploy group for an instance is ``CLUSTER_NAME.INSTANCE_NAME``, all of your current configs will work with the new deploy group-aware tools.
-
-How to remove a specific instance from a deploy group
------------------------------------------------------
-
-Edit that instance's ``marathon-CLUSTER_NAME.yaml`` or ``tron-CLUSTER_NAME.yaml`` file and remove the ``deploy_group`` line from the instance you want to deploy separately. Then, add another deployment step to ``deploy.yaml`` to deploy the instance using the ``CLUSTER_NAME.INSTANCE_NAME`` idiom. Finally, follow the steps to recreate your jenkins pipeline.
-
-Alternatively, you can assign the instance to a deploy group that only contains that one instance -- this is what the above steps are doing implicitly, as the default deploy group is ``CLUSTER_NAME.INSTANCE_NAME``.

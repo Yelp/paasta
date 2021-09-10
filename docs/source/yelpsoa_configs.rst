@@ -381,7 +381,7 @@ instance MAY have:
 
   * ``replication_threshold``: An integer representing the percentage of instances that
     need to be available for monitoring purposes. If less than ``replication_threshold``
-    percent instances of a service's backends are not available, the monitoring
+    percent instances of a service's backends are available, the monitoring
     scripts will send a CRITICAL alert.
 
   * ``healthcheck_mode``: One of ``cmd``, ``tcp``, ``http``, or ``https``.
@@ -671,7 +671,7 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 
 .. _doc: deploy_groups.html
 
-``tron-[tron-clustername].yaml``
+``tron-[clustername].yaml``
 --------------------------------
 
 This file stores configuration for periodically scheduled jobs for execution on
@@ -955,13 +955,21 @@ Routing and Reliability
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
    specific endpoints. This is useful for when there is a long running endpoint
    that requires a large timeout value but you would like to keep the default
-   timeout at a resonable value. Endpoints are prefix-matched to what is
-   specified here so for example ``/specials/bulk/v1`` will match the
-   endpoints ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
+   timeout at a reasonable value.
+
+   Endpoints use prefix-matching by default; for example ``/specials/bulk/v1``
+   will match both ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
+
+   Endpoints can also use regex matching, provided that the regex string begins
+   with a caret ``^`` and backslashes within the string are properly escaped.
+   For example, ``^/specials/[^/]+/v2/\\d`` will match the endpoints
+   ``/specials/bulk/v2/1`` and ``^/specials/milk/v2/2``.
+
    Example::
 
      endpoint_timeouts:
          "/specials/bulk/v1": 15000
+         "^/specials/[^/]+/v2/\\d": 11000
 
 Fault Injection
 ```````````````
@@ -1097,7 +1105,7 @@ Here is a list of options that PaaSTA will pass through:
    the ``tip`` option.
 
  * ``alert_after``: Time string that represents how long a a check should be
-   failing before an actual alert should be fired. Currently defaults to ``2m``
+   failing before an actual alert should be fired. Currently defaults to ``10m``
    for the replication alert.
 
  * ``realert_every``: An integer (not a time unit) representing how many checks

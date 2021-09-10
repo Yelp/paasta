@@ -149,22 +149,25 @@ def setup_kube_deployments(
     api_updates = 0
     for _, app in applications:
         if app:
-            if (
-                app.kube_deployment.service,
-                app.kube_deployment.instance,
-            ) not in existing_apps:
-                log.info(f"Creating {app} because it does not exist yet.")
-                app.create(kube_client)
-                api_updates += 1
-            elif app.kube_deployment not in existing_kube_deployments:
-                log.info(f"Updating {app} because configs have changed.")
-                app.update(kube_client)
-                api_updates += 1
-            else:
-                log.info(f"{app} is up-to-date!")
+            try:
+                if (
+                    app.kube_deployment.service,
+                    app.kube_deployment.instance,
+                ) not in existing_apps:
+                    log.info(f"Creating {app} because it does not exist yet.")
+                    app.create(kube_client)
+                    api_updates += 1
+                elif app.kube_deployment not in existing_kube_deployments:
+                    log.info(f"Updating {app} because configs have changed.")
+                    app.update(kube_client)
+                    api_updates += 1
+                else:
+                    log.info(f"{app} is up-to-date!")
 
-            log.info(f"Ensuring related API objects for {app} are in sync")
-            app.update_related_api_objects(kube_client)
+                log.info(f"Ensuring related API objects for {app} are in sync")
+                app.update_related_api_objects(kube_client)
+            except Exception:
+                log.exception(f"Error while processing: {app}")
         if rate_limit > 0 and api_updates >= rate_limit:
             log.info(
                 f"Not doing any further updates as we reached the limit ({api_updates})"

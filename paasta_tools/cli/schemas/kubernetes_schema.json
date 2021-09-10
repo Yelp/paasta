@@ -648,6 +648,9 @@
                         "OrderedReady",
                         "Parallel"
                     ]
+                },
+                "is_istio_sidecar_injection_enabled": {
+                    "type": "boolean"
                 }
             }
         }

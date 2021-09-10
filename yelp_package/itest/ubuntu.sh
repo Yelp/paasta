@@ -20,6 +20,7 @@ check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
 check_cassandracluster_services_replication
+paasta_prune_completed_pods
 paasta_cleanup_tron_namespaces
 paasta_cleanup_stale_nodes
 paasta_deploy_tron_jobs

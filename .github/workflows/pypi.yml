@@ -1,0 +1,48 @@
+---
+name: paasta-pypi
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  tox:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        toxenv:
+          - py37-linux,docs,mypy,tests
+          - general_itests
+          - paasta_itests
+          - example_cluster
+    env:
+      PIP_INDEX_URL: https://pypi.python.org/simple
+      DOCKER_REGISTRY: ""
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      - run: python -m pip install --upgrade pip
+      - run: pip install coveralls tox==3.2 tox-pip-extensions==1.3.0 ephemeral-port-reserve
+      - run: tox -i https://pypi.python.org/simple -e ${{ matrix.toxenv }}
+  pypi:
+    # lets run tests before we push anything to pypi, much like we do internally
+    needs: tox
+    runs-on: ubuntu-20.04
+    env:
+      PIP_INDEX_URL: https://pypi.python.org/simple
+      DOCKER_REGISTRY: ""
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+      # this will create a .tar.gz with all the code (i.e., an sdist)
+      - run: python setup.py sdist
+      # and finally, upload the above sdist to public PyPI
+      - uses: pypa/gh-action-pypi-publish@v1.2.2
+        with:
+          password: ${{ secrets.pypi_password }}

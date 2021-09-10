@@ -25,6 +25,7 @@ import subprocess
 from collections import defaultdict
 from shlex import quote
 from typing import Callable
+from typing import Collection
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -44,6 +45,7 @@ from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+from paasta_tools.monkrelaycluster_tools import load_monkrelaycluster_instance_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log
@@ -760,6 +762,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
+    monkrelaycluster=InstanceTypeHandler(
+        get_service_instance_list, load_monkrelaycluster_instance_config
+    ),
 )
 
 LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
@@ -780,6 +785,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
+    ),
+    monkrelaycluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_monkrelaycluster_instance_config
     ),
 )
 
@@ -842,7 +850,7 @@ def list_deploy_groups(
 
 
 def validate_given_deploy_groups(
-    all_deploy_groups: Sequence[str], args_deploy_groups: Sequence[str]
+    all_deploy_groups: Collection[str], args_deploy_groups: Collection[str]
 ) -> Tuple[Set[str], Set[str]]:
     """Given two lists of deploy groups, return the intersection and difference between them.
 

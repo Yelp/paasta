@@ -14,6 +14,7 @@
 import os
 
 import mock
+import pytest
 from mock import patch
 
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
@@ -25,6 +26,7 @@ from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
+from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
@@ -34,6 +36,7 @@ from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 
 
+@patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_unique_instance_names", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_min_max_instances", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_paasta_objects", autospec=True)
@@ -43,6 +46,7 @@ from paasta_tools.cli.cmds.validate import validate_unique_instance_names
 @patch("paasta_tools.cli.cmds.validate.check_service_path", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_secrets", autospec=True)
 def test_paasta_validate_calls_everything(
+    mock_validate_autoscaling_configs,
     mock_validate_secrets,
     mock_check_service_path,
     mock_get_service_path,
@@ -53,7 +57,7 @@ def test_paasta_validate_calls_everything(
     mock_validate_min_max_instances,
 ):
     # Ensure each check in 'paasta_validate' is called
-
+    mock_validate_autoscaling_configs.return_value = True
     mock_validate_secrets.return_value = True
     mock_check_service_path.return_value = True
     mock_get_service_path.return_value = "unused_path"
@@ -74,6 +78,7 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_unique_instance_names.called
     assert mock_validate_paasta_objects.called
     assert mock_validate_secrets.called
+    assert mock_validate_autoscaling_configs.called
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
@@ -763,3 +768,64 @@ def test_check_secrets_for_instance_missing_secret(
         "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake-service-path/secrets/secret1.json"
         in captured.out
     )
+
+
+@pytest.mark.parametrize(
+    "setpoint,offset,expected",
+    [(0.5, 0.5, False), (0.5, 0.6, False), (0.8, 0.25, True),],
+)
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+    setpoint,
+    offset,
+    expected,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "uwsgi",
+                "setpoint": setpoint,
+                "offset": offset,
+            }
+        ),
+    )
+
+    assert validate_autoscaling_configs("fake-service-path") is expected
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs_no_offset_specified(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={"metrics_provider": "uwsgi", "setpoint": 0.8,}
+        ),
+    )
+
+    assert validate_autoscaling_configs("fake-service-path") is True

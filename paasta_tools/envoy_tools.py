@@ -109,12 +109,12 @@ def retrieve_envoy_clusters(
         host=envoy_host, port=envoy_admin_port, endpoint="clusters?format=json"
     )
 
-    # timeout after 1 second and retry 3 times
+    # timeout after 3 seconds and retry 3 times
     envoy_admin_request = requests.Session()
     envoy_admin_request.headers.update({"User-Agent": get_user_agent()})
     envoy_admin_request.mount("http://", requests.adapters.HTTPAdapter(max_retries=3))
     envoy_admin_request.mount("https://", requests.adapters.HTTPAdapter(max_retries=3))
-    envoy_admin_response = envoy_admin_request.get(envoy_uri, timeout=1)
+    envoy_admin_response = envoy_admin_request.get(envoy_uri, timeout=3)
     return envoy_admin_response.json()
 
 
