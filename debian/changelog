@@ -1,3 +1,13 @@
+paasta-tools (0.107.5) xenial; urgency=medium
+
+  * 0.107.5 tagged with 'make release'
+    Commit: Send PaaSTA Workload Contract labels to Tron (#3191)  As
+    part of the PaaSTA Workload Contract, we should be setting these
+    labels on Pods that we launch so that our tooling (e.g., OPA) knows
+    what to do with them.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 10 Sep 2021 13:22:17 -0700
+
 paasta-tools (0.107.4) xenial; urgency=medium
 
   * 0.107.4 tagged with 'make release'
