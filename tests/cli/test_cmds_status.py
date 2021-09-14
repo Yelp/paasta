@@ -1977,7 +1977,7 @@ class TestPrintFlinkStatus:
         self, mock__dashboard_get, mock_naturaltime, mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
-        mock__dashboard_get.return_value = '{"root-exception": null}'
+        mock__dashboard_get.return_value = '{"root-exception":null,"timestamp":null,"all-exceptions":[],"truncated":false}'
         output = []
         print_flink_status(
             cluster="fake_cluster",
