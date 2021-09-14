@@ -114,7 +114,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-a",
         "--autogen",
-        help="Auto generate pod template used in executors.",
+        help="Auto generate pod template with weighted pod affinity used in executors.",
         default='-1',
     )
     list_parser.add_argument(
@@ -549,7 +549,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    spark: exec
+    spark: exec-{spark_app_name}
 spec:
   affinity:
     podAffinity:
@@ -561,16 +561,11 @@ spec:
             - key: spark
               operator: In
               values:
-              - exec
+              - exec-{spark_app_name}
           topologyKey: topology.kubernetes.io/hostname
 """
         parsed_pod_template = yaml.load(document)
-        parsed_pod_template['metadata']['labels']['spark'] += "-" + spark_app_name
-        parsed_pod_template['spec']['affinity'] \
-            ['podAffinity']['preferredDuringSchedulingIgnoredDuringExecution'][0] \
-            ['podAffinityTerm']['labelSelector']['matchExpressions'][0]['values'][0] \
-            = parsed_pod_template['metadata']['labels']['spark']
-        f = open("/nail/home/"+get_username()+"/podTemplate.yaml", "w")
+        f = open("/nail/tmp/podTemplate.yaml", "w")
         f.write(yaml.dump(parsed_pod_template))
         f.close()
     return spark_app_name
@@ -622,6 +617,9 @@ def configure_and_run_docker_container(
 
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
+    if args.autogen != '-1':
+        volumes.append("/nail/tmp/podTemplate.yaml:/nail/tmp/podTemplate.yaml:rw")
+
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -846,7 +844,7 @@ def paasta_spark_run(args):
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.autogen)
 
     if args.autogen != '-1':
-        pod_template_path = "/nail/home/"+get_username()+"/podTemplate.yaml"
+        pod_template_path = "/nail/tmp/podTemplate.yaml"
         if args.spark_args:
             args.spark_args += f" spark.kubernetes.executor.podTemplateFile={pod_template_path}"
             args.spark_args += f" spark.kubernetes.allocation.batch.size=2"
