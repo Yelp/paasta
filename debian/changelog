@@ -1,3 +1,12 @@
+paasta-tools (0.108.0) xenial; urgency=medium
+
+  * 0.108.0 tagged with 'make release'
+    Commit: Add env key (#3206)  This branch adds an env key and bugsnag
+    paasta secret api key to kubernetes configs for CRS shards. This is
+    so that these keys will not have to be manually added to shards.
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 15 Sep 2021 10:21:11 -0700
+
 paasta-tools (0.107.5) xenial; urgency=medium
 
   * 0.107.5 tagged with 'make release'
