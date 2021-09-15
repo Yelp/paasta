@@ -792,8 +792,8 @@ async def get_pod_containers(
                 return {"error_message": f"Could not fetch logs for {cs.name}"}
 
         # get previous log lines as well if this container restarted recently
-        async def get_last_tail_lines():
-            nonlocal last_tail_lines
+        async def get_previous_tail_lines():
+            nonlocal previous_tail_lines
             if state == "running" and kubernetes_tools.recent_container_restart(
                 cs.restart_count, last_state, last_timestamp
             ):
@@ -807,9 +807,9 @@ async def get_pod_containers(
                     }
             return None
 
-        tail_lines, last_tail_lines = await asyncio.gather(
+        tail_lines, previous_tail_lines = await asyncio.gather(
             asyncio.ensure_future(get_tail_lines()),
-            asyncio.ensure_future(get_last_tail_lines()),
+            asyncio.ensure_future(get_previous_tail_lines()),
         )
 
         containers.append(
@@ -824,7 +824,7 @@ async def get_pod_containers(
                 "last_message": last_message,
                 "last_duration": last_duration,
                 "last_timestamp": last_timestamp,
-                "last_tail_lines": last_tail_lines,
+                "previous_tail_lines": previous_tail_lines,
                 "timestamp": start_timestamp,
                 "healthcheck_grace_period": healthcheck_grace_period,
                 "healthcheck_cmd": healthcheck,

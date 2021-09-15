@@ -2084,14 +2084,14 @@ def format_tail_lines_for_kubernetes_pod(
 ) -> List[str]:
     errors: List[str] = []
     lines: List[str] = []
-    prefixes = (
-        ("", "current"),
-        ("last_", "previous (pre-restart)"),
+    tail_line_prefixes = (
+        ("tail_lines", "current"),
+        ("previous_tail_lines", "previous (pre-restart)"),
     )
 
     for container in pod_containers:
-        for tail_prefix, stream_prefix in prefixes:
-            tail_lines = getattr(container, tail_prefix + "tail_lines", None)
+        for tail_line_key, stream_prefix in tail_line_prefixes:
+            tail_lines = getattr(container, tail_line_key, None)
             if tail_lines is None:
                 break
             if tail_lines.error_message:

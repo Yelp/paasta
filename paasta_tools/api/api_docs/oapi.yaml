@@ -640,7 +640,7 @@ components:
           format: float
           type: number
           nullable: true
-        last_tail_lines:
+        previous_tail_lines:
           $ref: '#/components/schemas/TaskTailLines'
           description: Previous container's stdout and stderr tail
           nullable: true

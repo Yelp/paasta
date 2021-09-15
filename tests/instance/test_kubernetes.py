@@ -293,7 +293,7 @@ class TestKubernetesStatusV2:
                                     "last_timestamp": datetime.datetime(
                                         2021, 3, 4
                                     ).timestamp(),
-                                    "last_tail_lines": None,
+                                    "previous_tail_lines": None,
                                     "timestamp": datetime.datetime(
                                         2021, 3, 6
                                     ).timestamp(),
@@ -712,7 +712,7 @@ async def test_get_pod_containers(mock_pod):
             last_message="a_last_state_message",
             last_duration=86400.0,
             last_timestamp=datetime.datetime(2021, 3, 4).timestamp(),
-            last_tail_lines=["previous"],
+            previous_tail_lines=["previous"],
             timestamp=datetime.datetime(2021, 3, 6).timestamp(),
             healthcheck_grace_period=1,
             healthcheck_cmd={"http_url": "http://1.2.3.4:8080/healthcheck"},
