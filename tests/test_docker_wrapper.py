@@ -320,7 +320,14 @@ class TestMain:
         argv = ["docker", "run", "foobar"]
         docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [
-            mock.call("docker", "docker", "run", "foobar")
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                "foobar",
+            )
         ]
 
     def test_already_has_hostname(self, mock_execlp):
@@ -353,14 +360,28 @@ class TestMain:
         argv = ["docker", "run", '--env=PIN_TO_NUMA_NODE="true"']
         docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [
-            mock.call("docker", "docker", "run", '--env=PIN_TO_NUMA_NODE="true"')
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                '--env=PIN_TO_NUMA_NODE="true"',
+            )
         ]
 
     def test_numa_bogus_node(self, mock_execlp):
         argv = ["docker", "run", "--env=PIN_TO_NUMA_NODE=True"]
         docker_wrapper.main(argv)
         assert mock_execlp.mock_calls == [
-            mock.call("docker", "docker", "run", "--env=PIN_TO_NUMA_NODE=True")
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                "--env=PIN_TO_NUMA_NODE=True",
+            )
         ]
 
     def test_numa_unsupported(self, mock_execlp):
@@ -386,6 +407,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--env=PIN_TO_NUMA_NODE=1",
                 "--env=MARATHON_APP_RESOURCE_CPUS=1.5",
             )
@@ -415,6 +438,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -446,6 +471,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -478,6 +505,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-cpus=0,2",
                 "--env=PIN_TO_NUMA_NODE=1",
                 "--env=MARATHON_APP_RESOURCE_CPUS=1.5",
@@ -509,6 +538,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -542,6 +573,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--env=PIN_TO_NUMA_NODE=1",
                 "--env=MARATHON_APP_RESOURCE_CPUS=2",
                 "--env=MARATHON_APP_RESOURCE_MEM=40000.0",
@@ -573,6 +606,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -605,6 +640,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -636,6 +673,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--env=PIN_TO_NUMA_NODE=1",
                 "--env=MARATHON_APP_RESOURCE_CPUS=3.0",
             )
@@ -660,6 +699,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--cpuset-mems=1",
                 "--cpuset-cpus=1,3",
                 "--env=PIN_TO_NUMA_NODE=1",
@@ -681,7 +722,14 @@ class TestMain:
             docker_wrapper.main(argv)
 
         assert mock_execlp.mock_calls == [
-            mock.call("docker", "docker", "run", "--env=PIN_TO_NUMA_NODE=2")
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                "--env=PIN_TO_NUMA_NODE=2",
+            )
         ]
 
     def test_numa_single_cpu_doesnt_bother_with_cpusets(self, mock_execlp):
@@ -694,7 +742,14 @@ class TestMain:
             docker_wrapper.main(argv)
 
         assert mock_execlp.mock_calls == [
-            mock.call("docker", "docker", "run", "--env=PIN_TO_NUMA_NODE=1")
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                "--env=PIN_TO_NUMA_NODE=1",
+            )
         ]
 
     @contextmanager
@@ -746,6 +801,8 @@ class TestMain:
                 "docker",
                 "run",
                 "--mac-address=00:00:00:00:00:00",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 *mock_firewall_env_args,
             )
         ]
@@ -789,6 +846,8 @@ class TestMain:
                 "docker",
                 "docker",
                 "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 "--mac-address=12:34:56:78:90:ab",
                 *mock_firewall_env_args,
             )
@@ -803,7 +862,14 @@ class TestMain:
             docker_wrapper.main(argv)
 
             assert mock_execlp.mock_calls == [
-                mock.call("docker", "docker", "run", *mock_firewall_env_args)
+                mock.call(
+                    "docker",
+                    "docker",
+                    "run",
+                    f"--hostname={socket.getfqdn()}",
+                    f"-e=PAASTA_HOST={socket.getfqdn()}",
+                    *mock_firewall_env_args,
+                )
             ]
             _, err = capsys.readouterr()
             assert err.startswith(
@@ -835,6 +901,8 @@ class TestMain:
                 "docker",
                 "run",
                 "--mac-address=00:00:00:00:00:00",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
                 *mock_firewall_env_args,
             )
         ]
