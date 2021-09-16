@@ -56,6 +56,9 @@ CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
+POD_TEMPLATE_PATH = "/nail/tmp/podTemplate.yaml"
+BATCH_SIZE = "2" # Smaller batch size reduces number of nodes initial request is spread across
+
 
 deprecated_opts = {
     "j": "spark.jars",
@@ -112,10 +115,11 @@ def add_subparser(subparsers):
         help="Use the provided image to start the Spark driver and executors.",
     )
     list_parser.add_argument(
-        "-a",
-        "--autogen",
+        "-e",
+        "--enable-k8s-autogen",
         help="Auto generate pod template with weighted pod affinity used in executors.",
-        default='-1',
+        action="store_true",
+        default=True,
     )
     list_parser.add_argument(
         "--docker-registry",
@@ -464,9 +468,10 @@ def get_spark_env(
     return spark_env
 
 
-def _parse_user_spark_args(spark_args: Optional[str]) -> Dict[str, str]:
+def _parse_user_spark_args(spark_args: Optional[str], enable_k8s_autogen: bool) -> Dict[str, str]:
     if not spark_args:
         return {}
+
     user_spark_opts = {}
     for spark_arg in spark_args.split():
         fields = spark_arg.split("=", 1)
@@ -479,6 +484,11 @@ def _parse_user_spark_args(spark_args: Optional[str]) -> Dict[str, str]:
             )
             sys.exit(1)
         user_spark_opts[fields[0]] = fields[1]
+
+    if enable_k8s_autogen:
+        user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = POD_TEMPLATE_PATH
+        user_spark_opts["spark.kubernetes.allocation.batch.size"] = BATCH_SIZE
+
     return user_spark_opts
 
 
@@ -520,7 +530,7 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen='-1') -> str:
+def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
         shlex.split(original_docker_cmd)
@@ -543,7 +553,7 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], autogen=
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
     spark_app_name += f"_{get_username()}"
-    if autogen != '-1':
+    if enable_k8s_autogen:
         document = f"""
 apiVersion: v1
 kind: Pod
@@ -554,7 +564,7 @@ spec:
   affinity:
     podAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: {autogen}
+      - weight: 95
         podAffinityTerm:
           labelSelector:
             matchExpressions:
@@ -617,8 +627,8 @@ def configure_and_run_docker_container(
 
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
-    if args.autogen != '-1':
-        volumes.append("/nail/tmp/podTemplate.yaml:/nail/tmp/podTemplate.yaml:rw")
+    if args.enable_k8s_autogen:
+        volumes.append(f"{POD_TEMPLATE_PATH}:{POD_TEMPLATE_PATH}:rw")
 
 
     environment = instance_config.get_env_dictionary()  # type: ignore
@@ -841,19 +851,10 @@ def paasta_spark_run(args):
         return 1
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
-    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.autogen)
-
-    if args.autogen != '-1':
-        pod_template_path = "/nail/tmp/podTemplate.yaml"
-        if args.spark_args:
-            args.spark_args += f" spark.kubernetes.executor.podTemplateFile={pod_template_path}"
-            args.spark_args += f" spark.kubernetes.allocation.batch.size=2"
-        else:
-            args.spark_args = f"spark.kubernetes.executor.podTemplateFile={pod_template_path}"
-            args.spark_args += f" spark.kubernetes.allocation.batch.size=2"
+    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.enable_k8s_autogen)
 
     needs_docker_cfg = not args.build
-    user_spark_opts = _parse_user_spark_args(args.spark_args)
+    user_spark_opts = _parse_user_spark_args(args.spark_args, args.enable_k8s_autogen)
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
