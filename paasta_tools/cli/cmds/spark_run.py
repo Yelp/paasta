@@ -6,8 +6,6 @@ import re
 import shlex
 import socket
 import sys
-import yaml
-
 from typing import Any
 from typing import Dict
 from typing import List
@@ -16,7 +14,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-
+import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
