@@ -119,6 +119,9 @@ def main(args):
                         kube_file[args.shard_name] = {
                             "deploy_group": f"{deploy_prefix}.{args.shard_name}",
                             "instances": args.instance_count,
+                            "env": {
+                                "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
+                            },
                         }
                         updater.write_configs(args.service, config_path, kube_file)
                         log.info(
