@@ -1,3 +1,12 @@
+paasta-tools (0.109.0) xenial; urgency=medium
+
+  * 0.109.0 tagged with 'make release'
+    Commit: Merge pull request #3199 from Yelp/u/kawaiwan/show-previous-
+    container-output  Make pre-restart container output available for
+    recent restarts in paasta -vv
+
+ -- Charles Wan <kawaiwan@yelp.com>  Thu, 16 Sep 2021 12:12:31 -0700
+
 paasta-tools (0.108.0) xenial; urgency=medium
 
   * 0.108.0 tagged with 'make release'
