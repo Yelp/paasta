@@ -7,6 +7,7 @@ import shlex
 import socket
 import sys
 import yaml
+
 from typing import Any
 from typing import Dict
 from typing import List
@@ -14,6 +15,7 @@ from typing import Mapping
 from typing import Optional
 from typing import Tuple
 from typing import Union
+
 
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
@@ -57,7 +59,9 @@ CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
 POD_TEMPLATE_PATH = "/nail/tmp/podTemplate.yaml"
-BATCH_SIZE = "2" # Smaller batch size reduces number of nodes initial request is spread across
+BATCH_SIZE = (
+    "2"  # Smaller batch size reduces number of nodes initial request is spread across
+)
 POD_TEMPLATE = """
 apiVersion: v1
 kind: Pod
@@ -488,7 +492,9 @@ def get_spark_env(
     return spark_env
 
 
-def _parse_user_spark_args(spark_args: Optional[str], enable_k8s_autogen: bool) -> Dict[str, str]:
+def _parse_user_spark_args(
+    spark_args: Optional[str], enable_k8s_autogen: bool
+) -> Dict[str, str]:
     if not spark_args:
         return {}
 
@@ -550,7 +556,9 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool) -> str:
+def get_spark_app_name(
+    original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool
+) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
         shlex.split(original_docker_cmd)
@@ -853,7 +861,9 @@ def paasta_spark_run(args):
         return 1
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
-    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd(), args.enable_k8s_autogen)
+    app_base_name = get_spark_app_name(
+        args.cmd or instance_config.get_cmd(), args.enable_k8s_autogen
+    )
 
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(args.spark_args, args.enable_k8s_autogen)
