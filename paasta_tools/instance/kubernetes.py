@@ -44,6 +44,9 @@ from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
 from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
+from paasta_tools.fake_zipkin import fake_zipkin
+import cProfile
+
 
 INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
 INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
@@ -280,20 +283,31 @@ def mesh_status(
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
-    replication_checker = KubeSmartstackEnvoyReplicationChecker(
-        nodes=kubernetes_tools.get_all_nodes(settings.kubernetes_client),
-        system_paasta_config=settings.system_paasta_config,
-    )
-    node_hostname_by_location = replication_checker.get_allowed_locations_and_hosts(
-        job_config
-    )
+    with fake_zipkin("get_all_nodes"):
+        # profiler = cProfile.Profile()
+        # profiler.enable()
+        nodes = kubernetes_tools.get_all_nodes(settings.kubernetes_client)
+        # profiler.disable()
+        # profiler.dump_stats('get_all_nodes_cprofile')
 
-    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
-        service=service,
-        namespace=job_config.get_nerve_namespace(),
-        cluster=settings.cluster,
-        instance_type_class=KubernetesDeploymentConfig,
-    )
+    with fake_zipkin("create replication checker"):
+        replication_checker = KubeSmartstackEnvoyReplicationChecker(
+            nodes=nodes,
+            system_paasta_config=settings.system_paasta_config,
+        )
+
+    with fake_zipkin("get_allowed_locations_and_hosts"):
+        node_hostname_by_location = replication_checker.get_allowed_locations_and_hosts(
+            job_config
+        )
+
+    with fake_zipkin("get_expected_instance_count_for_namespace"):
+        expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
+            service=service,
+            namespace=job_config.get_nerve_namespace(),
+            cluster=settings.cluster,
+            instance_type_class=KubernetesDeploymentConfig,
+        )
     expected_count_per_location = int(
         expected_smartstack_count / len(node_hostname_by_location)
     )
@@ -306,29 +320,31 @@ def mesh_status(
     for location, hosts in node_hostname_by_location.items():
         host = replication_checker.get_first_host_in_pool(hosts, instance_pool)
         if service_mesh == ServiceMesh.SMARTSTACK:
-            mesh_status["locations"].append(
-                _build_smartstack_location_dict(
-                    synapse_host=host,
-                    synapse_port=settings.system_paasta_config.get_synapse_port(),
-                    synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
-                    registration=registration,
-                    pods=pods,
-                    location=location,
-                    should_return_individual_backends=should_return_individual_backends,
+            with fake_zipkin("build_smartstack_location_dict"):
+                mesh_status["locations"].append(
+                    _build_smartstack_location_dict(
+                        synapse_host=host,
+                        synapse_port=settings.system_paasta_config.get_synapse_port(),
+                        synapse_haproxy_url_format=settings.system_paasta_config.get_synapse_haproxy_url_format(),
+                        registration=registration,
+                        pods=pods,
+                        location=location,
+                        should_return_individual_backends=should_return_individual_backends,
+                    )
                 )
-            )
         elif service_mesh == ServiceMesh.ENVOY:
-            mesh_status["locations"].append(
-                _build_envoy_location_dict(
-                    envoy_host=host,
-                    envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
-                    envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
-                    registration=registration,
-                    pods=pods,
-                    location=location,
-                    should_return_individual_backends=should_return_individual_backends,
+            with fake_zipkin("build_envoy_location_dict"):
+                mesh_status["locations"].append(
+                    _build_envoy_location_dict(
+                        envoy_host=host,
+                        envoy_admin_port=settings.system_paasta_config.get_envoy_admin_port(),
+                        envoy_admin_endpoint_format=settings.system_paasta_config.get_envoy_admin_endpoint_format(),
+                        registration=registration,
+                        pods=pods,
+                        location=location,
+                        should_return_individual_backends=should_return_individual_backends,
+                    )
                 )
-            )
     return mesh_status
 
 
@@ -341,12 +357,13 @@ def _build_envoy_location_dict(
     location: str,
     should_return_individual_backends: bool,
 ) -> MutableMapping[str, Any]:
-    backends = envoy_tools.get_backends(
-        registration,
-        envoy_host=envoy_host,
-        envoy_admin_port=envoy_admin_port,
-        envoy_admin_endpoint_format=envoy_admin_endpoint_format,
-    )
+    with fake_zipkin("envoy_tools.get_backends"):
+        backends = envoy_tools.get_backends(
+            registration,
+            envoy_host=envoy_host,
+            envoy_admin_port=envoy_admin_port,
+            envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+        )
     sorted_envoy_backends = sorted(
         [
             backend[0]
@@ -547,16 +564,17 @@ def kubernetes_status_v2(
     )
     backends = None
     if "proxy_port" in service_namespace_config:
-        envoy_status = mesh_status(
-            service=service,
-            service_mesh=ServiceMesh.ENVOY,
-            instance=job_config.get_nerve_namespace(),
-            job_config=job_config,
-            service_namespace_config=service_namespace_config,
-            pods=pod_list,
-            should_return_individual_backends=True,
-            settings=settings,
-        )
+        with fake_zipkin("mesh_status"):
+            envoy_status = mesh_status(
+                service=service,
+                service_mesh=ServiceMesh.ENVOY,
+                instance=job_config.get_nerve_namespace(),
+                job_config=job_config,
+                service_namespace_config=service_namespace_config,
+                pods=pod_list,
+                should_return_individual_backends=True,
+                settings=settings,
+            )
         if envoy_status.get("locations"):
             backends = {
                 be["address"] for be in envoy_status["locations"][0].get("backends", [])
@@ -567,9 +585,10 @@ def kubernetes_status_v2(
             # Note we always include backends here now
             status["envoy"] = envoy_status
 
-    update_kubernetes_status(
-        status, kube_client, job_config, pod_list, backends, verbose,
-    )
+    with fake_zipkin("update_kubernetes_status"):
+        update_kubernetes_status(
+            status, kube_client, job_config, pod_list, backends, verbose,
+        )
 
     return status
 

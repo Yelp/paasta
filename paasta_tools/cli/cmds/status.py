@@ -265,6 +265,8 @@ def paasta_status_on_api_endpoint(
         print("Cannot get a paasta-api client")
         exit(1)
     try:
+        import time
+        start = time.time()
         status = client.service.status_instance(
             service=service,
             instance=instance,
@@ -272,6 +274,8 @@ def paasta_status_on_api_endpoint(
             new=new,
             include_smartstack=False,
         )
+        end = time.time()
+        print(f"Api call took {end-start} seconds")
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
         return exc.status
