@@ -703,7 +703,7 @@ def test_paasta_spark_run(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
-        enable_k8s_autogen=True,
+        enable_k8s_autogen=False,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
     )
