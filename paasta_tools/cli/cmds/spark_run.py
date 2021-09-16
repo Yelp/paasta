@@ -579,13 +579,12 @@ def get_spark_app_name(
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
 
-    spark_app_name += "_{}".format(get_username())
+    spark_app_name += f"_{get_username()}"
     if enable_k8s_autogen:
         document = POD_TEMPLATE.format(spark_app_name=spark_app_name)
         parsed_pod_template = yaml.load(document)
-        f = open(POD_TEMPLATE_PATH, "w")
-        f.write(yaml.dump(parsed_pod_template))
-        f.close()
+        with open(POD_TEMPLATE_PATH, 'w') as f:
+            yaml.dump(parsed_pod_template, f)
 
     return spark_app_name
 
