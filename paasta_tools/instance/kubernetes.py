@@ -760,7 +760,7 @@ async def get_pod_containers(
                 if "message" in this_state:
                     message = this_state["message"]
                 if "started_at" in this_state:
-                    start_timestamp = this_state["started_at"]
+                    start_timestamp = this_state["started_at"].timestamp()
 
         last_state_dict = cs.last_state.to_dict()
         last_state = None
@@ -781,14 +781,36 @@ async def get_pod_containers(
                             this_state["finished_at"] - this_state["started_at"]
                         ).total_seconds()
 
-                    last_timestamp = this_state["started_at"]
+                    last_timestamp = this_state["started_at"].timestamp()
 
-        try:
-            tail_lines = await get_tail_lines_for_kubernetes_container(
-                client, pod, cs, num_tail_lines,
-            )
-        except asyncio.TimeoutError:
-            tail_lines = {"error_message": f"Could not fetch logs for {cs.name}"}
+        async def get_tail_lines():
+            try:
+                return await get_tail_lines_for_kubernetes_container(
+                    client, pod, cs, num_tail_lines, previous=False,
+                )
+            except asyncio.TimeoutError:
+                return {"error_message": f"Could not fetch logs for {cs.name}"}
+
+        # get previous log lines as well if this container restarted recently
+        async def get_previous_tail_lines():
+            nonlocal previous_tail_lines
+            if state == "running" and kubernetes_tools.recent_container_restart(
+                cs.restart_count, last_state, last_timestamp
+            ):
+                try:
+                    return await get_tail_lines_for_kubernetes_container(
+                        client, pod, cs, num_tail_lines, previous=True,
+                    )
+                except asyncio.TimeoutError:
+                    return {
+                        "error_message": f"Could not fetch previous logs for {cs.name}"
+                    }
+            return None
+
+        tail_lines, previous_tail_lines = await asyncio.gather(
+            asyncio.ensure_future(get_tail_lines()),
+            asyncio.ensure_future(get_previous_tail_lines()),
+        )
 
         containers.append(
             {
@@ -801,10 +823,9 @@ async def get_pod_containers(
                 "last_reason": last_reason,
                 "last_message": last_message,
                 "last_duration": last_duration,
-                "last_timestamp": last_timestamp.timestamp()
-                if last_timestamp
-                else None,
-                "timestamp": start_timestamp.timestamp() if start_timestamp else None,
+                "last_timestamp": last_timestamp,
+                "previous_tail_lines": previous_tail_lines,
+                "timestamp": start_timestamp,
                 "healthcheck_grace_period": healthcheck_grace_period,
                 "healthcheck_cmd": healthcheck,
                 "tail_lines": tail_lines,

@@ -1407,16 +1407,15 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 
 def recent_container_restart(
-    container: KubernetesContainerV2, time_window: int = 900
+    container: Optional[KubernetesContainerV2], time_window: int = 900
 ) -> bool:
-    min_timestamp = datetime.now().timestamp() - time_window
-    if (
-        container.restart_count > 0
-        and container.last_state == "terminated"
-        and container.last_timestamp is not None
-        and container.last_timestamp > min_timestamp
-    ):
-        return True
+    if container:
+        return kubernetes_tools.recent_container_restart(
+            container.restart_count,
+            container.last_state,
+            container.last_timestamp,
+            time_window_s=time_window,
+        )
     return False
 
 
@@ -1593,7 +1592,7 @@ def create_replica_table(
                     f"  Healthchecks are failing. To investigate further, {healthcheck_string}"
                 )
             )
-        if state.is_unhealthy():
+        if state.is_unhealthy() or recent_container_restart(main_container):
             if verbose < 2:
                 table.append(
                     PaastaColors.red(
