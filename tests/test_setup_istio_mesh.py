@@ -48,6 +48,19 @@ def test_setup_paasta_routing():
     assert k8s_svc.spec.ports[1].port == MOCK_PORT_NUMBER
 
 
+def test_cleanup_paasta_namespace_services_garbage_collect_services():
+    mock_client = mock.Mock()
+    mock_paasta_namespaces = {"svc1", "svc2"}
+    mock_existing_namespace_services = {"svc1", "svc2", "svc3"}
+    fn, *rest = cleanup_paasta_namespace_services(
+        mock_client, mock_paasta_namespaces, mock_existing_namespace_services,
+    )
+    k8s_svc = fn.args[0][0]
+    assert len(rest) == 0
+    assert fn.func is mock_client.core.delete_namespaced_service
+    assert k8s_svc == "svc3"
+
+
 def test_cleanup_paasta_namespace_services_does_not_remove_unified_svc():
     mock_client = mock.Mock()
     mock_paasta_namespaces = {"svc1", "svc2"}
@@ -77,13 +90,9 @@ def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_fir
 
     mock_existing_namespace_services = {}
     calls = cleanup_paasta_namespace_services(
-<<<<<<< HEAD
         mock_client,
         mock_paasta_namespaces,
         mock_existing_namespace_services,
         mock_existing_namespace_services,
-=======
-        mock_client, mock_paasta_namespaces, mock_existing_namespace_services
->>>>>>> blackify
     )
     assert len(list(calls)) == 0
