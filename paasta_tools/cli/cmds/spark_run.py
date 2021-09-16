@@ -491,7 +491,7 @@ def get_spark_env(
 
 
 def _parse_user_spark_args(
-    spark_args: Optional[str], enable_k8s_autogen: bool
+    spark_args: Optional[str], enable_k8s_autogen: bool = True
 ) -> Dict[str, str]:
     if not spark_args:
         return {}
@@ -555,7 +555,7 @@ def run_docker_container(
 
 
 def get_spark_app_name(
-    original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool
+    original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool = True
 ) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
