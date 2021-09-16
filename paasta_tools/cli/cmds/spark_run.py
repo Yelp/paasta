@@ -58,7 +58,26 @@ CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
 POD_TEMPLATE_PATH = "/nail/tmp/podTemplate.yaml"
 BATCH_SIZE = "2" # Smaller batch size reduces number of nodes initial request is spread across
-
+POD_TEMPLATE = """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    spark: exec-{spark_app_name}
+spec:
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 95
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: spark
+              operator: In
+              values:
+              - exec-{spark_app_name}
+          topologyKey: topology.kubernetes.io/hostname
+"""
 
 deprecated_opts = {
     "j": "spark.jars",
@@ -114,6 +133,7 @@ def add_subparser(subparsers):
         "--image",
         help="Use the provided image to start the Spark driver and executors.",
     )
+
     list_parser.add_argument(
         "-e",
         "--enable-k8s-autogen",
@@ -552,32 +572,15 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]], enable_k
 
     if spark_app_name is None:
         spark_app_name = "paasta_spark_run"
-    spark_app_name += f"_{get_username()}"
+
+    spark_app_name += "_{}".format(get_username())
     if enable_k8s_autogen:
-        document = f"""
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    spark: exec-{spark_app_name}
-spec:
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 95
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: spark
-              operator: In
-              values:
-              - exec-{spark_app_name}
-          topologyKey: topology.kubernetes.io/hostname
-"""
+        document = POD_TEMPLATE.format(spark_app_name=spark_app_name)
         parsed_pod_template = yaml.load(document)
-        f = open("/nail/tmp/podTemplate.yaml", "w")
+        f = open(POD_TEMPLATE_PATH, "w")
         f.write(yaml.dump(parsed_pod_template))
         f.close()
+
     return spark_app_name
 
 
@@ -629,7 +632,6 @@ def configure_and_run_docker_container(
     volumes.append("/nail/home:/nail/home:rw")
     if args.enable_k8s_autogen:
         volumes.append(f"{POD_TEMPLATE_PATH}:{POD_TEMPLATE_PATH}:rw")
-
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
