@@ -4,7 +4,7 @@ from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.setup_istio_mesh import cleanup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import sanitise_kubernetes_service_name
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_services
-from paasta_tools.setup_istio_mesh import setup_unified_service
+from paasta_tools.setup_istio_mesh import setup_paasta_routing
 from paasta_tools.setup_istio_mesh import UNIFIED_K8S_SVC_NAME
 from paasta_tools.setup_istio_mesh import UNIFIED_SVC_PORT
 
@@ -21,7 +21,7 @@ def test_setup_kube_service():
     fn, *rest = setup_paasta_namespace_services(
         kube_client=mock_client,
         paasta_namespaces=mock_paasta_namespaces,
-        existing_kube_services_names={},
+        existing_namespace_services={},
         existing_virtual_services={},
     )
     k8s_svc = fn.args[0][1]
@@ -32,11 +32,11 @@ def test_setup_kube_service():
     assert k8s_svc.spec.selector == {registration_label(service_name): "true"}
 
 
-def test_setup_unified_service():
+def test_setup_paasta_routing():
     mock_client = mock.Mock()
     mock_namespaces = dict(foo=dict(proxy_port=MOCK_PORT_NUMBER))
 
-    fn, *rest = setup_unified_service(
+    fn, *rest = setup_paasta_routing(
         kube_client=mock_client, namespaces=mock_namespaces,
     )
     k8s_svc = fn.args[0][1]
@@ -52,11 +52,12 @@ def test_cleanup_paasta_namespace_services_garbage_collect_services():
     mock_client = mock.Mock()
     mock_paasta_namespaces = {"svc1", "svc2"}
     mock_existing_namespace_services = {"svc1", "svc2", "svc3"}
-    (k8s_fn, (k8s_svc, _)), *rest = cleanup_paasta_namespace_services(
+    fn, *rest = cleanup_paasta_namespace_services(
         mock_client, mock_paasta_namespaces, mock_existing_namespace_services,
     )
+    k8s_svc = fn.args[0][0]
     assert len(rest) == 0
-    assert k8s_fn is mock_client.core.delete_namespaced_service
+    assert fn.func is mock_client.core.delete_namespaced_service
     assert k8s_svc == "svc3"
 
 
@@ -65,12 +66,13 @@ def test_cleanup_paasta_namespace_services_does_not_remove_unified_svc():
     mock_paasta_namespaces = {"svc1", "svc2"}
 
     mock_existing_namespace_services = {"svc1", "svc2", "svc3", UNIFIED_K8S_SVC_NAME}
-    (k8s_fn, (k8s_svc, _)), *rest = cleanup_paasta_namespace_services(
+    fn, *rest = cleanup_paasta_namespace_services(
         mock_client, mock_paasta_namespaces, mock_existing_namespace_services,
     )
+    k8s_svc = fn.args[0][0]
 
     assert len(rest) == 0
-    assert k8s_fn is mock_client.core.delete_namespaced_service
+    assert fn.func is mock_client.core.delete_namespaced_service
     assert k8s_svc != UNIFIED_K8S_SVC_NAME
 
 

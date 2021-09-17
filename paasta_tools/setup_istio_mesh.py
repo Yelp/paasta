@@ -120,7 +120,7 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     }
 
 
-def setup_unified_service(kube_client: KubeClient, namespaces: Mapping) -> Iterator:
+def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterator:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
     # Add port 1337 for envoy unified listener.
@@ -219,7 +219,9 @@ def setup_paasta_namespace_services(
                 f"Creating istio virtualservice {service} because it does not exist yet."
             )
 
-            route = dict(destination=dict(host=service, port=dict(number=8888)))
+            route = dict(
+                destination=dict(host=service, port=dict(number=PAASTA_SVC_PORT))
+            )
             virtual_service = dict(
                 apiVersion="networking.istio.io/v1alpha3",
                 kind="VirtualService",
@@ -252,7 +254,9 @@ def cleanup_paasta_namespace_services(
         log.info(
             f"Garbage collecting {service} since there is no reference in services.yaml"
         )
-        yield kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+        yield partial(
+            kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+        )
 
 
 def process_kube_services(
@@ -271,16 +275,22 @@ def process_kube_services(
 
     if should_setup_unified:
         log.info(f"Creating {UNIFIED_K8S_SVC_NAME} because it does not exist yet.")
-        yield from setup_unified_service(
+        yield from setup_paasta_routing(
             kube_client=kube_client, namespaces=namespaces,
         )
 
     yield from setup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_namespace_services, existing_virtual_services,
+        kube_client,
+        namespaces.keys(),
+        existing_namespace_services,
+        existing_virtual_services,
     )
 
     yield from cleanup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_namespace_services, existing_virtual_services,
+        kube_client,
+        namespaces.keys(),
+        existing_namespace_services,
+        existing_virtual_services,
     )
 
 
