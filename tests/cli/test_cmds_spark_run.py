@@ -635,7 +635,7 @@ class TestConfigureAndRunDockerContainer:
 def test_get_spark_app_name(cmd, expected_name):
     with mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True) as m:
         m.return_value = "fake_user"
-        assert get_spark_app_name(cmd) == expected_name
+        assert get_spark_app_name(cmd, False) == expected_name
 
 
 @pytest.mark.parametrize(
@@ -673,7 +673,7 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
-@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", False, autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
@@ -725,7 +725,7 @@ def test_paasta_spark_run(
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
     )
-    mock_get_spark_app_name.assert_called_once_with("spark-submit test.py")
+    mock_get_spark_app_name.assert_called_once_with("spark-submit test.py", False)
     mock_parse_user_spark_args.assert_called_once_with(
         "spark.cores.max=100 spark.executor.cores=10"
     )
