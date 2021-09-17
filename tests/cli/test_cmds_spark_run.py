@@ -241,12 +241,8 @@ def test_get_spark_env(
     "spark_args,expected",
     [
         (
-            "spark.cores.max=1  spark.executor.memory=24g  spark.kubernetes.executor.podTemplateFile=/nail/tmp/podTemplate.yaml",
-            {
-                "spark.cores.max": "1",
-                "spark.executor.memory": "24g",
-                "spark.kubernetes.executor.podTemplateFile": "/nail/tmp/podTemplate.yaml",
-            },
+            "spark.cores.max=1  spark.executor.memory=24g",
+            {"spark.cores.max": "1", "spark.executor.memory": "24g"},
         ),
         ("spark.cores.max", None),
         (None, {}),
@@ -446,11 +442,7 @@ class TestConfigureAndRunDockerContainer:
             container_name="fake_app",
             volumes=(
                 expected_volumes
-                + [
-                    "/fake_dir:/spark_driver:rw",
-                    "/nail/home:/nail/home:rw",
-                    "/nail/tmp/podTemplate.yaml:/nail/tmp/podTemplate.yaml:rw",
-                ]
+                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
             ),
             environment={
                 "env1": "val1",
@@ -643,7 +635,7 @@ class TestConfigureAndRunDockerContainer:
 def test_get_spark_app_name(cmd, expected_name):
     with mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True) as m:
         m.return_value = "fake_user"
-        assert get_spark_app_name(cmd, False) == expected_name
+        assert get_spark_app_name(cmd) == expected_name
 
 
 @pytest.mark.parametrize(
@@ -711,7 +703,6 @@ def test_paasta_spark_run(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
-        enable_k8s_autogen=False,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
     )
@@ -733,9 +724,9 @@ def test_paasta_spark_run(
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
     )
-    mock_get_spark_app_name.assert_called_once_with("spark-submit test.py", False)
+    mock_get_spark_app_name.assert_called_once_with("spark-submit test.py")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", False
+        "spark.cores.max=100 spark.executor.cores=10"
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
