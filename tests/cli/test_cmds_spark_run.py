@@ -676,7 +676,7 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
-@mock.patch.object(spark_run, "get_spark_app_name", False, autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
