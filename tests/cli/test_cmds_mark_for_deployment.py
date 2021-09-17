@@ -407,7 +407,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
     # get_authors should calculate authors since the production_deploy_group's
     # current SHA, when available.
     mock_get_currently_deployed_sha.return_value = "aaaaaaaa"
-    mark_for_deployment.MarkForDeploymentProcess(
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
         auto_rollback=False,
@@ -424,6 +424,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         auto_rollback_delay=1,
         authors=["fakeuser1"],
     )
+    mfdp.get_authors()
     mock_get_authors_to_be_notified.assert_called_once_with(
         git_url="git@git.yelpcorp.com:services/repo",
         from_sha="aaaaaaaa",
@@ -445,7 +446,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     # When there's no production_deploy_group configured, get_authors should
     # fall back to calculating authors using the previous SHA for this deploy
     # group.
-    mark_for_deployment.MarkForDeploymentProcess(
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
         auto_rollback=False,
@@ -463,6 +464,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         auto_rollback_delay=1,
         authors="fakeuser1",
     )
+    mfdp.get_authors()
     mock_get_authors_to_be_notified.assert_called_once_with(
         git_url="git@git.yelpcorp.com:services/repo1",
         from_sha="asgdser23",
