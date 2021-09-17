@@ -57,9 +57,7 @@ CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
 POD_TEMPLATE_PATH = "/nail/tmp/podTemplate.yaml"
-BATCH_SIZE = (
-    "2"  # Smaller batch size reduces number of nodes initial request is spread across
-)
+
 POD_TEMPLATE = """
 apiVersion: v1
 kind: Pod
@@ -511,7 +509,6 @@ def _parse_user_spark_args(
 
     if enable_k8s_autogen:
         user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = POD_TEMPLATE_PATH
-        user_spark_opts["spark.kubernetes.allocation.batch.size"] = BATCH_SIZE
 
     return user_spark_opts
 
@@ -583,7 +580,7 @@ def get_spark_app_name(
     if enable_k8s_autogen:
         document = POD_TEMPLATE.format(spark_app_name=spark_app_name)
         parsed_pod_template = yaml.load(document)
-        with open(POD_TEMPLATE_PATH, 'w') as f:
+        with open(POD_TEMPLATE_PATH, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
     return spark_app_name
