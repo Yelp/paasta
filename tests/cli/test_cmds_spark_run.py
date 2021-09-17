@@ -243,6 +243,7 @@ def test_get_spark_env(
         (
             "spark.cores.max=1  spark.executor.memory=24g",
             {"spark.cores.max": "1", "spark.executor.memory": "24g"},
+            {"spark.kubernetes.allocation.batch.size": "2", "spark.kubernetes.executor.podTemplateFile": "/nail/tmp/podTemplate.yaml"},
         ),
         ("spark.cores.max", None),
         (None, {}),
@@ -442,7 +443,7 @@ class TestConfigureAndRunDockerContainer:
             container_name="fake_app",
             volumes=(
                 expected_volumes
-                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw", "/nail/tmp/podTemplate.yaml:/nail/tmp/podTemplate.yaml:rw"]
             ),
             environment={
                 "env1": "val1",
