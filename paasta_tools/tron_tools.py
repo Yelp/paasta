@@ -59,6 +59,7 @@ from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
+    limit_size_with_hash,
     raw_selectors_to_requirements,
     sanitise_kubernetes_name,
     to_node_label,
@@ -757,7 +758,9 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             "paasta.yelp.com/cluster": action_config.get_cluster(),
             "paasta.yelp.com/pool": action_config.get_pool(),
             "paasta.yelp.com/service": action_config.get_service(),
-            "paasta.yelp.com/instance": action_config.get_instance(),
+            "paasta.yelp.com/instance": limit_size_with_hash(
+                action_config.get_instance(), limit=63, suffix=4,
+            ),
         }
 
         if action_config.get_team() is not None:
