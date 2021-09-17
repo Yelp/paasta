@@ -241,9 +241,12 @@ def test_get_spark_env(
     "spark_args,expected",
     [
         (
-            "spark.cores.max=1  spark.executor.memory=24g",
-            {"spark.cores.max": "1", "spark.executor.memory": "24g"},
-            {"spark.kubernetes.allocation.batch.size": "2", "spark.kubernetes.executor.podTemplateFile": "/nail/tmp/podTemplate.yaml"},
+            "spark.cores.max=1  spark.executor.memory=24g  spark.kubernetes.allocation.batch.size=2  spark.kubernetes.executor.podTemplateFile=/nail/tmp/podTemplate.yaml",
+            {"spark.cores.max": "1",
+             "spark.executor.memory": "24g",
+             "spark.kubernetes.allocation.batch.size": "2",
+             "spark.kubernetes.executor.podTemplateFile": "/nail/tmp/podTemplate.yaml"},
+            {},
         ),
         ("spark.cores.max", None),
         (None, {}),
