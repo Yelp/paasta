@@ -730,7 +730,7 @@ def test_paasta_spark_run(
     )
     mock_get_spark_app_name.assert_called_once_with("spark-submit test.py", False)
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10"
+        "spark.cores.max=100 spark.executor.cores=10", False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
