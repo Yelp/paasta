@@ -1,3 +1,22 @@
+paasta-tools (0.109.2) xenial; urgency=medium
+
+  * 0.109.2 tagged with 'make release'
+    Commit: Merge pull request #3209 from
+    Yelp/d/manpreet/revert_pod_template_changes  Revert "Auto generate
+    pod template for pod affinity with weights spec…
+
+ -- Manpreet Singh <manpreet@yelp.com>  Fri, 17 Sep 2021 15:59:56 -0700
+
+paasta-tools (0.109.1) xenial; urgency=medium
+
+  * 0.109.1 tagged with 'make release'
+    Commit: Ensure paasta.yelp.com/instance length is <=63 chars for
+    tron (#3208)  This is a hardcoded k8s limit and tron instance names
+    can easily be >63 characters in length since they"re {job
+    name}.{action name} and these are often pretty descriptive names.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 17 Sep 2021 11:40:58 -0700
+
 paasta-tools (0.109.0) xenial; urgency=medium
 
   * 0.109.0 tagged with 'make release'

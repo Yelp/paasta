@@ -850,7 +850,19 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
-    def test_format_tron_action_dict_paasta_k8s(self):
+    @pytest.mark.parametrize(
+        "instance_name,expected_instance_label",
+        (
+            ("my_job.do_something", "my_job.do_something"),
+            (
+                f"my_job.{'a'* 100}",
+                "my_job.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-6xhe",
+            ),
+        ),
+    )
+    def test_format_tron_action_dict_paasta_k8s(
+        self, instance_name, expected_instance_label
+    ):
         action_dict = {
             "command": "echo something",
             "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
@@ -881,7 +893,7 @@ class TestTronTools:
         }
         action_config = tron_tools.TronActionConfig(
             service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
+            instance=instance_name,
             config_dict=action_dict,
             branch_dict=branch_dict,
             cluster="test-cluster",
@@ -910,7 +922,7 @@ class TestTronTools:
             "cap_drop": CAPS_DROP,
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
-                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/instance": expected_instance_label,
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "some_sensu_team",

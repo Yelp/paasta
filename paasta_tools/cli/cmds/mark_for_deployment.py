@@ -582,7 +582,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.start_slo_watcher_threads(self.service, self.soa_dir)
         # Initialize Slack threads and send the first message
         super().__init__()
-        self.ping_authors()
         self.print_who_is_running_this()
 
     def get_progress(self, summary: bool = False) -> str:
@@ -593,7 +592,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if build_url is not None:
             message = f"(<{build_url}|Jenkins Job>)"
         else:
-            message = f"(Run by <@{getpass.getuser()}> on {socket.getfqdn()})"
+            message = f"(Run by `{getpass.getuser()}` on {socket.getfqdn()})"
         self.update_slack_thread(message)
 
     def get_authors(self) -> str:
@@ -1063,9 +1062,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             )
             self.wait_for_deployment_tasks[target_commit] = wait_for_deployment_task
             await wait_for_deployment_task
-            self.update_slack_thread(
-                f"Finished waiting for deployment of {target_commit}"
-            )
+            if self.deploy_group_is_set_to_notify("notify_after_wait"):
+                self.ping_authors(f"Finished waiting for deployment of {target_commit}")
+            else:
+                self.update_slack_thread(
+                    f"Finished waiting for deployment of {target_commit}"
+                )
             self.trigger("deploy_finished")
 
         except (KeyboardInterrupt, TimeoutError):
