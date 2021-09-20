@@ -244,6 +244,7 @@ def cleanup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
     existing_namespace_services: Set[str],
+    existing_virtual_services: Set[str],
 ) -> Iterator:
     declared_services = {
         sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces
@@ -251,11 +252,23 @@ def cleanup_paasta_namespace_services(
     for service in existing_namespace_services:
         if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
             continue
-        log.info(
-            f"Garbage collecting {service} since there is no reference in services.yaml"
-        )
+        log.info(f"Garbage collecting K8s Service {service}")
         yield partial(
             kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+        )
+    for service in existing_virtual_services:
+        if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
+            continue
+        log.info(f"Garbage collecting Istio VS {service}")
+        yield partial(
+            kube_client.custom.delete_namespaced_custom_object,
+            (
+                "networking.istio.io",
+                "v1beta1",
+                PAASTA_NAMESPACE,
+                "virtualservices",
+                service,
+            ),
         )
 
 

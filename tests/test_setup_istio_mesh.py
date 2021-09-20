@@ -48,32 +48,27 @@ def test_setup_paasta_routing():
     assert k8s_svc.spec.ports[1].port == MOCK_PORT_NUMBER
 
 
-def test_cleanup_paasta_namespace_services_garbage_collect_services():
-    mock_client = mock.Mock()
-    mock_paasta_namespaces = {"svc1", "svc2"}
-    mock_existing_namespace_services = {"svc1", "svc2", "svc3"}
-    fn, *rest = cleanup_paasta_namespace_services(
-        mock_client, mock_paasta_namespaces, mock_existing_namespace_services,
-    )
-    k8s_svc = fn.args[0][0]
-    assert len(rest) == 0
-    assert fn.func is mock_client.core.delete_namespaced_service
-    assert k8s_svc == "svc3"
-
-
 def test_cleanup_paasta_namespace_services_does_not_remove_unified_svc():
     mock_client = mock.Mock()
     mock_paasta_namespaces = {"svc1", "svc2"}
 
     mock_existing_namespace_services = {"svc1", "svc2", "svc3", UNIFIED_K8S_SVC_NAME}
-    fn, *rest = cleanup_paasta_namespace_services(
-        mock_client, mock_paasta_namespaces, mock_existing_namespace_services,
+    calls = list(
+        cleanup_paasta_namespace_services(
+            mock_client,
+            mock_paasta_namespaces,
+            mock_existing_namespace_services,
+            mock_existing_namespace_services,
+        )
     )
-    k8s_svc = fn.args[0][0]
+    funcs = {fn.func for fn in calls}
+    services = {calls[0].args[0][0], calls[1].args[0][-1]}
 
-    assert len(rest) == 0
-    assert fn.func is mock_client.core.delete_namespaced_service
-    assert k8s_svc != UNIFIED_K8S_SVC_NAME
+    assert {
+        mock_client.core.delete_namespaced_service,
+        mock_client.custom.delete_namespaced_custom_object,
+    } == funcs
+    assert {"svc3"} == services
 
 
 def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_first_time():
@@ -82,6 +77,9 @@ def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_fir
 
     mock_existing_namespace_services = {}
     calls = cleanup_paasta_namespace_services(
-        mock_client, mock_paasta_namespaces, mock_existing_namespace_services
+        mock_client,
+        mock_paasta_namespaces,
+        mock_existing_namespace_services,
+        mock_existing_namespace_services,
     )
     assert len(list(calls)) == 0
