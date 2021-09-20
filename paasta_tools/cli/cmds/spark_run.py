@@ -489,7 +489,7 @@ def get_spark_env(
 
 
 def _parse_user_spark_args(
-    spark_args: Optional[str], enable_k8s_autogen: bool = True
+    spark_args: Optional[str], enable_k8s_autogen: bool = False
 ) -> Dict[str, str]:
     if not spark_args:
         return {}
