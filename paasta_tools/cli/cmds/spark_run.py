@@ -139,7 +139,7 @@ def add_subparser(subparsers):
         "--enable-k8s-autogen",
         help="Auto generate pod template with weighted pod affinity used in executors.",
         action="store_true",
-        default=True,
+        default=False,
     )
     list_parser.add_argument(
         "--docker-registry",
