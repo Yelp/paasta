@@ -1,3 +1,11 @@
+paasta-tools (0.109.3) xenial; urgency=medium
+
+  * 0.109.3 tagged with 'make release'
+    Commit: Merge pull request #3212 from Yelp/u/kawiawan/fix-evicted-
+    paasta-status  Fix paasta status crash on evicted pods bug
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 21 Sep 2021 12:55:33 -0700
+
 paasta-tools (0.109.2) xenial; urgency=medium
 
   * 0.109.2 tagged with 'make release'
