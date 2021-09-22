@@ -93,6 +93,15 @@ def capture_oom_events_from_stdin():
         """,
         re.VERBOSE,
     )
+    oom_regex_kubernetes_structured = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/kubepods/(?:[a-zA-Z]+/)? # start of message; non-capturing, optional group for the qos cgroup
+        pod[-\w]+/(\w{12})\w+,.*$ # containerid
+        """,
+        re.VERBOSE,
+    )
     process_name = ""
 
     while True:
@@ -110,6 +119,10 @@ def capture_oom_events_from_stdin():
             yield (int(r.group(1)), r.group(2), r.group(3), process_name)
             process_name = ""
         r = oom_regex_kubernetes.search(syslog)
+        if r:
+            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
+            process_name = ""
+        r = oom_regex_kubernetes_structured.search(syslog)
         if r:
             yield (int(r.group(1)), r.group(2), r.group(3), process_name)
             process_name = ""
