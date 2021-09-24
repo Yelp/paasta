@@ -101,7 +101,7 @@ def load_monkrelaycluster_instance_config(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "monkrelaycluster", cluster, soa_dir=soa_dir
+        service, instance, "monkrelays", cluster, soa_dir=soa_dir
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -137,7 +137,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-monkrelayclusters",
+        namespace="paasta-monkrelays",
         plural="monkrelays",
         name=sanitised_cr_name(service, instance),
     )
