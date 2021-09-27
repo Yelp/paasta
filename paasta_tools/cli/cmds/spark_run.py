@@ -6,6 +6,8 @@ import re
 import shlex
 import socket
 import sys
+import uuid
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import List
@@ -14,7 +16,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import uuid
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
@@ -45,7 +46,6 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from pathlib import Path
 
 
 DEFAULT_AWS_REGION = "us-west-2"
@@ -492,7 +492,9 @@ def get_spark_env(
 
 
 def _parse_user_spark_args(
-    spark_args: Optional[str], pod_template_path: str, enable_compact_bin_packing: bool = False,
+    spark_args: Optional[str],
+    pod_template_path: str,
+    enable_compact_bin_packing: bool = False,
 ) -> Dict[str, str]:
     if not spark_args:
         return {}
@@ -554,9 +556,7 @@ def run_docker_container(
     return 0
 
 
-def get_spark_app_name(
-    original_docker_cmd: Union[Any, str, List[str]]
-) -> str:
+def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
         shlex.split(original_docker_cmd)
@@ -856,7 +856,10 @@ def paasta_spark_run(args):
 
     pod_template_path = POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
 
-    if args.enable_compact_bin_packing and (not os.access(POD_TEMPLATE_DIR, os.R_OK) or args.cluster_manager != CLUSTER_MANAGER_K8S):
+    if args.enable_compact_bin_packing and (
+        not os.access(POD_TEMPLATE_DIR, os.R_OK)
+        or args.cluster_manager != CLUSTER_MANAGER_K8S
+    ):
         args.enable_compact_bin_packing = False
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
@@ -869,7 +872,9 @@ def paasta_spark_run(args):
             yaml.dump(parsed_pod_template, f)
 
     needs_docker_cfg = not args.build
-    user_spark_opts = _parse_user_spark_args(args.spark_args, pod_template_path, args.enable_compact_bin_packing)
+    user_spark_opts = _parse_user_spark_args(
+        args.spark_args, pod_template_path, args.enable_compact_bin_packing
+    )
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
