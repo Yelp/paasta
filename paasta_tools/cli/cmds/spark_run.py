@@ -14,6 +14,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import uuid
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
@@ -44,6 +45,7 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from pathlib import Path
 
 
 DEFAULT_AWS_REGION = "us-west-2"
@@ -56,7 +58,8 @@ CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
-POD_TEMPLATE_PATH = "/nail/tmp/podTemplate.yaml"
+POD_TEMPLATE_DIR = "/nail/tmp"
+POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -136,8 +139,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "-e",
-        "--enable-k8s-autogen",
-        help="Auto generate pod template with weighted pod affinity used in executors.",
+        "--enable-compact-bin-packing",
+        help="Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes.",
         action="store_true",
         default=False,
     )
@@ -489,7 +492,7 @@ def get_spark_env(
 
 
 def _parse_user_spark_args(
-    spark_args: Optional[str], enable_k8s_autogen: bool = False
+    spark_args: Optional[str], pod_template_path: str, enable_compact_bin_packing: bool = False,
 ) -> Dict[str, str]:
     if not spark_args:
         return {}
@@ -507,8 +510,8 @@ def _parse_user_spark_args(
             sys.exit(1)
         user_spark_opts[fields[0]] = fields[1]
 
-    if enable_k8s_autogen:
-        user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = POD_TEMPLATE_PATH
+    if enable_compact_bin_packing:
+        user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
 
     return user_spark_opts
 
@@ -552,7 +555,7 @@ def run_docker_container(
 
 
 def get_spark_app_name(
-    original_docker_cmd: Union[Any, str, List[str]], enable_k8s_autogen: bool = True
+    original_docker_cmd: Union[Any, str, List[str]]
 ) -> str:
     """Use submitted batch name as default spark_run job name"""
     docker_cmds = (
@@ -577,11 +580,6 @@ def get_spark_app_name(
         spark_app_name = "paasta_spark_run"
 
     spark_app_name += f"_{get_username()}"
-    if enable_k8s_autogen:
-        document = POD_TEMPLATE.format(spark_app_name=spark_app_name)
-        parsed_pod_template = yaml.load(document)
-        with open(POD_TEMPLATE_PATH, "w") as f:
-            yaml.dump(parsed_pod_template, f)
 
     return spark_app_name
 
@@ -594,6 +592,7 @@ def configure_and_run_docker_container(
     spark_conf: Mapping[str, str],
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     cluster_manager: str,
+    pod_template_path: str,
 ) -> int:
 
     # driver specific volumes
@@ -632,8 +631,9 @@ def configure_and_run_docker_container(
 
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
-    if args.enable_k8s_autogen:
-        volumes.append(f"{POD_TEMPLATE_PATH}:{POD_TEMPLATE_PATH}:rw")
+
+    if args.enable_compact_bin_packing:
+        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -854,13 +854,22 @@ def paasta_spark_run(args):
     if docker_image is None:
         return 1
 
+    pod_template_path = POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
+
+    if args.enable_compact_bin_packing and (not os.access(POD_TEMPLATE_DIR, os.R_OK) or args.cluster_manager != CLUSTER_MANAGER_K8S):
+        args.enable_compact_bin_packing = False
+
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
-    app_base_name = get_spark_app_name(
-        args.cmd or instance_config.get_cmd(), args.enable_k8s_autogen
-    )
+    app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
+
+    if args.enable_compact_bin_packing:
+        document = POD_TEMPLATE.format(spark_app_name=app_base_name)
+        parsed_pod_template = yaml.load(document)
+        with open(pod_template_path, "w") as f:
+            yaml.dump(parsed_pod_template, f)
 
     needs_docker_cfg = not args.build
-    user_spark_opts = _parse_user_spark_args(args.spark_args, args.enable_k8s_autogen)
+    user_spark_opts = _parse_user_spark_args(args.spark_args, pod_template_path, args.enable_compact_bin_packing)
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
@@ -883,4 +892,5 @@ def paasta_spark_run(args):
         spark_conf=spark_conf,
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
+        pod_template_path=pod_template_path,
     )
