@@ -1,3 +1,20 @@
+paasta-tools (0.109.4) xenial; urgency=medium
+
+  * 0.109.4 tagged with 'make release'
+    Commit: Merge pull request #3213 from Yelp/jfong/PAASTA-17456-
+    oom_logger-bionic  PAASTA-17456: Update oom_logger to handle new
+    structured oom-kill logs
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 23 Sep 2021 09:43:02 -0700
+
+paasta-tools (0.109.3) xenial; urgency=medium
+
+  * 0.109.3 tagged with 'make release'
+    Commit: Merge pull request #3212 from Yelp/u/kawiawan/fix-evicted-
+    paasta-status  Fix paasta status crash on evicted pods bug
+
+ -- Charles Wan <kawaiwan@yelp.com>  Tue, 21 Sep 2021 12:55:33 -0700
+
 paasta-tools (0.109.2) xenial; urgency=medium
 
   * 0.109.2 tagged with 'make release'
