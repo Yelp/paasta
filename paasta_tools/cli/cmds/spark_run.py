@@ -353,6 +353,10 @@ def sanitize_container_name(container_name):
     return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
 
 
+def generate_pod_template_path():
+    return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
+
+
 def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append("--rm")
@@ -853,7 +857,7 @@ def paasta_spark_run(args):
     if docker_image is None:
         return 1
 
-    pod_template_path = POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
+    pod_template_path = generate_pod_template_path()
 
     if args.enable_compact_bin_packing and (
         not os.access(POD_TEMPLATE_DIR, os.R_OK)
