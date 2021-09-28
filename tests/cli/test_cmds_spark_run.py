@@ -252,9 +252,9 @@ def test_get_spark_env(
         (None, {}),
     ],
 )
-def test_parse_user_spark_args(spark_args, expected, capsys):
+def test_parse_user_spark_args(spark_args, pod_template_path, expected, capsys):
     if expected is not None:
-        assert spark_run._parse_user_spark_args(spark_args) == expected
+        assert spark_run._parse_user_spark_args(spark_args, pod_template_path) == expected
     else:
         with pytest.raises(SystemExit):
             spark_run._parse_user_spark_args(spark_args)
@@ -411,6 +411,7 @@ class TestConfigureAndRunDockerContainer:
         cluster_manager,
         spark_args_volumes,
         expected_volumes,
+        pod_template_path,
     ):
         mock_get_username.return_value = "fake_user"
         spark_conf = {
@@ -440,6 +441,7 @@ class TestConfigureAndRunDockerContainer:
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
                 cluster_manager=cluster_manager,
+                pod_template_path=pod_template_path,
             )
         assert retcode == 0
         mock_run_docker_container.assert_called_once_with(
@@ -479,6 +481,7 @@ class TestConfigureAndRunDockerContainer:
         mock_send_and_calculate_resources_cost,
         mock_run_docker_container,
         mock_get_username,
+        pod_template_path,
     ):
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
@@ -499,6 +502,7 @@ class TestConfigureAndRunDockerContainer:
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
                 cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+                pod_template_path=pod_template_path,
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -515,6 +519,7 @@ class TestConfigureAndRunDockerContainer:
         mock_send_and_calculate_resources_cost,
         mock_run_docker_container,
         mock_get_username,
+        pod_template_path,
     ):
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
@@ -535,6 +540,7 @@ class TestConfigureAndRunDockerContainer:
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
                 cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+                pod_template_path=pod_template_path
             )
 
             args, kwargs = mock_run_docker_container.call_args
@@ -552,6 +558,7 @@ class TestConfigureAndRunDockerContainer:
         mock_send_and_calculate_resources_cost,
         mock_run_docker_container,
         mock_get_username,
+        pod_template_path
     ):
         with mock.patch(
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
@@ -575,6 +582,7 @@ class TestConfigureAndRunDockerContainer:
                     aws_creds=("id", "secret", "token"),
                     spark_conf=spark_conf,
                     cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+                    pod_template_path=pod_template_path
                 )
 
             # make sure we don't blow up when this setting is True
@@ -587,6 +595,7 @@ class TestConfigureAndRunDockerContainer:
                 aws_creds=("id", "secret", "token"),
                 spark_conf=spark_conf,
                 cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+                pod_template_path=pod_template_path
             )
 
     def test_dont_emit_metrics_for_inappropriate_commands(
@@ -714,7 +723,9 @@ def test_paasta_spark_run(
         enable_k8s_autogen=False,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        enable_compact_bin_packing=False
     )
+    pod_template_path="/nail/tmp/podTemplate.yaml"
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     mock_get_instance_config.assert_called_once_with(
@@ -758,4 +769,5 @@ def test_paasta_spark_run(
         spark_conf=mock_get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        pod_template_path=pod_template_path
     )
