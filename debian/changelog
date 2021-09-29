@@ -1,3 +1,13 @@
+paasta-tools (0.110.1) xenial; urgency=medium
+
+  * 0.110.1 tagged with 'make release'
+    Commit: Fixes `namedtuple` type name (#3217)  The best practice is
+    to match `typename` with variable name. For example, `mypy` reports
+    any other usages as errors:
+    https://github.com/python/mypy/pull/11206#issuecomment-927985235
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 29 Sep 2021 13:54:46 -0700
+
 paasta-tools (0.110.0) xenial; urgency=medium
 
   * 0.110.0 tagged with 'make release'
