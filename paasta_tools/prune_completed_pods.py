@@ -33,6 +33,14 @@ def parse_args():
         type=int,
     )
     parser.add_argument(
+        "-e",
+        "--error-minutes",
+        help="Minutes since the pod encountered an error. Terminates pods based on time since failure.",
+        # this can't be required until we've rolled this out everywhere AND have updated all the callsites
+        required=False,
+        type=int,
+    )
+    parser.add_argument(
         "--dry-run",
         dest="dry_run",
         action="store_true",
@@ -52,14 +60,14 @@ def setup_logging(verbose):
     logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
-def _completed_since(pod: V1Pod, allowed_uptime_minutes: int) -> bool:
-    seconds_per_minute = 60
+def _completed_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
     time_finished = get_pod_condition(pod, "ContainersReady").last_transition_time
     time_now = datetime.now(tzutc())
-    # convert total seconds since completion to minutes
-    completed_since = (time_now - time_finished).total_seconds() / seconds_per_minute
 
-    return completed_since > allowed_uptime_minutes
+    # convert total seconds since completion to minutes
+    completed_since_minutes = (time_now - time_finished).total_seconds() / 60
+
+    return completed_since_minutes > threshold
 
 
 def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
@@ -87,15 +95,33 @@ def main():
 
     kube_client = KubeClient()
     pods = get_all_pods(kube_client, args.namespace)
+
     allowed_uptime_minutes = args.minutes
+    allowed_error_minutes = args.error_minutes
+
     completed_pods = []
+    errored_pods = []
 
     for pod in pods:
-        if is_pod_completed(pod) and _completed_since(pod, allowed_uptime_minutes):
+        if is_pod_completed(pod) and _completed_longer_than_threshold(
+            pod, allowed_uptime_minutes
+        ):
             completed_pods.append(pod)
+        elif (
+            # this is currently optional
+            allowed_error_minutes is not None
+            # there's no direct way to get what type of "bad" state these Pods ended up
+            # (kubectl looks at phase and then container statuses to give something descriptive)
+            # but, in the end, we really just care that a Pod is in a Failed phase
+            and pod.status.phase == "Failed"
+            # and that said Pod has been around for a while (generally longer than we'd leave
+            # Pods that exited sucessfully)
+            and _completed_longer_than_threshold(pod, allowed_error_minutes)
+        ):
+            errored_pods.append(pod)
 
-    if not len(completed_pods):
-        log.debug("No completed pods to terminate.")
+    if not (completed_pods or errored_pods):
+        log.debug("No pods to terminate.")
         sys.exit(0)
 
     if args.dry_run:
@@ -103,26 +129,41 @@ def main():
             "Dry run would have terminated the following completed pods:\n "
             + "\n ".join([pod.metadata.name for pod in completed_pods])
         )
+        log.debug(
+            "Dry run would have terminated the following errored pods:\n "
+            + "\n ".join([pod.metadata.name for pod in errored_pods])
+        )
         sys.exit(0)
 
-    successes, errors = terminate_pods(completed_pods, kube_client)
+    completed_successes, completed_errors = terminate_pods(completed_pods, kube_client)
+    errored_successes, errored_errors = terminate_pods(errored_pods, kube_client)
 
-    if successes:
-        log.debug(
-            "Successfully terminated the following completed pods:\n"
-            + "\n ".join(successes)
-        )
+    successes = {
+        "completed": completed_successes,
+        "errored": errored_successes,
+    }
+    errors = {
+        "completed": completed_errors,
+        "errored": errored_errors,
+    }
 
-    if errors:
-        log.error(
-            "Failed to terminate the following completed pods:\n"
-            + "\n  ".join(
-                [
-                    "{pod_name}: {error}".format(pod_name=pod_name, error=str(error))
-                    for pod_name, error in errors
-                ]
+    for typ, pod_names in successes.items():
+        if pod_names:
+            log.debug(
+                f"Successfully terminated the following {typ} pods:\n"
+                + "\n ".join(pod_names)
             )
-        )
+
+    for typ, pod_names_and_errors in errors.items():
+        if pod_names_and_errors:
+            log.error(
+                f"Failed to terminate the following {typ} pods:\n"
+                + "\n  ".join(
+                    f"{pod_name}: {error}" for pod_name, error in pod_names_and_errors
+                )
+            )
+
+    if completed_errors or errored_errors:
         sys.exit(1)
 
 
