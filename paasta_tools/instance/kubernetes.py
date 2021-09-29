@@ -208,7 +208,6 @@ async def pod_info(
     }
 
 
-@a_sync.to_blocking
 async def job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
@@ -485,14 +484,16 @@ def bounce_status(
     )
 
     if job_config.get_persistent_volumes():
-        version_objects = kubernetes_tools.controller_revisions_for_service_instance(
+        version_objects = a_sync.block(
+            kubernetes_tools.controller_revisions_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
             kube_client=kube_client,
             namespace=job_config.get_kubernetes_namespace(),
         )
     else:
-        replicasets = kubernetes_tools.replicasets_for_service_instance(
+        replicasets = a_sync.block(
+            kubernetes_tools.replicasets_for_service_instance,
             service=job_config.service,
             instance=job_config.instance,
             kube_client=kube_client,
@@ -974,7 +975,8 @@ async def get_version_for_controller_revision(
     }
 
 
-def kubernetes_status(
+@a_sync.to_blocking
+async def kubernetes_status(
     service: str,
     instance: str,
     verbose: int,
@@ -1002,13 +1004,21 @@ def kubernetes_status(
         namespace=job_config.get_kubernetes_namespace(),
     )
     # bouncing status can be inferred from app_count, ref get_bouncing_status
-    pod_list = kubernetes_tools.pods_for_service_instance(
-        service=job_config.service,
-        instance=job_config.instance,
-        kube_client=kube_client,
-        namespace=job_config.get_kubernetes_namespace(),
+
+    # this task is necessary for mesh_status, but most other use cases want
+    # just the list of pods
+    pods_task = asyncio.create_task(
+        kubernetes_tools.pods_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
     )
-    replicaset_list = kubernetes_tools.replicasets_for_service_instance(
+    await pods_task
+    pod_list = pods_task.result()
+
+    replicaset_list = await kubernetes_tools.replicasets_for_service_instance(
         service=job_config.service,
         instance=job_config.instance,
         kube_client=kube_client,
@@ -1024,7 +1034,7 @@ def kubernetes_status(
     kstatus["bounce_method"] = job_config.get_bounce_method()
     kstatus["active_shas"] = list(active_shas)
 
-    job_status(
+    await job_status(
         kstatus=kstatus,
         client=kube_client,
         namespace=job_config.get_kubernetes_namespace(),
@@ -1039,7 +1049,7 @@ def kubernetes_status(
         and job_config.get_autoscaling_params().get("decision_policy", "") != "bespoke"  # type: ignore
     ):
         try:
-            kstatus["autoscaling_status"] = autoscaling_status(
+            kstatus["autoscaling_status"] = await autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
         except Exception as e:
@@ -1061,24 +1071,24 @@ def kubernetes_status(
         )
         if "proxy_port" in service_namespace_config:
             if include_smartstack:
-                kstatus["smartstack"] = mesh_status(
+                kstatus["smartstack"] = await mesh_status(
                     service=service,
                     service_mesh=ServiceMesh.SMARTSTACK,
                     instance=job_config.get_nerve_namespace(),
                     job_config=job_config,
                     service_namespace_config=service_namespace_config,
-                    pods=pod_list,
+                    pods_task=pods_task,
                     should_return_individual_backends=verbose > 0,
                     settings=settings,
                 )
             if include_envoy:
-                kstatus["envoy"] = mesh_status(
+                kstatus["envoy"] = await mesh_status(
                     service=service,
                     service_mesh=ServiceMesh.ENVOY,
                     instance=job_config.get_nerve_namespace(),
                     job_config=job_config,
                     service_namespace_config=service_namespace_config,
-                    pods=pod_list,
+                    pods_task=pods_task,
                     should_return_individual_backends=verbose > 0,
                     settings=settings,
                 )

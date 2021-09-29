@@ -1943,7 +1943,9 @@ def force_delete_pods(
     kube_client: KubeClient,
 ) -> None:
     # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
-    pods_to_delete = pods_for_service_instance(paasta_service, instance, kube_client)
+    pods_to_delete = a_sync.block(
+        pods_for_service_instance, paasta_service, instance, kube_client,
+    )
     delete_options = V1DeleteOptions()
     for pod in pods_to_delete:
         kube_client.core.delete_namespaced_pod(
@@ -2347,7 +2349,6 @@ async def controller_revisions_for_service_instance(
     return response.items
 
 
-# TODO: look at other call sites of this
 @async_timeout()
 async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
