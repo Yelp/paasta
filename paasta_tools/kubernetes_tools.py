@@ -2319,31 +2319,45 @@ def list_matching_deployments(
     )
 
 
-def replicasets_for_service_instance(
+@async_timeout()
+async def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ReplicaSet]:
-    return kube_client.deployments.list_namespaced_replica_set(
+    async_list_replica_set = a_sync.to_async(
+        kube_client.deployments.list_namespaced_replica_set
+    )
+    response = await async_list_replica_set(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
-def controller_revisions_for_service_instance(
+@async_timeout()
+async def controller_revisions_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ControllerRevision]:
-    return kube_client.deployments.list_namespaced_controller_revision(
+    async_list_controller_revisions = a_sync.to_async(
+        kube_client.deployments.list_namespaced_controller_revision
+    )
+    response = await async_list_controller_revisions(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
-def pods_for_service_instance(
+# TODO: look at other call sites of this
+@async_timeout()
+async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
-    return kube_client.core.list_namespaced_pod(
+    async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
+    response = await async_list_pods(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
 def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
@@ -2644,6 +2658,22 @@ async def get_events_for_object(
         return events
     except ApiException:
         return []
+
+
+@async_timeout()
+async def get_hpa(
+    kube_client: KubeClient, name: str, namespace: str,
+) -> V2beta2HorizontalPodAutoscaler:
+    async_get_hpa = a_sync.to_async(
+        kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
+    )
+    try:
+        return await async_get_hpa(name, namespace)
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
 
 
 def get_kubernetes_app_deploy_status(

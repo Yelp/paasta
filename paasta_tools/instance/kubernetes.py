@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from enum import Enum
 from typing import Any
+from typing import Awaitable
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
@@ -119,26 +120,24 @@ def set_cr_desired_state(
         raise RuntimeError(error_message)
 
 
-def autoscaling_status(
+async def autoscaling_status(
     kube_client: kubernetes_tools.KubeClient,
     job_config: LongRunningServiceConfig,
     namespace: str,
 ) -> KubernetesAutoscalingStatusDict:
-    try:
-        hpa = kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler(
-            name=job_config.get_sanitised_deployment_name(), namespace=namespace
+    hpa = await kubernetes_tools.get_hpa(
+        kube_client,
+        name=job_config.get_sanitised_deployment_name(),
+        namespace=namespace,
+    )
+    if hpa is None:
+        return KubernetesAutoscalingStatusDict(
+            min_instances=-1,
+            max_instances=-1,
+            metrics=[],
+            desired_replicas=-1,
+            last_scale_time="unknown (could not find HPA object)",
         )
-    except ApiException as e:
-        if e.status == 404:
-            return KubernetesAutoscalingStatusDict(
-                min_instances=-1,
-                max_instances=-1,
-                metrics=[],
-                desired_replicas=-1,
-                last_scale_time="unknown (could not find HPA object)",
-            )
-        else:
-            raise
 
     # Parse metrics sources, based on
     # https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V2beta2ExternalMetricSource.md#v2beta2externalmetricsource
@@ -266,13 +265,26 @@ async def job_status(
     kstatus["namespace"] = app.metadata.namespace
 
 
-def mesh_status(
+async def get_backends_from_mesh_status(
+    mesh_status_task,  # TODO: type?
+) -> Tuple[Mapping[str, Any], Optional[Set[str]]]:
+    await mesh_status_task
+    status = mesh_status_task.result()
+    if status.get("locations"):
+        backends = {be["address"] for be in status["locations"][0].get("backends", [])}
+    else:
+        backends = set()
+
+    return backends
+
+
+async def mesh_status(
     service: str,
     service_mesh: ServiceMesh,
     instance: str,
     job_config: LongRunningServiceConfig,
     service_namespace_config: ServiceNamespaceConfig,
-    pods: Sequence[V1Pod],
+    pods_task,  # TODO: what is type?
     settings: Any,
     should_return_individual_backends: bool = False,
 ) -> Mapping[str, Any]:
@@ -280,9 +292,11 @@ def mesh_status(
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
+    async_get_nodes = a_sync.to_async(kubernetes_tools.get_all_nodes)
+    nodes = await async_get_nodes(settings.kubernetes_client)
+
     replication_checker = KubeSmartstackEnvoyReplicationChecker(
-        nodes=kubernetes_tools.get_all_nodes(settings.kubernetes_client),
-        system_paasta_config=settings.system_paasta_config,
+        nodes=nodes, system_paasta_config=settings.system_paasta_config,
     )
     node_hostname_by_location = replication_checker.get_allowed_locations_and_hosts(
         job_config
@@ -302,6 +316,9 @@ def mesh_status(
         "expected_backends_per_location": expected_count_per_location,
         "locations": [],
     }
+
+    await pods_task
+    pods = pods_task.result()
 
     for location, hosts in node_hostname_by_location.items():
         host = replication_checker.get_first_host_in_pool(hosts, instance_pool)
@@ -489,7 +506,8 @@ def bounce_status(
     return status
 
 
-def kubernetes_status_v2(
+@a_sync.to_blocking
+async def kubernetes_status_v2(
     service: str,
     instance: str,
     verbose: int,
@@ -511,19 +529,94 @@ def kubernetes_status_v2(
     if kube_client is None:
         return status
 
+    tasks: List[Awaitable] = []
+
     if (
         verbose > 1
         and job_config.is_autoscaling_enabled()
         and job_config.get_autoscaling_params().get("decision_policy", "") != "bespoke"  # type: ignore
     ):
-        try:
-            status["autoscaling_status"] = autoscaling_status(
+        autoscaling_task = asyncio.create_task(
+            autoscaling_status(
                 kube_client, job_config, job_config.get_kubernetes_namespace()
             )
-        except Exception as e:
-            status[
-                "error_message"
-            ] = f"Unknown error occurred while fetching autoscaling status. Please contact #compute-infra for help: {e}"
+        )
+        tasks.append(autoscaling_task)
+    else:
+        autoscaling_task = None
+
+    pods_task = asyncio.create_task(
+        kubernetes_tools.pods_for_service_instance(
+            service=service,
+            instance=instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
+    )
+    tasks.append(pods_task)
+
+    service_namespace_config = kubernetes_tools.load_service_namespace_config(
+        service=service,
+        namespace=job_config.get_nerve_namespace(),
+        soa_dir=settings.soa_dir,
+    )
+    if "proxy_port" in service_namespace_config:
+        mesh_status_task = asyncio.create_task(
+            mesh_status(
+                service=service,
+                service_mesh=ServiceMesh.ENVOY,
+                instance=job_config.get_nerve_namespace(),
+                job_config=job_config,
+                service_namespace_config=service_namespace_config,
+                pods_task=pods_task,
+                should_return_individual_backends=True,
+                settings=settings,
+            )
+        )
+        backends_task = asyncio.create_task(
+            get_backends_from_mesh_status(mesh_status_task)
+        )
+        tasks.extend([mesh_status_task, backends_task])
+    else:
+        mesh_status_task = None
+        backends_task = None
+
+    if job_config.get_persistent_volumes():
+        pod_status_by_sha_and_readiness_task = asyncio.create_task(
+            get_pod_status_tasks_by_sha_and_readiness(
+                pods_task, backends_task, kube_client, verbose,
+            )
+        )
+        versions_task = asyncio.create_task(
+            get_versions_for_controller_revisions(
+                kube_client=kube_client,
+                service=service,
+                instance=instance,
+                namespace=job_config.get_kubernetes_namespace(),
+                pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,
+            )
+        )
+        tasks.extend([pod_status_by_sha_and_readiness_task, versions_task])
+    else:
+        pod_status_by_replicaset_task = asyncio.create_task(
+            get_pod_status_tasks_by_replicaset(
+                pods_task, backends_task, kube_client, verbose,
+            )
+        )
+        versions_task = asyncio.create_task(
+            get_versions_for_replicasets(
+                kube_client=kube_client,
+                service=service,
+                instance=instance,
+                namespace=job_config.get_kubernetes_namespace(),
+                pod_status_by_replicaset_task=pod_status_by_replicaset_task,
+            )
+        )
+        tasks.extend([pod_status_by_replicaset_task, versions_task])
+
+    await asyncio.gather(*tasks)
+
+    status: Dict[str, Any] = {}
 
     desired_state = job_config.get_desired_state()
     status["app_name"] = job_config.get_sanitised_deployment_name()
@@ -532,101 +625,68 @@ def kubernetes_status_v2(
         job_config.get_instances() if desired_state != "stop" else 0
     )
     status["bounce_method"] = job_config.get_bounce_method()
+    status["versions"] = versions_task.result()
 
-    pod_list = kubernetes_tools.pods_for_service_instance(
-        service=job_config.service,
-        instance=job_config.instance,
-        kube_client=kube_client,
-        namespace=job_config.get_kubernetes_namespace(),
-    )
+    if autoscaling_task is not None:
+        try:
+            status["autoscaling_status"] = autoscaling_task.result()
+        except Exception as e:
+            status["error_message"] = (
+                f"Unknown error occurred while fetching autoscaling status. "
+                f"Please contact #compute-infra for help: {e}"
+            )
 
-    service_namespace_config = kubernetes_tools.load_service_namespace_config(
-        service=service,
-        namespace=job_config.get_nerve_namespace(),
-        soa_dir=settings.soa_dir,
-    )
-    backends = None
-    if "proxy_port" in service_namespace_config:
-        envoy_status = mesh_status(
-            service=service,
-            service_mesh=ServiceMesh.ENVOY,
-            instance=job_config.get_nerve_namespace(),
-            job_config=job_config,
-            service_namespace_config=service_namespace_config,
-            pods=pod_list,
-            should_return_individual_backends=True,
-            settings=settings,
-        )
-        if envoy_status.get("locations"):
-            backends = {
-                be["address"] for be in envoy_status["locations"][0].get("backends", [])
-            }
-        else:
-            backends = set()
-        if include_envoy:
-            # Note we always include backends here now
-            status["envoy"] = envoy_status
-
-    update_kubernetes_status(
-        status, kube_client, job_config, pod_list, backends, verbose,
-    )
+    if mesh_status_task is not None:
+        status["envoy"] = mesh_status_task.result()
 
     return status
 
 
-@a_sync.to_blocking
-async def update_kubernetes_status(
-    status: MutableMapping[str, Any],
+async def get_pod_status_tasks_by_replicaset(
+    pods_task,  # TODO: type?
+    backends_task,  # TODO: type,
     client: kubernetes_tools.KubeClient,
-    job_config: LongRunningServiceConfig,
-    pod_list: List[V1Pod],
-    backends: Optional[Set[str]],
     verbose: int,
-):
-    """ Updates a status object with relevant information, useful for async calls """
+) -> Dict[str, Sequence[Any]]:  # TODO: type?
     num_tail_lines = calculate_tail_lines(verbose)
+    await pods_task
+    pods = pods_task.result()
+    tasks_by_replicaset: DefaultDict[str, Any] = defaultdict(list)  # TODO: type
+    for pod in pods:
+        for owner_reference in pod.metadata.owner_references:
+            if owner_reference.kind == "ReplicaSet":
+                pod_status_task = asyncio.create_task(
+                    get_pod_status(pod, backends_task, client, num_tail_lines)
+                )
+                tasks_by_replicaset[owner_reference.name].append(pod_status_task)
 
-    if job_config.get_persistent_volumes():
-        controller_revision_list = kubernetes_tools.controller_revisions_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        status["versions"] = await get_versions_for_controller_revisions(
-            controller_revision_list, client, pod_list, backends, num_tail_lines
-        )
-    else:
-        replicaset_list = kubernetes_tools.replicasets_for_service_instance(
-            service=job_config.service,
-            instance=job_config.instance,
-            kube_client=client,
-            namespace=job_config.get_kubernetes_namespace(),
-        )
-        status["versions"] = await get_versions_for_replicasets(
-            replicaset_list, client, pod_list, backends, num_tail_lines
-        )
+    return tasks_by_replicaset
 
 
 async def get_versions_for_replicasets(
-    replicaset_list: Sequence[V1ReplicaSet],
-    client: kubernetes_tools.KubeClient,
-    pod_list: Sequence[V1Pod],
-    backends: Optional[Set[str]],
-    num_tail_lines: int,
+    kube_client: kubernetes_tools.KubeClient,
+    service: str,
+    instance: str,
+    namespace: str,
+    pod_status_by_replicaset_task: Dict[str, Any],  # TODO: type
 ) -> List[KubernetesVersionDict]:
+    replicaset_list = await kubernetes_tools.replicasets_for_service_instance(
+        service=service,
+        instance=instance,
+        kube_client=kube_client,
+        namespace=namespace,
+    )
     # For the purpose of active_shas/app_count, don't count replicasets that
     # are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-    pods_by_replicaset = get_pods_by_replicaset(pod_list)
+
+    await pod_status_by_replicaset_task
     versions = await asyncio.gather(
         *[
             get_replicaset_status(
                 replicaset,
-                client,
-                pods_by_replicaset.get(replicaset.metadata.name),
-                backends,
-                num_tail_lines,
+                kube_client,
+                pod_status_by_replicaset_task.result().get(replicaset.metadata.name),
             )
             for replicaset in actually_running_replicasets
         ]
@@ -634,23 +694,12 @@ async def get_versions_for_replicasets(
     return versions
 
 
-def get_pods_by_replicaset(pods: Sequence[V1Pod]) -> Dict[str, List[V1Pod]]:
-    pods_by_replicaset: DefaultDict[str, List[V1Pod]] = defaultdict(list)
-    for pod in pods:
-        for owner_reference in pod.metadata.owner_references:
-            if owner_reference.kind == "ReplicaSet":
-                pods_by_replicaset[owner_reference.name].append(pod)
-
-    return pods_by_replicaset
-
-
 async def get_replicaset_status(
     replicaset: V1ReplicaSet,
     client: kubernetes_tools.KubeClient,
-    pods: Sequence[V1Pod],
-    backends: Optional[Set[str]],
-    num_tail_lines: int,
+    pod_status_tasks: Sequence[Any],  # TODO: type
 ) -> KubernetesVersionDict:
+    await asyncio.gather(*pod_status_tasks)
     return {
         "name": replicaset.metadata.name,
         "type": "ReplicaSet",
@@ -659,15 +708,25 @@ async def get_replicaset_status(
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
         "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
-        "pods": await asyncio.gather(
-            *[get_pod_status(pod, backends, client, num_tail_lines) for pod in pods]
-        ),
+        "pods": [task.result() for task in pod_status_tasks],
     }
 
 
 async def get_pod_status(
-    pod: V1Pod, backends: Optional[Set[str]], client: Any, num_tail_lines: int
+    pod: V1Pod,
+    # backends: Optional[Set[str]],
+    backends_task,  # TODO: type?
+    client: Any,
+    num_tail_lines: int,
 ) -> Dict[str, Any]:
+    events_task = asyncio.create_task(
+        get_pod_event_messages(client, pod, max_age_in_seconds=900)
+    )
+    containers_task = asyncio.create_task(
+        get_pod_containers(pod, client, num_tail_lines)
+    )
+    await asyncio.gather(events_task, containers_task)
+
     reason = pod.status.reason
     message = pod.status.message
     scheduled = kubernetes_tools.is_pod_scheduled(pod)
@@ -680,9 +739,7 @@ async def get_pod_status(
 
     try:
         # Filter events to only last 15m
-        pod_event_messages = await get_pod_event_messages(
-            client, pod, max_age_in_seconds=900
-        )
+        pod_event_messages = events_task.result()
     except asyncio.TimeoutError:
         pod_event_messages = [{"error": "Could not retrieve events. Please try again."}]
 
@@ -693,9 +750,10 @@ async def get_pod_status(
         message = sched_condition.message
 
     mesh_ready = None
-    if backends is not None:
+    if backends_task is not None:
+        await backends_task
         # TODO: Remove this once k8s readiness reflects mesh readiness, PAASTA-17266
-        mesh_ready = pod.status.pod_ip in backends
+        mesh_ready = pod.status.pod_ip in backends_task.result()
 
     return {
         "name": pod.metadata.name,
@@ -707,7 +765,7 @@ async def get_pod_status(
         "scheduled": scheduled,
         "ready": ready,
         "mesh_ready": mesh_ready,
-        "containers": await get_pod_containers(pod, client, num_tail_lines),
+        "containers": containers_task.result(),
         "create_timestamp": pod.metadata.creation_timestamp.timestamp(),
         "delete_timestamp": delete_timestamp,
         "events": pod_event_messages,
@@ -835,35 +893,58 @@ async def get_pod_containers(
     return containers
 
 
-async def get_versions_for_controller_revisions(
-    controller_revisions: Sequence[V1ControllerRevision],
+async def get_pod_status_tasks_by_sha_and_readiness(
+    pods_task,  # TODO: type
+    backends_task,  # TODO: type
     client: kubernetes_tools.KubeClient,
-    pods: Sequence[V1Pod],
-    backends: Optional[Set[str]],
-    num_tail_lines: int,
+    verbose: int,
+) -> Dict[Tuple[str, str], Sequence[Any]]:  # TODO: type
+    num_tail_lines = calculate_tail_lines(verbose)
+    await pods_task
+    pods = pods_task.result()
+    tasks_by_sha_and_readiness: DefaultDict[str, Any] = defaultdict(
+        lambda: defaultdict(list)
+    )  # TODO: type
+    for pod in pods:
+        git_sha = pod.metadata.labels["paasta.yelp.com/git_sha"]
+        config_sha = pod.metadata.labels["paasta.yelp.com/config_sha"]
+        is_ready = kubernetes_tools.is_pod_ready(pod)
+        pod_status_task = asyncio.create_task(
+            get_pod_status(pod, backends_task, client, num_tail_lines)
+        )
+        tasks_by_sha_and_readiness[(git_sha, config_sha)][is_ready].append(
+            pod_status_task
+        )
+
+    return tasks_by_sha_and_readiness
+
+
+async def get_versions_for_controller_revisions(
+    kube_client: kubernetes_tools.KubeClient,
+    service: str,
+    instance: str,
+    namespace: str,
+    pod_status_by_sha_and_readiness_task: Dict[Tuple[str, str], Any],  # TODO: type
 ) -> List[KubernetesVersionDict]:
-    versions: List[KubernetesVersionDict] = []
+    controller_revision_list = await kubernetes_tools.controller_revisions_for_service_instance(
+        service=service,
+        instance=instance,
+        kube_client=kube_client,
+        namespace=namespace,
+    )
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
-    for cr in controller_revisions:
+    for cr in controller_revision_list:
         git_sha = cr.metadata.labels["paasta.yelp.com/git_sha"]
         config_sha = cr.metadata.labels["paasta.yelp.com/config_sha"]
         cr_by_shas[(git_sha, config_sha)] = cr
 
-    pods_by_shas: DefaultDict[Tuple[str, str], List[V1Pod]] = defaultdict(list)
-    for pod in pods:
-        git_sha = pod.metadata.labels["paasta.yelp.com/git_sha"]
-        config_sha = pod.metadata.labels["paasta.yelp.com/config_sha"]
-        pods_by_shas[(git_sha, config_sha)].append(pod)
-
+    await pod_status_by_sha_and_readiness_task
+    pod_status_by_sha_and_readiness = pod_status_by_sha_and_readiness_task.result()
     versions = await asyncio.gather(
         *[
             get_version_for_controller_revision(
-                cr,
-                pods_by_shas[(git_sha, config_sha)],
-                backends,
-                num_tail_lines,
-                client,
+                cr, kube_client, pod_status_by_sha_and_readiness[(git_sha, config_sha)],
             )
             for (git_sha, config_sha), cr in cr_by_shas.items()
         ]
@@ -874,23 +955,22 @@ async def get_versions_for_controller_revisions(
 
 async def get_version_for_controller_revision(
     cr: V1ControllerRevision,
-    pods: Sequence[V1Pod],
-    backends: Optional[Set[str]],
-    num_tail_lines: int,
     client: Any,
+    pod_status_tasks_by_readiness: Sequence[Any],  # TODO: type
 ) -> KubernetesVersionDict:
-    ready_pods = [pod for pod in pods if kubernetes_tools.is_pod_ready(pod)]
+    all_pod_status_tasks = [
+        task for tasks in pod_status_tasks_by_readiness.values() for task in tasks
+    ]
+    await asyncio.gather(*all_pod_status_tasks)
     return {
         "name": cr.metadata.name,
         "type": "ControllerRevision",
-        "replicas": len(pods),
-        "ready_replicas": len(ready_pods),
+        "replicas": len(all_pod_status_tasks),
+        "ready_replicas": len(pod_status_tasks_by_readiness[True]),
         "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
         "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
-        "pods": await asyncio.gather(
-            *[get_pod_status(pod, backends, client, num_tail_lines) for pod in pods]
-        ),
+        "pods": [task.result() for task in all_pod_status_tasks],
     }
 
 
