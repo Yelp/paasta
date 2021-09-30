@@ -2,14 +2,12 @@ import asyncio
 from collections import defaultdict
 from enum import Enum
 from typing import Any
-from typing import Awaitable
 from typing import DefaultDict
 from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
-from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -81,7 +79,7 @@ class KubernetesVersionDict(TypedDict, total=False):
     create_timestamp: int
     git_sha: str
     config_sha: str
-    pods: Sequence[Dict[str, Any]]
+    pods: Sequence[Mapping[str, Any]]
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -265,8 +263,8 @@ async def job_status(
 
 
 async def get_backends_from_mesh_status(
-    mesh_status_task,  # TODO: type?
-) -> Tuple[Mapping[str, Any], Optional[Set[str]]]:
+    mesh_status_task: "asyncio.Future[Dict[str, Any]]",
+) -> Set[str]:
     await mesh_status_task
     status = mesh_status_task.result()
     if status.get("locations"):
@@ -283,11 +281,10 @@ async def mesh_status(
     instance: str,
     job_config: LongRunningServiceConfig,
     service_namespace_config: ServiceNamespaceConfig,
-    pods_task,  # TODO: what is type?
+    pods_task: "asyncio.Future[V1Pod]",
     settings: Any,
     should_return_individual_backends: bool = False,
 ) -> Mapping[str, Any]:
-
     registration = job_config.get_registrations()[0]
     instance_pool = job_config.get_pool()
 
@@ -530,7 +527,7 @@ async def kubernetes_status_v2(
     if kube_client is None:
         return status
 
-    tasks: List[Awaitable] = []
+    tasks: List[asyncio.Future[Dict[str, Any]]] = []
 
     if (
         verbose > 1
@@ -617,8 +614,6 @@ async def kubernetes_status_v2(
 
     await asyncio.gather(*tasks)
 
-    status: Dict[str, Any] = {}
-
     desired_state = job_config.get_desired_state()
     status["app_name"] = job_config.get_sanitised_deployment_name()
     status["desired_state"] = desired_state
@@ -644,15 +639,17 @@ async def kubernetes_status_v2(
 
 
 async def get_pod_status_tasks_by_replicaset(
-    pods_task,  # TODO: type?
-    backends_task,  # TODO: type,
+    pods_task: "asyncio.Future[V1Pod]",
+    backends_task: "asyncio.Future[Dict[str, Any]]",
     client: kubernetes_tools.KubeClient,
     verbose: int,
-) -> Dict[str, Sequence[Any]]:  # TODO: type?
+) -> Dict[str, List["asyncio.Future[Dict[str, Any]]"]]:
     num_tail_lines = calculate_tail_lines(verbose)
     await pods_task
     pods = pods_task.result()
-    tasks_by_replicaset: DefaultDict[str, Any] = defaultdict(list)  # TODO: type
+    tasks_by_replicaset: DefaultDict[
+        str, List["asyncio.Future[Dict[str, Any]]"]
+    ] = defaultdict(list)
     for pod in pods:
         for owner_reference in pod.metadata.owner_references:
             if owner_reference.kind == "ReplicaSet":
@@ -669,7 +666,7 @@ async def get_versions_for_replicasets(
     service: str,
     instance: str,
     namespace: str,
-    pod_status_by_replicaset_task: Dict[str, Any],  # TODO: type
+    pod_status_by_replicaset_task: "asyncio.Future[Mapping[str, Sequence[asyncio.Future[Dict[str, Any]]]]]",
 ) -> List[KubernetesVersionDict]:
     replicaset_list = await kubernetes_tools.replicasets_for_service_instance(
         service=service,
@@ -698,7 +695,7 @@ async def get_versions_for_replicasets(
 async def get_replicaset_status(
     replicaset: V1ReplicaSet,
     client: kubernetes_tools.KubeClient,
-    pod_status_tasks: Sequence[Any],  # TODO: type
+    pod_status_tasks: Sequence["asyncio.Future[Dict[str, Any]]"],
 ) -> KubernetesVersionDict:
     await asyncio.gather(*pod_status_tasks)
     return {
@@ -715,8 +712,7 @@ async def get_replicaset_status(
 
 async def get_pod_status(
     pod: V1Pod,
-    # backends: Optional[Set[str]],
-    backends_task,  # TODO: type?
+    backends_task: "asyncio.Future[Dict[str, Any]]",
     client: Any,
     num_tail_lines: int,
 ) -> Dict[str, Any]:
@@ -895,17 +891,19 @@ async def get_pod_containers(
 
 
 async def get_pod_status_tasks_by_sha_and_readiness(
-    pods_task,  # TODO: type
-    backends_task,  # TODO: type
+    pods_task: "asyncio.Future[V1Pod]",
+    backends_task: "asyncio.Future[Dict[str, Any]]",
     client: kubernetes_tools.KubeClient,
     verbose: int,
-) -> Dict[Tuple[str, str], Sequence[Any]]:  # TODO: type
+) -> DefaultDict[
+    Tuple[str, str], DefaultDict[bool, List["asyncio.Future[Dict[str, Any]]"]]
+]:
     num_tail_lines = calculate_tail_lines(verbose)
     await pods_task
     pods = pods_task.result()
-    tasks_by_sha_and_readiness: DefaultDict[str, Any] = defaultdict(
-        lambda: defaultdict(list)
-    )  # TODO: type
+    tasks_by_sha_and_readiness: DefaultDict[
+        Tuple[str, str], DefaultDict[bool, List["asyncio.Future[Dict[str, Any]]"]]
+    ] = defaultdict(lambda: defaultdict(list))
     for pod in pods:
         git_sha = pod.metadata.labels["paasta.yelp.com/git_sha"]
         config_sha = pod.metadata.labels["paasta.yelp.com/config_sha"]
@@ -925,7 +923,7 @@ async def get_versions_for_controller_revisions(
     service: str,
     instance: str,
     namespace: str,
-    pod_status_by_sha_and_readiness_task: Dict[Tuple[str, str], Any],  # TODO: type
+    pod_status_by_sha_and_readiness_task: "asyncio.Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[asyncio.Future[Mapping[str, Any]]]]]]",
 ) -> List[KubernetesVersionDict]:
     controller_revision_list = await kubernetes_tools.controller_revisions_for_service_instance(
         service=service,
@@ -957,7 +955,9 @@ async def get_versions_for_controller_revisions(
 async def get_version_for_controller_revision(
     cr: V1ControllerRevision,
     client: Any,
-    pod_status_tasks_by_readiness: Sequence[Any],  # TODO: type
+    pod_status_tasks_by_readiness: Mapping[
+        bool, Sequence["asyncio.Future[Mapping[str, Any]]"]
+    ],
 ) -> KubernetesVersionDict:
     all_pod_status_tasks = [
         task for tasks in pod_status_tasks_by_readiness.values() for task in tasks
