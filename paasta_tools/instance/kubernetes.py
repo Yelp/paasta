@@ -527,7 +527,7 @@ async def kubernetes_status_v2(
     if kube_client is None:
         return status
 
-    tasks: List[asyncio.Future[Dict[str, Any]]] = []
+    tasks: List["asyncio.Future[Dict[str, Any]]"] = []
 
     if (
         verbose > 1
@@ -1158,7 +1158,8 @@ def ready_replicas_from_replicaset(replicaset: V1ReplicaSet) -> int:
     return ready_replicas
 
 
-def kubernetes_mesh_status(
+@a_sync.to_blocking
+async def kubernetes_mesh_status(
     service: str,
     instance: str,
     instance_type: str,
@@ -1193,11 +1194,13 @@ def kubernetes_mesh_status(
         )
 
     kube_client = settings.kubernetes_client
-    pod_list = kubernetes_tools.pods_for_service_instance(
-        service=job_config.service,
-        instance=job_config.instance,
-        kube_client=kube_client,
-        namespace=job_config.get_kubernetes_namespace(),
+    pods_task = asyncio.create_task(
+        kubernetes_tools.pods_for_service_instance(
+            service=job_config.service,
+            instance=job_config.instance,
+            kube_client=kube_client,
+            namespace=job_config.get_kubernetes_namespace(),
+        )
     )
 
     kmesh: Dict[str, Any] = {}
@@ -1206,16 +1209,16 @@ def kubernetes_mesh_status(
         instance=job_config.get_nerve_namespace(),
         job_config=job_config,
         service_namespace_config=service_namespace_config,
-        pods=pod_list,
+        pods_task=pods_task,
         should_return_individual_backends=True,
         settings=settings,
     )
     if include_smartstack:
-        kmesh["smartstack"] = mesh_status(
+        kmesh["smartstack"] = await mesh_status(
             service_mesh=ServiceMesh.SMARTSTACK, **mesh_status_kwargs,
         )
     if include_envoy:
-        kmesh["envoy"] = mesh_status(
+        kmesh["envoy"] = await mesh_status(
             service_mesh=ServiceMesh.ENVOY, **mesh_status_kwargs,
         )
 
