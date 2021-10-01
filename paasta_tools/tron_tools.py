@@ -417,9 +417,6 @@ class TronActionConfig(InstanceConfig):
     def get_trigger_timeout(self):
         return self.config_dict.get("trigger_timeout", None)
 
-    def get_use_k8s(self):
-        return self.config_dict.get("use_k8s", _use_k8s_default())
-
     def get_node_selectors(self) -> Dict[str, str]:
         raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})  # type: ignore
         node_selectors = {
