@@ -1941,6 +1941,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vault_environment: str
     volumes: List[DockerVolume]
     zookeeper: str
+    tron_use_k8s: bool
 
 
 def load_system_paasta_config(
