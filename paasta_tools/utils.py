@@ -2603,6 +2603,9 @@ class SystemPaastaConfig:
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
 
+    def get_tron_use_k8s_default(self) -> bool:
+        return self.config_dict.get("tron_use_k8s", False)
+
 
 def _run(
     command: Union[str, List[str]],

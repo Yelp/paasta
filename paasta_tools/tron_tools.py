@@ -21,6 +21,7 @@ import pkgutil
 import re
 import subprocess
 import traceback
+from functools import lru_cache
 from string import Formatter
 from typing import List
 from typing import Mapping
@@ -201,6 +202,11 @@ def pick_spark_ui_port(service, instance):
     hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
     preferred_port = 33000 + (hash_number % 25000)
     return preferred_port
+
+
+@lru_cache(maxsize=1)
+def _use_k8s_default() -> bool:
+    return load_system_paasta_config().get_tron_use_k8s_default()
 
 
 class TronActionConfig(InstanceConfig):
@@ -412,7 +418,7 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get("trigger_timeout", None)
 
     def get_use_k8s(self):
-        return self.config_dict.get("use_k8s", False)
+        return self.config_dict.get("use_k8s", _use_k8s_default())
 
     def get_node_selectors(self) -> Dict[str, str]:
         raw_selectors: Dict[str, Any] = self.config_dict.get("node_selectors", {})  # type: ignore
@@ -521,7 +527,7 @@ class TronJobConfig:
         self.for_validation = for_validation
 
     def get_use_k8s(self) -> bool:
-        return self.config_dict.get("use_k8s", False)
+        return self.config_dict.get("use_k8s", _use_k8s_default())
 
     def get_name(self):
         return self.name
