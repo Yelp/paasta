@@ -18,11 +18,14 @@ import pytest
 from boto3.exceptions import Boto3Error
 
 from paasta_tools.cli.cmds import spark_run
+from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
+from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
+from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -72,6 +75,28 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
 )
 def test_sanitize_container_name(container_name, expected):
     assert sanitize_container_name(container_name) == expected
+
+
+@pytest.mark.parametrize(
+    "enable_compact_bin_packing,cluster_manager,dir_access,expected",
+    [
+        (False, CLUSTER_MANAGER_MESOS, True, False),
+        (False, CLUSTER_MANAGER_K8S, True, False),
+        (True, CLUSTER_MANAGER_MESOS, True, False),
+        (True, CLUSTER_MANAGER_K8S, True, True),
+        (True, CLUSTER_MANAGER_K8S, False, False),
+    ],
+)
+def test_should_enable_compact_bin_packing(
+    enable_compact_bin_packing, cluster_manager, dir_access, expected
+):
+    with mock.patch("os.access", autospec=True, return_value=dir_access):
+        assert (
+            should_enable_compact_bin_packing(
+                enable_compact_bin_packing, cluster_manager
+            )
+            == expected
+        )
 
 
 @pytest.fixture

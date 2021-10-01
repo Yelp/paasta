@@ -357,6 +357,25 @@ def generate_pod_template_path():
     return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
 
 
+def should_enable_compact_bin_packing(enable_compact_bin_packing, cluster_manager):
+    if not enable_compact_bin_packing:
+        return False
+
+    if cluster_manager != CLUSTER_MANAGER_K8S:
+        log.warn(
+            "enable_compact_bin_packing=True ignored as cluster manager is not kubernetes"
+        )
+        return False
+
+    if not os.access(POD_TEMPLATE_DIR, os.W_OK):
+        log.warn(
+            f"enable_compact_bin_packing=True ignored as {POD_TEMPLATE_DIR} is not usable"
+        )
+        return False
+
+    return True
+
+
 def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append("--rm")
@@ -858,12 +877,9 @@ def paasta_spark_run(args):
         return 1
 
     pod_template_path = generate_pod_template_path()
-
-    if args.enable_compact_bin_packing and (
-        not os.access(POD_TEMPLATE_DIR, os.R_OK)
-        or args.cluster_manager != CLUSTER_MANAGER_K8S
-    ):
-        args.enable_compact_bin_packing = False
+    args.enable_compact_bin_packing = should_enable_compact_bin_packing(
+        args.enable_compact_bin_packing, args.cluster_manager
+    )
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
