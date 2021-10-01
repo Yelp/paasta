@@ -1,3 +1,12 @@
+paasta-tools (0.110.2) xenial; urgency=medium
+
+  * 0.110.2 tagged with 'make release'
+    Commit: Merge pull request #3195 from Yelp/u/msingh/MESH-1151-
+    garbage-collect-istio-svc  U/msingh/mesh 1151 garbage collect istio
+    svc
+
+ -- Manvendra Singh <msingh@yelp.com>  Fri, 01 Oct 2021 01:41:09 -0700
+
 paasta-tools (0.110.1) xenial; urgency=medium
 
   * 0.110.1 tagged with 'make release'
