@@ -1,3 +1,15 @@
+paasta-tools (0.110.3) xenial; urgency=medium
+
+  * 0.110.3 tagged with 'make release'
+    Commit: Add ability to read the default use_k8s value from disk
+    (#3219)  As we progress through our migration, we want to ensure
+    that any new Tronjobs on clusters that have already been fully
+    migrated run on k8s by default.  This PR will be accompanied by an
+    internal Puppet PR that will provide the configuration that this is
+    looking at.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 04 Oct 2021 14:05:21 -0700
+
 paasta-tools (0.110.2) xenial; urgency=medium
 
   * 0.110.2 tagged with 'make release'
