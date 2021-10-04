@@ -401,9 +401,14 @@ class TestTronJobConfig:
         job_config = tron_tools.TronJobConfig(
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
-        result = tron_tools.format_tron_job_dict(
-            job_config=job_config, k8s_enabled=False
-        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(
+                job_config=job_config, k8s_enabled=False
+            )
 
         mock_get_action_config.assert_called_once_with(
             job_config, action_name, action_dict
@@ -450,9 +455,14 @@ class TestTronJobConfig:
         job_config = tron_tools.TronJobConfig(
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
-        result = tron_tools.format_tron_job_dict(
-            job_config=job_config, k8s_enabled=True
-        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(
+                job_config=job_config, k8s_enabled=True
+            )
 
         mock_get_action_config.assert_called_once_with(
             job_config, action_name, action_dict
@@ -492,7 +502,12 @@ class TestTronJobConfig:
         }
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "paasta-dev")
 
-        result = tron_tools.format_tron_job_dict(job_config, k8s_enabled=False)
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(job_config, k8s_enabled=False)
 
         assert mock_get_action_config.call_args_list == [
             mock.call(job_config, "normal", job_dict["actions"]["normal"]),
