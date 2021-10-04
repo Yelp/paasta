@@ -33,7 +33,7 @@ class MonkRelayClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=F
 class MonkRelayClusterDeploymentConfig(LongRunningServiceConfig):
     config_dict: MonkRelayClusterDeploymentConfigDict
 
-    config_filename_prefix = "monkrelaycluster"
+    config_filename_prefix = "monkrelays"
 
     def __init__(
         self,

@@ -2168,7 +2168,7 @@ def test_validate_service_instance_invalid():
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
-    mock_monkrelaycluster_instances = [("service1", "monkrelaycluster")]
+    mock_monkrelaycluster_instances = [("service1", "monkrelays")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
