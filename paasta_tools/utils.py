@@ -130,7 +130,7 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
     "kafkacluster",
-    "monkrelaycluster",
+    "monkrelays",
     "nrtsearchservice",
 )
 

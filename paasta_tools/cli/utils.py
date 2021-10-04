@@ -768,7 +768,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
-    monkrelaycluster=InstanceTypeHandler(
+    monkrelays=InstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
 )
@@ -795,7 +795,7 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
-    monkrelaycluster=LongRunningInstanceTypeHandler(
+    monkrelays=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
 )
