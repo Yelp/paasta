@@ -120,6 +120,16 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     }
 
 
+def get_existing_kubernetes_virtual_services(kube_client: KubeClient) -> Set[str]:
+    virtual_service_objects = kube_client.custom.list_namespaced_custom_object(
+        "networking.istio.io", "v1beta1", PAASTA_NAMESPACE, "virtualservices"
+    )
+    if not virtual_service_objects:
+        raise RuntimeError("Error retrieving services list from k8s api")
+
+    return {item["metadata"]["name"] for item in virtual_service_objects["items"]}
+
+
 def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterator:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
@@ -143,7 +153,7 @@ def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterat
     service_spec = k8s.V1ServiceSpec(ports=ports)
     service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
     yield partial(
-        kube_client.core.create_namespaced_service, (PAASTA_NAMESPACE, service_object),
+        kube_client.core.create_namespaced_service, PAASTA_NAMESPACE, service_object
     )
 
     sorted_namespaces = sorted(namespaces.keys())
@@ -180,13 +190,11 @@ def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterat
 
     yield partial(
         kube_client.custom.create_namespaced_custom_object,
-        (
-            "networking.istio.io",
-            "v1beta1",
-            PAASTA_NAMESPACE,
-            "virtualservices",
-            json.dumps(virtual_service),
-        ),
+        "networking.istio.io",
+        "v1beta1",
+        PAASTA_NAMESPACE,
+        "virtualservices",
+        json.dumps(virtual_service),
     )
 
 
@@ -211,7 +219,8 @@ def setup_paasta_namespace_services(
             service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
             yield partial(
                 kube_client.core.create_namespaced_service,
-                (PAASTA_NAMESPACE, service_object),
+                PAASTA_NAMESPACE,
+                service_object,
             )
 
         if service not in existing_virtual_services:
@@ -230,13 +239,11 @@ def setup_paasta_namespace_services(
             )
             yield partial(
                 kube_client.custom.create_namespaced_custom_object,
-                (
-                    "networking.istio.io",
-                    "v1beta1",
-                    PAASTA_NAMESPACE,
-                    "virtualservices",
-                    json.dumps(virtual_service),
-                ),
+                "networking.istio.io",
+                "v1beta1",
+                PAASTA_NAMESPACE,
+                "virtualservices",
+                json.dumps(virtual_service),
             )
 
 
@@ -254,7 +261,7 @@ def cleanup_paasta_namespace_services(
             continue
         log.info(f"Garbage collecting K8s Service {service}")
         yield partial(
-            kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+            kube_client.core.delete_namespaced_service, service, PAASTA_NAMESPACE
         )
     for service in existing_virtual_services:
         if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
@@ -262,13 +269,11 @@ def cleanup_paasta_namespace_services(
         log.info(f"Garbage collecting Istio VS {service}")
         yield partial(
             kube_client.custom.delete_namespaced_custom_object,
-            (
-                "networking.istio.io",
-                "v1beta1",
-                PAASTA_NAMESPACE,
-                "virtualservices",
-                service,
-            ),
+            "networking.istio.io",
+            "v1beta1",
+            PAASTA_NAMESPACE,
+            "virtualservices",
+            service,
         )
 
 
@@ -276,9 +281,8 @@ def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
     existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
-    existing_virtual_services = kube_client.custom.list_namespaced_custom_object(
-        "networking.istio.io", "v1beta1", PAASTA_NAMESPACE, "virtualservices"
-    )
+    existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
+
     namespaces = load_smartstack_namespaces(soa_dir)
 
     should_setup_unified = (
@@ -307,22 +311,13 @@ def process_kube_services(
     )
 
 
-def main() -> None:
-    args = parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-    kube_client = KubeClient()
-    ensure_namespace(kube_client, namespace="paasta")
-    delay = 0 if args.rate_limit == 0 else 1.0 / float(args.rate_limit)
+def setup_istio_mesh(
+    kube_client: KubeClient, rate_limit: int = 0, soa_dir: str = DEFAULT_SOA_DIR,
+) -> bool:
+    delay = 0 if rate_limit == 0 else 1.0 / float(rate_limit)
     took = delay
     success = True
-    for (fn, args) in process_kube_services(
-        kube_client=kube_client, soa_dir=args.soa_dir
-    ):
+    for fn in process_kube_services(kube_client=kube_client, soa_dir=soa_dir):
         time.sleep(max(0, delay - took))
         try:
             log.debug(f"Calling yielded {fn.func}({fn.args})")
@@ -333,7 +328,15 @@ def main() -> None:
         except Exception:
             success = False
             log.exception(f"Failed calling {fn.func}({fn.args})")
+    return success
 
+
+def main() -> None:
+    args = parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    kube_client = KubeClient()
+    ensure_namespace(kube_client, namespace=PAASTA_NAMESPACE)
+    success = setup_istio_mesh(kube_client, args.rate_limit, args.soa_dir)
     sys.exit(0 if success else 1)
 
 

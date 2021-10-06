@@ -3,6 +3,7 @@ import mock
 from paasta_tools.kubernetes_tools import registration_label
 from paasta_tools.setup_istio_mesh import cleanup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import sanitise_kubernetes_service_name
+from paasta_tools.setup_istio_mesh import setup_istio_mesh
 from paasta_tools.setup_istio_mesh import setup_paasta_namespace_services
 from paasta_tools.setup_istio_mesh import setup_paasta_routing
 from paasta_tools.setup_istio_mesh import UNIFIED_K8S_SVC_NAME
@@ -83,3 +84,12 @@ def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_fir
         mock_existing_namespace_services,
     )
     assert len(list(calls)) == 0
+
+
+@mock.patch("time.sleep", autospec=True)
+@mock.patch("paasta_tools.setup_istio_mesh.process_kube_services", autospec=True)
+def test_setup_istio_mesh_iterates(mock_process_kube_services, mock_sleep):
+    mock_yielded = mock.Mock()
+    mock_process_kube_services.return_value = iter([mock_yielded])
+    setup_istio_mesh(mock.Mock())
+    assert len(mock_yielded.mock_calls) == 1
