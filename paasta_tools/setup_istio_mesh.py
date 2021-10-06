@@ -108,8 +108,6 @@ def sanitise_kubernetes_service_name(name: str) -> str:
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     service_objects = kube_client.core.list_namespaced_service(PAASTA_NAMESPACE)
-    if not service_objects:
-        raise RuntimeError("Error retrieving services list from k8s api")
 
     return {
         item.metadata.name
@@ -124,8 +122,6 @@ def get_existing_kubernetes_virtual_services(kube_client: KubeClient) -> Set[str
     virtual_service_objects = kube_client.custom.list_namespaced_custom_object(
         "networking.istio.io", "v1beta1", PAASTA_NAMESPACE, "virtualservices"
     )
-    if not virtual_service_objects:
-        raise RuntimeError("Error retrieving services list from k8s api")
 
     return {item["metadata"]["name"] for item in virtual_service_objects["items"]}
 
@@ -280,8 +276,14 @@ def cleanup_paasta_namespace_services(
 def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
-    existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
-    existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
+
+    try:
+        existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
+        existing_virtual_services = get_existing_kubernetes_virtual_services(
+            kube_client
+        )
+    except Exception:
+        raise RuntimeError("Error retrieving services/VirtualService list from k8s api")
 
     namespaces = load_smartstack_namespaces(soa_dir)
 
