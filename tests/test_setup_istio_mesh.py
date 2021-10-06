@@ -25,7 +25,8 @@ def test_setup_kube_service():
         existing_namespace_services={},
         existing_virtual_services={},
     )
-    k8s_svc = fn.args[0][1]
+
+    k8s_svc = fn.args[1]
 
     assert len(rest) == 1
     assert fn.func is mock_client.core.create_namespaced_service
@@ -40,7 +41,7 @@ def test_setup_paasta_routing():
     fn, *rest = setup_paasta_routing(
         kube_client=mock_client, namespaces=mock_namespaces,
     )
-    k8s_svc = fn.args[0][1]
+    k8s_svc = fn.args[1]
 
     assert len(rest) == 1
     assert fn.func is mock_client.core.create_namespaced_service
@@ -63,7 +64,7 @@ def test_cleanup_paasta_namespace_services_does_not_remove_unified_svc():
         )
     )
     funcs = {fn.func for fn in calls}
-    services = {calls[0].args[0][0], calls[1].args[0][-1]}
+    services = {calls[0].args[0], calls[1].args[-1]}
 
     assert {
         mock_client.core.delete_namespaced_service,

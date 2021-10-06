@@ -21,7 +21,6 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
-import json
 import logging
 import os
 import sys
@@ -187,10 +186,10 @@ def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterat
     yield partial(
         kube_client.custom.create_namespaced_custom_object,
         "networking.istio.io",
-        "v1beta1",
+        "v1alpha3",
         PAASTA_NAMESPACE,
         "virtualservices",
-        json.dumps(virtual_service),
+        virtual_service,
     )
 
 
@@ -236,10 +235,10 @@ def setup_paasta_namespace_services(
             yield partial(
                 kube_client.custom.create_namespaced_custom_object,
                 "networking.istio.io",
-                "v1beta1",
+                "v1alpha3",
                 PAASTA_NAMESPACE,
                 "virtualservices",
-                json.dumps(virtual_service),
+                virtual_service,
             )
 
 
@@ -277,13 +276,8 @@ def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
 
-    try:
-        existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
-        existing_virtual_services = get_existing_kubernetes_virtual_services(
-            kube_client
-        )
-    except Exception:
-        raise RuntimeError("Error retrieving services/VirtualService list from k8s api")
+    existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
+    existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
 
     namespaces = load_smartstack_namespaces(soa_dir)
 
