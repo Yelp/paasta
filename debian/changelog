@@ -1,3 +1,12 @@
+paasta-tools (0.110.4) xenial; urgency=medium
+
+  * 0.110.4 tagged with 'make release'
+    Commit: Merge pull request #3220 from
+    Yelp/u/asoliman/FLINK_3725_remove_verbose_from_flink_status  Remove
+    exceptions in flink status with verbose
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Wed, 06 Oct 2021 05:14:48 -0700
+
 paasta-tools (0.110.3) xenial; urgency=medium
 
   * 0.110.3 tagged with 'make release'
