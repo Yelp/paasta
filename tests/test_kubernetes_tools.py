@@ -2889,10 +2889,11 @@ def test_get_kubernetes_app_by_name():
     assert mock_client.deployments.read_namespaced_stateful_set_status.called
 
 
-def test_pods_for_service_instance():
+@pytest.mark.asyncio
+async def test_pods_for_service_instance():
     mock_client = mock.Mock()
     assert (
-        pods_for_service_instance("kurupt", "fm", mock_client)
+        await pods_for_service_instance("kurupt", "fm", mock_client)
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 

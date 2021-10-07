@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -60,3 +61,10 @@ class Struct:
 
     def to_dict(self):
         return self.__dict__
+
+
+def wrap_value_in_task(value):
+    async def returner():
+        return value
+
+    return asyncio.create_task(returner())
