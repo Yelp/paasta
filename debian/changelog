@@ -1,3 +1,11 @@
+paasta-tools (0.110.5) xenial; urgency=medium
+
+  * 0.110.5 tagged with 'make release'
+    Commit: Merge pull request #3218 from
+    Yelp/better_status_parallelization  Better status parallelization
+
+ -- Stuart Elston <selston@yelp.com>  Thu, 07 Oct 2021 14:16:47 -0700
+
 paasta-tools (0.110.4) xenial; urgency=medium
 
   * 0.110.4 tagged with 'make release'

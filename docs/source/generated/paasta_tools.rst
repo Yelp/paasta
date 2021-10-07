@@ -95,6 +95,7 @@ Submodules
    paasta_tools.prune_completed_pods
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
+   paasta_tools.run_status_without_api
    paasta_tools.secret_tools
    paasta_tools.setup_istio_mesh
    paasta_tools.setup_kubernetes_cr
