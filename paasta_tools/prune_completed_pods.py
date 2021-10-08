@@ -60,14 +60,26 @@ def setup_logging(verbose):
     logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
-def _completed_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
-    time_finished = get_pod_condition(pod, "ContainersReady").last_transition_time
+def __condition_transition_longer_than_threshold(
+    pod: V1Pod, condition: str, threshold: int
+) -> bool:
+    time_finished = get_pod_condition(pod, condition).last_transition_time
     time_now = datetime.now(tzutc())
 
     # convert total seconds since completion to minutes
-    completed_since_minutes = (time_now - time_finished).total_seconds() / 60
+    since_minutes = (time_now - time_finished).total_seconds() / 60
 
-    return completed_since_minutes > threshold
+    return since_minutes > threshold
+
+
+def _completed_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
+    return __condition_transition_longer_than_threshold(
+        pod, "ContainersReady", threshold
+    )
+
+
+def _scheduled_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
+    return __condition_transition_longer_than_threshold(pod, "PodScheduled", threshold)
 
 
 def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
@@ -116,7 +128,7 @@ def main():
             and pod.status.phase == "Failed"
             # and that said Pod has been around for a while (generally longer than we'd leave
             # Pods that exited sucessfully)
-            and _completed_longer_than_threshold(pod, allowed_error_minutes)
+            and _scheduled_longer_than_threshold(pod, allowed_error_minutes)
         ):
             errored_pods.append(pod)
 
