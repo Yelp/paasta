@@ -209,6 +209,24 @@ def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
 
 
+@lru_cache(maxsize=1)
+def _get_tron_k8s_cluster_override(cluster: str) -> Optional[str]:
+    """
+    Return the name of a compute cluster if there's a different compute cluster that should be used to run a Tronjob.
+    Will return None if no override mapping is present
+
+    We have certain Tron masters that are named differently from the compute cluster that should actually be used (
+    e.g., we might have tron-XYZ-test-prod, but instead of scheduling on XYZ-test-prod, we'd like to schedule jobs
+    on test-prod).
+
+    To control this, we have an optional config item that we'll puppet onto Tron masters that need this type of
+    tron master -> compute cluster override which this function will read.
+    """
+    return (
+        load_system_paasta_config().get_tron_k8s_cluster_overrides().get(cluster, None,)
+    )
+
+
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = "tron"
 
@@ -611,10 +629,18 @@ class TronJobConfig:
             branch_dict = None
         action_dict["monitoring"] = self.get_monitoring()
 
+        cluster_override = _get_tron_k8s_cluster_override(self.get_cluster())
+        # technically, we should also be checking if k8s is enabled, but at this stage
+        # of our migration we're not expecting any issues and when we clean up all the
+        # Mesos remnants on-completion we can also rip out all the code that fallsback
+        # to Mesos and just do this unconditionally.
+        use_k8s_cluster_override = cluster_override is not None and self.get_use_k8s()
         return TronActionConfig(
             service=action_service,
             instance=compose_instance(self.get_name(), action_name),
-            cluster=self.get_cluster(),
+            cluster=cluster_override
+            if use_k8s_cluster_override
+            else self.get_cluster(),
             config_dict=action_dict,
             branch_dict=branch_dict,
             soa_dir=self.soa_dir,

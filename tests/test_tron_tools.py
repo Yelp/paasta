@@ -267,18 +267,43 @@ class TestTronJobConfig:
             yield f
 
     @pytest.mark.parametrize(
-        "action_service,action_deploy",
+        "action_service,action_deploy,cluster,expected_cluster,use_k8s",
         [
-            (None, None),
-            (None, "special_deploy"),
-            ("other_service", None),
-            (None, None),
-            (None, None),
+            # normal case - no cluster override present and k8s enabled
+            (None, None, "paasta-dev", "paasta-dev", True),
+            (None, "special_deploy", "paasta-dev", "paasta-dev", True),
+            ("other_service", None, "paasta-dev", "paasta-dev", True),
+            (None, None, "paasta-dev", "paasta-dev", True),
+            (None, None, "paasta-dev", "paasta-dev", True),
+            # cluster override present and k8s enabled
+            (None, None, "paasta-dev-test", "paasta-dev", True),
+            (None, "special_deploy", "paasta-dev-test", "paasta-dev", True),
+            ("other_service", None, "paasta-dev-test", "paasta-dev", True),
+            (None, None, "paasta-dev-test", "paasta-dev", True),
+            (None, None, "paasta-dev-test", "paasta-dev", True),
+            # no cluster override present and k8s disabled
+            (None, None, "paasta-dev", "paasta-dev", False),
+            (None, "special_deploy", "paasta-dev", "paasta-dev", False),
+            ("other_service", None, "paasta-dev", "paasta-dev", False),
+            (None, None, "paasta-dev", "paasta-dev", False),
+            (None, None, "paasta-dev", "paasta-dev", False),
+            # cluster override present and k8s disabled
+            (None, None, "paasta-dev-test", "paasta-dev-test", False),
+            (None, "special_deploy", "paasta-dev-test", "paasta-dev-test", False),
+            ("other_service", None, "paasta-dev-test", "paasta-dev-test", False),
+            (None, None, "paasta-dev-test", "paasta-dev-test", False),
+            (None, None, "paasta-dev-test", "paasta-dev-test", False),
         ],
     )
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
     def test_get_action_config(
-        self, mock_load_deployments, action_service, action_deploy
+        self,
+        mock_load_deployments,
+        action_service,
+        action_deploy,
+        cluster,
+        expected_cluster,
+        use_k8s,
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {"command": "echo first"}
@@ -291,7 +316,6 @@ class TestTronJobConfig:
         job_deploy = "prod"
         expected_service = action_service or job_service
         expected_deploy = action_deploy or job_deploy
-        expected_cluster = "paasta-dev"
 
         job_dict = {
             "node": "batch_server",
@@ -301,14 +325,26 @@ class TestTronJobConfig:
             "max_runtime": "2h",
             "actions": {"normal": action_dict},
             "monitoring": {"team": "noop"},
+            "use_k8s": use_k8s,
         }
 
         soa_dir = "/other_dir"
         job_config = tron_tools.TronJobConfig(
-            "my_job", job_dict, expected_cluster, soa_dir=soa_dir
+            "my_job", job_dict, cluster, soa_dir=soa_dir
         )
 
-        action_config = job_config._get_action_config("normal", action_dict=action_dict)
+        mock_paasta_system_config = utils.SystemPaastaConfig(
+            config={"tron_k8s_cluster_overrides": {"paasta-dev-test": "paasta-dev",}},
+            directory="/mock/system/configs",
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=mock_paasta_system_config,
+        ):
+            action_config = job_config._get_action_config(
+                "normal", action_dict=action_dict
+            )
 
         mock_load_deployments.assert_called_once_with(expected_service, soa_dir)
         mock_deployments_json = mock_load_deployments.return_value
@@ -341,8 +377,11 @@ class TestTronJobConfig:
             cluster=expected_cluster,
         )
 
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
-    def test_get_action_config_load_deployments_false(self, mock_load_deployments):
+    def test_get_action_config_load_deployments_false(
+        self, mock_load_deployments, mock_load_system_paasta_config
+    ):
         action_dict = {"command": "echo first"}
         job_dict = {
             "node": "batch_server",
@@ -526,7 +565,10 @@ class TestTronJobConfig:
         }
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_all_actions(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_all_actions(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "paasta",
             "deploy_group": "test",
