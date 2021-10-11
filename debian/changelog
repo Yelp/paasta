@@ -1,3 +1,13 @@
+paasta-tools (0.110.6) xenial; urgency=medium
+
+  * 0.110.6 tagged with 'make release'
+    Commit: Cleanup Pods in Error state based on time scheduled (#3223)
+    It"s possible for a Pod to be in an Error state and not have a
+    ContainersReady transition time, so lets go off of PodScheduled
+    since that should always exist.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 11 Oct 2021 09:53:23 -0700
+
 paasta-tools (0.110.5) xenial; urgency=medium
 
   * 0.110.5 tagged with 'make release'
