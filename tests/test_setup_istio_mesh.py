@@ -1,4 +1,4 @@
-from unittest import mock
+import mock
 
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import registration_label

@@ -32,6 +32,7 @@ from functools import partial
 from typing import AbstractSet
 from typing import Iterator
 from typing import Mapping
+from typing import Sequence
 
 import kubernetes.client as k8s
 import yaml
@@ -107,7 +108,7 @@ def sanitise_kubernetes_service_name(name: str) -> str:
     return limit_size_with_hash(sanitise_kubernetes_name(name).replace(".", "---"))
 
 
-def items_managed_by(iterable, managed_by) -> Iterator:
+def items_managed_by(iterable: Sequence, managed_by: str) -> Iterator:
     for item in iterable:
         if (
             item.metadata.annotations
@@ -222,7 +223,7 @@ def setup_paasta_routing(
             if proxy_port is not None
         ]
         virtual_service = dict(
-            apiVersion="networking.istio.io/v1alpha3",
+            apiVersion="networking.istio.io/v1beta1",
             kind="VirtualService",
             metadata=dict(
                 name=UNIFIED_K8S_SVC_NAME,
@@ -240,7 +241,7 @@ def setup_paasta_routing(
         yield partial(
             vs_yield_fn,
             "networking.istio.io",
-            "v1alpha3",
+            "v1beta1",
             PAASTA_NAMESPACE,
             "virtualservices",
             virtual_service,
@@ -281,7 +282,7 @@ def setup_paasta_namespace_services(
                 destination=dict(host=service, port=dict(number=PAASTA_SVC_PORT))
             )
             virtual_service = dict(
-                apiVersion="networking.istio.io/v1alpha3",
+                apiVersion="networking.istio.io/v1beta1",
                 kind="VirtualService",
                 metadata=dict(name=service, namespace=PAASTA_NAMESPACE),
                 spec=dict(http=[dict(route=[route])]),
@@ -289,7 +290,7 @@ def setup_paasta_namespace_services(
             yield partial(
                 kube_client.custom.create_namespaced_custom_object,
                 "networking.istio.io",
-                "v1alpha3",
+                "v1beta1",
                 PAASTA_NAMESPACE,
                 "virtualservices",
                 virtual_service,
