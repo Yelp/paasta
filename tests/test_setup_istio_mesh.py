@@ -58,7 +58,7 @@ def test_setup_paasta_routing_create_both():
     istio_vs = fn2.args[4]
     assert (
         istio_vs["metadata"]["annotations"][paasta_prefixed("config_hash")]
-        == "Jv6pi9xNbkF4h4HzX+AlLw=="
+        == "KP05UYQYZC8KHiCDj8lCXQ=="
     ), "config_hash annotation value has changed, update it in the test if it's intentional"
     assert istio_vs["spec"]["hosts"] == [
         "paasta-routing",
@@ -82,7 +82,7 @@ def test_setup_paasta_routing_create_only_k8s_svc():
         mock_client,
         mock_namespaces,
         {},
-        {UNIFIED_K8S_SVC_NAME: "Jv6pi9xNbkF4h4HzX+AlLw=="},
+        {UNIFIED_K8S_SVC_NAME: "KP05UYQYZC8KHiCDj8lCXQ=="},
     )
     assert len(rest) == 0, "only 1 yielded call is expected"
     assert fn.func is mock_client.core.create_namespaced_service
@@ -122,7 +122,7 @@ def test_setup_paasta_routing_noop_when_config_hash_same():
         mock_client,
         mock_namespaces,
         {UNIFIED_K8S_SVC_NAME: "LN/dOllAx6ey4Z4V26RS/Q=="},
-        {UNIFIED_K8S_SVC_NAME: "Jv6pi9xNbkF4h4HzX+AlLw=="},
+        {UNIFIED_K8S_SVC_NAME: "KP05UYQYZC8KHiCDj8lCXQ=="},
     )
     assert len(list(calls)) == 0, "no calls are expected"
 

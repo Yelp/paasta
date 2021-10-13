@@ -168,7 +168,7 @@ def setup_paasta_routing(
         for port in [1337, *port_list]
     ]
 
-    digest = hashlib.md5(json.dumps(port_list).encode()).digest()
+    digest = hashlib.md5(json.dumps(port_list, sort_keys=True).encode()).digest()
     svc_desired_config_hash = base64.b64encode(digest).decode()
     svc_yield_fn = None
     if UNIFIED_K8S_SVC_NAME not in existing_kubernetes_services:
@@ -188,11 +188,34 @@ def setup_paasta_routing(
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
         yield partial(svc_yield_fn, PAASTA_NAMESPACE, service_object)
 
-    sorted_ns_ports = [
-        (ns, namespaces[ns].get("proxy_port")) for ns in sorted(namespaces.keys())
+    sorted_namespaces = sorted(namespaces.keys())
+    x_yelp_svc_routes = [
+        dict(
+            match=[dict(headers={"x-yelp-svc": dict(exact=mesh_ns)})],
+            delegate=dict(
+                name=sanitise_kubernetes_service_name(mesh_ns),
+                namespace=PAASTA_NAMESPACE,
+            ),
+        )
+        for mesh_ns in sorted_namespaces
     ]
+    port_routes = [
+        dict(
+            match=[dict(port=namespaces[mesh_ns]["proxy_port"])],
+            delegate=dict(
+                name=sanitise_kubernetes_service_name(mesh_ns),
+                namespace=PAASTA_NAMESPACE,
+            ),
+        )
+        for mesh_ns in sorted_namespaces
+        if "proxy_port" in namespaces[mesh_ns]
+    ]
+    vs_spec = dict(
+        hosts=[UNIFIED_K8S_SVC_NAME, "169.254.255.254"],
+        http=x_yelp_svc_routes + port_routes,
+    )
 
-    digest = hashlib.md5(json.dumps(sorted_ns_ports).encode()).digest()
+    digest = hashlib.md5(json.dumps(vs_spec, sort_keys=True).encode()).digest()
     vs_desired_config_hash = base64.b64encode(digest).decode()
     vs_yield_fn = None
     if UNIFIED_K8S_SVC_NAME not in existing_virtual_services:
@@ -200,44 +223,20 @@ def setup_paasta_routing(
     elif existing_virtual_services[UNIFIED_K8S_SVC_NAME] != vs_desired_config_hash:
         vs_yield_fn = kube_client.custom.replace_namespaced_custom_object
 
-    if vs_yield_fn:
-        x_yelp_svc_routes = [
-            dict(
-                match=[dict(headers={"x-yelp-svc": dict(exact=mesh_ns)})],
-                delegate=dict(
-                    name=sanitise_kubernetes_service_name(mesh_ns),
-                    namespace=PAASTA_NAMESPACE,
-                ),
-            )
-            for (mesh_ns, _) in sorted_ns_ports
-        ]
-        port_routes = [
-            dict(
-                match=[dict(port=proxy_port)],
-                delegate=dict(
-                    name=sanitise_kubernetes_service_name(mesh_ns),
-                    namespace=PAASTA_NAMESPACE,
-                ),
-            )
-            for (mesh_ns, proxy_port) in sorted_ns_ports
-            if proxy_port is not None
-        ]
-        virtual_service = dict(
-            apiVersion="networking.istio.io/v1beta1",
-            kind="VirtualService",
-            metadata=dict(
-                name=UNIFIED_K8S_SVC_NAME,
-                annotations={
-                    paasta_prefixed("config_hash"): vs_desired_config_hash,
-                    **ANNOTATIONS,
-                },
-            ),
-            spec=dict(
-                hosts=[UNIFIED_K8S_SVC_NAME, "169.254.255.254"],
-                http=x_yelp_svc_routes + port_routes,
-            ),
-        )
+    virtual_service = dict(
+        apiVersion="networking.istio.io/v1beta1",
+        kind="VirtualService",
+        metadata=dict(
+            name=UNIFIED_K8S_SVC_NAME,
+            annotations={
+                paasta_prefixed("config_hash"): vs_desired_config_hash,
+                **ANNOTATIONS,
+            },
+        ),
+        spec=vs_spec,
+    )
 
+    if vs_yield_fn:
         yield partial(
             vs_yield_fn,
             "networking.istio.io",
