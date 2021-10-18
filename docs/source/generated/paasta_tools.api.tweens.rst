@@ -6,6 +6,7 @@ Submodules
 
 .. toctree::
 
+   paasta_tools.api.tweens.profiling
    paasta_tools.api.tweens.request_logger
 
 Module contents

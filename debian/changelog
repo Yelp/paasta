@@ -1,3 +1,11 @@
+paasta-tools (0.111.0) xenial; urgency=medium
+
+  * 0.111.0 tagged with 'make release'
+    Commit: Merge pull request #3222 from Yelp/u/kawaiwan/add-cprofile
+    Add cprofiling to paasta api
+
+ -- Charles Wan <kawaiwan@yelp.com>  Mon, 18 Oct 2021 11:14:01 -0700
+
 paasta-tools (0.110.6) xenial; urgency=medium
 
   * 0.110.6 tagged with 'make release'
