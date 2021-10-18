@@ -1846,6 +1846,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
+    api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_hostname_unique_size: int
@@ -2606,6 +2607,11 @@ class SystemPaastaConfig:
 
     def get_tron_use_k8s_default(self) -> bool:
         return self.config_dict.get("tron_use_k8s", False)
+
+    def get_api_profiling_config(self) -> Dict:
+        return self.config_dict.get(
+            "api_profiling_config", {"cprofile_sampling_enabled": False},
+        )
 
 
 def _run(
