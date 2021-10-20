@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015-2018 Yelp Inc.
+# Copyright 2015-2021 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Usage: ./setup_kubernetes_services.py <service.instance>
+Usage: setup_istio_mesh
 
 Command line options:
 
@@ -32,7 +32,6 @@ from functools import partial
 from typing import AbstractSet
 from typing import Iterator
 from typing import Mapping
-from typing import Sequence
 
 import kubernetes.client as k8s
 import yaml
@@ -108,47 +107,39 @@ def sanitise_kubernetes_service_name(name: str) -> str:
     return limit_size_with_hash(sanitise_kubernetes_name(name).replace(".", "---"))
 
 
-def items_managed_by(iterable: Sequence, managed_by: str) -> Iterator:
-    for item in iterable:
-        if (
-            item.metadata.annotations
-            and item.metadata.annotations.get(paasta_prefixed("managed_by"))
-            == managed_by
-        ):
-            yield item
-
-
-def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Mapping[str, str]:
+def get_existing_kubernetes_service_names(
+    kube_client: KubeClient,
+) -> Mapping[str, k8s.V1APIService]:
     service_objects = kube_client.core.list_namespaced_service(PAASTA_NAMESPACE)
 
     return {
-        item.metadata.name: item.metadata.annotations.get(
-            paasta_prefixed("config_hash"), ""
-        )
-        for item in items_managed_by(service_objects.items, "setup_istio_mesh")
+        item.metadata.name: item
+        for item in service_objects.items
+        if item.metadata.annotations.get(paasta_prefixed("managed_by"))
+        == "setup_istio_mesh"
     }
 
 
 def get_existing_kubernetes_virtual_services(
     kube_client: KubeClient,
-) -> Mapping[str, str]:
+) -> Mapping[str, Mapping[str, str]]:
     virtual_service_objects = kube_client.custom.list_namespaced_custom_object(
         "networking.istio.io", "v1beta1", PAASTA_NAMESPACE, "virtualservices"
     )
 
     return {
-        item.metadata.name: item.metadata.annotations.get(
-            paasta_prefixed("config_hash"), ""
-        )
-        for item in items_managed_by(virtual_service_objects.items, "setup_istio_mesh")
+        item["metadata"]["name"]: item
+        for item in virtual_service_objects["items"]
+        if item["metadata"].get("annotations", {}).get(paasta_prefixed("managed_by"))
+        == "setup_istio_mesh"
     }
 
 
 def setup_paasta_routing(
     kube_client: KubeClient,
     namespaces: Mapping,
-    existing_kubernetes_services: Mapping[str, str],
-    existing_virtual_services: Mapping[str, str],
+    existing_kubernetes_services: Mapping[str, k8s.V1APIService],
+    existing_virtual_services: Mapping[str, Mapping],
 ) -> Iterator:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
@@ -168,12 +159,17 @@ def setup_paasta_routing(
         for port in [1337, *port_list]
     ]
 
+    existing_svc = existing_kubernetes_services.get(UNIFIED_K8S_SVC_NAME)
     digest = hashlib.md5(json.dumps(port_list, sort_keys=True).encode()).digest()
     svc_desired_config_hash = base64.b64encode(digest).decode()
+
     svc_yield_fn = None
-    if UNIFIED_K8S_SVC_NAME not in existing_kubernetes_services:
+    if existing_svc is None:
         svc_yield_fn = kube_client.core.create_namespaced_service
-    elif existing_kubernetes_services[UNIFIED_K8S_SVC_NAME] != svc_desired_config_hash:
+    elif (
+        existing_svc.metadata.annotations.get(paasta_prefixed("config_hash"))
+        != svc_desired_config_hash
+    ):
         svc_yield_fn = kube_client.core.replace_namespaced_service
 
     if svc_yield_fn:
@@ -183,10 +179,21 @@ def setup_paasta_routing(
                 paasta_prefixed("config_hash"): svc_desired_config_hash,
                 **ANNOTATIONS,
             },
+            resource_version=existing_svc.metadata.resource_version
+            if existing_svc
+            else None,
         )
-        service_spec = k8s.V1ServiceSpec(ports=ports)
+        service_spec = k8s.V1ServiceSpec(
+            ports=ports,
+            cluster_ip=existing_svc.spec.cluster_ip if existing_svc else None,
+        )
         service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-        yield partial(svc_yield_fn, PAASTA_NAMESPACE, service_object)
+        if existing_svc:
+            yield partial(
+                svc_yield_fn, UNIFIED_K8S_SVC_NAME, PAASTA_NAMESPACE, service_object
+            )
+        else:
+            yield partial(svc_yield_fn, PAASTA_NAMESPACE, service_object)
 
     sorted_namespaces = sorted(namespaces.keys())
     x_yelp_svc_routes = [
@@ -208,21 +215,16 @@ def setup_paasta_routing(
             ),
         )
         for mesh_ns in sorted_namespaces
-        if "proxy_port" in namespaces[mesh_ns]
+        if namespaces[mesh_ns].get("proxy_port")
     ]
     vs_spec = dict(
         hosts=[UNIFIED_K8S_SVC_NAME, "169.254.255.254"],
         http=x_yelp_svc_routes + port_routes,
     )
 
+    existing_vs = existing_virtual_services.get(UNIFIED_K8S_SVC_NAME)
     digest = hashlib.md5(json.dumps(vs_spec, sort_keys=True).encode()).digest()
     vs_desired_config_hash = base64.b64encode(digest).decode()
-    vs_yield_fn = None
-    if UNIFIED_K8S_SVC_NAME not in existing_virtual_services:
-        vs_yield_fn = kube_client.custom.create_namespaced_custom_object
-    elif existing_virtual_services[UNIFIED_K8S_SVC_NAME] != vs_desired_config_hash:
-        vs_yield_fn = kube_client.custom.replace_namespaced_custom_object
-
     virtual_service = dict(
         apiVersion="networking.istio.io/v1beta1",
         kind="VirtualService",
@@ -232,17 +234,33 @@ def setup_paasta_routing(
                 paasta_prefixed("config_hash"): vs_desired_config_hash,
                 **ANNOTATIONS,
             },
+            resourceVersion=(existing_vs or {})
+            .get("metadata", {})
+            .get("resourceVersion"),
         ),
         spec=vs_spec,
     )
 
-    if vs_yield_fn:
+    if existing_vs is None:
         yield partial(
-            vs_yield_fn,
+            kube_client.custom.create_namespaced_custom_object,
             "networking.istio.io",
             "v1beta1",
             PAASTA_NAMESPACE,
             "virtualservices",
+            virtual_service,
+        )
+    elif (
+        existing_vs["metadata"]["annotations"].get(paasta_prefixed("config_hash"))
+        != vs_desired_config_hash
+    ):
+        yield partial(
+            kube_client.custom.replace_namespaced_custom_object,
+            "networking.istio.io",
+            "v1beta1",
+            PAASTA_NAMESPACE,
+            "virtualservices",
+            UNIFIED_K8S_SVC_NAME,
             virtual_service,
         )
 
@@ -250,12 +268,12 @@ def setup_paasta_routing(
 def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
-    existing_namespace_services: Mapping[str, str],
-    existing_virtual_services: Mapping[str, str],
+    existing_kubernetes_services: Mapping[str, k8s.V1APIService],
+    existing_virtual_services: Mapping[str, Mapping],
 ) -> Iterator:
     for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
-        if service not in existing_namespace_services:
+        if service not in existing_kubernetes_services:
             log.info(f"Creating k8s service {service} because it does not exist yet.")
 
             service_meta = k8s.V1ObjectMeta(name=service, annotations=ANNOTATIONS)
@@ -283,7 +301,7 @@ def setup_paasta_namespace_services(
             virtual_service = dict(
                 apiVersion="networking.istio.io/v1beta1",
                 kind="VirtualService",
-                metadata=dict(name=service, namespace=PAASTA_NAMESPACE),
+                metadata=dict(name=service, annotations=ANNOTATIONS),
                 spec=dict(http=[dict(route=[route])]),
             )
             yield partial(
@@ -299,13 +317,13 @@ def setup_paasta_namespace_services(
 def cleanup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
-    existing_namespace_services: Mapping[str, str],
-    existing_virtual_services: Mapping[str, str],
+    existing_kubernetes_services: Mapping[str, str],
+    existing_virtual_services: Mapping[str, Mapping],
 ) -> Iterator:
     declared_services = {
         sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces
     }
-    for service in existing_namespace_services:
+    for service in existing_kubernetes_services:
         if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
             continue
         log.info(f"Garbage collecting K8s Service {service}")
@@ -329,25 +347,28 @@ def cleanup_paasta_namespace_services(
 def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
-    existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
+    existing_kubernetes_services = get_existing_kubernetes_service_names(kube_client)
     existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
     namespaces = load_smartstack_namespaces(soa_dir)
 
     yield from setup_paasta_routing(
-        kube_client, namespaces, existing_namespace_services, existing_virtual_services,
+        kube_client,
+        namespaces,
+        existing_kubernetes_services,
+        existing_virtual_services,
     )
 
     yield from setup_paasta_namespace_services(
         kube_client,
         namespaces.keys(),
-        existing_namespace_services,
+        existing_kubernetes_services,
         existing_virtual_services,
     )
 
     yield from cleanup_paasta_namespace_services(
         kube_client,
         namespaces.keys(),
-        existing_namespace_services,
+        existing_kubernetes_services,
         existing_virtual_services,
     )
 

@@ -25,7 +25,7 @@ def test_setup_kube_service():
     fn, *rest = setup_paasta_namespace_services(
         kube_client=mock_client,
         paasta_namespaces=mock_paasta_namespaces,
-        existing_namespace_services={},
+        existing_kubernetes_services={},
         existing_virtual_services={},
     )
 
@@ -78,11 +78,13 @@ def test_setup_paasta_routing_create_both():
 def test_setup_paasta_routing_create_only_k8s_svc():
     mock_client = mock.Mock()
     mock_namespaces = {MOCK_SVC_NAME: dict(proxy_port=MOCK_PORT_NUMBER)}
+    mock_vs = dict(
+        metadata=dict(
+            annotations={"paasta.yelp.com/config_hash": "KP05UYQYZC8KHiCDj8lCXQ=="}
+        )
+    )
     fn, *rest = setup_paasta_routing(
-        mock_client,
-        mock_namespaces,
-        {},
-        {UNIFIED_K8S_SVC_NAME: "KP05UYQYZC8KHiCDj8lCXQ=="},
+        mock_client, mock_namespaces, {}, {UNIFIED_K8S_SVC_NAME: mock_vs},
     )
     assert len(rest) == 0, "only 1 yielded call is expected"
     assert fn.func is mock_client.core.create_namespaced_service
@@ -91,11 +93,12 @@ def test_setup_paasta_routing_create_only_k8s_svc():
 def test_setup_paasta_routing_create_only_istio_vs():
     mock_client = mock.Mock()
     mock_namespaces = {MOCK_SVC_NAME: dict(proxy_port=MOCK_PORT_NUMBER)}
+    mock_svc = mock.Mock()
+    mock_svc.metadata.annotations = {
+        "paasta.yelp.com/config_hash": "LN/dOllAx6ey4Z4V26RS/Q=="
+    }
     fn, *rest = setup_paasta_routing(
-        mock_client,
-        mock_namespaces,
-        {UNIFIED_K8S_SVC_NAME: "LN/dOllAx6ey4Z4V26RS/Q=="},
-        {},
+        mock_client, mock_namespaces, {UNIFIED_K8S_SVC_NAME: mock_svc}, {},
     )
     assert len(rest) == 0, "only 1 yielded call is expected"
     assert fn.func is mock_client.custom.create_namespaced_custom_object
@@ -104,11 +107,14 @@ def test_setup_paasta_routing_create_only_istio_vs():
 def test_setup_paasta_routing_replace_when_config_hash_differs():
     mock_client = mock.Mock()
     mock_namespaces = {MOCK_SVC_NAME: dict(proxy_port=MOCK_PORT_NUMBER)}
+    mock_svc = mock.Mock()
+    mock_svc.metadata.annotations = {"paasta.yelp.com/config_hash": "wrong"}
+    mock_vs = dict(metadata=dict(annotations={"paasta.yelp.com/config_hash": "wrong"}))
     fn1, fn2, *rest = setup_paasta_routing(
         mock_client,
         mock_namespaces,
-        {UNIFIED_K8S_SVC_NAME: "wrong_config_hash"},
-        {UNIFIED_K8S_SVC_NAME: "wrong_config_hash"},
+        {UNIFIED_K8S_SVC_NAME: mock_svc},
+        {UNIFIED_K8S_SVC_NAME: mock_vs},
     )
     assert len(rest) == 0, "only 2 yielded calls are expected"
     assert fn1.func is mock_client.core.replace_namespaced_service
@@ -118,11 +124,20 @@ def test_setup_paasta_routing_replace_when_config_hash_differs():
 def test_setup_paasta_routing_noop_when_config_hash_same():
     mock_client = mock.Mock()
     mock_namespaces = {MOCK_SVC_NAME: dict(proxy_port=MOCK_PORT_NUMBER)}
+    mock_svc = mock.Mock()
+    mock_svc.metadata.annotations = {
+        "paasta.yelp.com/config_hash": "LN/dOllAx6ey4Z4V26RS/Q=="
+    }
+    mock_vs = dict(
+        metadata=dict(
+            annotations={"paasta.yelp.com/config_hash": "KP05UYQYZC8KHiCDj8lCXQ=="}
+        )
+    )
     calls = setup_paasta_routing(
         mock_client,
         mock_namespaces,
-        {UNIFIED_K8S_SVC_NAME: "LN/dOllAx6ey4Z4V26RS/Q=="},
-        {UNIFIED_K8S_SVC_NAME: "KP05UYQYZC8KHiCDj8lCXQ=="},
+        {UNIFIED_K8S_SVC_NAME: mock_svc},
+        {UNIFIED_K8S_SVC_NAME: mock_vs},
     )
     assert len(list(calls)) == 0, "no calls are expected"
 
@@ -131,13 +146,13 @@ def test_cleanup_paasta_namespace_services_does_not_remove_unified_svc():
     mock_client = mock.Mock()
     mock_paasta_namespaces = {"svc1", "svc2"}
 
-    mock_existing_namespace_services = {"svc1", "svc2", "svc3", UNIFIED_K8S_SVC_NAME}
+    mock_existing_kubernetes_services = {"svc1", "svc2", "svc3", UNIFIED_K8S_SVC_NAME}
     calls = list(
         cleanup_paasta_namespace_services(
             mock_client,
             mock_paasta_namespaces,
-            mock_existing_namespace_services,
-            mock_existing_namespace_services,
+            mock_existing_kubernetes_services,
+            mock_existing_kubernetes_services,
         )
     )
     funcs = {fn.func for fn in calls}
@@ -154,12 +169,12 @@ def test_cleanup_paasta_namespace_services_does_not_remove_svc_while_running_fir
     mock_client = mock.Mock()
     mock_paasta_namespaces = {"svc1", "svc2"}
 
-    mock_existing_namespace_services = {}
+    mock_existing_kubernetes_services = {}
     calls = cleanup_paasta_namespace_services(
         mock_client,
         mock_paasta_namespaces,
-        mock_existing_namespace_services,
-        mock_existing_namespace_services,
+        mock_existing_kubernetes_services,
+        mock_existing_kubernetes_services,
     )
     assert len(list(calls)) == 0
 
