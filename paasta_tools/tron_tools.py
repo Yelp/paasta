@@ -766,6 +766,12 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             ),
         }
 
+        # we can hardcode this for now as batches really shouldn't
+        # need routable IPs - we can deal with adding an interface
+        # to actually control annotations once there's a usecase
+        # that requires more dynamicism here
+        result["annotations"] = {"paasta.yelp.com/routable_ip": "false"}
+
         if action_config.get_team() is not None:
             result["labels"]["yelp.com/owner"] = action_config.get_team()
 
