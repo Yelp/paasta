@@ -1,3 +1,12 @@
+paasta-tools (0.111.1) xenial; urgency=medium
+
+  * 0.111.1 tagged with 'make release'
+    Commit: Merge pull request #3230 from Yelp/PAASTA-17500-events-
+    timeout  PAASTA-17500: Ensure our async work to fetch events and
+    containers ca…
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 25 Oct 2021 16:18:13 -0700
+
 paasta-tools (0.111.0) xenial; urgency=medium
 
   * 0.111.0 tagged with 'make release'
