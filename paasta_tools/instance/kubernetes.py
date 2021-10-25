@@ -717,7 +717,6 @@ async def get_pod_status(
     containers_task = asyncio.create_task(
         get_pod_containers(pod, client, num_tail_lines)
     )
-    await asyncio.gather(events_task, containers_task)
 
     reason = pod.status.reason
     message = pod.status.message
@@ -730,6 +729,7 @@ async def get_pod_status(
     )
 
     try:
+        await asyncio.gather(events_task, containers_task)
         # Filter events to only last 15m
         pod_event_messages = events_task.result()
     except asyncio.TimeoutError:
