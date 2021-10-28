@@ -1487,8 +1487,15 @@ def format_audit_log_line(
     return message
 
 
-def get_log_name_for_service(service: str, prefix: str = None) -> str:
+def get_log_name_for_service(
+    service: str, prefix: str = None, instance: str = None
+) -> str:
     if prefix:
+        if instance:
+            if type(instance) == list:
+                return f"stream_paasta_{prefix}_{service}_{instance[0]}"
+            else:
+                return f"stream_paasta_{prefix}_{service}_{instance}"
         return f"stream_paasta_{prefix}_{service}"
     return "stream_paasta_%s" % service
 

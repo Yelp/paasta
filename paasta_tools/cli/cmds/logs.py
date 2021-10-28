@@ -605,16 +605,16 @@ class ScribeLogReader(LogReader):
         ),
         "stdout": ScribeComponentStreamInfo(
             per_cluster=False,
-            stream_name_fn=lambda service: get_log_name_for_service(
-                service, prefix="app_output"
+            stream_name_fn=lambda service, instance: get_log_name_for_service(
+                service, prefix="app_output", instance=instance
             ),
             filter_fn=paasta_app_output_passes_filter,
             parse_fn=None,
         ),
         "stderr": ScribeComponentStreamInfo(
             per_cluster=False,
-            stream_name_fn=lambda service: get_log_name_for_service(
-                service, prefix="app_output"
+            stream_name_fn=lambda service, instance: get_log_name_for_service(
+                service, prefix="app_output", instance=instance
             ),
             filter_fn=paasta_app_output_passes_filter,
             parse_fn=None,
@@ -915,7 +915,10 @@ class ScribeLogReader(LogReader):
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
             else:
-                stream_name = stream_info.stream_name_fn(service)
+                if service == "clusterman":
+                    stream_name = stream_info.stream_name_fn(service, instances)
+                else:
+                    stream_name = stream_info.stream_name_fn(service, None)
 
             ctx = self.scribe_get_last_n_lines(scribe_env, stream_name, line_count)
             self.filter_and_aggregate_scribe_logs(
