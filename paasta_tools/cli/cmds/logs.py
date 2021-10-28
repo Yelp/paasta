@@ -857,7 +857,10 @@ class ScribeLogReader(LogReader):
             if stream_info.per_cluster:
                 stream_name = stream_info.stream_name_fn(service, cluster)
             else:
-                stream_name = stream_info.stream_name_fn(service)
+                if service == "clusterman":
+                    stream_name = stream_info.stream_name_fn(service, instances)
+                else:
+                    stream_name = stream_info.stream_name_fn(service, None)
 
             ctx = self.scribe_get_from_time(
                 scribe_env, stream_name, start_time, end_time
