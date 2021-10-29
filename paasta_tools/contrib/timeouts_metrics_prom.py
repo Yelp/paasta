@@ -51,7 +51,7 @@ if __name__ == "__main__":
     for root, dirs, files in os.walk(SOA_DIR):
         service = root.split("/")[-1]
         # Avoid confusion of the smartstacks.yaml under autotuned_defaults/ in the future
-        if "autotuned_defaults" == files:
+        if "autotuned_defaults" == service:
             continue
         for f in files:
             if f == "smartstack.yaml":
