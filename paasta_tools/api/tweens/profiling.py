@@ -14,8 +14,6 @@
 """
 Creates a tween that cprofiles requests
 """
-import functools
-
 import pyramid
 import pytz
 
@@ -28,7 +26,7 @@ try:
     pytz.BaseTzInfo = pytz.tzinfo.BaseTzInfo  # type: ignore
     import yelp_profiling
     from yelp_profiling.cprofile import CProfileConfig
-    from yelp_profiling.cprofile import CProfileScribeContext
+    from yelp_profiling.cprofile import CProfileContextManager
     from yelp_profiling.tweens import YelpSOARequestProcessor
 
     class PaastaCProfileConfig(CProfileConfig):
@@ -89,16 +87,16 @@ def cprofile_tween_factory(handler, registry):
     """
 
     def cprofile_tween(request):
-        if yelp_profiling is not None:
+        if yelp_profiling is None:
             return handler(request)
 
         config = PaastaCProfileConfig(registry.settings)
         processor = YelpSOARequestProcessor(config, registry)
+        context_manager = CProfileContextManager(config, processor)
 
-        with CProfileScribeContext(
-            config=config,
-            generate_log_fn=functools.partial(processor.generate_log_fn, request,),
-        ):
+        # uses the config and processor to decide whether or not to cprofile
+        # the request
+        with context_manager(request):
             processor.begin_request(request)
             status_code = 500
             try:
