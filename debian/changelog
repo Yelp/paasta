@@ -1,3 +1,12 @@
+paasta-tools (0.111.2) xenial; urgency=medium
+
+  * 0.111.2 tagged with 'make release'
+    Commit: Merge pull request #3231 from Yelp/u/kawaiwan/fix-paasta-
+    cprofile-code  Fix bugs that prevented cprofiling in paasta api from
+    working
+
+ -- Charles Wan <kawaiwan@yelp.com>  Thu, 28 Oct 2021 21:17:16 -0700
+
 paasta-tools (0.111.1) xenial; urgency=medium
 
   * 0.111.1 tagged with 'make release'
