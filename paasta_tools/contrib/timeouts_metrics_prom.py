@@ -24,32 +24,37 @@ SOA_DIR = "/nail/etc/services/"
 PROM_OUTPUT_FILE = "/nail/etc/services/.autotune_timeouts.prom"
 
 
-registry = CollectorRegistry()
-prom_metric = Gauge(
-    "yelpsoaconfig_endpoint_timeouts_ms",
-    "endpoint timeout value defined in yelpsoa-config",
-    ["path", "upstream"],
-    registry=registry,
-)
-for root, dirs, files in os.walk(SOA_DIR):
-    service = root.split("/")[-1]
-    for name in files:
-        if name == "smartstack.yaml":
-            with open(os.path.join(root, name)) as smartstack_file:
-                smartstack_yaml = yaml.safe_load(smartstack_file)
-                for instance_name, info in smartstack_yaml.items():
-                    upstream = service + "." + instance_name + ".egress_cluster"
-                    if "endpoint_timeouts" in info:
-                        for path, endpoint_timeouts in info[
-                            "endpoint_timeouts"
-                        ].items():
-                            prom_metric.labels(path, upstream).set(endpoint_timeouts)
-                    else:
-                        if "timeout_server_ms" in info:
-                            prom_metric.labels("default", upstream).set(
-                                info["timeout_server_ms"]
-                            )
-                        else:
-                            prom_metric.labels("default", upstream).set(1000)
+def read_and_write_timeouts_metrics(root, service, prom_metric):
+    with open(os.path.join(root, "smartstack.yaml")) as smartstack_file:
+        smartstack_yaml = yaml.safe_load(smartstack_file)
+    for instance_name, info in smartstack_yaml.items():
+        upstream = service + "." + instance_name + ".egress_cluster"
+        if "endpoint_timeouts" in info:
+            for path, endpoint_timeouts in info["endpoint_timeouts"].items():
+                prom_metric.labels(path, upstream).set(endpoint_timeouts)
+        else:
+            if "timeout_server_ms" in info:
+                prom_metric.labels("/", upstream).set(info["timeout_server_ms"])
+            else:
+                prom_metric.labels("/", upstream).set(1000)
 
-write_to_textfile(PROM_OUTPUT_FILE, registry)
+
+if __name__ == "__main__":
+    registry = CollectorRegistry()
+    prom_metric = Gauge(
+        "yelpsoaconfig_endpoint_timeouts_ms",
+        "endpoint timeout value defined in yelpsoa-config",
+        ["path", "upstream"],
+        registry=registry,
+    )
+    # Walk through soa config dir and filter smartstack yaml
+    for root, dirs, files in os.walk(SOA_DIR):
+        service = root.split("/")[-1]
+        # Avoid confusion of the smartstacks.yaml under autotuned_defaults/ in the future
+        if "autotuned_defaults" == files:
+            continue
+        for f in files:
+            if f == "smartstack.yaml":
+                read_and_write_timeouts_metrics(root, service, prom_metric)
+
+    write_to_textfile(PROM_OUTPUT_FILE, registry)
