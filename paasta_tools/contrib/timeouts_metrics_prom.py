@@ -4,14 +4,14 @@ The goal is to walk through all smartstack.yaml in yelpsoa directories
 and convert timeout values to the prometheus format.
 
 For every upstream and path, if endpoint timeout is specified, we record
-per endpoint timeout value. If not and if timeout_server_ms is specified,
-we record timeout_server_ms value in path `default`. Otherwise, we record the default
+per endpoint timeout value. If timeout_server_ms is specified,
+we record timeout_server_ms value in path `/`. Otherwise, we record the default
 timeout_server_ms 1000.
 
 # HELP endpoint timeout value defined in yelpsoa-config.
 # TYPE TYPE yelpsoaconfig_endpoint_timeouts_ms gauge
 yelpsoaconfig_endpoint_timeouts_ms{path="/consumer_app/devices/braze/info",upstream="push_notifications.main.egress_cluster"} 10000.0
-yelpsoaconfig_endpoint_timeouts_ms{path="default",upstream="mysql_read_security.main.egress_cluster"} 100.0
+yelpsoaconfig_endpoint_timeouts_ms{path="/",upstream="mysql_read_security.main.egress_cluster"} 100.0
 """
 import os
 
@@ -32,10 +32,9 @@ def read_and_write_timeouts_metrics(root, service, prom_metric):
         if "endpoint_timeout" in info:
             for path, endpoint_timeout in info["endpoint_timeout"].items():
                 prom_metric.labels(path, upstream).set(endpoint_timeout)
-        else:
-            if "timeout_server_ms" in info:
-                default_timeout = info.get("timeout_server_ms", 1000)
-                prom_metric.labels("/", upstream).set(default_timeout)
+        # always record default timeout
+        default_timeout = info.get("timeout_server_ms", 1000)
+        prom_metric.labels("/", upstream).set(default_timeout)
 
 
 if __name__ == "__main__":
