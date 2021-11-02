@@ -942,6 +942,7 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "some_sensu_team",
             },
+            "annotations": {"paasta.yelp.com/routable_ip": "false",},
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
                 {
