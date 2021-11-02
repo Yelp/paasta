@@ -1,3 +1,12 @@
+paasta-tools (0.112.0) xenial; urgency=medium
+
+  * 0.112.0 tagged with 'make release'
+    Commit: Send Pod annotations to Tron (#3229)  Currently, we only
+    send a single annotation: the one that toggles whether or not a Pod
+    gets an internally-routable IP
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Nov 2021 08:07:40 -0700
+
 paasta-tools (0.111.2) xenial; urgency=medium
 
   * 0.111.2 tagged with 'make release'
