@@ -960,10 +960,16 @@ Routing and Reliability
    Endpoints use prefix-matching by default; for example ``/specials/bulk/v1``
    will match both ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
 
+   Endpoints can also use regex matching, provided that the regex string begins
+   with a caret ``^`` and backslashes within the string are properly escaped.
+   For example, ``^/specials/[^/]+/v2/\\d`` will match the endpoints
+   ``/specials/bulk/v2/1`` and ``^/specials/milk/v2/2``.
+
    Example::
 
      endpoint_timeouts:
          "/specials/bulk/v1": 15000
+         "^/specials/[^/]+/v2/\\d": 11000
 
 Fault Injection
 ```````````````
