@@ -29,8 +29,8 @@ def read_and_write_timeouts_metrics(root, service, prom_metric):
         smartstack_yaml = yaml.safe_load(smartstack_file)
     for instance_name, info in smartstack_yaml.items():
         upstream = service + "." + instance_name + ".egress_cluster"
-        if "endpoint_timeout" in info:
-            for path, endpoint_timeout in info["endpoint_timeout"].items():
+        if "endpoint_timeouts" in info:
+            for path, endpoint_timeout in info["endpoint_timeouts"].items():
                 prom_metric.labels(path, upstream).set(endpoint_timeout)
         # always record default timeout
         default_timeout = info.get("timeout_server_ms", 1000)
