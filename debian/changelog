@@ -1,3 +1,10 @@
+paasta-tools (0.112.1) xenial; urgency=medium
+
+  * 0.112.1 tagged with 'make release'
+    Commit: Record prometheus yelpsoaconfig timeouts metrics (#3228)
+
+ -- Ning Wei <ningwei@yelp.com>  Thu, 04 Nov 2021 08:58:36 -0700
+
 paasta-tools (0.112.0) xenial; urgency=medium
 
   * 0.112.0 tagged with 'make release'
