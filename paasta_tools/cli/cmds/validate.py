@@ -401,7 +401,11 @@ def validate_autoscaling_configs(service_path):
                 and instance_config.is_autoscaling_enabled()
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
-                if autoscaling_params["metrics_provider"] in {"uwsgi", "http", "piscina"}:
+                if autoscaling_params["metrics_provider"] in {
+                    "uwsgi",
+                    "http",
+                    "piscina",
+                }:
                     # a service may omit both of these keys, but we provide our own
                     # default setpoint for all metrics providers so we are safe to
                     # unconditionally read it

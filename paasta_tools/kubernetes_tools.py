@@ -704,9 +704,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V2beta2MetricSpec(
                     type="Object",
                     object=V2beta2ObjectMetricSource(
-                        metric=V2beta2MetricIdentifier(
-                            name=prometheus_hpa_metric_name
-                        ),
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
                         described_object=V2beta2CrossVersionObjectReference(
                             api_version="apps/v1", kind="Deployment", name=name
                         ),
@@ -959,14 +957,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     return True
         return False
 
-    def should_setup_piscina_prometheus_scraping(
-        self,
-    ) -> bool:
+    def should_setup_piscina_prometheus_scraping(self,) -> bool:
         if self.is_autoscaling_enabled():
             autoscaling_params = self.get_autoscaling_params()
             return autoscaling_params["metrics_provider"] == "piscina"
         return False
-
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}
