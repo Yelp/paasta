@@ -46,6 +46,9 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -311,11 +314,8 @@ def create_instance_piscina_scaling_rule(
     """
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
-        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+        "moving_average_window_seconds", DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW
     )
-    # this should always be set, but we default to 0 for safety as the worst thing that would happen
-    # is that we take a couple more iterations than required to hit the desired setpoint
-    offset = autoscaling_config.get("offset", 0)
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
     replica_filter_terms = (
@@ -367,7 +367,7 @@ def create_instance_piscina_scaling_rule(
     )
     """
     desired_instances_at_each_point_in_time = f"""
-        {total_load} / {setpoint - offset}
+        {total_load} / {setpoint}
     """
     desired_instances = f"""
         avg_over_time(
