@@ -204,11 +204,7 @@ def should_create_piscina_scaling_rule(
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
     if autoscaling_config["metrics_provider"] == "piscina":
-        if not autoscaling_config.get("use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI):
-            return False, "requested piscina autoscaling, but not using Prometheus"
-
         return True, None
-
     return False, "did not request piscina autoscaling"
 
 
@@ -384,11 +380,9 @@ def create_instance_piscina_scaling_rule(
         {desired_instances} / {current_replicas}
     """
 
-    metric_name = f"{deployment_name}-uwsgi-prom"
-
     return {
-        "name": {"as": metric_name},
-        "seriesQuery": f"piscina_queue_load{{{worker_filter_terms}}}",
+        "name": {"as": f"{deployment_name}-piscina-prom"},
+        "seriesQuery": f"piscina_queue_size{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }

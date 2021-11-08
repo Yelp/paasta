@@ -179,7 +179,6 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
-DEFAULT_USE_PROMETHEUS_PISCINA = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
@@ -700,7 +699,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in ("uwsgi", "piscina"):
+        elif metrics_provider in {"uwsgi", "piscina"}:
             metrics.append(
                 V2beta2MetricSpec(
                     type="Object",
@@ -961,18 +960,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return False
 
     def should_setup_piscina_prometheus_scraping(
-        self, system_paasta_config: SystemPaastaConfig,
+        self,
     ) -> bool:
         if self.is_autoscaling_enabled():
             autoscaling_params = self.get_autoscaling_params()
-            if autoscaling_params["metrics_provider"] == "piscina":
-                if autoscaling_params.get(
-                    "use_prometheus",
-                    DEFAULT_USE_PROMETHEUS_PISCINA
-                    or system_paasta_config.default_should_setup_piscina_prometheus_scraping(),
-                ):
-                    return True
+            return autoscaling_params["metrics_provider"] == "piscina"
         return False
+
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}
@@ -1689,8 +1683,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
-        if piscina_autoscaling_configured:
-           labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+        elif self.should_setup_piscina_prometheus_scraping():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
