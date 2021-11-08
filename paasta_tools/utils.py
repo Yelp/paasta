@@ -2584,6 +2584,9 @@ class SystemPaastaConfig:
     def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
         return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
 
+    def default_should_setup_piscina_prometheus_scraping(self) -> bool:
+        return self.config_dict.get("default_should_setup_piscina_prometheus_scraping", False)
+
     def get_mark_for_deployment_max_polling_threads(self) -> int:
         return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
 
