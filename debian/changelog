@@ -1,3 +1,12 @@
+paasta-tools (0.112.2) xenial; urgency=medium
+
+  * 0.112.2 tagged with 'make release'
+    Commit: Merge pull request #3234 from Yelp/u/jfong/PAASTA-17500-
+    return_exceptions  PAASTA-17500: Handle more timeouts in new
+    kubernetes status
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 09 Nov 2021 13:10:15 -0800
+
 paasta-tools (0.112.1) xenial; urgency=medium
 
   * 0.112.1 tagged with 'make release'
