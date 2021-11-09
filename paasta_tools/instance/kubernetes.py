@@ -609,7 +609,7 @@ async def kubernetes_status_v2(
         )
         tasks.extend([pod_status_by_replicaset_task, versions_task])
 
-    await asyncio.gather(*tasks)
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     desired_state = job_config.get_desired_state()
     status["app_name"] = job_config.get_sanitised_deployment_name()
@@ -618,20 +618,33 @@ async def kubernetes_status_v2(
         job_config.get_instances() if desired_state != "stop" else 0
     )
     status["bounce_method"] = job_config.get_bounce_method()
-    status["versions"] = versions_task.result()
+
+    try:
+        pods_task.result()  # just verifies we have a valid result
+        # These tasks also depend on pods_task, so we cannot populate them without pods
+        status["versions"] = versions_task.result()
+        if mesh_status_task is not None:
+            status["envoy"] = mesh_status_task.result()
+    except asyncio.TimeoutError:
+        status["versions"] = []
+        status["error_message"] = (
+            "Could not fetch instance data. "
+            "This is usually a temporary problem.  Please try again or contact #compute-infra for help if you continue to see this message\n"
+        )
 
     if autoscaling_task is not None:
         try:
             status["autoscaling_status"] = autoscaling_task.result()
         except Exception as e:
-            status["error_message"] = (
-                f"Unknown error occurred while fetching autoscaling status. "
-                f"Please contact #compute-infra for help: {e}"
-            )
-
-    if mesh_status_task is not None:
-        status["envoy"] = mesh_status_task.result()
-
+            if "error_message" not in status:
+                status["error_message"] = (
+                    f"Unknown error occurred while fetching autoscaling status. "
+                    f"Please contact #compute-infra for help: {e}"
+                )
+            else:
+                status[
+                    "error_message"
+                ] += f"Unknown error occurred while fetching autoscaling status: {e}"
     return status
 
 
@@ -718,6 +731,8 @@ async def get_pod_status(
         get_pod_containers(pod, client, num_tail_lines)
     )
 
+    await asyncio.gather(events_task, containers_task, return_exceptions=True)
+
     reason = pod.status.reason
     message = pod.status.message
     scheduled = kubernetes_tools.is_pod_scheduled(pod)
@@ -729,7 +744,6 @@ async def get_pod_status(
     )
 
     try:
-        await asyncio.gather(events_task, containers_task)
         # Filter events to only last 15m
         pod_event_messages = events_task.result()
     except asyncio.TimeoutError:

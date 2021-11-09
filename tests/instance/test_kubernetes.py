@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 
 import a_sync
@@ -232,6 +233,13 @@ class TestKubernetesStatusV2:
         ) as mock_controller_revisions_for_service_instance:
             yield mock_controller_revisions_for_service_instance
 
+    @pytest.fixture
+    def mock_get_pod_event_messages(self):
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.get_pod_event_messages", autospec=True,
+        ) as mock_get_pod_event_messages:
+            yield mock_get_pod_event_messages
+
     def test_replicaset(
         self,
         mock_replicasets_for_service_instance,
@@ -239,6 +247,7 @@ class TestKubernetesStatusV2:
         mock_load_service_namespace_config,
         mock_pods_for_service_instance,
         mock_mesh_status,
+        mock_get_pod_event_messages,
         mock_pod,
     ):
         mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
@@ -263,19 +272,16 @@ class TestKubernetesStatusV2:
 
         mock_load_service_namespace_config.return_value = {}
         mock_job_config.get_registrations.return_value = ["service.instance"]
-        with asynctest.patch(
-            "paasta_tools.instance.kubernetes.get_pod_event_messages", autospec=True
-        ) as mock_get_pod_event_messages:
-            mock_get_pod_event_messages.return_value = []
-            status = pik.kubernetes_status_v2(
-                service="service",
-                instance="instance",
-                verbose=0,
-                include_smartstack=False,
-                include_envoy=False,
-                instance_type="kubernetes",
-                settings=mock.Mock(),
-            )
+        mock_get_pod_event_messages.return_value = []
+        status = pik.kubernetes_status_v2(
+            service="service",
+            instance="instance",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            instance_type="kubernetes",
+            settings=mock.Mock(),
+        )
 
         assert status == {
             "app_name": mock_job_config.get_sanitised_deployment_name.return_value,
@@ -398,6 +404,103 @@ class TestKubernetesStatusV2:
             "config_sha": "config000",
             "pods": [mock.ANY],
         }
+
+    def test_event_timeout(
+        self,
+        mock_replicasets_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_get_pod_event_messages,
+        mock_pod,
+    ):
+        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_replicasets_for_service_instance.return_value = [
+            Struct(
+                spec=Struct(replicas=1),
+                metadata=Struct(
+                    name="replicaset_1",
+                    creation_timestamp=datetime.datetime(2021, 3, 5),
+                    deletion_timestamp=None,
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                    },
+                ),
+            ),
+        ]
+        mock_pods_for_service_instance.return_value = [mock_pod]
+        mock_load_service_namespace_config.return_value = {}
+        mock_job_config.get_registrations.return_value = ["service.instance"]
+        mock_get_pod_event_messages.side_effect = asyncio.TimeoutError
+
+        status = pik.kubernetes_status_v2(
+            service="service",
+            instance="instance",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            instance_type="kubernetes",
+            settings=mock.Mock(),
+        )
+
+        # Verify  we did not throw an exception
+        assert status
+        assert all(
+            p["events"] == [{"error": "Could not retrieve events. Please try again."}]
+            for p in status["versions"][0]["pods"]
+        )
+
+    def test_pod_timeout(
+        self,
+        mock_replicasets_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_get_pod_event_messages,
+        mock_pod,
+    ):
+        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_replicasets_for_service_instance.return_value = [
+            Struct(
+                spec=Struct(replicas=1),
+                metadata=Struct(
+                    name="replicaset_1",
+                    creation_timestamp=datetime.datetime(2021, 3, 5),
+                    deletion_timestamp=None,
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                    },
+                ),
+            ),
+        ]
+        mock_load_service_namespace_config.return_value = {}
+        mock_job_config.get_registrations.return_value = ["service.instance"]
+        mock_get_pod_event_messages.return_value = []
+        mock_pods_for_service_instance.side_effect = asyncio.TimeoutError
+
+        status = pik.kubernetes_status_v2(
+            service="service",
+            instance="instance",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            instance_type="kubernetes",
+            settings=mock.Mock(),
+        )
+
+        # Verify  we did not throw an exception
+        assert status
+        assert "Could not fetch instance data" in status["error_message"]
 
 
 @mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)

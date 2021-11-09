@@ -2349,7 +2349,7 @@ async def controller_revisions_for_service_instance(
     return response.items
 
 
-@async_timeout()
+@async_timeout(15)
 async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
