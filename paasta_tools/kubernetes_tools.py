@@ -297,6 +297,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
+        "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/service": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
@@ -698,35 +699,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in ("http", "uwsgi"):
-            # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
-            # which should make this look less silly.
-            use_prometheus = autoscaling_params.get(
-                "use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI
-            )
-            if metrics_provider == "uwsgi" and use_prometheus:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=prometheus_hpa_metric_name
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1", kind="Deployment", name=name
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                # we average the number of instances needed to handle the current (or
-                                # averaged) load instead of the load itself as this leads to more
-                                # stable behavior. we return the percentage by which we want to
-                                # scale, so the target in the HPA should always be 1.
-                                # PAASTA-16756 for details
-                                value=1,
-                            ),
+        elif metrics_provider in {"uwsgi", "piscina"}:
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
                         ),
-                    )
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            # we average the number of instances needed to handle the current (or
+                            # averaged) load instead of the load itself as this leads to more
+                            # stable behavior. we return the percentage by which we want to
+                            # scale, so the target in the HPA should always be 1.
+                            # PAASTA-16756 for details
+                            value=1,
+                        ),
+                    ),
                 )
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
@@ -962,6 +955,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
+        return False
+
+    def should_setup_piscina_prometheus_scraping(self,) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            return autoscaling_params["metrics_provider"] == "piscina"
         return False
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
@@ -1678,6 +1677,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+
+        elif self.should_setup_piscina_prometheus_scraping():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),

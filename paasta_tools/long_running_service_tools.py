@@ -30,6 +30,7 @@ DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 # we set a different default moving average window so that we can reuse our existing PromQL
 # without having to write a different query for existing users that want to autoscale on
 # instantaneous CPU
