@@ -1,3 +1,11 @@
+paasta-tools (0.112.3) xenial; urgency=medium
+
+  * 0.112.3 tagged with 'make release'
+    Commit: Add piscina metrics_provider support (#3235)  Add support
+    for nodejs scaling services that use piscina.   docs coming soon™!
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 09 Nov 2021 13:20:22 -0800
+
 paasta-tools (0.112.2) xenial; urgency=medium
 
   * 0.112.2 tagged with 'make release'
