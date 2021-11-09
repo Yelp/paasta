@@ -350,7 +350,7 @@ def create_instance_piscina_scaling_rule(
         ) by (kube_deployment))
     """
     load_per_instance = f"""
-        (piscina_queue_size{{{worker_filter_terms}}} / piscina_max_queue_size{{{worker_filter_terms}}}) by (kube_deployment)
+        (piscina_queue_size{{{worker_filter_terms}}} / piscina_max_queue_size{{{worker_filter_terms}}})
     """
     missing_instances = f"""
         clamp_min(
