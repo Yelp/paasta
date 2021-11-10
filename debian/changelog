@@ -1,3 +1,11 @@
+paasta-tools (0.112.5) xenial; urgency=medium
+
+  * 0.112.5 tagged with 'make release'
+    Commit: swap out piscina_queue_size for piscina_pool_utilization
+    (#3237)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Nov 2021 15:30:56 -0800
+
 paasta-tools (0.112.4) xenial; urgency=medium
 
   * 0.112.4 tagged with 'make release'
