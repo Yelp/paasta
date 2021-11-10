@@ -1,3 +1,12 @@
+paasta-tools (0.112.4) xenial; urgency=medium
+
+  * 0.112.4 tagged with 'make release'
+    Commit: Merge pull request #3236 from Yelp/gcoll_COREML-
+    2694_set_k8s_default_batch_size_limit_cores  [COREML-2694] bump
+    service_configuration_lib to 2.7.0
+
+ -- Giulio Collura <gcoll@yelp.com>  Wed, 10 Nov 2021 10:24:00 -0800
+
 paasta-tools (0.112.3) xenial; urgency=medium
 
   * 0.112.3 tagged with 'make release'
