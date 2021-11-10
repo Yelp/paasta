@@ -350,7 +350,7 @@ def create_instance_piscina_scaling_rule(
         ) by (kube_deployment))
     """
     load_per_instance = f"""
-        (piscina_queue_size{{{worker_filter_terms}}} / piscina_max_queue_size{{{worker_filter_terms}}})
+        (piscina_pool_utilization{{{worker_filter_terms}}})
     """
     missing_instances = f"""
         clamp_min(
@@ -383,7 +383,7 @@ def create_instance_piscina_scaling_rule(
 
     return {
         "name": {"as": f"{deployment_name}-piscina-prom"},
-        "seriesQuery": f"piscina_queue_size{{{worker_filter_terms}}}",
+        "seriesQuery": f"piscina_pool_utilization{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
