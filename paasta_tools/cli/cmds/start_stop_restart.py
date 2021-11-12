@@ -318,5 +318,16 @@ def paasta_start(args):
     return paasta_start_or_stop(args, "start")
 
 
+PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(
+    "paasta stop requires explicit specification of cluster, service, and instance."
+)
+
+
 def paasta_stop(args):
+    if not args.clusters:
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
+    elif not args.service_instance and not (args.service and args.instances):
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
     return paasta_start_or_stop(args, "stop")
