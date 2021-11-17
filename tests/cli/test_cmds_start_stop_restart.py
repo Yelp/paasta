@@ -529,7 +529,7 @@ def test_cluster_list_defaults_to_all():
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_stop_or_start_warn_on_multi_instance(
+def test_start_warn_on_multi_instance(
     mock_list_clusters,
     mock_get_git_url,
     mock_get_instance_config,
@@ -567,3 +567,30 @@ def test_stop_or_start_warn_on_multi_instance(
     out, err = capfd.readouterr()
     assert ret == 1
     assert "Warning: trying to start/stop/restart multiple services" in out
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop", autospec=True,
+)
+class TestStopErrorsIfUnderspecified:
+    def run_and_assert_with_args(self, args, capfd):
+        parsed_args, _ = parse_args(args)
+        ret = parsed_args.command(parsed_args)
+        out, err = capfd.readouterr()
+        assert ret == 1
+        assert start_stop_restart.PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE in out
+
+    def test_no_cluster(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-s", "service", "-i", "instance"], capfd,
+        )
+
+    def test_no_service(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-c", "cluster", "-i", "instance"], capfd,
+        )
+
+    def test_no_instance(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-c", "cluster", "-s", "service"], capfd,
+        )
