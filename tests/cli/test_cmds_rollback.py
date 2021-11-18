@@ -31,9 +31,9 @@ from paasta_tools.utils import RollbackTypes
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_shas_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_mark_for_deployment_simple_invocation(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -91,9 +91,9 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_shas_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_with_force(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -159,9 +159,9 @@ def test_paasta_rollback_with_force(
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_shas_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -231,9 +231,9 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
 @patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_mark_for_deployment,
     mock_get_git_url,
     mock_figure_out_service_name,
@@ -259,9 +259,9 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_shas_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_git_sha_was_not_marked_before(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -295,9 +295,9 @@ def test_paasta_rollback_git_sha_was_not_marked_before(
 @patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.rollback.get_git_shas_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.rollback.deploy_authz_check", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
 def test_paasta_rollback_mark_for_deployment_multiple_deploy_group_args(
-    mock_deploy_authz_check,
+    mock_can_user_deploy_service,
     mock_get_git_shas_for_service,
     mock_mark_for_deployment,
     mock_get_git_url,

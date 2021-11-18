@@ -129,6 +129,9 @@ def test_log_event():
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -160,6 +163,7 @@ def test_paasta_start_or_stop(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -238,6 +242,9 @@ def test_paasta_start_or_stop(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -269,6 +276,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -316,6 +324,9 @@ def test_paasta_start_or_stop_with_deploy_group(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -347,6 +358,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -417,6 +429,9 @@ def test_stop_or_start_figures_out_correct_instances(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -435,6 +450,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_remote_refs,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
     capfd,
 ):
     args, _ = parse_args(
@@ -455,6 +471,9 @@ def test_stop_or_start_handle_ls_remote_failures(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -471,6 +490,7 @@ def test_start_or_stop_bad_refs(
     mock_get_instance_config,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
     capfd,
 ):
     args, _ = parse_args(
@@ -594,3 +614,29 @@ class TestStopErrorsIfUnderspecified:
         self.run_and_assert_with_args(
             ["stop", "-c", "cluster", "-s", "service"], capfd,
         )
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+def test_error_if_no_deploy_permissions(
+    mock_can_user_deploy_service,
+    mock_issue_state_change_for_service,
+    mock_apply_args_filters,
+):
+    args, _ = parse_args(
+        ["start", "-s", "service", "-c", "cluster", "-i", "instance", "-d", "/soa/dir",]
+    )
+    mock_apply_args_filters.return_value = {"cluster": {"service": {"instance": None}}}
+    mock_can_user_deploy_service.return_value = False
+    ret = args.command(args)
+
+    assert ret == 1
+    assert not mock_issue_state_change_for_service.called
