@@ -54,8 +54,6 @@ class AutoscalingParamsDict(TypedDict, total=False):
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     drain_method: str
-    iam_role: str
-    iam_role_provider: str
     fs_group: int
     container_port: int
     drain_method_params: Dict
@@ -232,12 +230,6 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 50)
-
-    def get_iam_role(self) -> str:
-        return self.config_dict.get("iam_role", "")
-
-    def get_iam_role_provider(self) -> str:
-        return self.config_dict.get("iam_role_provider", "kiam")
 
     def get_fs_group(self) -> Optional[int]:
         return self.config_dict.get("fs_group")

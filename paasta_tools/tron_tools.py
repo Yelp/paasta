@@ -60,6 +60,7 @@ from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
+    create_or_find_service_account_name,
     limit_size_with_hash,
     raw_selectors_to_requirements,
     sanitise_kubernetes_name,
@@ -774,6 +775,14 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
 
         if action_config.get_team() is not None:
             result["labels"]["yelp.com/owner"] = action_config.get_team()
+
+        if (
+            action_config.get_iam_role_provider() == "aws"
+            and action_config.get_iam_role()
+        ):
+            result["service_account_name"] = create_or_find_service_account_name(
+                iam_role=action_config.get_iam_role(), namespace="tron"
+            )
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
