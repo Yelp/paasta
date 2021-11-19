@@ -1,3 +1,12 @@
+paasta-tools (0.113.0) xenial; urgency=medium
+
+  * 0.113.0 tagged with 'make release'
+    Commit: Merge pull request #3240 from Yelp/PAASTA-
+    17412_start_stop_restart_authz  Require that users have push
+    permissions to start/stop/restart instances
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 19 Nov 2021 09:56:45 -0800
+
 paasta-tools (0.112.5) xenial; urgency=medium
 
   * 0.112.5 tagged with 'make release'
