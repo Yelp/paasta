@@ -1,3 +1,12 @@
+paasta-tools (0.113.1) xenial; urgency=medium
+
+  * 0.113.1 tagged with 'make release'
+    Commit: Merge pull request #3243 from Yelp/u/jfong/SEC-14954-hacheck-
+    itest  SEC-14954: Bump hacheck itest container to use recent ubuntu,
+    python,…
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 23 Nov 2021 14:33:50 -0800
+
 paasta-tools (0.113.0) xenial; urgency=medium
 
   * 0.113.0 tagged with 'make release'
