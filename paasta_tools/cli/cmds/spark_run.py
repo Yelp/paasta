@@ -154,12 +154,14 @@ def add_subparser(subparsers):
         help=(
             "Set docker memory limit. Should be greater than driver memory. Defaults to 2x driver memory. Example: 2g, 500m, Max: 64g"
         ),
+        default=False,
     )
     list_parser.add_argument(
         "--docker-cpu-limit",
         help=(
             "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x driver cores."
         ),
+        default=False,
     )
     list_parser.add_argument(
         "--docker-registry",
@@ -651,6 +653,11 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
 def _calculate_docker_memory_limit(
     spark_conf: Mapping[str, str], memory_limit: str
 ) -> str:
+    """ In Order of preference:
+    1. Argument: --docker-memory-limit
+    2. --spark-args or spark-submit: spark.driver.memory
+    3. Default
+    """
     try:
         if memory_limit:
             docker_memory_limit_str = memory_limit
@@ -676,6 +683,11 @@ def _calculate_docker_memory_limit(
 
 
 def _calculate_docker_cpu_limit(spark_conf: Mapping[str, str], cpu_limit: str) -> str:
+    """ In Order of preference:
+    1. Argument: --docker-cpu-limit
+    2. --spark-args or spark-submit: spark.driver.cores
+    3. Default
+    """
     if cpu_limit:
         docker_cpu_limit = cpu_limit
     else:
