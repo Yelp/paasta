@@ -47,17 +47,60 @@ def parse_args():
         "--service", help="Service to modify", required=True, dest="service",
     )
     parser.add_argument(
-        "--instance-count",
-        help="If a deploy group is added, the default instance count to create it with",
+        "--min-instance-count",
+        help="If a deploy group is added, the min_instance count to create it with",
         required=False,
         default=1,
-        dest="instance_count",
+        dest="min_instance_count",
+    )
+    parser.add_argument(
+        "--prod-max-instance-count",
+        help="If a deploy group is added, the prod max_instance count to create it with",
+        required=False,
+        default=100,
+        type=int,
+        dest="prod_max_instance_count",
+    )
+    parser.add_argument(
+        "--non-prod-max-instance-count",
+        help="If a deploy group is added, the non-prod max_instance count to create it with",
+        required=False,
+        default=5,
+        type=int,
+        dest="non_prod_max_instance_count",
+    )
+    parser.add_argument(
+        "--cpus",
+        help="If a deploy group is added, the cpu value to create it with",
+        required=False,
+        type=float,
+        dest="cpus",
+    )
+    parser.add_argument(
+        "--mem",
+        help="If a deploy group is added, the mem value to create it with",
+        required=False,
+        type=int,
+        dest="mem",
+    )
+    parser.add_argument(
+        "--setpoint",
+        help="If a deploy group is added, the autoscaling.setpoint value to create it with",
+        required=False,
+        type=float,
+        dest="setpoint",
     )
     parser.add_argument(
         "--shard-name",
         help="Shard name to add if it does not exist",
         required=True,
         dest="shard_name",
+    )
+    parser.add_argument(
+        "--metrics-provider",
+        help="Autoscaling metrics provider",
+        required=False,
+        dest="metrics_provider",
     )
     return parser.parse_args()
 
@@ -113,16 +156,32 @@ def main(args):
             for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
                 for config_path in config_paths:
                     kube_file = updater.get_existing_configs(args.service, config_path)
+                    instance_config = {
+                        "deploy_group": f"{deploy_prefix}.{args.shard_name}",
+                        "min_instances": args.min_instance_count,
+                        "max_instances": args.prod_max_instance_count
+                        if deploy_prefix == "prod"
+                        else args.non_prod_max_instance_count,
+                        "env": {
+                            "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
+                        },
+                    }
+                    if args.metrics_provider is not None or args.setpoint is not None:
+                        instance_config["autoscaling"] = {}
+                        if args.metrics_provider is not None:
+                            instance_config["autoscaling"][
+                                "metrics_provider"
+                            ] = args.metrics_provider
+                        if args.setpoint is not None:
+                            instance_config["autoscaling"]["setpoint"] = args.setpoint
+                    if args.cpus is not None:
+                        instance_config["cpus"] = args.cpus
+                    if args.mem is not None:
+                        instance_config["mem"] = args.mem
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in kube_file.keys():
-                        kube_file[args.shard_name] = {
-                            "deploy_group": f"{deploy_prefix}.{args.shard_name}",
-                            "instances": args.instance_count,
-                            "env": {
-                                "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
-                            },
-                        }
+                        kube_file[args.shard_name] = instance_config
                         updater.write_configs(args.service, config_path, kube_file)
                         log.info(
                             f"{deploy_prefix}.{args.shard_name} added to {config_path}"
