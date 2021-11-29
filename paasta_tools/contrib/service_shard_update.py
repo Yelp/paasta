@@ -1,7 +1,6 @@
 import argparse
 import logging
 import sys
-from enum import auto
 
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.config_utils import AutoConfigUpdater
@@ -74,7 +73,6 @@ def parse_args():
         "--cpus",
         help="If a deploy group is added, the cpu value to create it with",
         required=False,
-        default=1.8,
         type=float,
         dest="cpus",
     )
@@ -82,7 +80,6 @@ def parse_args():
         "--mem",
         help="If a deploy group is added, the mem value to create it with",
         required=False,
-        default=100,
         type=int,
         dest="mem",
     )
@@ -90,7 +87,6 @@ def parse_args():
         "--setpoint",
         help="If a deploy group is added, the autoscaling.setpoint value to create it with",
         required=False,
-        default=0.8,
         type=float,
         dest="setpoint",
     )
@@ -160,25 +156,32 @@ def main(args):
             for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
                 for config_path in config_paths:
                     kube_file = updater.get_existing_configs(args.service, config_path)
-                    autoscaling_config = {"setpoint": args.setpoint}
-                    if args.metrics_provider is not None:
-                        autoscaling_config["metrics_provider"] = args.metrics_provider
+                    instance_config = {
+                        "deploy_group": f"{deploy_prefix}.{args.shard_name}",
+                        "min_instances": args.min_instance_count,
+                        "max_instances": args.prod_max_instance_count
+                        if deploy_prefix == "prod"
+                        else args.non_prod_max_instance_count,
+                        "env": {
+                            "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
+                        },
+                    }
+                    if args.metrics_provider is not None or args.setpoint is not None:
+                        instance_config["autoscaling"] = {}
+                        if args.metrics_provider is not None:
+                            instance_config["autoscaling"][
+                                "metrics_provider"
+                            ] = args.metrics_provider
+                        if args.setpoint is not None:
+                            instance_config["autoscaling"]["setpoint"] = args.setpoint
+                    if args.cpus is not None:
+                        instance_config["cpus"] = args.cpus
+                    if args.mem is not None:
+                        instance_config["mem"] = args.mem
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in kube_file.keys():
-                        kube_file[args.shard_name] = {
-                            "deploy_group": f"{deploy_prefix}.{args.shard_name}",
-                            "min_instances": args.min_instance_count,
-                            "max_instances": args.prod_max_instance_count
-                            if deploy_prefix == "prod"
-                            else args.non_prod_max_instance_count,
-                            "cpus": args.cpus,
-                            "mem": args.mem,
-                            "autoscaling": autoscaling_config,
-                            "env": {
-                                "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
-                            },
-                        }
+                        kube_file[args.shard_name] = instance_config
                         updater.write_configs(args.service, config_path, kube_file)
                         log.info(
                             f"{deploy_prefix}.{args.shard_name} added to {config_path}"
