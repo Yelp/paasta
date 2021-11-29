@@ -1,3 +1,11 @@
+paasta-tools (0.113.2) xenial; urgency=medium
+
+  * 0.113.2 tagged with 'make release'
+    Commit: Merge pull request #3244 from kedarv/more-controls-on-
+    shard_update-script  add more configuration options to shard script
+
+ -- Kedar Vaidya <kedar@yelp.com>  Mon, 29 Nov 2021 15:15:07 -0800
+
 paasta-tools (0.113.1) xenial; urgency=medium
 
   * 0.113.1 tagged with 'make release'
