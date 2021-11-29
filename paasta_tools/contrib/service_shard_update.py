@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+from enum import auto
 
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.config_utils import AutoConfigUpdater
@@ -99,6 +100,12 @@ def parse_args():
         required=True,
         dest="shard_name",
     )
+    parser.add_argument(
+        "--metrics-provider",
+        help="Autoscaling metrics provider",
+        required=False,
+        dest="metrics_provider",
+    )
     return parser.parse_args()
 
 
@@ -153,6 +160,9 @@ def main(args):
             for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
                 for config_path in config_paths:
                     kube_file = updater.get_existing_configs(args.service, config_path)
+                    autoscaling_config = {"setpoint": args.setpoint}
+                    if args.metrics_provider is not None:
+                        autoscaling_config["metrics_provider"] = args.metrics_provider
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in kube_file.keys():
@@ -164,7 +174,7 @@ def main(args):
                             else args.non_prod_max_instance_count,
                             "cpus": args.cpus,
                             "mem": args.mem,
-                            "autoscaling": {"setpoint": args.setpoint,},
+                            "autoscaling": autoscaling_config,
                             "env": {
                                 "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
                             },
