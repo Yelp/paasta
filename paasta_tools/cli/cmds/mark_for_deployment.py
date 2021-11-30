@@ -304,7 +304,7 @@ def mark_for_deployment(
     return 1
 
 
-def deploy_authz_check(deploy_info: Dict[str, Any], service: str) -> None:
+def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     deploy_username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
@@ -330,7 +330,8 @@ def deploy_authz_check(deploy_info: Dict[str, Any], service: str) -> None:
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
             print(logline, file=sys.stderr)
-            sys.exit(1)
+            return False
+    return True
 
 
 def report_waiting_aborted(service: str, deploy_group: str) -> None:
@@ -461,7 +462,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    deploy_authz_check(deploy_info, service)
+    if not can_user_deploy_service(deploy_info, service):
+        sys.exit(1)
 
     deploy_process = MarkForDeploymentProcess(
         service=service,

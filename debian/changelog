@@ -1,3 +1,29 @@
+paasta-tools (0.113.2) xenial; urgency=medium
+
+  * 0.113.2 tagged with 'make release'
+    Commit: Merge pull request #3244 from kedarv/more-controls-on-
+    shard_update-script  add more configuration options to shard script
+
+ -- Kedar Vaidya <kedar@yelp.com>  Mon, 29 Nov 2021 15:15:07 -0800
+
+paasta-tools (0.113.1) xenial; urgency=medium
+
+  * 0.113.1 tagged with 'make release'
+    Commit: Merge pull request #3243 from Yelp/u/jfong/SEC-14954-hacheck-
+    itest  SEC-14954: Bump hacheck itest container to use recent ubuntu,
+    python,…
+
+ -- Stuart Elston <selston@yelp.com>  Tue, 23 Nov 2021 14:33:50 -0800
+
+paasta-tools (0.113.0) xenial; urgency=medium
+
+  * 0.113.0 tagged with 'make release'
+    Commit: Merge pull request #3240 from Yelp/PAASTA-
+    17412_start_stop_restart_authz  Require that users have push
+    permissions to start/stop/restart instances
+
+ -- Stuart Elston <selston@yelp.com>  Fri, 19 Nov 2021 09:56:45 -0800
+
 paasta-tools (0.112.5) xenial; urgency=medium
 
   * 0.112.5 tagged with 'make release'

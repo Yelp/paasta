@@ -24,6 +24,8 @@ import choice
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
+from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
@@ -216,6 +218,15 @@ def paasta_start_or_stop(args, desired_state):
             print("exiting")
             return 1
 
+    if not all(
+        [
+            can_user_deploy_service(get_deploy_info(service, soa_dir), service)
+            for service in affected_services
+        ]
+    ):
+        print(PaastaColors.red("Exiting due to missing deploy permissions"))
+        return 1
+
     invalid_deploy_groups = []
     marathon_message_printed = False
     affected_flinks = []
@@ -318,5 +329,16 @@ def paasta_start(args):
     return paasta_start_or_stop(args, "start")
 
 
+PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(
+    "paasta stop requires explicit specification of cluster, service, and instance."
+)
+
+
 def paasta_stop(args):
+    if not args.clusters:
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
+    elif not args.service_instance and not (args.service and args.instances):
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
     return paasta_start_or_stop(args, "stop")
