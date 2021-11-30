@@ -21,6 +21,8 @@ from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
+from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_CORES_BY_SPARK
+from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_MEMORY_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
@@ -42,12 +44,21 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
     docker_img = "fake-registry/fake-service"
     docker_cmd = "pyspark"
     nvidia = False
+    docker_memory_limit = "2g"
+    docker_cpu_limit = "2"
 
     actual = get_docker_run_cmd(
-        container_name, volumes, env, docker_img, docker_cmd, nvidia
+        container_name,
+        volumes,
+        env,
+        docker_img,
+        docker_cmd,
+        nvidia,
+        docker_memory_limit,
+        docker_cpu_limit,
     )
 
-    assert actual[5:] == [
+    assert actual[7:] == [
         "--user=1234:100",
         "--name=fake_name",
         "--env",
@@ -349,6 +360,8 @@ def test_run_docker_container(
         docker_cmd=docker_cmd,
         dry_run=dry_run,
         nvidia=nvidia,
+        docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+        docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
     )
     mock_get_docker_run_cmd.assert_called_once_with(
         container_name=container_name,
@@ -357,6 +370,8 @@ def test_run_docker_container(
         docker_img=docker_img,
         docker_cmd=docker_cmd,
         nvidia=nvidia,
+        docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+        docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
     )
 
     if dry_run:
@@ -496,6 +511,105 @@ class TestConfigureAndRunDockerContainer:
             docker_cmd=mock_get_docker_cmd.return_value,
             dry_run=True,
             nvidia=False,
+            docker_memory_limit="2g",
+            docker_cpu_limit="1",
+        )
+
+    @pytest.mark.parametrize(
+        ["cluster_manager", "spark_args_volumes", "expected_volumes"],
+        [
+            (
+                spark_run.CLUSTER_MANAGER_MESOS,
+                {
+                    "spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"
+                },
+                ["/mesos/volume:/mesos/volume:rw"],
+            ),
+            (
+                spark_run.CLUSTER_MANAGER_K8S,
+                {
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                    "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
+                },
+                ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+            ),
+        ],
+    )
+    def test_configure_and_run_docker_container_driver_memory(
+        self,
+        mock_get_history_url,
+        mock_et_signalfx_url,
+        mock_get_docker_cmd,
+        mock_create_spark_config_str,
+        mock_get_webui_url,
+        mock_send_and_calculate_resources_cost,
+        mock_run_docker_container,
+        mock_get_username,
+        cluster_manager,
+        spark_args_volumes,
+        expected_volumes,
+    ):
+        mock_get_username.return_value = "fake_user"
+        spark_conf = {
+            "spark.app.name": "fake_app",
+            "spark.ui.port": "1234",
+            "spark.driver.memory": "1g",
+            "spark.driver.cores": "2",
+            **spark_args_volumes,
+        }
+        mock_run_docker_container.return_value = 0
+
+        args = mock.MagicMock()
+        args.aws_region = "fake_region"
+        args.cluster = "fake_cluster"
+        args.cmd = "pyspark"
+        args.work_dir = "/fake_dir:/spark_driver"
+        args.dry_run = True
+        args.mrjob = False
+        args.nvidia = False
+        args.enable_compact_bin_packing = False
+        args.cluster_manager = cluster_manager
+        with mock.patch.object(
+            self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
+        ):
+            retcode = configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+                aws_creds=("id", "secret", "token"),
+                spark_conf=spark_conf,
+                cluster_manager=cluster_manager,
+                pod_template_path="unique-run",
+            )
+        assert retcode == 0
+        mock_run_docker_container.assert_called_once_with(
+            container_name="fake_app",
+            volumes=(
+                expected_volumes
+                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+            ),
+            environment={
+                "env1": "val1",
+                "AWS_ACCESS_KEY_ID": "id",
+                "AWS_SECRET_ACCESS_KEY": "secret",
+                "AWS_SESSION_TOKEN": "token",
+                "AWS_DEFAULT_REGION": "fake_region",
+                "SPARK_OPTS": mock_create_spark_config_str.return_value,
+                "SPARK_USER": "root",
+                "PAASTA_INSTANCE_TYPE": "spark",
+                "PAASTA_LAUNCHED_BY": mock.ANY,
+            },
+            docker_img="fake-registry/fake-service",
+            docker_cmd=mock_get_docker_cmd.return_value,
+            dry_run=True,
+            nvidia=False,
+            docker_memory_limit="2g",
+            docker_cpu_limit="2",
         )
 
     def test_configure_and_run_docker_container_nvidia(
