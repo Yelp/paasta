@@ -658,15 +658,14 @@ def _calculate_docker_memory_limit(
     2. --spark-args or spark-submit: spark.driver.memory
     3. Default
     """
+    if memory_limit:
+        return memory_limit
+
     try:
-        if memory_limit:
-            docker_memory_limit_str = memory_limit
-            adjustment_factor = 1
-        else:
-            docker_memory_limit_str = spark_conf.get(
-                "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
-            )
-            adjustment_factor = DOCKER_RESOURCE_ADJUSTMENT_FACTOR
+        docker_memory_limit_str = spark_conf.get(
+            "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
+        )
+        adjustment_factor = DOCKER_RESOURCE_ADJUSTMENT_FACTOR
         match = re.match(r"([0-9]+)([a-z]*)", docker_memory_limit_str)
         memory_val = int(match[1]) * adjustment_factor
         memory_unit = match[2]
@@ -710,26 +709,9 @@ def configure_and_run_docker_container(
 
     # driver specific volumes
     volumes: List[str] = []
-    try:
 
-        docker_memory_limit_str = spark_conf.get(
-            "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
-        )
-        match = re.match(r"([0-9]+)([a-z]*)", docker_memory_limit_str)
-        memory_val = int(match[1]) * DOCKER_RESOURCE_ADJUSTMENT_FACTOR
-        memory_unit = match[2]
-        docker_memory_limit = f"{memory_val}{memory_unit}"
-    except Exception as e:
-        # This case shouldn't arise, but if for any reason it fails, we continue with default value
-        log.error(
-            f"Failed to parse docker memory limit. Error: {e}. Example values: 1g, 200m."
-            " Setting a default value {DEFAULT_MAX_DOCKER_MEMORY_LIMIT}"
-        )
-        docker_memory_limit = DEFAULT_MAX_DOCKER_MEMORY_LIMIT
-
-    docker_cpu_limit = str(
-        int(spark_conf.get("spark.driver.cores", DEFAULT_DRIVER_CORES_BY_SPARK))
-        * DOCKER_RESOURCE_ADJUSTMENT_FACTOR
+    docker_memory_limit = _calculate_docker_memory_limit(
+        spark_conf, args.docker_memory_limit
     )
     docker_cpu_limit = _calculate_docker_cpu_limit(spark_conf, args.docker_cpu_limit,)
 
