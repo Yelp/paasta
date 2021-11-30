@@ -150,6 +150,18 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--docker-memory-limit",
+        help=(
+            "Set docker memory limit. Should be greater than driver memory. Defaults to 2x driver memory. Example: 2g, 500m, Max: 64g"
+        ),
+    )
+    list_parser.add_argument(
+        "--docker-cpu-limit",
+        help=(
+            "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x driver cores."
+        ),
+    )
+    list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
         default=DEFAULT_SPARK_DOCKER_REGISTRY,
@@ -636,14 +648,20 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     return spark_app_name
 
 
-def _calculate_docker_memory_cpu_limit(spark_conf):
+def _calculate_docker_memory_limit(
+    spark_conf: Mapping[str, str], memory_limit: str
+) -> str:
     try:
-
-        docker_memory_limit_str = spark_conf.get(
-            "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
-        )
+        if memory_limit:
+            docker_memory_limit_str = memory_limit
+            adjustment_factor = 1
+        else:
+            docker_memory_limit_str = spark_conf.get(
+                "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
+            )
+            adjustment_factor = DOCKER_RESOURCE_ADJUSTMENT_FACTOR
         match = re.match(r"([0-9]+)([a-z]*)", docker_memory_limit_str)
-        memory_val = int(match[1]) * DOCKER_RESOURCE_ADJUSTMENT_FACTOR
+        memory_val = int(match[1]) * adjustment_factor
         memory_unit = match[2]
         docker_memory_limit = f"{memory_val}{memory_unit}"
     except Exception as e:
@@ -654,10 +672,17 @@ def _calculate_docker_memory_cpu_limit(spark_conf):
         )
         docker_memory_limit = DEFAULT_MAX_DOCKER_MEMORY_LIMIT
 
-    docker_cpu_limit = str(
-        int(spark_conf.get("spark.driver.cores", DEFAULT_DRIVER_CORES_BY_SPARK))
-    )
-    return docker_memory_limit, docker_cpu_limit
+    return docker_memory_limit
+
+
+def _calculate_docker_cpu_limit(spark_conf: Mapping[str, str], cpu_limit: str) -> str:
+    if cpu_limit:
+        docker_cpu_limit = cpu_limit
+    else:
+        docker_cpu_limit = str(
+            int(spark_conf.get("spark.driver.cores", DEFAULT_DRIVER_CORES_BY_SPARK))
+        )
+    return docker_cpu_limit
 
 
 def configure_and_run_docker_container(
@@ -694,6 +719,7 @@ def configure_and_run_docker_container(
         int(spark_conf.get("spark.driver.cores", DEFAULT_DRIVER_CORES_BY_SPARK))
         * DOCKER_RESOURCE_ADJUSTMENT_FACTOR
     )
+    docker_cpu_limit = _calculate_docker_cpu_limit(spark_conf, args.docker_cpu_limit,)
 
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = (
@@ -976,6 +1002,8 @@ def paasta_spark_run(args):
     # Get driver-memory and cores
     sub_cmds = args.cmd.split(" ")  # spark.driver.memory=10g
     for cmd in sub_cmds:
+        # This is required if these configs are provided as part of `spark-submit`
+        # Other way to provide is with --spark-args
         if cmd.startswith("spark.driver.memory") or cmd.startswith(
             "spark.driver.cores"
         ):
