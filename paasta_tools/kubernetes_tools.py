@@ -230,7 +230,7 @@ class KubeContainerResources(NamedTuple):
     disk: float  # mb
 
 
-class KubeService(NamedTuple):
+class KubernetesServiceRegistration(NamedTuple):
     name: str
     instance: str
     port: int
@@ -297,6 +297,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
+        "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/service": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
@@ -309,7 +310,6 @@ KubePodLabels = TypedDict(
 
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
-    bounce_margin_factor: float
     bounce_health_params: Dict[str, Any]
     service_account_name: str
     node_selectors: Dict[str, Union[str, Dict[str, Any]]]
@@ -407,6 +407,22 @@ def load_kubernetes_service_config(
     )
 
 
+def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
+    """ Returns `name` unchanged if it's length does not exceed the `limit`.
+        Otherwise, returns truncated `name` with it's hash of size `suffix`
+        appended.
+
+        base32 encoding is chosen as it satisfies the common requirement in
+        various k8s names to be alphanumeric.
+    """
+    if len(name) > limit:
+        digest = hashlib.md5(name.encode()).digest()
+        hash = base64.b32encode(digest).decode().replace("=", "").lower()
+        return f"{name[:(limit-suffix-1)]}-{hash[:suffix]}"
+    else:
+        return name
+
+
 class InvalidKubernetesConfig(Exception):
     def __init__(self, exception: Exception, service: str, instance: str) -> None:
         super().__init__(
@@ -442,6 +458,71 @@ class KubeClient:
         # to monkey-patch the JSON data with configs the api supports, but the
         # Python client lib may not yet.
         self.jsonify = self.api_client.sanitize_for_serialization
+
+
+def allowlist_denylist_to_requirements(
+    allowlist: DeployWhitelist, denylist: DeployBlacklist
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts deploy_whitelist and deploy_blacklist to a list of
+    requirements, which can be converted to node affinities.
+    """
+    requirements = []
+    # convert whitelist into a node selector req
+    if allowlist:
+        location_type, alloweds = allowlist
+        requirements.append((to_node_label(location_type), "In", alloweds))
+    # convert blacklist into multiple node selector reqs
+    if denylist:
+        # not going to prune for duplicates, or group blacklist items for
+        # same location_type. makes testing easier and k8s can handle it.
+        for location_type, not_allowed in denylist:
+            requirements.append((to_node_label(location_type), "NotIn", [not_allowed]))
+    return requirements
+
+
+def raw_selectors_to_requirements(
+    raw_selectors: Mapping[str, Any]
+) -> List[Tuple[str, str, List[str]]]:
+    """Converts certain node_selectors into requirements, which can be
+    converted to node affinities.
+    """
+    requirements = []
+
+    for label, configs in raw_selectors.items():
+        if type(configs) is not list or len(configs) == 0:
+            continue
+        elif type(configs[0]) is str:
+            # specifying an array/list of strings for a label is shorthand
+            # for the "In" operator
+            configs = [{"operator": "In", "values": configs}]
+
+        label = to_node_label(label)
+        for config in configs:
+            if config["operator"] in {"In", "NotIn"}:
+                values = config["values"]
+            elif config["operator"] in {"Exists", "DoesNotExist"}:
+                values = []
+            elif config["operator"] in {"Gt", "Lt"}:
+                # config["value"] is validated by jsonschema to be an int. but,
+                # k8s expects singleton list of the int represented as a str
+                # for these operators.
+                values = [str(config["value"])]
+            else:
+                raise ValueError(
+                    f"Unknown k8s node affinity operator: {config['operator']}"
+                )
+            requirements.append((label, config["operator"], values))
+
+    return requirements
+
+
+def registration_label(namespace: str) -> str:
+    """ Returns namespace prefixed with registrations.{paasta_prefix}/, with
+        name part of label key truncated to 63 characters with hash as suffix
+        if needed.
+    """
+    limited_namespace = limit_size_with_hash(namespace, limit=63, suffix=4)
+    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -618,35 +699,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in ("http", "uwsgi"):
-            # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
-            # which should make this look less silly.
-            use_prometheus = autoscaling_params.get(
-                "use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI
-            )
-            if metrics_provider == "uwsgi" and use_prometheus:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=prometheus_hpa_metric_name
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1", kind="Deployment", name=name
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                # we average the number of instances needed to handle the current (or
-                                # averaged) load instead of the load itself as this leads to more
-                                # stable behavior. we return the percentage by which we want to
-                                # scale, so the target in the HPA should always be 1.
-                                # PAASTA-16756 for details
-                                value=1,
-                            ),
+        elif metrics_provider in {"uwsgi", "piscina"}:
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
                         ),
-                    )
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            # we average the number of instances needed to handle the current (or
+                            # averaged) load instead of the load itself as this leads to more
+                            # stable behavior. we return the percentage by which we want to
+                            # scale, so the target in the HPA should always be 1.
+                            # PAASTA-16756 for details
+                            value=1,
+                        ),
+                    ),
                 )
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
@@ -882,6 +955,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
+        return False
+
+    def should_setup_piscina_prometheus_scraping(self,) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            return autoscaling_params["metrics_provider"] == "piscina"
         return False
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
@@ -1623,7 +1702,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # Allow Kubernetes Services to easily find
             # pods belonging to a certain smartstack namespace
             for registration in self.get_registrations():
-                labels[f"registrations.paasta.yelp.com/{registration}"] = "true"  # type: ignore
+                labels[registration_label(registration)] = "true"  # type: ignore
 
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
@@ -1642,6 +1721,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+
+        elif self.should_setup_piscina_prometheus_scraping():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
@@ -1667,8 +1750,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         note: At the time of writing, `kubectl describe` does not show affinities,
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
-        requirements = self._whitelist_blacklist_to_requirements()
-        requirements.extend(self._raw_selectors_to_requirements())
+        requirements = allowlist_denylist_to_requirements(
+            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=self.config_dict.get("node_selectors", {}),
+            )
+        )
         # package everything into a node affinity - lots of layers :P
         if len(requirements) == 0:
             return None
@@ -1729,61 +1818,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             labels[PAASTA_ATTRIBUTE_PREFIX + "instance"] = condition.get("instance")
         return V1LabelSelector(match_labels=labels) if labels else None
 
-    def _whitelist_blacklist_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts deploy_whitelist and deploy_blacklist to a list of
-        requirements, which can be converted to node affinities.
-        """
-        requirements = []
-        # convert whitelist into a node selector req
-        whitelist = self.get_deploy_whitelist()
-        if whitelist:
-            location_type, alloweds = whitelist
-            requirements.append((to_node_label(location_type), "In", alloweds))
-        # convert blacklist into multiple node selector reqs
-        blacklist = self.get_deploy_blacklist()
-        if blacklist:
-            # not going to prune for duplicates, or group blacklist items for
-            # same location_type. makes testing easier and k8s can handle it.
-            for location_type, not_allowed in blacklist:
-                requirements.append(
-                    (to_node_label(location_type), "NotIn", [not_allowed])
-                )
-        return requirements
-
-    def _raw_selectors_to_requirements(self) -> List[Tuple[str, str, List[str]]]:
-        """Converts certain node_selectors into requirements, which can be
-        converted to node affinities.
-        """
-        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
-        requirements = []
-
-        for label, configs in raw_selectors.items():
-            if type(configs) is not list or len(configs) == 0:
-                continue
-            elif type(configs[0]) is str:
-                # specifying an array/list of strings for a label is shorthand
-                # for the "In" operator
-                configs = [{"operator": "In", "values": configs}]
-
-            label = to_node_label(label)
-            for config in configs:
-                if config["operator"] in {"In", "NotIn"}:
-                    values = config["values"]
-                elif config["operator"] in {"Exists", "DoesNotExist"}:
-                    values = []
-                elif config["operator"] in {"Gt", "Lt"}:
-                    # config["value"] is validated by jsonschema to be an int. but,
-                    # k8s expects singleton list of the int represented as a str
-                    # for these operators.
-                    values = [str(config["value"])]
-                else:
-                    raise ValueError(
-                        f"Unknown k8s node affinity operator: {config['operator']}"
-                    )
-                requirements.append((label, config["operator"], values))
-
-        return requirements
-
     def sanitize_for_config_hash(
         self, config: Union[V1Deployment, V1StatefulSet]
     ) -> Mapping[str, Any]:
@@ -1808,9 +1842,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.get_service(), environment_variables=self.get_env()
         )
         return ahash
-
-    def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
 
     def get_termination_grace_period(self) -> Optional[int]:
         return self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
@@ -1869,13 +1900,9 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
     return services
 
 
-def get_kubernetes_services_running_here() -> Sequence[KubeService]:
+def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
     services = []
-    try:
-        pods = get_k8s_pods()
-    except requests.exceptions.ConnectionError:
-        log.debug("Failed to connect to the kublet when trying to get pods")
-        return []
+    pods = get_k8s_pods()
     for pod in pods["items"]:
         if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
             "metadata"
@@ -1888,7 +1915,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubeService]:
                     port = container["ports"][0]["containerPort"]
                     break
             services.append(
-                KubeService(
+                KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
                     instance=pod["metadata"]["labels"]["paasta.yelp.com/instance"],
                     port=port,
@@ -1963,7 +1990,9 @@ def force_delete_pods(
     kube_client: KubeClient,
 ) -> None:
     # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
-    pods_to_delete = pods_for_service_instance(paasta_service, instance, kube_client)
+    pods_to_delete = a_sync.block(
+        pods_for_service_instance, paasta_service, instance, kube_client,
+    )
     delete_options = V1DeleteOptions()
     for pod in pods_to_delete:
         kube_client.core.delete_namespaced_pod(
@@ -2008,12 +2037,28 @@ def list_deployments(
     ]
 
 
+def recent_container_restart(
+    restart_count: int,
+    last_state: Optional[str],
+    last_timestamp: Optional[int],
+    time_window_s: int = 900,  # 15 mins
+) -> bool:
+    min_timestamp = datetime.now().timestamp() - time_window_s
+    return (
+        restart_count > 0
+        and last_state == "terminated"
+        and last_timestamp is not None
+        and last_timestamp > min_timestamp
+    )
+
+
 @async_timeout()
 async def get_tail_lines_for_kubernetes_container(
     kube_client: KubeClient,
     pod: V1Pod,
     container: V1ContainerStatus,
     num_tail_lines: int,
+    previous: bool = False,
 ) -> MutableMapping[str, Any]:
     tail_lines: MutableMapping[str, Any] = {
         "stdout": [],
@@ -2036,6 +2081,7 @@ async def get_tail_lines_for_kubernetes_container(
                     namespace=pod.metadata.namespace,
                     container=container.name,
                     tail_lines=num_tail_lines,
+                    previous=previous,
                 )
                 tail_lines["stdout"].extend(log.split("\n"))
         except ApiException as e:
@@ -2071,39 +2117,56 @@ def format_pod_event_messages(
     pod_event_messages: List[Dict], pod_name: str
 ) -> List[str]:
     rows: List[str] = list()
-    rows.append(PaastaColors.blue(f"Pod Events for {pod_name}"))
+    rows.append(PaastaColors.blue(f"  Pod Events for {pod_name}"))
     for message in pod_event_messages:
         if "error" in message:
             rows.append(PaastaColors.yellow(f'   Error: {message["error"]}'))
         else:
             timestamp = message.get("time_stamp", "unknown time")
             message_text = message.get("message", "")
-            rows.append(f"   Event at {timestamp}: {message_text}")
+            rows.append(f"    Event at {timestamp}: {message_text}")
     return rows
 
 
 def format_tail_lines_for_kubernetes_pod(
     pod_containers: Sequence, pod_name: str,
 ) -> List[str]:
-    rows: List[str] = []
-    for container in pod_containers:
-        if container.tail_lines.error_message:
-            rows.append(
-                PaastaColors.blue(
-                    f"errors for container {container.name} in pod {pod_name}"
-                )
-            )
-            rows.append(PaastaColors.red(f"  {container.tail_lines.error_message}"))
+    errors: List[str] = []
+    lines: List[str] = []
+    tail_line_prefixes = (
+        ("tail_lines", "current"),
+        ("previous_tail_lines", "previous (pre-restart)"),
+    )
 
-        for stream_name in ("stdout", "stderr"):
-            stream_lines = getattr(container.tail_lines, stream_name, [])
-            if len(stream_lines) > 0:
-                rows.append(
-                    PaastaColors.blue(
-                        f"{stream_name} tail for {container.name} in pod {pod_name}"
+    for container in pod_containers:
+        for tail_line_key, stream_prefix in tail_line_prefixes:
+            tail_lines = getattr(container, tail_line_key, None)
+            if tail_lines is None:
+                break
+            if tail_lines.error_message:
+                errors.append(PaastaColors.red(f"    {tail_lines.error_message}"))
+
+            for stream_name in ("stdout", "stderr"):
+                stream_lines = getattr(tail_lines, stream_name, [])
+                if len(stream_lines) > 0:
+                    lines.append(
+                        PaastaColors.blue(
+                            f"  {stream_prefix} {stream_name} tail for {container.name} "
+                            f"in pod {pod_name}"
+                        )
                     )
-                )
-                rows.extend(f"  {line}" for line in stream_lines)
+                    lines.extend(f"    {line}" for line in stream_lines)
+
+    rows: List[str] = []
+    if errors:
+        rows.append(
+            PaastaColors.blue(
+                f"  errors for container {container.name} in pod {pod_name}"
+            )
+        )
+        rows.extend(errors)
+        rows.append("")
+    rows.extend(lines)
     return rows
 
 
@@ -2305,31 +2368,44 @@ def list_matching_deployments(
     )
 
 
-def replicasets_for_service_instance(
+@async_timeout()
+async def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ReplicaSet]:
-    return kube_client.deployments.list_namespaced_replica_set(
+    async_list_replica_set = a_sync.to_async(
+        kube_client.deployments.list_namespaced_replica_set
+    )
+    response = await async_list_replica_set(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
-def controller_revisions_for_service_instance(
+@async_timeout()
+async def controller_revisions_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1ControllerRevision]:
-    return kube_client.deployments.list_namespaced_controller_revision(
+    async_list_controller_revisions = a_sync.to_async(
+        kube_client.deployments.list_namespaced_controller_revision
+    )
+    response = await async_list_controller_revisions(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
-def pods_for_service_instance(
+@async_timeout(15)
+async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
-    return kube_client.core.list_namespaced_pod(
+    async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
+    response = await async_list_pods(
         label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
-    ).items
+    )
+    return response.items
 
 
 def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
@@ -2373,6 +2449,11 @@ def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
 
 is_pod_ready = _is_it_ready
 is_node_ready = _is_it_ready
+
+
+def is_pod_completed(pod: V1Pod) -> bool:
+    condition = get_pod_condition(pod, "ContainersReady")
+    return condition.reason == "PodCompleted" if condition else False
 
 
 def is_pod_scheduled(pod: V1Pod) -> bool:
@@ -2627,6 +2708,22 @@ async def get_events_for_object(
         return []
 
 
+@async_timeout()
+async def get_hpa(
+    kube_client: KubeClient, name: str, namespace: str,
+) -> V2beta2HorizontalPodAutoscaler:
+    async_get_hpa = a_sync.to_async(
+        kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
+    )
+    try:
+        return await async_get_hpa(name, namespace)
+    except ApiException as e:
+        if e.status == 404:
+            return None
+        else:
+            raise
+
+
 def get_kubernetes_app_deploy_status(
     app: Union[V1Deployment, V1StatefulSet], desired_instances: int,
 ) -> Tuple[int, str]:
@@ -2681,14 +2778,15 @@ def create_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_secret(
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{sanitised_secret}",
+                name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2728,15 +2826,16 @@ def update_secret(
     secret: str,
     service: str,
     secret_provider: BaseSecretProvider,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_secret(
-        name=f"paasta-secret-{service}-{sanitised_secret}",
-        namespace="paasta",
+        name=f"{namespace}-secret-{service}-{sanitised_secret}",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{sanitised_secret}",
+                name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2773,13 +2872,13 @@ def update_plaintext_dict_secret(
 
 
 def get_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str
+    kube_client: KubeClient, secret: str, service: str, namespace: str = "paasta",
 ) -> Optional[str]:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     try:
         signature = kube_client.core.read_namespaced_config_map(
-            name=f"paasta-secret-{service}-{secret}-signature", namespace="paasta"
+            name=f"{namespace}-secret-{service}-{secret}-signature", namespace=namespace
         )
     except ApiException as e:
         if e.status == 404:
@@ -2793,16 +2892,20 @@ def get_kubernetes_secret_signature(
 
 
 def update_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_config_map(
-        name=f"paasta-secret-{service}-{secret}-signature",
-        namespace="paasta",
+        name=f"{namespace}-secret-{service}-{secret}-signature",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}-signature",
+                name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,
@@ -2814,15 +2917,19 @@ def update_kubernetes_secret_signature(
 
 
 def create_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, secret_signature: str
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    secret_signature: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_config_map(
-        namespace="paasta",
+        namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"paasta-secret-{service}-{secret}-signature",
+                name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
                     "paasta.yelp.com/service": service,

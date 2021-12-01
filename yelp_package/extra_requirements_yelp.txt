@@ -19,3 +19,4 @@ yelp-clog==5.1.0
 yelp-logging==1.0.37
 yelp_meteorite
 yelp_paasta_helpers
+yelp_profiling==9.1.1

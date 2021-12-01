@@ -84,6 +84,7 @@ setup(
         "paasta_tools/setup_kubernetes_crd.py",
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_marathon_job.py",
+        "paasta_tools/setup_istio_mesh.py",
         "paasta_tools/setup_prometheus_adapter_config.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
     ]
@@ -95,6 +96,7 @@ setup(
             "paasta-api=paasta_tools.api.api:main",
             "paasta-deployd=paasta_tools.deployd.master:main",
             "paasta-fsm=paasta_tools.cli.fsm_cmd:main",
+            "paasta_prune_completed_pods=paasta_tools.prune_completed_pods:main",
             "paasta_cleanup_tron_namespaces=paasta_tools.cleanup_tron_namespaces:main",
             "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
             "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",

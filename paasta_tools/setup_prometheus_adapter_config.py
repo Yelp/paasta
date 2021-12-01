@@ -44,6 +44,9 @@ from paasta_tools.long_running_service_tools import (
     DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.long_running_service_tools import (
+    DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -196,6 +199,18 @@ def should_create_uwsgi_scaling_rule(
     return False, "did not request uwsgi autoscaling"
 
 
+def should_create_piscina_scaling_rule(
+    autoscaling_config: AutoscalingParamsDict,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determines whether we should configure the prometheus adapter for a given service.
+    Returns a 2-tuple of (should_create, reason_to_skip)
+    """
+    if autoscaling_config["metrics_provider"] == "piscina":
+        return True, None
+    return False, "did not request piscina autoscaling"
+
+
 def create_instance_uwsgi_scaling_rule(
     service: str,
     instance: str,
@@ -283,6 +298,92 @@ def create_instance_uwsgi_scaling_rule(
     return {
         "name": {"as": metric_name},
         "seriesQuery": f"uwsgi_worker_busy{{{worker_filter_terms}}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def create_instance_piscina_scaling_rule(
+    service: str,
+    instance: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    """
+    Creates a Prometheus adapter rule config for a given service instance.
+    """
+    setpoint = autoscaling_config["setpoint"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds",
+        DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+    )
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+    replica_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
+    )
+
+    current_replicas = f"""
+        sum(
+            label_join(
+                (
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                    or
+                    max_over_time(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                    )
+                ),
+                "kube_deployment", "", "deployment"
+            )
+        ) by (kube_deployment)
+    """
+    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
+    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
+    # deployment.
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        (piscina_pool_utilization{{{worker_filter_terms}}})
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    desired_instances_at_each_point_in_time = f"""
+        {total_load} / {setpoint}
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {desired_instances_at_each_point_in_time}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {current_replicas}
+    """
+
+    return {
+        "name": {"as": f"{deployment_name}-piscina-prom"},
+        "seriesQuery": f"piscina_pool_utilization{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
@@ -480,6 +581,24 @@ def get_rules_for_service_instance(
         log.debug(
             "Skipping %s.%s - %s.", service_name, instance_name, skip_uwsgi_reason,
         )
+
+    should_create_piscina, skip_piscina_reason = should_create_piscina_scaling_rule(
+        autoscaling_config=autoscaling_config,
+    )
+    if should_create_piscina:
+        rules.append(
+            create_instance_piscina_scaling_rule(
+                service=service_name,
+                instance=instance_name,
+                autoscaling_config=autoscaling_config,
+                paasta_cluster=paasta_cluster,
+            )
+        )
+    else:
+        log.debug(
+            "Skipping %s.%s - %s.", service_name, instance_name, skip_piscina_reason,
+        )
+
     should_create_cpu, skip_cpu_reason = should_create_cpu_scaling_rule(
         autoscaling_config=autoscaling_config,
     )

@@ -40,7 +40,8 @@ def test_main():
             assert e.value.code == 1
 
 
-def test_sync_all_secrets():
+@pytest.mark.parametrize("namespace", [None, "tron"])
+def test_sync_all_secrets(namespace):
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets", autospec=True
     ) as mock_sync_secrets:
@@ -52,6 +53,7 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
 
         mock_sync_secrets.side_effect = [True, False]
@@ -62,6 +64,7 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
 
         mock_sync_secrets.side_effect = None
@@ -72,10 +75,12 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
 
 
-def test_sync_secrets():
+@pytest.mark.parametrize("namespace", [None, "tron"])
+def test_sync_secrets(namespace):
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
@@ -112,6 +117,7 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
 
         mock_scandir.return_value.__enter__.return_value = [mock.Mock(path="some_file")]
@@ -123,6 +129,7 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
 
         mock_get_secret_provider.return_value = mock.Mock(
@@ -140,8 +147,11 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
         assert mock_get_kubernetes_secret_signature.called
+        _, kwargs = mock_get_kubernetes_secret_signature.call_args_list[-1]
+        assert kwargs.get("namespace") == namespace
         assert not mock_create_secret.called
         assert not mock_update_secret.called
         assert not mock_create_kubernetes_secret_signature.called
@@ -155,12 +165,17 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
         assert mock_get_kubernetes_secret_signature.called
         assert not mock_create_secret.called
         assert mock_update_secret.called
+        _, kwargs = mock_update_secret.call_args_list[-1]
+        assert kwargs.get("namespace") == namespace
         assert not mock_create_kubernetes_secret_signature.called
         assert mock_update_kubernetes_secret_signature.called
+        _, kwargs = mock_update_kubernetes_secret_signature.call_args_list[-1]
+        assert kwargs.get("namespace") == namespace
         mock_update_kubernetes_secret_signature.reset_mock()
         mock_update_secret.reset_mock()
 
@@ -172,11 +187,16 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
         assert mock_get_kubernetes_secret_signature.called
         assert mock_create_secret.called
+        _, kwargs = mock_create_secret.call_args_list[-1]
+        assert kwargs.get("namespace") == namespace
         assert not mock_update_secret.called
         assert mock_create_kubernetes_secret_signature.called
+        _, kwargs = mock_create_kubernetes_secret_signature.call_args_list[-1]
+        assert kwargs.get("namespace") == namespace
         assert not mock_update_kubernetes_secret_signature.called
         mock_update_kubernetes_secret_signature.reset_mock()
         mock_update_secret.reset_mock()
@@ -189,6 +209,7 @@ def test_sync_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace=namespace,
         )
         assert mock_get_kubernetes_secret_signature.called
         assert mock_create_secret.called
@@ -205,6 +226,7 @@ def test_sync_secrets():
                 secret_provider_name="vaulty",
                 vault_cluster_config={},
                 soa_dir="/nail/blah",
+                namespace=namespace,
             )
 
 

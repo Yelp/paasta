@@ -67,6 +67,13 @@ def parse_args() -> argparse.Namespace:
         help="define a different soa config directory",
     )
     parser.add_argument(
+        "-n",
+        "--namespace",
+        dest="namespace",
+        default="paasta",
+        help="destination namespace for secrets (Default: %(default)s)",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
@@ -95,6 +102,7 @@ def main() -> None:
         secret_provider_name=secret_provider_name,
         vault_cluster_config=vault_cluster_config,
         soa_dir=args.soa_dir,
+        namespace=args.namespace,
     ) else sys.exit(1)
 
 
@@ -105,6 +113,7 @@ def sync_all_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
+    namespace: str,
 ) -> bool:
     results = []
     for service in service_list:
@@ -116,6 +125,7 @@ def sync_all_secrets(
                 secret_provider_name=secret_provider_name,
                 vault_cluster_config=vault_cluster_config,
                 soa_dir=soa_dir,
+                namespace=namespace,
             )
         )
         results.append(
@@ -138,6 +148,7 @@ def sync_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
+    namespace: str,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -169,7 +180,10 @@ def sync_secrets(
                 )
                 if secret_signature:
                     kubernetes_secret_signature = get_kubernetes_secret_signature(
-                        kube_client=kube_client, secret=secret, service=service
+                        kube_client=kube_client,
+                        secret=secret,
+                        service=service,
+                        namespace=namespace,
                     )
                     if not kubernetes_secret_signature:
                         log.info(f"{secret} for {service} not found, creating")
@@ -179,6 +193,7 @@ def sync_secrets(
                                 secret=secret,
                                 service=service,
                                 secret_provider=secret_provider,
+                                namespace=namespace,
                             )
                         except ApiException as e:
                             if e.status == 409:
@@ -192,6 +207,7 @@ def sync_secrets(
                             secret=secret,
                             service=service,
                             secret_signature=secret_signature,
+                            namespace=namespace,
                         )
                     elif secret_signature != kubernetes_secret_signature:
                         log.info(
@@ -202,12 +218,14 @@ def sync_secrets(
                             secret=secret,
                             service=service,
                             secret_provider=secret_provider,
+                            namespace=namespace,
                         )
                         update_kubernetes_secret_signature(
                             kube_client=kube_client,
                             secret=secret,
                             service=service,
                             secret_signature=secret_signature,
+                            namespace=namespace,
                         )
                     else:
                         log.info(f"{secret} for {service} up to date")

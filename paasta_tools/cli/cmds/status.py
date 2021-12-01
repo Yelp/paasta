@@ -82,6 +82,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
 
+FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     CassandraClusterDeploymentConfig,
@@ -131,13 +132,24 @@ def add_subparser(subparsers,) -> None:
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
-    status_parser.add_argument(
+
+    version = status_parser.add_mutually_exclusive_group()
+
+    version.add_argument(
         "--new",
         dest="new",
         action="store_true",
         default=False,
         help="Use experimental new version of paasta status for services",
     )
+    version.add_argument(
+        "--old",
+        dest="old",
+        default=False,
+        action="store_true",
+        help="Use the old version of paasta status for services",
+    )
+
     add_instance_filter_arguments(status_parser)
     status_parser.set_defaults(command=paasta_status)
 
@@ -1012,6 +1024,7 @@ def print_flink_status(
     pod_running_count = pod_evicted_count = pod_other_count = 0
     # default for evicted in case where pod status is not available
     evicted = f"{pod_evicted_count}"
+
     for pod in status["pod_status"]:
         if pod["phase"] == "Running":
             pod_running_count += 1
@@ -1024,6 +1037,7 @@ def print_flink_status(
             if pod_evicted_count > 0
             else f"{pod_evicted_count}"
         )
+
     output.append(
         "    Pods:"
         f" {pod_running_count} running,"
@@ -1090,6 +1104,7 @@ def print_flink_status(
 
     allowed_max_jobs_printed = 3
     job_printed_count = 0
+
     for job in unique_jobs:
         job_id = job["jid"]
         if verbose > 1:
@@ -1124,21 +1139,8 @@ def print_flink_status(
             )
             break
 
-        if verbose > 1 and job_id in status["exceptions"]:
-            exceptions = status["exceptions"][job_id]
-            root_exception = exceptions["root-exception"]
-            if root_exception is not None:
-                output.append(f"        Exception: {root_exception}")
-                ts = exceptions["timestamp"]
-                if ts is not None:
-                    exc_ts = datetime.fromtimestamp(int(ts) // 1000)
-                    output.append(
-                        f"            {str(exc_ts)} ({humanize.naturaltime(exc_ts)})"
-                    )
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
-    if verbose == 1 and status["exceptions"]:
-        output.append(PaastaColors.yellow(f"    Use -vv to view exceptions"))
     return 0
 
 
@@ -1194,7 +1196,10 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
             return PaastaColors.red("Stopping")
     elif status.desired_state == "start":
         if num_versions == 0:
-            return PaastaColors.yellow("Starting")
+            if status.desired_instances == 0:
+                return PaastaColors.red("Stopped")
+            else:
+                return PaastaColors.yellow("Starting")
         if num_versions == 1:
             if num_ready_replicas < status.desired_instances:
                 return PaastaColors.yellow("Launching replicas")
@@ -1354,15 +1359,15 @@ def recent_liveness_failure(pod: KubernetesPodV2) -> bool:
 
 
 def recent_container_restart(
-    container: KubernetesContainerV2, time_window: int = 900
+    container: Optional[KubernetesContainerV2], time_window: int = 900
 ) -> bool:
-    min_timestamp = datetime.now().timestamp() - time_window
-    if (
-        container.restart_count > 0
-        and container.last_state == "terminated"
-        and container.last_timestamp > min_timestamp
-    ):
-        return True
+    if container:
+        return kubernetes_tools.recent_container_restart(
+            container.restart_count,
+            container.last_state,
+            container.last_timestamp,
+            time_window_s=time_window,
+        )
     return False
 
 
@@ -1539,7 +1544,7 @@ def create_replica_table(
                     f"  Healthchecks are failing. To investigate further, {healthcheck_string}"
                 )
             )
-        if state.is_unhealthy():
+        if state.is_unhealthy() or recent_container_restart(main_container):
             if verbose < 2:
                 table.append(
                     PaastaColors.red(
@@ -2094,6 +2099,7 @@ def paasta_status(args) -> int:
                 actual_deployments = get_actual_deployments(service, soa_dir)
             if all_flink or actual_deployments:
                 deploy_pipeline = list(get_planned_deployments(service, soa_dir))
+                new = _use_new_paasta_status(args, system_paasta_config)
                 tasks.append(
                     (
                         report_status_for_cluster,
@@ -2105,7 +2111,7 @@ def paasta_status(args) -> int:
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
                             verbose=args.verbose,
-                            new=args.new,
+                            new=new,
                         ),
                     )
                 )
@@ -2241,6 +2247,20 @@ def status_marathon_job_human(
         return "Marathon:   {} - {} (app {}) is not configured in Marathon yet (waiting for bounce)".format(
             status, name, desired_app_id
         )
+
+
+def _use_new_paasta_status(args, system_paasta_config) -> bool:
+    if args.new:
+        return True
+    elif args.old:
+        return False
+    else:
+        if system_paasta_config.get_paasta_status_version() == "old":
+            return False
+        elif system_paasta_config.get_paasta_status_version() == "new":
+            return True
+        else:
+            return True
 
 
 # Add other custom status writers here

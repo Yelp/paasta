@@ -6,6 +6,7 @@ import re
 import shlex
 import socket
 import sys
+import uuid
 from typing import Any
 from typing import Dict
 from typing import List
@@ -14,6 +15,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
@@ -51,7 +53,33 @@ DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
+CLUSTER_MANAGER_MESOS = "mesos"
+CLUSTER_MANAGER_K8S = "kubernetes"
+CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 
+POD_TEMPLATE_DIR = "/nail/tmp"
+POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
+
+POD_TEMPLATE = """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    spark: exec-{spark_app_name}
+spec:
+  affinity:
+    podAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 95
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: spark
+              operator: In
+              values:
+              - exec-{spark_app_name}
+          topologyKey: topology.kubernetes.io/hostname
+"""
 
 deprecated_opts = {
     "j": "spark.jars",
@@ -108,6 +136,13 @@ def add_subparser(subparsers):
         help="Use the provided image to start the Spark driver and executors.",
     )
 
+    list_parser.add_argument(
+        "-e",
+        "--enable-compact-bin-packing",
+        help="Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes.",
+        action="store_true",
+        default=False,
+    )
     list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
@@ -202,6 +237,14 @@ def add_subparser(subparsers):
         help="Pass Spark arguments to invoked command in the format expected by mrjobs",
         action="store_true",
         default=False,
+    )
+
+    list_parser.add_argument(
+        "--cluster-manager",
+        help="Specify which cluster manager to use. Support for certain cluster managers may be experimental",
+        dest="cluster_manager",
+        choices=CLUSTER_MANAGERS,
+        default=CLUSTER_MANAGER_MESOS,
     )
 
     if clusterman_metrics:
@@ -308,6 +351,29 @@ def add_subparser(subparsers):
 def sanitize_container_name(container_name):
     # container_name only allows [a-zA-Z0-9][a-zA-Z0-9_.-]
     return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
+
+
+def generate_pod_template_path():
+    return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
+
+
+def should_enable_compact_bin_packing(enable_compact_bin_packing, cluster_manager):
+    if not enable_compact_bin_packing:
+        return False
+
+    if cluster_manager != CLUSTER_MANAGER_K8S:
+        log.warn(
+            "enable_compact_bin_packing=True ignored as cluster manager is not kubernetes"
+        )
+        return False
+
+    if not os.access(POD_TEMPLATE_DIR, os.W_OK):
+        log.warn(
+            f"enable_compact_bin_packing=True ignored as {POD_TEMPLATE_DIR} is not usable"
+        )
+        return False
+
+    return True
 
 
 def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
@@ -447,9 +513,14 @@ def get_spark_env(
     return spark_env
 
 
-def _parse_user_spark_args(spark_args: Optional[str]) -> Dict[str, str]:
+def _parse_user_spark_args(
+    spark_args: Optional[str],
+    pod_template_path: str,
+    enable_compact_bin_packing: bool = False,
+) -> Dict[str, str]:
     if not spark_args:
         return {}
+
     user_spark_opts = {}
     for spark_arg in spark_args.split():
         fields = spark_arg.split("=", 1)
@@ -462,6 +533,10 @@ def _parse_user_spark_args(spark_args: Optional[str]) -> Dict[str, str]:
             )
             sys.exit(1)
         user_spark_opts[fields[0]] = fields[1]
+
+    if enable_compact_bin_packing:
+        user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
+
     return user_spark_opts
 
 
@@ -527,6 +602,7 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
         spark_app_name = "paasta_spark_run"
 
     spark_app_name += f"_{get_username()}"
+
     return spark_app_name
 
 
@@ -537,16 +613,49 @@ def configure_and_run_docker_container(
     system_paasta_config: SystemPaastaConfig,
     spark_conf: Mapping[str, str],
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
+    cluster_manager: str,
+    pod_template_path: str,
 ) -> int:
 
     # driver specific volumes
-    volumes = (
-        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
-        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
-        else []
-    )
+    volumes: List[str] = []
+    if cluster_manager == CLUSTER_MANAGER_MESOS:
+        volumes = (
+            spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+            if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
+            else []
+        )
+    elif cluster_manager == CLUSTER_MANAGER_K8S:
+        volume_names = [
+            re.match(
+                r"spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path", key
+            ).group(1)
+            for key in spark_conf.keys()
+            if "spark.kubernetes.executor.volumes.hostPath." in key
+            and ".mount.path" in key
+        ]
+        for volume_name in volume_names:
+            read_only = (
+                "ro"
+                if spark_conf.get(
+                    f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly"
+                )
+                == "true"
+                else "rw"
+            )
+            container_path = spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path"
+            )
+            host_path = spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path"
+            )
+            volumes.append(f"{host_path}:{container_path}:{read_only}")
+
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
+
+    if args.enable_compact_bin_packing:
+        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -568,6 +677,7 @@ def configure_and_run_docker_container(
             print(
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
             )
+    print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_emit_resource_requirements(
         docker_cmd, args.mrjob
@@ -766,13 +876,27 @@ def paasta_spark_run(args):
     if docker_image is None:
         return 1
 
+    pod_template_path = generate_pod_template_path()
+    args.enable_compact_bin_packing = should_enable_compact_bin_packing(
+        args.enable_compact_bin_packing, args.cluster_manager
+    )
+
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
-    needs_docker_cfg = not args.build and not args.image
-    user_spark_opts = _parse_user_spark_args(args.spark_args)
+
+    if args.enable_compact_bin_packing:
+        document = POD_TEMPLATE.format(spark_app_name=app_base_name)
+        parsed_pod_template = yaml.load(document)
+        with open(pod_template_path, "w") as f:
+            yaml.dump(parsed_pod_template, f)
+
+    needs_docker_cfg = not args.build
+    user_spark_opts = _parse_user_spark_args(
+        args.spark_args, pod_template_path, args.enable_compact_bin_packing
+    )
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
-        cluster_manager="mesos",
+        cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
         docker_img=docker_image,
         user_spark_opts=user_spark_opts,
@@ -791,4 +915,6 @@ def paasta_spark_run(args):
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,
         aws_creds=aws_creds,
+        cluster_manager=args.cluster_manager,
+        pod_template_path=pod_template_path,
     )

@@ -4,10 +4,21 @@ import mock
 import pytest
 
 from paasta_tools import tron_tools
+from paasta_tools import utils
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
+from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
+
+MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
+    {
+        "docker_registry": "mock_registry",
+        "volumes": [],
+        "dockercfg_location": "/mock/dockercfg",
+    },
+    "/mock/system/configs",
+)
 
 
 class TestTronConfig:
@@ -121,11 +132,6 @@ class TestTronActionConfig:
                 expected_mesos_leader = None
                 expected_extra_volumes = [
                     {
-                        "hostPath": "/etc/pki/spark",
-                        "containerPath": "/etc/spark_k8s_secrets",
-                        "mode": "RO",
-                    },
-                    {
                         "containerPath": "/nail/tmp",
                         "hostPath": "/nail/tmp",
                         "mode": "RW",
@@ -180,6 +186,37 @@ class TestTronActionConfig:
                 assert env["SPARK_MESOS_SECRET"] == "SHARED_SECRET(SPARK_MESOS_SECRET)"
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
+
+    @pytest.mark.parametrize(
+        "test_env,expected_env",
+        (
+            (
+                {
+                    "TEST_SECRET": "SECRET(a_service_secret)",
+                    "TEST_NONSECRET": "not a secret",
+                },
+                {
+                    "TEST_SECRET": {
+                        "secret_name": "tron-secret-my--service-a--service--secret",
+                        "key": "a_service_secret",
+                    }
+                },
+            ),
+            (
+                {"TEST_SECRET": "SHARED_SECRET(a_shared_secret)"},
+                {
+                    "TEST_SECRET": {
+                        "secret_name": "tron-secret-underscore-shared-a--shared--secret",
+                        "key": "a_shared_secret",
+                    }
+                },
+            ),
+        ),
+    )
+    def test_get_secret_env(self, action_config, test_env, expected_env):
+        action_config.config_dict["env"] = test_env
+        secret_env = action_config.get_secret_env()
+        assert secret_env == expected_env
 
     def test_spark_get_cmd(self, action_config):
         action_config.config_dict["executor"] = "spark"
@@ -364,12 +401,21 @@ class TestTronJobConfig:
         job_config = tron_tools.TronJobConfig(
             "my_job", job_dict, cluster, soa_dir=soa_dir
         )
-        result = tron_tools.format_tron_job_dict(job_config)
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(
+                job_config=job_config, k8s_enabled=False
+            )
 
         mock_get_action_config.assert_called_once_with(
             job_config, action_name, action_dict
         )
-        mock_format_action.assert_called_once_with(mock_get_action_config.return_value)
+        mock_format_action.assert_called_once_with(
+            action_config=mock_get_action_config.return_value, use_k8s=False,
+        )
 
         assert result == {
             "node": "batch_server",
@@ -380,6 +426,61 @@ class TestTronJobConfig:
             },
             "expected_runtime": "1h",
             "monitoring": {"team": "noop"},
+        }
+
+    @mock.patch(
+        "paasta_tools.tron_tools.TronJobConfig._get_action_config", autospec=True
+    )
+    @mock.patch("paasta_tools.tron_tools.format_tron_action_dict", autospec=True)
+    def test_format_tron_job_dict_k8s_enabled(
+        self, mock_format_action, mock_get_action_config
+    ):
+        action_name = "normal"
+        action_dict = {"command": "echo first"}
+        actions = {action_name: action_dict}
+
+        job_dict = {
+            "use_k8s": True,
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "max_runtime": "2h",
+            "actions": actions,
+            "expected_runtime": "1h",
+            "monitoring": {"team": "noop"},
+        }
+        soa_dir = "/other_dir"
+        cluster = "paasta-dev"
+        job_config = tron_tools.TronJobConfig(
+            "my_job", job_dict, cluster, soa_dir=soa_dir
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(
+                job_config=job_config, k8s_enabled=True
+            )
+
+        mock_get_action_config.assert_called_once_with(
+            job_config, action_name, action_dict
+        )
+        mock_format_action.assert_called_once_with(
+            action_config=mock_get_action_config.return_value, use_k8s=True,
+        )
+
+        assert result == {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "max_runtime": "2h",
+            "actions": {
+                mock_get_action_config.return_value.get_action_name.return_value: mock_format_action.return_value
+            },
+            "expected_runtime": "1h",
+            "monitoring": {"team": "noop"},
+            "use_k8s": True,
         }
 
     @mock.patch(
@@ -401,7 +502,12 @@ class TestTronJobConfig:
         }
         job_config = tron_tools.TronJobConfig("my_job", job_dict, "paasta-dev")
 
-        result = tron_tools.format_tron_job_dict(job_config)
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_job_dict(job_config, k8s_enabled=False)
 
         assert mock_get_action_config.call_args_list == [
             mock.call(job_config, "normal", job_dict["actions"]["normal"]),
@@ -641,6 +747,25 @@ class TestTronTools:
             },
         }
 
+        master_config["k8s_options"] = {
+            "kubeconfig_path": "/var/lib/tron/kubeconfig.conf"
+        }
+
+        result = tron_tools.format_master_config(
+            master_config, paasta_volumes, dockercfg
+        )
+
+        assert result["k8s_options"] == {
+            "kubeconfig_path": "/var/lib/tron/kubeconfig.conf",
+            "default_volumes": [
+                {
+                    "container_path": "/nail/other",
+                    "host_path": "/other/home",
+                    "mode": "RW",
+                }
+            ],
+        }
+
     def test_format_tron_action_dict_default_executor(self):
         action_dict = {
             "command": "echo something",
@@ -739,6 +864,114 @@ class TestTronTools:
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
+
+    @pytest.mark.parametrize(
+        "instance_name,expected_instance_label",
+        (
+            ("my_job.do_something", "my_job.do_something"),
+            (
+                f"my_job.{'a'* 100}",
+                "my_job.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-6xhe",
+            ),
+        ),
+    )
+    def test_format_tron_action_dict_paasta_k8s(
+        self, instance_name, expected_instance_label
+    ):
+        action_dict = {
+            "command": "echo something",
+            "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "paasta",
+            "cpus": 2,
+            "mem": 1200,
+            "monitoring": {"team": "some_sensu_team",},
+            "disk": 42,
+            "pool": "special_pool",
+            "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=instance_name,
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+
+        assert result == {
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "docker_image": mock.ANY,
+            "executor": "kubernetes",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "cap_add": [],
+            "cap_drop": CAPS_DROP,
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": expected_instance_label,
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "some_sensu_team",
+            },
+            "annotations": {"paasta.yelp.com/routable_ip": "false",},
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "node_affinities": [
+                {
+                    "key": "node.kubernetes.io/instance-type",
+                    "operator": "In",
+                    "value": ["c5.2xlarge", "c5n.17xlarge"],
+                }
+            ],
+            "env": mock.ANY,
+            "secret_env": {
+                "SOME_SECRET": {
+                    "secret_name": "tron-secret-my--service-secret--name",
+                    "key": "secret_name",
+                }
+            },
+            "extra_volumes": [
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] == "1"
+        assert "SOME_SECRET" not in result["env"]
 
     def test_format_tron_action_dict_paasta_no_branch_dict(self):
         action_dict = {
@@ -841,11 +1074,6 @@ class TestTronTools:
                         "host_path": "/nail/tmp",
                         "mode": "RW",
                     },
-                    {
-                        "container_path": "/etc/spark_k8s_secrets",
-                        "host_path": "/etc/pki/spark",
-                        "mode": "RO",
-                    },
                 ],
             ),
         ],
@@ -947,6 +1175,7 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("paasta_tools.tron_tools.yaml.dump", autospec=True)
     @pytest.mark.parametrize("service", [MASTER_NAMESPACE, "my_app"])
+    @pytest.mark.parametrize("k8s_enabled", (True, False))
     def test_create_complete_config(
         self,
         mock_yaml_dump,
@@ -955,6 +1184,7 @@ class TestTronTools:
         mock_tron_system_config,
         mock_system_config,
         service,
+        k8s_enabled,
     ):
         job_config = tron_tools.TronJobConfig("my_job", {}, "fake-cluster")
         mock_tron_service_config.return_value = [job_config]
@@ -963,14 +1193,19 @@ class TestTronTools:
 
         assert (
             tron_tools.create_complete_config(
-                service=service, cluster=cluster, soa_dir=soa_dir
+                service=service,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                k8s_enabled=k8s_enabled,
             )
             == mock_yaml_dump.return_value
         )
         mock_tron_service_config.assert_called_once_with(
             service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
         )
-        mock_format_job.assert_called_once_with(job_config)
+        mock_format_job.assert_called_once_with(
+            job_config=job_config, k8s_enabled=k8s_enabled
+        )
         complete_config = {"jobs": {"my_job": mock_format_job.return_value}}
         mock_yaml_dump.assert_called_once_with(
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
@@ -1009,7 +1244,12 @@ class TestTronTools:
             returncode=1, stdout="tronfig error", stderr=""
         )
 
-        result = tron_tools.validate_complete_config("a_service", "a-cluster")
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.validate_complete_config("a_service", "a-cluster")
 
         assert mock_load_config.call_count == 1
         assert mock_format_job.call_count == 1
@@ -1020,7 +1260,7 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("subprocess.run", autospec=True)
     def test_validate_complete_config_passes(
-        self, mock_run, mock_format_job, mock_load_config
+        self, mock_run, mock_format_job, mock_load_config,
     ):
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = "my_job"
@@ -1029,7 +1269,12 @@ class TestTronTools:
         mock_format_job.return_value = {}
         mock_run.return_value = mock.Mock(returncode=0, stdout="OK", stderr="")
 
-        result = tron_tools.validate_complete_config("a_service", "a-cluster")
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.validate_complete_config("a_service", "a-cluster")
 
         assert mock_load_config.call_count == 1
         assert mock_format_job.call_count == 1

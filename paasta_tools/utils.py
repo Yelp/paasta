@@ -130,6 +130,7 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
     "kafkacluster",
+    "monkrelays",
     "nrtsearchservice",
 )
 
@@ -1845,6 +1846,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
+    api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_hostname_unique_size: int
@@ -1902,11 +1904,17 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     log_writer: LogWriterConfig
     maintenance_resource_reservation_enabled: bool
     marathon_servers: List[MarathonConfigDict]
+    mark_for_deployment_max_polling_threads: int
+    mark_for_deployment_default_polling_interval: float
+    mark_for_deployment_default_diagnosis_interval: float
+    mark_for_deployment_default_default_time_before_first_diagnosis: float
+    mark_for_deployment_should_ping_for_unhealthy_pods: bool
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     paasta_native: PaastaNativeConfig
+    paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
@@ -1934,6 +1942,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vault_environment: str
     volumes: List[DockerVolume]
     zookeeper: str
+    tron_use_k8s: bool
 
 
 def load_system_paasta_config(
@@ -2330,6 +2339,12 @@ class SystemPaastaConfig:
     def get_previous_marathon_servers(self) -> List[MarathonConfigDict]:
         return self.config_dict.get("previous_marathon_servers", [])
 
+    def get_paasta_status_version(self) -> str:
+        """Get paasta status version string (new | old). Defaults to 'old'.
+
+        :returns: A string with the version desired version of paasta status."""
+        return self.config_dict.get("paasta_status_version", "old")
+
     def get_local_run_config(self) -> LocalRunConfig:
         """Get the local-run config
 
@@ -2568,6 +2583,35 @@ class SystemPaastaConfig:
 
     def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
         return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+
+    def get_mark_for_deployment_max_polling_threads(self) -> int:
+        return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
+
+    def get_mark_for_deployment_default_polling_interval(self) -> float:
+        return self.config_dict.get("mark_for_deployment_default_polling_interval", 60)
+
+    def get_mark_for_deployment_default_diagnosis_interval(self) -> float:
+        return self.config_dict.get(
+            "mark_for_deployment_default_diagnosis_interval", 60
+        )
+
+    def get_mark_for_deployment_default_time_before_first_diagnosis(self) -> float:
+        return self.config_dict.get(
+            "mark_for_deployment_default_default_time_before_first_diagnosis", 300
+        )
+
+    def get_mark_for_deployment_should_ping_for_unhealthy_pods(self) -> bool:
+        return self.config_dict.get(
+            "mark_for_deployment_should_ping_for_unhealthy_pods", True
+        )
+
+    def get_tron_use_k8s_default(self) -> bool:
+        return self.config_dict.get("tron_use_k8s", False)
+
+    def get_api_profiling_config(self) -> Dict:
+        return self.config_dict.get(
+            "api_profiling_config", {"cprofile_sampling_enabled": False},
+        )
 
 
 def _run(

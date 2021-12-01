@@ -14,7 +14,7 @@
 # limitations under the License.
 from humanize import naturaltime
 
-from paasta_tools.cli.cmds.mark_for_deployment import deploy_authz_check
+from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
 from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.cli.utils import extract_tags
@@ -164,7 +164,8 @@ def paasta_rollback(args):
     service = figure_out_service_name(args, soa_dir)
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    deploy_authz_check(deploy_info, service)
+    if not can_user_deploy_service(deploy_info, service):
+        return 1
 
     git_url = get_git_url(service, soa_dir)
     given_deploy_groups = {

@@ -87,6 +87,23 @@ def sys_stdin_kubernetes_besteffort_qos():
 
 
 @pytest.fixture
+def sys_stdin_kubernetes_structured_burstable_qos():
+    return [
+        "some random line1\n",
+        "1500316299 dev37-devc [30533610.306528] apache2 invoked oom-killer: "
+        "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n",
+        "some random line2\n",
+        "1500316300 dev37-devc [541471.893603] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "nodemask=(null),cpuset=1b6f55bfbed10cdc2bb6944078eaefd3278f8f9b3a9725c4ddffb722752a2279,"
+        "mems_allowed=0-1,oom_memcg=/kubepods/burstable/podb56c3a7a-a84d-4f84-b97e-446c4e705259/"
+        "0e4a814eda030cdc2bb6944078eaefd3278f8f9b3a9725c4ddffb722752a2279,"
+        "task_memcg=/kubepods/burstable/podb56c3a7a-a84d-4f84-b97e-446c4e705259/"
+        "0e4a814eda030cdc2bb6944078eaefd3278f8f9b3a9725c4ddffb722752a2279,"
+        "task=kafka_exporter,pid=43716,uid=65534\n",
+    ]
+
+
+@pytest.fixture
 def sys_stdin_process_name_with_slashes():
     return [
         "some random line1\n",
@@ -186,6 +203,17 @@ def test_capture_oom_events_from_stdin_kubernetes_qos(
         for a_tuple in capture_oom_events_from_stdin():
             test_output.append(a_tuple)
         assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
+    mock_sys_stdin, sys_stdin_kubernetes_structured_burstable_qos,
+):
+    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_structured_burstable_qos
+    test_output = []
+    for a_tuple in capture_oom_events_from_stdin():
+        test_output.append(a_tuple)
+    assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)

@@ -30,6 +30,7 @@ opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
 opt/venvs/paasta-tools/bin/paasta-fsm usr/bin/paasta-fsm
 opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
 opt/venvs/paasta-tools/bin/paasta_cleanup_stale_nodes.py usr/bin/paasta_cleanup_stale_nodes
+opt/venvs/paasta-tools/bin/paasta_prune_completed_pods usr/bin/paasta_prune_completed_pods
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces
 opt/venvs/paasta-tools/bin/paasta_cluster_boost.py usr/bin/paasta_cluster_boost
 opt/venvs/paasta-tools/bin/paasta_deploy_tron_jobs usr/bin/paasta_deploy_tron_jobs
@@ -50,6 +51,7 @@ opt/venvs/paasta-tools/bin/paasta_setup_tron_namespace usr/bin/paasta_setup_tron
 opt/venvs/paasta-tools/bin/paasta_tabcomplete.sh usr/share/bash-completion/completions/paasta
 opt/venvs/paasta-tools/bin/paasta_go usr/bin/paasta
 opt/venvs/paasta-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job
+opt/venvs/paasta-tools/bin/setup_istio_mesh.py usr/bin/setup_istio_mesh
 opt/venvs/paasta-tools/bin/setup_kubernetes_job.py usr/bin/setup_kubernetes_job
 opt/venvs/paasta-tools/bin/setup_kubernetes_crd.py usr/bin/setup_kubernetes_crd
 opt/venvs/paasta-tools/bin/setup_kubernetes_cr.py usr/bin/setup_kubernetes_cr

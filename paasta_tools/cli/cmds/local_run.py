@@ -607,16 +607,18 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         # In a local_run environment, the docker_image may not be available
         # so we can fall-back to the injected DOCKER_TAG per the paasta contract
         docker_image = os.environ["DOCKER_TAG"]
-    fake_taskid = uuid.uuid4()
     env = {
         "HOST": hostname,
-        "MESOS_SANDBOX": "/mnt/mesos/sandbox",
-        "MESOS_CONTAINER_NAME": "localrun-%s" % fake_taskid,
-        "MESOS_TASK_ID": str(fake_taskid),
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
+        "PAASTA_HOST": hostname,
+        "PAASTA_PORT": str(port0),
     }
     if framework == "marathon":
+        fake_taskid = uuid.uuid4()
+        env["MESOS_SANDBOX"] = "/mnt/mesos/sandbox"
+        env["MESOS_CONTAINER_NAME"] = "localrun-%s" % fake_taskid
+        env["MESOS_TASK_ID"] = str(fake_taskid)
         env["MARATHON_PORT"] = str(port0)
         env["MARATHON_PORT0"] = str(port0)
         env["MARATHON_PORTS"] = str(port0)
@@ -629,8 +631,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         env["MARATHON_APP_LABELS"] = ""
         env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
         env["MARATHON_HOST"] = hostname
-        env["PAASTA_HOST"] = hostname
-        env["PAASTA_PORT"] = str(port0)
 
     return env
 

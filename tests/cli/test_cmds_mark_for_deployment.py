@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
+
 import asynctest
 import mock
 from mock import ANY
@@ -193,6 +195,10 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         auto_rollback = True
         block = True
         timeout = 600
+        warn = 80  # % of timeout to warn at
+        polling_interval = 15
+        diagnosis_interval = 15
+        time_before_first_diagnosis = 15
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
     config_mock = mock.Mock()
@@ -234,22 +240,28 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, target_commit="d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, target_commit="old-sha")
+    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha")
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
     assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 def test_mark_for_deployment_yelpy_repo(
-    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+    mock_load_system_paasta_config,
+    mock_trigger_deploys,
+    mock_create_remote_refs,
+    mock__log,
+    mock__log_audit,
 ):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
@@ -263,13 +275,19 @@ def test_mark_for_deployment_yelpy_repo(
     mock_trigger_deploys.assert_called_once_with(service="fake_service")
 
 
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 @patch("paasta_tools.remote_git.create_remote_refs", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.trigger_deploys", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
 def test_mark_for_deployment_nonyelpy_repo(
-    mock_load_system_paasta_config, mock_trigger_deploys, mock_create_remote_refs
+    mock_load_system_paasta_config,
+    mock_trigger_deploys,
+    mock_create_remote_refs,
+    mock__log,
+    mock__log_audit,
 ):
     config_mock = mock.Mock()
     config_mock.get_default_push_groups.return_value = None
@@ -314,6 +332,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -358,6 +377,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -387,7 +407,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
     # get_authors should calculate authors since the production_deploy_group's
     # current SHA, when available.
     mock_get_currently_deployed_sha.return_value = "aaaaaaaa"
-    mark_for_deployment.MarkForDeploymentProcess(
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
         auto_rollback=False,
@@ -398,11 +418,13 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
         git_url="git@git.yelpcorp.com:services/repo",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
         authors=["fakeuser1"],
     )
+    mfdp.get_authors()
     mock_get_authors_to_be_notified.assert_called_once_with(
         git_url="git@git.yelpcorp.com:services/repo",
         from_sha="aaaaaaaa",
@@ -424,7 +446,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     # When there's no production_deploy_group configured, get_authors should
     # fall back to calculating authors using the previous SHA for this deploy
     # group.
-    mark_for_deployment.MarkForDeploymentProcess(
+    mfdp = mark_for_deployment.MarkForDeploymentProcess(
         service="service",
         block=True,
         auto_rollback=False,
@@ -436,11 +458,13 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
         authors="fakeuser1",
     )
+    mfdp.get_authors()
     mock_get_authors_to_be_notified.assert_called_once_with(
         git_url="git@git.yelpcorp.com:services/repo1",
         from_sha="asgdser23",
@@ -478,6 +502,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -523,6 +548,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -566,6 +592,7 @@ def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
         git_url="git@git.yelpcorp.com:services/repo1",
         soa_dir=None,
         timeout=None,
+        warn_pct=None,
         auto_certify_delay=1,
         auto_abandon_delay=1,
         auto_rollback_delay=1,
@@ -627,6 +654,9 @@ def test_MarkForDeployProcess_happy_path(
     mock_mark_for_deployment,
     mock_periodically_update_slack,
 ):
+    mock_wait_for_deployment.return_value = asyncio.sleep(
+        0
+    )  # make mock wait_for_deployment awaitable.
     mock_log.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
         service="service",
@@ -639,6 +669,7 @@ def test_MarkForDeployProcess_happy_path(
         block=True,
         soa_dir="soa_dir",
         timeout=3600,
+        warn_pct=50,
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,
@@ -671,6 +702,9 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     mock_mark_for_deployment,
     mock_periodically_update_slack,
 ):
+    mock_wait_for_deployment.return_value = asyncio.sleep(
+        0
+    )  # make mock wait_for_deployment awaitable.
     mock__log1.return_value = None
     mock__log2.return_value = None
     mfdp = WrappedMarkForDeploymentProcess(
@@ -684,6 +718,7 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
         block=True,
         soa_dir="soa_dir",
         timeout=3600,
+        warn_pct=50,
         auto_certify_delay=None,
         auto_abandon_delay=600,
         auto_rollback_delay=30,

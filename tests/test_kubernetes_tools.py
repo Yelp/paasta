@@ -60,6 +60,7 @@ from kubernetes.client.models.v2beta2_object_metric_source import (
     V2beta2ObjectMetricSource,
 )
 from kubernetes.client.rest import ApiException
+from requests.exceptions import ConnectionError
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.contrib.get_running_task_allocation import (
@@ -68,6 +69,7 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.contrib.get_running_task_allocation import (
     get_pod_pool as task_allocation_get_pod_pool,
 )
+from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -100,7 +102,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
-from paasta_tools.kubernetes_tools import KubeService
+from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -110,6 +112,7 @@ from paasta_tools.kubernetes_tools import mode_to_int
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
 from paasta_tools.kubernetes_tools import pods_for_service_instance
+from paasta_tools.kubernetes_tools import raw_selectors_to_requirements
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import set_instances_for_kubernetes_service
 from paasta_tools.kubernetes_tools import update_custom_resource
@@ -1616,48 +1619,46 @@ class TestKubernetesDeploymentConfig:
             self.deployment.config_dict["node_selectors"] = raw_selectors
         assert self.deployment.get_node_selector() == expected
 
-    @mock.patch.object(
-        KubernetesDeploymentConfig,
-        "_whitelist_blacklist_to_requirements",
-        mock.Mock(return_value=[("habitat", "In", ["habitat_a"])]),
-    )
-    @mock.patch.object(
-        KubernetesDeploymentConfig,
-        "_raw_selectors_to_requirements",
-        mock.Mock(return_value=[("instance_type", "In", ["a1.1xlarge"])]),
-    )
     def test_get_node_affinity_with_reqs(self):
-        assert self.deployment.get_node_affinity() == V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[
-                    V1NodeSelectorTerm(
-                        match_expressions=[
-                            V1NodeSelectorRequirement(
-                                key="habitat", operator="In", values=["habitat_a"],
-                            ),
-                            V1NodeSelectorRequirement(
-                                key="instance_type",
-                                operator="In",
-                                values=["a1.1xlarge"],
-                            ),
-                        ]
-                    )
-                ],
-            ),
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
+            return_value=[("habitat", "In", ["habitat_a"])],
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
+            return_value=[("instance_type", "In", ["a1.1xlarge"])],
+            autospec=True,
+        ):
+            assert self.deployment.get_node_affinity() == V1NodeAffinity(
+                required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                    node_selector_terms=[
+                        V1NodeSelectorTerm(
+                            match_expressions=[
+                                V1NodeSelectorRequirement(
+                                    key="habitat", operator="In", values=["habitat_a"],
+                                ),
+                                V1NodeSelectorRequirement(
+                                    key="instance_type",
+                                    operator="In",
+                                    values=["a1.1xlarge"],
+                                ),
+                            ]
+                        )
+                    ],
+                ),
+            )
 
-    @mock.patch.object(
-        KubernetesDeploymentConfig,
-        "_whitelist_blacklist_to_requirements",
-        mock.Mock(return_value=[]),
-    )
-    @mock.patch.object(
-        KubernetesDeploymentConfig,
-        "_raw_selectors_to_requirements",
-        mock.Mock(return_value=[]),
-    )
     def test_get_node_affinity_no_reqs(self):
-        assert self.deployment.get_node_affinity() is None
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
+            return_value=[],
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
+            return_value=[],
+            autospec=True,
+        ):
+            assert self.deployment.get_node_affinity() is None
 
     @pytest.mark.parametrize(
         "anti_affinity,expected",
@@ -1747,9 +1748,10 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_whitelist_blacklist_to_requirements(self, whitelist, blacklist, expected):
-        self.deployment.config_dict["deploy_whitelist"] = whitelist
-        self.deployment.config_dict["deploy_blacklist"] = blacklist
-        assert self.deployment._whitelist_blacklist_to_requirements() == expected
+        assert (
+            allowlist_denylist_to_requirements(allowlist=whitelist, denylist=blacklist)
+            == expected
+        )
 
     @pytest.mark.parametrize(
         "node_selectors,expected",
@@ -1781,15 +1783,14 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_raw_selectors_to_requirements(self, node_selectors, expected):
-        self.deployment.config_dict["node_selectors"] = node_selectors
-        assert self.deployment._raw_selectors_to_requirements() == expected
+        assert raw_selectors_to_requirements(node_selectors) == expected
 
     def test_raw_selectors_to_requirements_error(self):
-        self.deployment.config_dict["node_selectors"] = {
+        node_selectors = {
             "error_key": [{"operator": "BadOperator"}],  # type: ignore
         }
         with pytest.raises(ValueError):
-            self.deployment._raw_selectors_to_requirements()
+            raw_selectors_to_requirements(node_selectors)
 
     def test_get_kubernetes_metadata(self):
         with mock.patch(
@@ -2263,7 +2264,7 @@ def test_get_kubernetes_services_running_here():
             ]
         }
         assert get_kubernetes_services_running_here() == [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
@@ -2271,6 +2272,11 @@ def test_get_kubernetes_services_running_here():
                 registrations=[],
             )
         ]
+        # if the kubelet is down we don't want to reconfigure nerve until it comes back
+        # and we can be sure what is running or not
+        mock_requests_get.side_effect = ConnectionError
+        with pytest.raises(ConnectionError):
+            get_kubernetes_services_running_here()
 
 
 class MockNerveDict(dict):
@@ -2292,21 +2298,21 @@ def test_get_kubernetes_services_running_here_for_nerve():
             name=namespace
         )
         mock_get_kubernetes_services_running_here.return_value = [
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="unkurupt",
                 instance="garage",
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
             ),
-            KubeService(
+            KubernetesServiceRegistration(
                 name="kurupt",
                 instance="garage",
                 port=8888,
@@ -2544,6 +2550,7 @@ def test_get_tail_lines_for_kubernetes_container(
             namespace="my_namespace",
             container=container_name,
             tail_lines=10,
+            previous=False,
         ),
     ]
 
@@ -2586,8 +2593,8 @@ def test_format_pod_event_messages():
     pod_name = "test_pod"
     rows = kubernetes_tools.format_pod_event_messages(pod_event_messages, pod_name)
 
-    assert rows[1] == f"   Event at 1: message_1"
-    assert rows[2] == f"   Event at 2: message_2"
+    assert rows[1] == f"    Event at 1: message_1"
+    assert rows[2] == f"    Event at 2: message_2"
 
 
 @given(integers(min_value=0), floats(min_value=0, max_value=1.0))
@@ -2911,10 +2918,11 @@ def test_get_kubernetes_app_by_name():
     assert mock_client.deployments.read_namespaced_stateful_set_status.called
 
 
-def test_pods_for_service_instance():
+@pytest.mark.asyncio
+async def test_pods_for_service_instance():
     mock_client = mock.Mock()
     assert (
-        pods_for_service_instance("kurupt", "fm", mock_client)
+        await pods_for_service_instance("kurupt", "fm", mock_client)
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 
@@ -3163,6 +3171,18 @@ def test_create_kubernetes_secret_signature():
         secret_signature="ab1234",
     )
     assert mock_client.core.create_namespaced_config_map.called
+    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+
+    create_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-fate",
+        service="universe",
+        secret_signature="ab1234",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
 
 
 def test_update_kubernetes_secret_signature():
@@ -3174,6 +3194,18 @@ def test_update_kubernetes_secret_signature():
         secret_signature="ab1234",
     )
     assert mock_client.core.replace_namespaced_config_map.called
+    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+
+    update_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-fate",
+        service="universe",
+        secret_signature="ab1234",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
 
 
 def test_get_kubernetes_secret_signature():
@@ -3181,12 +3213,24 @@ def test_get_kubernetes_secret_signature():
     mock_client.core.read_namespaced_config_map.return_value = mock.Mock(
         data={"signature": "hancock"}
     )
-    assert (
-        get_kubernetes_secret_signature(
-            kube_client=mock_client, secret="mortys-morty", service="universe"
-        )
-        == "hancock"
+
+    secret_sig = get_kubernetes_secret_signature(
+        kube_client=mock_client, secret="mortys-morty", service="universe"
     )
+    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
+    assert secret_sig == "hancock"
+
+    secret_sig = get_kubernetes_secret_signature(
+        kube_client=mock_client,
+        secret="mortys-morty",
+        service="universe",
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[1]
+    assert kwargs.get("namespace") == "tron"
+    assert secret_sig == "hancock"
+
     mock_client.core.read_namespaced_config_map.side_effect = ApiException(404)
     assert (
         get_kubernetes_secret_signature(
@@ -3212,6 +3256,8 @@ def test_create_secret():
         secret_provider=mock_secret_provider,
     )
     assert mock_client.core.create_namespaced_secret.called
+    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
 
     create_secret(
@@ -3220,6 +3266,17 @@ def test_create_secret():
         secret="mortys_fate",
         secret_provider=mock_secret_provider,
     )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
+
+    create_secret(
+        kube_client=mock_client,
+        service="universe",
+        secret="mortys_fate",
+        secret_provider=mock_secret_provider,
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[2]
+    assert kwargs.get("namespace") == "tron"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 
@@ -3235,6 +3292,8 @@ def test_update_secret():
         secret_provider=mock_secret_provider,
     )
     assert mock_client.core.replace_namespaced_secret.called
+    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[0]
+    assert kwargs.get("namespace") == "paasta"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
 
     update_secret(
@@ -3243,6 +3302,17 @@ def test_update_secret():
         secret="mortys_fate",
         secret_provider=mock_secret_provider,
     )
+    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
+
+    update_secret(
+        kube_client=mock_client,
+        service="universe",
+        secret="mortys_fate",
+        secret_provider=mock_secret_provider,
+        namespace="tron",
+    )
+    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[2]
+    assert kwargs.get("namespace") == "tron"
     mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 

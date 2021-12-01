@@ -15,7 +15,11 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
+import argparse
+import asyncio
+import concurrent
 import datetime
+import functools
 import getpass
 import logging
 import math
@@ -24,28 +28,34 @@ import socket
 import sys
 import time
 import traceback
-from collections import defaultdict
-from queue import Empty
-from queue import Queue
-from threading import Event
 from threading import Thread
+from typing import Any
+from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import Iterator
+from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Set
+from typing import Tuple
 
+import a_sync
 import humanize
 import progressbar
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
 from sticht.slo import SLOSlackDeploymentProcess
+from sticht.slo import SLOWatcher
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
+from paasta_tools.cli.cmds.status import get_main_container
+from paasta_tools.cli.cmds.status import get_version_table_entry
+from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -56,8 +66,11 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
+from paasta_tools.paastaapi.models import KubernetesPodV2
 from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -74,15 +87,17 @@ from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
 
-DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
+DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
+DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
 DEFAULT_SLACK_CHANNEL = "#deploy"
 DEFAULT_STUCK_BOUNCE_RUNBOOK = "y/stuckbounce"
 
+
 log = logging.getLogger(__name__)
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "mark-for-deployment",
         help="Mark a docker image for deployment in git",
@@ -113,7 +128,7 @@ def add_subparser(subparsers):
         required=True,
         type=validate_short_git_sha,
     )
-    list_parser.add_argument(
+    arg_deploy_group = list_parser.add_argument(
         "-l",
         "--deploy-group",
         "--clusterinstance",
@@ -121,14 +136,16 @@ def add_subparser(subparsers):
         "cluster1.canary, cluster2.main). --clusterinstance is deprecated and "
         "should be replaced with --deploy-group",
         required=True,
-    ).completer = lazy_choices_completer(list_deploy_groups)
-    list_parser.add_argument(
+    )
+    arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+    arg_service = list_parser.add_argument(
         "-s",
         "--service",
         help="Name of the service which you wish to mark for deployment. Leading "
         '"services-" will be stripped.',
         required=True,
-    ).completer = lazy_choices_completer(list_services)
+    )
+    arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     list_parser.add_argument(
         "--verify-image-exists",
         help="Check the docker registry and verify the image has been pushed",
@@ -154,6 +171,18 @@ def add_subparser(subparsers):
             "Time in seconds to wait for paasta to deploy the service. "
             "If the timeout is exceeded we return 1. "
             "Default is %(default)s seconds."
+        ),
+    )
+    list_parser.add_argument(
+        "-w",
+        "--warn",
+        dest="warn",
+        type=int,
+        default=DEFAULT_WARN_PERCENT,
+        help=(
+            "Percent of timeout to warn at if the deployment hasn't finished. "
+            "For example, --warn=75 will warn at 75%% of the timeout. "
+            "Defaults to %(default)s."
         ),
     )
     list_parser.add_argument(
@@ -210,11 +239,34 @@ def add_subparser(subparsers):
         action="append",
         help="Additional author(s) of the deploy, who will be pinged in Slack",
     )
+    list_parser.add_argument(
+        "--polling-interval",
+        dest="polling_interval",
+        type=float,
+        default=None,
+        help="How long to wait between each time we check to see if an instance is done deploying.",
+    )
+    list_parser.add_argument(
+        "--diagnosis-interval",
+        dest="diagnosis_interval",
+        type=float,
+        default=None,
+        help="How long to wait between diagnoses of why the bounce isn't done.",
+    )
+    list_parser.add_argument(
+        "--time-before-first-diagnosis",
+        dest="time_before_first_diagnosis",
+        type=float,
+        default=None,
+        help="Wait this long before trying to diagnose why the bounce isn't done.",
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, deploy_group, service, commit):
+def mark_for_deployment(
+    git_url: str, deploy_group: str, service: str, commit: str
+) -> int:
     """Mark a docker image for deployment"""
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
@@ -252,7 +304,7 @@ def mark_for_deployment(git_url, deploy_group, service, commit):
     return 1
 
 
-def deploy_authz_check(deploy_info, service):
+def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     deploy_username = get_username()
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
@@ -278,10 +330,11 @@ def deploy_authz_check(deploy_info, service):
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
             print(logline, file=sys.stderr)
-            sys.exit(1)
+            return False
+    return True
 
 
-def report_waiting_aborted(service, deploy_group):
+def report_waiting_aborted(service: str, deploy_group: str) -> None:
     print(
         PaastaColors.red(
             "Waiting for deployment aborted."
@@ -294,7 +347,9 @@ def report_waiting_aborted(service, deploy_group):
     print()
 
 
-def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
+def get_authors_to_be_notified(
+    git_url: str, from_sha: str, to_sha: str, authors: Optional[Collection[str]]
+) -> str:
     if from_sha is None:
         return ""
 
@@ -317,7 +372,9 @@ def get_authors_to_be_notified(git_url, from_sha, to_sha, authors):
     return f"^ {slacky_authors}"
 
 
-def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
+def deploy_group_is_set_to_notify(
+    deploy_info: Dict[str, Any], deploy_group: str, notify_type: str
+) -> bool:
     for step in deploy_info.get("pipeline", []):
         if step.get("step", "") == deploy_group:
             # Use the specific notify_type if available else use slack_notify
@@ -325,12 +382,14 @@ def deploy_group_is_set_to_notify(deploy_info, deploy_group, notify_type):
     return False
 
 
-def get_deploy_info(service, soa_dir):
+def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     file_path = os.path.join(soa_dir, service, "deploy.yaml")
     return read_deploy(file_path)
 
 
-def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group):
+def print_rollback_cmd(
+    old_git_sha: str, commit: str, auto_rollback: bool, service: str, deploy_group: str
+) -> None:
     if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
         print()
         print("If you wish to roll back, you can run:")
@@ -344,7 +403,7 @@ def print_rollback_cmd(old_git_sha, commit, auto_rollback, service, deploy_group
         )
 
 
-def paasta_mark_for_deployment(args):
+def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
     """Wrapping mark_for_deployment"""
     if args.verbose:
         log.setLevel(level=logging.DEBUG)
@@ -403,7 +462,8 @@ def paasta_mark_for_deployment(args):
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    deploy_authz_check(deploy_info, service)
+    if not can_user_deploy_service(deploy_info, service):
+        sys.exit(1)
 
     deploy_process = MarkForDeploymentProcess(
         service=service,
@@ -416,39 +476,49 @@ def paasta_mark_for_deployment(args):
         block=args.block,
         soa_dir=args.soa_dir,
         timeout=args.timeout,
+        warn_pct=args.warn,
         auto_certify_delay=args.auto_certify_delay,
         auto_abandon_delay=args.auto_abandon_delay,
         auto_rollback_delay=args.auto_rollback_delay,
         authors=args.authors,
+        polling_interval=args.polling_interval,
+        diagnosis_interval=args.diagnosis_interval,
+        time_before_first_diagnosis=args.time_before_first_diagnosis,
     )
     ret = deploy_process.run()
     return ret
 
 
 class Progress:
-    def __init__(self, percent=0, waiting_on=None, eta=None):
+    waiting_on: Mapping[str, Collection[str]]
+    percent: float
+
+    def __init__(
+        self, percent: float = 0, waiting_on: Mapping[str, Collection[str]] = None
+    ) -> None:
         self.percent = percent
         self.waiting_on = waiting_on
 
-    def human_readable(self, summary: bool):
+    def human_readable(self, summary: bool) -> str:
         if self.percent != 0 and self.percent != 100 and not summary:
             s = f"{round(self.percent)}% (Waiting on {self.human_waiting_on()})"
         else:
             s = f"{round(self.percent)}%"
         return s
 
-    def human_waiting_on(self):
+    def human_waiting_on(self) -> str:
         if self.waiting_on is None:
             return "N/A"
         things = []
-        for cluster, queue in self.waiting_on.items():
-            queue_length = len(queue)
-            if queue_length == 0:
+        for cluster, instances in self.waiting_on.items():
+            num_instances = len(instances)
+            if num_instances == 0:
                 continue
-            elif queue_length == 1:
-                things.append(f"`{cluster}`: `{queue[0].get_instance()}`")
+            elif num_instances == 1:
+                (one_instance,) = instances
+                things.append(f"`{cluster}`: `{one_instance}`")
             else:
-                things.append(f"`{cluster}`: {len(queue)} instances")
+                things.append(f"`{cluster}`: {len(instances)} instances")
         return ", ".join(things)
 
 
@@ -456,25 +526,30 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
-    timeout_percentage_before_reminding = 75
+
+    paasta_status_reminder_handle: asyncio.TimerHandle
 
     def __init__(
         self,
-        service,
-        deploy_info,
-        deploy_group,
-        commit,
-        old_git_sha,
-        git_url,
-        auto_rollback,
-        block,
-        soa_dir,
-        timeout,
-        auto_certify_delay,
-        auto_abandon_delay,
-        auto_rollback_delay,
-        authors=None,
-    ):
+        service: str,
+        deploy_info: Dict,
+        deploy_group: str,
+        commit: str,
+        old_git_sha: str,
+        git_url: str,
+        auto_rollback: bool,
+        block: bool,
+        soa_dir: str,
+        timeout: float,
+        warn_pct: float,
+        auto_certify_delay: float,
+        auto_abandon_delay: float,
+        auto_rollback_delay: float,
+        authors: Optional[List[str]] = None,
+        polling_interval: float = None,
+        diagnosis_interval: float = None,
+        time_before_first_diagnosis: float = None,
+    ) -> None:
         self.service = service
         self.deploy_info = deploy_info
         self.deploy_group = deploy_group
@@ -488,36 +563,38 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.block = block
         self.soa_dir = soa_dir
         self.timeout = timeout
+        self.warn_pct = warn_pct
         self.mark_for_deployment_return_code = -1
         self.auto_certify_delay = auto_certify_delay
         self.auto_abandon_delay = auto_abandon_delay
         self.auto_rollback_delay = auto_rollback_delay
         self.authors = authors
+        self.polling_interval = polling_interval
+        self.diagnosis_interval = diagnosis_interval
+        self.time_before_first_diagnosis = time_before_first_diagnosis
 
-        # Separate green_light per commit, so that we can tell wait_for_deployment for one commit to shut down
-        # and quickly launch wait_for_deployment for another commit without causing a race condition.
-        self.wait_for_deployment_green_lights = defaultdict(Event)
+        # Keep track of each wait_for_deployment task so we can cancel it.
+        self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
         self.last_action = None
-        self.slo_watchers = []
+        self.slo_watchers: List[SLOWatcher] = []
 
         self.start_slo_watcher_threads(self.service, self.soa_dir)
         # Initialize Slack threads and send the first message
         super().__init__()
-        self.ping_authors()
         self.print_who_is_running_this()
 
-    def get_progress(self, summary=False) -> str:
+    def get_progress(self, summary: bool = False) -> str:
         return self.progress.human_readable(summary)
 
-    def print_who_is_running_this(self):
+    def print_who_is_running_this(self) -> None:
         build_url = get_jenkins_build_output_url()
         if build_url is not None:
             message = f"(<{build_url}|Jenkins Job>)"
         else:
-            message = f"(Run by <@{getpass.getuser()}> on {socket.getfqdn()})"
+            message = f"(Run by `{getpass.getuser()}` on {socket.getfqdn()})"
         self.update_slack_thread(message)
 
     def get_authors(self) -> str:
@@ -582,7 +659,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def get_deployment_name(self) -> str:
         return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
 
-    def on_enter_start_deploy(self):
+    def on_enter_start_deploy(self) -> None:
         self.update_slack_status(
             f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}..."
         )
@@ -606,25 +683,26 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             log.debug("triggering mfd_succeeded")
             self.trigger("mfd_succeeded")
 
-    def schedule_paasta_status_reminder(self):
-        def waiting_on_to_status(waiting_on):
+    def schedule_paasta_status_reminder(self) -> None:
+        def waiting_on_to_status(
+            waiting_on: Mapping[str, Collection[str]]
+        ) -> List[str]:
             if waiting_on is None:
                 return [
                     f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
                 ]
             commands = []
-            for cluster, queue in waiting_on.items():
-                queue_length = len(queue)
-                if queue_length == 0:
+            for cluster, instances in waiting_on.items():
+                num_instances = len(instances)
+                if num_instances == 0:
                     continue
                 else:
-                    instances = [q.get_instance() for q in queue]
                     commands.append(
                         f"`paasta status --service {self.service} --cluster {cluster} --instance {','.join(instances)} -vv`"
                     )
             return commands
 
-        def times_up():
+        def times_up() -> None:
             try:
                 if self.state == "deploying":
                     human_max_deploy_time = humanize.naturaldelta(
@@ -639,7 +717,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
                     self.notify_users(
                         (
-                            f"It has been {self.timeout_percentage_before_reminding}% of the "
+                            f"It has been {self.warn_pct}% of the "
                             f"maximum deploy time ({human_max_deploy_time}), "
                             "which means the deployment may be stuck. "
                             "Here are some things you can try:\n\n"
@@ -654,10 +732,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     f"Non-fatal exception encountered when processing the status reminder: {e}"
                 )
 
-        def schedule_callback():
-            time_to_notify = self.timeout * (
-                self.timeout_percentage_before_reminding / 100
-            )
+        def schedule_callback() -> None:
+            time_to_notify = self.timeout * self.warn_pct / 100
             self.paasta_status_reminder_handle = self.event_loop.call_later(
                 time_to_notify, times_up
             )
@@ -669,7 +745,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"Non-fatal error encountered scheduling the status reminder callback: {e}"
             )
 
-    def cancel_paasta_status_reminder(self):
+    def cancel_paasta_status_reminder(self) -> None:
         try:
             handle = self.get_paasta_status_reminder_handle()
             if handle is not None:
@@ -680,7 +756,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"Non-fatal error encountered when canceling the paasta status reminder: {e}"
             )
 
-    def get_paasta_status_reminder_handle(self):
+    def get_paasta_status_reminder_handle(self) -> Optional[asyncio.TimerHandle]:
         try:
             return self.paasta_status_reminder_handle
         except AttributeError:
@@ -832,14 +908,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self):
+    def disable_auto_rollbacks(self) -> None:
         self.cancel_auto_rollback_countdown()
         self.auto_rollback = False
         self.update_slack_status(
             f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
         )
 
-    def enable_auto_rollbacks(self):
+    def enable_auto_rollbacks(self) -> None:
         self.auto_rollback = True
         self.auto_rollbacks_ever_enabled = True
         self.update_slack_status(
@@ -893,12 +969,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             "rolled_back": None,
         }.get(self.state)
 
-    def on_enter_mfd_failed(self):
+    def on_enter_mfd_failed(self) -> None:
         self.update_slack_status(
             f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
 
-    def on_enter_deploying(self):
+    def on_enter_deploying(self) -> None:
         # if self.block is False, then deploying is a terminal state so we will promptly exit.
         # Don't bother starting the background thread in this case.
         if self.block:
@@ -909,11 +985,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.cancel_paasta_status_reminder()
             self.schedule_paasta_status_reminder()
 
-    def on_exit_deploying(self):
-        self.wait_for_deployment_green_lights[self.commit].clear()
+    def on_exit_deploying(self) -> None:
+        self.stop_waiting_for_deployment(self.commit)
         self.cancel_paasta_status_reminder()
 
-    def on_enter_start_rollback(self):
+    def on_enter_start_rollback(self) -> None:
         self.update_slack_status(
             f"Rolling back ({self.deploy_group}) to {self.old_git_sha}"
         )
@@ -938,7 +1014,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
             self.trigger("mfd_succeeded")
 
-    def on_enter_rolling_back(self):
+    def on_enter_rolling_back(self) -> None:
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
@@ -947,50 +1023,68 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             )
             thread.start()
 
-    def on_exit_rolling_back(self):
-        self.wait_for_deployment_green_lights[self.old_git_sha].clear()
+    def on_exit_rolling_back(self) -> None:
+        self.stop_waiting_for_deployment(self.old_git_sha)
 
-    def on_enter_deploy_errored(self):
+    def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
         self.update_slack_status(f"Deploy aborted, but it will still try to converge.")
         self.send_manual_rollback_instructions()
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy errored")
 
-    def on_enter_deploy_cancelled(self):
+    def on_enter_deploy_cancelled(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy cancelled")
 
-    def do_wait_for_deployment(self, target_commit: str):
+    def stop_waiting_for_deployment(self, target_commit: str) -> None:
         try:
-            self.wait_for_deployment_green_lights[target_commit].set()
-            wait_for_deployment(
-                service=self.service,
-                deploy_group=self.deploy_group,
-                git_sha=target_commit,
-                soa_dir=self.soa_dir,
-                timeout=self.timeout,
-                green_light=self.wait_for_deployment_green_lights[target_commit],
-                progress=self.progress,
+            self.wait_for_deployment_tasks[target_commit].cancel()
+            del self.wait_for_deployment_tasks[target_commit]
+        except (KeyError, asyncio.InvalidStateError):
+            pass
+
+    @a_sync.to_blocking
+    async def do_wait_for_deployment(self, target_commit: str) -> None:
+        try:
+            self.stop_waiting_for_deployment(target_commit)
+            wait_for_deployment_task = asyncio.create_task(
+                wait_for_deployment(
+                    service=self.service,
+                    deploy_group=self.deploy_group,
+                    git_sha=target_commit,
+                    soa_dir=self.soa_dir,
+                    timeout=self.timeout,
+                    progress=self.progress,
+                    polling_interval=self.polling_interval,
+                    diagnosis_interval=self.diagnosis_interval,
+                    time_before_first_diagnosis=self.time_before_first_diagnosis,
+                    notify_fn=self.ping_authors,
+                )
             )
-            self.update_slack_thread(
-                f"Finished waiting for deployment of {target_commit}"
-            )
+            self.wait_for_deployment_tasks[target_commit] = wait_for_deployment_task
+            await wait_for_deployment_task
+            if self.deploy_group_is_set_to_notify("notify_after_wait"):
+                self.ping_authors(f"Finished waiting for deployment of {target_commit}")
+            else:
+                self.update_slack_thread(
+                    f"Finished waiting for deployment of {target_commit}"
+                )
             self.trigger("deploy_finished")
 
         except (KeyboardInterrupt, TimeoutError):
-            if self.wait_for_deployment_green_lights[target_commit].is_set():
-                # When we manually trigger a rollback, we clear the green_light, which causes wait_for_deployment to
-                # raise KeyboardInterrupt. Don't trigger deploy_cancelled in this case.
-                self.trigger("deploy_cancelled")
+            self.trigger("deploy_cancelled")
         except NoSuchCluster:
             self.trigger("deploy_errored")
+        except asyncio.CancelledError:
+            # Don't trigger deploy_errored when someone calls stop_waiting_for_deployment.
+            pass
         except Exception:
             log.error("Caught exception in wait_for_deployment:")
             log.error(traceback.format_exc())
             self.trigger("deploy_errored")
 
-    def on_enter_rolled_back(self):
+    def on_enter_rolled_back(self) -> None:
         self.update_slack_status(
             f"Finished rolling back to `{self.old_git_sha[:8]}` in {self.deploy_group}"
         )
@@ -998,14 +1092,18 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
-    def on_enter_deployed(self):
+    def on_enter_deployed(self) -> None:
         self.update_slack_status(
             f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}"
         )
         line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
-        if not (self.any_slo_failing() and self.auto_rollbacks_enabled()):
+        if self.any_slo_failing() and self.auto_rollbacks_enabled():
+            self.ping_authors(
+                "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+            )
+        else:
             if self.get_auto_certify_delay() > 0:
                 self.start_timer(
                     self.get_auto_certify_delay(), "auto_certify", "certify"
@@ -1013,11 +1111,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
                     self.ping_authors()
 
-    def on_enter_complete(self):
+    def on_enter_complete(self) -> None:
         if self.deploy_group_is_set_to_notify("notify_after_good_deploy"):
             self.ping_authors()
 
-    def send_manual_rollback_instructions(self):
+    def send_manual_rollback_instructions(self) -> None:
         if self.old_git_sha != self.commit:
             message = (
                 "If you need to roll back manually, run: "
@@ -1027,7 +1125,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.update_slack_thread(message)
             print(message)
 
-    def after_state_change(self):
+    def after_state_change(self) -> None:
         self.update_slack()
         super().after_state_change()
 
@@ -1038,7 +1136,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             .get("signalfx_api_key", None)
         )
 
-    def get_button_text(self, button, is_active) -> str:
+    def get_button_text(self, button: str, is_active: bool) -> str:
         active_button_texts = {
             "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
         }
@@ -1063,7 +1161,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, extra_text="") -> None:
+    def start_auto_rollback_countdown(self, extra_text: str = "") -> None:
         cancel_button_text = self.get_button_text(
             "disable_auto_rollbacks", is_active=False
         )
@@ -1073,7 +1171,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
 
-    def deploy_group_is_set_to_notify(self, notify_type):
+    def deploy_group_is_set_to_notify(self, notify_type: str) -> bool:
         return deploy_group_is_set_to_notify(
             self.deploy_info, self.deploy_group, notify_type
         )
@@ -1107,293 +1205,324 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         )
 
 
-class ClusterData:
-    """An auxiliary data transfer class.
-
-    Used by _query_clusters(), instances_deployed(),
-    _run_cluster_worker(), _run_instance_worker().
-
-    :param cluster: the name of the cluster.
-    :param service: the name of the service.
-    :param git_sha: git sha marked for deployment.
-    :param instances_queue: a thread-safe queue. Should contain all cluster
-                            instances that need to be checked.
-    :type instances_queue: Queue
-    """
-
-    def __init__(self, cluster, service, git_sha, instances_queue):
-        self.cluster = cluster
-        self.service = service
-        self.git_sha = git_sha
-        self.instances_queue = instances_queue
-
-    def __repr__(self):
-        return (
-            f"ClusterData(cluster={self.cluster}, service={self.service}, "
-            f"git_sha={self.git_sha}, instances_queue={self.instances_queue})"
+async def wait_until_instance_is_done(
+    executor: concurrent.futures.Executor,
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+    polling_interval: float,
+    diagnosis_interval: float,
+    time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
+) -> Tuple[str, str]:
+    loop = asyncio.get_running_loop()
+    diagnosis_task = asyncio.create_task(
+        periodically_diagnose_instance(
+            executor,
+            service,
+            instance,
+            cluster,
+            git_sha,
+            instance_config,
+            diagnosis_interval,
+            time_before_first_diagnosis,
+            should_ping_for_unhealthy_pods,
+            notify_fn,
         )
-
-
-def instances_deployed(cluster_data, instances_out, green_light):
-    """Create a thread pool to run _run_instance_worker()
-
-    :param cluster_data: an instance of ClusterData.
-    :param instances_out: a empty thread-safe queue. I will contain
-                          instances that are not deployed yet.
-    :type instances_out: Queue
-    :param green_light: See the docstring for _query_clusters().
-    """
-    num_threads = min(5, cluster_data.instances_queue.qsize())
-
-    workers_launched = []
-    for _ in range(num_threads):
-        worker = Thread(
-            target=_run_instance_worker, args=(cluster_data, instances_out, green_light)
-        )
-        worker.start()
-        workers_launched.append(worker)
-
-    for worker in workers_launched:
-        worker.join()
-
-
-def _run_instance_worker(cluster_data, instances_out, green_light):
-    """Get instances from the instances_in queue and check them one by one.
-
-    If an instance isn't deployed, add it to the instances_out queue
-    to re-check it later.
-
-    :param cluster_data: an instance of ClusterData.
-    :param instances_out: See the docstring for instances_deployed().
-    :param green_light: See the docstring for _query_clusters().
-    """
-
-    api = client.get_paasta_oapi_client(cluster=cluster_data.cluster)
-    if not api:
-        log.warning(
-            "Couldn't reach the PaaSTA api for {}! Assuming it is not "
-            "deployed there yet.".format(cluster_data.cluster)
-        )
-        while not cluster_data.instances_queue.empty():
-            try:
-                instance_config = cluster_data.instances_queue.get(block=False)
-            except Empty:
-                return
-            cluster_data.instances_queue.task_done()
-            instances_out.put(instance_config)
-
-    while not cluster_data.instances_queue.empty() and green_light.is_set():
-        try:
-            instance_config = cluster_data.instances_queue.get(block=False)
-        except Empty:
-            return
-
-        instance = instance_config.get_instance()
-
-        log.debug(
-            "Inspecting the deployment status of {}.{} on {}".format(
-                cluster_data.service, instance, cluster_data.cluster
-            )
-        )
-        try:
-            status = None
-            status = api.service.status_instance(
-                service=cluster_data.service,
-                instance=instance,
-                include_smartstack=False,
-                include_envoy=False,
-                include_mesos=False,
-            )
-        except api.api_error as e:
-            if e.status == 404:
-                # TODO(PAASTA-17290): just print the error message so that we
-                # can distinguish between sources of 404s
-                log.warning(
-                    "Can't get status for instance {}, service {} in "
-                    "cluster {}. This is normally because it is a new "
-                    "service that hasn't been deployed by PaaSTA yet".format(
-                        instance, cluster_data.service, cluster_data.cluster
-                    )
-                )
-            else:
-                log.warning(
-                    "Error getting service status from PaaSTA API for "
-                    f"{cluster_data.cluster}: {e.status} {e.reason}"
-                )
-
-        long_running_status = None
-        if status:
-            if status.marathon:
-                long_running_status = status.marathon
-            if status.kubernetes:
-                long_running_status = status.kubernetes
-        if not status:
-            log.debug(
-                "No status for {}.{}, in {}. Not deployed yet.".format(
-                    cluster_data.service, instance, cluster_data.cluster
-                )
-            )
-            cluster_data.instances_queue.task_done()
-            instances_out.put(instance_config)
-        elif not long_running_status:
-            log.debug(
-                "{}.{} in {} is not a Marathon or Kubernetes job. Marked as deployed.".format(
-                    cluster_data.service, instance, cluster_data.cluster
-                )
-            )
-        elif (
-            long_running_status.expected_instance_count == 0
-            or long_running_status.desired_state == "stop"
-        ):
-            log.debug(
-                "{}.{} in {} is marked as stopped. Marked as deployed.".format(
-                    cluster_data.service, status.instance, cluster_data.cluster
-                )
-            )
-        else:
-            if long_running_status.app_count != 1:
-                print(
-                    "  {}.{} on {} is still bouncing, {} versions "
-                    "running".format(
-                        cluster_data.service,
-                        status.instance,
-                        cluster_data.cluster,
-                        long_running_status.app_count,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-            if not cluster_data.git_sha.startswith(status.git_sha):
-                print(
-                    "  {}.{} on {} doesn't have the right sha yet: {}".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        status.git_sha,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-            if long_running_status.deploy_status not in [
-                "Running",
-                "Deploying",
-                "Waiting",
-            ]:
-                print(
-                    "  {}.{} on {} isn't running yet: {}".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        long_running_status.deploy_status,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-
-            # The bounce margin factor defines what proportion of instances we need to be "safe",
-            # so consider it scaled up "enough" if we have that proportion of instances ready.
-            required_instance_count = int(
-                math.ceil(
-                    instance_config.get_bounce_margin_factor()
-                    * long_running_status.expected_instance_count
-                )
-            )
-            if required_instance_count > long_running_status.running_instance_count:
-                print(
-                    "  {}.{} on {} isn't scaled up yet, "
-                    "has {} out of {} required instances (out of a total of {})".format(
-                        cluster_data.service,
-                        instance,
-                        cluster_data.cluster,
-                        long_running_status.running_instance_count,
-                        required_instance_count,
-                        long_running_status.expected_instance_count,
-                    )
-                )
-                cluster_data.instances_queue.task_done()
-                instances_out.put(instance_config)
-                continue
-
-            # `is not None` is necessary here because I'm adding the new attribute to the API response at the same time as I'm adding this reference.
-            if long_running_status.active_shas is not None:
-                active_git_shas = {g for g, c in long_running_status.active_shas}
-
-                if cluster_data.git_sha not in active_git_shas:
-                    print(
-                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} not yet running {cluster_data.git_sha}."
-                    )
-                    cluster_data.instances_queue.task_done()
-                    instances_out.put(instance_config)
-                    continue
-
-                # theoretically this case should be caught by the check on long_running_status.app_count
-                if len(active_git_shas) > 1:
-                    print(
-                        f"{cluster_data.service}.{instance} on {cluster_data.cluster} is running multiple versions: {active_git_shas}"
-                    )
-                    cluster_data.instances_queue.task_done()
-                    instances_out.put(instance_config)
-                    continue
-
-            print(
-                "Complete: {}.{} on {} looks 100% deployed at {} "
-                "instances on {}".format(
-                    cluster_data.service,
-                    instance,
-                    cluster_data.cluster,
-                    long_running_status.running_instance_count,
-                    status.git_sha,
-                )
-            )
-            cluster_data.instances_queue.task_done()
-
-
-def _query_clusters(clusters_data, green_light):
-    """Run _run_cluster_worker() in a separate thread for each paasta cluster
-
-    :param clusters_data: a list of ClusterData instances.
-    :param green_light: an instance of threading.Event().
-                        It is supposed to be cleared when KeyboardInterrupt is
-                        received. All running threads should check it
-                        periodically and exit when it is cleared.
-    """
-    workers_launched = []
-
-    for cluster_data in clusters_data:
-        if not cluster_data.instances_queue.empty():
-            worker = Thread(
-                target=_run_cluster_worker, args=(cluster_data, green_light)
-            )
-            worker.start()
-            workers_launched.append(worker)
-
-    for worker in workers_launched:
-        try:
-            while green_light.is_set() and worker.isAlive():
-                time.sleep(0.2)
-        except (KeyboardInterrupt, SystemExit):
-            green_light.clear()
-            print("KeyboardInterrupt received. Terminating..")
-        worker.join()
-
-
-def _run_cluster_worker(cluster_data, green_light):
-    """Run instances_deployed() for a cluster
-
-    :param cluster_data: an instance of ClusterData.
-    :param green_light: See the docstring for _query_clusters().
-    """
-    instances_out = Queue()
-    instances_deployed(
-        cluster_data=cluster_data, instances_out=instances_out, green_light=green_light
     )
-    cluster_data.instances_queue = instances_out
-    if cluster_data.instances_queue.empty():
-        print(f"Deploy to {cluster_data.cluster} complete!")
-    return cluster_data
+    try:
+        while not await loop.run_in_executor(
+            executor,
+            functools.partial(
+                check_if_instance_is_done,
+                service,
+                instance,
+                cluster,
+                git_sha,
+                instance_config,
+            ),
+        ):
+            await asyncio.sleep(polling_interval)
+        return (
+            cluster,
+            instance,
+        )  # for the convenience of the caller, to know which future is finishing.
+    finally:
+        diagnosis_task.cancel()
+
+
+async def periodically_diagnose_instance(
+    executor: concurrent.futures.Executor,
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+    diagnosis_interval: float,
+    time_before_first_diagnosis: float,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
+) -> None:
+    await asyncio.sleep(time_before_first_diagnosis)
+    loop = asyncio.get_running_loop()
+    while True:
+        try:
+            await loop.run_in_executor(
+                executor,
+                functools.partial(
+                    diagnose_why_instance_is_stuck,
+                    service,
+                    instance,
+                    cluster,
+                    git_sha,
+                    instance_config,
+                    should_ping_for_unhealthy_pods,
+                    notify_fn,
+                ),
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            print(f"Couldn't get status of {service}.{instance}:")
+            traceback.print_exc()
+        await asyncio.sleep(diagnosis_interval)
+
+
+def diagnose_why_instance_is_stuck(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+    should_ping_for_unhealthy_pods: bool,
+    notify_fn: Optional[Callable[[str], None]] = None,
+) -> None:
+    api = client.get_paasta_oapi_client(cluster=cluster)
+    try:
+        status = api.service.status_instance(
+            service=service,
+            instance=instance,
+            include_smartstack=False,
+            include_envoy=False,
+            include_mesos=False,
+            new=True,
+        )
+    except api.api_error as e:
+        log.warning(
+            "Error getting service status from PaaSTA API for "
+            f"{cluster}: {e.status} {e.reason}"
+        )
+        return
+
+    print(f"  Status for {service}.{instance} in {cluster}:")
+    for version in status.kubernetes_v2.versions:
+        # We call get_version_table_entry directly so that we can set version_name_suffix based on git_sha instead of
+        # creation time of the version (which is what get_versions_table does.)
+        # Without this, we'd call the old version "new" until the new version is actually created, which would be confusing.
+        for line in get_version_table_entry(
+            version,
+            service,
+            instance,
+            cluster,
+            version_name_suffix="new" if version.git_sha == git_sha else "old",
+            show_config_sha=True,
+            verbose=0,
+        ):
+            print(f"    {line}")
+    print("")
+
+    if should_ping_for_unhealthy_pods and notify_fn:
+        maybe_ping_for_unhealthy_pods(
+            service, instance, cluster, git_sha, status, notify_fn
+        )
+
+
+already_pinged = False
+
+
+def maybe_ping_for_unhealthy_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    status: InstanceStatusKubernetesV2,
+    notify_fn: Callable[[str], None],
+) -> None:
+    global already_pinged
+
+    if not already_pinged:
+        # there can be multiple current versions, e.g. if someone changes yelpsoa-configs during a bounce.
+        current_versions = [
+            v for v in status.kubernetes_v2.versions if v.git_sha == git_sha
+        ]
+        pingable_pods = [
+            pod
+            for version in current_versions
+            for pod in version.pods
+            if should_ping_for_pod(pod)
+        ]
+        if pingable_pods:
+            already_pinged = True
+            ping_for_pods(service, instance, cluster, pingable_pods, notify_fn)
+
+
+def should_ping_for_pod(pod: KubernetesPodV2) -> bool:
+    return recent_container_restart(get_main_container(pod))
+
+
+def ping_for_pods(
+    service: str,
+    instance: str,
+    cluster: str,
+    pods: List[KubernetesPodV2],
+    notify_fn: Callable[[str], None],
+) -> None:
+    pods_by_reason: Dict[str, List[KubernetesPodV2]] = {}
+    for pod in pods:
+        pods_by_reason.setdefault(get_main_container(pod).reason, []).append(pod)
+
+    for reason, pods_with_reason in pods_by_reason.items():
+        explanation = {
+            "Error": "crashed on startup",
+            "OOMKilled": "run out of memory",
+            "CrashLoopBackOff": "crashed on startup several times, and Kubernetes is backing off restarting them",
+        }.get(reason, f"restarted ({reason})")
+
+        status_tip = f"Take a look at the output of your unhealthy pods with `paasta status -s {service} -i {instance} -c {cluster} -vv` (more -v for more output.)"
+
+        tip = {
+            "Error": (
+                f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}"
+            ),
+            "CrashLoopBackOff": f"This may indicate a bug in your code, a misconfiguration in yelpsoa-configs, or missing srv-configs. {status_tip}",
+            "OOMKilled": " ".join(
+                (
+                    "This probably means your new version of code requires more memory than the old version."
+                    "You may want to increase memory in yelpsoa-configs or roll back."
+                    "Ask #paasta if you need help with this.",
+                )
+            ),
+        }.get(reason, "")
+
+        notify_fn(
+            f"Some of the replicas of your new version have {explanation}: {', '.join(f'`{p.name}`' for p in pods_with_reason)}\n{tip}"
+        )
+
+
+def check_if_instance_is_done(
+    service: str,
+    instance: str,
+    cluster: str,
+    git_sha: str,
+    instance_config: LongRunningServiceConfig,
+    api: Optional[client.PaastaOApiClient] = None,
+) -> bool:
+    if api is None:
+        api = client.get_paasta_oapi_client(cluster=cluster)
+        if not api:
+            log.warning(
+                "Couldn't reach the PaaSTA api for {}! Assuming it is not "
+                "deployed there yet.".format(cluster)
+            )
+            return False
+
+    inst_str = f"{service}.{instance} in {cluster}"
+    log.debug(f"Inspecting the deployment status of {inst_str}")
+
+    status = None
+    try:
+        status = api.service.bounce_status_instance(service=service, instance=instance)
+    except api.api_error as e:
+        if e.status == 404:  # non-existent instance
+            # TODO(PAASTA-17290): just print the error message so that we
+            # can distinguish between sources of 404s
+            log.warning(
+                "Can't get status for instance {}, service {} in "
+                "cluster {}. This is normally because it is a new "
+                "service that hasn't been deployed by PaaSTA yet.".format(
+                    instance, service, cluster
+                )
+            )
+        else:  # 500 - error talking to api
+            log.warning(
+                "Error getting service status from PaaSTA API for "
+                f"{cluster}: {e.status} {e.reason}"
+            )
+
+        log.debug(f"No status for {inst_str}. Not deployed yet.")
+        return False
+
+    if not status:  # 204 - instance is not bounceable
+        log.debug(
+            f"{inst_str} is not a supported bounceable instance. "
+            "Only long-running instances running on Kubernetes are currently "
+            "supported. Continuing without watching."
+        )
+        return True
+
+    # Case: instance is stopped
+    if status.expected_instance_count == 0 or status.desired_state == "stop":
+        log.debug(f"{inst_str} is marked as stopped. Ignoring it.")
+        return True
+
+    short_git_sha = git_sha[:8]
+    active_shas = {g[:8] for g, c in status.active_shas}
+    if short_git_sha in active_shas:
+        non_desired_shas = active_shas.difference({short_git_sha})
+        # Case: bounce in-progress
+        if len(non_desired_shas) == 1:
+            (other_sha,) = non_desired_shas
+            print(
+                f"  {inst_str} is still bouncing, from {other_sha} to {short_git_sha}"
+            )
+            return False
+
+        # Case: previous bounces not yet finished when this one was triggered
+        elif len(non_desired_shas) > 1:
+            print(
+                f"  {inst_str} is still bouncing to {short_git_sha}, but there are "
+                f"multiple other bouncing versions running: {non_desired_shas}"
+            )
+            return False
+    else:
+        # Case: bounce not yet started
+        print(
+            f"  {inst_str} hasn't started bouncing to {short_git_sha}; "
+            f"only the following versions are running: {active_shas}"
+        )
+        return False
+
+    # Case: instance is in not running
+    if status.deploy_status not in {"Running", "Deploying", "Waiting"}:
+        print(
+            f"  {inst_str} isn't running yet; it is in the state: {status.deploy_status}"
+        )
+        return False
+
+    # Case: not enough replicas are up for the instance to be considered bounced
+    # The bounce margin factor defines what proportion of instances we need to be "safe",
+    # so consider it scaled up "enough" if we have that proportion of instances ready.
+    required_instance_count = int(
+        math.ceil(
+            instance_config.get_bounce_margin_factor() * status.expected_instance_count
+        )
+    )
+    if required_instance_count > status.running_instance_count:
+        print(
+            f"  {inst_str} has only {status.running_instance_count} replicas up, "
+            f"below the required minimum of {required_instance_count}"
+        )
+        return False
+
+    # Case: completed
+    print(
+        f"Complete: {service}.{instance} on {cluster} is 100% deployed at "
+        f"{status.running_instance_count} replicas on {status.active_shas[0][0]}"
+    )
+    return True
 
 
 WAIT_FOR_INSTANCE_CLASSES = [
@@ -1403,13 +1532,26 @@ WAIT_FOR_INSTANCE_CLASSES = [
 ]
 
 
-def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
+def get_instance_configs_for_service_in_cluster_and_deploy_group(
+    service_configs: PaastaServiceConfigLoader, cluster: str, deploy_group: str
+) -> Iterator[LongRunningServiceConfig]:
+    for instance_class in WAIT_FOR_INSTANCE_CLASSES:
+        for instance_config in service_configs.instance_configs(
+            cluster=cluster, instance_type_class=instance_class
+        ):
+            if instance_config.get_deploy_group() == deploy_group:
+                yield instance_config
+
+
+def get_instance_configs_for_service_in_deploy_group_all_clusters(
+    service: str, deploy_group: str, git_sha: str, soa_dir: str
+) -> Dict[str, List[LongRunningServiceConfig]]:
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
     )
 
-    total_instances = 0
-    clusters_data = []
+    instance_configs_per_cluster = {}
+
     api_endpoints = load_system_paasta_config().get_api_endpoints()
     for cluster in service_configs.clusters:
         if cluster not in api_endpoints:
@@ -1420,39 +1562,35 @@ def clusters_data_to_wait_for(service, deploy_group, git_sha, soa_dir):
             )
             raise NoSuchCluster
 
-        # Currently only marathon, kubernetes and cassandra instances are
-        # supported for wait_for_deployment because they are the only thing
-        # that are worth waiting on.
-        instances_queue = Queue()
-        for instance_class in WAIT_FOR_INSTANCE_CLASSES:
-            for instance_config in service_configs.instance_configs(
-                cluster=cluster, instance_type_class=instance_class
-            ):
-                if instance_config.get_deploy_group() == deploy_group:
-                    instances_queue.put(instance_config)
-                    total_instances += 1
-
-        if not instances_queue.empty():
-            clusters_data.append(
-                ClusterData(
-                    cluster=cluster,
-                    service=service,
-                    git_sha=git_sha,
-                    instances_queue=instances_queue,
-                )
+        instance_configs_per_cluster[cluster] = list(
+            get_instance_configs_for_service_in_cluster_and_deploy_group(
+                service_configs, cluster, deploy_group
             )
+        )
 
-    return clusters_data, total_instances
+    return instance_configs_per_cluster
 
 
-def wait_for_deployment(
-    service, deploy_group, git_sha, soa_dir, timeout, green_light=None, progress=None
-):
-    clusters_data, total_instances = clusters_data_to_wait_for(
+async def wait_for_deployment(
+    service: str,
+    deploy_group: str,
+    git_sha: str,
+    soa_dir: str,
+    timeout: float,
+    progress: Optional[Progress] = None,
+    polling_interval: float = None,
+    diagnosis_interval: float = None,
+    time_before_first_diagnosis: float = None,
+    notify_fn: Optional[Callable[[str], None]] = None,
+) -> Optional[int]:
+    instance_configs_per_cluster: Dict[
+        str, List[LongRunningServiceConfig]
+    ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
         service, deploy_group, git_sha, soa_dir
     )
+    total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
-    if not clusters_data:
+    if not instance_configs_per_cluster:
         _log(
             service=service,
             component="deploy",
@@ -1463,7 +1601,7 @@ def wait_for_deployment(
             ),
             level="event",
         )
-        return
+        return None
 
     print(
         "Waiting for deployment of {} for '{}' to complete...".format(
@@ -1471,60 +1609,112 @@ def wait_for_deployment(
         )
     )
 
-    deadline = time.time() + timeout
-    if green_light is None:
-        green_light = Event()
-    green_light.set()
+    system_paasta_config = load_system_paasta_config()
+    max_workers = system_paasta_config.get_mark_for_deployment_max_polling_threads()
+    if polling_interval is None:
+        polling_interval = (
+            system_paasta_config.get_mark_for_deployment_default_polling_interval()
+        )
+    if diagnosis_interval is None:
+        diagnosis_interval = (
+            system_paasta_config.get_mark_for_deployment_default_diagnosis_interval()
+        )
+    if time_before_first_diagnosis is None:
+        time_before_first_diagnosis = (
+            system_paasta_config.get_mark_for_deployment_default_time_before_first_diagnosis()
+        )
 
     with progressbar.ProgressBar(maxval=total_instances) as bar:
-        while time.time() < deadline:
-            _query_clusters(clusters_data, green_light)
-            if not green_light.is_set():
-                raise KeyboardInterrupt
+        instance_done_futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for cluster, instance_configs in instance_configs_per_cluster.items():
+                for instance_config in instance_configs:
+                    instance_done_futures.append(
+                        asyncio.ensure_future(
+                            wait_until_instance_is_done(
+                                executor,
+                                service,
+                                instance_config.get_instance(),
+                                cluster,
+                                git_sha,
+                                instance_config,
+                                polling_interval=polling_interval,
+                                diagnosis_interval=diagnosis_interval,
+                                time_before_first_diagnosis=time_before_first_diagnosis,
+                                should_ping_for_unhealthy_pods=instance_config.get_should_ping_for_unhealthy_pods(
+                                    system_paasta_config.get_mark_for_deployment_should_ping_for_unhealthy_pods()
+                                ),
+                                notify_fn=notify_fn,
+                            ),
+                        )
+                    )
 
-            finished_instances = total_instances - sum(
-                (c.instances_queue.qsize() for c in clusters_data)
+            remaining_instances: Dict[str, Set[str]] = {
+                cluster: {ic.get_instance() for ic in instance_configs}
+                for cluster, instance_configs in instance_configs_per_cluster.items()
+            }
+            finished_instances = 0
+
+            async def periodically_update_progressbar() -> None:
+                while True:
+                    await asyncio.sleep(60)
+                    bar.update(finished_instances)
+                    print()
+
+            periodically_update_progressbar_task = asyncio.create_task(
+                periodically_update_progressbar()
             )
-            bar.update(finished_instances)
-            if progress is not None:
-                progress.percent = bar.percentage
-                progress.waiting_on = {
-                    c.cluster: list(c.instances_queue.queue) for c in clusters_data
-                }
 
-            if all((cluster.instances_queue.empty() for cluster in clusters_data)):
+            try:
+                for coro in asyncio.as_completed(
+                    instance_done_futures, timeout=timeout
+                ):
+                    cluster, instance = await coro
+                    finished_instances += 1
+                    bar.update(finished_instances)
+                    if progress is not None:
+                        progress.percent = bar.percentage
+                        remaining_instances[cluster].remove(instance)
+                        progress.waiting_on = remaining_instances
+            except asyncio.TimeoutError:
+                _log(
+                    service=service,
+                    component="deploy",
+                    line=compose_timeout_message(
+                        remaining_instances, timeout, deploy_group, service, git_sha
+                    ),
+                    level="event",
+                )
+                raise TimeoutError
+            except asyncio.CancelledError:
+                # Wait for all the tasks to finish before closing out the ThreadPoolExecutor, to avoid RuntimeError('cannot schedule new futures after shutdown')
+                for coro in instance_done_futures:
+                    coro.cancel()
+                    try:
+                        await coro
+                    except asyncio.CancelledError:
+                        pass
+                raise
+            else:
                 sys.stdout.flush()
                 if progress is not None:
                     progress.percent = 100.0
                     progress.waiting_on = None
                 return 0
-            else:
-                time.sleep(min(60, timeout))
-            sys.stdout.flush()
-
-    _log(
-        service=service,
-        component="deploy",
-        line=compose_timeout_message(
-            clusters_data, timeout, deploy_group, service, git_sha
-        ),
-        level="event",
-    )
-    raise TimeoutError
+            finally:
+                periodically_update_progressbar_task.cancel()
 
 
-def compose_timeout_message(clusters_data, timeout, deploy_group, service, git_sha):
-    cluster_instances = {}
-    for c_d in clusters_data:
-        while c_d.instances_queue.qsize() > 0:
-            cluster_instances.setdefault(c_d.cluster, []).append(
-                c_d.instances_queue.get(block=False).get_instance()
-            )
-            c_d.instances_queue.task_done()
-
+def compose_timeout_message(
+    remaining_instances: Mapping[str, Collection[str]],
+    timeout: float,
+    deploy_group: str,
+    service: str,
+    git_sha: str,
+) -> str:
     paasta_status = []
     paasta_logs = []
-    for cluster, instances in sorted(cluster_instances.items()):
+    for cluster, instances in sorted(remaining_instances.items()):
         if instances:
             joined_instances = ",".join(instances)
             paasta_status.append(

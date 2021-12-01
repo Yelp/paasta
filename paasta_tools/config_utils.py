@@ -12,14 +12,17 @@ import ruamel.yaml as yaml
 from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.cli.cmds.validate import validate_schema
-from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 log = logging.getLogger(__name__)
 
 # Must have a schema defined
-KNOWN_CONFIG_TYPES = ("marathon", "kubernetes")
+KNOWN_CONFIG_TYPES = ("marathon", "kubernetes", "deploy", "smartstack")
+
+
+def my_represent_none(self, data):
+    return self.represent_scalar("tag:yaml.org,2002:null", "null")
 
 
 def write_auto_config_data(
@@ -35,6 +38,7 @@ def write_auto_config_data(
 
     Returns the filename of the modified file, or None if no file was written.
     """
+    yaml.YAML().representer.add_representer(type(None), my_represent_none)
     service_dir = f"{soa_dir}/{service}"
     if not os.path.exists(service_dir):
         log.warning(
@@ -95,13 +99,12 @@ def _push_to_remote(branch: str) -> None:
             raise
 
 
-def validate_auto_config_file(filepath: str):
+def validate_auto_config_file(filepath: str, schema_subdir: str):
     basename = os.path.basename(filepath)
     for file_type in KNOWN_CONFIG_TYPES:
+        schema_path = f"{schema_subdir}/{file_type}" if schema_subdir else file_type
         if basename.startswith(file_type):
-            return bool(
-                validate_schema(filepath, f"{AUTO_SOACONFIG_SUBDIR}/{file_type}")
-            )
+            return bool(validate_schema(filepath, schema_path))
     else:
         logging.info(f"{filepath} is invalid because it has no validator defined")
         return False
@@ -143,6 +146,7 @@ class AutoConfigUpdater:
         branch: str = "master",
         working_dir: Optional[str] = None,
         do_clone: bool = True,
+        validation_schema_path: str = "",
     ):
         self.config_source = config_source
         self.git_remote = git_remote
@@ -150,6 +154,7 @@ class AutoConfigUpdater:
         self.working_dir = working_dir
         self.do_clone = do_clone
         self.files_changed: Set[str] = set()
+        self.validation_schema_path = validation_schema_path
         self.tmp_dir = None
 
     def __enter__(self):
@@ -197,11 +202,14 @@ class AutoConfigUpdater:
         return_code = True
         for filepath in self.files_changed:
             # We don't short circuit after a failure so the caller gets info on all the failures
-            return_code = validate_auto_config_file(filepath) and return_code
+            return_code = (
+                validate_auto_config_file(filepath, self.validation_schema_path)
+                and return_code
+            )
         return return_code
 
-    def commit_to_remote(self, extra_message: str = "", validate: bool = True):
-        if validate and not self.validate():
+    def commit_to_remote(self, extra_message: str = ""):
+        if not self.validate():
             log.error("Files failed validation, not committing changes")
             raise ValidationError
 
