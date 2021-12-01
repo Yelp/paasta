@@ -409,7 +409,7 @@ def get_docker_run_cmd(
     docker_cpu_limit,
 ):
     print(
-        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} cores respectively."
+        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} core(s) respectively."
     )
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
