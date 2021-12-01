@@ -155,7 +155,7 @@ def add_subparser(subparsers):
             "Set docker memory limit. Should be greater than driver memory. Defaults to 2x spark.driver.memory. Example: 2g, 500m, Max: 64g"
             "Note: If memory limit provided is greater than associated with the batch instance, it will default to max memory of the box."
         ),
-        default=False,
+        default=None,
     )
     list_parser.add_argument(
         "--docker-cpu-limit",
@@ -163,7 +163,7 @@ def add_subparser(subparsers):
             "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
             "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
         ),
-        default=False,
+        default=None,
     )
     list_parser.add_argument(
         "--docker-registry",
@@ -653,7 +653,7 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
 
 
 def _calculate_docker_memory_limit(
-    spark_conf: Mapping[str, str], memory_limit: str
+    spark_conf: Mapping[str, str], memory_limit: Optional[str]
 ) -> str:
     """ In Order of preference:
     1. Argument: --docker-memory-limit
@@ -683,7 +683,9 @@ def _calculate_docker_memory_limit(
     return docker_memory_limit
 
 
-def _calculate_docker_cpu_limit(spark_conf: Mapping[str, str], cpu_limit: str) -> str:
+def _calculate_docker_cpu_limit(
+    spark_conf: Mapping[str, str], cpu_limit: Optional[str]
+) -> str:
     """ In Order of preference:
     1. Argument: --docker-cpu-limit
     2. --spark-args or spark-submit: spark.driver.cores
