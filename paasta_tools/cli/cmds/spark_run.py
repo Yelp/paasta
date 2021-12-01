@@ -59,7 +59,7 @@ CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
-# Extra room for memory overhead and for any other running inside containe
+# Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 DEFAULT_MAX_DOCKER_MEMORY_LIMIT = "64g"
 
@@ -691,13 +691,11 @@ def _calculate_docker_cpu_limit(
     2. --spark-args or spark-submit: spark.driver.cores
     3. Default
     """
-    if cpu_limit:
-        docker_cpu_limit = cpu_limit
-    else:
-        docker_cpu_limit = str(
-            int(spark_conf.get("spark.driver.cores", DEFAULT_DRIVER_CORES_BY_SPARK))
-        )
-    return docker_cpu_limit
+    return (
+        cpu_limit
+        if cpu_limit
+        else spark_conf.get("spark.driver.cores", str(DEFAULT_DRIVER_CORES_BY_SPARK))
+    )
 
 
 def configure_and_run_docker_container(
