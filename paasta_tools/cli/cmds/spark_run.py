@@ -152,14 +152,16 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--docker-memory-limit",
         help=(
-            "Set docker memory limit. Should be greater than driver memory. Defaults to 2x driver memory. Example: 2g, 500m, Max: 64g"
+            "Set docker memory limit. Should be greater than driver memory. Defaults to 2x spark.driver.memory. Example: 2g, 500m, Max: 64g"
+            "Note: If memory limit provided is greater than associated with the batch instance, it will default to max memory of the box."
         ),
         default=False,
     )
     list_parser.add_argument(
         "--docker-cpu-limit",
         help=(
-            "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x driver cores."
+            "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
+            "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
         ),
         default=False,
     )
@@ -406,8 +408,8 @@ def get_docker_run_cmd(
     docker_memory_limit,
     docker_cpu_limit,
 ):
-    log.info(
-        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} respectively"
+    print(
+        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} cores respectively."
     )
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
@@ -672,7 +674,7 @@ def _calculate_docker_memory_limit(
         docker_memory_limit = f"{memory_val}{memory_unit}"
     except Exception as e:
         # For any reason it fails, continue with default value
-        log.error(
+        print(
             f"Failed to parse docker memory limit. Error: {e}. Example values: 1g, 200m."
             " Setting a default value {DEFAULT_MAX_DOCKER_MEMORY_LIMIT}"
         )
@@ -993,11 +995,10 @@ def paasta_spark_run(args):
         args.spark_args, pod_template_path, args.enable_compact_bin_packing
     )
 
-    # Get driver-memory and cores
+    # This is required if configs are provided as part of `spark-submit`
+    # Other way to provide is with --spark-args
     sub_cmds = args.cmd.split(" ")  # spark.driver.memory=10g
     for cmd in sub_cmds:
-        # This is required if these configs are provided as part of `spark-submit`
-        # Other way to provide is with --spark-args
         if cmd.startswith("spark.driver.memory") or cmd.startswith(
             "spark.driver.cores"
         ):
