@@ -61,7 +61,6 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
-DEFAULT_MAX_DOCKER_MEMORY_LIMIT = "64g"
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -675,10 +674,9 @@ def _calculate_docker_memory_limit(
     except Exception as e:
         # For any reason it fails, continue with default value
         print(
-            f"Failed to parse docker memory limit. Error: {e}. Example values: 1g, 200m."
-            " Setting a default value {DEFAULT_MAX_DOCKER_MEMORY_LIMIT}"
+            f"ERROR: Failed to parse docker memory limit. Error: {e}. Example values: 1g, 200m."
         )
-        docker_memory_limit = DEFAULT_MAX_DOCKER_MEMORY_LIMIT
+        raise
 
     return docker_memory_limit
 
