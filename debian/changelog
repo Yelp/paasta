@@ -1,3 +1,12 @@
+paasta-tools (0.113.3) xenial; urgency=medium
+
+  * 0.113.3 tagged with 'make release'
+    Commit: Merge pull request #3241 from Yelp/d/manpreet/COREML-
+    2743_set_container_limits  Set driver container memory and cpu
+    limits
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 02 Dec 2021 11:41:21 -0800
+
 paasta-tools (0.113.2) xenial; urgency=medium
 
   * 0.113.2 tagged with 'make release'
