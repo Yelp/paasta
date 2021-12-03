@@ -97,6 +97,14 @@
                 "pool": {
                     "type": "string"
                 },
+                "iam_role": {
+                    "type": "string"
+                },
+                "iam_role_provider": {
+                    "enum": [
+                        "aws"
+                    ]
+                },
                 "node_selectors": {
                     "type": "object",
                     "additionalProperties": false,
