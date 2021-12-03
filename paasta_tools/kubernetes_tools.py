@@ -2965,7 +2965,10 @@ def create_or_find_service_account_name(
     iam_role: str, namespace: str = "paasta"
 ) -> str:
     kube_client = KubeClient()
-    sa_name = f"{namespace}--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
+    # the service account is expected to always be prefixed with paasta- as using the actual namespace
+    # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
+    # the actual name
+    sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
     if not any(
         sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
