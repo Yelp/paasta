@@ -879,6 +879,8 @@ class TestTronTools:
         self, instance_name, expected_instance_label
     ):
         action_dict = {
+            "iam_role_provider": "aws",
+            "iam_role": "arn:aws:iam::000000000000:role/some_role",
             "command": "echo something",
             "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
             "requires": ["required_action"],
@@ -920,6 +922,10 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.create_or_find_service_account_name",
+            autospec=True,
+            return_value="some--service--account",
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -964,6 +970,7 @@ class TestTronTools:
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
+            "service_account_name": "some--service--account",
         }
         expected_docker = "{}/{}".format(
             "docker-registry.com:400", branch_dict["docker_image"]

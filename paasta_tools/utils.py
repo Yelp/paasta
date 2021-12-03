@@ -307,6 +307,8 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_docker_args: Dict[str, str]
     gpus: int
     branch: str
+    iam_role: str
+    iam_role_provider: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -878,6 +880,12 @@ class InstanceConfig:
 
     def get_secret_volumes(self) -> List[SecretVolume]:
         return self.config_dict.get("secret_volumes", [])
+
+    def get_iam_role(self) -> str:
+        return self.config_dict.get("iam_role", "")
+
+    def get_iam_role_provider(self) -> str:
+        return self.config_dict.get("iam_role_provider", "kiam")
 
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on.
