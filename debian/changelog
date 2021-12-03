@@ -1,3 +1,12 @@
+paasta-tools (0.114.0) xenial; urgency=medium
+
+  * 0.114.0 tagged with 'make release'
+    Commit: Add Pod Identity support for Tron Pods (#3242)  Allow users
+    to set iam roles for pod identity in tron + teach paasta how/when to
+    create service accounts in the tron namespace
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 03 Dec 2021 12:33:56 -0800
+
 paasta-tools (0.113.3) xenial; urgency=medium
 
   * 0.113.3 tagged with 'make release'
