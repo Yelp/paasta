@@ -256,7 +256,7 @@ def sync_boto_secrets(
                 this_key = key + "." + filetype
                 sanitised_key = this_key.replace(".", "-").replace("_", "--")
                 try:
-                    with open(f"/etc/boto_cfg/{this_key}") as f:
+                    with open(f"/etc/boto_cfg_private/{this_key}") as f:
                         secret_data[sanitised_key] = base64.b64encode(
                             f.read().encode("utf-8")
                         ).decode("utf-8")
