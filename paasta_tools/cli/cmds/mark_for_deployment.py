@@ -68,6 +68,7 @@ from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -403,7 +404,7 @@ def print_rollback_cmd(
         )
 
 
-def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
+def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     """Wrapping mark_for_deployment"""
     if args.verbose:
         log.setLevel(level=logging.DEBUG)
@@ -465,28 +466,52 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
     if not can_user_deploy_service(deploy_info, service):
         sys.exit(1)
 
-    deploy_process = MarkForDeploymentProcess(
-        service=service,
-        deploy_info=deploy_info,
-        deploy_group=deploy_group,
-        commit=commit,
-        old_git_sha=old_git_sha,
-        git_url=args.git_url,
-        auto_rollback=args.auto_rollback,
-        block=args.block,
-        soa_dir=args.soa_dir,
-        timeout=args.timeout,
-        warn_pct=args.warn,
-        auto_certify_delay=args.auto_certify_delay,
-        auto_abandon_delay=args.auto_abandon_delay,
-        auto_rollback_delay=args.auto_rollback_delay,
-        authors=args.authors,
-        polling_interval=args.polling_interval,
-        diagnosis_interval=args.diagnosis_interval,
-        time_before_first_diagnosis=args.time_before_first_diagnosis,
+    metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
+    # only time if wait for deployment and we are actually deploying a new sha
+    if args.block and old_git_sha != commit:
+        metrics_factory = metrics_lib.get_metrics_interface
+    metrics = metrics_factory("paasta.mark_for_deployment")
+    deploy_timer = metrics.create_timer(
+        name="deploy_duration",
+        default_dimensions=dict(
+            paasta_service=service,
+            deploy_group=deploy_group,
+            old_version=old_git_sha,
+            new_version=commit,
+            deploy_timeout=args.timeout,
+        ),
     )
-    ret = deploy_process.run()
-    return ret
+
+    # meteorite deploy timers can be used as context managers; however, they
+    # won't emit if the context is exited with an exception, so we need to use
+    # a try/finally.
+    deploy_timer.start()
+    ret = 1  # assume exc, since if success will be set to 0 anyway
+    try:
+        deploy_process = MarkForDeploymentProcess(
+            service=service,
+            deploy_info=deploy_info,
+            deploy_group=deploy_group,
+            commit=commit,
+            old_git_sha=old_git_sha,
+            git_url=args.git_url,
+            auto_rollback=args.auto_rollback,
+            block=args.block,
+            soa_dir=args.soa_dir,
+            timeout=args.timeout,
+            warn_pct=args.warn,
+            auto_certify_delay=args.auto_certify_delay,
+            auto_abandon_delay=args.auto_abandon_delay,
+            auto_rollback_delay=args.auto_rollback_delay,
+            authors=args.authors,
+            polling_interval=args.polling_interval,
+            diagnosis_interval=args.diagnosis_interval,
+            time_before_first_diagnosis=args.time_before_first_diagnosis,
+        )
+        ret = deploy_process.run()
+        return ret
+    finally:
+        deploy_timer.stop(tmp_dimensions={"exit_status": ret})
 
 
 class Progress:

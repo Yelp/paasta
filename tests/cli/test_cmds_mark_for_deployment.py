@@ -180,7 +180,9 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
+@patch("paasta_tools.metrics.metrics_lib.get_metrics_interface", autospec=True)
 def test_paasta_mark_for_deployment_with_good_rollback(
+    mock_get_metrics,
     mock_load_system_paasta_config,
     mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
@@ -225,6 +227,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         side_effect=on_enter_rolled_back_side_effect,
     ):
         assert mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback) == 1
+
     mock_mark_for_deployment.assert_any_call(
         service="test_service",
         deploy_group="test_deploy_group",
@@ -247,6 +250,21 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
     assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
+
+    mock_get_metrics.assert_called_once_with("paasta.mark_for_deployment")
+    mock_get_metrics.return_value.create_timer.assert_called_once_with(
+        name="deploy_duration",
+        default_dimensions=dict(
+            paasta_service="test_service",
+            deploy_group="test_deploy_group",
+            old_version="old-sha",
+            new_version="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            deploy_timeout=600,
+        ),
+    )
+    mock_timer = mock_get_metrics.return_value.create_timer.return_value
+    mock_timer.start.assert_called_once_with()
+    mock_timer.stop.assert_called_once_with(tmp_dimensions=dict(exit_status=1))
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
