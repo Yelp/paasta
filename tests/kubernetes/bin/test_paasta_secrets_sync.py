@@ -89,7 +89,7 @@ def test_sync_secrets(namespace):
     ) as mock_scandir, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
         create=True,
-        autospec=False,
+        autospec=None,
     ), mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
         autospec=True,
@@ -234,7 +234,7 @@ def test_sync_boto_secrets():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
         create=True,
-        autospec=True,
+        autospec=None,
     ) as mock_open, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
         autospec=True,

@@ -1272,9 +1272,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_boto_volume(self):
         required_boto_keys = self.config_dict.get("boto_keys", [])
+        service_name = self.get_sanitised_deployment_name()
         if not required_boto_keys:
             return None
-        service_name = self.get_sanitised_deployment_name()
         items = []
         for boto_key in required_boto_keys:
             for filetype in ["sh", "yaml", "cfg", "json"]:
@@ -1284,12 +1284,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     key=secret_name, mode=mode_to_int("0444"), path=this_key,
                 )
                 items.append(item)
+        # Check that boto keys actually exist as secrets
+        secret_hash = self.get_boto_secret_hash()
+        if not secret_hash:
+            log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
+            return None
+        secret_name = f"paasta-boto-key-{service_name}"
         volume = V1Volume(
             name=f"secret-boto-key-{service_name}",
             secret=V1SecretVolumeSource(
-                secret_name=f"paasta-boto-key-{service_name}",
-                default_mode=mode_to_int("0444"),
-                items=items,
+                secret_name=secret_name, default_mode=mode_to_int("0444"), items=items,
             ),
         )
         return volume
@@ -1336,22 +1340,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ]
         )
         if self.config_dict.get("boto_keys", []):
+            secret_hash = self.get_boto_secret_hash()
             service_name = (
                 self.get_sanitised_service_name()
                 + "-"
                 + self.get_sanitised_instance_name()
             )
-            mount = V1VolumeMount(
-                mount_path="/etc/boto_cfg",
-                name=f"secret-boto-key-{service_name}",
-                read_only=True,
-            )
-            for existing_mount in volume_mounts:
-                if existing_mount.mount_path == "/etc/boto_cfg":
-                    volume_mounts.remove(existing_mount)
-                    break
-            volume_mounts.append(mount)
+            if secret_hash:
+                mount = V1VolumeMount(
+                    mount_path="/etc/boto_cfg",
+                    name=f"secret-boto-key-{service_name}",
+                    read_only=True,
+                )
+                for existing_mount in volume_mounts:
+                    if existing_mount.mount_path == "/etc/boto_cfg":
+                        volume_mounts.remove(existing_mount)
+                        break
+                volume_mounts.append(mount)
         return volume_mounts
+
+    def get_boto_secret_hash(self) -> str:
+        kube_client = KubeClient()
+        service_name = (
+            self.get_sanitised_service_name() + "-" + self.get_sanitised_instance_name()
+        )
+        secret_name = f"paasta-boto-key-{service_name}"
+        return get_kubernetes_secret_signature(
+            kube_client=kube_client, secret=secret_name, service=service_name
+        )
 
     def get_sanitised_service_name(self) -> str:
         return sanitise_kubernetes_name(self.get_service())

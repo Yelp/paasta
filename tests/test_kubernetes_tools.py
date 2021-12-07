@@ -1233,7 +1233,8 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        volumes = deployment.get_boto_volume()
+        with mock.patch.object(deployment, "get_boto_secret_hash", return_value="hash"):
+            volumes = deployment.get_boto_volume()
         if config_dict:
             assert (
                 volumes.secret.secret_name == "paasta-boto-key-my-service-my-instance"
