@@ -1,3 +1,12 @@
+paasta-tools (0.114.2) xenial; urgency=medium
+
+  * 0.114.2 tagged with 'make release'
+    Commit: Merge pull request #3246 from Yelp/u/jvperrin/add-units-to-
+    autoscaler-pause-output  Add units (minutes) to autoscaler pause
+    output
+
+ -- Jason Perrin <jvperrin@yelp.com>  Wed, 08 Dec 2021 15:46:36 -0800
+
 paasta-tools (0.114.1) xenial; urgency=medium
 
   * 0.114.1 tagged with 'make release'
