@@ -2,6 +2,7 @@ import logging
 import time
 from abc import ABC
 from abc import abstractmethod
+from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -24,13 +25,24 @@ _metrics_interfaces: Dict[str, Type["BaseMetrics"]] = {}
 
 
 class TimerProtocol(Protocol):
+    def __enter__(self) -> "TimerProtocol":
+        raise NotImplementedError()
+
+    def __exit__(
+        self,
+        err_type: Optional[type],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        raise NotImplementedError()
+
     def start(self) -> None:
         raise NotImplementedError()
 
-    def stop(self) -> None:
+    def stop(self, **kwargs: Any) -> None:
         raise NotImplementedError()
 
-    def record(self, value: float) -> None:
+    def record(self, value: float, **kwargs: Any) -> None:
         raise NotImplementedError()
 
 
@@ -99,13 +111,26 @@ class Timer(TimerProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
 
+    def __enter__(self) -> TimerProtocol:
+        self.start()
+        return self
+
+    def __exit__(
+        self,
+        err_type: Optional[type],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        if not err_type:
+            self.stop()
+
     def start(self) -> None:
         log.debug("timer {} start at {}".format(self.name, time.time()))
 
-    def stop(self) -> None:
+    def stop(self, **kwargs: Any) -> None:
         log.debug("timer {} stop at {}".format(self.name, time.time()))
 
-    def record(self, value: float) -> None:
+    def record(self, value: float, **kwargs: Any) -> None:
         log.debug(f"timer {self.name} record value {value}")
 
 
