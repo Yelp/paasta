@@ -45,7 +45,7 @@ from paasta_tools.utils import calculate_tail_lines
 
 
 INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
-INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES_K8S = {"kubernetes"}
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}

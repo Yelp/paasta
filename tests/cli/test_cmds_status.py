@@ -49,6 +49,7 @@ from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_cassandra_status
 from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
@@ -940,6 +941,138 @@ def mock_kubernetes_status():
 
 
 @pytest.fixture
+def mock_cassandra_status() -> Mapping[str, Any]:
+    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    return defaultdict(
+        metadata=dict(
+            name="kafka--k8s-local-main",
+            namespace="paasta-kafkaclusters",
+            annotations={"paasta.yelp.com/desired_state": "testing"},
+        ),
+        status=dict(
+            leaseID=3084822305308040700,
+            nodes=[
+                {
+                    "details": {
+                        "available": True,
+                        "clusterName": "activity-feed",
+                        "datacenter": "norcal-devc",
+                        "drainProgress": "Drained 0/0 ColumnFamilies",
+                        "drained": False,
+                        "draining": False,
+                        "gossipRunning": True,
+                        "hintedHandoffEnabled": True,
+                        "hintsInProgress": 0,
+                        "incrementalBackupsEnabled": False,
+                        "initialized": True,
+                        "joined": True,
+                        "loadString": "28.19 MiB",
+                        "localHostId": "c4977a17-6695-4632-b0ba-505a9f3f9d0b",
+                        "loggingLevels": {
+                            "ROOT": "INFO",
+                            "com.thinkaurelius.thrift": "ERROR",
+                            "org.apache.cassandra": "DEBUG",
+                        },
+                        "nativeTransportRunning": True,
+                        "numberOfTables": 48,
+                        "operationMode": "NORMAL",
+                        "rack": "uswest1cdevc",
+                        "readRepairAttempted": 0,
+                        "releaseVersion": "3.11.3",
+                        "removalStatus": "No token removals in process.",
+                        "rpcServerRunning": True,
+                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                        "starting": False,
+                        "tokenRangesCount": 256,
+                        "totalHints": 0,
+                    },
+                    "inspectTime": inspectTime,
+                    "ip": "10.93.210.204",
+                },
+                {
+                    "details": {
+                        "available": True,
+                        "clusterName": "activity-feed",
+                        "datacenter": "norcal-devc",
+                        "drainProgress": "Drained 0/0 ColumnFamilies",
+                        "drained": False,
+                        "draining": False,
+                        "gossipRunning": True,
+                        "hintedHandoffEnabled": True,
+                        "hintsInProgress": 0,
+                        "incrementalBackupsEnabled": False,
+                        "initialized": True,
+                        "joined": True,
+                        "loadString": "29.68 MiB",
+                        "localHostId": "6da1fd1f-474e-4877-b63e-64283975cdf4",
+                        "loggingLevels": {
+                            "ROOT": "INFO",
+                            "com.thinkaurelius.thrift": "ERROR",
+                            "org.apache.cassandra": "DEBUG",
+                        },
+                        "nativeTransportRunning": True,
+                        "numberOfTables": 48,
+                        "operationMode": "NORMAL",
+                        "rack": "uswest1cdevc",
+                        "readRepairAttempted": 0,
+                        "releaseVersion": "3.11.3",
+                        "removalStatus": "No token removals in process.",
+                        "rpcServerRunning": True,
+                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                        "starting": False,
+                        "tokenRangesCount": 256,
+                        "totalHints": 0,
+                    },
+                    "inspectTime": inspectTime,
+                    "ip": "10.93.200.181",
+                },
+                {
+                    "details": {
+                        "available": True,
+                        "clusterName": "activity-feed",
+                        "datacenter": "norcal-devc",
+                        "drainProgress": "Drained 0/0 ColumnFamilies",
+                        "drained": False,
+                        "draining": False,
+                        "gossipRunning": True,
+                        "hintedHandoffEnabled": True,
+                        "hintsInProgress": 0,
+                        "incrementalBackupsEnabled": False,
+                        "initialized": True,
+                        "joined": True,
+                        "loadString": "22.07 MiB",
+                        "localHostId": "5d914aad-27a8-4bd6-93cf-8ead8b9e4cf5",
+                        "loggingLevels": {
+                            "ROOT": "INFO",
+                            "com.thinkaurelius.thrift": "ERROR",
+                            "org.apache.cassandra": "DEBUG",
+                        },
+                        "nativeTransportRunning": True,
+                        "numberOfTables": 48,
+                        "operationMode": "NORMAL",
+                        "rack": "uswest1adevc",
+                        "readRepairAttempted": 0,
+                        "releaseVersion": "3.11.3",
+                        "removalStatus": "No token removals in process.",
+                        "rpcServerRunning": True,
+                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                        "starting": False,
+                        "tokenRangesCount": 256,
+                        "totalHints": 0,
+                    },
+                    "inspectTime": inspectTime,
+                    "ip": "10.93.130.60",
+                },
+                {"inspectTime": inspectTime, "ip": "10.93.180.201", "error": "oops"},
+            ],
+            state="Running",
+        ),
+    )
+
+
+@pytest.fixture
 def mock_kafka_status() -> Mapping[str, Any]:
     return defaultdict(
         metadata=dict(
@@ -1761,6 +1894,65 @@ class TestPrintKubernetesStatus:
             f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
+        assert expected_output == output
+
+
+class TestPrintCassandraStatus:
+    def test_error(self, mock_cassandra_status):
+        mock_cassandra_status["status"] = None
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_Cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert output == [
+            "    " + PaastaColors.red("Cassandra cluster is not available yet")
+        ]
+
+    def test_successful_return_value(self, mock_cassandra_status):
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=[],
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    def test_output(
+        self, mock_naturaltime, mock_cassandra_status,
+    ):
+        mock_naturaltime.return_value = "one day ago"
+        output = []
+        print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=0,
+        )
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes: ",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  InspectedAt",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     6 days ago",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago",
+            f"        Nodes with errors:",
+            f"            IP             InspectedAt  Error",
+            f"            10.93.180.201  6 days ago   {PaastaColors.red('oops')}",
+        ]
         assert expected_output == output
 
 
