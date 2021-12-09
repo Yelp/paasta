@@ -266,11 +266,12 @@ def sync_boto_secrets(
                     )
         if not secret_data:
             continue
-        secret = f"paasta-boto-key-{get_kubernetes_app_name(service, instance)}"
+        app_name = get_kubernetes_app_name(service, instance)
+        secret = f"paasta-boto-key-{app_name}"
         hashable_data = "".join([secret_data.get(key, "") for key in secret_data])
         signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
         kubernetes_signature = get_kubernetes_secret_signature(
-            kube_client=kube_client, secret=secret, service=service
+            kube_client=kube_client, secret=secret, service=app_name
         )
         if not kubernetes_signature:
             log.info(f"{secret} for {service} not found, creating")
@@ -289,7 +290,7 @@ def sync_boto_secrets(
             create_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
-                service=service,
+                service=app_name,
                 secret_signature=signature,
             )
         elif signature != kubernetes_signature:
@@ -303,7 +304,7 @@ def sync_boto_secrets(
             update_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
-                service=service,
+                service=app_name,
                 secret_signature=signature,
             )
         else:
