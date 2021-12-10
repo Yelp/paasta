@@ -50,8 +50,11 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 
 yaml = YAML(typ="rt")
-yaml.default_flow_style = False
+# there are templates that define keys that are later overwritten when those templates
+# are actually used (e.g., a template that sets disk: 100 -> an instance uses that template
+# and overwrites it with disk: 1000)
 yaml.allow_duplicate_keys = True
+# we want to actually expand out all anchors so that we still get comments from the original block
 yaml.Constructor.flatten_mapping = SafeConstructor.flatten_mapping
 
 SCHEMA_VALID = success("Successfully validated schema")
