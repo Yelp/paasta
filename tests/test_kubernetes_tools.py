@@ -1240,9 +1240,10 @@ class TestKubernetesDeploymentConfig:
                 volumes.secret.secret_name == "paasta-boto-key-my-service-my-instance"
             )
             assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
-            assert any(
-                [item.path == "scribereader.yaml" for item in volumes.secret.items]
-            )
+            for key in config_dict["boto_keys"]:
+                assert any(
+                    [item.path == f"{key}.yaml" for item in volumes.secret.items]
+                )
         else:
             assert volumes is None
 

@@ -1341,11 +1341,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         if self.config_dict.get("boto_keys", []):
             secret_hash = self.get_boto_secret_hash()
-            service_name = (
-                self.get_sanitised_service_name()
-                + "-"
-                + self.get_sanitised_instance_name()
-            )
+            service_name = self.get_sanitised_deployment_name()
             if secret_hash:
                 mount = V1VolumeMount(
                     mount_path="/etc/boto_cfg",
@@ -1361,9 +1357,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_boto_secret_hash(self) -> str:
         kube_client = KubeClient()
-        service_name = (
-            self.get_sanitised_service_name() + "-" + self.get_sanitised_instance_name()
-        )
+        service_name = self.get_sanitised_deployment_name()
         secret_name = f"paasta-boto-key-{service_name}"
         return get_kubernetes_secret_signature(
             kube_client=kube_client, secret=secret_name, service=service_name
@@ -2818,12 +2812,16 @@ def create_secret(
 
 
 def create_plaintext_dict_secret(
-    kube_client: KubeClient, secret_name: str, secret_data: dict, service: str,
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret_name)
     kube_client.core.create_namespaced_secret(
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=sanitised_secret,
@@ -2867,13 +2865,17 @@ def update_secret(
 
 
 def update_plaintext_dict_secret(
-    kube_client: KubeClient, secret_name: str, secret_data: dict, service: str,
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret_name)
     kube_client.core.replace_namespaced_secret(
         name=sanitised_secret,
-        namespace="paasta",
+        namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=sanitised_secret,
