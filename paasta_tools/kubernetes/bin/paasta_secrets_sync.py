@@ -240,7 +240,6 @@ def sync_boto_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    namespace: str = "paasta",
 ) -> bool:
     # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
@@ -271,14 +270,14 @@ def sync_boto_secrets(
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
         app_name = get_kubernetes_app_name(service, instance)
-        secret = f"{namespace}-boto-key-{app_name}"
+        secret = f"paasta-boto-key-{app_name}"
         hashable_data = "".join([secret_data[key] for key in secret_data])
         signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
         kubernetes_signature = get_kubernetes_secret_signature(
             kube_client=kube_client,
             secret=secret,
             service=app_name,
-            namespace=namespace,
+            namespace="paasta",
         )
         if not kubernetes_signature:
             log.info(f"{secret} for {service} not found, creating")
@@ -288,7 +287,7 @@ def sync_boto_secrets(
                     secret_name=secret,
                     secret_data=secret_data,
                     service=service,
-                    namespace=namespace,
+                    namespace="paasta",
                 )
             except ApiException as e:
                 if e.status == 409:
@@ -300,7 +299,7 @@ def sync_boto_secrets(
                 secret=secret,
                 service=app_name,
                 secret_signature=signature,
-                namespace=namespace,
+                namespace="paasta",
             )
         elif signature != kubernetes_signature:
             log.info(f"{secret} for {service} needs updating as signature changed")
@@ -309,14 +308,14 @@ def sync_boto_secrets(
                 secret_name=secret,
                 secret_data=secret_data,
                 service=service,
-                namespace=namespace,
+                namespace="paasta",
             )
             update_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
                 service=app_name,
                 secret_signature=signature,
-                namespace=namespace,
+                namespace="paasta",
             )
         else:
             log.info(f"{secret} for {service} up to date")
