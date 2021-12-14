@@ -98,13 +98,13 @@ class MeteoriteMetrics(BaseMetrics):
             )
 
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
-        return yelp_meteorite.create_timer(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_timer(self.base_name + "." + name, **kwargs)
 
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
-        return yelp_meteorite.create_gauge(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_gauge(self.base_name + "." + name, **kwargs)
 
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
-        return yelp_meteorite.create_counter(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_counter(self.base_name + "." + name, **kwargs)
 
 
 class Timer(TimerProtocol):

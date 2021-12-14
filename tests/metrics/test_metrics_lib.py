@@ -41,19 +41,19 @@ class TestMeteoriteMetrics(unittest.TestCase):
     def test_create_timer(self):
         self.metrics.create_timer("name", dimension="thing")
         self.mock_meteorite.create_timer.assert_called_with(
-            "paasta.deployd.name", {"dimension": "thing"}
+            "paasta.deployd.name", dimension="thing"
         )
 
     def test_create_gauge(self):
         self.metrics.create_gauge("name", dimension="thing")
         self.mock_meteorite.create_gauge.assert_called_with(
-            "paasta.deployd.name", {"dimension": "thing"}
+            "paasta.deployd.name", dimension="thing"
         )
 
     def test_create_counter(self):
         self.metrics.create_counter("name", dimension="thing")
         self.mock_meteorite.create_counter.assert_called_with(
-            "paasta.deployd.name", {"dimension": "thing"}
+            "paasta.deployd.name", dimension="thing"
         )
 
     def tearDown(self):
