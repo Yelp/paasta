@@ -455,7 +455,12 @@ def validate_autoscaling_configs(service_path):
                                 link="",
                             )
                         )
-                if autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}:
+                if (
+                    autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}
+                    # to enable kew autoscaling we just set a decision policy of "bespoke", but
+                    # the metrics_provider is (confusingly) left as "cpu"
+                    and autoscaling_params.get("decision_policy") != "bespoke"
+                ):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion
                     config = get_config_file_dict(
