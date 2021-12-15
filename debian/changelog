@@ -1,3 +1,12 @@
+paasta-tools (0.114.3) xenial; urgency=medium
+
+  * 0.114.3 tagged with 'make release'
+    Commit: Merge pull request #3250 from Yelp/u/kawaiwan/fix-paasta-
+    metrics-lib  Fix bug where metrics lib wasn"t passing kwargs to
+    meteorite correctly
+
+ -- Charles Wan <kawaiwan@yelp.com>  Wed, 15 Dec 2021 12:18:48 -0800
+
 paasta-tools (0.114.2) xenial; urgency=medium
 
   * 0.114.2 tagged with 'make release'
