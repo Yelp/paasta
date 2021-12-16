@@ -253,7 +253,9 @@ def test_sync_boto_secrets():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep", autospec=True,
+    ):
 
         mock_client = mock.Mock()
         config_dict = {"boto_keys": ["scribereader"]}
@@ -289,6 +291,7 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace="paasta",
         )
         assert mock_create_secret.called
         assert not mock_update_secret.called
@@ -306,6 +309,7 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace="paasta",
         )
         assert mock_update_secret.called
         call_args = mock_update_secret.call_args_list
@@ -324,6 +328,7 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            namespace="paasta",
         )
         assert not mock_update_secret.called
         assert not mock_create_secret.called

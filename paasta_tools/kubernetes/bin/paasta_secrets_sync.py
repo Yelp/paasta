@@ -137,6 +137,7 @@ def sync_all_secrets(
                 secret_provider_name=secret_provider_name,
                 vault_cluster_config=vault_cluster_config,
                 soa_dir=soa_dir,
+                namespace=namespace,
             )
         )
     return all(results)
@@ -240,6 +241,7 @@ def sync_boto_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
+    namespace: str,
 ) -> bool:
     # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
@@ -277,7 +279,7 @@ def sync_boto_secrets(
             kube_client=kube_client,
             secret=secret,
             service=app_name,
-            namespace="paasta",
+            namespace=namespace,
         )
         if not kubernetes_signature:
             log.info(f"{secret} for {service} not found, creating")
@@ -287,7 +289,7 @@ def sync_boto_secrets(
                     secret_name=secret,
                     secret_data=secret_data,
                     service=service,
-                    namespace="paasta",
+                    namespace=namespace,
                 )
             except ApiException as e:
                 if e.status == 409:
@@ -299,7 +301,7 @@ def sync_boto_secrets(
                 secret=secret,
                 service=app_name,
                 secret_signature=signature,
-                namespace="paasta",
+                namespace=namespace,
             )
         elif signature != kubernetes_signature:
             log.info(f"{secret} for {service} needs updating as signature changed")
@@ -308,14 +310,14 @@ def sync_boto_secrets(
                 secret_name=secret,
                 secret_data=secret_data,
                 service=service,
-                namespace="paasta",
+                namespace=namespace,
             )
             update_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
                 service=app_name,
                 secret_signature=signature,
-                namespace="paasta",
+                namespace=namespace,
             )
         else:
             log.info(f"{secret} for {service} up to date")
