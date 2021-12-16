@@ -486,7 +486,7 @@ def validate_autoscaling_configs(service_path):
                     ):
                         print(
                             failure(
-                                msg=f"CPU override detected for a CPU-autoscaled instance: {service}.{instance}. Please read "
+                                msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
                                 "the following link for next steps:",
                                 link="y/override-cpu-autotune",
                             )
