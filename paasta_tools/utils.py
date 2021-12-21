@@ -1951,6 +1951,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    skip_cpu_override_validation: List[str]
 
 
 def load_system_paasta_config(
