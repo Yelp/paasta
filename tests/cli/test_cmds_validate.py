@@ -34,6 +34,7 @@ from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
@@ -803,7 +804,15 @@ def test_validate_autoscaling_configs(
         ),
     )
 
-    assert validate_autoscaling_configs("fake-service-path") is expected
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is expected
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
@@ -828,4 +837,12 @@ def test_validate_autoscaling_configs_no_offset_specified(
         ),
     )
 
-    assert validate_autoscaling_configs("fake-service-path") is True
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is True
