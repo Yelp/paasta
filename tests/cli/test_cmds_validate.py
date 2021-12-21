@@ -805,7 +805,7 @@ def test_validate_autoscaling_configs(
     )
 
     with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
         autospec=True,
         return_value=SystemPaastaConfig(
             config={"skip_cpu_override_validation": ["not-a-real-service"]},
@@ -838,7 +838,7 @@ def test_validate_autoscaling_configs_no_offset_specified(
     )
 
     with mock.patch(
-        "paasta_tools.utils.load_system_paasta_config",
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
         autospec=True,
         return_value=SystemPaastaConfig(
             config={"skip_cpu_override_validation": ["not-a-real-service"]},
