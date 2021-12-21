@@ -418,6 +418,9 @@ def validate_autoscaling_configs(service_path):
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
+    skip_cpu_override_validation_list = (
+        load_system_paasta_config().get_skip_cpu_override_validation_services()
+    )
 
     for cluster in list_clusters(service, soa_dir):
         for instance in list_all_instances_for_service(
@@ -455,11 +458,15 @@ def validate_autoscaling_configs(service_path):
                                 link="",
                             )
                         )
+                should_skip_cpu_override_validation = (
+                    service in skip_cpu_override_validation_list
+                )
                 if (
                     autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}
                     # to enable kew autoscaling we just set a decision policy of "bespoke", but
                     # the metrics_provider is (confusingly) left as "cpu"
                     and autoscaling_params.get("decision_policy") != "bespoke"
+                    and not should_skip_cpu_override_validation
                 ):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion

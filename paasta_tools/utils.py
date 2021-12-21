@@ -2621,6 +2621,9 @@ class SystemPaastaConfig:
             "api_profiling_config", {"cprofile_sampling_enabled": False},
         )
 
+    def get_skip_cpu_override_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_override_validation", [])
+
 
 def _run(
     command: Union[str, List[str]],
