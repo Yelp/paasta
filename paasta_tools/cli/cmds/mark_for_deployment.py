@@ -307,6 +307,16 @@ def mark_for_deployment(
 
 def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     deploy_username = get_username()
+
+    # Tronjobs can run paasta stop/start/restart
+    ssh_client_env = os.environ.get("SSH_CLIENT")
+    if ssh_client_env:
+        ssh_client = ssh_client_env.split()[0]
+        hostname = socket.gethostbyaddr(ssh_client)[0]
+
+        if "tron" in hostname:
+            return True
+
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
         deploy_info["allowed_push_groups"]
