@@ -9,12 +9,23 @@ from paasta_tools.utils import load_system_paasta_config
 log = logging.getLogger(__name__)
 
 
+def get_default_git_remote() -> str:
+    system_paasta_config = load_system_paasta_config()
+    repo_config = system_paasta_config.get_git_repo_config("yelpsoa-configs")
+    default_git_remote = format_git_url(
+        system_paasta_config.get_git_config()["git_user"],
+        repo_config.get("git_server", DEFAULT_SOA_CONFIGS_GIT_URL),
+        repo_config["repo_name"],
+    )
+    return default_git_remote
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "--git-remote",
         help="Master git repo for soaconfigs",
-        default=None,
+        default=get_default_git_remote(),
         dest="git_remote",
     )
     parser.add_argument(
@@ -56,25 +67,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def get_default_git_remote():
-    system_paasta_config = load_system_paasta_config()
-    repo_config = system_paasta_config.get_git_repo_config("yelpsoa-configs")
-    default_git_remote = format_git_url(
-        system_paasta_config.get_git_config()["git_user"],
-        repo_config.get("git_server", DEFAULT_SOA_CONFIGS_GIT_URL),
-        repo_config["repo_name"],
-    )
-    return default_git_remote
-
-
-SUPERREGION_K8S_MAPPING = {
-    "norcal-devc": "kubernetes-norcal-devc",
-    "norcal-stagef": "kubernetes-norcal-stagef",
-    "norcal-stageg": "kubernetes-norcal-stageg",
-    "nova-prod": "kubernetes-nova-prod",
-    "pnw-prod": "kubernetes-pnw-prod",
-}
-
 SUPPERREGION_DEPLOY_MAPPINGS = {
     "norcal-devc": "dev",
     "norcal-stagef": "stage",
@@ -87,7 +79,7 @@ SUPPERREGION_DEPLOY_MAPPINGS = {
 def main(args):
     updater = AutoConfigUpdater(
         config_source=args.source_id,
-        git_remote=args.git_remote or get_default_git_remote(),
+        git_remote=args.git_remote,
         branch=args.branch,
         working_dir=args.local_dir or "/nail/tmp",
         do_clone=args.local_dir is None,
@@ -110,15 +102,11 @@ def main(args):
 
             # Remove shard from corresponding kubernetes-* config
             kube_file = updater.get_existing_configs(
-                args.service, SUPERREGION_K8S_MAPPING[superregion]
+                args.service, f"kubernetes-{superregion}"
             )
             del kube_file[args.shard_name]
-            updater.write_configs(
-                args.service, SUPERREGION_K8S_MAPPING[superregion], kube_file
-            )
-            log.info(
-                f"{args.shard_name} removed from {SUPERREGION_K8S_MAPPING[superregion]}"
-            )
+            updater.write_configs(args.service, f"kubernetes-{superregion}", kube_file)
+            log.info(f"{args.shard_name} removed from kubernetes-{superregion}")
 
         # If we are removing the shard from all regions, remove it from smartstack too.
         if delete_all:
