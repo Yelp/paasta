@@ -310,7 +310,7 @@ def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
 
     # Tronjobs can run paasta stop/start/restart
     ssh_client_env = os.environ.get("SSH_CLIENT")
-    if ssh_client_env:
+    if ssh_client_env and deploy_username == "batch":
         ssh_client = ssh_client_env.split()[0]
         hostname = socket.gethostbyaddr(ssh_client)[0]
 
