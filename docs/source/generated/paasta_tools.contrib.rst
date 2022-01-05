@@ -21,6 +21,7 @@ Submodules
    paasta_tools.contrib.paasta_get_num_deployments
    paasta_tools.contrib.paasta_update_soa_memcpu
    paasta_tools.contrib.rightsizer_soaconfigs_update
+   paasta_tools.contrib.service_shard_remove
    paasta_tools.contrib.service_shard_update
    paasta_tools.contrib.shared_ip_check
    paasta_tools.contrib.timeouts_metrics_prom
