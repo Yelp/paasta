@@ -28,7 +28,7 @@ RUN apt-get update > /dev/null && \
         virtualenv > /dev/null && \
     apt-get clean
 
-RUN git clone git://github.com/Yelp/hacheck
+RUN git clone https://github.com/Yelp/hacheck
 WORKDIR /hacheck
 
 RUN virtualenv --python=python3.7 venv && \
