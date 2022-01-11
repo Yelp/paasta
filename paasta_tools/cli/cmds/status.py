@@ -289,6 +289,11 @@ def paasta_status_on_api_endpoint(
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
     instance_type = find_instance_type(status)
+
+    if system_paasta_config.get_enable_custom_cassandra_status_writer():
+        if status.get("cassandracluster") is not None:
+            instance_type = "cassandracluster"
+
     if instance_type is not None:
         # check the actual status value and call the corresponding status writer
         service_status_value = getattr(status, instance_type)

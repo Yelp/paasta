@@ -45,7 +45,9 @@ from paasta_tools.utils import calculate_tail_lines
 
 
 INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
-INSTANCE_TYPES_K8S = {"kubernetes"}
+# TODO: remove "cassandracluster" from INSTANCE_TYPES_K8S after
+# print_cassandra_status proves to be stable.
+INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
