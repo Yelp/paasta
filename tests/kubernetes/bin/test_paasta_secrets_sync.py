@@ -44,7 +44,10 @@ def test_main():
 def test_sync_all_secrets(namespace):
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets", autospec=True
-    ) as mock_sync_secrets:
+    ) as mock_sync_secrets, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         mock_sync_secrets.side_effect = [True, True]
         assert sync_all_secrets(
             kube_client=mock.Mock(),
