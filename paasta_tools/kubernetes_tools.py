@@ -322,6 +322,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     routable_ip: bool
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
+    boto_keys: List[str]
 
 
 def load_kubernetes_service_config_no_cache(
