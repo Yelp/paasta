@@ -1,3 +1,12 @@
+paasta-tools (0.115.0) xenial; urgency=medium
+
+  * 0.115.0 tagged with 'make release'
+    Commit: Add validation for users overriding CPU request on CPU-
+    scaled instances (#3248)  See PAASTA-17522 - but tl;dr: this can be
+    a footgun (and especially so for uwsgi-based services)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 12 Jan 2022 12:55:04 -0800
+
 paasta-tools (0.114.6) xenial; urgency=medium
 
   * 0.114.6 tagged with 'make release'
