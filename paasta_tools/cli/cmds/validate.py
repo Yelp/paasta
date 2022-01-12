@@ -15,14 +15,20 @@
 import json
 import os
 import pkgutil
+import re
 from collections import Counter
 from glob import glob
+from typing import Any
+from typing import Dict
+from typing import Optional
 
-import yaml
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+from ruamel.yaml import SafeConstructor
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
 
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
@@ -43,6 +49,13 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 
+yaml = YAML(typ="rt")
+# there are templates that define keys that are later overwritten when those templates
+# are actually used (e.g., a template that sets disk: 100 -> an instance uses that template
+# and overwrites it with disk: 1000)
+yaml.allow_duplicate_keys = True
+# we want to actually expand out all anchors so that we still get comments from the original block
+yaml.Constructor.flatten_mapping = SafeConstructor.flatten_mapping
 
 SCHEMA_VALID = success("Successfully validated schema")
 
@@ -72,6 +85,11 @@ UNKNOWN_SERVICE = (
     "validate with the %s option."
     % (PaastaColors.cyan("SERVICE"), PaastaColors.cyan("-s"))
 )
+
+# we expect a comment that looks like # override-cpu-setting PROJ-1234
+# but we don't have a $ anchor in case users want to add an additional
+# comment
+OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"^#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -146,13 +164,13 @@ def validate_service_name(service):
     return True
 
 
-def get_config_file_dict(file_path):
+def get_config_file_dict(file_path) -> Dict[Any, Any]:
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
     try:
         config_file = get_file_contents(file_path)
         if extension == ".yaml":
-            return yaml.safe_load(config_file)
+            return yaml.load(config_file)
         elif extension == ".json":
             return json.loads(config_file)
         else:
@@ -376,6 +394,23 @@ def validate_unique_instance_names(service_path):
     return check_passed
 
 
+def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
+    # this is a little weird, but ruamel is returning a list that looks like:
+    # [None, None, CommentToken(...), None] for some reason instead of just a
+    # single string
+    raw_comments = [
+        comment.value for comment in data.ca.items.get(key, []) if comment is not None
+    ]
+    if not raw_comments:
+        # return None so that we don't return an empty string below if there really aren't
+        # any comments
+        return None
+    # there should really just be a single item in the list, but just in case...
+    comment = "".join(raw_comments)
+
+    return comment
+
+
 def validate_autoscaling_configs(service_path):
     """Validate new autoscaling configurations that are not validated by jsonschema for the service of interest.
 
@@ -383,6 +418,9 @@ def validate_autoscaling_configs(service_path):
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
+    skip_cpu_override_validation_list = (
+        load_system_paasta_config().get_skip_cpu_override_validation_services()
+    )
 
     for cluster in list_clusters(service, soa_dir):
         for instance in list_all_instances_for_service(
@@ -418,6 +456,46 @@ def validate_autoscaling_configs(service_path):
                                 msg="Autoscaling configuration is invalid: offset must be "
                                 f"smaller than setpoint\n\t(setpoint: {setpoint} | offset: {offset})",
                                 link="",
+                            )
+                        )
+                should_skip_cpu_override_validation = (
+                    service in skip_cpu_override_validation_list
+                )
+                if (
+                    autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}
+                    # to enable kew autoscaling we just set a decision policy of "bespoke", but
+                    # the metrics_provider is (confusingly) left as "cpu"
+                    and autoscaling_params.get("decision_policy") != "bespoke"
+                    and not should_skip_cpu_override_validation
+                ):
+                    # we need access to the comments, so we need to read the config with ruamel to be able
+                    # to actually get them in a "nice" automated fashion
+                    config = get_config_file_dict(
+                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml")
+                    )
+                    if config[instance].get("cpus") is None:
+                        # cpu autoscaled, but using autotuned values - can skip
+                        continue
+
+                    cpu_comment = _get_comments_for_key(
+                        data=config[instance], key="cpus"
+                    )
+                    # we could probably have a separate error message if there's a comment that doesn't match
+                    # the ack pattern, but that seems like overkill - especially for something that could cause
+                    # a DAR if people aren't being careful.
+                    if (
+                        cpu_comment is None
+                        or re.match(
+                            pattern=OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN,
+                            string=cpu_comment,
+                        )
+                        is None
+                    ):
+                        print(
+                            failure(
+                                msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
+                                "the following link for next steps:",
+                                link="y/override-cpu-autotune",
                             )
                         )
 

@@ -1951,6 +1951,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    skip_cpu_override_validation: List[str]
 
 
 def load_system_paasta_config(
@@ -2620,6 +2621,9 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "api_profiling_config", {"cprofile_sampling_enabled": False},
         )
+
+    def get_skip_cpu_override_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_override_validation", [])
 
 
 def _run(
