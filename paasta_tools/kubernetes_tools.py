@@ -1271,7 +1271,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             pod_volumes.append(boto_volume)
         return pod_volumes
 
-    def get_boto_volume(self):
+    def get_boto_volume(self) -> Optional[V1Volume]:
         required_boto_keys = self.config_dict.get("boto_keys", [])
         service_name = self.get_sanitised_deployment_name()
         if not required_boto_keys:
