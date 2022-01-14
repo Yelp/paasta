@@ -776,9 +776,13 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         if action_config.get_team() is not None:
             result["labels"]["yelp.com/owner"] = action_config.get_team()
 
+        # create_or_find_service_account_name requires k8s credentials, and we don't
+        # have those available for CI to use (nor do we check these for normal PaaSTA
+        # services, so we're not doing anything "new" by skipping this)
         if (
             action_config.get_iam_role_provider() == "aws"
             and action_config.get_iam_role()
+            and not action_config.for_validation
         ):
             result["service_account_name"] = create_or_find_service_account_name(
                 iam_role=action_config.get_iam_role(), namespace="tron"
