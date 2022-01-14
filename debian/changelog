@@ -1,3 +1,16 @@
+paasta-tools (0.116.0) xenial; urgency=medium
+
+  * 0.116.0 tagged with 'make release'
+    Commit: Conditionally use ruamel in get_config_file_dict() (#3257)
+    Looks like ruamel doesn"t handle multiple anchors at different
+    levels of nesting particularly well in some cases.  Since we only
+    really need ruamel for parsing kubernetes config files which are
+    generally unlikely to do similar shenanigans, we can add a flag to
+    only use ruamel for these (and then furthermore, only for validating
+    CPU overrides).
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 14 Jan 2022 11:54:19 -0800
+
 paasta-tools (0.115.0) xenial; urgency=medium
 
   * 0.115.0 tagged with 'make release'
