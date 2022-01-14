@@ -22,6 +22,7 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+import yaml
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
@@ -49,13 +50,6 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 
-yaml = YAML(typ="rt")
-# there are templates that define keys that are later overwritten when those templates
-# are actually used (e.g., a template that sets disk: 100 -> an instance uses that template
-# and overwrites it with disk: 1000)
-yaml.allow_duplicate_keys = True
-# we want to actually expand out all anchors so that we still get comments from the original block
-yaml.Constructor.flatten_mapping = SafeConstructor.flatten_mapping
 
 SCHEMA_VALID = success("Successfully validated schema")
 
@@ -164,13 +158,27 @@ def validate_service_name(service):
     return True
 
 
-def get_config_file_dict(file_path) -> Dict[Any, Any]:
+def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, Any]:
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
     try:
         config_file = get_file_contents(file_path)
         if extension == ".yaml":
-            return yaml.load(config_file)
+            if use_ruamel:
+                ruamel_loader = YAML(typ="rt")
+                # there are templates that define keys that are later overwritten
+                # when those templates are actually used (e.g., a template that
+                # sets disk: 100 -> an instance uses that template and overwrites
+                # it with disk: 1000)
+                ruamel_loader.allow_duplicate_keys = True
+                # we want to actually expand out all anchors so that we still get
+                # comments from the original block
+                ruamel_loader.Constructor.flatten_mapping = (
+                    SafeConstructor.flatten_mapping
+                )
+                return ruamel_loader.load(config_file)
+            else:
+                return yaml.safe_load(config_file)
         elif extension == ".json":
             return json.loads(config_file)
         else:
@@ -471,7 +479,8 @@ def validate_autoscaling_configs(service_path):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion
                     config = get_config_file_dict(
-                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml")
+                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                        use_ruamel=True,
                     )
                     if config[instance].get("cpus") is None:
                         # cpu autoscaled, but using autotuned values - can skip
