@@ -342,6 +342,12 @@
                         "type": "string"
                     }
                 },
+                "boto_keys": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {

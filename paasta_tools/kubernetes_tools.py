@@ -322,6 +322,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     routable_ip: bool
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
+    boto_keys: List[str]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1265,7 +1266,38 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        boto_volume = self.get_boto_volume()
+        if boto_volume:
+            pod_volumes.append(boto_volume)
         return pod_volumes
+
+    def get_boto_volume(self) -> Optional[V1Volume]:
+        required_boto_keys = self.config_dict.get("boto_keys", [])
+        service_name = self.get_sanitised_deployment_name()
+        if not required_boto_keys:
+            return None
+        items = []
+        for boto_key in required_boto_keys:
+            for filetype in ["sh", "yaml", "cfg", "json"]:
+                this_key = boto_key + "." + filetype
+                secret_name = this_key.replace(".", "-").replace("_", "--")
+                item = V1KeyToPath(
+                    key=secret_name, mode=mode_to_int("0444"), path=this_key,
+                )
+                items.append(item)
+        # Check that boto keys actually exist as secrets
+        secret_hash = self.get_boto_secret_hash()
+        if not secret_hash:
+            log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
+            return None
+        secret_name = f"paasta-boto-key-{service_name}"
+        volume = V1Volume(
+            name=f"secret-boto-key-{service_name}",
+            secret=V1SecretVolumeSource(
+                secret_name=secret_name, default_mode=mode_to_int("0444"), items=items,
+            ),
+        )
+        return volume
 
     def get_volume_mounts(
         self,
@@ -1274,7 +1306,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
     ) -> Sequence[V1VolumeMount]:
-        return (
+        volume_mounts = (
             [
                 V1VolumeMount(
                     mount_path=docker_volume["containerPath"],
@@ -1307,6 +1339,29 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
                 for volume in secret_volumes
             ]
+        )
+        if self.config_dict.get("boto_keys", []):
+            secret_hash = self.get_boto_secret_hash()
+            service_name = self.get_sanitised_deployment_name()
+            if secret_hash:
+                mount = V1VolumeMount(
+                    mount_path="/etc/boto_cfg",
+                    name=f"secret-boto-key-{service_name}",
+                    read_only=True,
+                )
+                for existing_mount in volume_mounts:
+                    if existing_mount.mount_path == "/etc/boto_cfg":
+                        volume_mounts.remove(existing_mount)
+                        break
+                volume_mounts.append(mount)
+        return volume_mounts
+
+    def get_boto_secret_hash(self) -> str:
+        kube_client = KubeClient()
+        service_name = self.get_sanitised_deployment_name()
+        secret_name = f"paasta-boto-key-{service_name}"
+        return get_kubernetes_secret_signature(
+            kube_client=kube_client, secret=secret_name, service=service_name
         )
 
     def get_sanitised_service_name(self) -> str:
@@ -1780,8 +1835,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Removes some data from config to make it suitable for
         calculation of config hash.
 
-        :param config: complete_config hash to sanitize
-        :returns: sanitized copy of complete_config hash
+        :param config: complete_config hash to sanitise
+        :returns: sanitised copy of complete_config hash
         """
         ahash = {
             key: copy.deepcopy(value)
@@ -2757,6 +2812,30 @@ def create_secret(
     )
 
 
+def create_plaintext_dict_secret(
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.create_namespaced_secret(
+        namespace=namespace,
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
+        ),
+    )
+
+
 def update_secret(
     kube_client: KubeClient,
     secret: str,
@@ -2782,6 +2861,31 @@ def update_secret(
                     secret_provider.decrypt_secret_raw(secret)
                 ).decode("utf-8")
             },
+        ),
+    )
+
+
+def update_plaintext_dict_secret(
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.replace_namespaced_secret(
+        name=sanitised_secret,
+        namespace=namespace,
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
         ),
     )
 
