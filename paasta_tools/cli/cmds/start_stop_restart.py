@@ -41,7 +41,7 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
         ("start", "start or restart", "Start or restart", paasta_start),
-        ("restart", "start or restart", "Start or restart", paasta_start),
+        ("restart", "start or restart", "Start or restart", paasta_restart),
         ("stop", "stop", "Stop", paasta_stop),
     ]:
         status_parser = subparsers.add_parser(
@@ -327,6 +327,28 @@ def paasta_start_or_stop(args, desired_state):
 
 def paasta_start(args):
     return paasta_start_or_stop(args, "start")
+
+
+def paasta_restart(args):
+    pargs = apply_args_filters(args)
+    soa_dir = args.soa_dir
+
+    for cluster, service_instances in pargs.items():
+        for service, instances in service_instances.items():
+            for instance in instances.keys():
+                service_config = get_instance_config(
+                    service=service,
+                    cluster=cluster,
+                    instance=instance,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+                if isinstance(service_config, FlinkDeploymentConfig):
+                    print("'restart' not supported for Flink services...")
+                    print("please use 'stop' and 'start' instead")
+                    return 1
+
+    return paasta_start(args)
 
 
 PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(
