@@ -13,17 +13,19 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+ARG IMAGE_NAME=bionic_pkgbuild
+FROM ${DOCKER_REGISTRY}${IMAGE_NAME}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
+ARG PAASTA_ENV
+ENV PAASTA_ENV=$PAASTA_ENV
 
-# Need Python 3.7
+
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+    if [ "$PAASTA_ENV" != "YELP" ]; then add-apt-repository ppa:deadsnakes/ppa; fi # only use deadsnakes externally
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -45,7 +47,7 @@ ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 
 COPY yelp_package/dockerfiles/xenial/mesos-slave-secret /etc/
-COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/xenial/mesos-slave-secret /nail/etc/
+COPY yelp_package/dockerfiles/itest/api/mesos-cli.json yelp_package/dockerfiles/bionic/mesos-slave-secret /nail/etc/
 COPY yelp_package/dockerfiles/itest/api/*.json /etc/paasta/
 
 ADD . /work/

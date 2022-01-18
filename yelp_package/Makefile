@@ -35,13 +35,12 @@ endif
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "yelp/paastatools_$*_container" || true
-	cd dockerfiles/$*/ && docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
-        --build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) -t "yelp/paastatools_$*_container" .
-	if [ "$$TRAVIS_BRANCH" = "master" -a \
-	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
-	     "$$DOCKER_USERNAME" != "" ]; then \
-	  docker push "yelp/paastatools_$*_container"; \
-	fi
+	cd dockerfiles/$*/ && docker build \
+		--build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
+        --build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) \
+        --build-arg PAASTA_ENV=$(PAASTA_ENV) \
+		--build-arg IMAGE_NAME=$($(shell echo '$*' | tr '[:lower:]' '[:upper:]')_IMAGE_NAME) \
+		-t "yelp/paastatools_$*_container" . \
 
 .SECONDEXPANSION:
 itest_%: package_$$*

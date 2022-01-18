@@ -13,23 +13,19 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+
+ARG IMAGE_NAME=xenial_pkgbuild
+FROM ${DOCKER_REGISTRY}${IMAGE_NAME}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
-
-RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-
-# Need Python 3.7
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+ARG PAASTA_ENV
+ENV PAASTA_ENV=$PAASTA_ENV
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        software-properties-common \
         build-essential \
         debhelper \
         gdebi-core \
@@ -40,15 +36,19 @@ RUN apt-get update > /dev/null && \
         libyaml-dev \
         python3.7-dev \
         python-pip \
-        python-tox \
         wget \
-        zsh > /dev/null \
-    && rm -rf /var/lib/apt/lists/*
+        zsh > /dev/null
 
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
+# our base images already have python-tox
+RUN echo $PAASTA_ENV && if [ "$PAASTA_ENV" != "YELP" ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python-tox; else true; fi
+RUN rm -rf /var/lib/apt/lists/*
+
+RUN if [ "$PAASTA_ENV" != "YELP" ]; then cd /tmp && \
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
+        gdebi -n dh-virtualenv*.deb && \
+        rm dh-virtualenv_*.deb; \
+    else \
+        apt-get install dh-virtualenv=1.0-1; fi
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

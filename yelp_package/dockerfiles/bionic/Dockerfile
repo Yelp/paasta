@@ -13,21 +13,22 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:bionic
+ARG IMAGE_NAME=bionic_pkgbuild
+FROM ${DOCKER_REGISTRY}${IMAGE_NAME}
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
+ARG PAASTA_ENV
+ENV PAASTA_ENV=$PAASTA_ENV
+
 RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
-# RUN echo "deb http://repos.mesosphere.com/ubuntu bionic main" > /etc/apt/sources.list.d/mesosphere.list && \
-#     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
 # Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+    if [ "$PAASTA_ENV" != "YELP" ]; then add-apt-repository ppa:deadsnakes/ppa; else true; fi # only use deadsnakes externally
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -49,10 +50,12 @@ RUN apt-get update > /dev/null && \
 
 RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==16.0.0
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
+RUN if [ "$PAASTA_ENV" != "YELP" ]; then cd /tmp && \
+        wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
+        gdebi -n dh-virtualenv*.deb && \
+        rm dh-virtualenv_*.deb; \
+    else \
+        apt-get install dh-virtualenv=1.0-1; fi
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
