@@ -29,9 +29,6 @@ RUN apt-get update > /dev/null && \
     rm -rf /var/lib/apt/lists/*
 
 
-# Need Python 3.7
-RUN add-apt-repository ppa:deadsnakes/ppa
-
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     add-apt-repository ppa:ubuntu-toolchain-r/test && \
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" && \

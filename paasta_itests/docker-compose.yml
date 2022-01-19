@@ -110,7 +110,7 @@ services:
       - zookeeper
 
   paastatools:
-    build: ../yelp_package/dockerfiles/xenial/
+    build: ../yelp_package/dockerfiles/bionic/
     environment:
       MARATHON_PORT: 'http://marathon:8080'
       MARATHON1_PORT: 'http://marathon1:8080'
