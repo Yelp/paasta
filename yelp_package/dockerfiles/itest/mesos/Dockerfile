@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+FROM ${DOCKER_REGISTRY}xenial_pkgbuild
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
@@ -30,9 +30,6 @@ RUN apt-get update > /dev/null && \
         software-properties-common && \
     rm -rf /var/lib/apt/lists/*
 
-
-# Need Python 3.7
-RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     add-apt-repository ppa:ubuntu-toolchain-r/test && \
