@@ -20,8 +20,10 @@ import logging
 import os
 import sys
 import time
+from collections import defaultdict
 from typing import Mapping
-from typing import Sequence
+from typing import Optional
+from typing import Set
 
 from kubernetes.client.rest import ApiException
 
@@ -38,9 +40,13 @@ from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_instance_type_to_k8s_namespace
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
+INSTANCE_TYPE_TO_K8S_NAMESPACE = get_instance_type_to_k8s_namespace()
 
 
 def parse_args() -> argparse.Namespace:
@@ -71,8 +77,7 @@ def parse_args() -> argparse.Namespace:
         "-n",
         "--namespace",
         dest="namespace",
-        default="paasta",
-        help="destination namespace for secrets (Default: %(default)s)",
+        help="Overwrite destination namespace for secrets",
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
@@ -96,50 +101,66 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
+    services_to_k8s_namespaces = defaultdict(set)
+    for service in args.service_list:
+        for instance_type in INSTANCE_TYPES:
+            instances = get_service_instance_list(
+                service=service,
+                instance_type=instance_type,
+                cluster=cluster,
+                soa_dir=args.soa_dir,
+            )
+            if instances:
+                services_to_k8s_namespaces[service].add(
+                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                )
     sys.exit(0) if sync_all_secrets(
         kube_client=kube_client,
         cluster=cluster,
-        service_list=args.service_list,
+        services_to_k8s_namespaces=services_to_k8s_namespaces,
         secret_provider_name=secret_provider_name,
         vault_cluster_config=vault_cluster_config,
         soa_dir=args.soa_dir,
-        namespace=args.namespace,
+        overwrite_namespace=args.namespace,
     ) else sys.exit(1)
 
 
 def sync_all_secrets(
     kube_client: KubeClient,
     cluster: str,
-    service_list: Sequence[str],
+    services_to_k8s_namespaces: Mapping[str, Set],
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    namespace: str,
+    overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
-    for service in service_list:
-        results.append(
-            sync_secrets(
-                kube_client=kube_client,
-                cluster=cluster,
-                service=service,
-                secret_provider_name=secret_provider_name,
-                vault_cluster_config=vault_cluster_config,
-                soa_dir=soa_dir,
-                namespace=namespace,
+    for service, namespaces in services_to_k8s_namespaces.items():
+        if overwrite_namespace:
+            namespaces = [overwrite_namespace]
+        for namespace in namespaces:
+            results.append(
+                sync_secrets(
+                    kube_client=kube_client,
+                    cluster=cluster,
+                    service=service,
+                    secret_provider_name=secret_provider_name,
+                    vault_cluster_config=vault_cluster_config,
+                    soa_dir=soa_dir,
+                    namespace=namespace,
+                )
             )
-        )
-        results.append(
-            sync_boto_secrets(
-                kube_client=kube_client,
-                cluster=cluster,
-                service=service,
-                secret_provider_name=secret_provider_name,
-                vault_cluster_config=vault_cluster_config,
-                soa_dir=soa_dir,
-                namespace=namespace,
+            results.append(
+                sync_boto_secrets(
+                    kube_client=kube_client,
+                    cluster=cluster,
+                    service=service,
+                    secret_provider_name=secret_provider_name,
+                    vault_cluster_config=vault_cluster_config,
+                    soa_dir=soa_dir,
+                    namespace=namespace,
+                )
             )
-        )
     return all(results)
 
 
