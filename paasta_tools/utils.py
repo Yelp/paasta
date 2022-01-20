@@ -20,6 +20,7 @@ import fcntl
 import getpass
 import glob
 import hashlib
+import importlib
 import io
 import json
 import logging
@@ -3806,3 +3807,22 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
         v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
     }.values()
     return sort_dicts(deduped)
+
+
+def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
+    instance_type_to_k8s_namespace = {}
+    for instance_type in INSTANCE_TYPES:
+        try:
+            instance_type_module = importlib.import_module(
+                f"paasta_tools.{instance_type}_tools"
+            )
+        except ModuleNotFoundError:
+            # paasta_native defies the convention...
+            log.warning(
+                f"Cannot lookup k8s namespace no module called paasta_tools.{instance_type}_tools"
+            )
+            continue
+        instance_type_to_k8s_namespace[instance_type] = getattr(
+            instance_type_module, "KUBERNETES_NAMESPACE", "paasta"
+        )
+    return instance_type_to_k8s_namespace

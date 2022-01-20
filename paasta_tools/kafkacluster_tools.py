@@ -25,6 +25,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
+KUBERNETES_NAMESPACE = "paasta-kafkaclusters"
+
 
 class KafkaClusterDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     replicas: int
@@ -137,7 +139,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-kafkaclusters",
+        namespace=KUBERNETES_NAMESPACE,
         plural="kafkaclusters",
         name=sanitised_cr_name(service, instance),
     )

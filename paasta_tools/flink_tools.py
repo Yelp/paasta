@@ -29,7 +29,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
-
+KUBERNETES_NAMESPACE = "paasta-flinks"
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
 
@@ -149,7 +149,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-flinks",
+        namespace=KUBERNETES_NAMESPACE,
         plural="flinks",
         name=sanitised_cr_name(service, instance),
     )
