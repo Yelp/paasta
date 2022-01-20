@@ -40,13 +40,12 @@ from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_instance_type_to_k8s_namespace
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
-INSTANCE_TYPE_TO_K8S_NAMESPACE = get_instance_type_to_k8s_namespace()
 
 
 def parse_args() -> argparse.Namespace:

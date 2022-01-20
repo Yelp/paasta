@@ -3822,7 +3822,15 @@ def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
                 f"Cannot lookup k8s namespace no module called paasta_tools.{instance_type}_tools"
             )
             continue
+        # First attempt to use cr_id() to get the CR definition and namespace
+        cr_id = getattr(instance_type_module, "cr_id", lambda: dict)
+        if "namespace" in cr_id:
+            instance_type_to_k8s_namespace[instance_type] = cr_id["namespace"]
+        # Otherwise, for objects that don't have a cr_id(), fallback to `KUBERNETES_NAMESPACE`
         instance_type_to_k8s_namespace[instance_type] = getattr(
             instance_type_module, "KUBERNETES_NAMESPACE", "paasta"
         )
     return instance_type_to_k8s_namespace
+
+
+INSTANCE_TYPE_TO_K8S_NAMESPACE = get_instance_type_to_k8s_namespace()
