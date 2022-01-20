@@ -721,6 +721,23 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        elif metrics_provider in {"arbitrary_promql"}:
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
+                        ),
+                        target=V2beta2MetricTarget(
+                            # Use the setpoint specified by the user.
+                            type="Value",
+                            value=target,
+                        ),
+                    ),
+                )
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\

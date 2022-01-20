@@ -190,7 +190,124 @@
                     "type": "string"
                 },
                 "autoscaling": {
-                    "type": "object"
+                    "type": "object",
+                    "properties": {
+                        "metrics_provider": {
+                            "enum": [
+                                "uwsgi",
+                                "mesos_cpu",
+                                "cpu",
+                                "piscina",
+                                "http",
+                                "arbitrary_prometheus"
+                            ]
+                        },
+                        "decision_policy": {
+                            "type": "string"
+                        },
+                        "setpoint": {
+                            "type": "number"
+                        },
+                        "forecast_policy": {
+                            "enum": [
+                                "moving_average",
+                                "current"
+                            ]
+                        },
+                        "offset": {
+                            "type": "number"
+                        },
+                        "moving_average_window_seconds": {
+                            "type": "integer"
+                        },
+                        "use_prometheus": {
+                            "type": "boolean"
+                        },
+                        "use_resource_metrics": {
+                            "type": "boolean"
+                        },
+                        "uwsgi_stats_port": {
+                            "type": "integer"
+                        },
+                        "scaledown_policies": {
+                            "type": "object"
+                        },
+                        "good_enough_window": {
+                            "type": "array",
+                            "items": {
+                                "type": "number"
+                            },
+                            "minItems": 2,
+                            "maxItems": 2
+                        },
+                        "prometheus_adapter_config": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                                "seriesQuery": {
+                                    "type": "string"
+                                },
+                                "metricsQuery": {
+                                    "type": "string"
+                                },
+                                "resources": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "overrides": {
+                                            "type": "object",
+                                            "properties": {
+                                                "group": {
+                                                    "type": "string"
+                                                },
+                                                "resource": {
+                                                    "type": "string"
+                                                }
+                                            }
+                                        },
+                                        "template": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "required": [
+                                "metricsQuery"
+                            ]
+                        }
+                    },
+                    "allOf": [
+                        {
+                            "oneOf": [
+                                {
+                                    "properties": {
+                                        "metrics_provider": {
+                                            "enum": [
+                                                "uwsgi",
+                                                "mesos_cpu",
+                                                "cpu",
+                                                "piscina",
+                                                "http",
+                                                "if metrics_provider is arbitrary_prometheus, the prometheus_adapter_config parameter is required"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "properties": {
+                                        "metrics_provider": {
+                                            "enum": [
+                                                "arbitrary_prometheus"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "prometheus_adapter_config"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "sfn_autoscaling": {
                     "type": "object"
