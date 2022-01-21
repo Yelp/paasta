@@ -3823,7 +3823,7 @@ def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
             )
             continue
         # First attempt to use cr_id() to get the CR definition and namespace
-        cr_id = getattr(instance_type_module, "cr_id", lambda: dict)
+        cr_id = getattr(instance_type_module, "cr_id", lambda: dict())()
         if "namespace" in cr_id:
             instance_type_to_k8s_namespace[instance_type] = cr_id["namespace"]
         # Otherwise, for objects that don't have a cr_id(), fallback to `KUBERNETES_NAMESPACE`
