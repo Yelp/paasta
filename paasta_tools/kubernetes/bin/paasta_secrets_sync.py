@@ -208,7 +208,9 @@ def sync_secrets(
                         namespace=namespace,
                     )
                     if not kubernetes_secret_signature:
-                        log.info(f"{secret} for {service} not found, creating")
+                        log.info(
+                            f"{secret} for {service} not found in {namespace}, creating"
+                        )
                         try:
                             create_secret(
                                 kube_client=kube_client,
@@ -220,7 +222,7 @@ def sync_secrets(
                         except ApiException as e:
                             if e.status == 409:
                                 log.warning(
-                                    f"Secret {secret} for {service} already exists"
+                                    f"Secret {secret} for {service} already exists in {namespace}"
                                 )
                             else:
                                 raise
@@ -233,7 +235,7 @@ def sync_secrets(
                         )
                     elif secret_signature != kubernetes_secret_signature:
                         log.info(
-                            f"{secret} for {service} needs updating as signature changed"
+                            f"{secret} for {service} in {namespace} needs updating as signature changed"
                         )
                         update_secret(
                             kube_client=kube_client,
@@ -250,7 +252,7 @@ def sync_secrets(
                             namespace=namespace,
                         )
                     else:
-                        log.info(f"{secret} for {service} up to date")
+                        log.info(f"{secret} for {service} in {namespace} up to date")
     return True
 
 
@@ -302,7 +304,7 @@ def sync_boto_secrets(
             namespace=namespace,
         )
         if not kubernetes_signature:
-            log.info(f"{secret} for {service} not found, creating")
+            log.info(f"{secret} for {service} in {namespace} not found, creating")
             try:
                 create_plaintext_dict_secret(
                     kube_client=kube_client,
@@ -313,7 +315,9 @@ def sync_boto_secrets(
                 )
             except ApiException as e:
                 if e.status == 409:
-                    log.warning(f"Secret {secret} for {service} already exists")
+                    log.warning(
+                        f"Secret {secret} for {service}in {namespace} already exists"
+                    )
                 else:
                     raise
             create_kubernetes_secret_signature(
@@ -324,7 +328,9 @@ def sync_boto_secrets(
                 namespace=namespace,
             )
         elif signature != kubernetes_signature:
-            log.info(f"{secret} for {service} needs updating as signature changed")
+            log.info(
+                f"{secret} for {service} in {namespace} needs updating as signature changed"
+            )
             update_plaintext_dict_secret(
                 kube_client=kube_client,
                 secret_name=secret,
@@ -340,7 +346,7 @@ def sync_boto_secrets(
                 namespace=namespace,
             )
         else:
-            log.info(f"{secret} for {service} up to date")
+            log.info(f"{secret} for {service} in {namespace} up to date")
     return True
 
 
