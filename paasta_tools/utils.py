@@ -3811,6 +3811,11 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
 
 def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
     instance_type_to_k8s_namespace = {}
+
+    def default_cr_id(service: str, insatnce: str) -> Mapping[str, str]:
+        """Fallback for modules which don't have a cr_id function"""
+        return dict()
+
     for instance_type in INSTANCE_TYPES:
         try:
             instance_type_module = importlib.import_module(
@@ -3823,7 +3828,7 @@ def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
             )
             continue
         # First attempt to use cr_id() to get the CR definition and namespace
-        cr_id = getattr(instance_type_module, "cr_id", lambda: dict())()
+        cr_id = getattr(instance_type_module, "cr_id", default_cr_id)("", "")
         if "namespace" in cr_id:
             instance_type_to_k8s_namespace[instance_type] = cr_id["namespace"]
         # Otherwise, for objects that don't have a cr_id(), fallback to `KUBERNETES_NAMESPACE`
