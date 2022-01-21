@@ -352,19 +352,28 @@ def paasta_restart(args):
 
     if affected_flinks:
         flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_flinks])
-        print(f"WARN: paasta restart is currently unsupported for Flink instances ({flinks_info}).")
+        print(
+            f"WARN: paasta restart is currently unsupported for Flink instances ({flinks_info})."
+        )
         print("To restart, please run:", end="\n\n")
         for flink in affected_flinks:
-            print(f"paasta stop -s {flink.service} -i {flink.instance} -c {flink.cluster}")
-            print(f"paasta start -s {flink.service} -i {flink.instance} -c {flink.cluster}", end="\n\n")
+            print(
+                f"paasta stop -s {flink.service} -i {flink.instance} -c {flink.cluster}"
+            )
+            print(
+                f"paasta start -s {flink.service} -i {flink.instance} -c {flink.cluster}",
+                end="\n\n",
+            )
 
         if not affected_non_flinks:
             return 1
 
-        non_flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_non_flinks])
+        non_flinks_info = ", ".join(
+            [f"{f.service}.{f.instance}" for f in affected_non_flinks]
+        )
         proceed = choice.Binary(
             f"Would you like to restart the other instances ({non_flinks_info}) anyway?",
-            False
+            False,
         ).ask()
 
         if not proceed:
