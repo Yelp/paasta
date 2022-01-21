@@ -10,7 +10,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
+from paasta_tools.utils import get_instance_type_to_k8s_namespace
 
 
 def test_parse_args():
@@ -52,10 +52,10 @@ def test_sync_all_secrets():
     ):
         services_to_k8s_namespaces = defaultdict(set)
         services_to_k8s_namespaces["foo"].add(
-            INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
+            get_instance_type_to_k8s_namespace()["kubernetes"]
         )
         services_to_k8s_namespaces["bar"].add(
-            INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
+            get_instance_type_to_k8s_namespace()["kubernetes"]
         )
 
         mock_sync_secrets.side_effect = [True, True]

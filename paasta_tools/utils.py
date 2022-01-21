@@ -3809,6 +3809,7 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
     return sort_dicts(deduped)
 
 
+@time_cache(ttl=5000)
 def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
     instance_type_to_k8s_namespace = {}
 
@@ -3836,6 +3837,3 @@ def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
             instance_type_module, "KUBERNETES_NAMESPACE", "paasta"
         )
     return instance_type_to_k8s_namespace
-
-
-INSTANCE_TYPE_TO_K8S_NAMESPACE = get_instance_type_to_k8s_namespace()
