@@ -41,7 +41,7 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
         ("start", "start or restart", "Start or restart", paasta_start),
-        ("restart", "start or restart", "Start or restart", paasta_start),
+        ("restart", "start or restart", "Start or restart", paasta_restart),
         ("stop", "stop", "Stop", paasta_stop),
     ]:
         status_parser = subparsers.add_parser(
@@ -327,6 +327,50 @@ def paasta_start_or_stop(args, desired_state):
 
 def paasta_start(args):
     return paasta_start_or_stop(args, "start")
+
+
+def paasta_restart(args):
+    pargs = apply_args_filters(args)
+    soa_dir = args.soa_dir
+
+    affected_flinks = []
+    affected_non_flinks = []
+    for cluster, service_instances in pargs.items():
+        for service, instances in service_instances.items():
+            for instance in instances.keys():
+                service_config = get_instance_config(
+                    service=service,
+                    cluster=cluster,
+                    instance=instance,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+                if isinstance(service_config, FlinkDeploymentConfig):
+                    affected_flinks.append(service_config)
+                else:
+                    affected_non_flinks.append(service_config)
+
+    if affected_flinks:
+        flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_flinks])
+        print(f"WARN: paasta restart is currently unsupported for Flink instances ({flinks_info}).")
+        print("To restart, please run:", end="\n\n")
+        for flink in affected_flinks:
+            print(f"paasta stop -s {flink.service} -i {flink.instance} -c {flink.cluster}")
+            print(f"paasta start -s {flink.service} -i {flink.instance} -c {flink.cluster}", end="\n\n")
+
+        if not affected_non_flinks:
+            return 1
+
+        non_flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_non_flinks])
+        proceed = choice.Binary(
+            f"Would you like to restart the other instances ({non_flinks_info}) anyway?",
+            False
+        ).ask()
+
+        if not proceed:
+            return 1
+
+    return paasta_start(args)
 
 
 PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(
