@@ -30,6 +30,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
+KUBERNETES_NAMESPACE = "paasta-cassandraclusters"
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -97,7 +98,7 @@ class CassandraClusterDeploymentConfig(LongRunningServiceConfig):
         ]
 
     def get_kubernetes_namespace(self) -> str:
-        return cr_id()["namespace"]
+        return KUBERNETES_NAMESPACE
 
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get("replicas", 1)
@@ -199,7 +200,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="yelp.com",
         version="v1alpha1",
-        namespace="paasta-cassandraclusters",
+        namespace=KUBERNETES_NAMESPACE,
         plural="cassandraclusters",
         name=sanitised_cr_name(service, instance),
     )

@@ -100,7 +100,7 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
-    services_to_k8s_namespaces = defaultdict(set)
+    services_to_k8s_namespaces: Mapping[str, set] = defaultdict(set)
     for service in args.service_list:
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
@@ -136,7 +136,7 @@ def sync_all_secrets(
     results = []
     for service, namespaces in services_to_k8s_namespaces.items():
         if overwrite_namespace:
-            namespaces = [overwrite_namespace]
+            namespaces = {overwrite_namespace}
         for namespace in namespaces:
             results.append(
                 sync_secrets(
