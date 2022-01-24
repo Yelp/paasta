@@ -21,6 +21,7 @@ import os
 import sys
 import time
 from collections import defaultdict
+from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Set
@@ -110,19 +111,10 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
-    services_to_k8s_namespaces: Mapping[str, set] = defaultdict(set)
-    for service in args.service_list:
-        for instance_type in INSTANCE_TYPES:
-            instances = get_service_instance_list(
-                service=service,
-                instance_type=instance_type,
-                cluster=cluster,
-                soa_dir=args.soa_dir,
-            )
-            if instances:
-                services_to_k8s_namespaces[service].add(
-                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
-                )
+    services_to_k8s_namespaces = get_services_to_k8s_namespaces(
+        service_list=args.service_list, cluster=cluster, soa_dir=args.soa_dir,
+    )
+
     sys.exit(0) if sync_all_secrets(
         kube_client=kube_client,
         cluster=cluster,
@@ -132,6 +124,25 @@ def main() -> None:
         soa_dir=args.soa_dir,
         overwrite_namespace=args.namespace,
     ) else sys.exit(1)
+
+
+def get_services_to_k8s_namespaces(
+    service_list: List[str], cluster: str, soa_dir: str,
+) -> Mapping[str, Set]:
+    services_to_k8s_namespaces: Mapping[str, set] = defaultdict(set)
+    for service in service_list:
+        for instance_type in INSTANCE_TYPES:
+            instances = get_service_instance_list(
+                service=service,
+                instance_type=instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            if instances:
+                services_to_k8s_namespaces[service].add(
+                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                )
+    return dict(services_to_k8s_namespaces)
 
 
 def sync_all_secrets(
