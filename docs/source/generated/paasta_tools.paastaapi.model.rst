@@ -22,6 +22,7 @@ Submodules
    paasta_tools.paastaapi.model.instance_mesh_status
    paasta_tools.paastaapi.model.instance_status
    paasta_tools.paastaapi.model.instance_status_adhoc
+   paasta_tools.paastaapi.model.instance_status_cassandracluster
    paasta_tools.paastaapi.model.instance_status_flink
    paasta_tools.paastaapi.model.instance_status_kafkacluster
    paasta_tools.paastaapi.model.instance_status_kubernetes
