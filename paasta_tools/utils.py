@@ -20,7 +20,6 @@ import fcntl
 import getpass
 import glob
 import hashlib
-import importlib
 import io
 import json
 import logging
@@ -3807,33 +3806,3 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
         v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
     }.values()
     return sort_dicts(deduped)
-
-
-@time_cache(ttl=5000)
-def get_instance_type_to_k8s_namespace() -> Mapping[str, str]:
-    instance_type_to_k8s_namespace = {}
-
-    def default_cr_id(service: str, insatnce: str) -> Mapping[str, str]:
-        """Fallback for modules which don't have a cr_id function"""
-        return dict()
-
-    for instance_type in INSTANCE_TYPES:
-        try:
-            instance_type_module = importlib.import_module(
-                f"paasta_tools.{instance_type}_tools"
-            )
-        except ModuleNotFoundError:
-            # paasta_native defies the convention...
-            log.warning(
-                f"Cannot lookup k8s namespace no module called paasta_tools.{instance_type}_tools"
-            )
-            continue
-        # First attempt to use cr_id() to get the CR definition and namespace
-        cr_id = getattr(instance_type_module, "cr_id", default_cr_id)("", "")
-        if "namespace" in cr_id:
-            instance_type_to_k8s_namespace[instance_type] = cr_id["namespace"]
-        # Otherwise, for objects that don't have a cr_id(), fallback to `KUBERNETES_NAMESPACE`
-        instance_type_to_k8s_namespace[instance_type] = getattr(
-            instance_type_module, "KUBERNETES_NAMESPACE", "paasta"
-        )
-    return instance_type_to_k8s_namespace
