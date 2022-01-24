@@ -1,5 +1,3 @@
-from collections import defaultdict
-
 import mock
 import pytest
 from kubernetes.client.rest import ApiException
@@ -52,13 +50,10 @@ def test_sync_all_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
     ):
-        services_to_k8s_namespaces = defaultdict(set)
-        services_to_k8s_namespaces["foo"].add(
-            INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
-        )
-        services_to_k8s_namespaces["bar"].add(
-            INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
-        )
+        services_to_k8s_namespaces = {
+            "foo": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
+            "bar": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
+        }
 
         mock_sync_secrets.side_effect = [True, True]
         assert sync_all_secrets(
