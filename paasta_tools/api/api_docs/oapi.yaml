@@ -232,6 +232,12 @@ components:
     InstanceSpecKafkaCluster:
       description: Kafka instance spec
       type: object
+    InstanceMetadataCassandraCluster:
+      description: Cassandra instance metadata
+      type: object
+    InstanceSpecCassandraCluster:
+      description: Cassandra instance spec
+      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -251,6 +257,14 @@ components:
         instance:
           description: Instance name
           type: string
+        cassandracluster:
+          description: Nullable CassandraCluster instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceMetadataCassandraCluster'
+            status:
+              $ref: '#/components/schemas/InstanceStatusCassandraCluster'
+          type: object
         kafkacluster:
           description: Nullable KafkaCluster instance status and metadata
           properties:
@@ -285,6 +299,9 @@ components:
       type: object
     InstanceStatusFlinkStatus:
       description: Flink instance status
+      type: object
+    InstanceStatusCassandraCluster:
+      description: Cassandra instance status
       type: object
     InstanceStatusKafkaCluster:
       description: Kafka instance status
