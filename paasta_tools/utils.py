@@ -139,10 +139,10 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "adhoc": "paasta",
     "kubernetes": "paasta",
     "tron": "tron",
-    "flink": "paasta",
+    "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
-    "kafkacluster": "paasta",
-    "nrtsearchservice": "paasta",
+    "kafkacluster": "paasta-kafkaclusters",
+    "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
 CAPS_DROP = [
