@@ -199,7 +199,7 @@
                                 "cpu",
                                 "piscina",
                                 "http",
-                                "arbitrary_prometheus"
+                                "arbitrary_promql"
                             ]
                         },
                         "decision_policy": {
