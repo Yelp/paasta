@@ -20,6 +20,7 @@ from collections import Counter
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from enum import Enum
 from itertools import groupby
 from typing import Any
@@ -288,6 +289,11 @@ def paasta_status_on_api_endpoint(
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
     instance_type = find_instance_type(status)
+
+    if system_paasta_config.get_enable_custom_cassandra_status_writer():
+        if status.get("cassandracluster") is not None:
+            instance_type = "cassandracluster"
+
     if instance_type is not None:
         # check the actual status value and call the corresponding status writer
         service_status_value = getattr(status, instance_type)
@@ -1743,6 +1749,145 @@ def print_tron_status(
     return 0
 
 
+def print_cassandra_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    cassandra_status,
+    verbose: int = 0,
+) -> int:
+    tab = "    "
+    indent = 1
+
+    status = cassandra_status.get("status")
+    if status is None:
+        output.append(
+            indent * tab + PaastaColors.red("Cassandra cluster is not available yet")
+        )
+        return 1
+
+    output.append(indent * tab + "Cassandra cluster:")
+    indent += 1
+
+    status = cassandra_status.get("status")
+    state = status.get("state")
+
+    if state == "Running":
+        state = PaastaColors.green(state)
+    else:
+        state = PaastaColors.red(state)
+
+    output.append(indent * tab + "State: " + state)
+    output.append(indent * tab + "Nodes: ")
+    indent += 1
+    now = datetime.now(timezone.utc)
+    tableOkNodes = []
+    tableErrNodes = []
+
+    for node in status.get("nodes"):
+        ip = node.get("ip")
+        err = node.get("error")
+        inspectTime = datetime.strptime(
+            node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
+        ).replace(tzinfo=timezone.utc)
+        details = node.get("details")
+
+        age = (
+            humanize.naturaldelta(
+                timedelta(seconds=(now - inspectTime).total_seconds())
+            )
+            + " ago"
+        )
+
+        if details is None or err is not None:
+            row = {
+                "IP": ip,
+                "InspectedAt": age,
+                "Error": PaastaColors.red(err),
+            }
+            tableErrNodes.append(row)
+        else:
+            row = {}
+            row["IP"] = ip
+            row["Available"] = "Yes" if details.get("available") else "No"
+            row["OperationMode"] = details.get("operationMode")
+            row["Joined"] = "Yes" if details.get("joined") else "No"
+            row["Datacenter"] = details.get("datacenter")
+            row["Rack"] = details.get("rack")
+            row["Load"] = details.get("loadString")
+            row["Tokens"] = str(details.get("tokenRangesCount"))
+            row["InspectedAt"] = age
+            if verbose > 0:
+                row["Starting"] = "Yes" if details.get("starting") else "No"
+                row["Initialized"] = "Yes" if details.get("initialized") else "No"
+                row["Drained"] = "Yes" if details.get("drained") else "No"
+                row["Draining"] = "Yes" if details.get("draining") else "No"
+            if verbose > 1:
+                row["LocalHostID"] = details.get("localHostId")
+                row["Schema"] = details.get("schemaVersion")
+                row["RemovalStatus"] = details.get("removalStatus")
+                row["DrainProgress"] = details.get("drainProgress")
+                row["RPCServerRunning"] = (
+                    "Yes" if details.get("rpcServerRunning") else "No"
+                )
+                row["NativeTransportRunning"] = (
+                    "Yes" if details.get("nativeTransportRunning") else "No"
+                )
+                row["GossipRunning"] = "Yes" if details.get("gossipRunning") else "No"
+                row["IncBackupEnabled"] = (
+                    "Yes" if details.get("incrementalBackupsEnabled") else "No"
+                )
+                row["Version"] = details.get("releaseVersion")
+                row["ClusterName"] = details.get("clusterName")
+                row["HintsInProgress"] = str(details.get("hintsInProgress"))
+                row["ReadRepairAttempted"] = str(details.get("readRepairAttempted"))
+                row["NumberOfTables"] = str(details.get("numberOfTables"))
+                row["TotalHints"] = str(details.get("totalHints"))
+                row["HintedHandoffEnabled"] = (
+                    "Yes" if details.get("hintedHandoffEnabled") else "No"
+                )
+                row["LoggingLevels"] = str(details.get("loggingLevels"))
+            tableOkNodes.append(row)
+
+    header: List[str] = []
+    lines: List[List[str]] = []
+    for row in tableOkNodes:
+        if len(header) == 0:
+            header = list(row.keys())
+            lines.append(list(header))
+        lines.append(list(row.values()))
+    if verbose < 2:
+        ftable = format_table(lines)
+        output.extend([indent * tab + line for line in ftable])
+    else:
+        for node in tableOkNodes:
+            output.append(indent * tab + "Node: ")
+            indent += 1
+            for key in node.keys():
+                output.append(
+                    indent * tab + "{key}: {value}".format(key=key, value=node[key])
+                )
+            indent -= 1
+    indent -= 1
+
+    if len(tableErrNodes) == 0:
+        return 0
+
+    output.append(indent * tab + "Nodes with errors:")
+    header = []
+    lines = []
+    indent += 1
+    for row in tableErrNodes:
+        if len(header) == 0:
+            header = list(row.keys())
+            lines.append(list(header))
+        lines.append(list(row.values()))
+    ftable = format_table(lines)
+    output.extend([indent * tab + line for line in ftable])
+    return 0
+
+
 def print_kafka_status(
     cluster: str,
     service: str,
@@ -2273,4 +2418,5 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     adhoc=print_adhoc_status,
     flink=print_flink_status,
     kafkacluster=print_kafka_status,
+    cassandracluster=print_cassandra_status,
 )
