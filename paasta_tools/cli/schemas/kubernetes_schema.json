@@ -298,7 +298,7 @@
                                     "properties": {
                                         "metrics_provider": {
                                             "enum": [
-                                                "arbitrary_prometheus"
+                                                "arbitrary_promql"
                                             ]
                                         }
                                     },
