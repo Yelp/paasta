@@ -134,6 +134,17 @@ INSTANCE_TYPES = (
     "nrtsearchservice",
 )
 
+INSTANCE_TYPE_TO_K8S_NAMESPACE = {
+    "marathon": "paasta",
+    "adhoc": "paasta",
+    "kubernetes": "paasta",
+    "tron": "tron",
+    "flink": "paasta",
+    "cassandracluster": "paasta-cassandraclusters",
+    "kafkacluster": "paasta",
+    "nrtsearchservice": "paasta",
+}
+
 CAPS_DROP = [
     "SETPCAP",
     "MKNOD",

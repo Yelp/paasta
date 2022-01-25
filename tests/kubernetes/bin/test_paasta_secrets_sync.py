@@ -2,15 +2,13 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
-    INSTANCE_TYPE_TO_K8S_NAMESPACE,
-)
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import main
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 
 
 def test_parse_args():

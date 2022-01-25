@@ -42,21 +42,11 @@ from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
-
-INSTANCE_TYPE_TO_K8S_NAMESPACE = {
-    "marathon": "paasta",
-    "adhoc": "paasta",
-    "kubernetes": "paasta",
-    "tron": "tron",
-    "flink": "paasta",
-    "cassandracluster": "paasta-cassandraclusters",
-    "kafkacluster": "paasta",
-    "nrtsearchservice": "paasta",
-}
 
 
 def parse_args() -> argparse.Namespace:
@@ -128,8 +118,8 @@ def main() -> None:
 
 def get_services_to_k8s_namespaces(
     service_list: List[str], cluster: str, soa_dir: str,
-) -> Mapping[str, Set]:
-    services_to_k8s_namespaces: Mapping[str, set] = defaultdict(set)
+) -> Mapping[str, Set[str]]:
+    services_to_k8s_namespaces: Mapping[str, Set[str]] = defaultdict(set)
     for service in service_list:
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
