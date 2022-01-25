@@ -288,7 +288,7 @@
                                                 "cpu",
                                                 "piscina",
                                                 "http",
-                                                "if metrics_provider is arbitrary_prometheus, the prometheus_adapter_config parameter is required"
+                                                "if metrics_provider is arbitrary_promql, the prometheus_adapter_config parameter is required"
                                             ]
                                         }
                                     }
