@@ -808,6 +808,15 @@
                         }
                     },
                     "description": "Nullable KafkaCluster instance status and metadata"
+                },
+                "cassandracluster": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "$ref": "#/definitions/InstanceStatusCassandraCluster"
+                        }
+                    },
+                    "description": "Nullable CassandraCluster instance status"
                 }
             }
         },
@@ -1876,6 +1885,10 @@
         "InstanceSpecKafkaCluster": {
             "type": "object",
             "description": "Kafka instance spec"
+        },
+        "InstanceStatusCassandraCluster": {
+            "type": "object",
+            "description": "Cassandra instance status"
         },
         "InstanceTasks": {
             "type": "array",

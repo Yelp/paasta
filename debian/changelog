@@ -1,3 +1,13 @@
+paasta-tools (0.116.1) xenial; urgency=medium
+
+  * 0.116.1 tagged with 'make release'
+    Commit: Merge pull request #3247 from
+    siadat/u/sina/DREIMP_7276_Make_cassandra_paasta_status_work_for_cass
+    andra_k8s  DREIMP-4336 add paasta status writer for Cassandra
+    cluster
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Mon, 24 Jan 2022 08:03:54 -0800
+
 paasta-tools (0.116.0) xenial; urgency=medium
 
   * 0.116.0 tagged with 'make release'
