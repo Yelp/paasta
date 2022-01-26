@@ -449,7 +449,6 @@ def validate_autoscaling_configs(service_path):
                 autoscaling_params = instance_config.get_autoscaling_params()
                 if autoscaling_params["metrics_provider"] in {
                     "uwsgi",
-                    "http",
                     "piscina",
                 }:
                     # a service may omit both of these keys, but we provide our own

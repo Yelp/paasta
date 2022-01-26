@@ -198,7 +198,6 @@
                                 "mesos_cpu",
                                 "cpu",
                                 "piscina",
-                                "http",
                                 "arbitrary_promql"
                             ]
                         },
@@ -288,7 +287,6 @@
                                                 "mesos_cpu",
                                                 "cpu",
                                                 "piscina",
-                                                "http",
                                                 "if metrics_provider is arbitrary_promql, the prometheus_adapter_config parameter is required"
                                             ]
                                         }

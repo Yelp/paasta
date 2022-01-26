@@ -1636,7 +1636,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
-        if metrics_provider in {"http", "uwsgi"}:
+        if metrics_provider == "uwsgi":
             annotations["autoscaling"] = metrics_provider
 
         pod_spec_kwargs = {}
