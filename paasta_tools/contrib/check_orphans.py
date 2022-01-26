@@ -239,7 +239,8 @@ def check_orphans(
         print("\n".join(collisions))
         return ExitCode.COLLISIONS
     elif orphans:
-        logger.warning("{} orphans found".format(len(orphans)))
+        orphaned_hosts = list(orphans_by_host.keys())
+        logger.warning("{} orphans hosts are: ".format(orphaned_hosts))
         print(dict(orphans_by_host))
         return ExitCode.ORPHANS
     else:
