@@ -8,6 +8,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 
 
 def test_parse_args():
@@ -40,46 +41,46 @@ def test_main():
             assert e.value.code == 1
 
 
-@pytest.mark.parametrize("namespace", [None, "tron"])
-def test_sync_all_secrets(namespace):
+def test_sync_all_secrets():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.sync_secrets", autospec=True
     ) as mock_sync_secrets, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
     ):
+        services_to_k8s_namespaces = {
+            "foo": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
+            "bar": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
+        }
 
         mock_sync_secrets.side_effect = [True, True]
         assert sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            service_list=["foo", "bar"],
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace=namespace,
         )
 
         mock_sync_secrets.side_effect = [True, False]
         assert not sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            service_list=["foo", "bar"],
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace=namespace,
         )
 
         mock_sync_secrets.side_effect = None
         assert sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            service_list=["foo", "bar"],
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace=namespace,
         )
 
 
