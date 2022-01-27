@@ -91,6 +91,7 @@ VALID_MONITORING_KEYS = set(
 )
 MESOS_EXECUTOR_NAMES = ("paasta", "spark")
 KUBERNETES_EXECUTOR_NAMES = ("paasta",)
+KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
 clusterman_metrics, _ = get_clusterman_metrics()
 

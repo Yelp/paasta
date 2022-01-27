@@ -1,6 +1,6 @@
 import socket
 
-
+KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
 
 
