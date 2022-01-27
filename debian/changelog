@@ -1,3 +1,10 @@
+paasta-tools (0.118.0) xenial; urgency=medium
+
+  * 0.118.0 tagged with 'make release'
+    Commit: Merge branch "arbitrary_prometheus"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 27 Jan 2022 11:14:29 -0800
+
 paasta-tools (0.117.0) xenial; urgency=medium
 
   * 0.117.0 tagged with 'make release'
