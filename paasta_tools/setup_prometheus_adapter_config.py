@@ -552,6 +552,75 @@ def create_instance_cpu_scaling_rule(
     }
 
 
+def should_create_arbitrary_promql_scaling_rule(
+    autoscaling_config: AutoscalingParamsDict,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determines whether we should configure the prometheus adapter for a given service.
+    Returns a 2-tuple of (should_create, reason_to_skip)
+    """
+    if autoscaling_config["metrics_provider"] == "arbitrary_promql":
+        return True, None
+    return False, "did not request arbitrary_promql autoscaling"
+
+
+def create_instance_arbitrary_promql_scaling_rule(
+    service: str,
+    instance: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    if "seriesQuery" in prometheus_adapter_config:
+        # If the user specifies seriesQuery, don't wrap their metricsQuery, under the assumption that they may not want
+        # us to mess with their labels.
+        series_query = prometheus_adapter_config["seriesQuery"]
+        metrics_query = prometheus_adapter_config["metricsQuery"]
+    else:
+        # If the user doesn't specify seriesQuery, assume they want to just write some promql that returns a number.
+        # Set up series_query to match the default `resources`
+        series_query = f"""
+            kube_deployment_labels{{
+                deployment='{deployment_name}',
+                paasta_cluster='{paasta_cluster}',
+                namespace='paasta'
+            }}
+        """
+        # Wrap their promql with label_replace() calls that add `deployment` / `namespace` labels which match the default `resources`.
+        metrics_query = f"""
+            label_replace(
+                label_replace(
+                    {prometheus_adapter_config["metricsQuery"]},
+                    'deployment',
+                    '{deployment_name}',
+                    '',
+                    ''
+                ),
+                'namespace',
+                'paasta',
+                '',
+                ''
+            )
+        """
+
+    return {
+        "name": {"as": f"{deployment_name}-arbitrary-promql",},
+        "seriesQuery": _minify_promql(series_query),
+        "metricsQuery": _minify_promql(metrics_query),
+        "resources": prometheus_adapter_config.get(
+            "resources",
+            {
+                "overrides": {
+                    "namespace": {"resource": "namespace"},
+                    "deployment": {"group": "apps", "resource": "deployments"},
+                },
+            },
+        ),
+    }
+
+
 def get_rules_for_service_instance(
     service_name: str,
     instance_name: str,
@@ -565,56 +634,27 @@ def get_rules_for_service_instance(
     """
     rules: List[PrometheusAdapterRule] = []
 
-    should_create_uwsgi, skip_uwsgi_reason = should_create_uwsgi_scaling_rule(
-        autoscaling_config=autoscaling_config,
-    )
-    if should_create_uwsgi:
-        rules.append(
-            create_instance_uwsgi_scaling_rule(
-                service=service_name,
-                instance=instance_name,
-                autoscaling_config=autoscaling_config,
-                paasta_cluster=paasta_cluster,
+    for should_create_scaling_rule, create_instance_scaling_rule in (
+        (should_create_uwsgi_scaling_rule, create_instance_uwsgi_scaling_rule),
+        (should_create_piscina_scaling_rule, create_instance_piscina_scaling_rule),
+        (should_create_cpu_scaling_rule, create_instance_cpu_scaling_rule),
+    ):
+        should_create, skip_reason = should_create_scaling_rule(
+            autoscaling_config=autoscaling_config,
+        )
+        if should_create:
+            rules.append(
+                create_instance_scaling_rule(
+                    service=service_name,
+                    instance=instance_name,
+                    autoscaling_config=autoscaling_config,
+                    paasta_cluster=paasta_cluster,
+                )
             )
-        )
-    else:
-        log.debug(
-            "Skipping %s.%s - %s.", service_name, instance_name, skip_uwsgi_reason,
-        )
-
-    should_create_piscina, skip_piscina_reason = should_create_piscina_scaling_rule(
-        autoscaling_config=autoscaling_config,
-    )
-    if should_create_piscina:
-        rules.append(
-            create_instance_piscina_scaling_rule(
-                service=service_name,
-                instance=instance_name,
-                autoscaling_config=autoscaling_config,
-                paasta_cluster=paasta_cluster,
+        else:
+            log.debug(
+                "Skipping %s.%s - %s.", service_name, instance_name, skip_reason,
             )
-        )
-    else:
-        log.debug(
-            "Skipping %s.%s - %s.", service_name, instance_name, skip_piscina_reason,
-        )
-
-    should_create_cpu, skip_cpu_reason = should_create_cpu_scaling_rule(
-        autoscaling_config=autoscaling_config,
-    )
-    if should_create_cpu:
-        rules.append(
-            create_instance_cpu_scaling_rule(
-                service=service_name,
-                instance=instance_name,
-                autoscaling_config=autoscaling_config,
-                paasta_cluster=paasta_cluster,
-            )
-        )
-    else:
-        log.debug(
-            "Skipping %s.%s - %s.", service_name, instance_name, skip_cpu_reason,
-        )
 
     return rules
 

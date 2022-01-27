@@ -49,6 +49,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
     good_enough_window: List[float]
+    prometheus_adapter_config: Optional[dict]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
