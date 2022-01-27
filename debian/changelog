@@ -1,3 +1,21 @@
+paasta-tools (0.117.0) xenial; urgency=medium
+
+  * 0.117.0 tagged with 'make release'
+    Commit: Add support for syncing paasta secrets into multiple k8s
+    namespaces (#3262)  * add KUBERNETES_NAMESPACE to modules  * sync
+    secrets to all relevant namespaces, allow overriding of namespace  *
+    set namespace to tron for tron  * use cr_id where possible  * always
+    log namespace when syncing secrets  * fix cr_id not being called  *
+    add default_cr_id as fallback instead of using a lambda  * use
+    cached function instead of static global  * fix linting issues  *
+    use static map of resource -> k8s namespace  * use normal dict in
+    tests  * refactor get_services_to_k8s_namespaces into separate
+    function  * correctly use Set as Set[T], move
+    INSTANCE_TYPE_TO_K8S_NAMESPACE to utils,  * fix invalid namespace
+    mappings
+
+ -- Jens Langhammer <langj@yelp.com>  Thu, 27 Jan 2022 02:15:54 -0800
+
 paasta-tools (0.116.1) xenial; urgency=medium
 
   * 0.116.1 tagged with 'make release'
