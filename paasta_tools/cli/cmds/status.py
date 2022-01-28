@@ -1778,14 +1778,22 @@ def print_cassandra_status(
     else:
         state = PaastaColors.red(state)
 
+    nodes: List[Dict[str, Any]] = status.get("nodes") or []
     output.append(indent * tab + "State: " + state)
-    output.append(indent * tab + "Nodes: ")
+
+    if not nodes:
+        output.append(
+            indent * tab + "Nodes: " + PaastaColors.red("No node status available")
+        )
+        return 0
+
+    output.append(indent * tab + "Nodes:")
     indent += 1
     now = datetime.now(timezone.utc)
     tableOkNodes = []
     tableErrNodes = []
 
-    for node in status.get("nodes"):
+    for node in nodes:
         ip = node.get("ip")
         err = node.get("error")
         inspectTime = datetime.strptime(
