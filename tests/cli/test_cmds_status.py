@@ -1915,6 +1915,26 @@ class TestPrintCassandraStatus:
             "    " + PaastaColors.red("Cassandra cluster is not available yet")
         ]
 
+    def test_sucess_no_nodes(self, mock_cassandra_status):
+        mock_cassandra_status["status"]["nodes"] = None
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes: {PaastaColors.red('No node status available')}",
+        ]
+        assert expected_output == output
+
     def test_successful_return_value(self, mock_cassandra_status):
         return_value = print_cassandra_status(
             cluster="fake_cluster",
@@ -1926,11 +1946,7 @@ class TestPrintCassandraStatus:
         )
         assert return_value == 0
 
-    @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-    def test_output(
-        self, mock_naturaltime, mock_cassandra_status,
-    ):
-        mock_naturaltime.return_value = "one day ago"
+    def test_output(self, mock_cassandra_status):
         output = []
         print_cassandra_status(
             cluster="fake_cluster",
@@ -1944,7 +1960,7 @@ class TestPrintCassandraStatus:
         expected_output = [
             f"    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes: ",
+            f"        Nodes:",
             f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  InspectedAt",
             f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     6 days ago",
             f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago",
