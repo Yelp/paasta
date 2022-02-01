@@ -79,7 +79,7 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
-MESOS_EXECUTOR_NAMES = ("paasta", "spark")
+MESOS_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
@@ -243,15 +243,6 @@ class TronActionConfig(InstanceConfig):
             if not self.get_docker_image()
             else super().get_docker_url(system_paasta_config=system_paasta_config)
         )
-
-    def get_spark_paasta_cluster(self):
-        return self.config_dict.get("spark_paasta_cluster", self.get_cluster())
-
-    def get_spark_paasta_pool(self):
-        return self.config_dict.get("spark_paasta_pool", "batch")
-
-    def get_spark_cluster_manager(self):
-        return self.config_dict.get("spark_cluster_manager", "mesos")
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
