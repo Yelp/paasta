@@ -995,6 +995,7 @@ class TestMarathonTools:
             "PAASTA_RESOURCE_MEM": str(fake_mem),
             "PAASTA_PORT": "8888",
             "PAASTA_GIT_SHA": "dockerva",
+            "PAASTA_SOA_CONFIGS_SHA": "fake_soa_git_sha",
         }
         fake_args = ["arg1", "arg2"]
         fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
