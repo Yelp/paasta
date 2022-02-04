@@ -106,12 +106,14 @@ def parse_args():
         "--timeout-client-ms",
         help="smartstack client timeout",
         required=False,
+        type=int,
         dest="timeout_client_ms",
     )
     parser.add_argument(
         "--timeout-server-ms",
         help="smartstack server timeout",
         required=False,
+        type=int,
         dest="timeout_server_ms",
     )
     return parser.parse_args()
