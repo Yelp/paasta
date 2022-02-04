@@ -102,6 +102,18 @@ def parse_args():
         required=False,
         dest="metrics_provider",
     )
+    parser.add_argument(
+        "--timeout-client-ms",
+        help="smartstack client timeout",
+        required=False,
+        dest="timeout_client_ms",
+    )
+    parser.add_argument(
+        "--timeout-server-ms",
+        help="smartstack server timeout",
+        required=False,
+        dest="timeout_server_ms",
+    )
     return parser.parse_args()
 
 
@@ -197,6 +209,10 @@ def main(args):
                 "proxy_port": None,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
+            if args.timeout_client_ms:
+                smartstack_file[args.shard_name]['timeout_client_ms'] = args.timeout_client_ms
+            if args.timeout_server_ms:
+                smartstack_file[args.shard_name]['timeout_server_ms'] = args.timeout_server_ms
             updater.write_configs(args.service, "smartstack", smartstack_file)
         else:
             log.info(f"{args.shard_name} is in smartstack config already, skipping.")
