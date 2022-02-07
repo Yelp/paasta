@@ -1,3 +1,12 @@
+paasta-tools (0.119.0) xenial; urgency=medium
+
+  * 0.119.0 tagged with 'make release'
+    Commit: Merge pull request #3267 from Yelp/u/kawaiwan/soa-configs-
+    sha-for-containers  Add soa-configs SHA to containers without
+    messing up configs SHA use …
+
+ -- Charles Wan <kawaiwan@yelp.com>  Mon, 07 Feb 2022 12:28:11 -0800
+
 paasta-tools (0.118.2) xenial; urgency=medium
 
   * 0.118.2 tagged with 'make release'
