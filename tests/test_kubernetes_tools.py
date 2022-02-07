@@ -1,3 +1,4 @@
+import functools
 from typing import Any
 from typing import Dict
 from typing import Sequence
@@ -2056,23 +2057,58 @@ class TestKubernetesDeploymentConfig:
         expected_res = None
         assert expected_res == return_value
 
-    def test_sanitize_for_config_hash(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes", autospec=True
-        ) as mock_get_kubernetes_secret_hashes:
-            mock_config = V1Deployment(
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes", autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "app_type,app_spec_type",
+        [
+            (V1Deployment, V1DeploymentSpec),
+            (
+                V1StatefulSet,
+                functools.partial(V1StatefulSetSpec, service_name="fake_service_name"),
+            ),
+        ],
+    )
+    def test_sanitize_for_config_hash(
+        self, mock_get_kubernetes_secret_hashes, app_type, app_spec_type,
+    ):
+        def make_deployment_config():
+            return app_type(
                 metadata=V1ObjectMeta(name="qwe", labels={"mc": "grindah"}),
-                spec=V1DeploymentSpec(
+                spec=app_spec_type(
                     replicas=2,
                     selector=V1LabelSelector(match_labels={"freq": "108.9"}),
-                    template=V1PodTemplateSpec(),
+                    template=V1PodTemplateSpec(
+                        spec=V1PodSpec(
+                            containers=[V1Container(name="fake_container", env=[]),],
+                        ),
+                    ),
                 ),
             )
-            ret = self.deployment.sanitize_for_config_hash(mock_config)
-            assert "replicas" not in ret["spec"].keys()
-            assert (
-                ret["paasta_secrets"] == mock_get_kubernetes_secret_hashes.return_value
-            )
+
+        mock_config = make_deployment_config()
+        mock_config_with_soa_sha = make_deployment_config()
+        mock_config_with_soa_sha.spec.template.spec.containers[0].env.append(
+            V1EnvVar(name="PAASTA_SOA_CONFIGS_SHA", value="fake_soa_git_sha"),
+        )
+
+        no_sha_ret = self.deployment.sanitize_for_config_hash(mock_config)
+        with_sha_ret = self.deployment.sanitize_for_config_hash(
+            mock_config_with_soa_sha
+        )
+
+        assert "replicas" not in no_sha_ret["spec"].keys()
+        assert (
+            no_sha_ret["paasta_secrets"]
+            == mock_get_kubernetes_secret_hashes.return_value
+        )
+        assert (
+            len(with_sha_ret["spec"]["template"]["spec"]["containers"][0]["env"]) == 0
+        )
+        # this means that with or without a SOA sha env var, the config SHA will
+        # not be affected. if this is no longer true, this will cause a big bounce.
+        assert no_sha_ret == with_sha_ret
 
     def test_get_kubernetes_secret_env_vars(self):
         assert self.deployment.get_kubernetes_secret_env_vars(

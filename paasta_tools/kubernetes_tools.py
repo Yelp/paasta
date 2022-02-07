@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
-import copy
 import hashlib
 import itertools
 import json
@@ -151,7 +150,6 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
-CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {
     "crossover": "RollingUpdate",
     "downthenup": "Recreate",
@@ -1855,20 +1853,26 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         :param config: complete_config hash to sanitise
         :returns: sanitised copy of complete_config hash
         """
-        ahash = {
-            key: copy.deepcopy(value)
-            for key, value in config.to_dict().items()
-            if key not in CONFIG_HASH_BLACKLIST
-        }
-        spec = ahash["spec"]
-        ahash["spec"] = {
-            key: copy.deepcopy(value)
-            for key, value in spec.items()
-            if key not in CONFIG_HASH_BLACKLIST
-        }
+        ahash = config.to_dict()  # deep convert to dict
         ahash["paasta_secrets"] = get_kubernetes_secret_hashes(
             service=self.get_service(), environment_variables=self.get_env()
         )
+
+        # remove data we dont want used to hash configs
+        # replica count
+        if ahash["spec"] is not None:
+            del ahash["spec"]["replicas"]
+        # soa-configs SHA
+        try:
+            for container in ahash["spec"]["template"]["spec"]["containers"]:
+                container["env"] = [
+                    e
+                    for e in container["env"]
+                    if e.get("name", "") != "PAASTA_SOA_CONFIGS_SHA"
+                ]
+        except TypeError:  # any of the values can be None
+            pass
+
         return ahash
 
     def get_termination_grace_period(self) -> Optional[int]:
