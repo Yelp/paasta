@@ -1,3 +1,11 @@
+paasta-tools (0.118.1) xenial; urgency=medium
+
+  * 0.118.1 tagged with 'make release'
+    Commit: Merge pull request #3268 from Yelp/add-default-timeout  Adds
+    --timeout-server-ms and --timeout-client-ms flags
+
+ -- Kedar Vaidya <kedar@yelp.com>  Mon, 07 Feb 2022 09:03:49 -0800
+
 paasta-tools (0.118.0) xenial; urgency=medium
 
   * 0.118.0 tagged with 'make release'
