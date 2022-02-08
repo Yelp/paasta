@@ -23,6 +23,7 @@ from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 
+from paasta_tools import kubernetes_tools
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
@@ -70,7 +71,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    spark: exec-{spark_app_name}
+    spark: {spark_pod_label}
 spec:
   affinity:
     podAffinity:
@@ -82,7 +83,7 @@ spec:
             - key: spark
               operator: In
               values:
-              - exec-{spark_app_name}
+              - {spark_pod_label}
           topologyKey: topology.kubernetes.io/hostname
 """
 
@@ -983,7 +984,11 @@ def paasta_spark_run(args):
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
     if args.enable_compact_bin_packing:
-        document = POD_TEMPLATE.format(spark_app_name=app_base_name)
+        document = POD_TEMPLATE.format(
+            spark_pod_label=kubernetes_tools.limit_size_with_hash(
+                f"exec-{app_base_name}"
+            ),
+        )
         parsed_pod_template = yaml.load(document)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
