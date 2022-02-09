@@ -29,6 +29,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
@@ -70,7 +71,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    spark: exec-{spark_app_name}
+    spark: {spark_pod_label}
 spec:
   affinity:
     podAffinity:
@@ -82,7 +83,7 @@ spec:
             - key: spark
               operator: In
               values:
-              - exec-{spark_app_name}
+              - {spark_pod_label}
           topologyKey: topology.kubernetes.io/hostname
 """
 
@@ -983,7 +984,9 @@ def paasta_spark_run(args):
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
     if args.enable_compact_bin_packing:
-        document = POD_TEMPLATE.format(spark_app_name=app_base_name)
+        document = POD_TEMPLATE.format(
+            spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
+        )
         parsed_pod_template = yaml.load(document)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
