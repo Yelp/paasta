@@ -3015,9 +3015,9 @@ def get_pipeline_deploy_groups(
 ) -> List[str]:
     pipeline_steps = []
     for step in get_pipeline_config(service, soa_dir):
-        if(step.get("parallel", False)):
+        if step.get("parallel"):
             for parallel_step in step.get("parallel"):
-                if(parallel_step.get("step", False)):
+                if parallel_step.get("step"):
                     pipeline_steps.append(parallel_step["step"])
         else:
             pipeline_steps.append(step["step"])
