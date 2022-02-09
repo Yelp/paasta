@@ -1,3 +1,12 @@
+paasta-tools (0.119.1) xenial; urgency=medium
+
+  * 0.119.1 tagged with 'make release'
+    Commit: Merge pull request #3271 from Yelp/gcoll_ADSYND-
+    5029_fix_long_pod_name_k8s  Limit pod name to 63 chars for spark
+    runs
+
+ -- Giulio Collura <gcoll@yelp.com>  Wed, 09 Feb 2022 12:54:00 -0800
+
 paasta-tools (0.119.0) xenial; urgency=medium
 
   * 0.119.0 tagged with 'make release'
