@@ -1,3 +1,12 @@
+paasta-tools (0.120.2) xenial; urgency=medium
+
+  * 0.120.2 tagged with 'make release'
+    Commit: Merge pull request #3274 from Yelp/u/kawaiwan/soa-configs-
+    sha-for-long-running-services-only  Only expose
+    PAASTA_SOA_CONFIGS_SHA to k8s long-running service containers
+
+ -- Charles Wan <kawaiwan@yelp.com>  Thu, 10 Feb 2022 14:55:38 -0800
+
 paasta-tools (0.120.1) xenial; urgency=medium
 
   * 0.120.1 tagged with 'make release'
