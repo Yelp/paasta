@@ -808,6 +808,17 @@ class TestKubernetesDeploymentConfig:
                 is True
             )
 
+    def test_get_env(self):
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.LongRunningServiceConfig.get_env",
+            autospec=True,
+            return_value={"hello": "world"},
+        ):
+            assert self.deployment.get_env() == {
+                "hello": "world",
+                "PAASTA_SOA_CONFIGS_SHA": "fake_soa_git_sha",
+            }
+
     def test_get_container_env(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_env",

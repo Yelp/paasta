@@ -1656,8 +1656,7 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_cmd() == "FAKECMD"
 
-    def test_get_env_default(self, mock_utils_read_soa_metadata):
-        mock_utils_read_soa_metadata.return_value = {}
+    def test_get_env_default(self):
         fake_conf = utils.InstanceConfig(
             service="fake_service",
             cluster="fake_cluster",
@@ -1674,7 +1673,6 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "4096",
-            "PAASTA_SOA_CONFIGS_SHA": "",
         }
 
     def test_get_env_handles_non_strings_and_returns_strings(self):
@@ -1694,7 +1692,6 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_CPUS": "1",
             "PAASTA_RESOURCE_DISK": "1024",
             "PAASTA_RESOURCE_MEM": "4096",
-            "PAASTA_SOA_CONFIGS_SHA": "fake_soa_git_sha",
         }
 
     def test_get_env_with_config(self):
@@ -1731,7 +1728,6 @@ class TestInstanceConfig:
                 "PAASTA_RESOURCE_DISK": "1024",
                 "PAASTA_RESOURCE_MEM": "4096",
                 "PAASTA_GIT_SHA": "somethin",
-                "PAASTA_SOA_CONFIGS_SHA": "fake_soa_git_sha",
             }
 
     def test_get_args_default_no_cmd(self):

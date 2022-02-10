@@ -745,7 +745,7 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         :param config: complete_config hash to sanitize
         :returns: sanitized copy of complete_config hash
         """
-        ahash: Dict[str, Any] = {
+        ahash = {
             key: copy.deepcopy(value)
             for key, value in config.items()
             if key not in CONFIG_HASH_BLACKLIST
@@ -755,8 +755,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
         ] = self.format_docker_parameters(
             with_labels=False, system_paasta_config=system_paasta_config
         )
-        if "PAASTA_SOA_CONFIGS_SHA" in ahash["env"]:
-            del ahash["env"]["PAASTA_SOA_CONFIGS_SHA"]
         secret_hashes = get_secret_hashes(
             environment_variables=config["env"],
             secret_environment=system_paasta_config.get_vault_environment(),
