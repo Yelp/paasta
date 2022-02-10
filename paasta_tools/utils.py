@@ -3024,7 +3024,7 @@ def get_pipeline_deploy_groups(
                     pipeline_steps.append(parallel_step["step"])
         else:
             pipeline_steps.append(step["step"])
-            
+
     return [step for step in pipeline_steps if is_deploy_step(step)]
 
 
