@@ -3013,7 +3013,18 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
 def get_pipeline_deploy_groups(
     service: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[str]:
-    pipeline_steps = [step["step"] for step in get_pipeline_config(service, soa_dir)]
+    pipeline_steps = []
+    for step in get_pipeline_config(service, soa_dir):
+        # added support for parallel steps in a deploy.yaml
+        # parallel steps would break previous functionality as steps arent
+        # expected to be nested in a parallel block
+        if step.get("parallel"):
+            for parallel_step in step.get("parallel"):
+                if parallel_step.get("step"):
+                    pipeline_steps.append(parallel_step["step"])
+        else:
+            pipeline_steps.append(step["step"])
+            
     return [step for step in pipeline_steps if is_deploy_step(step)]
 
 
