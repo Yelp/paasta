@@ -1,3 +1,10 @@
+paasta-tools (0.120.1) xenial; urgency=medium
+
+  * 0.120.1 tagged with 'make release'
+    Commit: run pre-commit hooks
+
+ -- Evan Krall <krall@yelp.com>  Thu, 10 Feb 2022 11:42:23 -0800
+
 paasta-tools (0.120.0) xenial; urgency=medium
 
   * 0.120.0 tagged with 'make release'
