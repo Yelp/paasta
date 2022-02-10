@@ -107,6 +107,7 @@ from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_soa_metadata
 
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
@@ -978,6 +979,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             autoscaling_params = self.get_autoscaling_params()
             return autoscaling_params["metrics_provider"] == "piscina"
         return False
+
+    def get_env(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
+        # see CLIENTOBS-64 and PAASTA-17558
+        # this is deliberately set here to make sure it is only available for
+        # k8s long-running services. putting this in `InstanceConfig.get_env` will
+        # make it available for all workloads, which will cause big bounces and
+        # continuous reconfiguring every time soa-configs is updated unless the
+        # env var is deliberately excluded from config hashing for those workloads
+        # as well.
+        env["PAASTA_SOA_CONFIGS_SHA"] = read_soa_metadata(soa_dir=self.soa_dir).get(
+            "git_sha", ""
+        )
+        return env
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}

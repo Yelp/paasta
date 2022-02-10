@@ -45,9 +45,11 @@ def mock_read_soa_metadata():
 
 
 @pytest.fixture(autouse=True)
-def mock_utils_read_soa_metadata(mock_read_soa_metadata):
+def mock_ktools_read_soa_metadata(mock_read_soa_metadata):
     with mock.patch(
-        "paasta_tools.utils.read_soa_metadata", mock_read_soa_metadata, autospec=None,
+        "paasta_tools.kubernetes_tools.read_soa_metadata",
+        mock_read_soa_metadata,
+        autospec=None,
     ):
         yield mock_read_soa_metadata
 

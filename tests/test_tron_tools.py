@@ -156,7 +156,9 @@ class TestTronActionConfig:
             )
 
     @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_env(self, action_config, executor, monkeypatch):
+    def test_get_env(
+        self, mock_read_soa_metadata, action_config, executor, monkeypatch
+    ):
         monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
         action_config.config_dict["executor"] = executor
         with mock.patch(
@@ -186,6 +188,8 @@ class TestTronActionConfig:
                 assert env["SPARK_MESOS_SECRET"] == "SHARED_SECRET(SPARK_MESOS_SECRET)"
             else:
                 assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
+
+        assert "PAASTA_SOA_CONFIGS_SHA" not in env
 
     @pytest.mark.parametrize(
         "test_env,expected_env",

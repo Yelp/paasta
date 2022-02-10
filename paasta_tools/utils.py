@@ -76,7 +76,6 @@ from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
-from service_configuration_lib import read_soa_metadata
 
 import paasta_tools.cli.fsm
 
@@ -612,9 +611,6 @@ class InstanceConfig:
             "PAASTA_RESOURCE_CPUS": str(self.get_cpus()),
             "PAASTA_RESOURCE_MEM": str(self.get_mem()),
             "PAASTA_RESOURCE_DISK": str(self.get_disk()),
-            "PAASTA_SOA_CONFIGS_SHA": read_soa_metadata(soa_dir=self.soa_dir).get(
-                "git_sha", ""
-            ),
         }
         if self.get_gpus() is not None:
             env["PAASTA_RESOURCE_GPUS"] = str(self.get_gpus())
