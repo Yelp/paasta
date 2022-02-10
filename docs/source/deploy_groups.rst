@@ -125,3 +125,23 @@ String interpolation
 --------------------
 
 Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the variable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
+
+Parallel steps
+--------------------
+
+Parallel steps are supported in ``deploy.yaml`` to allow steps that aren't reliant on each other to be executed at the same time. The parallel block also supports waiting before moving on to the next step. 
+
+As an example the following deploy.yaml will execute steps ``security-check`` & ``command-test`` together. It will then wait for user input before moving on to the ``performance-check`` step. 
+
+.. sourcecode:: yaml
+
+   ---
+   pipeline:
+   - parallel:
+     - trigger_next_step_manually: true
+     - step: security-check
+     - step: command-test
+   - step: performance-check
+   - step: prod.canary
+     trigger_next_step_manually: true
+   - step: prod.non_canary
