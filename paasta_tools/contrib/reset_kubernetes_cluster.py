@@ -173,14 +173,6 @@ class KubernetesResetter:
         print("> Running kube-init")
         self.cmd(self.master_node_names, "sudo -H /nail/sys/bin/kube-init")
         print("> Untainting master nodes...")
-        for host in self.master_node_names:
-            self.cmd(
-                [host],
-                (
-                    "sudo KUBECONFIG=/etc/kubernetes/admin.conf kubectl taint nodes "
-                    f"{host} node-role.kubernetes.io/master:NoSchedule-"
-                ),
-            )
 
         print("> Restarting kubelet on all nodes...")
         self.cmd(self.other_node_names, "sudo systemctl restart kubelet")
@@ -190,6 +182,14 @@ class KubernetesResetter:
             'sudo toggle-puppet enable --reason "Restarting cluster after reset"',
         )
         print("Successfully reset cluster.")
+        print("#####################################################")
+        print("Please run these commands from a devbox:")
+        for host in self.master_node_names:
+            print(
+                f"kubectl-{self.cluster_name} taint nodes "
+                f"{host} node-role.kubernetes.io/master:NoSchedule-"
+            )
+        print("#####################################################")
 
 
 def parse_args() -> argparse.Namespace:
