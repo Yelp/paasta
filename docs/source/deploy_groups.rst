@@ -138,9 +138,9 @@ As an example the following deploy.yaml will execute steps ``security-check`` & 
    ---
    pipeline:
    - parallel:
-     - trigger_next_step_manually: true
      - step: security-check
      - step: command-test
+     trigger_next_step_manually: true
    - step: performance-check
    - step: prod.canary
      trigger_next_step_manually: true
