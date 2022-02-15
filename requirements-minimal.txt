@@ -60,7 +60,6 @@ thriftpy2
 transitions
 typing-extensions
 tzlocal
-ujson >= 1.35
 urllib3
 utaw >= 0.2.0
 wsgicors
