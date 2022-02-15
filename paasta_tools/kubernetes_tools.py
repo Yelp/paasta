@@ -84,6 +84,8 @@ from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client import V1RoleBinding
+from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
@@ -92,6 +94,7 @@ from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
+from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -449,6 +452,7 @@ class KubeClient:
         self.apiextensions = kube_client.ApiextensionsV1beta1Api()
         self.custom = kube_client.CustomObjectsApi()
         self.autoscaling = kube_client.AutoscalingV2beta2Api()
+        self.rbac = kube_client.RbacAuthorizationV1Api()
 
         self.api_client = kube_client.ApiClient()
         self.request = self.api_client.request
@@ -3100,17 +3104,33 @@ def get_all_service_accounts(
     return kube_client.core.list_namespaced_service_account(namespace=namespace).items
 
 
+def get_all_role_bindings(
+    kube_client: KubeClient, namespace: str,
+) -> Sequence[V1RoleBinding]:
+    return kube_client.rbac.list_namespaced_role_binding(namespace=namespace).items
+
+
 _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def create_or_find_service_account_name(
-    iam_role: str, namespace: str = "paasta"
+    iam_role: str, namespace: str = "paasta", k8s_role: Optional[str] = None
 ) -> str:
     kube_client = KubeClient()
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
     # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
     # the actual name
     sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
+
+    # it's possible for an IAM role to be used for multiple purposes. Some usages may require a
+    # Kubernetes Role attached to the Service Account (e.g., Spark drivers may access S3 but also
+    # need to manage Spark executor Pods), while "normal" services/batches need a Service Account
+    # with only an IAM role attached.
+    # to support these two usecases, we'll suffix the name of a Service Account with the
+    # Kubernetes Role name to disambiguate between the two.
+    if k8s_role:
+        sa_name = f"{sa_name}--{k8s_role}"
+
     if not any(
         sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
@@ -3124,6 +3144,27 @@ def create_or_find_service_account_name(
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
+
+        # we're expecting that any Role dynamically associated with a Service Account already exist.
+        # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
+        if k8s_role:
+            # since the Role already exists, we just need to associate it with the Service Account through
+            # a Role Binding
+            role_binding = V1RoleBinding(
+                metadata=V1ObjectMeta(name=sa_name, namespace=namespace,),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io", kind="Role", name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount", namespace=namespace, name=sa_name,
+                    ),
+                ],
+            )
+            kube_client.rbac.create_namespaced_role_binding(
+                namespace=namespace, body=role_binding
+            )
+
     return sa_name
 
 

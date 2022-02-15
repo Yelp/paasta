@@ -80,9 +80,13 @@ VALID_MONITORING_KEYS = set(
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
 MESOS_EXECUTOR_NAMES = ("paasta",)
-KUBERNETES_EXECUTOR_NAMES = ("paasta",)
+KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
 KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
+EXECUTOR_TYPE_TO_NAMESPACE = {
+    "paasta": "paasta",
+    "spark": "paasta-spark",
+}
 clusterman_metrics, _ = get_clusterman_metrics()
 
 
@@ -190,6 +194,11 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
 @lru_cache(maxsize=1)
 def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
+
+
+@lru_cache(maxsize=1)
+def _spark_k8s_role() -> str:
+    return load_system_paasta_config().get_spark_k8s_role()
 
 
 class TronActionConfig(InstanceConfig):
@@ -635,10 +644,10 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         }
 
         # we can hardcode this for now as batches really shouldn't
-        # need routable IPs - we can deal with adding an interface
-        # to actually control annotations once there's a usecase
-        # that requires more dynamicism here
-        result["annotations"] = {"paasta.yelp.com/routable_ip": "false"}
+        # need routable IPs and we know that Spark probably does.
+        result["annotations"] = {
+            "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
+        }
 
         if action_config.get_team() is not None:
             result["labels"]["yelp.com/owner"] = action_config.get_team()
@@ -651,9 +660,25 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             and action_config.get_iam_role()
             and not action_config.for_validation
         ):
+            # this service account will be used for normal Tron batches as well as for Spark executors
             result["service_account_name"] = create_or_find_service_account_name(
-                iam_role=action_config.get_iam_role(), namespace="tron"
+                iam_role=action_config.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
+                k8s_role=None,
             )
+
+            if executor == "spark":
+                # we'd like Tron to be able to distinguish between spark and normal actions
+                result["executor"] = "spark"
+                # while this service account will only be used by Spark drivers since executors don't
+                # need Kubernetes access permissions
+                result[
+                    "spark_driver_service_account_name"
+                ] = create_or_find_service_account_name(
+                    iam_role=action_config.get_iam_role(),
+                    namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
+                    k8s_role=_spark_k8s_role(),
+                )
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
