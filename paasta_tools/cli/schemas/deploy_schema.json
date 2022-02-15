@@ -18,6 +18,9 @@
                     "step": {
                         "type": "string"
                     },
+                    "parallel": {
+                        "type": "array"
+                    },
                     "trigger_next_step_manually": {
                         "type": "boolean"
                     },
