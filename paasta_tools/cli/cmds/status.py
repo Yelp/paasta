@@ -1843,6 +1843,9 @@ def print_cassandra_status(
                 row["Initialized"] = "Yes" if details.get("initialized") else "No"
                 row["Drained"] = "Yes" if details.get("drained") else "No"
                 row["Draining"] = "Yes" if details.get("draining") else "No"
+                # Show absolute dates:
+                row["StartTime"] = node.get("startTime", "None")
+                row["InspectedAt"] = node.get("inspectTime", "None")
             if verbose > 1:
                 row["LocalHostID"] = details.get("localHostId")
                 row["Schema"] = details.get("schemaVersion")
