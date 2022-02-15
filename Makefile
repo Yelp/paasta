@@ -74,7 +74,7 @@ clean:
 	-rm -rf .paasta
 
 yelpy: ## Installs the yelp-internal packages into the default tox environment
-	.tox/py37-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt -r ./extra-linux-requirements.txt
+	.tox/py37-linux/bin/pip-custom-platform install -i https://pypi.yelpcorp.com/simple -r yelp_package/extra_requirements_yelp.txt
 
 
 .PHONY: help
