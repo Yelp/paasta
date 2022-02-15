@@ -942,6 +942,9 @@ def mock_kubernetes_status():
 
 @pytest.fixture
 def mock_cassandra_status() -> Mapping[str, Any]:
+    startTime = (datetime.datetime.now() - datetime.timedelta(days=10)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
     inspectTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
@@ -988,6 +991,7 @@ def mock_cassandra_status() -> Mapping[str, Any]:
                         "tokenRangesCount": 256,
                         "totalHints": 0,
                     },
+                    "startTime": startTime,
                     "inspectTime": inspectTime,
                     "ip": "10.93.210.204",
                 },
@@ -1025,6 +1029,7 @@ def mock_cassandra_status() -> Mapping[str, Any]:
                         "tokenRangesCount": 256,
                         "totalHints": 0,
                     },
+                    "startTime": startTime,
                     "inspectTime": inspectTime,
                     "ip": "10.93.200.181",
                 },
@@ -1062,10 +1067,16 @@ def mock_cassandra_status() -> Mapping[str, Any]:
                         "tokenRangesCount": 256,
                         "totalHints": 0,
                     },
+                    "startTime": startTime,
                     "inspectTime": inspectTime,
                     "ip": "10.93.130.60",
                 },
-                {"inspectTime": inspectTime, "ip": "10.93.180.201", "error": "oops"},
+                {
+                    "startTime": startTime,
+                    "inspectTime": inspectTime,
+                    "ip": "10.93.180.201",
+                    "error": "oops",
+                },
             ],
             state="Running",
         ),
@@ -1947,8 +1958,11 @@ class TestPrintCassandraStatus:
         assert return_value == 0
 
     def test_output(self, mock_cassandra_status):
+        # delete startTime for one of the nodes to make sure that the status
+        # works even before startTime is available.
+        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
         output = []
-        print_cassandra_status(
+        return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
@@ -1956,18 +1970,19 @@ class TestPrintCassandraStatus:
             cassandra_status=mock_cassandra_status,
             verbose=0,
         )
+        assert return_value == 0
 
         expected_output = [
             f"    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
             f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  InspectedAt",
-            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     6 days ago",
-            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago",
-            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime    InspectedAt",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None         6 days ago",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     10 days ago  6 days ago",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     10 days ago  6 days ago",
             f"        Nodes with errors:",
-            f"            IP             InspectedAt  Error",
-            f"            10.93.180.201  6 days ago   {PaastaColors.red('oops')}",
+            f"            IP             StartTime    InspectedAt  Error",
+            f"            10.93.180.201  10 days ago  6 days ago   {PaastaColors.red('oops')}",
         ]
         assert expected_output == output
 

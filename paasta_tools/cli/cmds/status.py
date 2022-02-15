@@ -1796,12 +1796,23 @@ def print_cassandra_status(
     for node in nodes:
         ip = node.get("ip")
         err = node.get("error")
+        startAge = "None"
+        if node.get("startTime"):
+            startTime = datetime.strptime(
+                node.get("startTime"), "%Y-%m-%dT%H:%M:%SZ"
+            ).replace(tzinfo=timezone.utc)
+            startAge = (
+                humanize.naturaldelta(
+                    timedelta(seconds=(now - startTime).total_seconds())
+                )
+                + " ago"
+            )
         inspectTime = datetime.strptime(
             node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
         ).replace(tzinfo=timezone.utc)
         details = node.get("details")
 
-        age = (
+        inspectAge = (
             humanize.naturaldelta(
                 timedelta(seconds=(now - inspectTime).total_seconds())
             )
@@ -1809,11 +1820,11 @@ def print_cassandra_status(
         )
 
         if details is None or err is not None:
-            row = {
-                "IP": ip,
-                "InspectedAt": age,
-                "Error": PaastaColors.red(err),
-            }
+            row = {}
+            row["IP"] = ip
+            row["StartTime"] = startAge
+            row["InspectedAt"] = inspectAge
+            row["Error"] = PaastaColors.red(err)
             tableErrNodes.append(row)
         else:
             row = {}
@@ -1825,7 +1836,8 @@ def print_cassandra_status(
             row["Rack"] = details.get("rack")
             row["Load"] = details.get("loadString")
             row["Tokens"] = str(details.get("tokenRangesCount"))
-            row["InspectedAt"] = age
+            row["StartTime"] = startAge
+            row["InspectedAt"] = inspectAge
             if verbose > 0:
                 row["Starting"] = "Yes" if details.get("starting") else "No"
                 row["Initialized"] = "Yes" if details.get("initialized") else "No"
