@@ -1825,6 +1825,10 @@ def print_cassandra_status(
             row["StartTime"] = start_age
             row["InspectedAt"] = inspect_age
             row["Error"] = PaastaColors.red(err)
+            if verbose > 0:
+                # Show absolute times:
+                row["StartTime"] = node.get("startTime", "None")
+                row["InspectedAt"] = node.get("inspectTime", "None")
             table_err_nodes.append(row)
         else:
             row = {}
@@ -1843,7 +1847,7 @@ def print_cassandra_status(
                 row["Initialized"] = "Yes" if details.get("initialized") else "No"
                 row["Drained"] = "Yes" if details.get("drained") else "No"
                 row["Draining"] = "Yes" if details.get("draining") else "No"
-                # Show absolute dates:
+                # Show absolute times:
                 row["StartTime"] = node.get("startTime", "None")
                 row["InspectedAt"] = node.get("inspectTime", "None")
             if verbose > 1:
@@ -1873,42 +1877,49 @@ def print_cassandra_status(
                 row["LoggingLevels"] = str(details.get("loggingLevels"))
             table_ok_nodes.append(row)
 
-    header: List[str] = []
-    lines: List[List[str]] = []
-    for row in table_ok_nodes:
-        if len(header) == 0:
-            header = list(row.keys())
-            lines.append(list(header))
-        lines.append(list(row.values()))
     if verbose < 2:
-        ftable = format_table(lines)
+        ok_nodes_lines = _table_to_lines(verbose, table_ok_nodes)
+        ftable = format_table(ok_nodes_lines)
         output.extend([indent * tab + line for line in ftable])
+
+        if len(table_err_nodes) > 0:
+            err_nodes_lines = _table_to_lines(verbose, table_err_nodes)
+            indent -= 1
+            output.append(indent * tab + "Nodes with errors:")
+            ftable = format_table(err_nodes_lines)
+            indent += 1
+            output.extend([indent * tab + line for line in ftable])
     else:
         for node in table_ok_nodes:
-            output.append(indent * tab + "Node: ")
+            output.append(indent * tab + "Node:")
             indent += 1
             for key in node.keys():
                 output.append(
                     indent * tab + "{key}: {value}".format(key=key, value=node[key])
                 )
             indent -= 1
-    indent -= 1
+        for node in table_err_nodes:
+            output.append(indent * tab + "Node:")
+            indent += 1
+            for key in node.keys():
+                output.append(
+                    indent * tab + "{key}: {value}".format(key=key, value=node[key])
+                )
+            indent -= 1
+    return 0
 
-    if len(table_err_nodes) == 0:
-        return 0
 
-    output.append(indent * tab + "Nodes with errors:")
-    header = []
-    lines = []
-    indent += 1
-    for row in table_err_nodes:
+def _table_to_lines(
+    verbose: int = 0, table: List[Dict[str, Any]] = [],
+) -> List[List[str]]:
+    header: List[str] = []
+    lines: List[List[str]] = []
+    for row in table:
         if len(header) == 0:
             header = list(row.keys())
             lines.append(list(header))
         lines.append(list(row.values()))
-    ftable = format_table(lines)
-    output.extend([indent * tab + line for line in ftable])
-    return 0
+    return lines
 
 
 def print_kafka_status(

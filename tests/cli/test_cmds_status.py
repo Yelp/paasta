@@ -942,10 +942,10 @@ def mock_kubernetes_status():
 
 @pytest.fixture
 def mock_cassandra_status() -> Mapping[str, Any]:
-    startTime = (datetime.datetime.now() - datetime.timedelta(days=10)).strftime(
+    startTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
-    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
+    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=3)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
     )
     return defaultdict(
@@ -1976,13 +1976,174 @@ class TestPrintCassandraStatus:
             f"    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
             f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime    InspectedAt",
-            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None         6 days ago",
-            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     10 days ago  6 days ago",
-            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     10 days ago  6 days ago",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
             f"        Nodes with errors:",
-            f"            IP             StartTime    InspectedAt  Error",
-            f"            10.93.180.201  10 days ago  6 days ago   {PaastaColors.red('oops')}",
+            f"            IP             StartTime   InspectedAt  Error",
+            f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
+        ]
+        assert expected_output == output
+
+    def test_verbose1_output(self, mock_cassandra_status):
+        # delete startTime for one of the nodes to make sure that the status
+        # works even before startTime is available.
+        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+        # startTime0 is None
+        startTime1 = mock_cassandra_status["status"]["nodes"][1]["startTime"]
+        startTime2 = mock_cassandra_status["status"]["nodes"][2]["startTime"]
+        startTime3 = mock_cassandra_status["status"]["nodes"][3]["startTime"]
+
+        inspectTime0 = mock_cassandra_status["status"]["nodes"][0]["inspectTime"]
+        inspectTime1 = mock_cassandra_status["status"]["nodes"][1]["inspectTime"]
+        inspectTime2 = mock_cassandra_status["status"]["nodes"][2]["inspectTime"]
+        inspectTime3 = mock_cassandra_status["status"]["nodes"][3]["inspectTime"]
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None                  {inspectTime0}  No        Yes          No       No",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTime1}  {inspectTime1}  No        Yes          No       No",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTime2}  {inspectTime2}  No        Yes          No       No",
+            f"        Nodes with errors:",
+            f"            IP             StartTime             InspectedAt           Error",
+            f"            10.93.180.201  {startTime3}  {inspectTime3}  {PaastaColors.red('oops')}",
+        ]
+        assert expected_output == output
+
+    def test_verbose2_output(self, mock_cassandra_status):
+        # delete startTime for one of the nodes to make sure that the status
+        # works even before startTime is available.
+        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=2,
+        )
+        assert return_value == 0
+
+        nodes = mock_cassandra_status["status"]["nodes"]
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            Node:",
+            f"                IP: {nodes[0]['ip']}",
+            f"                Available: {'Yes' if nodes[0]['details']['available'] else 'No'}",
+            f"                OperationMode: {nodes[0]['details']['operationMode']}",
+            f"                Joined: {'Yes' if nodes[0]['details']['joined'] else 'No'}",
+            f"                Datacenter: {nodes[0]['details']['datacenter']}",
+            f"                Rack: {nodes[0]['details']['rack']}",
+            f"                Load: {nodes[0]['details']['loadString']}",
+            f"                Tokens: {nodes[0]['details']['tokenRangesCount']}",
+            f"                StartTime: {nodes[0].get('startTime', 'None')}",
+            f"                InspectedAt: {nodes[0]['inspectTime']}",
+            f"                Starting: {'Yes' if nodes[0]['details']['starting'] else 'No'}",
+            f"                Initialized: {'Yes' if nodes[0]['details']['initialized'] else 'No'}",
+            f"                Drained: {'Yes' if nodes[0]['details']['drained'] else 'No'}",
+            f"                Draining: {'Yes' if nodes[0]['details']['draining'] else 'No'}",
+            f"                LocalHostID: {nodes[0]['details']['localHostId']}",
+            f"                Schema: {nodes[0]['details']['schemaVersion']}",
+            f"                RemovalStatus: {nodes[0]['details']['removalStatus']}",
+            f"                DrainProgress: {nodes[0]['details']['drainProgress']}",
+            f"                RPCServerRunning: {'Yes' if nodes[0]['details']['rpcServerRunning'] else 'No'}",
+            f"                NativeTransportRunning: {'Yes' if nodes[0]['details']['nativeTransportRunning'] else 'No'}",
+            f"                GossipRunning: {'Yes' if nodes[0]['details']['gossipRunning'] else 'No'}",
+            f"                IncBackupEnabled: {'Yes' if nodes[0]['details']['incrementalBackupsEnabled'] else 'No'}",
+            f"                Version: {nodes[0]['details']['releaseVersion']}",
+            f"                ClusterName: {nodes[0]['details']['clusterName']}",
+            f"                HintsInProgress: {nodes[0]['details']['hintsInProgress']}",
+            f"                ReadRepairAttempted: {nodes[0]['details']['readRepairAttempted']}",
+            f"                NumberOfTables: {nodes[0]['details']['numberOfTables']}",
+            f"                TotalHints: {nodes[0]['details']['totalHints']}",
+            f"                HintedHandoffEnabled: {'Yes' if nodes[0]['details']['hintedHandoffEnabled'] else 'No'}",
+            f"                LoggingLevels: {nodes[0]['details']['loggingLevels']}",
+            f"            Node:",
+            f"                IP: {nodes[1]['ip']}",
+            f"                Available: {'Yes' if nodes[1]['details']['available'] else 'No'}",
+            f"                OperationMode: {nodes[1]['details']['operationMode']}",
+            f"                Joined: {'Yes' if nodes[1]['details']['joined'] else 'No'}",
+            f"                Datacenter: {nodes[1]['details']['datacenter']}",
+            f"                Rack: {nodes[1]['details']['rack']}",
+            f"                Load: {nodes[1]['details']['loadString']}",
+            f"                Tokens: {nodes[1]['details']['tokenRangesCount']}",
+            f"                StartTime: {nodes[1].get('startTime', 'None')}",
+            f"                InspectedAt: {nodes[1]['inspectTime']}",
+            f"                Starting: {'Yes' if nodes[1]['details']['starting'] else 'No'}",
+            f"                Initialized: {'Yes' if nodes[1]['details']['initialized'] else 'No'}",
+            f"                Drained: {'Yes' if nodes[1]['details']['drained'] else 'No'}",
+            f"                Draining: {'Yes' if nodes[1]['details']['draining'] else 'No'}",
+            f"                LocalHostID: {nodes[1]['details']['localHostId']}",
+            f"                Schema: {nodes[1]['details']['schemaVersion']}",
+            f"                RemovalStatus: {nodes[1]['details']['removalStatus']}",
+            f"                DrainProgress: {nodes[1]['details']['drainProgress']}",
+            f"                RPCServerRunning: {'Yes' if nodes[1]['details']['rpcServerRunning'] else 'No'}",
+            f"                NativeTransportRunning: {'Yes' if nodes[1]['details']['nativeTransportRunning'] else 'No'}",
+            f"                GossipRunning: {'Yes' if nodes[1]['details']['gossipRunning'] else 'No'}",
+            f"                IncBackupEnabled: {'Yes' if nodes[1]['details']['incrementalBackupsEnabled'] else 'No'}",
+            f"                Version: {nodes[1]['details']['releaseVersion']}",
+            f"                ClusterName: {nodes[1]['details']['clusterName']}",
+            f"                HintsInProgress: {nodes[1]['details']['hintsInProgress']}",
+            f"                ReadRepairAttempted: {nodes[1]['details']['readRepairAttempted']}",
+            f"                NumberOfTables: {nodes[1]['details']['numberOfTables']}",
+            f"                TotalHints: {nodes[1]['details']['totalHints']}",
+            f"                HintedHandoffEnabled: {'Yes' if nodes[1]['details']['hintedHandoffEnabled'] else 'No'}",
+            f"                LoggingLevels: {nodes[1]['details']['loggingLevels']}",
+            f"            Node:",
+            f"                IP: {nodes[2]['ip']}",
+            f"                Available: {'Yes' if nodes[2]['details']['available'] else 'No'}",
+            f"                OperationMode: {nodes[2]['details']['operationMode']}",
+            f"                Joined: {'Yes' if nodes[2]['details']['joined'] else 'No'}",
+            f"                Datacenter: {nodes[2]['details']['datacenter']}",
+            f"                Rack: {nodes[2]['details']['rack']}",
+            f"                Load: {nodes[2]['details']['loadString']}",
+            f"                Tokens: {nodes[2]['details']['tokenRangesCount']}",
+            f"                StartTime: {nodes[2].get('startTime', 'None')}",
+            f"                InspectedAt: {nodes[2]['inspectTime']}",
+            f"                Starting: {'Yes' if nodes[2]['details']['starting'] else 'No'}",
+            f"                Initialized: {'Yes' if nodes[2]['details']['initialized'] else 'No'}",
+            f"                Drained: {'Yes' if nodes[2]['details']['drained'] else 'No'}",
+            f"                Draining: {'Yes' if nodes[2]['details']['draining'] else 'No'}",
+            f"                LocalHostID: {nodes[2]['details']['localHostId']}",
+            f"                Schema: {nodes[2]['details']['schemaVersion']}",
+            f"                RemovalStatus: {nodes[2]['details']['removalStatus']}",
+            f"                DrainProgress: {nodes[2]['details']['drainProgress']}",
+            f"                RPCServerRunning: {'Yes' if nodes[2]['details']['rpcServerRunning'] else 'No'}",
+            f"                NativeTransportRunning: {'Yes' if nodes[2]['details']['nativeTransportRunning'] else 'No'}",
+            f"                GossipRunning: {'Yes' if nodes[2]['details']['gossipRunning'] else 'No'}",
+            f"                IncBackupEnabled: {'Yes' if nodes[2]['details']['incrementalBackupsEnabled'] else 'No'}",
+            f"                Version: {nodes[2]['details']['releaseVersion']}",
+            f"                ClusterName: {nodes[2]['details']['clusterName']}",
+            f"                HintsInProgress: {nodes[2]['details']['hintsInProgress']}",
+            f"                ReadRepairAttempted: {nodes[2]['details']['readRepairAttempted']}",
+            f"                NumberOfTables: {nodes[2]['details']['numberOfTables']}",
+            f"                TotalHints: {nodes[2]['details']['totalHints']}",
+            f"                HintedHandoffEnabled: {'Yes' if nodes[2]['details']['hintedHandoffEnabled'] else 'No'}",
+            f"                LoggingLevels: {nodes[2]['details']['loggingLevels']}",
+            f"            Node:",
+            f"                IP: {nodes[3]['ip']}",
+            f"                StartTime: {nodes[3].get('startTime', 'None')}",
+            f"                InspectedAt: {nodes[3]['inspectTime']}",
+            f"                Error: {PaastaColors.red('oops')}",
         ]
         assert expected_output == output
 
