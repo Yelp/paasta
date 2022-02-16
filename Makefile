@@ -33,13 +33,23 @@ docs: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
 
 test: .paasta/bin/activate
+	if [ "$(PAASTA_ENV)" != "YELP" ]; then \
+		.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests; \
+	else \
+		.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests-yelpy; \
+	fi
+
+test-yelpy: .paasta/bin/activate
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests-yelpy
+
+test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
 
 .tox/py37-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
 
 dev-api: .tox/py37-linux
-	.tox/py37-linux/bin/python -m paasta_tools.run-paasta-api-in-dev-mode
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python3.7 .paasta
