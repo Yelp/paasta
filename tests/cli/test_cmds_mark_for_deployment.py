@@ -265,6 +265,17 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_timer = mock_get_metrics.return_value.create_timer.return_value
     mock_timer.start.assert_called_once_with()
     mock_timer.stop.assert_called_once_with(tmp_dimensions=dict(exit_status=1))
+    mock_emit_event = mock_get_metrics.return_value.emit_event
+    mock_emit_event.assert_called_once_with(
+        name="rollback",
+        dimensions=dict(
+            paasta_service="test_service",
+            deploy_group="test_deploy_group",
+            rolled_back_from="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            rolled_back_to="old-sha",
+            rollback_type="user_initiated_rollback",
+        ),
+    )
 
 
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log_audit", autospec=True)
