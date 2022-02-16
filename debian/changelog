@@ -1,3 +1,13 @@
+paasta-tools (0.120.3) xenial; urgency=medium
+
+  * 0.120.3 tagged with 'make release'
+    Commit: Merge pull request #3281 from Yelp/luisp/fix-requirements
+    We weren"t actually running check-requirements in a way that blocked
+    things, so we had a decent chunk of unpinned requirements (both for
+    dev and real dependencies).
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 16 Feb 2022 14:49:15 -0800
+
 paasta-tools (0.120.2) xenial; urgency=medium
 
   * 0.120.2 tagged with 'make release'
