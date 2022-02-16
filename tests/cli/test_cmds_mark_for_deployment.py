@@ -250,6 +250,16 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
     assert mock__log_audit.call_count == len(mock_list_deploy_groups.return_value)
+    mock__log_audit.assert_called_once_with(
+        action="rollback",
+        action_details={
+            "deploy_group": "test_deploy_group",
+            "rolled_back_from": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            "rolled_back_to": "old-sha",
+            "rollback_type": "user_initiated_rollback",
+        },
+        service="test_service",
+    )
 
     mock_get_metrics.assert_called_once_with("paasta.mark_for_deployment")
     mock_get_metrics.return_value.create_timer.assert_called_once_with(

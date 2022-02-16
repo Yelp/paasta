@@ -584,7 +584,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         polling_interval: float = None,
         diagnosis_interval: float = None,
         time_before_first_diagnosis: float = None,
-        metrics_interface: Optional[metrics_lib.BaseMetrics] = None,
+        metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics(
+            "paasta.mark_for_deployment"
+        ),
     ) -> None:
         self.service = service
         self.deploy_info = deploy_info
@@ -1228,12 +1230,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         )
 
-        if self.metrics_interface:
-            dimensions = rollback_details
-            dimensions["paasta_service"] = self.service
-            self.metrics_interface.emit_event(
-                name="rollback", dimensions=dimensions,
-            )
+        dimensions = dict(rollback_details)
+        dimensions["paasta_service"] = self.service
+        self.metrics_interface.emit_event(
+            name="rollback", dimensions=dimensions,
+        )
         _log_audit(
             action="rollback", action_details=rollback_details, service=self.service,
         )
@@ -1243,12 +1244,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             RollbackTypes.USER_INITIATED_ROLLBACK
         )
 
-        if self.metrics_interface:
-            dimensions = rollback_details
-            dimensions["paasta_service"] = self.service
-            self.metrics_interface.emit_event(
-                name="rollback", dimensions=dimensions,
-            )
+        dimensions = dict(rollback_details)
+        dimensions["paasta_service"] = self.service
+        self.metrics_interface.emit_event(
+            name="rollback", dimensions=dimensions,
+        )
         _log_audit(
             action="rollback", action_details=rollback_details, service=self.service,
         )
