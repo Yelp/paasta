@@ -13,14 +13,12 @@
 import datetime
 import difflib
 import glob
-import hashlib
 import json
 import logging
 import os
 import pkgutil
 import re
 import subprocess
-import traceback
 from functools import lru_cache
 from string import Formatter
 from typing import List
@@ -31,11 +29,6 @@ from typing import Union
 import yaml
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
-from service_configuration_lib.spark_config import generate_clusterman_metrics_entries
-from service_configuration_lib.spark_config import get_aws_credentials
-from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_spark_conf
-from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
 
@@ -48,7 +41,6 @@ from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -70,8 +62,6 @@ from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.spark_tools import get_webui_url
-from paasta_tools.spark_tools import inject_spark_conf_str
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -197,15 +187,6 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
-def pick_spark_ui_port(service, instance):
-    # We don't know what ports will be available on the agent that the driver
-    # will be scheduled on, so we just try to make them unique per service / instance.
-    hash_key = f"{service} {instance}".encode()
-    hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
-    preferred_port = 33000 + (hash_number % 25000)
-    return preferred_port
-
-
 @lru_cache(maxsize=1)
 def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
@@ -236,43 +217,8 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
-    def get_spark_config_dict(self):
-        spark_config_dict = getattr(self, "_spark_config_dict", None)
-        # cached the created dict, so that we don't need to process it multiple
-        # times, and having inconsistent result
-        if spark_config_dict is not None:
-            return spark_config_dict
-
-        if self.get_spark_cluster_manager() == "mesos":
-            mesos_leader = (
-                f"zk://{load_system_paasta_config().get_zk_hosts()}"
-                if not self.for_validation
-                else "N/A"
-            )
-        else:
-            mesos_leader = None
-
-        aws_creds = get_aws_credentials(
-            aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml")
-        )
-        self._spark_config_dict = get_spark_conf(
-            cluster_manager=self.get_spark_cluster_manager(),
-            spark_app_base_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-            user_spark_opts=self.config_dict.get("spark_args", {}),
-            paasta_cluster=self.get_spark_paasta_cluster(),
-            paasta_pool=self.get_spark_paasta_pool(),
-            paasta_service=self.get_service(),
-            paasta_instance=self.get_instance(),
-            docker_img=self.get_docker_url(),
-            aws_creds=aws_creds,
-            extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
-            # tron is using environment variable to load the required creds
-            with_secret=False,
-            mesos_leader=mesos_leader,
-            # load_system_paasta already load the default volumes
-            load_paasta_default_volumes=False,
-        )
-        return self._spark_config_dict
+    def get_cmd(self):
+        return self.config_dict.get("command")
 
     def get_job_name(self):
         return self.job
@@ -298,18 +244,6 @@ class TronActionConfig(InstanceConfig):
             else super().get_docker_url(system_paasta_config=system_paasta_config)
         )
 
-    def get_cmd(self):
-        command = self.config_dict.get("command")
-        if self.get_executor() == "spark":
-            # Spark expects to be able to write to MESOS_SANDBOX if it is set
-            # but the default value (/mnt/mesos/sandbox) doesn't get mounted in
-            # our Docker containers, so we unset it here.  (Un-setting is fine,
-            # since Spark will just write to /tmp instead).
-            command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + inject_spark_conf_str(
-                command, stringify_spark_env(self.get_spark_config_dict())
-            )
-        return command
-
     def get_spark_paasta_cluster(self):
         return self.config_dict.get("spark_paasta_cluster", self.get_cluster())
 
@@ -318,50 +252,6 @@ class TronActionConfig(InstanceConfig):
 
     def get_spark_cluster_manager(self):
         return self.config_dict.get("spark_cluster_manager", "mesos")
-
-    def get_env(self):
-        env = super().get_env()
-        if self.get_executor() == "spark":
-            spark_config_dict = self.get_spark_config_dict()
-            env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
-            env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = stringify_spark_env(spark_config_dict)
-            # The actual mesos secret will be decrypted and injected on mesos master when assigning
-            # tasks.
-            env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
-            if clusterman_metrics:
-                env["CLUSTERMAN_RESOURCES"] = json.dumps(
-                    generate_clusterman_metrics_entries(
-                        clusterman_metrics,
-                        get_resources_requested(spark_config_dict),
-                        spark_config_dict["spark.app.name"],
-                        get_webui_url(spark_config_dict["spark.ui.port"]),
-                    )
-                )
-            else:
-                env["CLUSTERMAN_RESOURCES"] = "{}"
-
-            if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
-                try:
-                    access_key, secret_key, session_token = get_aws_credentials(
-                        service=self.get_service(),
-                        aws_credentials_yaml=self.config_dict.get(
-                            "aws_credentials_yaml"
-                        ),
-                    )
-                    env["AWS_ACCESS_KEY_ID"] = access_key
-                    env["AWS_SECRET_ACCESS_KEY"] = secret_key
-                except Exception:
-                    log.warning(
-                        f"Cannot set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment "
-                        f"variables for tron action {self.get_instance()} of service "
-                        f"{self.get_service()} via credentail file. Traceback:\n"
-                        f"{traceback.format_exc()}"
-                    )
-            if "AWS_DEFAULT_REGION" not in env:
-                env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
-
-        return env
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
@@ -486,21 +376,6 @@ class TronActionConfig(InstanceConfig):
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
         return error_msgs
-
-    def format_docker_parameters(
-        self,
-        with_labels: bool = True,
-        system_paasta_config: Optional[SystemPaastaConfig] = None,
-    ) -> List[DockerParameter]:
-        """Formats extra flags for running docker.  Will be added in the format
-        `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
-        Note: values must be strings"""
-        parameters = super().format_docker_parameters(
-            with_labels=with_labels, system_paasta_config=system_paasta_config
-        )
-        if self.get_executor() == "spark":
-            parameters.append({"key": "net", "value": "host"})
-        return parameters
 
 
 class TronJobConfig:

@@ -8,7 +8,6 @@ chmod 700 /root/.ssh
 chmod 600 /root/.ssh/*
 /usr/sbin/sshd
 
-pip install -r /work/extra-linux-requirements.txt -e /work
 # This is a hack because we're not creating a real package which would create symlinks for the .py scripts
 while read link; do echo $link|sed -e 's|opt/venvs/paasta-tools/|/venv/|'| sed -e 's/\ usr/\ \/usr/'| xargs ln -s; done < /work/debian/paasta-tools.links
 /usr/sbin/rsyslogd
