@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 
 import mock
 import pytest
@@ -1000,6 +1001,54 @@ class TestTronTools:
         mock_yaml_dump.assert_called_once_with(
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
         )
+
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config", mock.Mock(), autospec=None
+    )
+    @mock.patch(
+        "paasta_tools.utils.load_system_paasta_config", mock.Mock(), autospec=None
+    )
+    def test_create_complete_config_e2e(self, tmpdir):
+        soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
+        job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
+        job_file.write(
+            """
+fake_job:
+    node: paasta
+    time_zone: 'US/Pacific'
+    schedule: 'cron 0 * * * *'
+    monitoring:
+        team: fake_team
+        ticket: false
+        slack_channels: ['#fake-channel']
+    deploy_group: dev
+    actions:
+        run:
+            command: '/bin/true'
+            cpus: 0.1
+            mem: 1000
+            retries: 3
+            env:
+                PAASTA_ENV_VAR: 'fake_value'
+            """
+        )
+
+        tronfig = tron_tools.create_complete_config(
+            service="fake_service",
+            cluster="fake-cluster",
+            soa_dir=str(soa_dir),
+            k8s_enabled=True,
+        )
+
+        hasher = hashlib.md5()
+        hasher.update(tronfig.encode("UTF-8"))
+        # warning: if this hash changes, all tron jobs will be reconfigured (like
+        # a long-running service big bounce) the next time `setup_tron_namespace`
+        # runs after the change is released. if the change introduces configs
+        # that are not static, this will cause continuous reconfiguration, which
+        # will add significant load to the Tron API, which happened in DAR-1461.
+        # but if this is intended, just change the hash.
+        assert hasher.hexdigest() == "0cf8f28701c88533c89b5b142fc829b0"
 
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
