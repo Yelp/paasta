@@ -1,4 +1,4 @@
-pip==18.1
+pip==21.1
 pip-custom-platform==0.5.0
 setuptools==39.0.1
 venv-update==3.2.4
