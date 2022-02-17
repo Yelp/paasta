@@ -2997,6 +2997,19 @@ def create_kubernetes_secret_signature(
     )
 
 
+def remove_kubernetes_secret_signature(
+    kube_client: KubeClient, secret: str, service: str, namespace: str = "paasta",
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    secret = sanitise_kubernetes_name(secret)
+    body = V1DeleteOptions()
+    kube_client.core.delete_namespaced_config_map(
+        name=f"{namespace}-secret-{service}-{secret}-signature",
+        namespace=namespace,
+        body=body,
+    )
+
+
 def sanitise_kubernetes_name(service: str,) -> str:
     name = service.replace("_", "--")
     if name.startswith("--"):

@@ -35,6 +35,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import remove_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
@@ -287,6 +288,7 @@ def sync_boto_secrets(
             continue
         boto_keys.sort()
         secret_data = {}
+        has_failures = False
         for key in boto_keys:
             for filetype in ["sh", "yaml", "json", "cfg"]:
                 this_key = key + "." + filetype
@@ -300,8 +302,8 @@ def sync_boto_secrets(
                     log.warning(
                         f"Boto key {this_key} required for {service} could not be found."
                     )
-        if not secret_data:
-            continue
+                    has_failures = True
+
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
         app_name = get_kubernetes_app_name(service, instance)
@@ -314,6 +316,18 @@ def sync_boto_secrets(
             service=app_name,
             namespace=namespace,
         )
+        if has_failures or not secret_data:
+            if kubernetes_signature:
+                # The current boto_keys are not valid. Remove the signature to prevent k8s
+                # trying to launch a container with invalid boto mounts
+                remove_kubernetes_secret_signature(
+                    kube_client=kube_client,
+                    secret=secret,
+                    service=app_name,
+                    namespace=namespace,
+                )
+            continue
+
         if not kubernetes_signature:
             log.info(f"{secret} for {service} in {namespace} not found, creating")
             try:
