@@ -72,6 +72,10 @@ class BaseMetrics(ABC):
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
         raise NotImplementedError()
 
+    @abstractmethod
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        raise NotImplementedError()
+
 
 def get_metrics_interface(base_name: str) -> BaseMetrics:
     metrics_provider = load_system_paasta_config().get_metrics_provider()
@@ -105,6 +109,9 @@ class MeteoriteMetrics(BaseMetrics):
 
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
         return yelp_meteorite.create_counter(self.base_name + "." + name, **kwargs)
+
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        return yelp_meteorite.emit_event(self.base_name + "." + name, **kwargs)
 
 
 class Timer(TimerProtocol):
@@ -165,3 +172,7 @@ class NoMetrics(BaseMetrics):
 
     def create_counter(self, name: str, **kwargs: Any) -> Counter:
         return Counter(self.base_name + "." + name)
+
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        log.debug(f"event {name} occurred with properties: {kwargs}")
+        return True
