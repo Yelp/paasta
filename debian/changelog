@@ -1,3 +1,11 @@
+paasta-tools (0.121.1) xenial; urgency=medium
+
+  * 0.121.1 tagged with 'make release'
+    Commit: Merge pull request #3283 from Yelp/COMPINFRA-937-audit-to-
+    meteorite  Emit events to metrics provider on rollbacks
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 17 Feb 2022 16:16:54 -0800
+
 paasta-tools (0.121.0) xenial; urgency=medium
 
   * 0.121.0 tagged with 'make release'

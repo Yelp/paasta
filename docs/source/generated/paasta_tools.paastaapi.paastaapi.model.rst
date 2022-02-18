@@ -10,11 +10,6 @@ Submodules
    paasta_tools.paastaapi.paastaapi.model.autoscaler_count_msg
    paasta_tools.paastaapi.paastaapi.model.deploy_queue
    paasta_tools.paastaapi.paastaapi.model.deploy_queue_service_instance
-   paasta_tools.paastaapi.paastaapi.model.envoy_backend
-   paasta_tools.paastaapi.paastaapi.model.envoy_location
-   paasta_tools.paastaapi.paastaapi.model.envoy_status
-   paasta_tools.paastaapi.paastaapi.model.float_and_error
-   paasta_tools.paastaapi.paastaapi.model.hpa_metric
    paasta_tools.paastaapi.paastaapi.model.inline_object
    paasta_tools.paastaapi.paastaapi.model.inline_response200
    paasta_tools.paastaapi.paastaapi.model.inline_response2001
@@ -22,6 +17,7 @@ Submodules
    paasta_tools.paastaapi.paastaapi.model.instance_mesh_status
    paasta_tools.paastaapi.paastaapi.model.instance_status
    paasta_tools.paastaapi.paastaapi.model.instance_status_adhoc
+   paasta_tools.paastaapi.paastaapi.model.instance_status_cassandracluster
    paasta_tools.paastaapi.paastaapi.model.instance_status_flink
    paasta_tools.paastaapi.paastaapi.model.instance_status_kafkacluster
    paasta_tools.paastaapi.paastaapi.model.instance_status_kubernetes
@@ -36,6 +32,18 @@ Submodules
    paasta_tools.paastaapi.paastaapi.model.kubernetes_healthcheck
    paasta_tools.paastaapi.paastaapi.model.kubernetes_pod
    paasta_tools.paastaapi.paastaapi.model.kubernetes_pod_event
+   paasta_tools.paastaapi.paastaapi.model.kubernetes_pod_v2
+   paasta_tools.paastaapi.paastaapi.model.kubernetes_replica_set
+   paasta_tools.paastaapi.paastaapi.model.kubernetes_version
+   paasta_tools.paastaapi.paastaapi.model.marathon_app_status
+   paasta_tools.paastaapi.paastaapi.model.marathon_autoscaling_info
+   paasta_tools.paastaapi.paastaapi.model.marathon_dashboard
+   paasta_tools.paastaapi.paastaapi.model.marathon_dashboard_cluster
+   paasta_tools.paastaapi.paastaapi.model.marathon_dashboard_item
+   paasta_tools.paastaapi.paastaapi.model.marathon_mesos_nonrunning_task
+   paasta_tools.paastaapi.paastaapi.model.marathon_mesos_running_task
+   paasta_tools.paastaapi.paastaapi.model.marathon_mesos_status
+   paasta_tools.paastaapi.paastaapi.model.marathon_task
    paasta_tools.paastaapi.paastaapi.model.meta_status
    paasta_tools.paastaapi.paastaapi.model.resource
    paasta_tools.paastaapi.paastaapi.model.resource_item
