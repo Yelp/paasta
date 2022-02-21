@@ -958,6 +958,592 @@ def mock_cassandra_status() -> Mapping[str, Any]:
             leaseID=3084822305308040700,
             nodes=[
                 {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.210.204",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1cdevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "28.19 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": None,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "c4977a17-6695-4632-b0ba-505a9f3f9d0b",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.200.181",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1cdevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "29.68 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "6da1fd1f-474e-4877-b63e-64283975cdf4",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.130.60",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1adevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "22.07 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "5d914aad-27a8-4bd6-93cf-8ead8b9e4cf5",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.180.201",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Error",
+                            "value": "oops",
+                            "type": "error",
+                        },
+                    ],
+                },
+            ],
+            state="Running",
+        ),
+    )
+
+
+# TODO: delete this after properties list is deployed on all clusters (see DREIMP-7953)
+@pytest.fixture
+def mock_cassandra_status_deprecated() -> Mapping[str, Any]:
+    startTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=3)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    return defaultdict(
+        metadata=dict(
+            name="kafka--k8s-local-main",
+            namespace="paasta-kafkaclusters",
+            annotations={"paasta.yelp.com/desired_state": "testing"},
+        ),
+        status=dict(
+            leaseID=3084822305308040700,
+            nodes=[
+                {
                     "details": {
                         "available": True,
                         "clusterName": "activity-feed",
@@ -1908,16 +2494,17 @@ class TestPrintKubernetesStatus:
         assert expected_output == output
 
 
-class TestPrintCassandraStatus:
-    def test_error(self, mock_cassandra_status):
-        mock_cassandra_status["status"] = None
+# TODO: delete this after properties list is deployed on all clusters (see DREIMP-7953)
+class TestPrintCassandraStatusDeprecated:
+    def test_error(self, mock_cassandra_status_deprecated):
+        mock_cassandra_status_deprecated["status"] = None
         output = []
         return_value = print_cassandra_status(
             cluster="fake_Cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=1,
         )
 
@@ -1926,15 +2513,15 @@ class TestPrintCassandraStatus:
             "    " + PaastaColors.red("Cassandra cluster is not available yet")
         ]
 
-    def test_sucess_no_nodes(self, mock_cassandra_status):
-        mock_cassandra_status["status"]["nodes"] = None
+    def test_sucess_no_nodes(self, mock_cassandra_status_deprecated):
+        mock_cassandra_status_deprecated["status"]["nodes"] = None
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=1,
         )
         assert return_value == 0
@@ -1946,28 +2533,28 @@ class TestPrintCassandraStatus:
         ]
         assert expected_output == output
 
-    def test_successful_return_value(self, mock_cassandra_status):
+    def test_successful_return_value(self, mock_cassandra_status_deprecated):
         return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=[],
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=1,
         )
         assert return_value == 0
 
-    def test_output(self, mock_cassandra_status):
+    def test_output(self, mock_cassandra_status_deprecated):
         # delete startTime for one of the nodes to make sure that the status
         # works even before startTime is available.
-        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
+        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=0,
         )
         assert return_value == 0
@@ -1980,36 +2567,37 @@ class TestPrintCassandraStatus:
             f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
             f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
             f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
-            f"        Nodes with errors:",
+            f"            ",
             f"            IP             StartTime   InspectedAt  Error",
             f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
+            f"            ",
         ]
         assert expected_output == output
 
-    def test_verbose1_output(self, mock_cassandra_status):
+    def test_verbose1_output(self, mock_cassandra_status_deprecated):
         # delete startTime for one of the nodes to make sure that the status
         # works even before startTime is available.
-        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
+        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=1,
         )
         assert return_value == 0
 
-        # startTime0 is None
-        startTime1 = mock_cassandra_status["status"]["nodes"][1]["startTime"]
-        startTime2 = mock_cassandra_status["status"]["nodes"][2]["startTime"]
-        startTime3 = mock_cassandra_status["status"]["nodes"][3]["startTime"]
+        nodes = mock_cassandra_status_deprecated["status"]["nodes"]
+        startTime1 = nodes[1]["startTime"]
+        startTime2 = nodes[2]["startTime"]
+        startTime3 = nodes[3]["startTime"]
 
-        inspectTime0 = mock_cassandra_status["status"]["nodes"][0]["inspectTime"]
-        inspectTime1 = mock_cassandra_status["status"]["nodes"][1]["inspectTime"]
-        inspectTime2 = mock_cassandra_status["status"]["nodes"][2]["inspectTime"]
-        inspectTime3 = mock_cassandra_status["status"]["nodes"][3]["inspectTime"]
+        inspectTime0 = nodes[0]["inspectTime"]
+        inspectTime1 = nodes[1]["inspectTime"]
+        inspectTime2 = nodes[2]["inspectTime"]
+        inspectTime3 = nodes[3]["inspectTime"]
 
         expected_output = [
             f"    Cassandra cluster:",
@@ -2019,29 +2607,29 @@ class TestPrintCassandraStatus:
             f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None                  {inspectTime0}  No        Yes          No       No",
             f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTime1}  {inspectTime1}  No        Yes          No       No",
             f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTime2}  {inspectTime2}  No        Yes          No       No",
-            f"        Nodes with errors:",
+            f"            ",
             f"            IP             StartTime             InspectedAt           Error",
             f"            10.93.180.201  {startTime3}  {inspectTime3}  {PaastaColors.red('oops')}",
+            f"            ",
         ]
         assert expected_output == output
 
-    def test_verbose2_output(self, mock_cassandra_status):
+    def test_verbose2_output(self, mock_cassandra_status_deprecated):
         # delete startTime for one of the nodes to make sure that the status
         # works even before startTime is available.
-        del mock_cassandra_status["status"]["nodes"][0]["startTime"]
+        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
         output = []
         return_value = print_cassandra_status(
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
-            cassandra_status=mock_cassandra_status,
+            cassandra_status=mock_cassandra_status_deprecated,
             verbose=2,
         )
         assert return_value == 0
 
-        nodes = mock_cassandra_status["status"]["nodes"]
-
+        nodes = mock_cassandra_status_deprecated["status"]["nodes"]
         expected_output = [
             f"    Cassandra cluster:",
             f"        State: {PaastaColors.green('Running')}",
@@ -2145,6 +2733,114 @@ class TestPrintCassandraStatus:
             f"                InspectedAt: {nodes[3]['inspectTime']}",
             f"                Error: {PaastaColors.red('oops')}",
         ]
+        assert expected_output == output
+
+
+class TestPrintCassandraStatus:
+    def test_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=0,
+        )
+        assert return_value == 0
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
+            f"            ",
+            f"            IP             StartTime   InspectedAt  Error",
+            f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
+            f"            ",
+        ]
+        assert expected_output == output
+
+    def test_verbose1_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+        nodes = mock_cassandra_status["status"]["nodes"]
+        startTimes = list(
+            map(
+                lambda node: next(
+                    prop["value"]
+                    for prop in node["properties"]
+                    if prop["name"] == "StartTime"
+                ),
+                nodes,
+            )
+        )
+        inspectTimes = list(
+            map(
+                lambda node: next(
+                    prop["value"]
+                    for prop in node["properties"]
+                    if prop["name"] == "InspectedAt"
+                ),
+                nodes,
+            )
+        )
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     {startTimes[0]}                  {inspectTimes[0]}  No        Yes          No       No",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTimes[1]}  {inspectTimes[1]}  No        Yes          No       No",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTimes[2]}  {inspectTimes[2]}  No        Yes          No       No",
+            f"            ",
+            f"            IP             StartTime             InspectedAt           Error",
+            f"            10.93.180.201  {startTimes[3]}  {inspectTimes[3]}  {PaastaColors.red('oops')}",
+            f"            ",
+        ]
+        assert expected_output == output
+
+    def test_verbose2_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=2,
+        )
+        assert return_value == 0
+
+        nodes = mock_cassandra_status["status"]["nodes"]
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+        ]
+        for node in nodes:
+            expected_output.append(f"            Node:")
+            for prop in node.get("properties"):
+                typ = prop.get("type")
+                value = prop.get("value")
+                if typ == "bool":
+                    value = "Yes" if value else "No"
+                if typ == "error":
+                    value = PaastaColors.red(value)
+                expected_output.append(f"                {prop['name']}: {value}")
         assert expected_output == output
 
 

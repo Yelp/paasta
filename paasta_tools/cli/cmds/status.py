@@ -1789,137 +1789,197 @@ def print_cassandra_status(
 
     output.append(indent * tab + "Nodes:")
     indent += 1
-    now = datetime.now(timezone.utc)
-    table_ok_nodes = []
-    table_err_nodes = []
+    all_rows: List[CassandraNodeStatusRow] = []
 
     for node in nodes:
-        ip = node.get("ip")
-        err = node.get("error")
-        start_age = "None"
-        if node.get("startTime"):
-            start_time = datetime.strptime(
-                node.get("startTime"), "%Y-%m-%dT%H:%M:%SZ"
+        if node.get("properties"):
+            row: CassandraNodeStatusRow = {}
+            for prop in node.get("properties"):
+                verbosity = prop.get("verbosity", 0)
+                name = prop["name"]
+
+                if verbosity > verbose:
+                    continue
+                if not prop.get("name"):
+                    continue
+
+                row[name] = node_property_to_str(prop, verbose)
+            all_rows.append(row)
+        else:
+            # TODO: Remove this section when properties is deployed on all
+            # clusters (see DREIMP-7953):
+            now = datetime.now(timezone.utc)
+            ip = node.get("ip")
+            err = node.get("error")
+            start_age = "None"
+            if node.get("startTime"):
+                start_time = datetime.strptime(
+                    node.get("startTime"), "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=timezone.utc)
+                start_age = (
+                    humanize.naturaldelta(
+                        timedelta(seconds=(now - start_time).total_seconds())
+                    )
+                    + " ago"
+                )
+            inspect_time = datetime.strptime(
+                node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
             ).replace(tzinfo=timezone.utc)
-            start_age = (
+            details = node.get("details")
+
+            inspect_age = (
                 humanize.naturaldelta(
-                    timedelta(seconds=(now - start_time).total_seconds())
+                    timedelta(seconds=(now - inspect_time).total_seconds())
                 )
                 + " ago"
             )
-        inspect_time = datetime.strptime(
-            node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
-        ).replace(tzinfo=timezone.utc)
-        details = node.get("details")
 
-        inspect_age = (
-            humanize.naturaldelta(
-                timedelta(seconds=(now - inspect_time).total_seconds())
-            )
-            + " ago"
-        )
-
-        if details is None or err is not None:
-            row = {}
-            row["IP"] = ip
-            row["StartTime"] = start_age
-            row["InspectedAt"] = inspect_age
-            row["Error"] = PaastaColors.red(err)
-            if verbose > 0:
-                # Show absolute times:
-                row["StartTime"] = node.get("startTime", "None")
-                row["InspectedAt"] = node.get("inspectTime", "None")
-            table_err_nodes.append(row)
-        else:
-            row = {}
-            row["IP"] = ip
-            row["Available"] = "Yes" if details.get("available") else "No"
-            row["OperationMode"] = details.get("operationMode")
-            row["Joined"] = "Yes" if details.get("joined") else "No"
-            row["Datacenter"] = details.get("datacenter")
-            row["Rack"] = details.get("rack")
-            row["Load"] = details.get("loadString")
-            row["Tokens"] = str(details.get("tokenRangesCount"))
-            row["StartTime"] = start_age
-            row["InspectedAt"] = inspect_age
-            if verbose > 0:
-                row["Starting"] = "Yes" if details.get("starting") else "No"
-                row["Initialized"] = "Yes" if details.get("initialized") else "No"
-                row["Drained"] = "Yes" if details.get("drained") else "No"
-                row["Draining"] = "Yes" if details.get("draining") else "No"
-                # Show absolute times:
-                row["StartTime"] = node.get("startTime", "None")
-                row["InspectedAt"] = node.get("inspectTime", "None")
-            if verbose > 1:
-                row["LocalHostID"] = details.get("localHostId")
-                row["Schema"] = details.get("schemaVersion")
-                row["RemovalStatus"] = details.get("removalStatus")
-                row["DrainProgress"] = details.get("drainProgress")
-                row["RPCServerRunning"] = (
-                    "Yes" if details.get("rpcServerRunning") else "No"
-                )
-                row["NativeTransportRunning"] = (
-                    "Yes" if details.get("nativeTransportRunning") else "No"
-                )
-                row["GossipRunning"] = "Yes" if details.get("gossipRunning") else "No"
-                row["IncBackupEnabled"] = (
-                    "Yes" if details.get("incrementalBackupsEnabled") else "No"
-                )
-                row["Version"] = details.get("releaseVersion")
-                row["ClusterName"] = details.get("clusterName")
-                row["HintsInProgress"] = str(details.get("hintsInProgress"))
-                row["ReadRepairAttempted"] = str(details.get("readRepairAttempted"))
-                row["NumberOfTables"] = str(details.get("numberOfTables"))
-                row["TotalHints"] = str(details.get("totalHints"))
-                row["HintedHandoffEnabled"] = (
-                    "Yes" if details.get("hintedHandoffEnabled") else "No"
-                )
-                row["LoggingLevels"] = str(details.get("loggingLevels"))
-            table_ok_nodes.append(row)
+            if err is not None:
+                row = {}
+                row["IP"] = ip
+                row["StartTime"] = start_age
+                row["InspectedAt"] = inspect_age
+                row["Error"] = PaastaColors.red(err)
+                if verbose > 0:
+                    # Show absolute times:
+                    row["StartTime"] = node.get("startTime", "None")
+                    row["InspectedAt"] = node.get("inspectTime", "None")
+                all_rows.append(row)
+            elif details:
+                row = {}
+                row["IP"] = ip
+                row["Available"] = "Yes" if details.get("available") else "No"
+                row["OperationMode"] = details.get("operationMode")
+                row["Joined"] = "Yes" if details.get("joined") else "No"
+                row["Datacenter"] = details.get("datacenter")
+                row["Rack"] = details.get("rack")
+                row["Load"] = details.get("loadString")
+                row["Tokens"] = str(details.get("tokenRangesCount"))
+                row["StartTime"] = start_age
+                row["InspectedAt"] = inspect_age
+                if verbose > 0:
+                    row["Starting"] = "Yes" if details.get("starting") else "No"
+                    row["Initialized"] = "Yes" if details.get("initialized") else "No"
+                    row["Drained"] = "Yes" if details.get("drained") else "No"
+                    row["Draining"] = "Yes" if details.get("draining") else "No"
+                    # Show absolute times:
+                    row["StartTime"] = node.get("startTime", "None")
+                    row["InspectedAt"] = node.get("inspectTime", "None")
+                if verbose > 1:
+                    row["LocalHostID"] = details.get("localHostId")
+                    row["Schema"] = details.get("schemaVersion")
+                    row["RemovalStatus"] = details.get("removalStatus")
+                    row["DrainProgress"] = details.get("drainProgress")
+                    row["RPCServerRunning"] = (
+                        "Yes" if details.get("rpcServerRunning") else "No"
+                    )
+                    row["NativeTransportRunning"] = (
+                        "Yes" if details.get("nativeTransportRunning") else "No"
+                    )
+                    row["GossipRunning"] = (
+                        "Yes" if details.get("gossipRunning") else "No"
+                    )
+                    row["IncBackupEnabled"] = (
+                        "Yes" if details.get("incrementalBackupsEnabled") else "No"
+                    )
+                    row["Version"] = details.get("releaseVersion")
+                    row["ClusterName"] = details.get("clusterName")
+                    row["HintsInProgress"] = str(details.get("hintsInProgress"))
+                    row["ReadRepairAttempted"] = str(details.get("readRepairAttempted"))
+                    row["NumberOfTables"] = str(details.get("numberOfTables"))
+                    row["TotalHints"] = str(details.get("totalHints"))
+                    row["HintedHandoffEnabled"] = (
+                        "Yes" if details.get("hintedHandoffEnabled") else "No"
+                    )
+                    row["LoggingLevels"] = str(details.get("loggingLevels"))
+                all_rows.append(row)
 
     if verbose < 2:
-        ok_nodes_lines = _table_to_lines(verbose, table_ok_nodes)
-        ftable = format_table(ok_nodes_lines)
-        output.extend([indent * tab + line for line in ftable])
-
-        if len(table_err_nodes) > 0:
-            err_nodes_lines = _table_to_lines(verbose, table_err_nodes)
-            indent -= 1
-            output.append(indent * tab + "Nodes with errors:")
-            ftable = format_table(err_nodes_lines)
-            indent += 1
+        for rows in group_nodes_by_header(all_rows):
+            lines = nodes_to_lines(verbose, rows)
+            ftable = format_table(lines)
             output.extend([indent * tab + line for line in ftable])
+            output.extend([indent * tab])
     else:
-        for node in table_ok_nodes:
-            output.append(indent * tab + "Node:")
-            indent += 1
-            for key in node.keys():
-                output.append(
-                    indent * tab + "{key}: {value}".format(key=key, value=node[key])
-                )
-            indent -= 1
-        for node in table_err_nodes:
-            output.append(indent * tab + "Node:")
-            indent += 1
-            for key in node.keys():
-                output.append(
-                    indent * tab + "{key}: {value}".format(key=key, value=node[key])
-                )
-            indent -= 1
+        for rows in group_nodes_by_header(all_rows):
+            for node in rows:
+                output.append(indent * tab + "Node:")
+                indent += 1
+                for key in node.keys():
+                    output.append(
+                        indent * tab + "{key}: {value}".format(key=key, value=node[key])
+                    )
+                indent -= 1
     return 0
 
 
-def _table_to_lines(
-    verbose: int = 0, table: List[Dict[str, Any]] = [],
+CassandraNodeStatusRow = Dict[str, str]
+
+
+# group_nodes_by_header groups the given nodes into several lists of rows. The
+# rows in each group have the same headers.
+def group_nodes_by_header(
+    rows: List[CassandraNodeStatusRow] = [],
+) -> List[List[CassandraNodeStatusRow]]:
+    groups: Dict[str, List[CassandraNodeStatusRow]] = {}
+    for row in rows:
+        header = list(row.keys())
+        header.sort()
+        # "\0" is just a character that is unlikely to be in the header names.
+        header_id = "\0".join(header)
+        group = groups.get(header_id, [])
+        group.append(row)
+        groups[header_id] = group
+
+    return list(groups.values())
+
+
+def nodes_to_lines(
+    verbose: int = 0, rows: List[CassandraNodeStatusRow] = [],
 ) -> List[List[str]]:
     header: List[str] = []
     lines: List[List[str]] = []
-    for row in table:
+    for row in rows:
         if len(header) == 0:
             header = list(row.keys())
             lines.append(list(header))
-        lines.append(list(row.values()))
+        line: List[str] = []
+        for key in header:
+            line.append(row.get(key, ""))
+        lines.append(line)
     return lines
+
+
+def node_property_to_str(prop: Dict[str, Any], verbose: int) -> str:
+    typ = prop.get("type")
+    value = prop.get("value")
+
+    if value is None:
+        return "None"
+
+    if typ == "string":
+        return value
+    elif typ in ["int", "float64"]:
+        return str(value)
+    elif typ == "bool":
+        return "Yes" if value else "No"
+    elif typ == "error":
+        return PaastaColors.red(value)
+    elif typ == "time":
+        if verbose > 0:
+            return value
+        parsed_time = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+        now = datetime.now(timezone.utc)
+        return (
+            humanize.naturaldelta(
+                timedelta(seconds=(now - parsed_time).total_seconds())
+            )
+            + " ago"
+        )
+    else:
+        return str(value)
 
 
 def print_kafka_status(
