@@ -1,3 +1,12 @@
+paasta-tools (0.121.2) xenial; urgency=medium
+
+  * 0.121.2 tagged with 'make release'
+    Commit: Merge pull request #3289 from Yelp/gcoll_COREML-
+    2697_spark_run_default_k8s_for_real  [COREML-2697] spark-run
+    defaults to kubernetes
+
+ -- Giulio Collura <gcoll@yelp.com>  Thu, 24 Feb 2022 15:18:07 -0800
+
 paasta-tools (0.121.1) xenial; urgency=medium
 
   * 0.121.1 tagged with 'make release'
