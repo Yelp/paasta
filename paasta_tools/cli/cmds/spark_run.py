@@ -278,7 +278,7 @@ def add_subparser(subparsers):
         help="Specify which cluster manager to use. Support for certain cluster managers may be experimental",
         dest="cluster_manager",
         choices=CLUSTER_MANAGERS,
-        default=CLUSTER_MANAGER_MESOS,
+        default=CLUSTER_MANAGER_K8S,
     )
 
     if clusterman_metrics:
