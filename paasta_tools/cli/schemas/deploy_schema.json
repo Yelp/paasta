@@ -2,6 +2,104 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "deploy config schema",
     "type": "object",
+    "definitions": {
+        "StepScalarProperties": {
+            "type": "object",
+            "properties": {
+                "step": {
+                    "type": "string"
+                },
+                "trigger_next_step_manually": {
+                    "type": "boolean"
+                },
+                "confirmation_required": {
+                    "type": "boolean"
+                },
+                "disabled": {
+                    "type": "boolean"
+                },
+                "wait_for_deployment": {
+                    "type": "boolean"
+                },
+                "auto_rollback": {
+                    "type": "boolean"
+                },
+                "auto_certify_delay": {
+                    "type": "integer"
+                },
+                "auto_abandon_delay": {
+                    "type": "integer"
+                },
+                "auto_rollback_delay": {
+                    "type": "integer"
+                },
+                "timeout": {
+                    "type": "integer"
+                },
+                "warn": {
+                    "type": "integer"
+                },
+                "command": {
+                    "type": "string"
+                },
+                "slack_notify": {
+                    "type": "boolean"
+                },
+                "ignore_failure": {
+                    "type": "boolean"
+                },
+                "notify_after_mark": {
+                    "type": "boolean"
+                },
+                "notify_after_good_deploy": {
+                    "type": "boolean"
+                },
+                "notify_after_auto_rollback": {
+                    "type": "boolean"
+                },
+                "notify_after_abort": {
+                    "type": "boolean"
+                },
+                "deployment_steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "deploy_group": {
+                                "type": "string"
+                            },
+                            "progress": {
+                                "type": "number"
+                            },
+                            "confirm_before": {
+                                "type": "boolean"
+                            },
+                            "deploy_below_breakage_pct": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "deploy_group",
+                            "progress"
+                        ]
+                    }
+                },
+                "abandon_above_breakage_pct": {
+                    "type": "number"
+                },
+                "complete_below_breakage_pct": {
+                    "type": "number"
+                },
+                "confirm_complete": {
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "step"
+            ]
+        }
+    },
     "properties": {
         "allowed_push_groups": {
             "type": "array",
@@ -12,203 +110,21 @@
         "pipeline": {
             "type": "array",
             "items": {
-                "type": "object",
-                "additionalProperties": false,
-                "properties": {
-                    "parallel": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "properties": {
-                                "step": {
-                                    "type": "string"
-                                },
-                                "trigger_next_step_manually": {
-                                    "type": "boolean"
-                                },
-                                "confirmation_required": {
-                                    "type": "boolean"
-                                },
-                                "disabled": {
-                                    "type": "boolean"
-                                },
-                                "wait_for_deployment": {
-                                    "type": "boolean"
-                                },
-                                "auto_rollback": {
-                                    "type": "boolean"
-                                },
-                                "auto_certify_delay": {
-                                    "type": "integer"
-                                },
-                                "auto_abandon_delay": {
-                                    "type": "integer"
-                                },
-                                "auto_rollback_delay": {
-                                    "type": "integer"
-                                },
-                                "timeout": {
-                                    "type": "integer"
-                                },
-                                "warn": {
-                                    "type": "integer"
-                                },
-                                "command": {
-                                    "type": "string"
-                                },
-                                "slack_notify": {
-                                    "type": "boolean"
-                                },
-                                "ignore_failure": {
-                                    "type": "boolean"
-                                },
-                                "notify_after_mark": {
-                                    "type": "boolean"
-                                },
-                                "notify_after_good_deploy": {
-                                    "type": "boolean"
-                                },
-                                "notify_after_auto_rollback": {
-                                    "type": "boolean"
-                                },
-                                "notify_after_abort": {
-                                    "type": "boolean"
-                                },
-                                "deployment_steps": {
-                                    "type": "array",
-                                    "items": {
-                                        "type": "object",
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "deploy_group": {
-                                                "type": "string"
-                                            },
-                                            "progress": {
-                                                "type": "number"
-                                            },
-                                            "confirm_before": {
-                                                "type": "boolean"
-                                            },
-                                            "deploy_below_breakage_pct": {
-                                                "type": "number"
-                                            }
-                                        },
-                                        "required": [
-                                            "deploy_group",
-                                            "progress"
-                                        ]
-                                    }
-                                },
-                                "abandon_above_breakage_pct": {
-                                    "type": "number"
-                                },
-                                "complete_below_breakage_pct": {
-                                    "type": "number"
-                                },
-                                "confirm_complete": {
-                                    "type": "boolean"
+                "allOf": [
+                    {
+                        "$ref": "#/definitions/StepScalarProperties"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "parallel": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/definitions/StepScalarProperties"
                                 }
-                            },
-                            "required": [
-                                "step"
-                            ]
+                            }
                         }
-                    },
-                    "step": {
-                        "type": "string"
-                    },
-                    "trigger_next_step_manually": {
-                        "type": "boolean"
-                    },
-                    "confirmation_required": {
-                        "type": "boolean"
-                    },
-                    "disabled": {
-                        "type": "boolean"
-                    },
-                    "wait_for_deployment": {
-                        "type": "boolean"
-                    },
-                    "auto_rollback": {
-                        "type": "boolean"
-                    },
-                    "auto_certify_delay": {
-                        "type": "integer"
-                    },
-                    "auto_abandon_delay": {
-                        "type": "integer"
-                    },
-                    "auto_rollback_delay": {
-                        "type": "integer"
-                    },
-                    "timeout": {
-                        "type": "integer"
-                    },
-                    "warn": {
-                        "type": "integer"
-                    },
-                    "command": {
-                        "type": "string"
-                    },
-                    "slack_notify": {
-                        "type": "boolean"
-                    },
-                    "ignore_failure": {
-                        "type": "boolean"
-                    },
-                    "notify_after_mark": {
-                        "type": "boolean"
-                    },
-                    "notify_after_good_deploy": {
-                        "type": "boolean"
-                    },
-                    "notify_after_auto_rollback": {
-                        "type": "boolean"
-                    },
-                    "notify_after_abort": {
-                        "type": "boolean"
-                    },
-                    "notify_after_wait": {
-                        "type": "boolean"
-                    },
-                    "deployment_steps": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": false,
-                            "properties": {
-                                "deploy_group": {
-                                    "type": "string"
-                                },
-                                "progress": {
-                                    "type": "number"
-                                },
-                                "confirm_before": {
-                                    "type": "boolean"
-                                },
-                                "deploy_below_breakage_pct": {
-                                    "type": "number"
-                                }
-                            },
-                            "required": [
-                                "deploy_group",
-                                "progress"
-                            ]
-                        }
-                    },
-                    "abandon_above_breakage_pct": {
-                        "type": "number"
-                    },
-                    "complete_below_breakage_pct": {
-                        "type": "number"
-                    },
-                    "confirm_complete": {
-                        "type": "boolean"
                     }
-                },
-                "required": [
-                    "step"
                 ]
             }
         },
