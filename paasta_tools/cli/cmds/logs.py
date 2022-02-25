@@ -15,6 +15,7 @@
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
+import json
 import logging
 import re
 import sys
@@ -39,7 +40,6 @@ from typing import Type
 
 import isodate
 import pytz
-import ujson as json
 from dateutil import tz
 
 try:

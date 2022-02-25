@@ -145,7 +145,19 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-e",
         "--enable-compact-bin-packing",
-        help="Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes.",
+        help=(
+            "Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes."
+            " Always true by default, keep around for backward compability."
+        ),
+        action="store_true",
+        default=True,
+    )
+    list_parser.add_argument(
+        "--disable-compact-bin-packing",
+        help=(
+            "Disable compact bin packing. Requires --cluster-manager to be kubernetes. Note: this option is only for advanced Spark configurations,"
+            " don't use it unless you've been instructed to do so."
+        ),
         action="store_true",
         default=False,
     )
@@ -266,7 +278,7 @@ def add_subparser(subparsers):
         help="Specify which cluster manager to use. Support for certain cluster managers may be experimental",
         dest="cluster_manager",
         choices=CLUSTER_MANAGERS,
-        default=CLUSTER_MANAGER_MESOS,
+        default=CLUSTER_MANAGER_K8S,
     )
 
     if clusterman_metrics:
@@ -379,8 +391,8 @@ def generate_pod_template_path():
     return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
 
 
-def should_enable_compact_bin_packing(enable_compact_bin_packing, cluster_manager):
-    if not enable_compact_bin_packing:
+def should_enable_compact_bin_packing(disable_compact_bin_packing, cluster_manager):
+    if disable_compact_bin_packing:
         return False
 
     if cluster_manager != CLUSTER_MANAGER_K8S:
@@ -977,7 +989,7 @@ def paasta_spark_run(args):
 
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
-        args.enable_compact_bin_packing, args.cluster_manager
+        args.disable_compact_bin_packing, args.cluster_manager
     )
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())

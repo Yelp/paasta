@@ -89,22 +89,22 @@ def test_sanitize_container_name(container_name, expected):
 
 
 @pytest.mark.parametrize(
-    "enable_compact_bin_packing,cluster_manager,dir_access,expected",
+    "disable_compact_bin_packing,cluster_manager,dir_access,expected",
     [
         (False, CLUSTER_MANAGER_MESOS, True, False),
-        (False, CLUSTER_MANAGER_K8S, True, False),
+        (False, CLUSTER_MANAGER_K8S, True, True),
         (True, CLUSTER_MANAGER_MESOS, True, False),
-        (True, CLUSTER_MANAGER_K8S, True, True),
+        (True, CLUSTER_MANAGER_K8S, True, False),
         (True, CLUSTER_MANAGER_K8S, False, False),
     ],
 )
 def test_should_enable_compact_bin_packing(
-    enable_compact_bin_packing, cluster_manager, dir_access, expected
+    disable_compact_bin_packing, cluster_manager, dir_access, expected
 ):
     with mock.patch("os.access", autospec=True, return_value=dir_access):
         assert (
             should_enable_compact_bin_packing(
-                enable_compact_bin_packing, cluster_manager
+                disable_compact_bin_packing, cluster_manager
             )
             == expected
         )
@@ -956,6 +956,7 @@ def test_paasta_spark_run(
         build=True,
         image=None,
         enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
         service="test-service",
         instance="test-instance",
         cluster="test-cluster",

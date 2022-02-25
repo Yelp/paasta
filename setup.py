@@ -37,6 +37,7 @@ setup(
     description="Tools for Yelps SOA infrastructure",
     packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
+    python_requires=">=3.7.0",
     install_requires=get_install_requires(),
     scripts=[
         "paasta_tools/am_i_mesos_leader.py",

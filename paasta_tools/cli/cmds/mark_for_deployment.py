@@ -87,7 +87,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
 
-
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
 DEFAULT_AUTO_CERTIFY_DELAY = 600  # seconds
@@ -517,6 +516,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
             time_before_first_diagnosis=args.time_before_first_diagnosis,
+            metrics_interface=metrics,
         )
         ret = deploy_process.run()
         return ret
@@ -584,6 +584,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         polling_interval: float = None,
         diagnosis_interval: float = None,
         time_before_first_diagnosis: float = None,
+        metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics(
+            "paasta.mark_for_deployment"
+        ),
     ) -> None:
         self.service = service
         self.deploy_info = deploy_info
@@ -607,6 +610,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
+        self.metrics_interface = metrics_interface
 
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
@@ -1222,21 +1226,31 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         }
 
     def log_slo_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_SLO_ROLLBACK
+        )
+
+        dimensions = dict(rollback_details)
+        dimensions["paasta_service"] = self.service
+        self.metrics_interface.emit_event(
+            name="rollback", dimensions=dimensions,
+        )
         _log_audit(
-            action="rollback",
-            action_details=self.__build_rollback_audit_details(
-                RollbackTypes.AUTOMATIC_SLO_ROLLBACK
-            ),
-            service=self.service,
+            action="rollback", action_details=rollback_details, service=self.service,
         )
 
     def log_user_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.USER_INITIATED_ROLLBACK
+        )
+
+        dimensions = dict(rollback_details)
+        dimensions["paasta_service"] = self.service
+        self.metrics_interface.emit_event(
+            name="rollback", dimensions=dimensions,
+        )
         _log_audit(
-            action="rollback",
-            action_details=self.__build_rollback_audit_details(
-                RollbackTypes.USER_INITIATED_ROLLBACK
-            ),
-            service=self.service,
+            action="rollback", action_details=rollback_details, service=self.service,
         )
 
 

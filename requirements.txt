@@ -3,7 +3,7 @@ addict==2.1.0
 aiohttp==3.7.4.post0
 argcomplete==0.8.1
 argparse==1.4.0
-arrow==0.12.1
+arrow==1.1.0
 async-timeout==3.0.0
 attrs==17.4.0
 binaryornot==0.4.4
@@ -20,8 +20,6 @@ choice==0.1
 click==6.6
 cookiecutter==1.4.0
 croniter==0.3.20
-cryptography==2.8
-dataclasses==0.7; python_version < '3.7'
 decorator==4.1.2
 docker-py==1.2.3
 docutils==0.12
@@ -31,14 +29,15 @@ future==0.16.0
 google-auth==1.2.0
 graphviz==0.8.2
 gunicorn==19.8.1
+http-parser==0.9.0
 humanfriendly==4.18
 humanize==0.5.1
 hupper==1.0
 idna==2.6
-idna-ssl==1.1.0
 inotify==0.2.8
 ipaddress==1.0.22
 isodate==0.5.1
+itsdangerous==2.0.1
 Jinja2==2.11.3
 jinja2-time==0.1.0
 jmespath==0.9.3
@@ -46,7 +45,7 @@ jsonref==0.1
 jsonschema==2.5.1
 kazoo==2.8.0
 kubernetes==18.20.0
-ldap3==2.6.0
+ldap3==2.6
 manhole==1.5.0
 marathon==0.12.0
 MarkupSafe==1.1.1
@@ -62,7 +61,7 @@ ply==3.4
 poyo==0.4.0
 progressbar2==3.10.1
 prometheus-client==0.7.1
-protobuf==3.7.1
+protobuf==3.15.0
 py==1.5.2
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
@@ -92,13 +91,14 @@ rsa==4.7.2
 ruamel.yaml==0.15.96
 s3transfer==0.3.3
 sensu-plugin==0.3.1
-service-configuration-lib==2.9.0
+service-configuration-lib==2.10.0
 setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
 six==1.15.0
 slackclient==1.2.1
 sseclient-py==1.7
+# make sure you bump sticht in extra_requirements_yelp.txt as well
 sticht==1.1.13
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
@@ -109,7 +109,7 @@ transitions==0.6.9
 translationstring==1.3
 typing-extensions==3.7.4
 tzlocal==1.2
-ujson==1.35
+url-normalize==1.4.2
 urllib3==1.24.3
 utaw==0.2.0
 venusian==1.1.0

@@ -23,6 +23,9 @@ class TestNoMetrics(unittest.TestCase):
         counter = self.metrics.create_counter("name", dimension="thing")
         counter.count()
 
+    def test_event(self):
+        self.metrics.emit_event("name", dimension="thing")
+
 
 class TestMeteoriteMetrics(unittest.TestCase):
     def setUp(self):
@@ -53,6 +56,12 @@ class TestMeteoriteMetrics(unittest.TestCase):
     def test_create_counter(self):
         self.metrics.create_counter("name", dimension="thing")
         self.mock_meteorite.create_counter.assert_called_with(
+            "paasta.deployd.name", dimension="thing"
+        )
+
+    def test_emit_event(self):
+        self.metrics.emit_event("name", dimension="thing")
+        self.mock_meteorite.emit_event.assert_called_with(
             "paasta.deployd.name", dimension="thing"
         )
 
