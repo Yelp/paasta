@@ -2635,6 +2635,9 @@ class SystemPaastaConfig:
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
+    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
+        return self.config_dict.get("tron_use_suffixed_log_streams", False)
+
     def get_api_profiling_config(self) -> Dict:
         return self.config_dict.get(
             "api_profiling_config", {"cprofile_sampling_enabled": False},

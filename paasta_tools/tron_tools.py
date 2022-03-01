@@ -201,6 +201,11 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
+@lru_cache(maxsize=1)
+def _use_suffixed_log_streams_k8s() -> bool:
+    return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
+
+
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = "tron"
 
@@ -252,6 +257,18 @@ class TronActionConfig(InstanceConfig):
             if not self.get_docker_image()
             else super().get_docker_url(system_paasta_config=system_paasta_config)
         )
+
+    def get_env(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None,
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
+
+        if self.get_executor() == "spark":
+            # TODO: fill out the rest of the spark-specific env vars (e.g., SPARK_OPTS)
+            # TODO: figure out what to do with PAASTA_RESOURCE_* env vars (re: driver/executor split)
+            env["PAASTA_INSTANCE_TYPE"] = "spark"
+
+        return env
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
@@ -617,7 +634,8 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     # there are slight differences between k8s and Mesos configs, so we'll translate
     # whatever is in soaconfigs to the k8s equivalent here as well.
     if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
-        result["executor"] = "kubernetes"
+        # we'd like Tron to be able to distinguish between spark and normal actions
+        result["executor"] = "kubernetes" if executor != "spark" else "spark"
 
         result["secret_env"] = action_config.get_secret_env()
         all_env = action_config.get_env()
@@ -626,7 +644,14 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # for Tron-on-K8s, we want to ship tronjob output through logspout
         # such that this output eventually makes it into our per-instance
         # log streams automatically
-        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        # however, we're missing infrastructure in the superregion where we run spark jobs (and
+        # some normal tron jobs), so we take a slightly different approach here
+        if _use_suffixed_log_streams_k8s():
+            result["env"]["STREAM_SUFFIX_LOGSPOUT"] = (
+                "spark" if executor == "spark" else "tron"
+            )
+        else:
+            result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
         result["node_selectors"] = action_config.get_node_selectors()
         result["node_affinities"] = action_config.get_node_affinities()
 
@@ -668,8 +693,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             )
 
             if executor == "spark":
-                # we'd like Tron to be able to distinguish between spark and normal actions
-                result["executor"] = "spark"
                 # while this service account will only be used by Spark drivers since executors don't
                 # need Kubernetes access permissions
                 result[
