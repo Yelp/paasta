@@ -9,6 +9,7 @@ import pytest
 from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
+from kubernetes import client as kube_client
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
@@ -41,12 +42,17 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client import V1RoleBinding
+from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
+from kubernetes.client import V1ServiceAccount
+from kubernetes.client import V1ServiceAccountList
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
+from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -74,6 +80,7 @@ from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -3572,17 +3579,140 @@ def test_running_task_allocation_get_pod_pool():
         ret = task_allocation_get_pod_pool(mock.Mock(), mock.Mock())
         assert ret == "default"
 
-    @pytest.mark.parametrize(
-        "config_dict, expected_management_policy",
-        [({"pod_management_policy": "Parallel"}, "Parallel"), ({}, "OrderedReady"),],
+
+@pytest.mark.parametrize(
+    "config_dict, expected_management_policy",
+    [({"pod_management_policy": "Parallel"}, "Parallel"), ({}, "OrderedReady"),],
+)
+def test_get_pod_management_policy(config_dict, expected_management_policy):
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
     )
-    def test_get_pod_management_policy(self, config_dict, expected_management_policy):
-        deployment = KubernetesDeploymentConfig(
-            service="my-service",
-            instance="my-instance",
-            cluster="mega-cluster",
-            config_dict=config_dict,
-            branch_dict=None,
-            soa_dir="/nail/blah",
+    assert deployment.get_pod_management_policy() == expected_management_policy
+
+
+def test_create_or_find_service_account_name_new():
+    iam_role = "arn:aws:iam::000000000000:role/some_role"
+    namespace = "test_namespace"
+    k8s_role = None
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
         )
-        assert deployment.get_pod_management_policy() == expected_management_policy
+        mock_client.core.list_namespaced_service_account.return_value.items = []
+        mock_kube_client.return_value = mock_client
+
+        assert expected_sa_name == create_or_find_service_account_name(
+            iam_role, namespace=namespace, k8s_role=k8s_role
+        )
+        mock_client.core.create_namespaced_service_account.assert_called_once_with(
+            namespace=namespace,
+            body=V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": iam_role},
+                ),
+            ),
+        )
+        mock_client.rbac.create_namespaced_role_binding.assert_not_called()
+
+
+def test_create_or_find_service_account_name_with_k8s_role_new():
+    iam_role = "arn:aws:iam::000000000000:role/some_role"
+    namespace = "test_namespace"
+    k8s_role = "mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = []
+        mock_kube_client.return_value = mock_client
+
+        assert expected_sa_name == create_or_find_service_account_name(
+            iam_role, namespace=namespace, k8s_role=k8s_role
+        )
+        mock_client.core.create_namespaced_service_account.assert_called_once_with(
+            namespace=namespace,
+            body=V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": iam_role},
+                ),
+            ),
+        )
+        mock_client.rbac.create_namespaced_role_binding.assert_called_once_with(
+            namespace=namespace,
+            body=V1RoleBinding(
+                metadata=V1ObjectMeta(name=expected_sa_name, namespace=namespace,),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io", kind="Role", name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=expected_sa_name,
+                    ),
+                ],
+            ),
+        )
+
+
+def test_create_or_find_service_account_name_existing():
+    iam_role = "arn:aws:iam::000000000000:role/some_role"
+    namespace = "test_namespace"
+    k8s_role = "mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = [
+            V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": iam_role},
+                ),
+            )
+        ]
+        mock_kube_client.return_value = mock_client
+
+        assert expected_sa_name == create_or_find_service_account_name(
+            iam_role, namespace=namespace, k8s_role=k8s_role
+        )
+        mock_client.core.create_namespaced_service_account.assert_not_called()
+        mock_client.rbac.create_namespaced_role_binding.assert_not_called()
