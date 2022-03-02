@@ -173,12 +173,14 @@ class Application(ABC):
 
 
 class DeploymentWrapper(Application):
-    def deep_delete(self, kube_client: KubeClient) -> None:
+    def deep_delete(
+        self, kube_client: KubeClient, propagation_policy="Foreground"
+    ) -> None:
         """
         Remove all controllers, pods, and pod disruption budgets related to this application
         :param kube_client:
         """
-        delete_options = V1DeleteOptions(propagation_policy="Foreground")
+        delete_options = V1DeleteOptions(propagation_policy=propagation_policy)
         try:
             kube_client.deployments.delete_namespaced_deployment(
                 self.item.metadata.name,
@@ -228,6 +230,10 @@ class DeploymentWrapper(Application):
         if timer >= 60 and self.kube_deployment in set(
             list_all_deployments(kube_client)
         ):
+            # When deleting then immediately creating, we need to use Background
+            # deletion to ensure we can create the deployment immediately
+            self.deep_delete(kube_client, propagation_policy="Background")
+
             try:
                 force_delete_pods(
                     self.item.metadata.name,
@@ -238,15 +244,19 @@ class DeploymentWrapper(Application):
                 )
             except ApiException as e:
                 if e.status == 404:
-                    # Deployment does not exist, nothing to delete but
-                    # we can consider this a success.
+                    # Pod(s) may have been deleted by GC before we got to it
+                    # We can consider this a success
                     self.logging.debug(
-                        "not deleting nonexistent deploy/{} from namespace/{}".format(
+                        "pods already deleted for {} from namespace/{}. Continuing.".format(
                             self.kube_deployment.service, self.item.metadata.namespace
                         )
                     )
                 else:
                     raise
+
+        if self.kube_deployment in set(list_all_deployments(kube_client)):
+            # deployment deletion failed, we cannot continue
+            raise Exception(f"Could not delete deployment {self.item.metadata.name}")
         else:
             self.logging.info(
                 "deleted deploy/{} from namespace/{}".format(
