@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import pytest
-import mock
 
 from mock import call
 from mock import MagicMock
@@ -289,44 +287,47 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_is_file_in_dir, ca
     assert output == expected_output
 
 
-@pytest.mark.parametrize("config_dict,is_valid", (
-        ({
-        'pipeline': [{
-             'parallel': [
-                 {
-                     'step': 'somecluster.something',
-                 },
-                 {
-                     'step': 'somesecurity.check',
-                },
-             ],
-             'step': 'anothercluster.something',
-             'wait_for_deployment': False,
-             'timeout': 3600,
-          }],
-    }, True),
-    # invalid config - not expecting another key to have steps nested inside
-    ({
-        'pipeline': [{
-             'not-parallel': [
-                 {
-                     'step': 'somecluster.something',
-                 },
-                 {
-                     'step': 'somesecurity.check',
-                },
-             ],
-             'step': 'anothercluster.something',
-             'wait_for_deployment': False,
-             'timeout': 3600,
-          }],
-    }, None),
-  )
-)
-def test_check_parallel_schema(config_dict, is_valid):
+@patch("paasta_tools.cli.cmds.validate.get_config_file_dict", autospec=True)
+def test_check_parallel_works(mock_get_config_file_dict):
     # Parallel steps is seen as valid
-    with mock.patch("paasta_tools.cli.cmds.validate.get_config_file_dict", autospec=True, return_value=config_dict):
-        assert validate_schema('my/fake-service','deploy') is is_valid
+    mock_get_config_file_dict.return_value = {
+        'pipeline': [{
+            'parallel': [
+                {
+                    'step': 'somecluster.something',
+                },
+                {
+                    'step': 'somesecurity.check',
+                },
+            ],
+            'step': 'anothercluster.something',
+            'wait_for_deployment': False,
+            'timeout': 3600,
+        }],
+    }
+
+    assert validate_schema('my/fake-service','deploy') is True
+
+@patch("paasta_tools.cli.cmds.validate.get_config_file_dict", autospec=True)
+def test_check_parallel_fails(mock_get_config_file_dict):
+    # Parallel steps is seen as invalid
+    mock_get_config_file_dict.return_value = {
+        'pipeline': [{
+            'invalid-prop': [
+                {
+                    'step': 'somecluster.something',
+                },
+                {
+                    'step': 'somesecurity.check',
+                },
+            ],
+            'step': 'anothercluster.something',
+            'wait_for_deployment': False,
+            'timeout': 3600,
+        }],
+    }
+
+    assert validate_schema('my/fake-service','deploy') is None
 
 
 @patch("paasta_tools.cli.cmds.check._run", autospec=True)
