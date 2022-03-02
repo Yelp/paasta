@@ -2,6 +2,7 @@ import logging
 import threading
 from abc import ABC
 from abc import abstractmethod
+from time import sleep
 from typing import Optional
 from typing import Union
 
@@ -217,28 +218,42 @@ class DeploymentWrapper(Application):
         self.sync_horizontal_pod_autoscaler(kube_client)
 
     def deep_delete_and_create(self, kube_client: KubeClient) -> None:
-        # When deleting then immediately creating, we need to use Background deletion to ensure we can create the deployment immediately
-        self.deep_delete(kube_client, propagation_policy="Background")
-        # Also forcibly delete remaining pods
-        try:
-            force_delete_pods(
-                self.item.metadata.name,
-                self.kube_deployment.service,
-                self.kube_deployment.instance,
-                self.item.metadata.namespace,
-                kube_client,
-            )
-        except ApiException as e:
-            if e.status == 404:
-                # Deployment does not exist, nothing to delete but
-                # we can consider this a success.
-                self.logging.debug(
-                    "not deleting nonexistent deploy/{} from namespace/{}".format(
-                        self.kube_deployment.service, self.item.metadata.namespace
-                    )
+        self.deep_delete(kube_client)
+        timer = 0
+        while (
+            self.kube_deployment in set(list_all_deployments(kube_client))
+            and timer < 60
+        ):
+            sleep(1)
+            timer += 1
+
+        if timer >= 60 and self.kube_deployment in set(
+            list_all_deployments(kube_client)
+        ):
+            # When deleting then immediately creating, we need to use Background
+            # deletion to ensure we can create the deployment immediately
+            self.deep_delete(kube_client, propagation_policy="Background")
+
+            try:
+                force_delete_pods(
+                    self.item.metadata.name,
+                    self.kube_deployment.service,
+                    self.kube_deployment.instance,
+                    self.item.metadata.namespace,
+                    kube_client,
                 )
-            else:
-                raise
+            except ApiException as e:
+                if e.status == 404:
+                    # Deployment does not exist, nothing to delete but
+                    # we can consider this a success.
+                    self.logging.debug(
+                        "not deleting nonexistent deploy/{} from namespace/{}".format(
+                            self.kube_deployment.service, self.item.metadata.namespace
+                        )
+                    )
+                else:
+                    raise
+
         if self.kube_deployment in set(list_all_deployments(kube_client)):
             # deployment deletion failed, we cannot continue
             raise Exception(f"Could not delete deployment {self.item.metadata.name}")
