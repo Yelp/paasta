@@ -6,6 +6,8 @@
         "StepScalarProperties": {
             "type": "object",
             "properties": {
+                "parallel": {
+                },
                 "step": {
                     "type": "string"
                 },
@@ -97,7 +99,8 @@
             },
             "required": [
                 "step"
-            ]
+            ],
+            "additionalProperties": false
         }
     },
     "properties": {
@@ -141,8 +144,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "pipeline"
-    ],
     "additionalProperties": false
 }
