@@ -244,10 +244,10 @@ class DeploymentWrapper(Application):
                 )
             except ApiException as e:
                 if e.status == 404:
-                    # Deployment does not exist, nothing to delete but
-                    # we can consider this a success.
+                    # Pod(s) may have been deleted by GC before we got to it
+                    # We can consider this a success
                     self.logging.debug(
-                        "not deleting nonexistent deploy/{} from namespace/{}".format(
+                        "pods already deleted for {} from namespace/{}. Continuing.".format(
                             self.kube_deployment.service, self.item.metadata.namespace
                         )
                     )
