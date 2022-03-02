@@ -144,5 +144,8 @@
             "type": "boolean"
         }
     },
+    "required": [
+        "pipeline"
+    ],
     "additionalProperties": false
 }
