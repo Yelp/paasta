@@ -310,7 +310,7 @@ def test_check_parallel_works(mock_get_config_file_dict):
 
 @patch("paasta_tools.cli.cmds.validate.get_config_file_dict", autospec=True)
 def test_check_parallel_fails(mock_get_config_file_dict):
-    # Parallel steps is seen as invalid
+    # only "parallel" is allowed to have nested steps inside it
     mock_get_config_file_dict.return_value = {
         'pipeline': [{
             'invalid-prop': [
