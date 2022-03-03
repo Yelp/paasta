@@ -799,6 +799,10 @@ class TestTronTools:
             "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
         ), mock.patch(
             "paasta_tools.kubernetes_tools.kube_client", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -838,6 +842,7 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
 
     @pytest.mark.parametrize(
         "instance_name,expected_instance_label",
