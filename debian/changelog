@@ -1,3 +1,11 @@
+paasta-tools (0.121.4) xenial; urgency=medium
+
+  * 0.121.4 tagged with 'make release'
+    Commit: Merge pull request #3278 from darealMj/patch-3  Update
+    deploy_scheme to allow parallel keyword
+
+ -- Evan Krall <krall@yelp.com>  Wed, 02 Mar 2022 17:52:01 -0800
+
 paasta-tools (0.121.3) xenial; urgency=medium
 
   * 0.121.3 tagged with 'make release'
