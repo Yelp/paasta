@@ -807,6 +807,10 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._spark_k8s_role",
+            autospec=True,
+            return_value="spark",
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
