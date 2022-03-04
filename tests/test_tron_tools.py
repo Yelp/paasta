@@ -720,6 +720,10 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -905,6 +909,10 @@ class TestTronTools:
             "paasta_tools.tron_tools.create_or_find_service_account_name",
             autospec=True,
             return_value="some--service--account",
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=False,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -986,6 +994,10 @@ class TestTronTools:
 
         with mock.patch(
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
         ):
