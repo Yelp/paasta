@@ -1964,6 +1964,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     zookeeper: str
     tron_use_k8s: bool
     skip_cpu_override_validation: List[str]
+    spark_k8s_role: str
+    tron_use_suffixed_log_streams: bool
 
 
 def load_system_paasta_config(
