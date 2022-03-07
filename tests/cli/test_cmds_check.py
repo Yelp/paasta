@@ -32,7 +32,6 @@ from paasta_tools.cli.cmds.check import sensu_check
 from paasta_tools.cli.cmds.check import service_dir_check
 from paasta_tools.cli.cmds.check import smartstack_check
 from paasta_tools.cli.cmds.validate import validate_schema
-from paasta_tools.cli.cmds.validate import get_config_file_dict
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
@@ -291,43 +290,40 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_is_file_in_dir, ca
 def test_check_parallel_works(mock_get_config_file_dict):
     # Parallel steps is seen as valid
     mock_get_config_file_dict.return_value = {
-        'pipeline': [{
-            'parallel': [
-                {
-                    'step': 'somecluster.something',
-                },
-                {
-                    'step': 'somesecurity.check',
-                },
-            ],
-            'step': 'anothercluster.something',
-            'wait_for_deployment': False,
-            'timeout': 3600,
-        }],
+        "pipeline": [
+            {
+                "parallel": [
+                    {"step": "somecluster.something",},
+                    {"step": "somesecurity.check",},
+                ],
+                "step": "anothercluster.something",
+                "wait_for_deployment": False,
+                "timeout": 3600,
+            }
+        ],
     }
 
-    assert validate_schema('my/fake-service','deploy') is True
+    assert validate_schema("my/fake-service", "deploy") is True
+
 
 @patch("paasta_tools.cli.cmds.validate.get_config_file_dict", autospec=True)
 def test_check_parallel_fails(mock_get_config_file_dict):
     # only "parallel" is allowed to have nested steps inside it
     mock_get_config_file_dict.return_value = {
-        'pipeline': [{
-            'invalid-prop': [
-                {
-                    'step': 'somecluster.something',
-                },
-                {
-                    'step': 'somesecurity.check',
-                },
-            ],
-            'step': 'anothercluster.something',
-            'wait_for_deployment': False,
-            'timeout': 3600,
-        }],
+        "pipeline": [
+            {
+                "invalid-prop": [
+                    {"step": "somecluster.something",},
+                    {"step": "somesecurity.check",},
+                ],
+                "step": "anothercluster.something",
+                "wait_for_deployment": False,
+                "timeout": 3600,
+            }
+        ],
     }
 
-    assert validate_schema('my/fake-service','deploy') is None
+    assert validate_schema("my/fake-service", "deploy") is None
 
 
 @patch("paasta_tools.cli.cmds.check._run", autospec=True)
