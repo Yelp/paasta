@@ -239,23 +239,152 @@
                 "trigger_timeout": {
                     "$ref": "#definitions/time_delta"
                 },
-                "spark_paasta_cluster": {
-                    "type": "string"
-                },
-                "spark_paasta_pool": {
+                "aws_credentials": {
+                    "$comment": "we should eventually get rid of this once we move spark to pod identity",
                     "type": "string"
                 },
                 "spark_args": {
-                    "type": "object"
-                },
-                "aws_credentials_yaml": {
-                    "type": "string"
-                },
-                "spark_cluster_manager": {
-                    "enum": [
-                        "mesos",
-                        "kubernetes"
-                    ]
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                        "spark.cores.max": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.driver.cores": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.kubernetes.driver.request.cores": {
+                            "type": "number",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.executor.instances": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.executor.cores": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.kubernetes.executor.request.cores": {
+                            "type": "number",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.executor.memory": {
+                            "type": "string",
+                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                        },
+                        "spark.driver.memory": {
+                            "type": "string",
+                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                        },
+                        "spark.driver.memoryOverhead": {
+                            "$comment": "we still need to validate this in code since there's a spark-enforced minimum of 384mb",
+                            "oneOf": [
+                                {
+                                    "type": "string",
+                                    "pattern": "^[1-9]+[0-9]*[kmg]$"
+                                },
+                                {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                }
+                            ]
+                        },
+                        "spark.executor.memoryOverhead": {
+                            "$comment": "we still need to validate this in code since there's a spark-enforced minimum of 384mb",
+                            "oneOf": [
+                                {
+                                    "type": "string",
+                                    "pattern": "^[1-9]+[0-9]*[kmg]$"
+                                },
+                                {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                }
+                            ]
+                        },
+                        "spark.driver.maxResultSize": {
+                            "type": "string",
+                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                        },
+                        "spark.scheduler.minRegisteredResourcesRatio": {
+                            "type": "number",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "maximum": 1
+                        },
+                        "spark.scheduler.maxRegisteredResourcesWaitingTime": {
+                            "type": "string",
+                            "pattern": "^[1-9]+[0-9]*(s|min)$"
+                        },
+                        "spark.kubernetes.allocation.batch.size": {
+                            "type": "integer"
+                        },
+                        "spark.kubernetes.memoryOverheadFactor": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "exclusiveMinimum": false,
+                            "exclusiveMaximum": false
+                        },
+                        "spark.hadoop.fs.s3a.multiobjectdelete.enable": {
+                            "type": "boolean"
+                        },
+                        "spark.app.name": {
+                            "type": "boolean"
+                        },
+                        "spark.task.maxFailures": {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        "spark.stage.maxConsecutiveAttempts": {
+                            "type": "integer"
+                        },
+                        "spark.sql.broadcastTimeout": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.sql.autoBroadcastJoinThreshold": {
+                            "oneOf": [
+                                {
+                                    "$comment": "this is just a silly way to express that we want a non-zero integer or -1",
+                                    "enum": [
+                                        -1
+                                    ]
+                                },
+                                {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                }
+                            ]
+                        },
+                        "spark.sql.parquet.enableVectorizedReader": {
+                            "type": "boolean"
+                        },
+                        "spark.sql.shuffle.partitions": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                        },
+                        "spark.default.parallelism": {
+                            "type": "integer"
+                        },
+                        "spark.local.dir": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },
