@@ -121,6 +121,11 @@ def get_services_to_k8s_namespaces(
 ) -> Mapping[str, Set[str]]:
     services_to_k8s_namespaces: Mapping[str, Set[str]] = defaultdict(set)
     for service in service_list:
+        # Special handling for service `_shared`, since it doesn't actually exist
+        if service == "_shared":
+            services_to_k8s_namespaces[service].add(
+                INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
+            )
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
                 service=service,
