@@ -6,8 +6,7 @@
         "StepScalarProperties": {
             "type": "object",
             "properties": {
-                "parallel": {
-                },
+                "parallel": {},
                 "step": {
                     "type": "string"
                 },
