@@ -1,3 +1,11 @@
+paasta-tools (0.121.5) xenial; urgency=medium
+
+  * 0.121.5 tagged with 'make release'
+    Commit: Fix pre-commit failures (#3291)  Not quite sure how these
+    snuck by - are we not running pre-commit in GHA?
+
+ -- Jens Langhammer <langj@10-40-29-102-uswest1cdevc.dev.yelpcorp.com>  Tue, 08 Mar 2022 08:05:34 -0800
+
 paasta-tools (0.121.4) xenial; urgency=medium
 
   * 0.121.4 tagged with 'make release'
