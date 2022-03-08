@@ -833,9 +833,9 @@ def configure_and_run_docker_container(
 def _should_emit_resource_requirements(
     docker_cmd: str, is_mrjob: bool, cluster_manager: str
 ) -> bool:
-    return is_mrjob or (
-        cluster_manager == CLUSTER_MANAGER_MESOS
-        and any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"])
+    return cluster_manager == CLUSTER_MANAGER_MESOS and (
+        is_mrjob
+        or any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"])
     )
 
 
