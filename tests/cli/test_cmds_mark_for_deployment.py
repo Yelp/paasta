@@ -744,6 +744,10 @@ class WrappedMarkForDeploymentProcess(mark_for_deployment.MarkForDeploymentProce
 
 
 @patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
     "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
     return_value=0,
     autospec=True,
@@ -754,6 +758,7 @@ def test_MarkForDeployProcess_happy_path(
     mock_log,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
+    mock_get_instance_configs,
     mock_periodically_update_slack,
 ):
     mock_wait_for_deployment.return_value = asyncio.sleep(
@@ -790,6 +795,10 @@ def test_MarkForDeployProcess_happy_path(
 
 
 @patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
     "paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment",
     return_value=0,
     autospec=True,
@@ -802,6 +811,7 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     mock__log2,
     mock_wait_for_deployment,
     mock_mark_for_deployment,
+    mock_get_instance_configs,
     mock_periodically_update_slack,
 ):
     mock_wait_for_deployment.return_value = asyncio.sleep(

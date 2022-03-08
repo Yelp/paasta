@@ -1627,16 +1627,22 @@ def get_instance_configs_for_service_in_deploy_group_all_clusters(
 async def wait_for_deployment(
     service: str,
     deploy_group: str,
-    instance_configs_per_cluster: Dict[str, List[LongRunningServiceConfig]],
     git_sha: str,
     soa_dir: str,
     timeout: float,
+    instance_configs_per_cluster: Optional[
+        Dict[str, List[LongRunningServiceConfig]]
+    ] = None,
     progress: Optional[Progress] = None,
     polling_interval: float = None,
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
+    if not instance_configs_per_cluster:
+        instance_configs_per_cluster = get_instance_configs_for_service_in_deploy_group_all_clusters(
+            service, deploy_group, git_sha, soa_dir
+        )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
     if not instance_configs_per_cluster:
