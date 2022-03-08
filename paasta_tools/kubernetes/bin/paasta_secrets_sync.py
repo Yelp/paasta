@@ -126,6 +126,7 @@ def get_services_to_k8s_namespaces(
             services_to_k8s_namespaces[service].add(
                 INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
             )
+            continue
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
                 service=service,
