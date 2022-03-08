@@ -789,7 +789,7 @@ def configure_and_run_docker_container(
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_emit_resource_requirements(
-        docker_cmd, args.mrjob
+        docker_cmd, args.mrjob, cluster_manager
     ):
         try:
             print("Sending resource request metrics to Clusterman")
@@ -830,9 +830,12 @@ def configure_and_run_docker_container(
     )
 
 
-def _should_emit_resource_requirements(docker_cmd, is_mrjob):
-    return is_mrjob or any(
-        c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]
+def _should_emit_resource_requirements(
+    docker_cmd: str, is_mrjob: bool, cluster_manager: str
+) -> bool:
+    return cluster_manager == CLUSTER_MANAGER_MESOS and (
+        is_mrjob
+        or any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"])
     )
 
 
