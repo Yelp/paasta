@@ -1,3 +1,14 @@
+paasta-tools (0.121.6) xenial; urgency=medium
+
+  * 0.121.6 tagged with 'make release'
+    Commit: Skip clusterman metrics for spark-on-k8s (#3296)  This is
+    causing us to scale up our legacy mesos pools when k8s jobs launch.
+    This does also mean that we won"t print any cost warnings, but we
+    should probably get Core ML to refactor this further once we"ve
+    stopped the bleeding with this PR to get that feature back.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 08 Mar 2022 10:53:19 -0800
+
 paasta-tools (0.121.5) xenial; urgency=medium
 
   * 0.121.5 tagged with 'make release'
