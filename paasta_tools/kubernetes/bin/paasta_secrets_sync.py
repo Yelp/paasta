@@ -122,9 +122,11 @@ def get_services_to_k8s_namespaces(
     services_to_k8s_namespaces: Mapping[str, Set[str]] = defaultdict(set)
     for service in service_list:
         # Special handling for service `_shared`, since it doesn't actually exist
+        # Copy shared secrest to all namespaces, assuming that if a secret is declared shared
+        # the team is aware that more people can see it
         if service == "_shared":
-            services_to_k8s_namespaces[service].add(
-                INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]
+            services_to_k8s_namespaces[service] = set(
+                INSTANCE_TYPE_TO_K8S_NAMESPACE.values()
             )
             continue
         for instance_type in INSTANCE_TYPES:
