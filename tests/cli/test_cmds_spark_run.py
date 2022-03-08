@@ -18,6 +18,7 @@ import pytest
 from boto3.exceptions import Boto3Error
 
 from paasta_tools.cli.cmds import spark_run
+from paasta_tools.cli.cmds.spark_run import _should_emit_resource_requirements
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
@@ -1014,3 +1015,32 @@ def test_paasta_spark_run(
         pod_template_path="unique-run",
     )
     mock_generate_pod_template_path.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "docker_cmd, is_mrjob, cluster_manager, expected",
+    (
+        # normal mesos cases
+        ("spark-submit FOO", False, "mesos", True),
+        ("spark-shell FOO", False, "mesos", True),
+        ("pyspark FOO", False, "mesos", True),
+        # mesos, but wrong command
+        ("spark-nope FOO", False, "mesos", False),
+        # mrjob
+        ("FOO", True, "mesos", True),
+        ("FOO", True, "kubernetes", False),
+        # normal k8s cases
+        ("spark-submit FOO", False, "kubernetes", False),
+        ("spark-shell FOO", False, "kubernetes", False),
+        ("pyspark FOO", False, "kubernetes", False),
+        # k8s, but wrong command
+        ("spark-nope FOO", False, "kubernetes", False),
+    ),
+)
+def test__should_emit_resource_requirements(
+    docker_cmd, is_mrjob, cluster_manager, expected
+):
+    assert (
+        _should_emit_resource_requirements(docker_cmd, is_mrjob, cluster_manager)
+        is expected
+    )
