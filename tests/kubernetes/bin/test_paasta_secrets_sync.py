@@ -2,6 +2,9 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
+    get_services_to_k8s_namespaces,
+)
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import main
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
@@ -9,6 +12,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_parse_args():
@@ -82,6 +86,18 @@ def test_sync_all_secrets():
             vault_cluster_config={},
             soa_dir="/nail/blah",
         )
+
+
+def test_sync_shared():
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+        autospec=True,
+    ):
+        # _shared does no actual lookup, and as such works without cluster
+        # we just need to ensure it returns non-empty namespaces
+        assert get_services_to_k8s_namespaces(["_shared"], "", "") != []
+        with pytest.raises(PaastaNotConfiguredError):
+            assert get_services_to_k8s_namespaces(["_foo"], "", "") == []
 
 
 @pytest.mark.parametrize("namespace", [None, "tron"])

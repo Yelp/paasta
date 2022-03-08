@@ -21,6 +21,7 @@ import os
 import sys
 import time
 from collections import defaultdict
+from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -118,9 +119,17 @@ def main() -> None:
 
 def get_services_to_k8s_namespaces(
     service_list: List[str], cluster: str, soa_dir: str,
-) -> Mapping[str, Set[str]]:
-    services_to_k8s_namespaces: Mapping[str, Set[str]] = defaultdict(set)
+) -> Dict[str, Set[str]]:
+    services_to_k8s_namespaces: Dict[str, Set[str]] = defaultdict(set)
     for service in service_list:
+        # Special handling for service `_shared`, since it doesn't actually exist
+        # Copy shared secrest to all namespaces, assuming that if a secret is declared shared
+        # the team is aware that more people can see it
+        if service == "_shared":
+            services_to_k8s_namespaces[service] = set(
+                INSTANCE_TYPE_TO_K8S_NAMESPACE.values()
+            )
+            continue
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
                 service=service,
