@@ -21,6 +21,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
+from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
 
@@ -54,6 +55,9 @@ def add_subparser(subparsers):
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
+    list_parser.add_argument(
+        "-c", "--commit", help="Git sha used to construct tag for built image",
+    )
     list_parser.set_defaults(command=paasta_cook_image)
 
 
@@ -68,8 +72,14 @@ def paasta_cook_image(args, service=None, soa_dir=None):
     validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
-    default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
-    tag = run_env.get("DOCKER_TAG", default_tag)
+    if args.commit is not None:
+        # if we're given a commit, we're likely being called by Jenkins or someone
+        # trying to push the cooked image to our registry - as such, we should tag
+        # the cooked image as `paasta itest` would.
+        tag = build_docker_tag(service, args.commit)
+    else:
+        default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
+        tag = run_env.get("DOCKER_TAG", default_tag)
     run_env["DOCKER_TAG"] = tag
 
     if not makefile_responds_to("cook-image"):
