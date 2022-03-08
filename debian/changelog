@@ -1,3 +1,13 @@
+paasta-tools (0.122.0) xenial; urgency=medium
+
+  * 0.122.0 tagged with 'make release'
+    Commit: Teach paasta cook-image --commit (#3297)  CID would like
+    this so that Jenkins can skip itesting and just cook an image if
+    tests have already passed pre-merge.  Unless --commit is passed,
+    paasta cook-image will behave as it always has.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 08 Mar 2022 13:28:59 -0800
+
 paasta-tools (0.121.6) xenial; urgency=medium
 
   * 0.121.6 tagged with 'make release'
