@@ -1964,6 +1964,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     zookeeper: str
     tron_use_k8s: bool
     skip_cpu_override_validation: List[str]
+    cluster_aliases: Dict[str, str]
 
 
 def load_system_paasta_config(
@@ -2639,6 +2640,9 @@ class SystemPaastaConfig:
 
     def get_skip_cpu_override_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_override_validation", [])
+
+    def get_cluster_aliases(self) -> Dict[str, str]:
+        return self.config_dict.get("cluster_aliases", {})
 
 
 def _run(

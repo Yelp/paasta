@@ -953,7 +953,9 @@ def paasta_spark_run(args):
         instance_config = get_instance_config(
             service=args.service,
             instance=args.instance,
-            cluster=args.cluster,
+            cluster=system_paasta_config.get_cluster_aliases().get(
+                args.cluster, args.cluster
+            ),
             load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
