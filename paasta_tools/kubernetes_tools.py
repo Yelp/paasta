@@ -3114,25 +3114,35 @@ _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def create_or_find_service_account_name(
-    iam_role: str, namespace: str = "paasta", k8s_role: Optional[str] = None
+    iam_role: str,
+    namespace: str = "paasta",
+    k8s_role: Optional[str] = None,
 ) -> str:
     kube_client = KubeClient()
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
     # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
     # the actual name
-    sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
-
-    # it's possible for an IAM role to be used for multiple purposes. Some usages may require a
-    # Kubernetes Role attached to the Service Account (e.g., Spark drivers may access S3 but also
-    # need to manage Spark executor Pods), while "normal" services/batches need a Service Account
-    # with only an IAM role attached.
-    # to support these two usecases, we'll suffix the name of a Service Account with the
-    # Kubernetes Role name to disambiguate between the two.
-    if k8s_role:
-        sa_name = f"{sa_name}--{k8s_role}"
+    if iam_role:  # this is either an empty string or a real role
+        # it's possible for an IAM role to be used for multiple purposes. Some usages may require a
+        # Kubernetes Role attached to the Service Account (e.g., Spark drivers may access S3 but also
+        # need to manage Spark executor Pods), while "normal" services/batches need a Service Account
+        # with only an IAM role attached.
+        # to support these two usecases, we'll suffix the name of a Service Account with the
+        # Kubernetes Role name to disambiguate between the two.
+        if k8s_role:
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}--{k8s_role}"
+        else:
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
+    # until Core ML migrates Spark to use Pod Identity, we need to support starting Spark drivers with a Service Account
+    # that only has k8s access
+    elif not iam_role and k8s_role:
+        sa_name = f"paasta--{k8s_role}"
+    # we should never get here in normal usage, but just in case we make a mistake in the future :)
+    else:
+        raise ValueError("Expected at least one of iam_role or k8s_role to be passed in!")
 
     if not any(
-        sa.metadata.name == sa_name
+        sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
     ):
         sa = V1ServiceAccount(
@@ -3145,11 +3155,18 @@ def create_or_find_service_account_name(
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
 
-        # we're expecting that any Role dynamically associated with a Service Account already exist.
-        # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
-        if k8s_role:
-            # since the Role already exists, we just need to associate it with the Service Account through
-            # a Role Binding
+    # we're expecting that any Role dynamically associated with a Service Account already exists.
+    # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
+    # and since the Role already exists, we just need to associate it with the Service Account through
+    # a Role Binding
+    if k8s_role:
+        # that said, we still check that there's a RoleBinding every time this function is called so that
+        # we can self-heal if we somehow create a Service Account and then fail to create a Role Binding
+        # due to a transient issue
+        if not any(
+            rb.metadata and rb.metadata.name == sa_name
+            for rb in get_all_role_bindings(kube_client, namespace)
+        ):
             role_binding = V1RoleBinding(
                 metadata=V1ObjectMeta(name=sa_name, namespace=namespace,),
                 role_ref=V1RoleRef(

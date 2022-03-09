@@ -697,16 +697,16 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 k8s_role=None,
             )
 
-            if executor == "spark":
-                # while this service account will only be used by Spark drivers since executors don't
-                # need Kubernetes access permissions
-                result[
-                    "spark_driver_service_account_name"
-                ] = create_or_find_service_account_name(
-                    iam_role=action_config.get_iam_role(),
-                    namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
-                    k8s_role=_spark_k8s_role(),
-                )
+        if executor == "spark":
+            # while this service account will only be used by Spark drivers since executors don't
+            # need Kubernetes access permissions
+            result[
+                "spark_driver_service_account_name"
+            ] = create_or_find_service_account_name(
+                iam_role=action_config.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
+                k8s_role=_spark_k8s_role(),
+            )
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
