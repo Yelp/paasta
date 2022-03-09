@@ -81,10 +81,14 @@ VALID_MONITORING_KEYS = set(
 )
 MESOS_EXECUTOR_NAMES = ("paasta",)
 KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
+EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE = {
+    "paasta": "kubernetes",
+    "spark": "spark"
+}
 KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
 EXECUTOR_TYPE_TO_NAMESPACE = {
-    "paasta": "paasta",
+    "paasta": "tron",
     "spark": "paasta-spark",
 }
 clusterman_metrics, _ = get_clusterman_metrics()
@@ -635,7 +639,8 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     # whatever is in soaconfigs to the k8s equivalent here as well.
     if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
         # we'd like Tron to be able to distinguish between spark and normal actions
-        result["executor"] = "kubernetes" if executor != "spark" else "spark"
+        # even though they both run on k8s
+        result["executor"] = EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE.get(executor, "kubernetes")
 
         result["secret_env"] = action_config.get_secret_env()
         all_env = action_config.get_env()
