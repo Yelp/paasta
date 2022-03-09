@@ -47,9 +47,6 @@ class BaseSecretProvider:
     def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         raise NotImplementedError
 
-    def renew_issue_cert(self, pki_backend: str, ttl: str) -> None:
-        raise NotImplementedError
-
 
 class SecretProvider(BaseSecretProvider):
     pass
