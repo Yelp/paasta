@@ -174,9 +174,3 @@ def test_get_secret_signature_from_data_missing(mock_secret_provider):
         )
 
 
-def test_renew_issue_cert(mock_secret_provider):
-    with mock.patch(
-        "paasta_tools.secret_providers.vault.do_cert_renew", autospec=True
-    ) as mock_do_cert_renew:
-        mock_secret_provider.renew_issue_cert("paasta", "30m")
-        assert mock_do_cert_renew.called
