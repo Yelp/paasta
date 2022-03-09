@@ -698,7 +698,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             )
 
         if executor == "spark":
-            # while this service account will only be used by Spark drivers since executors don't
+            # this service account will only be used by Spark drivers since executors don't
             # need Kubernetes access permissions
             result[
                 "spark_driver_service_account_name"
