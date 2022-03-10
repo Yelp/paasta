@@ -24,5 +24,3 @@ def test_get_paasta_oapi_client(system_paasta_config):
 
         client = get_paasta_oapi_client()
         assert client
-
-

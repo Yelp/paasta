@@ -172,5 +172,3 @@ def test_get_secret_signature_from_data_missing(mock_secret_provider):
         assert not mock_secret_provider.get_secret_signature_from_data(
             {"environments": {"westeros": {}}}
         )
-
-

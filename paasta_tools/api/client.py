@@ -92,4 +92,3 @@ def get_paasta_oapi_client(
     cert_file = key_file = ssl_ca_cert = None
 
     return get_paasta_oapi_client_by_url(parsed, cert_file, key_file, ssl_ca_cert)
-
