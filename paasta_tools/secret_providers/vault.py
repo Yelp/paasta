@@ -159,4 +159,3 @@ class SecretProvider(BaseSecretProvider):
             return data["environments"][ecosystem]["signature"]
         else:
             return None
-
