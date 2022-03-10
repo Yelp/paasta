@@ -14,7 +14,6 @@
 import mock
 
 from paasta_tools.api.client import get_paasta_oapi_client
-from paasta_tools.api.client import renew_issue_cert
 
 
 def test_get_paasta_oapi_client(system_paasta_config):
@@ -27,13 +26,3 @@ def test_get_paasta_oapi_client(system_paasta_config):
         assert client
 
 
-def test_renew_issue_cert():
-    with mock.patch(
-        "paasta_tools.api.client.get_secret_provider", autospec=True
-    ) as mock_get_secret_provider:
-        mock_config = mock.Mock()
-        renew_issue_cert(mock_config, "westeros-prod")
-        mock_get_secret_provider.return_value.renew_issue_cert.assert_called_with(
-            pki_backend=mock_config.get_pki_backend(),
-            ttl=mock_config.get_auth_certificate_ttl(),
-        )

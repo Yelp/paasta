@@ -2183,12 +2183,6 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("auth_certificate_ttl", "11h")
 
-    def get_pki_backend(self) -> str:
-        """
-        The Vault pki backend to use for issueing certificates
-        """
-        return self.config_dict.get("pki_backend", "paastaca")
-
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
         template_path = os.path.join(fsm_path, "template")
