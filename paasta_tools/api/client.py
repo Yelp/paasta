@@ -16,9 +16,7 @@
 Client interface for the Paasta rest api.
 """
 import logging
-import os
 from dataclasses import dataclass
-from typing import Mapping
 from typing import Optional
 from typing import Type
 from urllib.parse import ParseResult
