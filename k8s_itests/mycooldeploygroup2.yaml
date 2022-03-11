@@ -1,0 +1,9 @@
+apiVersion: paasta.yelp.com/v1
+kind: DeployGroup
+namespace: paasta
+metadata:
+  name: compute-infra-test-service.durp
+
+service: compute-infra-test-service
+deploy_group: durp
+git_sha: 456d

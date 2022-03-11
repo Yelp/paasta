@@ -1,0 +1,8 @@
+apiVersion: paasta.yelp.com/v1
+kind: DeployGroup
+namespace: paasta
+metadata:
+  name: compute-infra-test-service.blurp
+
+service: compute-infra-test-service
+deploy_group: blurp
