@@ -79,13 +79,6 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Update or create up to this number of service instances. Default is 0 (no limit).",
     )
-    parser.add_argument(
-        "-m",
-        dest="emit_metrics",
-        default=False,
-        action="store_true",
-        help="Emit deploy events to system metrics provider on updates",
-    )
     args = parser.parse_args()
     return args
 
@@ -100,10 +93,7 @@ def main() -> None:
         logging.getLogger("kazoo").setLevel(logging.WARN)
         logging.basicConfig(level=logging.INFO)
 
-    if args.emit_metrics:
-        deploy_metrics = metrics_lib.get_metrics_interface("paasta")
-    else:
-        deploy_metrics = metrics_lib.NoMetrics("paasta")
+    deploy_metrics = metrics_lib.get_metrics_interface("paasta.deploy")
 
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
@@ -137,7 +127,7 @@ def setup_kube_deployments(
     cluster: str,
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
-    metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics,
+    metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta.deploy"),
 ) -> bool:
     if service_instances:
         existing_kube_deployments = set(list_all_deployments(kube_client))
@@ -165,8 +155,8 @@ def setup_kube_deployments(
     for _, app in applications:
         if app:
             app_dimensions = {
-                "paasta_service": app.service,
-                "paasta_instance": app.instance,
+                "paasta_service": app.kube_deployment.service,
+                "paasta_instance": app.kube_deployment.instance,
                 "paasta_cluster": cluster,
             }
             try:
