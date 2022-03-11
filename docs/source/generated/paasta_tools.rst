@@ -50,7 +50,6 @@ Submodules
    paasta_tools.cleanup_tron_namespaces
    paasta_tools.clusterman
    paasta_tools.config_utils
-   paasta_tools.create_boto_folders
    paasta_tools.delete_kubernetes_deployments
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper

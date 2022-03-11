@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.secret_providers.boto
    paasta_tools.secret_providers.vault
 
 Module contents
