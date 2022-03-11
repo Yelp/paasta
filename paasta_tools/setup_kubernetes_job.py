@@ -93,7 +93,7 @@ def main() -> None:
         logging.getLogger("kazoo").setLevel(logging.WARN)
         logging.basicConfig(level=logging.INFO)
 
-    deploy_metrics = metrics_lib.get_metrics_interface("paasta.deploy")
+    deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
@@ -127,7 +127,7 @@ def setup_kube_deployments(
     cluster: str,
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
-    metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta.deploy"),
+    metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
 ) -> bool:
     if service_instances:
         existing_kube_deployments = set(list_all_deployments(kube_client))
