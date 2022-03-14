@@ -2960,6 +2960,7 @@ def update_kubernetes_secret_signature(
     namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
+    limited_service = limit_size_with_hash(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.replace_namespaced_config_map(
         name=f"{namespace}-secret-{service}-{secret}-signature",
@@ -2968,8 +2969,8 @@ def update_kubernetes_secret_signature(
             metadata=V1ObjectMeta(
                 name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": limited_service,
+                    "paasta.yelp.com/service": limited_service,
                 },
             ),
             data={"signature": secret_signature},
@@ -2985,6 +2986,7 @@ def create_kubernetes_secret_signature(
     namespace: str = "paasta",
 ) -> None:
     service = sanitise_kubernetes_name(service)
+    limited_service = limit_size_with_hash(service)
     secret = sanitise_kubernetes_name(secret)
     kube_client.core.create_namespaced_config_map(
         namespace=namespace,
@@ -2992,8 +2994,8 @@ def create_kubernetes_secret_signature(
             metadata=V1ObjectMeta(
                 name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": limited_service,
+                    "paasta.yelp.com/service": limited_service,
                 },
             ),
             data={"signature": secret_signature},
