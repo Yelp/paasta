@@ -611,6 +611,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
         self.metrics_interface = metrics_interface
+        self.instance_configs_per_cluster: Dict[
+            str, List[LongRunningServiceConfig]
+        ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
+            service, deploy_group, commit, soa_dir
+        )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
@@ -1091,6 +1096,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 wait_for_deployment(
                     service=self.service,
                     deploy_group=self.deploy_group,
+                    instance_configs_per_cluster=self.instance_configs_per_cluster,
                     git_sha=target_commit,
                     soa_dir=self.soa_dir,
                     timeout=self.timeout,
@@ -1229,26 +1235,24 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         )
-
-        dimensions = dict(rollback_details)
-        dimensions["paasta_service"] = self.service
-        self.metrics_interface.emit_event(
-            name="rollback", dimensions=dimensions,
-        )
-        _log_audit(
-            action="rollback", action_details=rollback_details, service=self.service,
-        )
+        self._log_rollback(rollback_details)
 
     def log_user_rollback(self) -> None:
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.USER_INITIATED_ROLLBACK
         )
+        self._log_rollback(rollback_details)
 
-        dimensions = dict(rollback_details)
-        dimensions["paasta_service"] = self.service
-        self.metrics_interface.emit_event(
-            name="rollback", dimensions=dimensions,
-        )
+    def _log_rollback(self, rollback_details: Dict[str, str]) -> None:
+        base_dimensions = dict(rollback_details)
+        base_dimensions["paasta_service"] = self.service
+        # Emit one event per cluster to sfx
+        for cluster in self.instance_configs_per_cluster.keys():
+            dimensions = dict(base_dimensions)
+            dimensions["paasta_cluster"] = cluster
+            self.metrics_interface.emit_event(
+                name="rollback", dimensions=dimensions,
+            )
         _log_audit(
             action="rollback", action_details=rollback_details, service=self.service,
         )
@@ -1626,17 +1630,19 @@ async def wait_for_deployment(
     git_sha: str,
     soa_dir: str,
     timeout: float,
+    instance_configs_per_cluster: Optional[
+        Dict[str, List[LongRunningServiceConfig]]
+    ] = None,
     progress: Optional[Progress] = None,
     polling_interval: float = None,
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
-    instance_configs_per_cluster: Dict[
-        str, List[LongRunningServiceConfig]
-    ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-        service, deploy_group, git_sha, soa_dir
-    )
+    if not instance_configs_per_cluster:
+        instance_configs_per_cluster = get_instance_configs_for_service_in_deploy_group_all_clusters(
+            service, deploy_group, git_sha, soa_dir
+        )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
     if not instance_configs_per_cluster:
