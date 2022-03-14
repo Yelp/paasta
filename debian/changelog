@@ -1,3 +1,18 @@
+paasta-tools (0.122.3) xenial; urgency=medium
+
+  * 0.122.3 tagged with 'make release'
+    Commit: Add/Use cluster aliases for paasta spark-run (#3300)  We"re
+    in a bit of a weird situation with spark where we want to run stuff
+    in a separate sparl-specific cluster, but there"s a lot of
+    assumptions in the paasta codebase where the cluster you"re running
+    stuff on will be populated by {workload}-{cluster}.yaml files - and
+    we don"t really want to embark on migrating all the existing
+    configuration (since that requires that we migrate/work on a bunch
+    of other stuff like Tron to "natively" support this as a separate
+    cluster in the same way as every other cluster works)
+
+ -- Jens Langhammer <langj@10-40-29-102-uswest1cdevc.dev.yelpcorp.com>  Mon, 14 Mar 2022 08:19:10 -0700
+
 paasta-tools (0.122.2) xenial; urgency=medium
 
   * 0.122.2 tagged with 'make release'
