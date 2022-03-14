@@ -1,3 +1,10 @@
+paasta-tools (0.122.4) xenial; urgency=medium
+
+  * 0.122.4 tagged with 'make release'
+    Commit: Bump to 0.122.4 for deploy/rollback metrics
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 14 Mar 2022 10:24:00 -0700
+
 paasta-tools (0.122.3) xenial; urgency=medium
 
   * 0.122.3 tagged with 'make release'
