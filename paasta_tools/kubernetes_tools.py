@@ -1325,7 +1325,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
         volume = V1Volume(
             name=self.get_sanitised_volume_name(
-                f"secret-boto-key-{service_name}", length_limit=253
+                f"secret-boto-key-{service_name}", length_limit=63
             ),
             secret=V1SecretVolumeSource(
                 secret_name=secret_name, default_mode=mode_to_int("0444"), items=items,
@@ -1381,7 +1381,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 mount = V1VolumeMount(
                     mount_path="/etc/boto_cfg",
                     name=self.get_sanitised_volume_name(
-                        f"secret-boto-key-{service_name}", length_limit=253
+                        f"secret-boto-key-{service_name}", length_limit=63
                     ),
                     read_only=True,
                 )
@@ -1394,8 +1394,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_boto_secret_hash(self) -> str:
         kube_client = KubeClient()
-        service_name = self.get_sanitised_deployment_name()
-        secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
+        deployment_name = self.get_sanitised_deployment_name()
+        service_name = self.get_sanitised_service_name()
+        secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
         return get_kubernetes_secret_signature(
             kube_client=kube_client, secret=secret_name, service=service_name
         )
