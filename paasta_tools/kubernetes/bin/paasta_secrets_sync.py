@@ -36,6 +36,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
@@ -314,7 +315,7 @@ def sync_boto_secrets(
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
         app_name = get_kubernetes_app_name(service, instance)
-        secret = f"paasta-boto-key-{app_name}"
+        secret = limit_size_with_hash(f"paasta-boto-key-{app_name}")
         hashable_data = "".join([secret_data[key] for key in secret_data])
         signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
         kubernetes_signature = get_kubernetes_secret_signature(

@@ -431,6 +431,9 @@
                 "monitoring": {
                     "type": "object",
                     "properties": {
+                        "issuetype": {
+                            "type": "string"
+                        },
                         "team": {
                             "type": "string"
                         },

@@ -25,6 +25,9 @@ def test_parse_args():
 
 def test_main():
     with mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+        autospec=True,
+    ) as mock_get_metrics_interface, mock.patch(
         "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
     ) as mock_parse_args, mock.patch(
         "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
@@ -34,6 +37,7 @@ def test_main():
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
     ) as mock_setup_kube_deployments:
         mock_setup_kube_deployments.return_value = True
+        mock_metrics_interface = mock_get_metrics_interface.return_value
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
@@ -44,6 +48,7 @@ def test_main():
             cluster=mock_parse_args.return_value.cluster,
             soa_dir=mock_parse_args.return_value.soa_dir,
             rate_limit=mock_parse_args.return_value.rate_limit,
+            metrics_interface=mock_metrics_interface,
         )
         mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
@@ -209,7 +214,9 @@ def test_setup_kube_deployment_create_update():
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ) as mock_list_all_deployments, mock.patch(
         "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    ) as mock_log_obj, mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.NoMetrics", autospec=True
+    ) as mock_no_metrics:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
@@ -232,11 +239,14 @@ def test_setup_kube_deployment_create_update():
             service_instances=mock_service_instances,
             cluster="fake_cluster",
             soa_dir="/nail/blah",
+            metrics_interface=mock_no_metrics,
         )
         assert fake_create.call_count == 1
         assert fake_update.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
+        assert mock_no_metrics.emit_event.call_count == 1
         mock_log_obj.info.reset_mock()
+        mock_no_metrics.reset_mock()
 
         # Update when gitsha changed
         fake_create.reset_mock()
@@ -253,12 +263,23 @@ def test_setup_kube_deployment_create_update():
             service_instances=mock_service_instances,
             cluster="fake_cluster",
             soa_dir="/nail/blah",
+            metrics_interface=mock_no_metrics,
         )
 
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
+        mock_no_metrics.emit_event.assert_called_with(
+            name="deploy",
+            dimensions={
+                "paasta_cluster": "fake_cluster",
+                "paasta_service": "kurupt",
+                "paasta_instance": "fm",
+                "deploy_event": "update",
+            },
+        )
         mock_log_obj.info.reset_mock()
+        mock_no_metrics.reset_mock()
 
         # Update when configsha changed
         fake_create.reset_mock()

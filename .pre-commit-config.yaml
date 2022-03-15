@@ -68,4 +68,5 @@ repos:
         entry: paasta_tools/contrib/check_manual_oapi_changes.sh
         language: script
         exclude: ^$
-        files: ^.*paasta_tools/api/api_docs/oapi.yaml|^.*paasta_tools/paastaapi.*
+        # we just want to run this hook once, so only include a single file
+        files: ^paasta_tools/api/api_docs/oapi.yaml

@@ -1966,6 +1966,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
     tron_use_suffixed_log_streams: bool
+    cluster_aliases: Dict[str, str]
+
 
 
 def load_system_paasta_config(
@@ -2184,12 +2186,6 @@ class SystemPaastaConfig:
         by policy in Vault
         """
         return self.config_dict.get("auth_certificate_ttl", "11h")
-
-    def get_pki_backend(self) -> str:
-        """
-        The Vault pki backend to use for issueing certificates
-        """
-        return self.config_dict.get("pki_backend", "paastaca")
 
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
@@ -2647,6 +2643,9 @@ class SystemPaastaConfig:
 
     def get_skip_cpu_override_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_override_validation", [])
+
+    def get_cluster_aliases(self) -> Dict[str, str]:
+        return self.config_dict.get("cluster_aliases", {})
 
 
 def _run(
