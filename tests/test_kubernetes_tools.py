@@ -3719,10 +3719,7 @@ def test_create_or_find_service_account_name_existing():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = [
             V1RoleBinding(
                 kind="ServiceAccount",
-                metadata=V1ObjectMeta(
-                    name=expected_sa_name,
-                    namespace=namespace,
-                ),
+                metadata=V1ObjectMeta(name=expected_sa_name, namespace=namespace,),
                 role_ref=V1RoleRef(
                     api_group="rbac.authorization.k8s.io", kind="Role", name=k8s_role,
                 ),
@@ -3732,7 +3729,7 @@ def test_create_or_find_service_account_name_existing():
                         namespace=namespace,
                         name=expected_sa_name,
                     )
-                ]
+                ],
             )
         ]
         mock_kube_client.return_value = mock_client
@@ -3742,6 +3739,7 @@ def test_create_or_find_service_account_name_existing():
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
+
 
 def test_create_or_find_service_account_name_existing_create_rb_only():
     iam_role = "arn:aws:iam::000000000000:role/some_role"

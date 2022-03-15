@@ -3118,9 +3118,7 @@ _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def create_or_find_service_account_name(
-    iam_role: str,
-    namespace: str = "paasta",
-    k8s_role: Optional[str] = None,
+    iam_role: str, namespace: str = "paasta", k8s_role: Optional[str] = None,
 ) -> str:
     kube_client = KubeClient()
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
@@ -3143,7 +3141,9 @@ def create_or_find_service_account_name(
         sa_name = f"paasta--{k8s_role}"
     # we should never get here in normal usage, but just in case we make a mistake in the future :)
     else:
-        raise ValueError("Expected at least one of iam_role or k8s_role to be passed in!")
+        raise ValueError(
+            "Expected at least one of iam_role or k8s_role to be passed in!"
+        )
 
     if not any(
         sa.metadata and sa.metadata.name == sa_name

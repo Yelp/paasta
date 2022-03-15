@@ -1969,7 +1969,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_aliases: Dict[str, str]
 
 
-
 def load_system_paasta_config(
     path: str = PATH_TO_SYSTEM_PAASTA_CONFIG_DIR,
 ) -> "SystemPaastaConfig":
