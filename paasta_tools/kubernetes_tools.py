@@ -837,6 +837,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=253
         )
 
+    def get_boto_secret_volume_name(self, service_name: str) -> str:
+        return self.get_sanitised_volume_name(
+            f"secret-boto-key-{service_name}", length_limit=63
+        )
+
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get("mode", "RO") == "RO"
 
@@ -1324,9 +1329,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
         secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
         volume = V1Volume(
-            name=self.get_sanitised_volume_name(
-                f"secret-boto-key-{service_name}", length_limit=63
-            ),
+            name=self.get_boto_secret_volume_name(service_name),
             secret=V1SecretVolumeSource(
                 secret_name=secret_name, default_mode=mode_to_int("0444"), items=items,
             ),
@@ -1380,9 +1383,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if secret_hash:
                 mount = V1VolumeMount(
                     mount_path="/etc/boto_cfg",
-                    name=self.get_sanitised_volume_name(
-                        f"secret-boto-key-{service_name}", length_limit=63
-                    ),
+                    name=self.get_boto_secret_volume_name(service_name),
                     read_only=True,
                 )
                 for existing_mount in volume_mounts:
