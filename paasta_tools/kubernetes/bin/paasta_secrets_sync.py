@@ -321,7 +321,7 @@ def sync_boto_secrets(
         kubernetes_signature = get_kubernetes_secret_signature(
             kube_client=kube_client,
             secret=secret,
-            service=app_name,
+            service=service,
             namespace=namespace,
         )
         if not kubernetes_signature:
@@ -344,7 +344,7 @@ def sync_boto_secrets(
             create_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
-                service=app_name,
+                service=service,
                 secret_signature=signature,
                 namespace=namespace,
             )
@@ -362,7 +362,7 @@ def sync_boto_secrets(
             update_kubernetes_secret_signature(
                 kube_client=kube_client,
                 secret=secret,
-                service=app_name,
+                service=service,
                 secret_signature=signature,
                 namespace=namespace,
             )
