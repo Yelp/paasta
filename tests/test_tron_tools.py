@@ -17,6 +17,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
         "docker_registry": "mock_registry",
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
+        "spark_k8s_role": "spark",
     },
     "/mock/system/configs",
 )
@@ -720,6 +721,10 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -751,6 +756,102 @@ class TestTronTools:
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
+
+    def test_format_tron_action_dict_spark(self):
+        action_dict = {
+            "iam_role_provider": "aws",
+            "iam_role": "arn:aws:iam::000000000000:role/some_role",
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "spark",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "pool": "special_pool",
+            "env": {"SHELL": "/bin/bash"},
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.kube_client", autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._spark_k8s_role",
+            autospec=True,
+            return_value="spark",
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+
+        assert result == {
+            "command": "echo something",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "docker_image": mock.ANY,
+            "executor": "spark",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "env": mock.ANY,
+            "extra_volumes": [
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+            "secret_env": {},
+            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role",
+            "spark_driver_service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+            },
+            "annotations": {"paasta.yelp.com/routable_ip": "true"},
+            "cap_drop": CAPS_DROP,
+            "cap_add": [],
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
 
     @pytest.mark.parametrize(
         "instance_name,expected_instance_label",
@@ -813,6 +914,10 @@ class TestTronTools:
             "paasta_tools.tron_tools.create_or_find_service_account_name",
             autospec=True,
             return_value="some--service--account",
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=False,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -894,6 +999,10 @@ class TestTronTools:
 
         with mock.patch(
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
         ):

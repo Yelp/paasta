@@ -1964,6 +1964,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     zookeeper: str
     tron_use_k8s: bool
     skip_cpu_override_validation: List[str]
+    spark_k8s_role: str
+    tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
 
 
@@ -2626,6 +2628,12 @@ class SystemPaastaConfig:
 
     def get_tron_use_k8s_default(self) -> bool:
         return self.config_dict.get("tron_use_k8s", False)
+
+    def get_spark_k8s_role(self) -> str:
+        return self.config_dict.get("spark_k8s_role", "spark")
+
+    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
+        return self.config_dict.get("tron_use_suffixed_log_streams", False)
 
     def get_api_profiling_config(self) -> Dict:
         return self.config_dict.get(
