@@ -122,6 +122,7 @@ def main():
                 service=service,
                 soa_dir=args.soa_dir,
                 k8s_enabled=k8s_enabled_for_cluster,
+                dry_run=args.dry_run,
             )
             if args.dry_run:
                 log.info(f"Would update {service} to:")

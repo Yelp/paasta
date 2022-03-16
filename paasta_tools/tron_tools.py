@@ -694,6 +694,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=None,
+                dry_run=action_config.for_validation,
             )
 
         if executor == "spark":
@@ -705,6 +706,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=_spark_k8s_role(),
+                dry_run=action_config.for_validation,
             )
 
     elif executor in MESOS_EXECUTOR_NAMES:
@@ -860,10 +862,15 @@ def create_complete_config(
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
     k8s_enabled: bool = False,
+    dry_run: bool = False,
 ):
     """Generate a namespace configuration file for Tron, for a service."""
     job_configs = load_tron_service_config(
-        service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir,
+        service=service,
+        cluster=cluster,
+        load_deployments=True,
+        soa_dir=soa_dir,
+        for_validation=dry_run,
     )
     preproccessed_config = {}
     preproccessed_config["jobs"] = {
