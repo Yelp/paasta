@@ -1967,6 +1967,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_k8s_role: str
     tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
+    hacheck_match_initial_delay: bool
 
 
 def load_system_paasta_config(
@@ -2645,6 +2646,9 @@ class SystemPaastaConfig:
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
+
+    def get_hacheck_match_initial_delay(self) -> bool:
+        return self.config_dict.get("hacheck_match_initial_delay", True)
 
 
 def _run(

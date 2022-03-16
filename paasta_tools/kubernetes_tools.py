@@ -896,13 +896,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_enable_nerve_readiness_check(system_paasta_config)
             or self.get_enable_envoy_readiness_check(system_paasta_config)
         ):
+            initial_delay = self.get_healthcheck_grace_period_seconds()
+            # COMPINFRA-989, this used to be hardcoded to always be 10 seconds
+            # and to not cause rolling updates on everything at once this is a config option for now
+            if not system_paasta_config.get_hacheck_match_initial_delay():
+                initial_delay = 10
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
                     command=self.get_readiness_check_script(system_paasta_config)
                     + [str(self.get_container_port())]
                     + self.get_registrations()
                 ),
-                initial_delay_seconds=10,
+                initial_delay_seconds=initial_delay,
                 period_seconds=10,
             )
         else:
