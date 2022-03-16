@@ -608,7 +608,7 @@ class TestKubernetesDeploymentConfig:
                         _exec=V1ExecAction(
                             command=["/nail/blah.sh", "8888", "universal.credit"]
                         ),
-                        initial_delay_seconds=10,
+                        initial_delay_seconds=self.deployment.get_healthcheck_grace_period_seconds(),
                         period_seconds=10,
                     ),
                 )
