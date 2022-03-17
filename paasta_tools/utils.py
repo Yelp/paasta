@@ -2648,7 +2648,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("cluster_aliases", {})
 
     def get_hacheck_match_initial_delay(self) -> bool:
-        return self.config_dict.get("hacheck_match_initial_delay", True)
+        return self.config_dict.get("hacheck_match_initial_delay", False)
 
 
 def _run(
