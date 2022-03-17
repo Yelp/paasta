@@ -570,6 +570,7 @@ class TestKubernetesDeploymentConfig:
                 get_hacheck_sidecar_image_url=mock.Mock(
                     return_value="some-docker-image"
                 ),
+                get_hacheck_match_initial_delay=mock.Mock(return_value=False),
             )
             ret = self.deployment.get_sidecar_containers(
                 mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
