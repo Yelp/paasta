@@ -1,3 +1,11 @@
+paasta-tools (0.123.1) xenial; urgency=medium
+
+  * 0.123.1 tagged with 'make release'
+    Commit: Merge pull request #3313 from Yelp/jfong/fix_sched_condition
+    Only use PodScheduled condition if we find it
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 18 Mar 2022 11:51:01 -0700
+
 paasta-tools (0.123.0) xenial; urgency=medium
 
   * 0.123.0 tagged with 'make release'
