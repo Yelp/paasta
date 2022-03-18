@@ -22,11 +22,9 @@ check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
 check_cassandracluster_services_replication
-cleanup_marathon_jobs
 paasta_prune_completed_pods
 paasta_cleanup_tron_namespaces
 paasta_cleanup_stale_nodes
-deploy_marathon_services
 paasta_deploy_tron_jobs
 generate_deployments_for_service
 generate_services_file
@@ -35,7 +33,6 @@ list_marathon_service_instances
 paasta_list_tron_namespaces
 paasta_execute_docker_command
 paasta_metastatus
-setup_marathon_job
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
 
@@ -86,7 +83,6 @@ for scr in $SCRIPTS
 do
   which $scr >/dev/null || (echo "$scr failed to install!"; exit 1)
 done
-setup_marathon_job --help >/dev/null
 
 for srv in $MARATHON_SERVICES
 do

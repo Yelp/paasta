@@ -54,7 +54,6 @@ setup(
         "paasta_tools/cleanup_kubernetes_crd.py",
         "paasta_tools/cleanup_kubernetes_jobs.py",
         "paasta_tools/delete_kubernetes_deployments.py",
-        "paasta_tools/deploy_marathon_services",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/generate_all_deployments",
         "paasta_tools/generate_deployments_for_service.py",
