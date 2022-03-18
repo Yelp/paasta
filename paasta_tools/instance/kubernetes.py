@@ -751,11 +751,12 @@ async def get_pod_status(
     except asyncio.TimeoutError:
         pod_event_messages = [{"error": "Could not retrieve events. Please try again."}]
 
-    # if evicted, there is no condition
     if not scheduled and reason != "Evicted":
         sched_condition = kubernetes_tools.get_pod_condition(pod, "PodScheduled")
-        reason = sched_condition.reason
-        message = sched_condition.message
+        # If the condition is not yet available (e.g. pod not fully created yet), defer to Status messages
+        if sched_condition:
+            reason = sched_condition.reason
+            message = sched_condition.message
 
     mesh_ready = None
     if backends_task is not None:
