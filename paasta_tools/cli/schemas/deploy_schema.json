@@ -92,6 +92,9 @@
                 "complete_below_breakage_pct": {
                     "type": "number"
                 },
+                "prompt_after_abandon": {
+                    "type": "boolean"
+                },
                 "confirm_complete": {
                     "type": "boolean"
                 }
