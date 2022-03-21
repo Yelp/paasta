@@ -240,8 +240,9 @@
                     "$ref": "#definitions/time_delta"
                 },
                 "aws_credentials": {
-                    "$comment": "we should eventually get rid of this once we move spark to pod identity",
-                    "type": "string"
+                    "$comment": "we should eventually get rid of this once we move spark to pod identity - that said, this should be just the filename sans extension",
+                    "type": "string",
+                    "pattern": "[-a-zA-z0-9_]"
                 },
                 "spark_args": {
                     "type": "object",
