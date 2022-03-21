@@ -357,3 +357,25 @@ def test_sync_boto_secrets():
         )
         assert not mock_update_secret.called
         assert not mock_create_secret.called
+
+        # No signature, but secret exists
+        mock_update_secret.reset_mock()
+        mock_create_secret.reset_mock()
+        mock_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+        mock_get_kubernetes_secret_signature.return_value = None
+        mock_create_secret.side_effect = ApiException(409)
+        mock_update_kubernetes_secret_signature.reset_mock()
+        assert sync_boto_secrets(
+            kube_client=mock_client,
+            cluster="westeros-prod",
+            service="universe",
+            secret_provider_name="vaulty",
+            vault_cluster_config={},
+            soa_dir="/nail/blah",
+            namespace="paasta",
+        )
+        assert mock_get_kubernetes_secret_signature.called
+        assert mock_create_secret.called
+        assert mock_update_secret.called
+        assert mock_create_kubernetes_secret_signature.called
+        assert not mock_update_kubernetes_secret_signature.called

@@ -337,7 +337,14 @@ def sync_boto_secrets(
             except ApiException as e:
                 if e.status == 409:
                     log.warning(
-                        f"Secret {secret} for {service}in {namespace} already exists"
+                        f"Secret {secret} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
+                    )
+                    update_plaintext_dict_secret(
+                        kube_client=kube_client,
+                        secret_name=secret,
+                        secret_data=secret_data,
+                        service=service,
+                        namespace=namespace,
                     )
                 else:
                     raise
