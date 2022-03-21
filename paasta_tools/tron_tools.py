@@ -29,6 +29,7 @@ from typing import Union
 import yaml
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
 
@@ -58,6 +59,7 @@ from paasta_tools.kubernetes_tools import (
     sanitise_kubernetes_name,
     to_node_label,
 )
+from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
@@ -233,7 +235,24 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def get_cmd(self):
-        return self.config_dict.get("command")
+        command = self.config_dict.get("command")
+
+        if self.get_executor() == "spark":
+            # XXX: fill this out correctly
+            spark_config = {}
+
+            # until we switch drivers to use pod identity, we need to use the Yelp's legacy AWS credential system
+            # and ensure that the AWS access keys are part of the environment variables that the driver is started
+            # with - this is more secure than what we appear to have tried to do in the previous attempt and also
+            # still allows us to use the new CEP-1713 "private" boto_cfg system should the pod identity migration
+            # require more work/time than expected.
+            aws_credentials = self.config_dict.get("aws_credentials")
+            cmd_setup = (
+                f". /etc/boto_cfg/{aws_credentials}.sh && " if aws_credentials else ""
+            )
+
+            return f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(spark_config))}"
+        return command
 
     def get_job_name(self):
         return self.job
@@ -265,9 +284,15 @@ class TronActionConfig(InstanceConfig):
         env = super().get_env(system_paasta_config=system_paasta_config)
 
         if self.get_executor() == "spark":
-            # TODO: fill out the rest of the spark-specific env vars (e.g., SPARK_OPTS)
-            # TODO: figure out what to do with PAASTA_RESOURCE_* env vars (re: driver/executor split)
             env["PAASTA_INSTANCE_TYPE"] = "spark"
+            # XXX: is this actually necessary? every PR that's added this hasn't really mentioned why,
+            # and Chesterton's Fence makes me very wary about removing it
+            env["SPARK_USER"] = "root"
+            # XXX: we were adding the commandline we were starting the Spark driver with to SPARK_OPTS
+            # before, but that doesn't really seem necessary from my testing (driver starts just fine)
+            # if this changes and we do need it - please add a comment about *why* we need it!
+            # XXX: update PAASTA_RESOURCE_* env vars to use the correct value from spark_args and set
+            # these to the correct values for the executors as part of the driver commandline
 
         return env
 
