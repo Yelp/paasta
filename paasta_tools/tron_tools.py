@@ -29,6 +29,7 @@ from typing import Union
 import yaml
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import _filter_user_spark_opts
 from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -59,11 +60,18 @@ from paasta_tools.kubernetes_tools import (
     sanitise_kubernetes_name,
     to_node_label,
 )
-from paasta_tools.spark_tools import inject_spark_conf_str
+from paasta_tools.spark_tools import (
+    adjust_spark_resources,
+    inject_spark_conf_str,
+    setup_event_log_configuration,
+    setup_shuffle_partitions,
+    setup_volume_mounts,
+)
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
+from paasta_tools.spark_tools import KUBERNETES_NAMESPACE as SPARK_KUBERNETES_NAMESPACE
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -234,13 +242,106 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
+    def _build_spark_config(self) -> Dict[str, str]:
+        # this service account will either be used soley for k8s access or for
+        # k8s + AWS access - the executor will have its own account though: and
+        # only if users opt into using pod identity
+        driver_service_account = create_or_find_service_account_name(
+            iam_role=self.get_iam_role(),
+            namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+            k8s_role=_spark_k8s_role(),
+            dry_run=self.for_validation,
+        )
+
+        # this is pretty similar to what's done in service_configuration_lib, but it doesn't seem
+        # worth refactoring things there when it's unlikely that other users of that library will
+        # have the k8s creds to deal with service account creation (or the role bindings for the
+        # driver service account as done above)
+        spark_args = self.config_dict.get("spark_args", {})
+        truncated_service = limit_size_with_hash(self.get_service())
+        truncated_instance = limit_size_with_hash(self.get_instance())
+        system_paasta_config = load_system_paasta_config()
+        conf = {
+            "spark.app.name": spark_args.get(
+                "spark.app.name",
+                f"tron_spark_{self.get_service()}_{self.get_instance()}",
+            ),
+            "spark.ui.port": system_paasta_config.get_spark_ui_port(),
+            # TODO: figure out how to handle dedicated spark cluster here
+            "spark.master": f"k8s://https://k8s.{self.get_cluster()}.paasta:6443",
+            # TODO: add PAASTA_RESOURCE_* environment variables here
+            "spark.executorEnv.PAASTA_SERVICE": self.get_service(),
+            "spark.executorEnv.PAASTA_INSTANCE": self.get_instance(),
+            "spark.executorEnv.PAASTA_CLUSTER": self.get_cluster(),
+            "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
+            "spark.executorEnv.SPARK_EXECUTOR_DIRS": "/tmp",
+            # XXX: do we need to set this for the driver if the pod running the driver was created with
+            # this SA already?
+            "spark.kubernetes.authenticate.driver.serviceAccountName": driver_service_account,
+            "spark.kubernetes.pyspark.pythonVersion": "3",
+            "spark.kubernetes.container.image": self.get_docker_url(
+                system_paasta_config
+            ),
+            "spark.kubernetes.namespace": SPARK_KUBERNETES_NAMESPACE,
+            "spark.kubernetes.executor.label.yelp.com/paasta_service": truncated_service,
+            "spark.kubernetes.executor.label.yelp.com/paasta_instance": truncated_instance,
+            "spark.kubernetes.executor.label.yelp.com/paasta_cluster": self.get_cluster(),
+            "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
+            "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
+            "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
+            "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+        }
+
+        if self.get_team() is not None:
+            conf["spark.kubernetes.executor.label.yelp.com/owner"] = (self.get_team(),)
+
+        # Spark defaults to using the Service Account that the driver uses for executors,
+        # but that has more permissions than what we'd like to give the executors, so use
+        # the default service account instead
+        conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = "default"
+        if self.get_iam_role() and self.get_iam_role_provider() == "aws":
+            conf[
+                "spark.kubernetes.authenticate.executor.serviceAccountName"
+            ] = create_or_find_service_account_name(
+                iam_role=self.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+                dry_run=self.for_validation,
+            )
+
+        conf.update(
+            setup_volume_mounts(
+                volumes=self.get_volumes(
+                    system_volumes=system_paasta_config.get_volumes(),
+                ),
+            ),
+        )
+
+        # most of the service_configuration_lib function expected string values only
+        # so let's go ahead and convert the values now instead of once per-wrapper
+        strigified_spark_args = {
+            k: (str(v) if not isinstance(v, bool) else str(v).lower())
+            for k, v in spark_args.items()
+        }
+        # Core ML has some translation logic to go from Mesos->k8s options for people living in the past
+        conf.update(
+            adjust_spark_resources(
+                spark_args=strigified_spark_args, desired_pool=self.get_pool()
+            )
+        )
+        # as well as some QoL tweaks for other options
+        conf.update(setup_shuffle_partitions(spark_args=strigified_spark_args))
+        conf.update(setup_event_log_configuration(spark_args=strigified_spark_args))
+        # now that we've added all the required stuff, we can add in all the stuff that users have added
+        # themselves
+        conf.update(_filter_user_spark_opts(user_spark_opts=strigified_spark_args))
+
+        return conf
+
     def get_cmd(self):
         command = self.config_dict.get("command")
 
         if self.get_executor() == "spark":
-            # XXX: fill this out correctly
-            spark_config = {}
-
             # until we switch drivers to use pod identity, we need to use the Yelp's legacy AWS credential system
             # and ensure that the AWS access keys are part of the environment variables that the driver is started
             # with - this is more secure than what we appear to have tried to do in the previous attempt and also
@@ -251,7 +352,7 @@ class TronActionConfig(InstanceConfig):
                 f". /etc/boto_cfg/{aws_credentials}.sh && " if aws_credentials else ""
             )
 
-            return f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(spark_config))}"
+            command = f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
         return command
 
     def get_job_name(self):
@@ -725,9 +826,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         if executor == "spark":
             # this service account will only be used by Spark drivers since executors don't
             # need Kubernetes access permissions
-            result[
-                "spark_driver_service_account_name"
-            ] = create_or_find_service_account_name(
+            result["service_account_name"] = create_or_find_service_account_name(
                 iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=_spark_k8s_role(),
