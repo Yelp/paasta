@@ -1968,6 +1968,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
+    spark_ui_port: int
 
 
 def load_system_paasta_config(

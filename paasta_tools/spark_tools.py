@@ -6,6 +6,7 @@ from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Set
 
 import yaml
 from mypy_extensions import TypedDict
@@ -168,7 +169,7 @@ def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
             {"containerPath": "/etc/group", "hostPath": "/etc/group", "mode": "RO"},
         ],
     )
-    seen_paths = set()  # dedupe volumes, just in case
+    seen_paths: Set[str] = set()  # dedupe volumes, just in case
     for index, volume in enumerate(volumes + extra_volumes):
         host_path, container_path, mode = (
             volume["hostPath"],
