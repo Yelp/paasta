@@ -1101,7 +1101,11 @@ class TestTronTools:
             == mock_yaml_dump.return_value
         )
         mock_tron_service_config.assert_called_once_with(
-            service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
+            service=service,
+            cluster=cluster,
+            for_validation=False,
+            load_deployments=True,
+            soa_dir=soa_dir,
         )
         mock_format_job.assert_called_once_with(
             job_config=job_config, k8s_enabled=k8s_enabled

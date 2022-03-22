@@ -3125,9 +3125,11 @@ _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def create_or_find_service_account_name(
-    iam_role: str, namespace: str = "paasta", k8s_role: Optional[str] = None,
+    iam_role: str,
+    namespace: str = "paasta",
+    k8s_role: Optional[str] = None,
+    dry_run: bool = False,
 ) -> str:
-    kube_client = KubeClient()
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
     # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
     # the actual name
@@ -3152,6 +3154,12 @@ def create_or_find_service_account_name(
             "Expected at least one of iam_role or k8s_role to be passed in!"
         )
 
+    # if someone is dry-running paasta_setup_tron_namespace or some other tool that
+    # calls this function, we probably don't want to mutate k8s state :)
+    if dry_run:
+        return sa_name
+
+    kube_client = KubeClient()
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
