@@ -1,3 +1,12 @@
+paasta-tools (0.124.0) xenial; urgency=medium
+
+  * 0.124.0 tagged with 'make release'
+    Commit: Merge pull request #3312 from
+    Yelp/georgios_update_scribereader_version_to_015  Update
+    scribereader to 0.15
+
+ -- Georgios Kousouris <georgios@yelp.com>  Wed, 23 Mar 2022 06:52:54 -0700
+
 paasta-tools (0.123.2) xenial; urgency=medium
 
   * 0.123.2 tagged with 'make release'
