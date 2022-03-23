@@ -12,14 +12,13 @@ import yaml
 from mypy_extensions import TypedDict
 from service_configuration_lib.spark_config import _adjust_spark_requested_resources
 from service_configuration_lib.spark_config import _append_sql_shuffle_partitions_conf
+from service_configuration_lib.spark_config import DEFAULT_SPARK_RUN_CONFIG
 
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_runtimeenv
 
 KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
-
-DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 
 log = logging.getLogger(__name__)
 
