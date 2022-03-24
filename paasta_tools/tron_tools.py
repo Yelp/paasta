@@ -243,7 +243,7 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def _build_spark_config(self) -> Dict[str, str]:
-        # this service account will either be used soley for k8s access or for
+        # this service account will either be used solely for k8s access or for
         # k8s + AWS access - the executor will have its own account though: and
         # only if users opt into using pod identity
         driver_service_account = create_or_find_service_account_name(
@@ -293,8 +293,18 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
         }
 
+        # most of the service_configuration_lib function expected string values only
+        # so let's go ahead and convert the values now instead of once per-wrapper
+        stringified_spark_args = {
+            k: (str(v) if not isinstance(v, bool) else str(v).lower())
+            for k, v in spark_args.items()
+        }
+        # now that we've added all the required stuff, we can add in all the stuff that users have added
+        # themselves
+        conf.update(_filter_user_spark_opts(user_spark_opts=stringified_spark_args))
+
         if self.get_team() is not None:
-            conf["spark.kubernetes.executor.label.yelp.com/owner"] = (self.get_team(),)
+            conf["spark.kubernetes.executor.label.yelp.com/owner"] = self.get_team()
 
         # Spark defaults to using the Service Account that the driver uses for executors,
         # but that has more permissions than what we'd like to give the executors, so use
@@ -317,24 +327,15 @@ class TronActionConfig(InstanceConfig):
             ),
         )
 
-        # most of the service_configuration_lib function expected string values only
-        # so let's go ahead and convert the values now instead of once per-wrapper
-        strigified_spark_args = {
-            k: (str(v) if not isinstance(v, bool) else str(v).lower())
-            for k, v in spark_args.items()
-        }
         # Core ML has some translation logic to go from Mesos->k8s options for people living in the past
         conf.update(
             adjust_spark_resources(
-                spark_args=strigified_spark_args, desired_pool=self.get_pool()
+                spark_args=stringified_spark_args, desired_pool=self.get_pool()
             )
         )
         # as well as some QoL tweaks for other options
-        conf.update(setup_shuffle_partitions(spark_args=strigified_spark_args))
-        conf.update(setup_event_log_configuration(spark_args=strigified_spark_args))
-        # now that we've added all the required stuff, we can add in all the stuff that users have added
-        # themselves
-        conf.update(_filter_user_spark_opts(user_spark_opts=strigified_spark_args))
+        conf.update(setup_shuffle_partitions(spark_args=stringified_spark_args))
+        conf.update(setup_event_log_configuration(spark_args=stringified_spark_args))
 
         return conf
 
