@@ -826,7 +826,7 @@ async def get_pod_containers(
                     reason = this_state["reason"]
                 if "message" in this_state:
                     message = this_state["message"]
-                if "started_at" in this_state:
+                if this_state.get("started_at"):
                     start_timestamp = this_state["started_at"].timestamp()
 
         last_state_dict = cs.last_state.to_dict()
