@@ -1968,6 +1968,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
+    spark_ui_port: int
 
 
 def load_system_paasta_config(
@@ -2635,6 +2636,11 @@ class SystemPaastaConfig:
 
     def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
         return self.config_dict.get("tron_use_suffixed_log_streams", False)
+
+    def get_spark_ui_port(self) -> int:
+        # 33000 was picked arbitrarily (it was the base port when we used to
+        # randomly reserve port numbers)
+        return self.config_dict.get("spark_ui_port", 33000)
 
     def get_api_profiling_config(self) -> Dict:
         return self.config_dict.get(
@@ -3842,3 +3848,15 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
         v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
     }.values()
     return sort_dicts(deduped)
+
+
+@lru_cache(maxsize=1)
+def get_runtimeenv() -> str:
+    try:
+        with open("/nail/etc/runtimeenv", mode="r") as f:
+            return f.read()
+    except OSError:
+        log.error("Unable to read runtimeenv - this is not expected if inside Yelp.")
+        # we could also just crash or return None, but this seems a little easier to find
+        # should we somehow run into this at Yelp
+        return "unknown"
