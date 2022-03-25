@@ -320,6 +320,9 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
+    # the values for this dict can be anything since it's whatever
+    # spark accepts
+    spark_args: Dict[str, Any]
 
 
 class BranchDictV1(TypedDict, total=False):

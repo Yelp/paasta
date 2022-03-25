@@ -761,7 +761,13 @@ class TestTronTools:
         action_dict = {
             "iam_role_provider": "aws",
             "iam_role": "arn:aws:iam::000000000000:role/some_role",
-            "command": "echo something",
+            "spark_args": {
+                "spark.cores.max": 4,
+                "spark.driver.memory": "1g",
+                "spark.executor.memory": "1g",
+                "spark.executor.cores": 2,
+            },
+            "command": "spark-submit file://this/is/a_test.py",
             "requires": ["required_action"],
             "retries": 2,
             "retries_delay": "5m",
@@ -812,11 +818,78 @@ class TestTronTools:
             "paasta_tools.tron_tools._spark_k8s_role",
             autospec=True,
             return_value="spark",
+        ), mock.patch(
+            "paasta_tools.spark_tools.get_default_spark_configuration",
+            autospec=True,
+            return_value={
+                "environments": {
+                    "testenv": {
+                        "account_id": 1,
+                        "default_event_log_dir": "s3a://test",
+                        "history_server": "yelp.com",
+                    },
+                },
+            },
+        ), mock.patch(
+            "paasta_tools.spark_tools.get_runtimeenv",
+            autospec=True,
+            return_value="testenv",
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
         assert result == {
-            "command": "echo something",
+            "command": "spark-submit "
+            "--conf spark.app.name=tron_spark_my_service_my_job.do_something "
+            "--conf spark.ui.port=33000 "
+            "--conf spark.master=k8s://https://k8s.test-cluster.paasta:6443 "
+            "--conf spark.executorEnv.PAASTA_SERVICE=my_service "
+            "--conf spark.executorEnv.PAASTA_INSTANCE=my_job.do_something "
+            "--conf spark.executorEnv.PAASTA_CLUSTER=test-cluster "
+            "--conf spark.executorEnv.PAASTA_INSTANCE_TYPE=spark "
+            "--conf spark.executorEnv.SPARK_EXECUTOR_DIRS=/tmp "
+            "--conf spark.kubernetes.authenticate.driver.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role--spark "
+            "--conf spark.kubernetes.pyspark.pythonVersion=3 "
+            "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
+            "--conf spark.kubernetes.namespace=paasta-spark "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_service=my_service "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_instance=my_job.do_something "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_cluster=test-cluster "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/service=my_service "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
+            "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
+            "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
+            # user args
+            "--conf spark.cores.max=4 "
+            "--conf spark.driver.memory=1g "
+            "--conf spark.executor.memory=1g "
+            "--conf spark.executor.cores=2 "
+            "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
+            # extra_volumes from config
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=false "
+            # default spark volumes
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
+            # coreml adjustments
+            "--conf spark.executor.instances=2 "
+            "--conf spark.kubernetes.allocation.batch.size=2 "
+            "--conf spark.kubernetes.executor.limit.cores=2 "
+            "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
+            "--conf spark.sql.shuffle.partitions=8 "
+            "--conf spark.eventLog.enabled=true "
+            "--conf spark.eventLog.dir=s3a://test "
+            # actual script to run
+            "file://this/is/a_test.py",
             "requires": ["required_action"],
             "retries": 2,
             "retries_delay": "5m",
@@ -833,8 +906,7 @@ class TestTronTools:
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
             "secret_env": {},
-            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role",
-            "spark_driver_service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
+            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
