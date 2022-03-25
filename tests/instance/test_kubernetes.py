@@ -56,7 +56,7 @@ def mock_pod():
                     name="main_container",
                     restart_count=0,
                     state=Struct(
-                        running=Struct(
+                        running=dict(
                             reason="a_state_reason",
                             message="a_state_message",
                             started_at=datetime.datetime(2021, 3, 6),
