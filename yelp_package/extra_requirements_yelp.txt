@@ -24,7 +24,7 @@ pyopenssl==19.0.0
 PySubnetTree==0.34
 python-jsonschema-objects==0.3.1
 retrying==1.3.3
-scribereader==0.10.0
+scribereader==0.15.0
 signalform-tools==0.0.16
 slo-transcoder==3.3.0
 smmap2==2.0.3

@@ -352,8 +352,8 @@ class TronActionConfig(InstanceConfig):
             cmd_setup = (
                 f". /etc/boto_cfg/{aws_credentials}.sh && " if aws_credentials else ""
             )
-
             command = f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
+
         return command
 
     def get_job_name(self):

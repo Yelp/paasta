@@ -12,14 +12,13 @@ import yaml
 from mypy_extensions import TypedDict
 from service_configuration_lib.spark_config import _adjust_spark_requested_resources
 from service_configuration_lib.spark_config import _append_sql_shuffle_partitions_conf
+from service_configuration_lib.spark_config import DEFAULT_SPARK_RUN_CONFIG
 
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_runtimeenv
 
 KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
-
-DEFAULT_SPARK_RUN_CONFIG = "/nail/srv/configs/spark.yaml"
 
 log = logging.getLogger(__name__)
 
@@ -104,7 +103,8 @@ def setup_event_log_configuration(spark_args: Dict[str, str]) -> Dict[str, str]:
             "Unable to access default Spark configuration, event log will be disabled"
         )
         # Note: we don't return an empty dict here since we want to make sure that our
-        # called will overwrite the enabled option with our return
+        # caller will overwrite the enabled option with our return value (see the first
+        # `if` block in this function for more details)
         return {"spark.eventLog.enabled": "false"}
 
     environment_config = default_spark_conf.get("environments", {}).get(
