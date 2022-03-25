@@ -817,7 +817,7 @@ async def test_get_pod_containers(mock_pod):
 
     with asynctest.patch(
         "paasta_tools.instance.kubernetes.get_tail_lines_for_kubernetes_container",
-        side_effect=[["current"], ["previous"]],
+        side_effect=[["current"], ["previous"], ["current"], ["previous"]],
         autospec=None,
     ), mock.patch(
         "paasta_tools.kubernetes_tools.recent_container_restart",
@@ -825,6 +825,8 @@ async def test_get_pod_containers(mock_pod):
         autospec=None,
     ):
         containers = await pik.get_pod_containers(mock_pod, mock_client, 10)
+        mock_pod.status.container_statuses[0].state.running["started_at"] = None
+        no_start_containers = await pik.get_pod_containers(mock_pod, mock_client, 10)
 
     assert containers == [
         dict(
@@ -845,3 +847,5 @@ async def test_get_pod_containers(mock_pod):
             tail_lines=["current"],
         ),
     ]
+
+    assert no_start_containers[0]["timestamp"] is None
