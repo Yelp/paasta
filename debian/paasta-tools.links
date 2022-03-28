@@ -13,11 +13,9 @@ opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_oom_events.py usr/bin/check_oom_events
-opt/venvs/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
 opt/venvs/paasta-tools/bin/cleanup_kubernetes_cr.py usr/bin/cleanup_kubernetes_cr
 opt/venvs/paasta-tools/bin/cleanup_kubernetes_crd.py usr/bin/cleanup_kubernetes_crd
 opt/venvs/paasta-tools/bin/cleanup_kubernetes_jobs.py usr/bin/cleanup_kubernetes_jobs
-opt/venvs/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
 opt/venvs/paasta-tools/bin/generate_all_deployments usr/bin/generate_all_deployments
 opt/venvs/paasta-tools/bin/generate_deployments_for_service.py usr/bin/generate_deployments_for_service
 opt/venvs/paasta-tools/bin/generate_services_file.py usr/bin/generate_services_file
