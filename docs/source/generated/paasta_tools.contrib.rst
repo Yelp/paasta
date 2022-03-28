@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.contrib.add_to_deploy_queue
    paasta_tools.contrib.bounce_log_latency_parser
    paasta_tools.contrib.check_orphans
    paasta_tools.contrib.create_dynamodb_table
