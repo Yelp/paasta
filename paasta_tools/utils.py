@@ -1975,6 +1975,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
     spark_ui_port: int
+    spark_driver_port: int
+    spark_blockmanager_port: int
 
 
 def load_system_paasta_config(
@@ -2647,6 +2649,14 @@ class SystemPaastaConfig:
         # 33000 was picked arbitrarily (it was the base port when we used to
         # randomly reserve port numbers)
         return self.config_dict.get("spark_ui_port", 33000)
+
+    def get_spark_driver_port(self) -> int:
+        # default value is an arbitrary value
+        return self.config_dict.get("spark_driver_port", 33001)
+
+    def get_spark_blockmanager_port(self) -> int:
+        # default value is an arbitrary value
+        return self.config_dict.get("spark_blockmanager_port", 33002)
 
     def get_api_profiling_config(self) -> Dict:
         return self.config_dict.get(
