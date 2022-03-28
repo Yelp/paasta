@@ -1,3 +1,10 @@
+paasta-tools (0.125.1) xenial; urgency=medium
+
+  * 0.125.1 tagged with 'make release'
+    Commit: Remove unused itest steps file.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 28 Mar 2022 10:49:01 -0700
+
 paasta-tools (0.125.0) xenial; urgency=medium
 
   * 0.125.0 tagged with 'make release'
