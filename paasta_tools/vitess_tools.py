@@ -7,8 +7,6 @@ import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import sanitised_cr_name
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -25,13 +23,15 @@ KUBERNETES_NAMESPACE = "paasta-vitess"
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
+
 class VitessDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     replicas: int
+
 
 class VitessDeploymentConfig(LongRunningServiceConfig):
     config_dict: VitessDeploymentConfigDict
 
-    config_filename_prefix = 'vitess'
+    config_filename_prefix = "vitess"
 
     def __init__(
         self,
@@ -44,9 +44,9 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
     ) -> None:
 
         super().__init__(
-            cluster=cluster, # superregion
-            instance=instance, # host-1
-            service=service, # vitess
+            cluster=cluster,  # superregion
+            instance=instance,  # host-1
+            service=service,  # vitess
             soa_dir=soa_dir,
             config_dict=config_dict,
             branch_dict=branch_dict,
@@ -58,13 +58,11 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         """
         return "vitess_" + self.get_instance()
 
-
     def get_nerve_namespace(self) -> str:
         """
         We register in vitess.main
         """
         return "main"
-
 
     def get_registrations(self) -> List[str]:
         """
@@ -127,11 +125,11 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
 
 
 def load_vitess_instance_config(
-        service: str,
-        instance: str,
-        cluster: str,
-        load_deployments: bool = True,
-        soa_dir: str = DEFAULT_SOA_DIR,
+    service: str,
+    instance: str,
+    cluster: str,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> VitessDeploymentConfig:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
@@ -146,7 +144,7 @@ def load_vitess_instance_config(
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
         deployments_json = load_v2_deployments_json(service, soa_dir=soa_dir)
-        temp_instance_config = VitessClusterDeploymentConfig(
+        temp_instance_config = VitessDeploymentConfig(
             service=service,
             cluster=cluster,
             instance=instance,
@@ -163,6 +161,7 @@ def load_vitess_instance_config(
         cluster=cluster,
         instance=instance,
         config_dict=general_config,
+        branch_dict=branch_dict,
         soa_dir=soa_dir,
     )
 
@@ -175,4 +174,4 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
         namespace=KUBERNETES_NAMESPACE,
         plural="vitess",
         name=sanitised_cr_name(service, instance),
-    ) <F6>
+    )
