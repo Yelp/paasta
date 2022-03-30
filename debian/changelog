@@ -1,3 +1,12 @@
+paasta-tools (0.125.2) xenial; urgency=medium
+
+  * 0.125.2 tagged with 'make release'
+    Commit: Merge pull request #3323 from
+    Yelp/u/jfong/bounce_status_traceback  Return a traceback when we hit
+    an error in bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 30 Mar 2022 13:13:39 -0700
+
 paasta-tools (0.125.1) xenial; urgency=medium
 
   * 0.125.1 tagged with 'make release'
