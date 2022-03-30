@@ -849,8 +849,9 @@ def bounce_status(request):
 
     try:
         return pik.bounce_status(service, instance, settings)
-    except Exception as e:
-        raise ApiFailure(e, 500)
+    except Exception:
+        error_message = traceback.format_exc()
+        raise ApiFailure(error_message, 500)
 
 
 def add_executor_info(task):
