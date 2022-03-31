@@ -125,8 +125,10 @@ def create_marathon_dashboard(
             cluster, MarathonServiceConfig
         ):
             if marathon_service_config.get_instance() in instance_set:
-                client: MarathonClient = marathon_clients.get_current_client_for_service(
-                    job_config=marathon_service_config
+                client: MarathonClient = (
+                    marathon_clients.get_current_client_for_service(
+                        job_config=marathon_service_config
+                    )
                 )
                 ip_url: str = client.servers[0]
                 # Convert to a marathon link if possible else default to the originalIP address

@@ -151,8 +151,12 @@ def get_recommendation_from_result(result, keys_to_apply):
             hacheck_cpus_value = max(0.1, min(float(val), 1))
             rec["sidecar_resource_requirements"] = {
                 "hacheck": {
-                    "requests": {"cpu": hacheck_cpus_value,},
-                    "limits": {"cpu": hacheck_cpus_value,},
+                    "requests": {
+                        "cpu": hacheck_cpus_value,
+                    },
+                    "limits": {
+                        "cpu": hacheck_cpus_value,
+                    },
                 },
             }
     return rec

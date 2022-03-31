@@ -107,7 +107,9 @@ InstanceStatusWriter = Callable[
 ]
 
 
-def add_subparser(subparsers,) -> None:
+def add_subparser(
+    subparsers,
+) -> None:
     status_parser = subparsers.add_parser(
         "status",
         help="Display the status of a PaaSTA service.",
@@ -194,14 +196,18 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     )
 
 
-def missing_deployments_message(service: str,) -> str:
+def missing_deployments_message(
+    service: str,
+) -> str:
     message = (
         f"{service} has no deployments in deployments.json yet.\n  " "Has Jenkins run?"
     )
     return message
 
 
-def get_deploy_info(deploy_file_path: str,) -> Mapping:
+def get_deploy_info(
+    deploy_file_path: str,
+) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
         print("Error encountered with %s" % deploy_file_path)
@@ -410,7 +416,9 @@ def print_marathon_status(
     envoy = marathon_status.envoy
     if envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
+            envoy.registration,
+            envoy.expected_backends_per_location,
+            envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
 
@@ -452,7 +460,8 @@ def create_autoscaling_info_table(autoscaling_info):
 
 
 def marathon_mesos_status_human(
-    mesos_status, expected_instance_count,
+    mesos_status,
+    expected_instance_count,
 ):
     if mesos_status.error_message:
         return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
@@ -750,7 +759,9 @@ def format_kubernetes_replicaset_table(replicasets):
 
 
 def get_smartstack_status_human(
-    registration: str, expected_backends_per_location: int, locations: Collection[Any],
+    registration: str,
+    expected_backends_per_location: int,
+    locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
@@ -806,7 +817,9 @@ def build_smartstack_backends_table(backends: Iterable[Any]) -> List[str]:
 
 
 def get_envoy_status_human(
-    registration: str, expected_backends_per_location: int, locations: Collection[Any],
+    registration: str,
+    expected_backends_per_location: int,
+    locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
@@ -919,8 +932,10 @@ def status_kubernetes_job_human(
             if evicted_count > 0
             else PaastaColors.green(str(evicted_count))
         )
-        return "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
-            status, instance_count, evicted, deploy_status
+        return (
+            "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
+                status, instance_count, evicted, deploy_status
+            )
         )
     else:
         status = PaastaColors.yellow("Warning")
@@ -1935,7 +1950,8 @@ def group_nodes_by_header(
 
 
 def nodes_to_lines(
-    verbose: int = 0, rows: List[CassandraNodeStatusRow] = [],
+    verbose: int = 0,
+    rows: List[CassandraNodeStatusRow] = [],
 ) -> List[List[str]]:
     header: List[str] = []
     lines: List[List[str]] = []
@@ -2182,7 +2198,9 @@ def normalize_registrations(
     return ret
 
 
-def get_filters(args,) -> Sequence[Callable[[InstanceConfig], bool]]:
+def get_filters(
+    args,
+) -> Sequence[Callable[[InstanceConfig], bool]]:
     """Figures out which filters to apply from an args object, and returns them
 
     :param args: args object
@@ -2436,8 +2454,10 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
             % PaastaColors.red(status_string)
         )
     elif status == MarathonDeployStatus.Delayed:
-        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-            PaastaColors.red(status_string), backoff_seconds
+        deploy_status = (
+            "{} (tasks are crashing, next won't launch for another {} seconds)".format(
+                PaastaColors.red(status_string), backoff_seconds
+            )
         )
     elif status == MarathonDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)

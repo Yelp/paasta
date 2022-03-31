@@ -660,7 +660,9 @@ def instance_config():
     return mock_instance_config
 
 
-def test_check_replication_for_instance_ok_when_expecting_zero(instance_config,):
+def test_check_replication_for_instance_ok_when_expecting_zero(
+    instance_config,
+):
     expected_replication_count = 0
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
@@ -713,7 +715,9 @@ def test_check_replication_for_instance_crit_when_absent(instance_config):
         )
 
 
-def test_check_replication_for_instance_crit_when_zero_replication(instance_config,):
+def test_check_replication_for_instance_crit_when_zero_replication(
+    instance_config,
+):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
@@ -755,7 +759,9 @@ def test_check_replication_for_instance_crit_when_zero_replication(instance_conf
         ) in send_replication_event_kwargs["description"]
 
 
-def test_check_replication_for_instance_crit_when_low_replication(instance_config,):
+def test_check_replication_for_instance_crit_when_low_replication(
+    instance_config,
+):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
@@ -797,7 +803,9 @@ def test_check_replication_for_instance_crit_when_low_replication(instance_confi
         ) in send_replication_event_kwargs["description"]
 
 
-def test_check_replication_for_instance_ok_with_enough_replication(instance_config,):
+def test_check_replication_for_instance_ok_with_enough_replication(
+    instance_config,
+):
     expected_replication_count = 8
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
@@ -996,7 +1004,9 @@ def test_check_replication_for_instance_crit_when_missing_replication_multilocat
         ) in alert_output
 
 
-def test_check_replication_for_instance_crit_when_no_smartstack_info(instance_config,):
+def test_check_replication_for_instance_crit_when_no_smartstack_info(
+    instance_config,
+):
     expected_replication_count = 2
     mock_smartstack_replication_checker = mock.Mock()
     mock_smartstack_replication_checker.get_replication_for_instance.return_value = {
@@ -1055,7 +1065,9 @@ def test_emit_replication_metrics(instance_config):
             name
         ]
         monitoring_tools.emit_replication_metrics(
-            mock_smartstack_replication_info, instance_config, expected_count=10,
+            mock_smartstack_replication_info,
+            instance_config,
+            expected_count=10,
         )
 
         mock_yelp_meteorite.create_gauge.assert_has_calls(

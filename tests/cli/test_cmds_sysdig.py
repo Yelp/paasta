@@ -107,8 +107,8 @@ def test_paasta_sysdig(
     mock_load_system_paasta_config.return_value.get_marathon_servers = mock.Mock(
         return_value=[fake_server_config]
     )
-    mock_load_system_paasta_config.return_value.get_previous_marathon_servers = mock.Mock(
-        return_value=[fake_server_config]
+    mock_load_system_paasta_config.return_value.get_previous_marathon_servers = (
+        mock.Mock(return_value=[fake_server_config])
     )
     mock_load_marathon_service_config().get_marathon_shard.return_value = None
 

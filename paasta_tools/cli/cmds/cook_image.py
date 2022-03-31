@@ -58,7 +58,9 @@ def add_subparser(subparsers):
         default=DEFAULT_SOA_DIR,
     )
     list_parser.add_argument(
-        "-c", "--commit", help="Git sha used to construct tag for built image",
+        "-c",
+        "--commit",
+        help="Git sha used to construct tag for built image",
     )
     list_parser.set_defaults(command=paasta_cook_image)
 

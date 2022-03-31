@@ -773,7 +773,11 @@ def test_check_secrets_for_instance_missing_secret(
 
 @pytest.mark.parametrize(
     "setpoint,offset,expected",
-    [(0.5, 0.5, False), (0.5, 0.6, False), (0.8, 0.25, True),],
+    [
+        (0.5, 0.5, False),
+        (0.5, 0.6, False),
+        (0.8, 0.25, True),
+    ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
@@ -833,7 +837,10 @@ def test_validate_autoscaling_configs_no_offset_specified(
         get_instance_type=mock.Mock(return_value="kubernetes"),
         is_autoscaling_enabled=mock.Mock(return_value=True),
         get_autoscaling_params=mock.Mock(
-            return_value={"metrics_provider": "uwsgi", "setpoint": 0.8,}
+            return_value={
+                "metrics_provider": "uwsgi",
+                "setpoint": 0.8,
+            }
         ),
     )
 

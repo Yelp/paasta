@@ -52,7 +52,8 @@ def get_paasta_oapi_client_by_url(
 ) -> PaastaOApiClient:
     server_variables = dict(scheme=parsed_url.scheme, host=parsed_url.netloc)
     config = paastaapi.Configuration(
-        server_variables=server_variables, discard_unknown_keys=True,
+        server_variables=server_variables,
+        discard_unknown_keys=True,
     )
     config.cert_file = cert_file
     config.key_file = key_file

@@ -269,8 +269,8 @@ def marathon_job_status(
         job_status_fields["app_statuses"].append(app_status)
 
         if app.id.lstrip("/") == desired_app_id.lstrip("/"):
-            deploy_status_for_desired_app = marathon_tools.MarathonDeployStatus.tostring(
-                deploy_status
+            deploy_status_for_desired_app = (
+                marathon_tools.MarathonDeployStatus.tostring(deploy_status)
             )
         tasks_running += app.tasks_running
 
@@ -401,7 +401,8 @@ def _build_envoy_location_dict_for_backends(
     }
 
     matched_envoy_backends_and_tasks = envoy_tools.match_backends_and_tasks(
-        sorted_envoy_backends, tasks,
+        sorted_envoy_backends,
+        tasks,
     )
 
     return envoy_tools.build_envoy_location_dict(
@@ -647,7 +648,9 @@ def instance_status(request):
         )
     except NoConfigurationForServiceError:
         error_message = no_configuration_for_service_message(
-            settings.cluster, service, instance,
+            settings.cluster,
+            service,
+            instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -721,7 +724,9 @@ def instance_status(request):
 @view_config(
     route_name="service.instance.set_state", request_method="POST", renderer="json"
 )
-def instance_set_state(request,) -> None:
+def instance_set_state(
+    request,
+) -> None:
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     desired_state = request.swagger_data.get("desired_state")
@@ -732,7 +737,9 @@ def instance_set_state(request,) -> None:
         )
     except NoConfigurationForServiceError:
         error_message = no_configuration_for_service_message(
-            settings.cluster, service, instance,
+            settings.cluster,
+            service,
+            instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -821,7 +828,9 @@ def instance_delay(request):
 
 
 @view_config(
-    route_name="service.instance.bounce_status", request_method="GET", renderer="json",
+    route_name="service.instance.bounce_status",
+    request_method="GET",
+    renderer="json",
 )
 def bounce_status(request):
     service = request.swagger_data.get("service")
@@ -832,7 +841,9 @@ def bounce_status(request):
         )
     except NoConfigurationForServiceError:
         error_message = no_configuration_for_service_message(
-            settings.cluster, service, instance,
+            settings.cluster,
+            service,
+            instance,
         )
         raise ApiFailure(error_message, 404)
     except Exception:
@@ -889,7 +900,9 @@ def get_deployment_version(
 
 
 @view_config(
-    route_name="service.instance.mesh_status", request_method="GET", renderer="json",
+    route_name="service.instance.mesh_status",
+    request_method="GET",
+    renderer="json",
 )
 def instance_mesh_status(request):
     service = request.swagger_data.get("service")

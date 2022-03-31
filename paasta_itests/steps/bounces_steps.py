@@ -19,7 +19,6 @@ from paasta_tools import drain_lib
 @when("a task has drained")
 def when_a_task_has_drained(context):
     """Tell the TestDrainMethod to mark a task as safe to kill.
-
     Normal drain methods, like hacheck, require waiting for something to happen in the background. The bounce code can
     cause a task to go from up -> draining, but the draining->drained transition normally happens outside of Paasta.
     With TestDrainMethod, we can control the draining->drained transition to emulate that external code, and that's what

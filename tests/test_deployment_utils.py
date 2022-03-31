@@ -18,7 +18,9 @@ from paasta_tools.utils import DeploymentsJsonV2
 
 
 @mock.patch("paasta_tools.deployment_utils.load_v2_deployments_json", autospec=True)
-def test_get_currently_deployed_sha(mock_load_v2_deployments_json,):
+def test_get_currently_deployed_sha(
+    mock_load_v2_deployments_json,
+):
     mock_load_v2_deployments_json.return_value = DeploymentsJsonV2(
         service="fake-service",
         config_dict={

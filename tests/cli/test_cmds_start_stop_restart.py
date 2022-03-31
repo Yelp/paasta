@@ -36,7 +36,10 @@ def test_format_tag():
 @mock.patch("dulwich.client.get_transport_and_path", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.log_event", autospec=True)
 def test_issue_state_change_for_service(
-    mock_log_event, get_transport_and_path, get_git_url, mock_trigger_deploys,
+    mock_log_event,
+    get_transport_and_path,
+    get_git_url,
+    mock_trigger_deploys,
 ):
     fake_git_url = "BLOORGRGRGRGR.yelpcorp.com"
     fake_path = "somepath"
@@ -594,7 +597,8 @@ def test_start_warn_on_multi_instance(
 
 
 @mock.patch(
-    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop", autospec=True,
+    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+    autospec=True,
 )
 class TestStopErrorsIfUnderspecified:
     def run_and_assert_with_args(self, args, capfd):
@@ -606,17 +610,20 @@ class TestStopErrorsIfUnderspecified:
 
     def test_no_cluster(self, mock_paasta_start_or_stop, capfd):
         self.run_and_assert_with_args(
-            ["stop", "-s", "service", "-i", "instance"], capfd,
+            ["stop", "-s", "service", "-i", "instance"],
+            capfd,
         )
 
     def test_no_service(self, mock_paasta_start_or_stop, capfd):
         self.run_and_assert_with_args(
-            ["stop", "-c", "cluster", "-i", "instance"], capfd,
+            ["stop", "-c", "cluster", "-i", "instance"],
+            capfd,
         )
 
     def test_no_instance(self, mock_paasta_start_or_stop, capfd):
         self.run_and_assert_with_args(
-            ["stop", "-c", "cluster", "-s", "service"], capfd,
+            ["stop", "-c", "cluster", "-s", "service"],
+            capfd,
         )
 
 
@@ -636,7 +643,17 @@ def test_error_if_no_deploy_permissions(
     mock_apply_args_filters,
 ):
     args, _ = parse_args(
-        ["start", "-s", "service", "-c", "cluster", "-i", "instance", "-d", "/soa/dir",]
+        [
+            "start",
+            "-s",
+            "service",
+            "-c",
+            "cluster",
+            "-i",
+            "instance",
+            "-d",
+            "/soa/dir",
+        ]
     )
     mock_apply_args_filters.return_value = {"cluster": {"service": {"instance": None}}}
     mock_can_user_deploy_service.return_value = False

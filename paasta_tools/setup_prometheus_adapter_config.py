@@ -606,7 +606,9 @@ def create_instance_arbitrary_promql_scaling_rule(
         """
 
     return {
-        "name": {"as": f"{deployment_name}-arbitrary-promql",},
+        "name": {
+            "as": f"{deployment_name}-arbitrary-promql",
+        },
         "seriesQuery": _minify_promql(series_query),
         "metricsQuery": _minify_promql(metrics_query),
         "resources": prometheus_adapter_config.get(
@@ -653,7 +655,10 @@ def get_rules_for_service_instance(
             )
         else:
             log.debug(
-                "Skipping %s.%s - %s.", service_name, instance_name, skip_reason,
+                "Skipping %s.%s - %s.",
+                service_name,
+                instance_name,
+                skip_reason,
             )
 
     return rules
@@ -685,7 +690,8 @@ def create_prometheus_adapter_config(
             service=service_name, soa_dir=str(soa_dir)
         )
         for instance_config in config_loader.instance_configs(
-            cluster=paasta_cluster, instance_type_class=KubernetesDeploymentConfig,
+            cluster=paasta_cluster,
+            instance_type_class=KubernetesDeploymentConfig,
         ):
             rules.extend(
                 get_rules_for_service_instance(

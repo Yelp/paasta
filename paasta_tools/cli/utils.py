@@ -809,8 +809,8 @@ def get_instance_config(
     load_deployments: bool = False,
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
-    """ Returns the InstanceConfig object for whatever type of instance
-    it is. (marathon) """
+    """Returns the InstanceConfig object for whatever type of instance
+    it is. (marathon)"""
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
@@ -1035,7 +1035,8 @@ def pick_random_port(service_name):
 
 
 def trigger_deploys(
-    service: str, system_config: Optional["SystemPaastaConfig"] = None,
+    service: str,
+    system_config: Optional["SystemPaastaConfig"] = None,
 ) -> None:
     """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
     service that listens for a service string and then generates a service deployment"""
@@ -1044,7 +1045,8 @@ def trigger_deploys(
     if not system_config:
         system_config = load_system_paasta_config()
     server = system_config.get_git_repo_config("yelpsoa-configs").get(
-        "deploy_server", DEFAULT_SOA_CONFIGS_GIT_URL,
+        "deploy_server",
+        DEFAULT_SOA_CONFIGS_GIT_URL,
     )
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

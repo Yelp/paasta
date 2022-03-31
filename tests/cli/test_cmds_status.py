@@ -217,7 +217,9 @@ def test_status_pending_pipeline_build_message(
 
 
 @patch("paasta_tools.cli.cmds.status.load_deployments_json", autospec=True)
-def test_get_actual_deployments(mock_get_deployments,):
+def test_get_actual_deployments(
+    mock_get_deployments,
+):
     mock_get_deployments.return_value = utils.DeploymentsJsonV1(
         {
             "fake_service:paasta-b_cluster.b_instance": {
@@ -893,7 +895,9 @@ def mock_marathon_status(include_envoy=True, include_smartstack=True):
         bounce_method="crossover",
         app_statuses=[],
         mesos=paastamodels.MarathonMesosStatus(
-            running_task_count=2, running_tasks=[], non_running_tasks=[],
+            running_task_count=2,
+            running_tasks=[],
+            non_running_tasks=[],
         ),
     )
     if include_smartstack:
@@ -1903,10 +1907,12 @@ class TestPrintMarathonStatus:
         include_smartstack,
         include_envoy,
     ):
-        mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
-            f"{app_status.deploy_status} status 1",
-            f"{app_status.deploy_status} status 2",
-        ]
+        mock_marathon_app_status_human.side_effect = (
+            lambda desired_app_id, app_status: [
+                f"{app_status.deploy_status} status 1",
+                f"{app_status.deploy_status} status 2",
+            ]
+        )
         mock_marathon_mesos_status_human.return_value = [
             "mesos status 1",
             "mesos status 2",
@@ -2021,10 +2027,12 @@ class TestPrintKubernetesStatusV2:
         assert return_code == 0
 
     @mock.patch(
-        "paasta_tools.cli.cmds.status.get_instance_state", autospec=True,
+        "paasta_tools.cli.cmds.status.get_instance_state",
+        autospec=True,
     )
     @mock.patch(
-        "paasta_tools.cli.cmds.status.get_versions_table", autospec=True,
+        "paasta_tools.cli.cmds.status.get_versions_table",
+        autospec=True,
     )
     def test_output(
         self,
@@ -2118,7 +2126,9 @@ class TestGetVersionsTable:
             restart_count=0,
             healthcheck_grace_period=0,
             tail_lines=paastamodels.TaskTailLines(
-                stdout=["stdout 1", "stdout 2"], stderr=[], error_message="",
+                stdout=["stdout 1", "stdout 2"],
+                stderr=[],
+                error_message="",
             ),
         )
         return container
@@ -2135,7 +2145,9 @@ class TestGetVersionsTable:
             restart_count=100,
             healthcheck_grace_period=0,
             tail_lines=paastamodels.TaskTailLines(
-                stdout=["stdout 1", "stdout 2"], stderr=[], error_message="",
+                stdout=["stdout 1", "stdout 2"],
+                stderr=[],
+                error_message="",
             ),
         )
         return container
@@ -2873,7 +2885,9 @@ class TestPrintKafkaStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output(
-        self, mock_naturaltime, mock_kafka_status,
+        self,
+        mock_naturaltime,
+        mock_kafka_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -2933,7 +2947,9 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_0_verbose(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -2961,7 +2977,9 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_jobmanager(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -2988,7 +3006,9 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_taskmanagers(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -3018,7 +3038,9 @@ class TestPrintFlinkStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_1_verbose(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_flink_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -3344,7 +3366,10 @@ def test_marathon_mesos_status_human(
         running_tasks=running_tasks,
         non_running_tasks=non_running_tasks,
     )
-    output = marathon_mesos_status_human(mesos_status, expected_instance_count=2,)
+    output = marathon_mesos_status_human(
+        mesos_status,
+        expected_instance_count=2,
+    )
 
     assert output == [
         mock_marathon_mesos_status_summary.return_value,

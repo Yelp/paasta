@@ -39,7 +39,8 @@ def test_setup_paasta_routing():
     mock_namespaces = dict(foo=dict(proxy_port=MOCK_PORT_NUMBER))
 
     fn, *rest = setup_paasta_routing(
-        kube_client=mock_client, namespaces=mock_namespaces,
+        kube_client=mock_client,
+        namespaces=mock_namespaces,
     )
     k8s_svc = fn.args[1]
 

@@ -414,7 +414,8 @@ def print_log(
         print(line, end=" ", flush=True)
     else:
         print(
-            prettify_log_line(line, requested_levels, strip_headers), flush=True,
+            prettify_log_line(line, requested_levels, strip_headers),
+            flush=True,
         )
 
 
@@ -1122,7 +1123,7 @@ class ScribeLogReader(LogReader):
                 # Enter a wait so the process isn't considered dead.
                 # This is just a large number, since apparently some python interpreters
                 # don't like being passed sys.maxsize.
-                sleep(2 ** 16)
+                sleep(2**16)
             else:
                 raise
 

@@ -262,7 +262,6 @@ try:
         assert mock_clog.log_line.call_count == 1
         assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
 
-
 except ImportError:
     warnings.warn("ScribeLogWriter is unavailable")
 
@@ -980,7 +979,8 @@ def test_read_service_instance_names_tron():
 
 
 @mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+    "paasta_tools.utils.load_service_instance_auto_configs",
+    autospec=True,
 )
 @mock.patch(
     "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
@@ -1009,7 +1009,10 @@ def test_load_service_instance_configs(
     )
     assert result == expected
     mock_read_extra_service_information.assert_called_with(
-        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
+        "fake_service",
+        "kubernetes-fake",
+        soa_dir="fake_dir",
+        deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1047,7 +1050,8 @@ def test_load_service_instance_config_not_found(mock_read_service_information):
 
 
 @mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+    "paasta_tools.utils.load_service_instance_auto_configs",
+    autospec=True,
 )
 @mock.patch(
     "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
@@ -1082,7 +1086,10 @@ def test_load_service_instance_config(
     )
     assert result == expected_config
     mock_read_extra_service_information.assert_called_with(
-        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
+        "fake_service",
+        "kubernetes-fake",
+        soa_dir="fake_dir",
+        deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1097,7 +1104,8 @@ def test_load_service_instance_config(
     autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.load_system_paasta_config", autospec=True,
+    "paasta_tools.utils.load_system_paasta_config",
+    autospec=True,
 )
 @pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
 def test_load_service_instance_auto_configs(

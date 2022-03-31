@@ -224,8 +224,8 @@ def test_cleanup_unused_apps_ignore_invalid_apps(
     ) as mock_alert_state_change:
         mock_alert_state_change.__enter__ = mock.Mock(return_value=(mock.Mock(), None))
         mock_alert_state_change.__exit__ = mock.Mock(return_value=None)
-        mock_kube_client.deployments.list_namespaced_deployment.return_value = mock.MagicMock(
-            items=[invalid_app]
+        mock_kube_client.deployments.list_namespaced_deployment.return_value = (
+            mock.MagicMock(items=[invalid_app])
         )
         cleanup_unused_apps("soa_dir", kill_threshold=0, force=True)
         assert mock_kube_client.deployments.delete_namespaced_deployment.call_count == 0

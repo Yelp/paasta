@@ -83,8 +83,10 @@ def run_daemon(args):
 
     for event in inotify.event_gen():  # blocks for only up to 1 second at a time
         if services_by_dependencies_time + args.update_secs < time.time():
-            services_by_dependencies = smartstack_dependencies_of_running_firewalled_services(
-                soa_dir=args.soa_dir
+            services_by_dependencies = (
+                smartstack_dependencies_of_running_firewalled_services(
+                    soa_dir=args.soa_dir
+                )
             )
             services_by_dependencies_time = time.time()
 

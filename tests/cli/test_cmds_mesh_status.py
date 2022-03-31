@@ -87,7 +87,10 @@ def test_paasta_mesh_status_on_api_endpoint_error(
     system_paasta_config,
 ):
     client = mock_get_oapi_client.return_value
-    api_error = ApiException(status=405, reason="api error",)
+    api_error = ApiException(
+        status=405,
+        reason="api error",
+    )
     api_error.body = "fake_body"
 
     test_cases = [

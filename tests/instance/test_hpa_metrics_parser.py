@@ -29,7 +29,10 @@ def test_parse_target_external_metric_value(parser):
         type="External",
         external=V2beta2ExternalMetricSource(
             metric=V2beta2MetricIdentifier(name="foo"),
-            target=V2beta2MetricTarget(type="Value", average_value=12,),
+            target=V2beta2MetricTarget(
+                type="Value",
+                average_value=12,
+            ),
         ),
     )
     status = parser.parse_target(metric_spec)
@@ -44,7 +47,10 @@ def test_parse_target_external_metric_average_value(parser):
         type="External",
         external=V2beta2ExternalMetricSource(
             metric=V2beta2MetricIdentifier(name="foo"),
-            target=V2beta2MetricTarget(type="AverageValue", average_value=0.5,),
+            target=V2beta2MetricTarget(
+                type="AverageValue",
+                average_value=0.5,
+            ),
         ),
     )
     status = parser.parse_target(metric_spec)
@@ -57,7 +63,10 @@ def test_parse_target_pod_metric(parser):
         type="Pods",
         pods=V2beta2PodsMetricSource(
             metric=V2beta2MetricIdentifier(name="foo"),
-            target=V2beta2MetricTarget(type="AverageValue", average_value=0.5,),
+            target=V2beta2MetricTarget(
+                type="AverageValue",
+                average_value=0.5,
+            ),
         ),
     )
     status = parser.parse_target(metric_spec)
@@ -70,7 +79,10 @@ def test_parse_target_resource_metric(parser):
         type="Resource",
         resource=V2beta2ResourceMetricSource(
             name="cpu",
-            target=V2beta2MetricTarget(type="Utilization", average_utilization=0.5,),
+            target=V2beta2MetricTarget(
+                type="Utilization",
+                average_utilization=0.5,
+            ),
         ),
     )
     status = parser.parse_target(metric_spec)
@@ -86,7 +98,10 @@ def test_parse_target_object_metric(parser):
             described_object=V2beta2CrossVersionObjectReference(
                 api_version="apps/v1", kind="Deployment", name="deployment"
             ),
-            target=V2beta2MetricTarget(type="Value", value=1,),
+            target=V2beta2MetricTarget(
+                type="Value",
+                value=1,
+            ),
         ),
     )
     status = parser.parse_target(metric_spec)
@@ -98,7 +113,9 @@ def test_parse_current_external_metric_value(parser):
     metric_status = V2beta2MetricStatus(
         type="External",
         external=V2beta2ExternalMetricStatus(
-            current=V2beta2MetricValueStatus(value=4,),
+            current=V2beta2MetricValueStatus(
+                value=4,
+            ),
             metric=V2beta2MetricIdentifier(name="foo"),
         ),
     )
@@ -113,7 +130,9 @@ def test_parse_current_external_metric_average_value(parser):
     metric_status = V2beta2MetricStatus(
         type="External",
         external=V2beta2ExternalMetricStatus(
-            current=V2beta2MetricValueStatus(average_value=0.4,),
+            current=V2beta2MetricValueStatus(
+                average_value=0.4,
+            ),
             metric=V2beta2MetricIdentifier(name="foo"),
         ),
     )
@@ -126,7 +145,9 @@ def test_parse_current_pod_metric(parser):
     metric_status = V2beta2MetricStatus(
         type="Pods",
         pods=V2beta2PodsMetricStatus(
-            current=V2beta2MetricValueStatus(average_value=0.4,),
+            current=V2beta2MetricValueStatus(
+                average_value=0.4,
+            ),
             metric=V2beta2MetricIdentifier(name="foo"),
         ),
     )
@@ -139,7 +160,10 @@ def test_parse_current_resource_metric(parser):
     metric_status = V2beta2MetricStatus(
         type="Resource",
         resource=V2beta2ResourceMetricStatus(
-            current=V2beta2MetricValueStatus(average_utilization=0.4,), name="cpu",
+            current=V2beta2MetricValueStatus(
+                average_utilization=0.4,
+            ),
+            name="cpu",
         ),
     )
     status = parser.parse_current(metric_status)
@@ -165,7 +189,9 @@ def test_parse_current_object_metric(parser):
 
 
 def test_parse_current_empty_string_metric(parser):
-    metric_status = V2beta2MetricStatus(type="",)
+    metric_status = V2beta2MetricStatus(
+        type="",
+    )
 
     status = parser.parse_current(metric_status)
     assert status is None

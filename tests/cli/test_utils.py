@@ -243,7 +243,9 @@ def test_lazy_choices_completer():
 
 @mock.patch("paasta_tools.cli.utils.INSTANCE_TYPE_HANDLERS", dict(), autospec=None)
 @mock.patch("paasta_tools.cli.utils.validate_service_instance", autospec=True)
-def test_get_instance_config_by_instance_type(mock_validate_service_instance,):
+def test_get_instance_config_by_instance_type(
+    mock_validate_service_instance,
+):
     instance_type = "fake_type"
     mock_validate_service_instance.return_value = instance_type
     mock_load_config = mock.MagicMock()
@@ -263,7 +265,9 @@ def test_get_instance_config_by_instance_type(mock_validate_service_instance,):
 
 
 @mock.patch("paasta_tools.cli.utils.validate_service_instance", autospec=True)
-def test_get_instance_config_unknown(mock_validate_service_instance,):
+def test_get_instance_config_unknown(
+    mock_validate_service_instance,
+):
     with raises(NotImplementedError):
         mock_validate_service_instance.return_value = "some bogus unsupported framework"
         utils.get_instance_config(
@@ -322,7 +326,9 @@ def test_git_sha_validation():
 
 
 @patch("paasta_tools.cli.utils.get_instance_configs_for_service", autospec=True)
-def test_list_deploy_groups_parses_configs(mock_get_instance_configs_for_service,):
+def test_list_deploy_groups_parses_configs(
+    mock_get_instance_configs_for_service,
+):
     mock_get_instance_configs_for_service.return_value = [
         MarathonServiceConfig(
             service="foo",

@@ -77,7 +77,9 @@ def get_pod_service(pod: V1Pod) -> str:
 
 
 def notify_service_owners(
-    services: Mapping[str, Sequence[EvictedPod]], soa_dir: str, dry_run: bool,
+    services: Mapping[str, Sequence[EvictedPod]],
+    soa_dir: str,
+    dry_run: bool,
 ) -> None:
     check_overrides = {
         "page": False,
@@ -105,7 +107,9 @@ def notify_service_owners(
 
 
 def remove_pods(
-    client: KubeClient, services: Mapping[str, Sequence[EvictedPod]], dry_run: bool,
+    client: KubeClient,
+    services: Mapping[str, Sequence[EvictedPod]],
+    dry_run: bool,
 ) -> None:
     delete_options = V1DeleteOptions()
     for service in services:
@@ -124,7 +128,9 @@ def remove_pods(
                 log.info(f"Removing pod {pod.podname}")
 
 
-def evicted_pods_per_service(client: KubeClient,) -> Mapping[str, Sequence[EvictedPod]]:
+def evicted_pods_per_service(
+    client: KubeClient,
+) -> Mapping[str, Sequence[EvictedPod]]:
     all_pods = get_all_pods(kube_client=client, namespace="")
     evicted_pods = get_evicted_pods(all_pods)
     log.info(f"Pods in evicted state: {[pod.metadata.name for pod in evicted_pods]}")

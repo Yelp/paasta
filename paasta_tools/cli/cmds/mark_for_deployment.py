@@ -679,9 +679,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         return get_slack_client().sc
 
     def get_slack_channel(self) -> str:
-        """ Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
+        """Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
         Currently only uses the first slack channel available, and doesn't support
-        multi-channel notifications. """
+        multi-channel notifications."""
         if self.deploy_info.get("slack_notify", True):
             try:
                 channel = self.deploy_info.get("slack_channels")[0]
@@ -753,7 +753,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                         datetime.timedelta(seconds=self.timeout)
                     )
                     stuck_bounce_runbook = os.environ.get(
-                        "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+                        "STUCK_BOUNCE_RUNBOOK",
+                        DEFAULT_STUCK_BOUNCE_RUNBOOK,
                     )
                     status_commands = "\n".join(
                         waiting_on_to_status(self.progress.waiting_on)
@@ -1251,10 +1252,13 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             dimensions = dict(base_dimensions)
             dimensions["paasta_cluster"] = cluster
             self.metrics_interface.emit_event(
-                name="rollback", dimensions=dimensions,
+                name="rollback",
+                dimensions=dimensions,
             )
         _log_audit(
-            action="rollback", action_details=rollback_details, service=self.service,
+            action="rollback",
+            action_details=rollback_details,
+            service=self.service,
         )
 
 
@@ -1640,8 +1644,10 @@ async def wait_for_deployment(
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
-        instance_configs_per_cluster = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, git_sha, soa_dir
+        instance_configs_per_cluster = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, git_sha, soa_dir
+            )
         )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
@@ -1802,7 +1808,8 @@ def compose_timeout_message(
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
             stuck_bounce_runbook=os.environ.get(
-                "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+                "STUCK_BOUNCE_RUNBOOK",
+                DEFAULT_STUCK_BOUNCE_RUNBOOK,
             ),
         )
     )

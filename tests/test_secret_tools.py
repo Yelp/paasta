@@ -171,7 +171,8 @@ def test_get_secret_hashes():
 @mock.patch("paasta_tools.secret_tools.is_secret_ref", autospec=True)
 @mock.patch("paasta_tools.secret_tools.is_shared_secret", autospec=True)
 @mock.patch(
-    "paasta_tools.secret_tools.decrypt_secret_environment_for_service", autospec=True,
+    "paasta_tools.secret_tools.decrypt_secret_environment_for_service",
+    autospec=True,
 )
 def test_decrypt_secret_environment_variables(
     mock_decrypt_for_service, mock_is_shared_secret, mock_is_secret_ref

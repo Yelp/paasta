@@ -259,7 +259,8 @@ def test_create_instance_cpu_scaling_rule() -> None:
     ],
 )
 def test_get_rules_for_service_instance(
-    autoscaling_config: AutoscalingParamsDict, expected_rules: int,
+    autoscaling_config: AutoscalingParamsDict,
+    expected_rules: int,
 ) -> None:
     assert (
         len(

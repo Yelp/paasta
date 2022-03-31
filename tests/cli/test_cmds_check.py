@@ -293,8 +293,12 @@ def test_check_parallel_works(mock_get_config_file_dict):
         "pipeline": [
             {
                 "parallel": [
-                    {"step": "somecluster.something",},
-                    {"step": "somesecurity.check",},
+                    {
+                        "step": "somecluster.something",
+                    },
+                    {
+                        "step": "somesecurity.check",
+                    },
                 ],
                 "step": "anothercluster.something",
                 "wait_for_deployment": False,
@@ -313,8 +317,12 @@ def test_check_parallel_fails(mock_get_config_file_dict):
         "pipeline": [
             {
                 "invalid-prop": [
-                    {"step": "somecluster.something",},
-                    {"step": "somesecurity.check",},
+                    {
+                        "step": "somecluster.something",
+                    },
+                    {
+                        "step": "somesecurity.check",
+                    },
                 ],
                 "step": "anothercluster.something",
                 "wait_for_deployment": False,

@@ -381,7 +381,8 @@ class TronActionConfig(InstanceConfig):
         )
 
     def get_env(
-        self, system_paasta_config: Optional["SystemPaastaConfig"] = None,
+        self,
+        system_paasta_config: Optional["SystemPaastaConfig"] = None,
     ) -> Dict[str, str]:
         env = super().get_env(system_paasta_config=system_paasta_config)
 
@@ -416,9 +417,9 @@ class TronActionConfig(InstanceConfig):
         return secret_env
 
     def get_cpu_burst_add(self) -> float:
-        """ For Tron jobs, we don't let them burst by default, because they
+        """For Tron jobs, we don't let them burst by default, because they
         don't represent "real-time" workloads, and should not impact
-        neighbors """
+        neighbors"""
         return self.config_dict.get("cpu_burst_add", 0)
 
     def get_executor(self):
@@ -471,7 +472,8 @@ class TronActionConfig(InstanceConfig):
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
         requirements = allowlist_denylist_to_requirements(
-            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+            allowlist=self.get_deploy_whitelist(),
+            denylist=self.get_deploy_blacklist(),
         )
         requirements.extend(
             raw_selectors_to_requirements(
@@ -730,7 +732,9 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
     if k8s_options:
         # Only add default volumes if we already have k8s_options
         k8s_options.update(
-            {"default_volumes": format_volumes(default_volumes),}
+            {
+                "default_volumes": format_volumes(default_volumes),
+            }
         )
         master_config["k8s_options"] = k8s_options
     return master_config
@@ -795,7 +799,9 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             "paasta.yelp.com/pool": action_config.get_pool(),
             "paasta.yelp.com/service": action_config.get_service(),
             "paasta.yelp.com/instance": limit_size_with_hash(
-                action_config.get_instance(), limit=63, suffix=4,
+                action_config.get_instance(),
+                limit=63,
+                suffix=4,
             ),
         }
 
@@ -939,7 +945,11 @@ def load_tron_service_config(
     for_validation=False,
 ):
     return load_tron_service_config_no_cache(
-        service, cluster, load_deployments, soa_dir, for_validation,
+        service,
+        cluster,
+        load_deployments,
+        soa_dir,
+        for_validation,
     )
 
 

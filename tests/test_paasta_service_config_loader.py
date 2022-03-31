@@ -291,7 +291,8 @@ def test_adhoc_instances_configs(
     autospec=True,
 )
 @patch(
-    "paasta_tools.marathon_tools.load_service_instance_config", autospec=True,
+    "paasta_tools.marathon_tools.load_service_instance_config",
+    autospec=True,
 )
 def test_old_and_new_ways_load_the_same_marathon_configs(
     mock_marathon_tools_load_service_instance_config,
@@ -337,7 +338,8 @@ def test_old_and_new_ways_load_the_same_marathon_configs(
     autospec=True,
 )
 @patch(
-    "paasta_tools.adhoc_tools.load_service_instance_config", autospec=True,
+    "paasta_tools.adhoc_tools.load_service_instance_config",
+    autospec=True,
 )
 def test_old_and_new_ways_load_the_same_adhoc_configs(
     mock_adhoc_tools_load_service_instance_config,

@@ -45,7 +45,9 @@ def test_get_backends():
 
     with mock.patch.object(requests.Session, "get", mock_get):
         with mock.patch(
-            "socket.gethostbyaddr", side_effect=lambda x: hosts[x], autospec=True,
+            "socket.gethostbyaddr",
+            side_effect=lambda x: hosts[x],
+            autospec=True,
         ):
             expected = {
                 "service1.main": [

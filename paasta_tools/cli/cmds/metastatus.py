@@ -27,7 +27,9 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(subparsers,) -> None:
+def add_subparser(
+    subparsers,
+) -> None:
     status_parser = subparsers.add_parser(
         "metastatus",
         help="Display the status for an entire PaaSTA cluster",
@@ -175,7 +177,9 @@ def figure_out_clusters_to_inspect(args, all_clusters) -> Sequence[str]:
     return clusters_to_inspect
 
 
-def get_cluster_dashboards(cluster: str,) -> str:
+def get_cluster_dashboards(
+    cluster: str,
+) -> str:
     """Returns the direct dashboards for humans to use for a given cluster"""
     SPACER = " "
     try:
@@ -199,7 +203,9 @@ def get_cluster_dashboards(cluster: str,) -> str:
     return "\n".join(output)
 
 
-def paasta_metastatus(args,) -> int:
+def paasta_metastatus(
+    args,
+) -> int:
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
     system_paasta_config = load_system_paasta_config()

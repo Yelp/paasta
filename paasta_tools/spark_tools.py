@@ -152,7 +152,9 @@ def setup_shuffle_partitions(spark_args: Dict[str, str]) -> Dict[str, str]:
     """
     # as above, this function also returns everything + mutates the passed in dictionary
     # which is not ideal
-    return _append_sql_shuffle_partitions_conf(spark_opts=copy.copy(spark_args),)
+    return _append_sql_shuffle_partitions_conf(
+        spark_opts=copy.copy(spark_args),
+    )
 
 
 def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
