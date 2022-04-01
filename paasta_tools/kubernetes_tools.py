@@ -112,6 +112,7 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_soa_metadata
 
+from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
@@ -445,16 +446,17 @@ class KubeClient:
             ),
             fset=_set_disrupted_pods,
         )
-
-        self.deployments = kube_client.AppsV1Api()
-        self.core = kube_client.CoreV1Api()
-        self.policy = kube_client.PolicyV1beta1Api()
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
-        self.custom = kube_client.CustomObjectsApi()
-        self.autoscaling = kube_client.AutoscalingV2beta2Api()
-        self.rbac = kube_client.RbacAuthorizationV1Api()
-
         self.api_client = kube_client.ApiClient()
+        self.api_client.user_agent = f"paasta/v{__version__}"
+
+        self.deployments = kube_client.AppsV1Api(self.api_client)
+        self.core = kube_client.CoreV1Api(self.api_client)
+        self.policy = kube_client.PolicyV1beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
+        self.custom = kube_client.CustomObjectsApi(self.api_client)
+        self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
+        self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
+
         self.request = self.api_client.request
         # This function is used by the k8s client to serialize OpenAPI objects
         # into JSON before posting to the api. The JSON output can be used
