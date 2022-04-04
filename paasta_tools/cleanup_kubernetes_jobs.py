@@ -107,7 +107,7 @@ def cleanup_unused_apps(
         sane to kill when this job runs.
     :param force: Force the cleanup if we are above the kill_threshold"""
     log.info("Creating KubeClient")
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
 
     log.info("Loading running Kubernetes apps")
     applications = list_namespaced_applications(

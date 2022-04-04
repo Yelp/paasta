@@ -831,7 +831,7 @@ def main() -> int:
         log.error("Got empty rule configuration - refusing to continue.")
         return 0
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     if not args.dry_run:
         ensure_namespace(kube_client, namespace="paasta")
         ensure_namespace(kube_client, namespace="custom-metrics")

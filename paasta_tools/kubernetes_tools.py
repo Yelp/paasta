@@ -435,7 +435,7 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self) -> None:
+    def __init__(self, component: str) -> None:
         kube_config.load_kube_config(
             config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
             context=os.environ.get("KUBECONTEXT"),
@@ -447,7 +447,7 @@ class KubeClient:
             fset=_set_disrupted_pods,
         )
         self.api_client = kube_client.ApiClient()
-        self.api_client.user_agent = f"paasta/v{__version__}"
+        self.api_client.user_agent = f"paasta/{component}/v{__version__}"
 
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
@@ -1405,7 +1405,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume_mounts
 
     def get_boto_secret_hash(self) -> str:
-        kube_client = KubeClient()
+        kube_client = KubeClient(__file__)
         deployment_name = self.get_sanitised_deployment_name()
         service_name = self.get_sanitised_service_name()
         secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
@@ -1423,7 +1423,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         try:
             if self.get_persistent_volumes():
                 return (
-                    KubeClient()
+                    KubeClient(__file__)
                     .deployments.read_namespaced_stateful_set(
                         name=self.get_sanitised_deployment_name(), namespace="paasta"
                     )
@@ -1431,7 +1431,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             else:
                 return (
-                    KubeClient()
+                    KubeClient(__file__)
                     .deployments.read_namespaced_deployment(
                         name=self.get_sanitised_deployment_name(), namespace="paasta"
                     )
@@ -1933,7 +1933,7 @@ def get_kubernetes_secret_hashes(
         if is_secret_ref(v):
             to_get_hash.append(v)
     if to_get_hash:
-        kube_client = KubeClient()
+        kube_client = KubeClient(__file__)
         for value in to_get_hash:
             hashes[value] = get_kubernetes_secret_signature(
                 kube_client=kube_client,
@@ -3161,7 +3161,7 @@ def create_or_find_service_account_name(
     if dry_run:
         return sa_name
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)

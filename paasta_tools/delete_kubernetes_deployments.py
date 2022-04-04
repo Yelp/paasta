@@ -67,7 +67,7 @@ def main() -> None:
     deployment_names = get_deployment_names_from_list(service_instance_list)
 
     log.debug(f"Deleting deployments: {deployment_names}")
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     ensure_namespace(kube_client=kube_client, namespace="paasta")
 
     for deployment_name in deployment_names:

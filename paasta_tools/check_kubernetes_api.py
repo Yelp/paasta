@@ -43,7 +43,7 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     try:
         kube_client.core.list_namespace()
         log.info("API is ok")

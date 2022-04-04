@@ -105,7 +105,7 @@ def main():
     args = parse_args()
     setup_logging(args.verbose)
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     pods = get_all_pods(kube_client, args.namespace)
 
     allowed_uptime_minutes = args.minutes

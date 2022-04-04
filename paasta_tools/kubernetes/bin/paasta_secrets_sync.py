@@ -102,7 +102,7 @@ def main() -> None:
         cluster = system_paasta_config.get_cluster()
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     services_to_k8s_namespaces = get_services_to_k8s_namespaces(
         service_list=args.service_list, cluster=cluster, soa_dir=args.soa_dir,
     )

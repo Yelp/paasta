@@ -330,7 +330,7 @@ def setup_istio_mesh(
 def main() -> None:
     args = parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
     ensure_namespace(kube_client, namespace=PAASTA_NAMESPACE)
     success = setup_istio_mesh(kube_client, args.rate_limit, args.soa_dir)
     sys.exit(0 if success else 1)

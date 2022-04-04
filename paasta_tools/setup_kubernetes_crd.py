@@ -83,7 +83,7 @@ def main() -> None:
         system_paasta_config = load_system_paasta_config()
         cluster = system_paasta_config.get_cluster()
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
 
     success = setup_kube_crd(
         kube_client=kube_client,

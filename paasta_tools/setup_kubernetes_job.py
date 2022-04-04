@@ -96,7 +96,7 @@ def main() -> None:
     deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
     # system_paasta_config = load_system_paasta_config()
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
 
     ensure_namespace(kube_client, namespace="paasta")
     setup_kube_succeeded = setup_kube_deployments(

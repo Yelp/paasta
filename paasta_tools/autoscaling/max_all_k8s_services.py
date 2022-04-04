@@ -12,7 +12,7 @@ from paasta_tools.utils import load_system_paasta_config
 def main() -> None:
     system_paasta_config = load_system_paasta_config()
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(__file__)
 
     services = {
         service

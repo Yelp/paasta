@@ -270,7 +270,7 @@ class DeploymentWrapper(Application):
         # In all other cases, replica is set to max(instances, min_instances)
         if self.soa_config.config_dict.get("bounce_method", "") == "brutal":
             threading.Thread(
-                target=self.deep_delete_and_create, args=[KubeClient()]
+                target=self.deep_delete_and_create, args=[KubeClient(__file__)]
             ).start()
             return
         update_deployment(kube_client=kube_client, formatted_deployment=self.item)
