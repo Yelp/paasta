@@ -860,6 +860,10 @@ def bounce_status(request):
 
     try:
         return pik.bounce_status(service, instance, settings)
+    except asyncio.TimeoutError:
+        raise ApiFailure(
+            "Temporary issue fetching bounce status. Please try again.", 500
+        )
     except Exception:
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
