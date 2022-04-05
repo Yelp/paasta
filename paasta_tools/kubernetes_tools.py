@@ -455,7 +455,7 @@ class KubeClient:
             # single scripts we directly call, that would be set to `__main__` most of the time.
             current = currentframe()
             parent = current.f_back
-            component = parent.f_globals["__file__"]
+            component = parent.f_globals.get("__file__", "unknown")
 
         self.api_client = kube_client.ApiClient()
         self.api_client.user_agent = f"paasta/{component}/v{__version__}"
