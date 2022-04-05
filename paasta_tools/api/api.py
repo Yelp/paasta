@@ -208,7 +208,7 @@ def setup_paasta_api():
     )
 
     try:
-        settings.kubernetes_client = kubernetes_tools.KubeClient(__file__)
+        settings.kubernetes_client = kubernetes_tools.KubeClient()
     except FileNotFoundError:
         log.info("Kubernetes not found")
         settings.kubernetes_client = None

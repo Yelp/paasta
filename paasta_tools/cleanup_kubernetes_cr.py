@@ -66,7 +66,7 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO)
 
-    kube_client = KubeClient(__file__)
+    kube_client = KubeClient()
 
     system_paasta_config = load_system_paasta_config()
     cluster = args.cluster or system_paasta_config.get_cluster()

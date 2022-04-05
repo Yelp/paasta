@@ -143,7 +143,7 @@ def main() -> None:
 
     dry_run = args.dry_run
 
-    kube_client = KubeClient(__file__)
+    kube_client = KubeClient()
     all_nodes = get_all_nodes(kube_client)
     log.debug(f"found nodes in cluster {[node.metadata.name for node in all_nodes]}")
 

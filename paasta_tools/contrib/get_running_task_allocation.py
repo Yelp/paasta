@@ -187,7 +187,7 @@ def get_container_type(container_name: str, instance_name: str) -> str:
 
 
 def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocationInfo]:
-    client = KubeClient(__file__)
+    client = KubeClient()
     pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
@@ -284,7 +284,7 @@ def main(args: argparse.Namespace) -> None:
     if args.scheduler == "mesos":
         display_task_allocation_info(cluster, args.scheduler, args.namespace_prefix)
     else:
-        client = KubeClient(__file__)
+        client = KubeClient()
         all_namespaces = kubernetes_tools.get_all_namespaces(client)
         matching_namespaces = [
             n for n in all_namespaces if n.startswith(args.namespace_prefix)

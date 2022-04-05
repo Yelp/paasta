@@ -20,6 +20,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from inspect import currentframe
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -435,7 +436,7 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self, component: str) -> None:
+    def __init__(self, component: Optional[str] = None) -> None:
         kube_config.load_kube_config(
             config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
             context=os.environ.get("KUBECONTEXT"),
@@ -446,6 +447,16 @@ class KubeClient:
             ),
             fset=_set_disrupted_pods,
         )
+        if not component:
+            # If we don't get an explicit component set via constructor,
+            # try to find it by looking back in the stack, and getting `__file__` from
+            # the context calling this constructor
+            # Normally, `__module__` would make more sense, but since we have a lot of
+            # single scripts we directly call, that would be set to `__main__` most of the time.
+            current = currentframe()
+            parent = current.f_back
+            component = parent.f_globals["__file__"]
+
         self.api_client = kube_client.ApiClient()
         self.api_client.user_agent = f"paasta/{component}/v{__version__}"
 
@@ -1405,7 +1416,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume_mounts
 
     def get_boto_secret_hash(self) -> str:
-        kube_client = KubeClient(__file__)
+        kube_client = KubeClient()
         deployment_name = self.get_sanitised_deployment_name()
         service_name = self.get_sanitised_service_name()
         secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
@@ -1423,7 +1434,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         try:
             if self.get_persistent_volumes():
                 return (
-                    KubeClient(__file__)
+                    KubeClient()
                     .deployments.read_namespaced_stateful_set(
                         name=self.get_sanitised_deployment_name(), namespace="paasta"
                     )
@@ -1431,7 +1442,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             else:
                 return (
-                    KubeClient(__file__)
+                    KubeClient()
                     .deployments.read_namespaced_deployment(
                         name=self.get_sanitised_deployment_name(), namespace="paasta"
                     )
@@ -1933,7 +1944,7 @@ def get_kubernetes_secret_hashes(
         if is_secret_ref(v):
             to_get_hash.append(v)
     if to_get_hash:
-        kube_client = KubeClient(__file__)
+        kube_client = KubeClient()
         for value in to_get_hash:
             hashes[value] = get_kubernetes_secret_signature(
                 kube_client=kube_client,
@@ -3161,7 +3172,7 @@ def create_or_find_service_account_name(
     if dry_run:
         return sa_name
 
-    kube_client = KubeClient(__file__)
+    kube_client = KubeClient()
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)

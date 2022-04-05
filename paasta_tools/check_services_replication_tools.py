@@ -246,7 +246,7 @@ def get_mesos_tasks_and_slaves(
 def get_kubernetes_pods_and_nodes(
     namespace: str,
 ) -> Tuple[Sequence[V1Pod], Sequence[V1Node]]:
-    kube_client = KubeClient(__file__)
+    kube_client = KubeClient()
     all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     all_nodes = get_all_nodes(kube_client)
 

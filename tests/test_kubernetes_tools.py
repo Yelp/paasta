@@ -284,7 +284,7 @@ class TestKubernetesDeploymentConfig:
         we do will pass.
         """
         if isinstance(obj, V2beta2HorizontalPodAutoscaler):
-            obj = KubeClient(__file__).jsonify(obj)
+            obj = KubeClient().jsonify(obj)
             obj["spec"]["behavior"] = deployment.get_autoscaling_scaling_policy(
                 autoscaling_params={}, max_replicas=max_replicas,
             )
@@ -1856,7 +1856,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(__file__),
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1910,7 +1910,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(__file__),
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1987,7 +1987,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(__file__),
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -2047,7 +2047,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         hpa_dict = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(__file__),
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
             "stabilizationWindowSeconds": 123,
@@ -2071,7 +2071,7 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(__file__),
+            mock_config, "fake_name", "cluster", KubeClient(),
         )
         expected_res = None
         assert expected_res == return_value
@@ -2437,7 +2437,7 @@ def test_KubeClient():
     ), mock.patch(
         "paasta_tools.kubernetes_tools.kube_client", autospec=True
     ) as mock_kube_client:
-        client = KubeClient(__file__)
+        client = KubeClient()
         assert client.deployments == mock_kube_client.AppsV1Api()
         assert client.core == mock_kube_client.CoreV1Api()
 

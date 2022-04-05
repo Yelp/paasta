@@ -125,7 +125,7 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.INFO)
 
-    kube_client: Any = KubeClient(__file__)
+    kube_client: Any = KubeClient()
     if args.dry_run:
         kube_client = StdoutKubeClient(kube_client)
 

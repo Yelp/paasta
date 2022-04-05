@@ -362,7 +362,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         ]
 
     if kube_available:
-        kube_client = KubeClient(__file__)
+        kube_client = KubeClient()
         kube_results = _run_kube_checks(kube_client)
     else:
         kube_results = [

@@ -148,7 +148,7 @@ def main() -> None:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    kube_client = KubeClient(__file__)
+    kube_client = KubeClient()
 
     evicted_pods = evicted_pods_per_service(kube_client)
     remove_pods(kube_client, evicted_pods, args.dry_run)
