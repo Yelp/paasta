@@ -1,3 +1,12 @@
+paasta-tools (0.125.3) xenial; urgency=medium
+
+  * 0.125.3 tagged with 'make release'
+    Commit: Merge pull request #3321 from Yelp/u/alexanm/DREIMP-
+    7902_create_paasta_tools_for_vitess_crs  adding vitess_tools script
+    for loading cr
+
+ -- Alexander Martinez <alexanm@yelp.com>  Wed, 06 Apr 2022 09:45:05 -0700
+
 paasta-tools (0.125.2) xenial; urgency=medium
 
   * 0.125.2 tagged with 'make release'
