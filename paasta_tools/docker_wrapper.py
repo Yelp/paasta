@@ -341,15 +341,18 @@ def main(argv=None):
     mesos_task_id = env_args.get("MESOS_TASK_ID")
 
     hostname = socket.getfqdn()
+    print(f"BEEP BOOP DEBUG PRINTF hostname={hostname!r}")
     if mesos_task_id and can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={hostname}")
         hostname_task_id = generate_hostname_task_id(
             hostname.partition(".")[0], mesos_task_id
         )
+        print(f"BEEP BOOP DEBUG PRINTF hostname_task_id={hostname_task_id!r}")
         argv = add_argument(argv, f"--hostname={hostname_task_id }")
     elif can_add_hostname(argv):
         argv = add_argument(argv, f"-e=PAASTA_HOST={hostname}")
         argv = add_argument(argv, f"--hostname={hostname}")
+        print(f"BEEP BOOP DEBUG PRINTF hostname={hostname!r}")
 
     paasta_firewall = env_args.get("PAASTA_FIREWALL")
     service = env_args.get("PAASTA_SERVICE")
