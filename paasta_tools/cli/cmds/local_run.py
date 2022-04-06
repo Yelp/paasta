@@ -775,6 +775,8 @@ def run_docker_container(
     container_started = False
     container_id = None
     try:
+        print("docker_run_cmd:", json.dumps(docker_run_cmd), file=sys.stderr)
+
         (returncode, output) = _run(docker_run_cmd, env=merged_env)
         if returncode != 0:
             print(
