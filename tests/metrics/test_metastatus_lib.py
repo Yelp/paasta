@@ -864,9 +864,9 @@ def test_get_kube_disk_status():
         )
     ]
     total, used, available = metastatus_lib.get_kube_disk_status(fake_nodes)
-    assert total == 4 * 1024 ** 2
-    assert used == 3 * 1024 ** 2
-    assert available == 1 * 1024 ** 2
+    assert total == 4 * 1024**2
+    assert used == 3 * 1024**2
+    assert available == 1 * 1024**2
 
 
 def test_get_mesos_gpu_status():
@@ -916,13 +916,13 @@ def test_reserved_maintenence_resources_ignores_non_maintenance():
 
 def test_suffixed_number_value():
     assert metastatus_lib.suffixed_number_value("5k") == 5 * 1000
-    assert metastatus_lib.suffixed_number_value("5m") == 5 * 1000 ** -1
-    assert metastatus_lib.suffixed_number_value("5M") == 5 * 1000 ** 2
-    assert metastatus_lib.suffixed_number_value("5G") == 5 * 1000 ** 3
-    assert metastatus_lib.suffixed_number_value("5T") == 5 * 1000 ** 4
-    assert metastatus_lib.suffixed_number_value("5P") == 5 * 1000 ** 5
+    assert metastatus_lib.suffixed_number_value("5m") == 5 * 1000**-1
+    assert metastatus_lib.suffixed_number_value("5M") == 5 * 1000**2
+    assert metastatus_lib.suffixed_number_value("5G") == 5 * 1000**3
+    assert metastatus_lib.suffixed_number_value("5T") == 5 * 1000**4
+    assert metastatus_lib.suffixed_number_value("5P") == 5 * 1000**5
     assert metastatus_lib.suffixed_number_value("5Ki") == 5 * 1024
-    assert metastatus_lib.suffixed_number_value("5Mi") == 5 * 1024 ** 2
-    assert metastatus_lib.suffixed_number_value("5Gi") == 5 * 1024 ** 3
-    assert metastatus_lib.suffixed_number_value("5Ti") == 5 * 1024 ** 4
-    assert metastatus_lib.suffixed_number_value("5Pi") == 5 * 1024 ** 5
+    assert metastatus_lib.suffixed_number_value("5Mi") == 5 * 1024**2
+    assert metastatus_lib.suffixed_number_value("5Gi") == 5 * 1024**3
+    assert metastatus_lib.suffixed_number_value("5Ti") == 5 * 1024**4
+    assert metastatus_lib.suffixed_number_value("5Pi") == 5 * 1024**5

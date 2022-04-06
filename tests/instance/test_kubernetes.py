@@ -48,8 +48,14 @@ def mock_pod():
             reason=None,
             message=None,
             conditions=[
-                Struct(type="Ready", status="True",),
-                Struct(type="PodScheduled", status="True",),
+                Struct(
+                    type="Ready",
+                    status="True",
+                ),
+                Struct(
+                    type="PodScheduled",
+                    status="True",
+                ),
             ],
             container_statuses=[
                 Struct(
@@ -86,7 +92,10 @@ def mock_pod():
                         failure_threshold=2,
                         period_seconds=3,
                         timeout_seconds=4,
-                        http_get=Struct(port=8080, path="/healthcheck",),
+                        http_get=Struct(
+                            port=8080,
+                            path="/healthcheck",
+                        ),
                     ),
                 )
             ]
@@ -157,13 +166,17 @@ def test_instance_status_cr_and_kubernetes(mock_kubernetes_status, mock_cr_statu
 
 def test_kubernetes_status():
     with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
     ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True,
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+        autospec=True,
     ), asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -205,7 +218,8 @@ class TestKubernetesStatusV2:
     @pytest.fixture
     def mock_mesh_status(self):
         with asynctest.patch(
-            "paasta_tools.instance.kubernetes.mesh_status", autospec=True,
+            "paasta_tools.instance.kubernetes.mesh_status",
+            autospec=True,
         ) as mock_mesh_status:
             yield mock_mesh_status
 
@@ -236,7 +250,8 @@ class TestKubernetesStatusV2:
     @pytest.fixture
     def mock_get_pod_event_messages(self):
         with asynctest.patch(
-            "paasta_tools.instance.kubernetes.get_pod_event_messages", autospec=True,
+            "paasta_tools.instance.kubernetes.get_pod_event_messages",
+            autospec=True,
         ) as mock_get_pod_event_messages:
             yield mock_get_pod_event_messages
 
@@ -250,7 +265,9 @@ class TestKubernetesStatusV2:
         mock_get_pod_event_messages,
         mock_pod,
     ):
-        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[]),
+        )
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
@@ -415,7 +432,9 @@ class TestKubernetesStatusV2:
         mock_get_pod_event_messages,
         mock_pod,
     ):
-        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[]),
+        )
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
@@ -465,7 +484,9 @@ class TestKubernetesStatusV2:
         mock_get_pod_event_messages,
         mock_pod,
     ):
-        mock_job_config = mock.Mock(get_persistent_volumes=mock.Mock(return_value=[]),)
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[]),
+        )
         mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
             "kubernetes"
         ].loader.return_value = mock_job_config
@@ -522,17 +543,21 @@ def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_na
 
 def test_kubernetes_status_include_smartstack():
     with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace_config, asynctest.patch(
-        "paasta_tools.instance.kubernetes.mesh_status", autospec=True,
+        "paasta_tools.instance.kubernetes.mesh_status",
+        autospec=True,
     ) as mock_mesh_status, asynctest.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
     ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True,
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+        autospec=True,
     ), asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -691,7 +716,9 @@ async def test_get_pod_status_mesh_ready(event_loop):
     ],
 )
 def test_kubernetes_mesh_status(
-    include_smartstack, include_envoy, expected,
+    include_smartstack,
+    include_envoy,
+    expected,
 ):
     with asynctest.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
@@ -806,7 +833,10 @@ def test_bounce_status():
             "desired_state": mock_config.get_desired_state.return_value,
             "running_instance_count": mock_kubernetes_tools.get_kubernetes_app_by_name.return_value.status.ready_replicas,
             "deploy_status": mock_kubernetes_tools.KubernetesDeployStatus.tostring.return_value,
-            "active_shas": [("aaa", "config_aaa"), ("bbb", "config_bbb"),],
+            "active_shas": [
+                ("aaa", "config_aaa"),
+                ("bbb", "config_bbb"),
+            ],
             "app_count": 2,
         }
 

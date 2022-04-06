@@ -191,10 +191,12 @@ def send_sfx_event(service, instance, cluster):
             "paasta_pool": service_instance_config.get_pool(),
         }
         yelp_meteorite.events.emit_event(
-            "paasta.service.oom_events", dimensions=dimensions,
+            "paasta.service.oom_events",
+            dimensions=dimensions,
         )
         counter = yelp_meteorite.create_counter(
-            "paasta.service.oom_count", default_dimensions=dimensions,
+            "paasta.service.oom_count",
+            default_dimensions=dimensions,
         )
         counter.count()
 

@@ -177,7 +177,9 @@ async def autoscaling_status(
 
 
 async def pod_info(
-    pod: V1Pod, client: kubernetes_tools.KubeClient, num_tail_lines: int,
+    pod: V1Pod,
+    client: kubernetes_tools.KubeClient,
+    num_tail_lines: int,
 ):
     container_statuses = pod.status.container_statuses or []
     try:
@@ -188,7 +190,10 @@ async def pod_info(
         dict(
             name=container.name,
             tail_lines=await get_tail_lines_for_kubernetes_container(
-                client, pod, container, num_tail_lines,
+                client,
+                pod,
+                container,
+                num_tail_lines,
             ),
         )
         for container in container_statuses
@@ -251,7 +256,8 @@ async def job_status(
         job_config.get_instances() if job_config.get_desired_state() != "stop" else 0
     )
     deploy_status, message = kubernetes_tools.get_kubernetes_app_deploy_status(
-        app=app, desired_instances=desired_instances,
+        app=app,
+        desired_instances=desired_instances,
     )
     kstatus["deploy_status"] = kubernetes_tools.KubernetesDeployStatus.tostring(
         deploy_status
@@ -293,17 +299,20 @@ async def mesh_status(
     nodes = await async_get_nodes(settings.kubernetes_client)
 
     replication_checker = KubeSmartstackEnvoyReplicationChecker(
-        nodes=nodes, system_paasta_config=settings.system_paasta_config,
+        nodes=nodes,
+        system_paasta_config=settings.system_paasta_config,
     )
     node_hostname_by_location = replication_checker.get_allowed_locations_and_hosts(
         job_config
     )
 
-    expected_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(
-        service=service,
-        namespace=job_config.get_nerve_namespace(),
-        cluster=settings.cluster,
-        instance_type_class=KubernetesDeploymentConfig,
+    expected_smartstack_count = (
+        marathon_tools.get_expected_instance_count_for_namespace(
+            service=service,
+            namespace=job_config.get_nerve_namespace(),
+            cluster=settings.cluster,
+            instance_type_class=KubernetesDeploymentConfig,
+        )
     )
     expected_count_per_location = int(
         expected_smartstack_count / len(node_hostname_by_location)
@@ -375,7 +384,8 @@ def _build_envoy_location_dict(
     }
 
     matched_envoy_backends_and_pods = envoy_tools.match_backends_and_pods(
-        sorted_envoy_backends, pods,
+        sorted_envoy_backends,
+        pods,
     )
 
     return envoy_tools.build_envoy_location_dict(
@@ -414,7 +424,11 @@ def _build_smartstack_location_dict(
 
 
 def cr_status(
-    service: str, instance: str, verbose: int, instance_type: str, kube_client: Any,
+    service: str,
+    instance: str,
+    verbose: int,
+    instance_type: str,
+    kube_client: Any,
 ) -> Mapping[str, Any]:
     status: MutableMapping[str, Any] = {}
     cr = (
@@ -443,7 +457,9 @@ def filter_actually_running_replicasets(
 
 
 def bounce_status(
-    service: str, instance: str, settings: Any,
+    service: str,
+    instance: str,
+    settings: Any,
 ):
     status: Dict[str, Any] = {}
     job_config = kubernetes_tools.load_kubernetes_service_config(
@@ -497,7 +513,9 @@ def bounce_status(
         )
         version_objects = filter_actually_running_replicasets(replicasets)
 
-    active_shas = kubernetes_tools.get_active_shas_for_service([app, *version_objects],)
+    active_shas = kubernetes_tools.get_active_shas_for_service(
+        [app, *version_objects],
+    )
     status["active_shas"] = list(active_shas)
     status["app_count"] = len(active_shas)
     return status
@@ -581,7 +599,10 @@ async def kubernetes_status_v2(
     if job_config.get_persistent_volumes():
         pod_status_by_sha_and_readiness_task = asyncio.create_task(
             get_pod_status_tasks_by_sha_and_readiness(
-                pods_task, backends_task, kube_client, verbose,
+                pods_task,
+                backends_task,
+                kube_client,
+                verbose,
             )
         )
         versions_task = asyncio.create_task(
@@ -597,7 +618,10 @@ async def kubernetes_status_v2(
     else:
         pod_status_by_replicaset_task = asyncio.create_task(
             get_pod_status_tasks_by_replicaset(
-                pods_task, backends_task, kube_client, verbose,
+                pods_task,
+                backends_task,
+                kube_client,
+                verbose,
             )
         )
         versions_task = asyncio.create_task(
@@ -853,7 +877,11 @@ async def get_pod_containers(
         async def get_tail_lines():
             try:
                 return await get_tail_lines_for_kubernetes_container(
-                    client, pod, cs, num_tail_lines, previous=False,
+                    client,
+                    pod,
+                    cs,
+                    num_tail_lines,
+                    previous=False,
                 )
             except asyncio.TimeoutError:
                 return {"error_message": f"Could not fetch logs for {cs.name}"}
@@ -866,7 +894,11 @@ async def get_pod_containers(
             ):
                 try:
                     return await get_tail_lines_for_kubernetes_container(
-                        client, pod, cs, num_tail_lines, previous=True,
+                        client,
+                        pod,
+                        cs,
+                        num_tail_lines,
+                        previous=True,
                     )
                 except asyncio.TimeoutError:
                     return {
@@ -934,11 +966,13 @@ async def get_versions_for_controller_revisions(
     namespace: str,
     pod_status_by_sha_and_readiness_task: "asyncio.Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[asyncio.Future[Mapping[str, Any]]]]]]",
 ) -> List[KubernetesVersionDict]:
-    controller_revision_list = await kubernetes_tools.controller_revisions_for_service_instance(
-        service=service,
-        instance=instance,
-        kube_client=kube_client,
-        namespace=namespace,
+    controller_revision_list = (
+        await kubernetes_tools.controller_revisions_for_service_instance(
+            service=service,
+            instance=instance,
+            kube_client=kube_client,
+            namespace=namespace,
+        )
     )
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
@@ -951,7 +985,9 @@ async def get_versions_for_controller_revisions(
     versions = await asyncio.gather(
         *[
             get_version_for_controller_revision(
-                cr, kube_client, pod_status_by_sha_and_readiness[(git_sha, config_sha)],
+                cr,
+                kube_client,
+                pod_status_by_sha_and_readiness[(git_sha, config_sha)],
             )
             for (git_sha, config_sha), cr in cr_by_shas.items()
         ]
@@ -1221,11 +1257,13 @@ async def kubernetes_mesh_status(
     )
     if include_smartstack:
         kmesh["smartstack"] = await mesh_status(
-            service_mesh=ServiceMesh.SMARTSTACK, **mesh_status_kwargs,
+            service_mesh=ServiceMesh.SMARTSTACK,
+            **mesh_status_kwargs,
         )
     if include_envoy:
         kmesh["envoy"] = await mesh_status(
-            service_mesh=ServiceMesh.ENVOY, **mesh_status_kwargs,
+            service_mesh=ServiceMesh.ENVOY,
+            **mesh_status_kwargs,
         )
 
     return kmesh

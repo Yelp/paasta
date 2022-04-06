@@ -154,7 +154,7 @@ def extract_args(args):
 
 
 def accumulate_config_overrides(args, service, instance):
-    """ Although task configs come with defaults values, certain args can
+    """Although task configs come with defaults values, certain args can
     override them. We accumulate them in a dict here and return them.
     """
     overrides = {}
@@ -183,7 +183,7 @@ def accumulate_config_overrides(args, service, instance):
 
 
 def generate_run_id(length=8):
-    """ Generates a random string of uppercase letters and digits for use as
+    """Generates a random string of uppercase letters and digits for use as
     a run identifier
     """
     run_id = "".join(
@@ -194,7 +194,7 @@ def generate_run_id(length=8):
 
 
 def create_framework_name(service, instance, run_id):
-    """ Creates a framework name for our task """
+    """Creates a framework name for our task"""
     return "paasta-remote {} {} {}".format(
         compose_job_id(service, instance),
         datetime.utcnow().strftime("%Y%m%d%H%M%S%f"),
@@ -212,7 +212,7 @@ def create_mesos_executor(
     role="*",
     pool="default",
 ):
-    """ Create a Mesos executor specific to our cluster """
+    """Create a Mesos executor specific to our cluster"""
     MesosExecutor = processor.executor_cls("mesos_task")
 
     mesos_address = mesos_tools.find_mesos_leader(cluster)
@@ -291,7 +291,7 @@ def paasta_to_task_config_kwargs(
 
 
 def create_mesos_task_config(processor, service, instance, *args, **kwargs):
-    """ Creates a Mesos task configuration """
+    """Creates a Mesos task configuration"""
     MesosExecutor = processor.executor_cls("mesos_task")
     try:
         return MesosExecutor.TASK_CONFIG_INTERFACE(
@@ -322,7 +322,7 @@ def create_mesos_task_config(processor, service, instance, *args, **kwargs):
 
 
 def task_config_to_dict(task_config):
-    """ Convert a task config to a dict and remove all empty keys """
+    """Convert a task config to a dict and remove all empty keys"""
     dconf = dict(task_config)
     for k in list(dconf.keys()):
         if not dconf[k]:
@@ -349,7 +349,7 @@ def create_boto_session(taskproc_config, region):
 
 # TODO: rename to registry?
 def build_executor_stack(processor, cluster_executor, taskproc_config, cluster, region):
-    """ Executor stack consists of:
+    """Executor stack consists of:
     1. Cluster Executor (e.g. MesosExecutor)
     2. LoggingExecutor
     3. StatefulExecutor
@@ -383,7 +383,7 @@ def set_runner_signal_handlers(runner):
 
 
 def run_task(executor, task_config):
-    """ Runs a task until a terminal event is received, which is returned. """
+    """Runs a task until a terminal event is received, which is returned."""
     runner = Sync(executor)
     set_runner_signal_handlers(runner)
     terminal_event = runner.run(task_config)
@@ -495,7 +495,7 @@ def handle_terminal_event(
     framework_config=None,
     task_config=None,
 ):
-    """ Given a terminal event:
+    """Given a terminal event:
     1. Emit metrics
     2. Notify users
     3. Produce exit code
@@ -529,7 +529,7 @@ def handle_terminal_event(
 
 
 def remote_run_start(args):
-    """ Start a task in Mesos
+    """Start a task in Mesos
     Steps:
     1. Accumulate overrides
     2. Create task configuration

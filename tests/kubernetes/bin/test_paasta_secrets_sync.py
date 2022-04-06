@@ -279,7 +279,8 @@ def test_sync_boto_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
     ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep", autospec=True,
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
+        autospec=True,
     ):
 
         mock_client = mock.Mock()

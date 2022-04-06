@@ -222,7 +222,9 @@ def test_wait_for_deployment(
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 def test_wait_for_deployment_raise_no_such_cluster(
-    mock__log, mock_paasta_service_config_loader, mock_load_system_paasta_config,
+    mock__log,
+    mock_paasta_service_config_loader,
+    mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = {
         "cluster1": "some_url_1",

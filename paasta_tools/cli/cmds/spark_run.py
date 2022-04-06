@@ -667,7 +667,7 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
 def _calculate_docker_memory_limit(
     spark_conf: Mapping[str, str], memory_limit: Optional[str]
 ) -> str:
-    """ In Order of preference:
+    """In Order of preference:
     1. Argument: --docker-memory-limit
     2. --spark-args or spark-submit: spark.driver.memory
     3. Default
@@ -697,7 +697,7 @@ def _calculate_docker_memory_limit(
 def _calculate_docker_cpu_limit(
     spark_conf: Mapping[str, str], cpu_limit: Optional[str]
 ) -> str:
-    """ In Order of preference:
+    """In Order of preference:
     1. Argument: --docker-cpu-limit
     2. --spark-args or spark-submit: spark.driver.cores
     3. Default
@@ -726,7 +726,10 @@ def configure_and_run_docker_container(
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
     )
-    docker_cpu_limit = _calculate_docker_cpu_limit(spark_conf, args.docker_cpu_limit,)
+    docker_cpu_limit = _calculate_docker_cpu_limit(
+        spark_conf,
+        args.docker_cpu_limit,
+    )
 
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = (

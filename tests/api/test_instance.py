@@ -1061,15 +1061,20 @@ def test_tron_instance_status(
 
 def test_kubernetes_instance_status_bounce_method():
     with asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True,
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+        autospec=True,
     ) as mock_get_kubernetes_app_by_name, asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True,
+        "paasta_tools.kubernetes_tools.get_active_shas_for_service",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -1098,13 +1103,17 @@ def test_kubernetes_instance_status_bounce_method():
 
 def test_kubernetes_instance_status_evicted_nodes():
     with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True,
+        "paasta_tools.kubernetes_tools.get_active_shas_for_service",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ) as mock_pods_for_service_instance, asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -1168,7 +1177,8 @@ def test_get_marathon_dashboard_links():
 @mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 def test_instance_mesh_status(
-    mock_validate_service_instance, mock_kubernetes_mesh_status,
+    mock_validate_service_instance,
+    mock_kubernetes_mesh_status,
 ):
     mock_validate_service_instance.return_value = "flink"
     mock_kubernetes_mesh_status.return_value = {
@@ -1264,14 +1274,20 @@ class TestBounceStatus:
         return request
 
     def test_success(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         response = instance.bounce_status(mock_request)
         assert response == mock_pik_bounce_status.return_value
 
     def test_not_found(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         with pytest.raises(ApiFailure) as excinfo:
@@ -1279,7 +1295,10 @@ class TestBounceStatus:
         assert excinfo.value.err == 404
 
     def test_not_kubernetes(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "not_kubernetes"
         response = instance.bounce_status(mock_request)

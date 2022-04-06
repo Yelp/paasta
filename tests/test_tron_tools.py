@@ -86,7 +86,8 @@ class TestTronActionConfig:
         monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
         action_config.config_dict["executor"] = executor
         with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
         ):
@@ -302,7 +303,8 @@ class TestTronJobConfig:
             job_config, action_name, action_dict
         )
         mock_format_action.assert_called_once_with(
-            action_config=mock_get_action_config.return_value, use_k8s=False,
+            action_config=mock_get_action_config.return_value,
+            use_k8s=False,
         )
 
         assert result == {
@@ -356,7 +358,8 @@ class TestTronJobConfig:
             job_config, action_name, action_dict
         )
         mock_format_action.assert_called_once_with(
-            action_config=mock_get_action_config.return_value, use_k8s=True,
+            action_config=mock_get_action_config.return_value,
+            use_k8s=True,
         )
 
         assert result == {
@@ -809,7 +812,8 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
         ), mock.patch(
-            "paasta_tools.kubernetes_tools.kube_client", autospec=True,
+            "paasta_tools.kubernetes_tools.kube_client",
+            autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
@@ -942,7 +946,12 @@ class TestTronTools:
             "iam_role_provider": "aws",
             "iam_role": "arn:aws:iam::000000000000:role/some_role",
             "command": "echo something",
-            "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
+            "node_selectors": {
+                "instance_type": [
+                    "c5.2xlarge",
+                    "c5n.17xlarge",
+                ]
+            },
             "requires": ["required_action"],
             "retries": 2,
             "retries_delay": "5m",
@@ -951,7 +960,9 @@ class TestTronTools:
             "executor": "paasta",
             "cpus": 2,
             "mem": 1200,
-            "monitoring": {"team": "some_sensu_team",},
+            "monitoring": {
+                "team": "some_sensu_team",
+            },
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
@@ -1012,7 +1023,9 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "some_sensu_team",
             },
-            "annotations": {"paasta.yelp.com/routable_ip": "false",},
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+            },
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
                 {
@@ -1284,7 +1297,10 @@ fake_job:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("subprocess.run", autospec=True)
     def test_validate_complete_config_passes(
-        self, mock_run, mock_format_job, mock_load_config,
+        self,
+        mock_run,
+        mock_format_job,
+        mock_load_config,
     ):
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = "my_job"

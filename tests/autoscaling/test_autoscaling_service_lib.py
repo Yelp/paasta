@@ -110,12 +110,14 @@ def test_update_instances_for_marathon_service():
     ):
         zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
         mock_zk_client.return_value = zk_client
-        mock_load_marathon_service_config.return_value = marathon_tools.MarathonServiceConfig(
-            service="service",
-            instance="instance",
-            cluster="cluster",
-            config_dict={"min_instances": 5, "max_instances": 10},
-            branch_dict=None,
+        mock_load_marathon_service_config.return_value = (
+            marathon_tools.MarathonServiceConfig(
+                service="service",
+                instance="instance",
+                cluster="cluster",
+                config_dict={"min_instances": 5, "max_instances": 10},
+                branch_dict=None,
+            )
         )
         autoscaling_service_lib.set_instances_for_marathon_service(
             "service", "instance", instance_count=8
@@ -1134,7 +1136,8 @@ def test_autoscale_services_ignores_non_deployed_services():
         autospec=True,
         side_effect=NoDeploymentsAvailable,
     ), mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True,
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
     ):
         configs = autoscaling_service_lib.get_configs_of_services_to_scale(
             cluster="fake_cluster", services=["fake-service"]

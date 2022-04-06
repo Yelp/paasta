@@ -168,8 +168,7 @@ class MesosLeaderUnavailable(Exception):
 
 
 def find_mesos_leader(cluster):
-    """ Find the leader with redirect given one mesos master.
-    """
+    """Find the leader with redirect given one mesos master."""
     master = (
         load_system_paasta_config().get_cluster_fqdn_format().format(cluster=cluster)
     )
@@ -187,7 +186,7 @@ def find_mesos_leader(cluster):
 
 
 async def get_current_tasks(job_id: str) -> List[Task]:
-    """ Returns a list of all the tasks with a given job id.
+    """Returns a list of all the tasks with a given job id.
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
@@ -201,7 +200,7 @@ def is_task_running(task: Task) -> bool:
 
 
 def filter_running_tasks(tasks: Collection[Task]) -> List[Task]:
-    """ Filters those tasks where it's state is TASK_RUNNING.
+    """Filters those tasks where it's state is TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of running tasks
     """
@@ -209,7 +208,7 @@ def filter_running_tasks(tasks: Collection[Task]) -> List[Task]:
 
 
 def filter_not_running_tasks(tasks: Collection[Task]) -> List[Task]:
-    """ Filters those tasks where it's state is *not* TASK_RUNNING.
+    """Filters those tasks where it's state is *not* TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of tasks *not* running
     """
@@ -217,7 +216,7 @@ def filter_not_running_tasks(tasks: Collection[Task]) -> List[Task]:
 
 
 async def get_running_tasks_from_frameworks(job_id=""):
-    """ Will include tasks from active and completed frameworks
+    """Will include tasks from active and completed frameworks
     but NOT orphaned tasks
     """
     active_framework_tasks = await get_current_tasks(job_id)
@@ -226,8 +225,7 @@ async def get_running_tasks_from_frameworks(job_id=""):
 
 
 async def get_all_running_tasks() -> Collection[Task]:
-    """ Will include all running tasks; for now orphans are not included
-    """
+    """Will include all running tasks; for now orphans are not included"""
     framework_tasks = await get_current_tasks("")
     mesos_master = get_mesos_master()
     framework_tasks += await mesos_master.orphan_tasks()
@@ -290,7 +288,7 @@ def select_tasks_by_id(tasks: Collection[Task], job_id: str = "") -> List[Task]:
 
 
 async def get_non_running_tasks_from_frameworks(job_id: str = "") -> List[Task]:
-    """ Will include tasks from active and completed frameworks
+    """Will include tasks from active and completed frameworks
     but NOT orphaned tasks
     """
     active_framework_tasks = await get_current_tasks(job_id)
@@ -1050,7 +1048,9 @@ def mesos_services_running_here(
     return srv_list
 
 
-def is_task_terminal(task: MesosTask,) -> bool:
+def is_task_terminal(
+    task: MesosTask,
+) -> bool:
     """Return whether a given mesos task is terminal.
 
     Terminal states are documented in

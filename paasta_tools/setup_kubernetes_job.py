@@ -65,10 +65,17 @@ def parse_args() -> argparse.Namespace:
         help="define a different soa config directory",
     )
     parser.add_argument(
-        "-c", "--cluster", dest="cluster", help="paasta cluster",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        help="paasta cluster",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", dest="verbose", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
     )
     parser.add_argument(
         "-l",
@@ -168,7 +175,8 @@ def setup_kube_deployments(
                     app.create(kube_client)
                     app_dimensions["deploy_event"] = "create"
                     metrics_interface.emit_event(
-                        name="deploy", dimensions=app_dimensions,
+                        name="deploy",
+                        dimensions=app_dimensions,
                     )
                     api_updates += 1
                 elif app.kube_deployment not in existing_kube_deployments:
@@ -176,7 +184,8 @@ def setup_kube_deployments(
                     app.update(kube_client)
                     app_dimensions["deploy_event"] = "update"
                     metrics_interface.emit_event(
-                        name="deploy", dimensions=app_dimensions,
+                        name="deploy",
+                        dimensions=app_dimensions,
                     )
                     api_updates += 1
                 else:
@@ -198,11 +207,18 @@ def setup_kube_deployments(
 
 
 def create_application_object(
-    kube_client: KubeClient, service: str, instance: str, cluster: str, soa_dir: str,
+    kube_client: KubeClient,
+    service: str,
+    instance: str,
+    cluster: str,
+    soa_dir: str,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         service_instance_config = load_kubernetes_service_config_no_cache(
-            service, instance, cluster, soa_dir=soa_dir,
+            service,
+            instance,
+            cluster,
+            soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
         log.debug(

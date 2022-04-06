@@ -66,7 +66,6 @@ try:
             )
             return probabilities
 
-
 except ImportError:
     yelp_profiling = None
 

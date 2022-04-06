@@ -378,7 +378,8 @@ def test_setup_kube_deployment_create_update():
 
 def test_setup_kube_deployments_rate_limit():
     with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+        "paasta_tools.setup_kubernetes_job.create_application_object",
+        autospec=True,
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ), mock.patch(
@@ -416,7 +417,8 @@ def test_setup_kube_deployments_rate_limit():
 
 def test_setup_kube_deployments_skip_malformed_apps():
     with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+        "paasta_tools.setup_kubernetes_job.create_application_object",
+        autospec=True,
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ), mock.patch(

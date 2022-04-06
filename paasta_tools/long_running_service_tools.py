@@ -322,7 +322,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'.
-                  """
+        """
         if self.get_desired_state() == "start":
             return self.get_instances()
         else:
@@ -348,7 +348,10 @@ class LongRunningServiceConfig(InstanceConfig):
             defaults=default_params,
         )
 
-    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+    def validate(
+        self,
+        params: Optional[List[str]] = None,
+    ) -> List[str]:
         error_messages = super().validate(params=params)
         invalid_registrations = self.get_invalid_registrations()
         if invalid_registrations:
@@ -437,7 +440,10 @@ def load_service_namespace_config(
     """
 
     smartstack_config = service_configuration_lib.read_extra_service_information(
-        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
+        service_name=service,
+        extra_info="smartstack",
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
 
     namespace_config_from_file = smartstack_config.get(namespace, {})

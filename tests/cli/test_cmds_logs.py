@@ -118,7 +118,12 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line,
+        levels[0],
+        ANY_CLUSTER,
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -139,7 +144,12 @@ def test_paasta_log_line_passes_filter_true_when_default_instance():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line,
+        levels[0],
+        ANY_CLUSTER,
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -160,7 +170,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line,
+        "BOGUS_LEVEL",
+        clusters[0],
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -183,7 +198,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], clusters[0], service, instance, "monitoring", line,
+        levels[0],
+        clusters[0],
+        service,
+        instance,
+        "monitoring",
+        line,
     )
 
     assert (
@@ -206,7 +226,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
+        levels[0],
+        "BOGUS_CLUSTER",
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -230,12 +255,23 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
+        levels[0],
+        "BOGUS_CLUSTER",
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances, pods,
+            formatted_line,
+            levels,
+            service,
+            components,
+            clusters,
+            instances,
+            pods,
         )
         is False
     )

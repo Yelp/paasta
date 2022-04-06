@@ -853,7 +853,10 @@ class InstanceConfig:
                 'Your service config specifies "%s", an unsupported parameter.' % param,
             )
 
-    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+    def validate(
+        self,
+        params: Optional[List[str]] = None,
+    ) -> List[str]:
         if params is None:
             params = [
                 "cpus",
@@ -902,8 +905,7 @@ class InstanceConfig:
         return self.config_dict.get("iam_role_provider", "kiam")
 
     def get_role(self) -> Optional[str]:
-        """Which mesos role of nodes this job should run on.
-        """
+        """Which mesos role of nodes this job should run on."""
         return self.config_dict.get("role")
 
     def get_pool(self) -> str:
@@ -1582,7 +1584,9 @@ try:
             **kwargs: Any,
         ) -> None:
             super().__init__(
-                monk_host=monk_host, monk_port=monk_port, monk_disable=monk_disable,
+                monk_host=monk_host,
+                monk_port=monk_port,
+                monk_disable=monk_disable,
             )
 
     @register_log_writer("scribe")
@@ -1599,7 +1603,6 @@ try:
                 scribe_port=scribe_port,
                 scribe_disable=scribe_disable,
             )
-
 
 except ImportError:
     warnings.warn("clog is unavailable")
@@ -1750,7 +1753,7 @@ def flock(fd: _AnyIO) -> Iterator[None]:
 
 @contextlib.contextmanager
 def timed_flock(fd: _AnyIO, seconds: int = 1) -> Iterator[None]:
-    """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
+    """Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
     raise a TimeoutError if `seconds` elapses before the flock can be obtained
     """
     # We don't want to wrap the user code in the timeout, just the flock grab
@@ -2314,33 +2317,33 @@ class SystemPaastaConfig:
         return self.config_dict.get("cluster_autoscaling_resources", {})
 
     def get_cluster_autoscaling_draining_enabled(self) -> bool:
-        """ Enable mesos maintenance mode and trigger draining of instances before the
+        """Enable mesos maintenance mode and trigger draining of instances before the
         autoscaler terminates the instance.
 
         :returns A bool"""
         return self.config_dict.get("cluster_autoscaling_draining_enabled", True)
 
     def get_cluster_autoscaler_max_increase(self) -> float:
-        """ Set the maximum increase that the cluster autoscaler can make in each run
+        """Set the maximum increase that the cluster autoscaler can make in each run
 
         :returns A float"""
         return self.config_dict.get("cluster_autoscaler_max_increase", 0.2)
 
     def get_cluster_autoscaler_max_decrease(self) -> float:
-        """ Set the maximum decrease that the cluster autoscaler can make in each run
+        """Set the maximum decrease that the cluster autoscaler can make in each run
 
         :returns A float"""
         return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
 
     def get_maintenance_resource_reservation_enabled(self) -> bool:
-        """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
+        """Enable un/reserving of resources when we un/drain a host in mesos maintenance
         *and* after tasks are killed in setup_marathon_job etc.
 
         :returns A bool"""
         return self.config_dict.get("maintenance_resource_reservation_enabled", True)
 
     def get_cluster_boost_enabled(self) -> bool:
-        """ Enable the cluster boost. Note that the boost only applies to the CPUs.
+        """Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
 
         :returns A bool: True means cluster boost is enabled."""
@@ -2481,7 +2484,7 @@ class SystemPaastaConfig:
         return self.config_dict.get("kubernetes_add_registration_labels", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
-        """List of custom resources that should be synced by setup_kubernetes_cr """
+        """List of custom resources that should be synced by setup_kubernetes_cr"""
         return self.config_dict.get("kubernetes_custom_resources", [])
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
@@ -2505,24 +2508,24 @@ class SystemPaastaConfig:
         return self.config_dict.get("disabled_watchers", [])
 
     def get_vault_environment(self) -> Optional[str]:
-        """ Get the environment name for the vault cluster
+        """Get the environment name for the vault cluster
         This must match the environment keys in the secret json files
         used by all services in this cluster"""
         return self.config_dict.get("vault_environment")
 
     def get_vault_cluster_config(self) -> dict:
-        """ Get a map from paasta_cluster to vault ecosystem. We need
+        """Get a map from paasta_cluster to vault ecosystem. We need
         this because not every ecosystem will have its own vault cluster"""
         return self.config_dict.get("vault_cluster_map", {})
 
     def get_secret_provider_name(self) -> str:
-        """ Get the name for the configured secret_provider, used to
+        """Get the name for the configured secret_provider, used to
         decrypt secrets"""
         return self.config_dict.get("secret_provider", "paasta_tools.secret_providers")
 
     def get_slack_token(self) -> str:
-        """ Get a slack token for slack notifications. Returns None if there is
-        none available """
+        """Get a slack token for slack notifications. Returns None if there is
+        none available"""
         return self.config_dict.get("slack", {}).get("token", None)
 
     def get_tron_config(self) -> dict:
@@ -2535,14 +2538,14 @@ class SystemPaastaConfig:
         return self.config_dict.get("supported_storage_classes", [])
 
     def get_envoy_admin_endpoint_format(self) -> str:
-        """ Get the format string for Envoy's admin interface. """
+        """Get the format string for Envoy's admin interface."""
         return self.config_dict.get(
             "envoy_admin_endpoint_format", "http://{host:s}:{port:d}/{endpoint:s}"
         )
 
     def get_envoy_admin_port(self) -> int:
-        """ Get the port that Envoy's admin interface is listening on
-        from /etc/services. """
+        """Get the port that Envoy's admin interface is listening on
+        from /etc/services."""
         return socket.getservbyname(
             self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
         )
@@ -2647,7 +2650,8 @@ class SystemPaastaConfig:
 
     def get_api_profiling_config(self) -> Dict:
         return self.config_dict.get(
-            "api_profiling_config", {"cprofile_sampling_enabled": False},
+            "api_profiling_config",
+            {"cprofile_sampling_enabled": False},
         )
 
     def get_skip_cpu_override_validation_services(self) -> List[str]:
@@ -3005,7 +3009,10 @@ def read_service_instance_names(
     instance_list = []
     conf_file = f"{instance_type}-{cluster}"
     config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir, deepcopy=False,
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
     config = filter_templates_from_config(config)
     if instance_type == "tron":
@@ -3126,11 +3133,17 @@ def get_services_for_cluster(
 
 
 def load_service_instance_configs(
-    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+    service: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
     user_configs = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir, deepcopy=False,
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
     user_configs = filter_templates_from_config(user_configs)
     auto_configs = load_service_instance_auto_configs(
@@ -3140,7 +3153,8 @@ def load_service_instance_configs(
     for instance_name, user_config in user_configs.items():
         auto_config = auto_configs.get(instance_name, {})
         merged[instance_name] = deep_merge_dictionaries(
-            overrides=user_config, defaults=auto_config,
+            overrides=user_config,
+            defaults=auto_config,
         )
     return merged
 
@@ -3173,11 +3187,17 @@ def load_service_instance_config(
     auto_config = load_service_instance_auto_configs(
         service, instance_type, cluster, soa_dir
     ).get(instance, {})
-    return deep_merge_dictionaries(overrides=user_config, defaults=auto_config,)
+    return deep_merge_dictionaries(
+        overrides=user_config,
+        defaults=auto_config,
+    )
 
 
 def load_service_instance_auto_configs(
-    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+    service: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, Any]]:
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
     conf_file = f"{instance_type}-{cluster}"
@@ -3418,7 +3438,7 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
 
 
 def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
-    """ We encode the sha of the code that built a docker image *in* the docker
+    """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the sha.
     """
     parts = docker_url.split("/")
@@ -3428,7 +3448,7 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """ code_sha is hash extracted from docker url prefixed with "git", short
+    """code_sha is hash extracted from docker url prefixed with "git", short
     hash is used because it's embedded in marathon app names and there's length
     limit.
     """
@@ -3496,7 +3516,7 @@ def deploy_whitelist_to_constraints(
 
 
 def terminal_len(text: str) -> int:
-    """Return the number of characters that text will take up on a terminal. """
+    """Return the number of characters that text will take up on a terminal."""
     return len(remove_ansi_escape_sequences(text))
 
 
@@ -3672,8 +3692,10 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
         return choices[0][0]
 
     chooser = choice.Menu(choices=choices, global_actions=global_actions)
-    chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
-        choosing=str(choosing)
+    chooser.title = (
+        'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
+            choosing=str(choosing)
+        )
     )
     try:
         result = chooser.ask()

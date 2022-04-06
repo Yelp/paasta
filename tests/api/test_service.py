@@ -21,7 +21,9 @@ from paasta_tools.api.views.service import list_services_for_cluster
 @mock.patch(
     "paasta_tools.api.views.service.list_all_instances_for_service", autospec=True
 )
-def test_list_instances(mock_list_all_instances_for_service,):
+def test_list_instances(
+    mock_list_all_instances_for_service,
+):
     fake_instances = ["fake_instance_a", "fake_instance_b", "fake_instance_c"]
     mock_list_all_instances_for_service.return_value = fake_instances
 
@@ -33,7 +35,9 @@ def test_list_instances(mock_list_all_instances_for_service,):
 
 
 @mock.patch("paasta_tools.api.views.service.get_services_for_cluster", autospec=True)
-def test_list_services_for_cluster(mock_get_services_for_cluster,):
+def test_list_services_for_cluster(
+    mock_get_services_for_cluster,
+):
     fake_services_and_instances = [
         ("fake_service", "fake_instance_a"),
         ("fake_service", "fake_instance_b"),

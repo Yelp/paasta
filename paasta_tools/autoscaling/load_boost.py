@@ -89,8 +89,7 @@ def get_boosted_load(zk_boost_path: str, current_load: float) -> float:
 
 
 def get_boost_factor(zk_boost_path: str) -> float:
-    """This function returns the boost factor value if a boost is active
-    """
+    """This function returns the boost factor value if a boost is active"""
     current_time = get_time()
 
     with ZookeeperPool() as zk:

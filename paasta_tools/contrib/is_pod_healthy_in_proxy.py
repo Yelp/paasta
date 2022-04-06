@@ -62,11 +62,15 @@ def get_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "pod_port", help="Pod Port", type=int,
+        "pod_port",
+        help="Pod Port",
+        type=int,
     )
 
     parser.add_argument(
-        "services", nargs="+", help="List of service.instance names",
+        "services",
+        nargs="+",
+        help="List of service.instance names",
     )
 
     return parser

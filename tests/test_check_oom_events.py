@@ -12,7 +12,10 @@ from paasta_tools.check_oom_events import read_oom_events_from_scribe
 
 @pytest.fixture(autouse=True)
 def mock_scribereader():
-    with mock.patch("paasta_tools.check_oom_events.scribereader", autospec=True,) as m:
+    with mock.patch(
+        "paasta_tools.check_oom_events.scribereader",
+        autospec=True,
+    ) as m:
         yield m
 
 
@@ -56,7 +59,8 @@ def instance_config():
 @pytest.fixture(autouse=True)
 def mock_load_system_paasta_config():
     with mock.patch(
-        "paasta_tools.check_oom_events.load_system_paasta_config", autospec=True,
+        "paasta_tools.check_oom_events.load_system_paasta_config",
+        autospec=True,
     ) as mock_load:
         mock_load.return_value.get_cluster.return_value = "fake_cluster"
         mock_load.return_value.get_log_reader.return_value = {
@@ -68,7 +72,8 @@ def mock_load_system_paasta_config():
 @pytest.fixture(autouse=True)
 def mock_scribe_env_to_locations():
     with mock.patch(
-        "paasta_tools.check_oom_events.scribe_env_to_locations", autospec=True,
+        "paasta_tools.check_oom_events.scribe_env_to_locations",
+        autospec=True,
     ) as m:
         m.return_value = {
             "ecosystem": "an_ecosystem",
@@ -129,7 +134,9 @@ def test_compose_sensu_status_below_threshold(instance_config):
 
 
 def test_read_oom_events_from_scribe(
-    mock_scribereader, scribereader_output, mock_scribe_env_to_locations,
+    mock_scribereader,
+    scribereader_output,
+    mock_scribe_env_to_locations,
 ):
     mock_scribereader.get_tail_host_and_port.return_value = "localhost", 12345
     mock_scribereader.get_stream_tailer.return_value = scribereader_output
@@ -181,5 +188,7 @@ def test_main(
     main(["", "-s", "some_superregion", "-d", "soa_dir", "--check-interval", "3"])
     assert mock_send_sensu_event.call_count == 3
     mock_latest_oom_events.assert_called_once_with(
-        cluster="fake_cluster", superregion="some_superregion", interval=180,
+        cluster="fake_cluster",
+        superregion="some_superregion",
+        interval=180,
     )

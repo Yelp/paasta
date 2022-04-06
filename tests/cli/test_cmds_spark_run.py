@@ -160,7 +160,9 @@ def test_get_docker_image(
 @pytest.mark.parametrize("mrjob", [True, False])
 def test_get_smart_paasta_instance_name(mrjob):
     args = argparse.Namespace(
-        instance="foo", cmd="USER blah spark-submit blah blah blah", mrjob=mrjob,
+        instance="foo",
+        cmd="USER blah spark-submit blah blah blah",
+        mrjob=mrjob,
     )
     with mock.patch(
         "paasta_tools.cli.cmds.spark_run.get_username",
@@ -176,7 +178,9 @@ def test_get_smart_paasta_instance_name(mrjob):
 
 def test_get_smart_paasta_instance_name_tron():
     args = argparse.Namespace(
-        instance="foo", cmd="spark-submit blah blah blah", mrjob=True,
+        instance="foo",
+        cmd="spark-submit blah blah blah",
+        mrjob=True,
     )
     with mock.patch(
         "paasta_tools.cli.cmds.spark_run.os.environ",
@@ -887,7 +891,10 @@ class TestConfigureAndRunDockerContainer:
         # with user name and port
         ("spark-submit path/to/my-script.jar", "paasta_spark_run_fake_user"),
         # non jupyter-lab cmd use the default name and append user name and port
-        ("pyspark", "paasta_spark_run_fake_user",),
+        (
+            "pyspark",
+            "paasta_spark_run_fake_user",
+        ),
         # jupyterlab we have a different name
         ("jupyter-lab", "paasta_jupyter_fake_user"),
     ],

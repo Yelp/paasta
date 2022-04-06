@@ -20,7 +20,10 @@ def parse_args():
         dest="git_remote",
     )
     parser.add_argument(
-        "--branch", help="Branch name to push to", required=True, dest="branch",
+        "--branch",
+        help="Branch name to push to",
+        required=True,
+        dest="branch",
     )
     parser.add_argument(
         "--local-dir",
@@ -44,7 +47,10 @@ def parse_args():
         dest="source_id",
     )
     parser.add_argument(
-        "--service", help="Service to modify", required=True, dest="service",
+        "--service",
+        help="Service to modify",
+        required=True,
+        dest="service",
     )
     parser.add_argument(
         "--min-instance-count",
@@ -162,7 +168,11 @@ def main(args):
             # Add the missing steps and write to deploy config
             for step in steps_to_add:
                 deploy_file["pipeline"].append(
-                    {"step": step, "wait_for_deployment": True, "disabled": True,}
+                    {
+                        "step": step,
+                        "wait_for_deployment": True,
+                        "disabled": True,
+                    }
                 )
                 log.info(f"{step} added to deploy config")
             updater.write_configs(args.service, "deploy", deploy_file)

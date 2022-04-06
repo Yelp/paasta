@@ -25,7 +25,8 @@ def test_get_autoscaler_count(mock_get_instance_config):
     request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
 
     mock_get_instance_config.return_value = mock.MagicMock(
-        get_instances=mock.MagicMock(return_value=123), spec=KubernetesDeploymentConfig,
+        get_instances=mock.MagicMock(return_value=123),
+        spec=KubernetesDeploymentConfig,
     )
     response = autoscaler.get_autoscaler_count(request)
     assert response.json_body["desired_instances"] == 123

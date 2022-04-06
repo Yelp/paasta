@@ -260,13 +260,15 @@ class TestKubernetesDeploymentConfig:
     @pytest.fixture(autouse=True)
     def mock_load_kube_config(self):
         with mock.patch(
-            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True,
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config",
+            autospec=True,
         ) as m:
             yield m
 
     def setup_method(self, method):
         mock_config_dict = KubernetesDeploymentConfigDict(
-            bounce_method="crossover", instances=3,
+            bounce_method="crossover",
+            instances=3,
         )
         self.deployment = KubernetesDeploymentConfig(
             service="kurupt",
@@ -286,7 +288,8 @@ class TestKubernetesDeploymentConfig:
         if isinstance(obj, V2beta2HorizontalPodAutoscaler):
             obj = KubeClient().jsonify(obj)
             obj["spec"]["behavior"] = deployment.get_autoscaling_scaling_policy(
-                autoscaling_params={}, max_replicas=max_replicas,
+                autoscaling_params={},
+                max_replicas=max_replicas,
             )
         return obj
 
@@ -343,15 +346,19 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value="crossover",
         ) as mock_get_bounce_method:
-            assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
-                type="RollingUpdate",
-                rolling_update=V1RollingUpdateDeployment(
-                    max_surge="100%", max_unavailable="0%"
-                ),
+            assert (
+                self.deployment.get_deployment_strategy_config()
+                == V1DeploymentStrategy(
+                    type="RollingUpdate",
+                    rolling_update=V1RollingUpdateDeployment(
+                        max_surge="100%", max_unavailable="0%"
+                    ),
+                )
             )
             mock_get_bounce_method.return_value = "downthenup"
-            assert self.deployment.get_deployment_strategy_config() == V1DeploymentStrategy(
-                type="Recreate"
+            assert (
+                self.deployment.get_deployment_strategy_config()
+                == V1DeploymentStrategy(type="Recreate")
             )
 
     def test_get_sanitised_volume_name(self):
@@ -677,7 +684,9 @@ class TestKubernetesDeploymentConfig:
     ):
         """When limit is partially specified, it should use the default requests, and limits should be the same except for the overridden value."""
         self.deployment.config_dict["sidecar_resource_requirements"] = {
-            "hacheck": {"limits": {"cpu": 1.0},}
+            "hacheck": {
+                "limits": {"cpu": 1.0},
+            }
         }
 
         assert self.deployment.get_sidecar_resource_requirements(
@@ -704,7 +713,11 @@ class TestKubernetesDeploymentConfig:
             assert ret.ports[0].container_port == 9117
 
     @pytest.mark.parametrize(
-        "uwsgi_stats_port,expected_port", [(None, "8889"), (31337, "31337"),],
+        "uwsgi_stats_port,expected_port",
+        [
+            (None, "8889"),
+            (31337, "31337"),
+        ],
     )
     def test_get_uwsgi_exporter_sidecar_container_stats_port(
         self, uwsgi_stats_port, expected_port
@@ -717,7 +730,10 @@ class TestKubernetesDeploymentConfig:
         self.deployment.config_dict.update(
             {
                 "max_instances": 5,
-                "autoscaling": {"metrics_provider": "uwsgi", "use_prometheus": True,},
+                "autoscaling": {
+                    "metrics_provider": "uwsgi",
+                    "use_prometheus": True,
+                },
             }
         )
         if uwsgi_stats_port is not None:
@@ -749,7 +765,10 @@ class TestKubernetesDeploymentConfig:
         self.deployment.config_dict.update(
             {
                 "max_instances": 5,
-                "autoscaling": {"metrics_provider": "uwsgi", "use_prometheus": True,},
+                "autoscaling": {
+                    "metrics_provider": "uwsgi",
+                    "use_prometheus": True,
+                },
             }
         )
 
@@ -768,7 +787,12 @@ class TestKubernetesDeploymentConfig:
 
     def test_should_run_uwsgi_exporter_sidecar_defaults(self):
         self.deployment.config_dict.update(
-            {"max_instances": 5, "autoscaling": {"metrics_provider": "uwsgi",},}
+            {
+                "max_instances": 5,
+                "autoscaling": {
+                    "metrics_provider": "uwsgi",
+                },
+            }
         )
 
         system_paasta_config_enabled = mock.Mock(
@@ -889,18 +913,29 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value=4096,
         ):
-            assert self.deployment.get_resource_requirements() == V1ResourceRequirements(
-                limits={"cpu": 1.3, "memory": "2048Mi", "ephemeral-storage": "4096Mi"},
-                requests={
-                    "cpu": 0.3,
-                    "memory": "2048Mi",
-                    "ephemeral-storage": "4096Mi",
-                },
+            assert (
+                self.deployment.get_resource_requirements()
+                == V1ResourceRequirements(
+                    limits={
+                        "cpu": 1.3,
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "4096Mi",
+                    },
+                    requests={
+                        "cpu": 0.3,
+                        "memory": "2048Mi",
+                        "ephemeral-storage": "4096Mi",
+                    },
+                )
             )
 
     @pytest.mark.parametrize(
         "prometheus_port,expected_ports",
-        [(None, [8888]), (8888, [8888]), (29143, [8888, 29143]),],
+        [
+            (None, [8888]),
+            (8888, [8888]),
+            (29143, [8888, 29143]),
+        ],
     )
     def test_get_kubernetes_containers(self, prometheus_port, expected_ports):
 
@@ -1470,7 +1505,8 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @mock.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True,
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        autospec=True,
     )
     @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_termination_grace_period",
@@ -1657,7 +1693,9 @@ class TestKubernetesDeploymentConfig:
                         V1NodeSelectorTerm(
                             match_expressions=[
                                 V1NodeSelectorRequirement(
-                                    key="habitat", operator="In", values=["habitat_a"],
+                                    key="habitat",
+                                    operator="In",
+                                    values=["habitat_a"],
                                 ),
                                 V1NodeSelectorRequirement(
                                     key="instance_type",
@@ -1838,7 +1876,13 @@ class TestKubernetesDeploymentConfig:
                 name="kurupt-fm",
             )
 
-    @pytest.mark.parametrize("metrics_provider", ("mesos_cpu", "cpu",))
+    @pytest.mark.parametrize(
+        "metrics_provider",
+        (
+            "mesos_cpu",
+            "cpu",
+        ),
+    )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
         config_dict = KubernetesDeploymentConfigDict(
@@ -1856,7 +1900,10 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1873,13 +1920,16 @@ class TestKubernetesDeploymentConfig:
                         resource=V2beta2ResourceMetricSource(
                             name="cpu",
                             target=V2beta2MetricTarget(
-                                type="Utilization", average_utilization=50.0,
+                                type="Utilization",
+                                average_utilization=50.0,
                             ),
                         ),
                     )
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -1888,7 +1938,13 @@ class TestKubernetesDeploymentConfig:
             == return_value
         )
 
-    @pytest.mark.parametrize("metrics_provider", ("mesos_cpu", "cpu",))
+    @pytest.mark.parametrize(
+        "metrics_provider",
+        (
+            "mesos_cpu",
+            "cpu",
+        ),
+    )
     def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
         # with cpu
         config_dict = KubernetesDeploymentConfigDict(
@@ -1910,7 +1966,10 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -1933,7 +1992,10 @@ class TestKubernetesDeploymentConfig:
                                 kind="Deployment",
                                 name="fake_name",
                             ),
-                            target=V2beta2MetricTarget(type="Value", value=50,),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=50,
+                            ),
                         ),
                     ),
                     V2beta2MetricSpec(
@@ -1941,13 +2003,16 @@ class TestKubernetesDeploymentConfig:
                         resource=V2beta2ResourceMetricSource(
                             name="cpu",
                             target=V2beta2MetricTarget(
-                                type="Utilization", average_utilization=50.0,
+                                type="Utilization",
+                                average_utilization=50.0,
                             ),
                         ),
                     ),
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -1987,12 +2052,17 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations={},
+                name="fake_name",
+                namespace="paasta",
+                annotations={},
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 max_replicas=3,
@@ -2004,7 +2074,10 @@ class TestKubernetesDeploymentConfig:
                             metric=V2beta2MetricIdentifier(
                                 name="service-instance-uwsgi-prom",
                             ),
-                            target=V2beta2MetricTarget(type="Value", value=1,),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,
+                            ),
                             described_object=V2beta2CrossVersionObjectReference(
                                 api_version="apps/v1",
                                 kind="Deployment",
@@ -2014,7 +2087,9 @@ class TestKubernetesDeploymentConfig:
                     ),
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name="fake_name",
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
                 ),
             ),
         )
@@ -2047,7 +2122,10 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         hpa_dict = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
         )
         assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
             "stabilizationWindowSeconds": 123,
@@ -2071,13 +2149,17 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
         )
         return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config, "fake_name", "cluster", KubeClient(),
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
         )
         expected_res = None
         assert expected_res == return_value
 
     @mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes", autospec=True,
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret_hashes",
+        autospec=True,
     )
     @pytest.mark.parametrize(
         "app_type,app_spec_type",
@@ -2090,7 +2172,10 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_sanitize_for_config_hash(
-        self, mock_get_kubernetes_secret_hashes, app_type, app_spec_type,
+        self,
+        mock_get_kubernetes_secret_hashes,
+        app_type,
+        app_spec_type,
     ):
         def make_deployment_config():
             return app_type(
@@ -2100,7 +2185,9 @@ class TestKubernetesDeploymentConfig:
                     selector=V1LabelSelector(match_labels={"freq": "108.9"}),
                     template=V1PodTemplateSpec(
                         spec=V1PodSpec(
-                            containers=[V1Container(name="fake_container", env=[]),],
+                            containers=[
+                                V1Container(name="fake_container", env=[]),
+                            ],
                         ),
                     ),
                 ),
@@ -2351,8 +2438,8 @@ def test_get_kubernetes_services_running_here_for_nerve():
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace:
 
-        mock_load_service_namespace.side_effect = lambda service, namespace, soa_dir: MockNerveDict(
-            name=namespace
+        mock_load_service_namespace.side_effect = (
+            lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         )
         mock_get_kubernetes_services_running_here.return_value = [
             KubernetesServiceRegistration(
@@ -2581,7 +2668,11 @@ def test_list_all_deployments():
     ],
 )
 def test_get_tail_lines_for_kubernetes_container(
-    event_loop, pod_logs, container_name, term_error, expected,
+    event_loop,
+    pod_logs,
+    container_name,
+    term_error,
+    expected,
 ):
     kube_client = mock.MagicMock()
     kube_client.core.read_namespaced_pod_log.side_effect = [pod_logs]
@@ -2596,7 +2687,10 @@ def test_get_tail_lines_for_kubernetes_container(
 
     tail_lines = event_loop.run_until_complete(
         kubernetes_tools.get_tail_lines_for_kubernetes_container(
-            kube_client=kube_client, pod=pod, container=container, num_tail_lines=10,
+            kube_client=kube_client,
+            pod=pod,
+            container=container,
+            num_tail_lines=10,
         ),
     )
 
@@ -2739,7 +2833,16 @@ def test_set_instances_for_kubernetes_service_statefulset(mock_kube_deploy_confi
 
 @pytest.mark.parametrize(
     "has_persistent_volumes, expected_annotations",
-    [(True, {"I-am": "stateful_set"},), (False, {"I-am": "deployment"},),],
+    [
+        (
+            True,
+            {"I-am": "stateful_set"},
+        ),
+        (
+            False,
+            {"I-am": "deployment"},
+        ),
+    ],
 )
 @mock.patch("paasta_tools.kubernetes_tools.KubernetesDeploymentConfig", autospec=True)
 def test_get_annotations_for_kubernetes_service(
@@ -2964,8 +3067,8 @@ def test_get_kubernetes_app_by_name():
 
     mock_stateful_set = mock.Mock()
     mock_client.deployments.read_namespaced_deployment_status.reset_mock()
-    mock_client.deployments.read_namespaced_deployment_status.side_effect = ApiException(
-        404
+    mock_client.deployments.read_namespaced_deployment_status.side_effect = (
+        ApiException(404)
     )
     mock_client.deployments.read_namespaced_stateful_set_status.return_value = (
         mock_stateful_set
@@ -3486,9 +3589,17 @@ def test_warning_big_bounce():
         # error case: no node name, not scheduled
         (None, ApiException(), "NotScheduled"),
         # pod has no hostname label, default to node_name
-        ("a_node_name", mock.Mock(metadata=mock.Mock(labels={})), "a_node_name",),
+        (
+            "a_node_name",
+            mock.Mock(metadata=mock.Mock(labels={})),
+            "a_node_name",
+        ),
         # ApiException, default to node_name
-        ("a_node_name", ApiException(), "a_node_name",),
+        (
+            "a_node_name",
+            ApiException(),
+            "a_node_name",
+        ),
     ],
 )
 def test_get_pod_hostname(pod_node_name, node, expected):
@@ -3504,7 +3615,8 @@ def test_get_pod_hostname(pod_node_name, node, expected):
 
 def test_get_pod_node():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.get_all_nodes", autospec=True,
+        "paasta_tools.kubernetes_tools.get_all_nodes",
+        autospec=True,
     ) as mock_get_all_nodes:
         mock_name_1 = mock.Mock()
         mock_name_2 = mock.Mock()
@@ -3583,7 +3695,10 @@ def test_running_task_allocation_get_pod_pool():
 
 @pytest.mark.parametrize(
     "config_dict, expected_management_policy",
-    [({"pod_management_policy": "Parallel"}, "Parallel"), ({}, "OrderedReady"),],
+    [
+        ({"pod_management_policy": "Parallel"}, "Parallel"),
+        ({}, "OrderedReady"),
+    ],
 )
 def test_get_pod_management_policy(config_dict, expected_management_policy):
     deployment = KubernetesDeploymentConfig(
@@ -3605,7 +3720,8 @@ def test_create_or_find_service_account_name_new():
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
     ) as mock_kube_client:
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
@@ -3641,7 +3757,8 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
     ) as mock_kube_client:
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
@@ -3673,9 +3790,14 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
         mock_client.rbac.create_namespaced_role_binding.assert_called_once_with(
             namespace=namespace,
             body=V1RoleBinding(
-                metadata=V1ObjectMeta(name=expected_sa_name, namespace=namespace,),
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                ),
                 role_ref=V1RoleRef(
-                    api_group="rbac.authorization.k8s.io", kind="Role", name=k8s_role,
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
                 ),
                 subjects=[
                     V1Subject(
@@ -3696,7 +3818,8 @@ def test_create_or_find_service_account_name_existing():
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
     ) as mock_kube_client:
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
@@ -3720,9 +3843,14 @@ def test_create_or_find_service_account_name_existing():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = [
             V1RoleBinding(
                 kind="ServiceAccount",
-                metadata=V1ObjectMeta(name=expected_sa_name, namespace=namespace,),
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                ),
                 role_ref=V1RoleRef(
-                    api_group="rbac.authorization.k8s.io", kind="Role", name=k8s_role,
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
                 ),
                 subjects=[
                     V1Subject(
@@ -3750,7 +3878,8 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
     ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient", autospec=False,
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
     ) as mock_kube_client:
         mock_client = mock.Mock()
         mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)

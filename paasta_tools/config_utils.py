@@ -196,7 +196,11 @@ class AutoConfigUpdater:
         self, service: str, extra_info: str, sub_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         path = f"{sub_dir}/{extra_info}" if sub_dir else extra_info
-        return read_extra_service_information(service, path, soa_dir=self.working_dir,)
+        return read_extra_service_information(
+            service,
+            path,
+            soa_dir=self.working_dir,
+        )
 
     def validate(self):
         return_code = True

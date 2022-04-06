@@ -29,7 +29,10 @@ def parse_args():
         dest="git_remote",
     )
     parser.add_argument(
-        "--branch", help="Branch name to push to", required=True, dest="branch",
+        "--branch",
+        help="Branch name to push to",
+        required=True,
+        dest="branch",
     )
     parser.add_argument(
         "--local-dir",
@@ -53,10 +56,16 @@ def parse_args():
         dest="source_id",
     )
     parser.add_argument(
-        "--service", help="Service to modify", required=True, dest="service",
+        "--service",
+        help="Service to modify",
+        required=True,
+        dest="service",
     )
     parser.add_argument(
-        "--shard-name", help="Shard name to remove", required=True, dest="shard_name",
+        "--shard-name",
+        help="Shard name to remove",
+        required=True,
+        dest="shard_name",
     )
     parser.add_argument(
         "--superregion",

@@ -104,7 +104,9 @@ def main() -> None:
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
     services_to_k8s_namespaces = get_services_to_k8s_namespaces(
-        service_list=args.service_list, cluster=cluster, soa_dir=args.soa_dir,
+        service_list=args.service_list,
+        cluster=cluster,
+        soa_dir=args.soa_dir,
     )
 
     sys.exit(0) if sync_all_secrets(
@@ -119,7 +121,9 @@ def main() -> None:
 
 
 def get_services_to_k8s_namespaces(
-    service_list: List[str], cluster: str, soa_dir: str,
+    service_list: List[str],
+    cluster: str,
+    soa_dir: str,
 ) -> Dict[str, Set[str]]:
     services_to_k8s_namespaces: Dict[str, Set[str]] = defaultdict(set)
     for service in service_list:
