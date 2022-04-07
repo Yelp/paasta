@@ -876,9 +876,11 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             # spark, unlike normal batches, needs to expose  several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
-                _get_spark_ports(
-                    system_paasta_config=load_system_paasta_config()
-                ).values()
+                set(
+                    _get_spark_ports(
+                        system_paasta_config=load_system_paasta_config()
+                    ).values()
+                )
             )
 
     elif executor in MESOS_EXECUTOR_NAMES:
