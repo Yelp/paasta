@@ -756,7 +756,10 @@ def run_docker_container(
             print(json.dumps(docker_run_cmd))
         return 0
     else:
-        print("Running docker command:\n%s" % PaastaColors.grey(joined_docker_run_cmd))
+        print(
+            "Running docker command:\n%s" % PaastaColors.grey(joined_docker_run_cmd),
+            flush=True,
+        )
 
     merged_env = {**os.environ, **environment}
 
@@ -775,7 +778,9 @@ def run_docker_container(
     container_started = False
     container_id = None
     try:
-        print("docker_run_cmd:", json.dumps(docker_run_cmd), file=sys.stderr)
+        print(
+            "docker_run_cmd:", json.dumps(docker_run_cmd), file=sys.stderr, flush=True
+        )
 
         (returncode, output) = _run(docker_run_cmd, env=merged_env)
         if returncode != 0:
@@ -1036,9 +1041,8 @@ def docker_config_available():
 
 
 def paasta_local_run(args):
-    print("beginning local-run")
-    print("beginning local-run, but to stderr this time", file=sys.stderr)
-    return 69
+    print("beginning local-run", flush=True)
+    print("beginning local-run, but to stderr this time", file=sys.stderr, flush=True)
     if args.action == "pull" and os.geteuid() != 0 and not docker_config_available():
         print("Re-executing paasta local-run --pull with sudo..")
         os.execvp("sudo", ["sudo", "-H"] + sys.argv)
@@ -1095,11 +1099,11 @@ def paasta_local_run(args):
         docker_url = os.environ.get("DOCKER_TAG", default_tag)
         os.environ["DOCKER_TAG"] = docker_url
         pull_image = False
-        print("calling paasta_cook_image")
+        print("calling paasta_cook_image", flush=True)
         cook_return = paasta_cook_image(
             args=None, service=service, soa_dir=args.yelpsoa_config_root
         )
-        print(f"paasta_cook_image finished with exit code {cook_return}")
+        print(f"paasta_cook_image finished with exit code {cook_return}", flush=True)
         if cook_return != 0:
             return cook_return
     elif args.action == "dry_run":
