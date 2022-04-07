@@ -1617,6 +1617,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             else:
+                # Default to none for progress_deadline_seconds to not change
+                # existing deployments
+                progress_deadline_seconds = None
+                if self.get_min_task_uptime() >= 600:
+                    # 600s is kubernetes default
+                    progress_deadline_seconds = self.get_min_task_uptime()
                 complete_config = V1Deployment(
                     api_version="apps/v1",
                     kind="Deployment",
@@ -1624,6 +1630,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     spec=V1DeploymentSpec(
                         replicas=self.get_desired_instances(),
                         min_ready_seconds=self.get_min_task_uptime(),
+                        progress_deadline_seconds=progress_deadline_seconds,
                         selector=V1LabelSelector(
                             match_labels={
                                 "paasta.yelp.com/service": self.get_service(),
