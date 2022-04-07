@@ -1036,6 +1036,7 @@ def docker_config_available():
 
 
 def paasta_local_run(args):
+    print("beginning local-run")
     if args.action == "pull" and os.geteuid() != 0 and not docker_config_available():
         print("Re-executing paasta local-run --pull with sudo..")
         os.execvp("sudo", ["sudo", "-H"] + sys.argv)
@@ -1092,9 +1093,11 @@ def paasta_local_run(args):
         docker_url = os.environ.get("DOCKER_TAG", default_tag)
         os.environ["DOCKER_TAG"] = docker_url
         pull_image = False
+        print("calling paasta_cook_image")
         cook_return = paasta_cook_image(
             args=None, service=service, soa_dir=args.yelpsoa_config_root
         )
+        print(f"paasta_cook_image finished with exit code {cook_return}")
         if cook_return != 0:
             return cook_return
     elif args.action == "dry_run":
@@ -1107,6 +1110,7 @@ def paasta_local_run(args):
         docker_sha = args.sha
 
     try:
+        print("calling configure_and_run_docker_container")
         return configure_and_run_docker_container(
             docker_client=docker_client,
             docker_url=docker_url,

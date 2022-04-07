@@ -16,7 +16,9 @@ from behave import then
 
 @then('it should have a return code of "{code:d}"')
 def see_expected_return_code(context, code):
+    print("_run output:")
     print(context.output)
+    print("_run return code:")
     print(context.return_code)
     print()
     assert context.return_code == code
