@@ -1037,6 +1037,7 @@ def docker_config_available():
 
 def paasta_local_run(args):
     print("beginning local-run")
+    print("beginning local-run, but to stderr this time", file=sys.stderr)
     if args.action == "pull" and os.geteuid() != 0 and not docker_config_available():
         print("Re-executing paasta local-run --pull with sudo..")
         os.execvp("sudo", ["sudo", "-H"] + sys.argv)
