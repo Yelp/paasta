@@ -178,6 +178,8 @@ DISCOVERY_ATTRIBUTES = {
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
 DEFAULT_PRESTOP_SLEEP_SECONDS = 30
+DEFAULT_PROGRESS_DEADLINE_SECONDS = 600
+DEFAULT_PROGRESS_DEADLINE_SECONDS_OFFSET = 60
 DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
@@ -1620,9 +1622,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 # Default to none for progress_deadline_seconds to not change
                 # existing deployments
                 progress_deadline_seconds = None
-                if self.get_min_task_uptime() >= 600:
-                    # 600s is kubernetes default
-                    progress_deadline_seconds = self.get_min_task_uptime()
+                if self.get_min_task_uptime() >= DEFAULT_PROGRESS_DEADLINE_SECONDS:
+                    progress_deadline_seconds = (
+                        self.get_min_task_uptime()
+                        + DEFAULT_PROGRESS_DEADLINE_SECONDS_OFFSET
+                    )
                 complete_config = V1Deployment(
                     api_version="apps/v1",
                     kind="Deployment",
