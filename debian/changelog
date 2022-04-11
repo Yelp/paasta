@@ -1,3 +1,12 @@
+paasta-tools (0.125.4) xenial; urgency=medium
+
+  * 0.125.4 tagged with 'make release'
+    Commit: Merge pull request #3326 from Yelp/COREML-
+    3036_add_conf_log_and_stage_progress_in_spark  COREML-3036 | bump
+    service-configuration-lib to 2.10.1
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 11 Apr 2022 07:32:42 -0700
+
 paasta-tools (0.125.3) xenial; urgency=medium
 
   * 0.125.3 tagged with 'make release'
