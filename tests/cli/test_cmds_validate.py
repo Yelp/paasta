@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 
 import mock
@@ -19,6 +20,7 @@ from mock import patch
 
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
+from paasta_tools.cli.cmds.validate import get_next_x_cron_runs
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import paasta_validate
@@ -853,3 +855,33 @@ def test_validate_autoscaling_configs_no_offset_specified(
         ),
     ):
         assert validate_autoscaling_configs("fake-service-path") is True
+
+
+@pytest.mark.parametrize(
+    "num_runs, cron_schedule, start_date, expected",
+    [
+        (
+            5,
+            "0 22 * * 1-5",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            [
+                datetime.datetime(2022, 4, 12, 22, 0),
+                datetime.datetime(2022, 4, 13, 22, 0),
+                datetime.datetime(2022, 4, 14, 22, 0),
+                datetime.datetime(2022, 4, 15, 22, 0),
+                datetime.datetime(2022, 4, 18, 22, 0),
+            ],
+        ),
+        (
+            2,
+            "5 4 * * *",
+            datetime.datetime(2020, 12, 4, 18, 0),
+            [
+                datetime.datetime(2020, 12, 5, 4, 5),
+                datetime.datetime(2020, 12, 6, 4, 5),
+            ],
+        ),
+    ],
+)
+def test_get_next_x_cron_runs(num_runs, cron_schedule, start_date, expected):
+    assert get_next_x_cron_runs(num_runs, cron_schedule, start_date) == expected

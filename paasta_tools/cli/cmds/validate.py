@@ -17,12 +17,14 @@ import os
 import pkgutil
 import re
 from collections import Counter
+from datetime import datetime
 from glob import glob
 from typing import Any
 from typing import Dict
 from typing import Optional
 
 import yaml
+from croniter import croniter
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
@@ -35,6 +37,7 @@ from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import guess_service_name
+from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
@@ -43,6 +46,7 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import list_tron_clusters
+from paasta_tools.tron_tools import load_tron_service_config_no_cache
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
@@ -259,6 +263,13 @@ def add_subparser(subparsers):
         help="Service that you want to validate. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
     validate_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Display verbose output. This shows the next few cron runs scheduled.",
+    )
+    validate_parser.add_argument(
         "-y",
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
@@ -317,13 +328,27 @@ def path_to_soa_dir_service(service_path):
     return soa_dir, service
 
 
-def validate_tron(service_path):
+def validate_tron(service_path, verbose=False):
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
     for cluster in list_tron_clusters(service, soa_dir):
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
+        elif verbose:
+            service_config = load_tron_service_config_no_cache(service, cluster)
+            for config in service_config:
+                schedule = config.get_schedule()
+                num_runs = 5
+
+                if schedule.startswith("cron"):
+                    print(info_message(f"Next 5 cron runs for {config.get_name()}"))
+                    next_cron_runs = get_next_x_cron_runs(
+                        num_runs, schedule.replace("cron", ""), datetime.today()
+                    )
+
+                    for run in next_cron_runs:
+                        print(f"{run}")
 
     return returncode
 
@@ -567,6 +592,15 @@ def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vaul
     return return_value
 
 
+def get_next_x_cron_runs(num_runs, schedule, start_datetime):
+    iter = croniter(schedule, start_datetime)
+    next_runs = []
+    for _ in range(num_runs):
+        next_runs.append(iter.get_next(datetime))
+
+    return next_runs
+
+
 def validate_secrets(service_path):
     soa_dir, service = path_to_soa_dir_service(service_path)
     system_paasta_config = load_system_paasta_config()
@@ -598,7 +632,7 @@ def validate_secrets(service_path):
     return return_value
 
 
-def paasta_validate_soa_configs(service, service_path):
+def paasta_validate_soa_configs(service, service_path, verbose=False):
     """Analyze the service in service_path to determine if the conf files are valid
 
     :param service_path: Path to directory containing soa conf yaml files for service
@@ -614,7 +648,7 @@ def paasta_validate_soa_configs(service, service_path):
     if not validate_all_schemas(service_path):
         returncode = False
 
-    if not validate_tron(service_path):
+    if not validate_tron(service_path, verbose):
         returncode = False
 
     if not validate_paasta_objects(service_path):
@@ -642,5 +676,7 @@ def paasta_validate(args):
     """
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
-    if not paasta_validate_soa_configs(service, service_path):
+    verbose = args.verbose
+
+    if not paasta_validate_soa_configs(service, service_path, verbose):
         return 1
