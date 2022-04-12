@@ -21,6 +21,7 @@ from datetime import datetime
 from glob import glob
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
 
 import yaml
@@ -46,7 +47,7 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import list_tron_clusters
-from paasta_tools.tron_tools import load_tron_service_config_no_cache
+from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
@@ -267,7 +268,7 @@ def add_subparser(subparsers):
         "--verbose",
         action="store_true",
         required=False,
-        help="Display verbose output. This shows the next few cron runs scheduled.",
+        help="Toggle to display additional validation messages for humans.",
     )
     validate_parser.add_argument(
         "-y",
@@ -328,7 +329,7 @@ def path_to_soa_dir_service(service_path):
     return soa_dir, service
 
 
-def validate_tron(service_path, verbose=False):
+def validate_tron(service_path: str, verbose: bool = False) -> bool:
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
@@ -336,15 +337,18 @@ def validate_tron(service_path, verbose=False):
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
         elif verbose:
-            service_config = load_tron_service_config_no_cache(service, cluster)
+            # cron schedule has been validated and is safe to parse
+            service_config = load_tron_service_config(service, cluster)
             for config in service_config:
                 schedule = config.get_schedule()
-                num_runs = 5
 
                 if schedule.startswith("cron"):
-                    print(info_message(f"Next 5 cron runs for {config.get_name()}"))
-                    next_cron_runs = get_next_x_cron_runs(
-                        num_runs, schedule.replace("cron", ""), datetime.today()
+                    print(info_message(f"Upcoming runs for {config.get_name()}"))
+                    next_cron_runs = list_upcoming_runs(
+                        # most cron parsers won't understand our schedule tag, so we need to strip
+                        # that off before passing it to anything else
+                        cron_schedule=schedule.replace("cron", ""),
+                        starting_from=datetime.today(),
                     )
 
                     for run in next_cron_runs:
@@ -592,13 +596,11 @@ def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vaul
     return return_value
 
 
-def get_next_x_cron_runs(num_runs, schedule, start_datetime):
-    iter = croniter(schedule, start_datetime)
-    next_runs = []
-    for _ in range(num_runs):
-        next_runs.append(iter.get_next(datetime))
-
-    return next_runs
+def list_upcoming_runs(
+    cron_schedule: str, starting_from: datetime, num_runs: int = 5
+) -> List[str]:
+    iter = croniter(cron_schedule, starting_from)
+    return [iter.get_next(datetime) for _ in range(num_runs)]
 
 
 def validate_secrets(service_path):
@@ -676,7 +678,6 @@ def paasta_validate(args):
     """
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
-    verbose = args.verbose
 
-    if not paasta_validate_soa_configs(service, service_path, verbose):
+    if not paasta_validate_soa_configs(service, service_path, args.verbose):
         return 1

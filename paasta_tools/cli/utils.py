@@ -106,7 +106,7 @@ def x_mark():
     return PaastaColors.red("\u2717")
 
 
-def info_mark():
+def info_mark() -> str:
     """
     :return: string that can print an info symbol
     """
@@ -131,13 +131,13 @@ def failure(msg, link):
     return "{} {} {}".format(x_mark(), msg, PaastaColors.blue(link))
 
 
-def info_message(msg):
+def info_message(msg: str) -> str:
     """Format a paasta info message.
 
     :param msg: a string
     :return: a beautiful string
     """
-    return "{} {}".format(info_mark(), msg)
+    return f"{info_mark()} {msg}"
 
 
 class PaastaCheckMessages:
