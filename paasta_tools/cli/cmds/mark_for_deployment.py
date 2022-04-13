@@ -1503,9 +1503,9 @@ def check_if_instance_is_done(
                     instance, service, cluster
                 )
             )
-        elif e.body and "Temporary" in e.body:
+        elif e.status == 599:  # Temporary issue
             log.warning(
-                f"Timed out fetching service status from PaaSTA API for {cluster}. Will retry on next poll interval."
+                f"Temporary issue fetching service status from PaaSTA API for {cluster}. Will retry on next poll interval."
             )
         else:  # 500 - error talking to api
             log.warning(

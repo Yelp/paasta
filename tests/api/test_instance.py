@@ -1316,7 +1316,7 @@ class TestBounceStatus:
         mock_validate_service_instance.return_value = "kubernetes"
         with pytest.raises(ApiFailure) as excinfo:
             instance.bounce_status(mock_request)
-        assert excinfo.value.err == 500
+        assert excinfo.value.err == 599
         assert (
             excinfo.value.msg
             == "Temporary issue fetching bounce status. Please try again."
