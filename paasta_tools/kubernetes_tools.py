@@ -1793,6 +1793,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
+            "paasta.yelp.com/cluster": self.get_cluster(),
+            "paasta.yelp.com/pool": self.get_pool(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
