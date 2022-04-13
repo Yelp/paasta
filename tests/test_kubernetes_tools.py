@@ -1604,6 +1604,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
+                    "paasta.yelp.com/autoscaled": "false",
                     "registrations.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
@@ -2558,13 +2559,14 @@ def test_ensure_namespace():
 
 
 @pytest.mark.parametrize(
-    "annotations,replicas",
+    "addl_labels,replicas",
     (
         ({}, 3),
-        ({"autoscaling": "something"}, None),
+        ({"paasta.yelp.com/autoscaled": "false"}, 3),
+        ({"paasta.yelp.com/autoscaled": "true"}, None),
     ),
 )
-def test_list_all_deployments(annotations, replicas):
+def test_list_all_deployments(addl_labels, replicas):
     mock_deployments = mock.Mock(items=[])
     mock_stateful_sets = mock.Mock(items=[])
     mock_client = mock.Mock(
@@ -2587,6 +2589,7 @@ def test_list_all_deployments(annotations, replicas):
                     "paasta.yelp.com/instance": "fm",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
                 }
             )
         ),
@@ -2601,16 +2604,13 @@ def test_list_all_deployments(annotations, replicas):
                     "paasta.yelp.com/instance": "am",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
                 }
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(
-        **{"replicas": 3, "template.metadata.annotations": annotations}
-    )
-    type(mock_items[1]).spec = mock.Mock(
-        **{"replicas": 3, "template.metadata.annotations": annotations}
-    )
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -3585,7 +3585,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configc5795b2b"
+            == "config2c8004b5"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 

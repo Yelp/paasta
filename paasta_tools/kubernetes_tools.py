@@ -1709,6 +1709,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
+        # TODO: see if we can remove this as we're no longer using sfx data to scale
         if metrics_provider == "uwsgi":
             annotations["autoscaling"] = metrics_provider
 
@@ -1791,6 +1792,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
+            "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
@@ -2150,7 +2152,8 @@ def list_deployments(
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas
-            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
             else None,
         )
         for item in deployments.items + stateful_sets.items
