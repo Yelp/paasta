@@ -1,3 +1,22 @@
+paasta-tools (0.125.5) xenial; urgency=medium
+
+  * 0.125.5 tagged with 'make release'
+    Commit: Set KubeDeployment replicas to None for autoscaled
+    deployments (#3335)  We need a way to compare two KubeDeployment"s
+    that is not sensitive to an autoscaler changing the amount of
+    replicas present - otherwise, when we go to compare the current and
+    target deployment, we could oscillate between what the autoscaler
+    (HPA, in this case) has set a Deployments replicas to and what
+    setup_kubernetes_job saw prior to an HPA scale-{up,down}  To
+    accommplish this, we use the fact that we attach an annotation with
+    the autoscaling policy name to every autoscaled deployment and set
+    the replicas field of our internal KubeDeployment object to None for
+    anything that is autoscaled - which should be the same as leaving
+    that value unspecified (which will then let the HPA be the only
+    thing managing the replicas for a Deployment)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 13 Apr 2022 11:00:33 -0700
+
 paasta-tools (0.125.4) xenial; urgency=medium
 
   * 0.125.4 tagged with 'make release'
