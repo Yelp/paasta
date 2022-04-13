@@ -347,7 +347,7 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
                     config_tz_str = config.get_time_zone() or "US/Pacific"
                     tz = pytz.timezone(config_tz_str)
 
-                    print(info_message(f"Upcoming runs for {config.get_name()}"))
+                    print(info_message(f"Upcoming runs for {config.get_name()}:"))
                     next_cron_runs = list_upcoming_runs(
                         # most cron parsers won't understand our schedule tag, so we need to strip
                         # that off before passing it to anything else
