@@ -24,6 +24,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
+import pytz
 import yaml
 from croniter import croniter
 from jsonschema import Draft4Validator
@@ -337,18 +338,21 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
         elif verbose:
-            # cron schedule has been validated and is safe to parse
+            # service config has been validated and cron schedules are safe to parse
             service_config = load_tron_service_config(service, cluster)
             for config in service_config:
                 schedule = config.get_schedule()
 
-                if schedule.startswith("cron"):
+                if isinstance(schedule, str) and schedule.startswith("cron"):
+                    config_tz_str = config.get_time_zone() or "US/Pacific"
+                    tz = pytz.timezone(config_tz_str)
+
                     print(info_message(f"Upcoming runs for {config.get_name()}"))
                     next_cron_runs = list_upcoming_runs(
                         # most cron parsers won't understand our schedule tag, so we need to strip
                         # that off before passing it to anything else
                         cron_schedule=schedule.replace("cron", ""),
-                        starting_from=datetime.today(),
+                        starting_from=tz.localize(datetime.today()),
                     )
 
                     for run in next_cron_runs:
