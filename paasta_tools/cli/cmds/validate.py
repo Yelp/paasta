@@ -634,7 +634,9 @@ def validate_secrets(service_path):
     return return_value
 
 
-def paasta_validate_soa_configs(service, service_path, verbose=False):
+def paasta_validate_soa_configs(
+    service: str, service_path: str, verbose: bool = False
+) -> bool:
     """Analyze the service in service_path to determine if the conf files are valid
 
     :param service_path: Path to directory containing soa conf yaml files for service

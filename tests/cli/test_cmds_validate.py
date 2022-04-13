@@ -20,9 +20,9 @@ from mock import patch
 
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
-from paasta_tools.cli.cmds.validate import get_next_x_cron_runs
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
@@ -858,12 +858,12 @@ def test_validate_autoscaling_configs_no_offset_specified(
 
 
 @pytest.mark.parametrize(
-    "num_runs, cron_schedule, start_date, expected",
+    "schedule, starting_from, num_runs, expected",
     [
         (
-            5,
             "0 22 * * 1-5",
             datetime.datetime(2022, 4, 12, 0, 0),
+            5,
             [
                 datetime.datetime(2022, 4, 12, 22, 0),
                 datetime.datetime(2022, 4, 13, 22, 0),
@@ -873,9 +873,9 @@ def test_validate_autoscaling_configs_no_offset_specified(
             ],
         ),
         (
-            2,
             "5 4 * * *",
             datetime.datetime(2020, 12, 4, 18, 0),
+            2,
             [
                 datetime.datetime(2020, 12, 5, 4, 5),
                 datetime.datetime(2020, 12, 6, 4, 5),
@@ -883,5 +883,5 @@ def test_validate_autoscaling_configs_no_offset_specified(
         ),
     ],
 )
-def test_get_next_x_cron_runs(num_runs, cron_schedule, start_date, expected):
-    assert get_next_x_cron_runs(num_runs, cron_schedule, start_date) == expected
+def test_list_upcoming_runs(schedule, starting_from, num_runs, expected):
+    assert list_upcoming_runs(schedule, starting_from, num_runs) == expected
