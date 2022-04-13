@@ -47,7 +47,13 @@ class Application(ABC):
             attr: item.metadata.labels[paasta_prefixed(attr)]
             for attr in ["service", "instance", "git_sha", "config_sha"]
         }
-        self.kube_deployment = KubeDeployment(replicas=item.spec.replicas, **attrs)
+
+        replicas = (
+            item.spec.replicas
+            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            else None
+        )
+        self.kube_deployment = KubeDeployment(replicas=replicas, **attrs)
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging

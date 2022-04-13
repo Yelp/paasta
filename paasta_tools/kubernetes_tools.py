@@ -215,7 +215,7 @@ class KubeDeployment(NamedTuple):
     instance: str
     git_sha: str
     config_sha: str
-    replicas: int
+    replicas: Optional[int]
 
 
 class KubeCustomResource(NamedTuple):
@@ -2149,7 +2149,9 @@ def list_deployments(
             instance=item.metadata.labels["paasta.yelp.com/instance"],
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas,
+            replicas=item.spec.replicas
+            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            else None,
         )
         for item in deployments.items + stateful_sets.items
     ]

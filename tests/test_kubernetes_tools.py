@@ -2557,7 +2557,14 @@ def test_ensure_namespace():
     assert mock_client.core.create_namespace.called
 
 
-def test_list_all_deployments():
+@pytest.mark.parametrize(
+    "annotations,replicas",
+    (
+        ({}, 3),
+        ({"autoscaling": "something"}, None),
+    ),
+)
+def test_list_all_deployments(annotations, replicas):
     mock_deployments = mock.Mock(items=[])
     mock_stateful_sets = mock.Mock(items=[])
     mock_client = mock.Mock(
@@ -2598,8 +2605,12 @@ def test_list_all_deployments():
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(replicas=3)
-    type(mock_items[1]).spec = mock.Mock(replicas=3)
+    type(mock_items[0]).spec = mock.Mock(
+        **{"replicas": 3, "template.metadata.annotations": annotations}
+    )
+    type(mock_items[1]).spec = mock.Mock(
+        **{"replicas": 3, "template.metadata.annotations": annotations}
+    )
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -2614,14 +2625,14 @@ def test_list_all_deployments():
             instance="fm",
             git_sha="a12345",
             config_sha="b12345",
-            replicas=3,
+            replicas=replicas,
         ),
         KubeDeployment(
             service="kurupt",
             instance="am",
             git_sha="a12345",
             config_sha="b12345",
-            replicas=3,
+            replicas=replicas,
         ),
     ]
 
