@@ -1576,9 +1576,14 @@ class TestKubernetesDeploymentConfig:
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
-        ret = self.deployment.get_pod_template_spec(
-            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
-        )
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_deploy_group",
+            autospec=True,
+            return_value="deep_ploy",
+        ):
+            ret = self.deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
 
         assert mock_load_service_namespace_config.called
         assert mock_service_namespace_config.is_in_smartstack.called
@@ -1607,6 +1612,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/autoscaled": "false",
                     "paasta.yelp.com/pool": "default",
                     "paasta.yelp.com/cluster": "brentford",
+                    "paasta.yelp.com/deploy_group": "deep_ploy",
                     "registrations.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
@@ -1864,7 +1870,19 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
             autospec=True,
             return_value="fm",
-        ) as mock_get_instance:
+        ) as mock_get_instance, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_team",
+            autospec=True,
+            return_value="team",
+        ) as mock_get_team, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_cluster",
+            autospec=True,
+            return_value="kluster",
+        ) as mock_get_cluster, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pool",
+            autospec=True,
+            return_value="swimming",
+        ) as mock_get_pool:
 
             ret = self.deployment.get_kubernetes_metadata("aaa123")
             assert ret == V1ObjectMeta(
@@ -1875,6 +1893,9 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
+                    "paasta.yelp.com/pool": mock_get_pool.return_value,
+                    "paasta.yelp.com/cluster": mock_get_cluster.return_value,
+                    "paasta.yelp.com/owner": mock_get_team.return_value,
                 },
                 name="kurupt-fm",
             )
@@ -3587,7 +3608,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config5e31645f"
+            == "config875ad4cf"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
