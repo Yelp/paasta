@@ -312,6 +312,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/service": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/cluster": str,
+        "paasta.yelp.com/owner": str,
         "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
@@ -1547,7 +1548,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return storage_class_name
 
     def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
-        return V1ObjectMeta(
+        metadata = V1ObjectMeta(
             name=self.get_sanitised_deployment_name(),
             labels={
                 "yelp.com/paasta_service": self.get_service(),
@@ -1555,9 +1556,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "yelp.com/paasta_git_sha": git_sha,
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
+                "paasta.yelp.com/pool": self.get_pool(),
+                "paasta.yelp.com/cluster": self.get_cluster(),
                 "paasta.yelp.com/git_sha": git_sha,
             },
         )
+
+        if self.get_team():
+            metadata.labels["paasta.yelp.com/owner"] = self.get_team()
+
+        return metadata
 
     def get_sanitised_deployment_name(self) -> str:
         return get_kubernetes_app_name(self.get_service(), self.get_instance())
@@ -1798,7 +1806,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/cluster": self.get_cluster(),
             "paasta.yelp.com/pool": self.get_pool(),
+            # ideally, we'd also have the docker image here for ease-of-use
+            # in Prometheus relabeling, but that information is over the
+            # character limit for k8s labels (63 chars)
+            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
         }
+
+        if self.get_team():
+            labels["paasta.yelp.com/owner"] = self.get_team()
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod
@@ -1820,18 +1835,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_run_uwsgi_exporter_sidecar(
             system_paasta_config=system_paasta_config
         ):
-            # this is kinda silly, but k8s labels must be strings
             labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
 
-            # this should probably eventually be made into a default label,
-            # but for now we're fine with it being behind this feature toggle.
-            # ideally, we'd also have the docker image here for ease-of-use
-            # in Prometheus relabeling, but that information is over the
-            # character limit for k8s labels (63 chars)
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
-
         elif self.should_setup_piscina_prometheus_scraping():
-            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
         return V1PodTemplateSpec(
