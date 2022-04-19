@@ -132,11 +132,6 @@ def failure(msg, link):
 
 
 def info_message(msg: str) -> str:
-    """Format a paasta info message.
-
-    :param msg: a string
-    :return: a beautiful string
-    """
     return f"{info_mark()} {msg}"
 
 

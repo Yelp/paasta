@@ -49,6 +49,7 @@ from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
+from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
@@ -341,24 +342,27 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
             # service config has been validated and cron schedules are safe to parse
             service_config = load_tron_service_config(service, cluster)
             for config in service_config:
-                schedule = config.get_schedule()
-
-                if isinstance(schedule, str) and schedule.startswith("cron"):
-                    config_tz_str = config.get_time_zone() or "US/Pacific"
-                    tz = pytz.timezone(config_tz_str)
-
-                    print(info_message(f"Upcoming runs for {config.get_name()}:"))
-                    next_cron_runs = list_upcoming_runs(
-                        # most cron parsers won't understand our schedule tag, so we need to strip
-                        # that off before passing it to anything else
-                        cron_schedule=schedule.replace("cron", ""),
-                        starting_from=tz.localize(datetime.today()),
-                    )
-
-                    for run in next_cron_runs:
-                        print(f"{run}")
+                cron_expression = config.get_cron_expression()
+                if cron_expression:
+                    print_upcoming_runs(config, cron_expression)
 
     return returncode
+
+
+def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
+    print(info_message(f"Upcoming runs for {config.get_name()}:"))
+
+    config_tz = config.get_time_zone() or "US/Pacific"
+
+    next_cron_runs = list_upcoming_runs(
+        # most cron parsers won't understand our schedule tag, so we need to strip
+        # that off before passing it to anything else
+        cron_schedule=cron_expression.replace("cron", ""),
+        starting_from=pytz.timezone(config_tz).localize(datetime.today()),
+    )
+
+    for run in next_cron_runs:
+        print(f"\t{run}")
 
 
 def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
@@ -684,6 +688,5 @@ def paasta_validate(args):
     """
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
-
     if not paasta_validate_soa_configs(service, service_path, args.verbose):
         return 1

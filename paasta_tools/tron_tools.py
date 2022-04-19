@@ -559,6 +559,19 @@ class TronJobConfig:
     def get_schedule(self):
         return self.config_dict.get("schedule")
 
+    def get_cron_expression(self) -> Optional[str]:
+        schedule = self.config_dict.get("schedule")
+        if (
+            isinstance(schedule, Dict)
+            and "type" in schedule
+            and schedule["type"] == "cron"
+        ):
+            return schedule["value"]
+        elif isinstance(schedule, str) and schedule.startswith("cron"):
+            return schedule
+
+        return None
+
     def get_monitoring(self):
         srv_monitoring = dict(
             monitoring_tools.read_monitoring_config(self.service, soa_dir=self.soa_dir)
