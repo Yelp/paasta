@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 
 import mock
@@ -21,6 +22,7 @@ from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
@@ -853,3 +855,43 @@ def test_validate_autoscaling_configs_no_offset_specified(
         ),
     ):
         assert validate_autoscaling_configs("fake-service-path") is True
+
+
+@pytest.mark.parametrize(
+    "schedule, starting_from, num_runs, expected",
+    [
+        (
+            "0 22 * * 1-5",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            5,
+            [
+                datetime.datetime(2022, 4, 12, 22, 0),
+                datetime.datetime(2022, 4, 13, 22, 0),
+                datetime.datetime(2022, 4, 14, 22, 0),
+                datetime.datetime(2022, 4, 15, 22, 0),
+                datetime.datetime(2022, 4, 18, 22, 0),
+            ],
+        ),
+        (
+            "5 4 * * *",
+            datetime.datetime(2020, 12, 4, 18, 0),
+            2,
+            [
+                datetime.datetime(2020, 12, 5, 4, 5),
+                datetime.datetime(2020, 12, 6, 4, 5),
+            ],
+        ),
+        (
+            "0 17 29 2 *",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            3,
+            [
+                datetime.datetime(2024, 2, 29, 17, 0),
+                datetime.datetime(2028, 2, 29, 17, 0),
+                datetime.datetime(2032, 2, 29, 17, 0),
+            ],
+        ),
+    ],
+)
+def test_list_upcoming_runs(schedule, starting_from, num_runs, expected):
+    assert list_upcoming_runs(schedule, starting_from, num_runs) == expected
