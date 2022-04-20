@@ -881,6 +881,16 @@ def test_validate_autoscaling_configs_no_offset_specified(
                 datetime.datetime(2020, 12, 6, 4, 5),
             ],
         ),
+        (
+            "0 17 29 2 *",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            3,
+            [
+                datetime.datetime(2024, 2, 29, 17, 0),
+                datetime.datetime(2028, 2, 29, 17, 0),
+                datetime.datetime(2032, 2, 29, 17, 0),
+            ],
+        ),
     ],
 )
 def test_list_upcoming_runs(schedule, starting_from, num_runs, expected):
