@@ -1,3 +1,14 @@
+paasta-tools (0.126.0) xenial; urgency=medium
+
+  * 0.126.0 tagged with 'make release'
+    Commit: Add verbose flag to paasta validate that displays next 5
+    cron runs sc… (#3336)  * Right now there isn"t any real insight into
+    the cron schedules when running paasta validate. This change
+    introduces a verbose flag that will dump the next 5 runs for any
+    valid cron schedule.
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Wed, 20 Apr 2022 10:24:09 -0700
+
 paasta-tools (0.125.5) xenial; urgency=medium
 
   * 0.125.5 tagged with 'make release'
