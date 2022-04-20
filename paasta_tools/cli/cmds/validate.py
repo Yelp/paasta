@@ -47,6 +47,7 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
+from paasta_tools.tron_tools import DEFAULT_TZ
 from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
@@ -352,12 +353,10 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
 def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
     print(info_message(f"Upcoming runs for {config.get_name()}:"))
 
-    config_tz = config.get_time_zone() or "US/Pacific"
+    config_tz = config.get_time_zone() or DEFAULT_TZ
 
     next_cron_runs = list_upcoming_runs(
-        # most cron parsers won't understand our schedule tag, so we need to strip
-        # that off before passing it to anything else
-        cron_schedule=cron_expression.replace("cron", ""),
+        cron_schedule=cron_expression,
         starting_from=pytz.timezone(config_tz).localize(datetime.today()),
     )
 

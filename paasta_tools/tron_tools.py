@@ -98,6 +98,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
     "paasta": "tron",
     "spark": "paasta-spark",
 }
+DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 
 
@@ -561,14 +562,17 @@ class TronJobConfig:
 
     def get_cron_expression(self) -> Optional[str]:
         schedule = self.config_dict.get("schedule")
+        # TODO(TRON-1746): once we simplify this format, we can clean this code up
         if (
-            isinstance(schedule, Dict)
+            isinstance(schedule, dict)
             and "type" in schedule
             and schedule["type"] == "cron"
         ):
             return schedule["value"]
         elif isinstance(schedule, str) and schedule.startswith("cron"):
-            return schedule
+            # most cron parsers won't understand our schedule tag, so we need to strip
+            # that off before passing it to anything else
+            return schedule.replace("cron", "")
 
         return None
 
