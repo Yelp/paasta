@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 
 import asynctest
@@ -1303,3 +1304,20 @@ class TestBounceStatus:
         mock_validate_service_instance.return_value = "not_kubernetes"
         response = instance.bounce_status(mock_request)
         assert response.status_code == 204
+
+    def test_timeout(
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
+        mock_settings,
+    ):
+        mock_pik_bounce_status.side_effect = [asyncio.TimeoutError]
+        mock_validate_service_instance.return_value = "kubernetes"
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 599
+        assert (
+            excinfo.value.msg
+            == "Temporary issue fetching bounce status. Please try again."
+        )

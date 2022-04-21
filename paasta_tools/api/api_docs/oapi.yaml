@@ -1477,6 +1477,8 @@ paths:
           description: Deployment key not found
         "500":
           description: Instance failure
+        "599":
+          description: Temporary issue fetching instance status
       summary: Get bounce status of service_name.instance_name
       tags:
       - service
