@@ -1,3 +1,12 @@
+paasta-tools (0.126.1) xenial; urgency=medium
+
+  * 0.126.1 tagged with 'make release'
+    Commit: Merge pull request #3325 from
+    Yelp/u/jfong/bounce_status_timeout  Catch timeout issues in
+    bounce_status and present less-drastic error message
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 21 Apr 2022 10:37:13 -0700
+
 paasta-tools (0.126.0) xenial; urgency=medium
 
   * 0.126.0 tagged with 'make release'
