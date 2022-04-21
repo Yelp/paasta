@@ -53,6 +53,7 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.kubernetes_tools import (
+    DEFAULT_K8S_OWNER,
     allowlist_denylist_to_requirements,
     create_or_find_service_account_name,
     limit_size_with_hash,
@@ -291,6 +292,8 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
             "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
             "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.executor.label.yelp.com/owner": self.get_team()
+            or DEFAULT_K8S_OWNER,
         }
 
         # most of the service_configuration_lib function expected string values only
@@ -302,9 +305,6 @@ class TronActionConfig(InstanceConfig):
         # now that we've added all the required stuff, we can add in all the stuff that users have added
         # themselves
         conf.update(_filter_user_spark_opts(user_spark_opts=stringified_spark_args))
-
-        if self.get_team() is not None:
-            conf["spark.kubernetes.executor.label.yelp.com/owner"] = self.get_team()
 
         # Spark defaults to using the Service Account that the driver uses for executors,
         # but that has more permissions than what we'd like to give the executors, so use
@@ -803,6 +803,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 limit=63,
                 suffix=4,
             ),
+            "yelp.com/owner": action_config.get_team() or DEFAULT_K8S_OWNER,
         }
 
         # we can hardcode this for now as batches really shouldn't
@@ -810,9 +811,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["annotations"] = {
             "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
         }
-
-        if action_config.get_team() is not None:
-            result["labels"]["yelp.com/owner"] = action_config.get_team()
 
         # create_or_find_service_account_name requires k8s credentials, and we don't
         # have those available for CI to use (nor do we check these for normal PaaSTA

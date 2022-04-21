@@ -867,6 +867,7 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
+            "--conf spark.kubernetes.executor.label.yelp.com/owner=Unknown "
             # user args
             "--conf spark.cores.max=4 "
             "--conf spark.driver.memory=1g "
@@ -917,6 +918,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": "my_job.do_something",
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "Unknown",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "true"},
             "cap_drop": CAPS_DROP,
