@@ -185,6 +185,20 @@ DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
+DEFAULT_K8S_OWNER = "Unknown"
+
+
+def paasta_prefixed(
+    attribute: str,
+) -> str:
+    # discovery attributes are exempt for now
+    if attribute in DISCOVERY_ATTRIBUTES:
+        return YELP_ATTRIBUTE_PREFIX + attribute
+    elif "/" in attribute:
+        return attribute
+    else:
+        return PAASTA_ATTRIBUTE_PREFIX + attribute
+
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
 # For detail, https://github.com/kubernetes-client/python/issues/553
@@ -1559,11 +1573,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/pool": self.get_pool(),
                 "paasta.yelp.com/cluster": self.get_cluster(),
                 "paasta.yelp.com/git_sha": git_sha,
+                paasta_prefixed("owner"): self.get_team() or DEFAULT_K8S_OWNER,
             },
         )
-
-        if self.get_team():
-            metadata.labels["paasta.yelp.com/owner"] = self.get_team()
 
         return metadata
 
@@ -2706,18 +2718,6 @@ def filter_nodes_by_blacklist(
         if host_passes_whitelist(node.metadata.labels, whitelist)
         and host_passes_blacklist(node.metadata.labels, blacklist)
     ]
-
-
-def paasta_prefixed(
-    attribute: str,
-) -> str:
-    # discovery attributes are exempt for now
-    if attribute in DISCOVERY_ATTRIBUTES:
-        return YELP_ATTRIBUTE_PREFIX + attribute
-    elif "/" in attribute:
-        return attribute
-    else:
-        return PAASTA_ATTRIBUTE_PREFIX + attribute
 
 
 def get_nodes_grouped_by_attribute(

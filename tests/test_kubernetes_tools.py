@@ -1613,6 +1613,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/pool": "default",
                     "paasta.yelp.com/cluster": "brentford",
                     "paasta.yelp.com/deploy_group": "deep_ploy",
+                    "paasta.yelp.com/owner": "Unknown",
                     "registrations.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
@@ -3608,7 +3609,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config875ad4cf"
+            == "config9c843395"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
