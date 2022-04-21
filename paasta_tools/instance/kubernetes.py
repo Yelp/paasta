@@ -37,6 +37,7 @@ from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
@@ -208,8 +209,8 @@ async def pod_info(
         "reason": pod.status.reason,
         "message": pod.status.message,
         "events": pod_event_messages,
-        "git_sha": pod.metadata.labels.get("paasta.yelp.com/git_sha"),
-        "config_sha": pod.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "git_sha": pod.metadata.labels.get(paasta_prefixed("git_sha")),
+        "config_sha": pod.metadata.labels.get(paasta_prefixed("config_sha")),
     }
 
 
@@ -240,9 +241,9 @@ async def job_status(
                 "replicas": replicaset.spec.replicas,
                 "ready_replicas": ready_replicas_from_replicaset(replicaset),
                 "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
-                "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
+                "git_sha": replicaset.metadata.labels.get(paasta_prefixed("git_sha")),
                 "config_sha": replicaset.metadata.labels.get(
-                    "paasta.yelp.com/config_sha"
+                    paasta_prefixed("config_sha")
                 ),
             }
         )
@@ -738,8 +739,8 @@ async def get_replicaset_status(
         "replicas": replicaset.spec.replicas,
         "ready_replicas": ready_replicas_from_replicaset(replicaset),
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
-        "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
-        "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "git_sha": replicaset.metadata.labels.get(paasta_prefixed("git_sha")),
+        "config_sha": replicaset.metadata.labels.get(paasta_prefixed("config_sha")),
         "pods": await asyncio.gather(*pod_status_tasks) if pod_status_tasks else [],
     }
 
@@ -946,8 +947,8 @@ async def get_pod_status_tasks_by_sha_and_readiness(
         Tuple[str, str], DefaultDict[bool, List["asyncio.Future[Dict[str, Any]]"]]
     ] = defaultdict(lambda: defaultdict(list))
     for pod in await pods_task:
-        git_sha = pod.metadata.labels["paasta.yelp.com/git_sha"]
-        config_sha = pod.metadata.labels["paasta.yelp.com/config_sha"]
+        git_sha = pod.metadata.labels[paasta_prefixed("git_sha")]
+        config_sha = pod.metadata.labels[paasta_prefixed("config_sha")]
         is_ready = kubernetes_tools.is_pod_ready(pod)
         pod_status_task = asyncio.create_task(
             get_pod_status(pod, backends_task, client, num_tail_lines)
@@ -977,8 +978,8 @@ async def get_versions_for_controller_revisions(
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
     for cr in controller_revision_list:
-        git_sha = cr.metadata.labels["paasta.yelp.com/git_sha"]
-        config_sha = cr.metadata.labels["paasta.yelp.com/config_sha"]
+        git_sha = cr.metadata.labels[paasta_prefixed("git_sha")]
+        config_sha = cr.metadata.labels[paasta_prefixed("config_sha")]
         cr_by_shas[(git_sha, config_sha)] = cr
 
     pod_status_by_sha_and_readiness = await pod_status_by_sha_and_readiness_task
@@ -1013,8 +1014,8 @@ async def get_version_for_controller_revision(
         "replicas": len(all_pod_status_tasks),
         "ready_replicas": len(pod_status_tasks_by_readiness[True]),
         "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
-        "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
-        "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
+        "git_sha": cr.metadata.labels.get(paasta_prefixed("git_sha")),
+        "config_sha": cr.metadata.labels.get(paasta_prefixed("config_sha")),
         "pods": [task.result() for task in all_pod_status_tasks],
     }
 

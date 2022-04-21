@@ -31,6 +31,7 @@ from pysensu_yelp import Status
 
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -71,7 +72,7 @@ def get_evicted_pods(pods: Sequence[V1Pod]) -> Sequence[V1Pod]:
 
 def get_pod_service(pod: V1Pod) -> str:
     if pod.metadata.labels is not None:
-        return pod.metadata.labels.get("paasta.yelp.com/service")
+        return pod.metadata.labels.get(paasta_prefixed("service"))
     else:
         return None
 

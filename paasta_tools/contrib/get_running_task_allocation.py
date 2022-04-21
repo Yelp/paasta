@@ -18,6 +18,7 @@ from kubernetes.client import V1ResourceRequirements
 from paasta_tools import kubernetes_tools
 from paasta_tools import mesos_tools
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
@@ -170,10 +171,10 @@ def get_kubernetes_metadata(
     pod_name = pod.metadata.name
     pod_ip = pod.status.pod_ip
     host_ip = pod.status.host_ip
-    service = labels.get("paasta.yelp.com/service")
-    instance = labels.get("paasta.yelp.com/instance")
-    git_sha = labels.get("paasta.yelp.com/git_sha")
-    config_sha = labels.get("paasta.yelp.com/config_sha")
+    service = labels.get(paasta_prefixed("service"))
+    instance = labels.get(paasta_prefixed("instance"))
+    git_sha = labels.get(paasta_prefixed("git_sha"))
+    config_sha = labels.get(paasta_prefixed("config_sha"))
     return service, instance, pod_name, pod_ip, host_ip, git_sha, config_sha
 
 

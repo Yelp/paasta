@@ -171,7 +171,6 @@ DISCOVERY_ATTRIBUTES = {
     "superregion",
     "ecosystem",
     "habitat",
-    "pool",
     "hostname",
 }
 
@@ -306,9 +305,9 @@ KubePodAnnotations = TypedDict(
     {
         "autoscaling": str,
         "iam.amazonaws.com/role": str,
-        "paasta.yelp.com/prometheus_path": str,
-        "paasta.yelp.com/prometheus_port": str,
-        "paasta.yelp.com/routable_ip": str,
+        paasta_prefixed("prometheus_path"): str,
+        paasta_prefixed("prometheus_port"): str,
+        paasta_prefixed("routable_ip"): str,
         "smartstack_registrations": str,
     },
     total=False,
@@ -317,17 +316,16 @@ KubePodAnnotations = TypedDict(
 KubePodLabels = TypedDict(
     "KubePodLabels",
     {
-        "paasta.yelp.com/deploy_group": str,
-        "paasta.yelp.com/git_sha": str,
-        "paasta.yelp.com/instance": str,
-        "paasta.yelp.com/prometheus_shard": str,
-        "paasta.yelp.com/scrape_uwsgi_prometheus": str,
-        "paasta.yelp.com/scrape_piscina_prometheus": str,
-        "paasta.yelp.com/service": str,
-        "paasta.yelp.com/pool": str,
-        "paasta.yelp.com/cluster": str,
-        "paasta.yelp.com/owner": str,
-        "paasta.yelp.com/autoscaled": str,
+        paasta_prefixed("deploy_group"): str,
+        paasta_prefixed("git_sha"): str,
+        paasta_prefixed("instance"): str,
+        paasta_prefixed("prometheus_shard"): str,
+        paasta_prefixed("scrape_uwsgi_prometheus"): str,
+        paasta_prefixed("scrape_piscina_prometheus"): str,
+        paasta_prefixed("service"): str,
+        paasta_prefixed("pool"): str,
+        paasta_prefixed("cluster"): str,
+        paasta_prefixed("autoscaled"): str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
@@ -565,7 +563,7 @@ def registration_label(namespace: str) -> str:
     if needed.
     """
     limited_namespace = limit_size_with_hash(namespace, limit=63, suffix=4)
-    return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
+    return f"registrations.{paasta_prefixed(limited_namespace)}"
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -1570,11 +1568,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
                 "yelp.com/owner": self.get_team() or DEFAULT_K8S_OWNER,
-                "paasta.yelp.com/service": self.get_service(),
-                "paasta.yelp.com/instance": self.get_instance(),
-                "paasta.yelp.com/pool": self.get_pool(),
-                "paasta.yelp.com/cluster": self.get_cluster(),
-                "paasta.yelp.com/git_sha": git_sha,
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+                paasta_prefixed("pool"): self.get_pool(),
+                paasta_prefixed("cluster"): self.get_cluster(),
+                paasta_prefixed("git_sha"): git_sha,
             },
         )
 
@@ -1630,8 +1628,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         revision_history_limit=0,
                         selector=V1LabelSelector(
                             match_labels={
-                                "paasta.yelp.com/service": self.get_service(),
-                                "paasta.yelp.com/instance": self.get_instance(),
+                                paasta_prefixed("service"): self.get_service(),
+                                paasta_prefixed("instance"): self.get_instance(),
                             }
                         ),
                         template=self.get_pod_template_spec(
@@ -1650,8 +1648,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         min_ready_seconds=self.get_min_task_uptime(),
                         selector=V1LabelSelector(
                             match_labels={
-                                "paasta.yelp.com/service": self.get_service(),
-                                "paasta.yelp.com/instance": self.get_instance(),
+                                paasta_prefixed("service"): self.get_service(),
+                                paasta_prefixed("instance"): self.get_instance(),
                             }
                         ),
                         revision_history_limit=0,
@@ -1665,7 +1663,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             prometheus_shard = self.get_prometheus_shard()
             if prometheus_shard:
                 complete_config.metadata.labels[
-                    "paasta.yelp.com/prometheus_shard"
+                    paasta_prefixed("prometheus_shard")
                 ] = prometheus_shard
 
             # DO NOT ADD LABELS AFTER THIS LINE
@@ -1674,13 +1672,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 force_bounce=self.get_force_bounce(),
             )
             complete_config.metadata.labels["yelp.com/paasta_config_sha"] = config_hash
-            complete_config.metadata.labels["paasta.yelp.com/config_sha"] = config_hash
+            complete_config.metadata.labels[paasta_prefixed("config_sha")] = config_hash
 
             complete_config.spec.template.metadata.labels[
                 "yelp.com/paasta_config_sha"
             ] = config_hash
             complete_config.spec.template.metadata.labels[
-                "paasta.yelp.com/config_sha"
+                paasta_prefixed("config_sha")
             ] = config_hash
         except Exception as e:
             raise InvalidKubernetesConfig(e, self.get_service(), self.get_instance())
@@ -1727,7 +1725,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         annotations: KubePodAnnotations = {
             "smartstack_registrations": json.dumps(self.get_registrations()),
-            "paasta.yelp.com/routable_ip": has_routable_ip,
+            paasta_prefixed("routable_ip"): has_routable_ip,
         }
         metrics_provider = self.get_autoscaling_params()["metrics_provider"]
 
@@ -1801,38 +1799,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # prometheus_path is used to override the default scrape path in Prometheus
         prometheus_path = self.get_prometheus_path()
         if prometheus_path:
-            annotations["paasta.yelp.com/prometheus_path"] = prometheus_path
+            annotations[paasta_prefixed("prometheus_path")] = prometheus_path
 
         # prometheus_port is used to override the default scrape port in Prometheus
         prometheus_port = self.get_prometheus_port()
         if prometheus_port:
-            annotations["paasta.yelp.com/prometheus_port"] = str(prometheus_port)
+            annotations[paasta_prefixed("prometheus_port")] = str(prometheus_port)
 
         # Default Pod labels
         labels: KubePodLabels = {
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
-            "paasta.yelp.com/service": self.get_service(),
-            "paasta.yelp.com/instance": self.get_instance(),
-            "paasta.yelp.com/git_sha": git_sha,
-            "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
-            "paasta.yelp.com/cluster": self.get_cluster(),
-            "paasta.yelp.com/pool": self.get_pool(),
+            "yelp.com/owner": self.get_team() or DEFAULT_K8S_OWNER,
+            paasta_prefixed("service"): self.get_service(),
+            paasta_prefixed("instance"): self.get_instance(),
+            paasta_prefixed("git_sha"): git_sha,
+            paasta_prefixed("autoscaled"): str(self.is_autoscaling_enabled()).lower(),
+            paasta_prefixed("cluster"): self.get_cluster(),
+            paasta_prefixed("pool"): self.get_pool(),
             # ideally, we'd also have the docker image here for ease-of-use
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
-            "paasta.yelp.com/deploy_group": self.get_deploy_group(),
+            paasta_prefixed("deploy_group"): self.get_deploy_group(),
         }
-
-        if self.get_team():
-            labels["paasta.yelp.com/owner"] = self.get_team()
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
-            labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+            labels[paasta_prefixed("prometheus_shard")] = prometheus_shard
 
         if system_paasta_config.get_kubernetes_add_registration_labels():
             # Allow Kubernetes Services to easily find
@@ -1848,10 +1844,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_run_uwsgi_exporter_sidecar(
             system_paasta_config=system_paasta_config
         ):
-            labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
+            labels[paasta_prefixed("scrape_uwsgi_prometheus")] = "true"
 
         elif self.should_setup_piscina_prometheus_scraping():
-            labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+            labels[paasta_prefixed("scrape_piscina_prometheus")] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
@@ -1948,9 +1944,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Converts the given condition to label selectors with paasta prefix"""
         labels = {}
         if "service" in condition:
-            labels[PAASTA_ATTRIBUTE_PREFIX + "service"] = condition.get("service")
+            labels[paasta_prefixed("service")] = condition.get("service")
         if "instance" in condition:
-            labels[PAASTA_ATTRIBUTE_PREFIX + "instance"] = condition.get("instance")
+            labels[paasta_prefixed("instance")] = condition.get("instance")
         return V1LabelSelector(match_labels=labels) if labels else None
 
     def sanitize_for_config_hash(
@@ -2033,8 +2029,8 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
         return []
     for pod in pods["items"]:
         try:
-            service = pod["metadata"]["labels"]["paasta.yelp.com/service"]
-            instance = pod["metadata"]["labels"]["paasta.yelp.com/instance"]
+            service = pod["metadata"]["labels"][paasta_prefixed("service")]
+            instance = pod["metadata"]["labels"][paasta_prefixed("instance")]
             services.append((service, instance, 0))
         except KeyError:
             log.debug(f"Skipping listing what looks like a non-paasta pod: {pod}")
@@ -2057,8 +2053,8 @@ def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistra
                     break
             services.append(
                 KubernetesServiceRegistration(
-                    name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
-                    instance=pod["metadata"]["labels"]["paasta.yelp.com/instance"],
+                    name=pod["metadata"]["labels"][paasta_prefixed("service")],
+                    instance=pod["metadata"]["labels"][paasta_prefixed("instance")],
                     port=port,
                     pod_ip=pod["status"]["podIP"],
                     registrations=json.loads(
@@ -2171,10 +2167,10 @@ def list_deployments(
     )
     return [
         KubeDeployment(
-            service=item.metadata.labels["paasta.yelp.com/service"],
-            instance=item.metadata.labels["paasta.yelp.com/instance"],
-            git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
-            config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
+            service=item.metadata.labels[paasta_prefixed("service")],
+            instance=item.metadata.labels[paasta_prefixed("instance")],
+            git_sha=item.metadata.labels.get(paasta_prefixed("git_sha"), ""),
+            config_sha=item.metadata.labels[paasta_prefixed("config_sha")],
             replicas=item.spec.replicas
             if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
             == "false"
@@ -2381,10 +2377,12 @@ def list_custom_resources(
         try:
             kube_custom_resources.append(
                 KubeCustomResource(
-                    service=cr["metadata"]["labels"]["paasta.yelp.com/service"],
-                    instance=cr["metadata"]["labels"]["paasta.yelp.com/instance"],
-                    config_sha=cr["metadata"]["labels"]["paasta.yelp.com/config_sha"],
-                    git_sha=cr["metadata"]["labels"].get("paasta.yelp.com/git_sha", ""),
+                    service=cr["metadata"]["labels"][paasta_prefixed("service")],
+                    instance=cr["metadata"]["labels"][paasta_prefixed("instance")],
+                    config_sha=cr["metadata"]["labels"][paasta_prefixed("config_sha")],
+                    git_sha=cr["metadata"]["labels"].get(
+                        paasta_prefixed("git_sha"), ""
+                    ),
                     kind=cr["kind"],
                     namespace=cr["metadata"]["namespace"],
                     name=cr["metadata"]["name"],
@@ -2439,8 +2437,8 @@ def pod_disruption_budget_for_service_instance(
             max_unavailable=max_unavailable,
             selector=V1LabelSelector(
                 match_labels={
-                    "paasta.yelp.com/service": service,
-                    "paasta.yelp.com/instance": instance,
+                    paasta_prefixed("service"): service,
+                    paasta_prefixed("instance"): instance,
                 }
             ),
         ),
@@ -2515,7 +2513,7 @@ def list_matching_deployments(
 ) -> Sequence[KubeDeployment]:
     return list_deployments(
         kube_client,
-        f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        f"{paasta_prefixed('service')}={service},{paasta_prefixed('instance')}={instance}",
     )
 
 
@@ -2527,7 +2525,7 @@ async def replicasets_for_service_instance(
         kube_client.deployments.list_namespaced_replica_set
     )
     response = await async_list_replica_set(
-        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        label_selector=f"{paasta_prefixed('service')}={service},{paasta_prefixed('instance')}={instance}",
         namespace=namespace,
     )
     return response.items
@@ -2541,7 +2539,7 @@ async def controller_revisions_for_service_instance(
         kube_client.deployments.list_namespaced_controller_revision
     )
     response = await async_list_controller_revisions(
-        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        label_selector=f"{paasta_prefixed('service')}={service},{paasta_prefixed('instance')}={instance}",
         namespace=namespace,
     )
     return response.items
@@ -2553,7 +2551,7 @@ async def pods_for_service_instance(
 ) -> Sequence[V1Pod]:
     async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
     response = await async_list_pods(
-        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        label_selector=f"{paasta_prefixed('service')}={service},{paasta_prefixed('instance')}={instance}",
         namespace=namespace,
     )
     return response.items
@@ -2584,8 +2582,8 @@ def filter_pods_by_service_instance(
         pod
         for pod in pod_list
         if pod.metadata.labels is not None
-        and pod.metadata.labels.get("paasta.yelp.com/service", "") == service
-        and pod.metadata.labels.get("paasta.yelp.com/instance", "") == instance
+        and pod.metadata.labels.get(paasta_prefixed("service"), "") == service
+        and pod.metadata.labels.get(paasta_prefixed("instance"), "") == instance
     ]
 
 
@@ -2672,11 +2670,11 @@ def get_active_shas_for_service(
     ret = set()
 
     for obj in obj_list:
-        config_sha = obj.metadata.labels.get("paasta.yelp.com/config_sha")
+        config_sha = obj.metadata.labels.get(paasta_prefixed("config_sha"))
         if config_sha and config_sha.startswith("config"):
             config_sha = config_sha[len("config") :]
 
-        git_sha = obj.metadata.labels.get("paasta.yelp.com/git_sha")
+        git_sha = obj.metadata.labels.get(paasta_prefixed("git_sha"))
         if git_sha and git_sha.startswith("git"):
             git_sha = git_sha[len("git") :]
 
@@ -2940,7 +2938,7 @@ def create_secret(
                 name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data={
@@ -2968,7 +2966,7 @@ def create_plaintext_dict_secret(
                 name=sanitised_secret,
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data=secret_data,
@@ -2993,7 +2991,7 @@ def update_secret(
                 name=f"{namespace}-secret-{service}-{sanitised_secret}",
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data={
@@ -3022,7 +3020,7 @@ def update_plaintext_dict_secret(
                 name=sanitised_secret,
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data=secret_data,
@@ -3070,7 +3068,7 @@ def update_kubernetes_secret_signature(
                 name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data={"signature": secret_signature},
@@ -3094,7 +3092,7 @@ def create_kubernetes_secret_signature(
                 name=f"{namespace}-secret-{service}-{secret}-signature",
                 labels={
                     "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    paasta_prefixed("service"): service,
                 },
             ),
             data={"signature": secret_signature},
@@ -3155,7 +3153,7 @@ def set_cr_desired_state(
     if "annotations" not in cr["metadata"]:
         cr["metadata"]["annotations"] = {}
     cr["metadata"]["annotations"]["yelp.com/desired_state"] = desired_state
-    cr["metadata"]["annotations"]["paasta.yelp.com/desired_state"] = desired_state
+    cr["metadata"]["annotations"][paasta_prefixed("desired_state")] = desired_state
     kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
     status = cr.get("status")
     return status

@@ -57,6 +57,7 @@ from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
     create_or_find_service_account_name,
     limit_size_with_hash,
+    paasta_prefixed,
     raw_selectors_to_requirements,
     sanitise_kubernetes_name,
     to_node_label,
@@ -287,9 +288,10 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.yelp.com/paasta_service": truncated_service,
             "spark.kubernetes.executor.label.yelp.com/paasta_instance": truncated_instance,
             "spark.kubernetes.executor.label.yelp.com/paasta_cluster": self.get_cluster(),
-            "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
-            "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
-            "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
+            f"spark.kubernetes.executor.label.{paasta_prefixed('service')}": truncated_service,
+            f"spark.kubernetes.executor.label.{paasta_prefixed('instance')}": truncated_instance,
+            f"spark.kubernetes.executor.label.{paasta_prefixed('cluster')}": self.get_cluster(),
+            f"spark.kubernetes.executor.label.{paasta_prefixed('pool')}": self.get_pool(),
             "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
             "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
             "spark.kubernetes.executor.label.yelp.com/owner": self.get_team()
@@ -795,10 +797,10 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["cap_drop"] = [cap["value"] for cap in action_config.get_cap_drop()]
 
         result["labels"] = {
-            "paasta.yelp.com/cluster": action_config.get_cluster(),
-            "paasta.yelp.com/pool": action_config.get_pool(),
-            "paasta.yelp.com/service": action_config.get_service(),
-            "paasta.yelp.com/instance": limit_size_with_hash(
+            paasta_prefixed("cluster"): action_config.get_cluster(),
+            paasta_prefixed("pool"): action_config.get_pool(),
+            paasta_prefixed("service"): action_config.get_service(),
+            paasta_prefixed("instance"): limit_size_with_hash(
                 action_config.get_instance(),
                 limit=63,
                 suffix=4,
@@ -809,7 +811,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         # we can hardcode this for now as batches really shouldn't
         # need routable IPs and we know that Spark probably does.
         result["annotations"] = {
-            "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
+            paasta_prefixed("routable_ip"): "true" if executor == "spark" else "false",
         }
 
         # create_or_find_service_account_name requires k8s credentials, and we don't
