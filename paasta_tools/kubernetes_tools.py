@@ -303,6 +303,8 @@ KubePodAnnotations = TypedDict(
 KubePodLabels = TypedDict(
     "KubePodLabels",
     {
+        # NOTE: we can't use the paasta_prefixed() helper here
+        # since mypy expects TypedDict keys to be string literals
         "paasta.yelp.com/deploy_group": str,
         "paasta.yelp.com/git_sha": str,
         "paasta.yelp.com/instance": str,
@@ -310,6 +312,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/service": str,
+        "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
@@ -1789,10 +1792,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
+            # NOTE: we can't use the paasta_prefixed() helper here
+            # since mypy expects TypedDict keys to be string literals
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
-            paasta_prefixed("autoscaled"): str(self.is_autoscaling_enabled()).lower(),
+            "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
