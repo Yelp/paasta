@@ -331,6 +331,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
+        "yelp.com/owner": str,
         "sidecar.istio.io/inject": str,
     },
     total=False,
@@ -1568,12 +1569,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
+                "yelp.com/owner": self.get_team() or DEFAULT_K8S_OWNER,
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/pool": self.get_pool(),
                 "paasta.yelp.com/cluster": self.get_cluster(),
                 "paasta.yelp.com/git_sha": git_sha,
-                paasta_prefixed("owner"): self.get_team() or DEFAULT_K8S_OWNER,
             },
         )
 

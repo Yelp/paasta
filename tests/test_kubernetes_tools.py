@@ -1613,7 +1613,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/pool": "default",
                     "paasta.yelp.com/cluster": "brentford",
                     "paasta.yelp.com/deploy_group": "deep_ploy",
-                    "paasta.yelp.com/owner": "Unknown",
+                    "yelp.com/owner": "Unknown",
                     "registrations.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
@@ -1896,7 +1896,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/pool": mock_get_pool.return_value,
                     "paasta.yelp.com/cluster": mock_get_cluster.return_value,
-                    "paasta.yelp.com/owner": mock_get_team.return_value,
+                    "yelp.com/owner": mock_get_team.return_value,
                 },
                 name="kurupt-fm",
             )
