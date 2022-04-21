@@ -1556,7 +1556,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
-                paasta_prefixed("autoscaled"): str(self.is_autoscaling_enabled()).lower(),
+                paasta_prefixed("autoscaled"): str(
+                    self.is_autoscaling_enabled()
+                ).lower(),
             },
         )
 
