@@ -1211,7 +1211,6 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
     num_versions = len(status.versions)
     num_ready_replicas = sum(r.ready_replicas for r in status.versions)
     if status.desired_state == "stop":
-        # num_versions == 1 and status.versions[0].replicas == 0:
         if all(version.replicas == 0 for version in status.versions):
             return PaastaColors.red("Stopped")
         else:
