@@ -13,6 +13,9 @@
                 "trigger_next_step_manually": {
                     "type": "boolean"
                 },
+                "display_step_for_confirmation": {
+                    "type": "boolean"
+                },
                 "confirmation_required": {
                     "type": "boolean"
                 },
