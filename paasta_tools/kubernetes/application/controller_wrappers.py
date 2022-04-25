@@ -50,7 +50,8 @@ class Application(ABC):
 
         replicas = (
             item.spec.replicas
-            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
             else None
         )
         self.kube_deployment = KubeDeployment(replicas=replicas, **attrs)

@@ -1604,6 +1604,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
+                    "paasta.yelp.com/autoscaled": "false",
                     "registrations.paasta.yelp.com/kurupt.fm": "true",
                 },
                 annotations={
@@ -1852,7 +1853,14 @@ class TestKubernetesDeploymentConfig:
         with pytest.raises(ValueError):
             raw_selectors_to_requirements(node_selectors)
 
-    def test_get_kubernetes_metadata(self):
+    @pytest.mark.parametrize(
+        "is_autoscaled, autoscaled_label",
+        (
+            (True, "true"),
+            (False, "false"),
+        ),
+    )
+    def test_get_kubernetes_metadata(self, is_autoscaled, autoscaled_label):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
             autospec=True,
@@ -1861,7 +1869,11 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
             autospec=True,
             return_value="fm",
-        ) as mock_get_instance:
+        ) as mock_get_instance, mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.is_autoscaling_enabled",
+            autospec=True,
+            return_value=is_autoscaled,
+        ):
 
             ret = self.deployment.get_kubernetes_metadata("aaa123")
             assert ret == V1ObjectMeta(
@@ -1872,6 +1884,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/git_sha": "aaa123",
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
+                    "paasta.yelp.com/autoscaled": autoscaled_label,
                 },
                 name="kurupt-fm",
             )
@@ -2558,13 +2571,14 @@ def test_ensure_namespace():
 
 
 @pytest.mark.parametrize(
-    "annotations,replicas",
+    "addl_labels,replicas",
     (
         ({}, 3),
-        ({"autoscaling": "something"}, None),
+        ({"paasta.yelp.com/autoscaled": "false"}, 3),
+        ({"paasta.yelp.com/autoscaled": "true"}, None),
     ),
 )
-def test_list_all_deployments(annotations, replicas):
+def test_list_all_deployments(addl_labels, replicas):
     mock_deployments = mock.Mock(items=[])
     mock_stateful_sets = mock.Mock(items=[])
     mock_client = mock.Mock(
@@ -2587,6 +2601,7 @@ def test_list_all_deployments(annotations, replicas):
                     "paasta.yelp.com/instance": "fm",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
                 }
             )
         ),
@@ -2601,16 +2616,13 @@ def test_list_all_deployments(annotations, replicas):
                     "paasta.yelp.com/instance": "am",
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
                 }
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(
-        **{"replicas": 3, "template.metadata.annotations": annotations}
-    )
-    type(mock_items[1]).spec = mock.Mock(
-        **{"replicas": 3, "template.metadata.annotations": annotations}
-    )
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -3585,7 +3597,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configc5795b2b"
+            == "confige0334534"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
