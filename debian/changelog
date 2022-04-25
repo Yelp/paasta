@@ -1,3 +1,11 @@
+paasta-tools (0.127.0) xenial; urgency=medium
+
+  * 0.127.0 tagged with 'make release'
+    Commit: Merge pull request #3340 from Yelp/luisp/PAASTA-17604-p2
+    Add autoscaled label
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 25 Apr 2022 10:27:50 -0700
+
 paasta-tools (0.126.1) xenial; urgency=medium
 
   * 0.126.1 tagged with 'make release'
