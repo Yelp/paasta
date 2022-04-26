@@ -1975,6 +1975,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
     spark_ui_port: int
+    workload_owners: Dict[str, str]
 
 
 def load_system_paasta_config(
@@ -2662,6 +2663,12 @@ class SystemPaastaConfig:
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
+
+    def get_workload_owner(self, workload: str) -> str:
+        # TODO: we probably wanna set up a scanner or something such that we can quickly
+        # detect when someone has added a new PaaSTA-powered workload not not updated
+        # the workload owner configuration
+        return self.config_dict.get("workload_owners", {}).get(workload, "Unknown")
 
 
 def _run(

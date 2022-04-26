@@ -18,6 +18,11 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
         "spark_k8s_role": "spark",
+        "default_workload_owner": "default",
+        "workload_owners": {
+            "spark": "spark_owner",
+            "paasta": "paasta_owner",
+        },
     },
     "/mock/system/configs",
 )
@@ -859,6 +864,7 @@ class TestTronTools:
             "--conf spark.kubernetes.pyspark.pythonVersion=3 "
             "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
             "--conf spark.kubernetes.namespace=paasta-spark "
+            "--conf spark.kubernetes.executor.label.yelp.com/owner=spark_owner "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_service=my_service "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.yelp.com/paasta_cluster=test-cluster "
@@ -913,6 +919,7 @@ class TestTronTools:
             "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "labels": {
+                "yelp.com/owner": "spark_owner",
                 "paasta.yelp.com/cluster": "test-cluster",
                 "paasta.yelp.com/instance": "my_job.do_something",
                 "paasta.yelp.com/pool": "special_pool",
@@ -1001,6 +1008,10 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -1021,7 +1032,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": expected_instance_label,
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
-                "yelp.com/owner": "some_sensu_team",
+                "yelp.com/owner": "paasta_owner",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
