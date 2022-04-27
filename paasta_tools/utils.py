@@ -2865,13 +2865,17 @@ def build_docker_image_name(service: str) -> str:
     return name
 
 
-def build_docker_tag(service: str, upstream_git_commit: str) -> str:
+def build_docker_tag(
+    service: str, upstream_git_commit: str, version_metadata: str = None
+) -> str:
     """Builds the DOCKER_TAG string
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
+    if version_metadata is not None:
+        tag += f"-{version_metadata}"
     return tag
 
 

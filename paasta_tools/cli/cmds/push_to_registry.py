@@ -67,6 +67,14 @@ def add_subparser(subparsers):
         type=validate_full_git_sha,
     )
     list_parser.add_argument(
+        "-v",
+        "--version-metadata",
+        type=str,
+        required=False,
+        default=None,
+        help="Extra version metadata to use when naming the remote image",
+    )
+    list_parser.add_argument(
         "-d",
         "--soa-dir",
         dest="soa_dir",
@@ -86,11 +94,11 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 
-def build_command(upstream_job_name, upstream_git_commit):
+def build_command(upstream_job_name, upstream_git_commit, version_metadata=None):
     # This is kinda dumb since we just cleaned the 'services-' off of the
     # service so we could validate it, but the Docker image will have the full
     # name with 'services-' so add it back.
-    tag = build_docker_tag(upstream_job_name, upstream_git_commit)
+    tag = build_docker_tag(upstream_job_name, upstream_git_commit, version_metadata)
     cmd = f"docker push {tag}"
     return cmd
 
@@ -104,7 +112,9 @@ def paasta_push_to_registry(args):
 
     if not args.force:
         try:
-            if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
+            if is_docker_image_already_in_registry(
+                service, args.soa_dir, args.commit, args.version_metadata
+            ):
                 print(
                     "The docker image is already in the PaaSTA docker registry. "
                     "I'm NOT overriding the existing image. "
@@ -119,7 +129,7 @@ def paasta_push_to_registry(args):
             )
             return 1
 
-    cmd = build_command(service, args.commit)
+    cmd = build_command(service, args.commit, args.version_metadata)
     loglines = []
     returncode, output = _run(
         cmd,
@@ -164,7 +174,7 @@ def read_docker_registry_creds(registry_uri):
     return (None, None)
 
 
-def is_docker_image_already_in_registry(service, soa_dir, sha):
+def is_docker_image_already_in_registry(service, soa_dir, sha, version_metadata=None):
     """Verifies that docker image exists in the paasta registry.
 
     :param service: name of the service
@@ -172,10 +182,12 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     :returns: True, False or raises requests.exceptions.RequestException
     """
     registry_uri = get_service_docker_registry(service, soa_dir)
-    repository, tag = build_docker_image_name(service, sha).split(":")
+    repository, tag = build_docker_image_name(service, sha, version_metadata).split(
+        ":", 1
+    )
 
     creds = read_docker_registry_creds(registry_uri)
-    uri = f"{registry_uri}/v2/{repository}/manifests/paasta-{sha}"
+    uri = f"{registry_uri}/v2/{repository}/manifests/{tag}"
 
     with requests.Session() as s:
         try:

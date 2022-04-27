@@ -202,8 +202,14 @@ def get_deploy_group_mappings(
     return mappings, v2_mappings
 
 
-def build_docker_image_name(service: str, sha: str) -> str:
-    return f"services-{service}:paasta-{sha}"
+def build_docker_image_name(
+    service: str, sha: str, version_metadata: str = None
+) -> str:
+    image_name = f"services-{service}:paasta-{sha}"
+    if version_metadata is not None:
+        image_name += f"-{version_metadata}"
+
+    return image_name
 
 
 def get_service_from_docker_image(image_name: str) -> str:
