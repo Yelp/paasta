@@ -369,7 +369,15 @@ def test_push_to_registry_with_version_metadata(
     mock_is_docker_image_already_in_registry,
 ):
     args, _ = parse_args(
-        ["push-to-registry", "-s", "foo", "-c", "abcd" * 10, "-v", "extrastuff:this"]
+        [
+            "push-to-registry",
+            "-s",
+            "foo",
+            "-c",
+            "abcd" * 10,
+            "--version-metadata",
+            "extrastuff:this",
+        ]
     )
 
     mock_run.return_value = (0, "Success")

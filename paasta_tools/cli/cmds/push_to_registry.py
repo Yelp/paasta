@@ -67,7 +67,6 @@ def add_subparser(subparsers):
         type=validate_full_git_sha,
     )
     list_parser.add_argument(
-        "-v",
         "--version-metadata",
         type=str,
         required=False,
