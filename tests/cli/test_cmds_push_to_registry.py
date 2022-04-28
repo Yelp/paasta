@@ -360,7 +360,7 @@ def test_is_docker_image_already_in_registry_http_when_image_does_not_exist(
 @patch("paasta_tools.cli.cmds.push_to_registry._run", autospec=True)
 @patch("paasta_tools.cli.cmds.push_to_registry._log", autospec=True)
 @patch("paasta_tools.cli.cmds.push_to_registry._log_audit", autospec=True)
-def test_push_to_registry_with_version_metadata(
+def test_push_to_registry_with_image_version(
     mock_log_audit,
     mock_log,
     mock_run,
@@ -375,7 +375,7 @@ def test_push_to_registry_with_version_metadata(
             "foo",
             "-c",
             "abcd" * 10,
-            "--version-metadata",
+            "--image-version",
             "extrastuff:this",
         ]
     )
@@ -394,7 +394,7 @@ def test_push_to_registry_with_version_metadata(
 @patch(
     "paasta_tools.cli.cmds.push_to_registry.read_docker_registry_creds", autospec=True
 )
-def test_is_docker_image_already_with_version_metadata(
+def test_is_docker_image_already_with_image_version(
     mock_read_docker_registry_creds, mock_request_head, mock_get_service_docker_registry
 ):
     mock_read_docker_registry_creds.return_value = (None, None)

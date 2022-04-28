@@ -2866,7 +2866,7 @@ def build_docker_image_name(service: str) -> str:
 
 
 def build_docker_tag(
-    service: str, upstream_git_commit: str, version_metadata: str = None
+    service: str, upstream_git_commit: str, image_version: str = None
 ) -> str:
     """Builds the DOCKER_TAG string
 
@@ -2874,8 +2874,8 @@ def build_docker_tag(
     tip of origin/master.
     """
     tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
-    if version_metadata is not None:
-        tag += f"-{version_metadata}"
+    if image_version is not None:
+        tag += f"-{image_version}"
     return tag
 
 
@@ -3417,6 +3417,18 @@ def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
 
 def format_tag(tag: str) -> str:
     return "refs/tags/%s" % tag
+
+
+def build_image_identifier(
+    git_sha: str, sha_len: Optional[int] = None, image_version: Optional[str] = None
+) -> str:
+    image = git_sha
+    if sha_len is not None:
+        image = image[:sha_len]
+    if image_version is not None:
+        image += f"-{image_version}"
+
+    return image
 
 
 class NoDockerImageError(Exception):
