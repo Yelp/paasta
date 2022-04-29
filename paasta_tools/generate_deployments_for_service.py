@@ -46,6 +46,7 @@ import re
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 from mypy_extensions import TypedDict
@@ -202,7 +203,9 @@ def get_deploy_group_mappings(
     return mappings, v2_mappings
 
 
-def build_docker_image_name(service: str, sha: str, image_version: str = None) -> str:
+def build_docker_image_name(
+    service: str, sha: str, image_version: Optional[str] = None
+) -> str:
     image_name = f"services-{service}:paasta-{sha}"
     if image_version is not None:
         image_name += f"-{image_version}"
