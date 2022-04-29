@@ -64,7 +64,10 @@ TARGET_FILE = "deployments.json"
 V1_Mapping = TypedDict(
     "V1_Mapping", {"docker_image": str, "desired_state": str, "force_bounce": str}
 )
-V2_Deployment = TypedDict("V2_Deployment", {"docker_image": str, "git_sha": str})
+V2_Deployment = TypedDict(
+    "V2_Deployment",
+    {"docker_image": str, "git_sha": str, "image_version": Optional[str]},
+)
 V2_Control = TypedDict("V2_Control", {"desired_state": str, "force_bounce": str})
 V2_Mappings = TypedDict(
     "V2_Mappings",
