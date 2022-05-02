@@ -23,6 +23,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 import pytz
 import yaml
@@ -31,6 +32,7 @@ from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+from mypy_extensions import TypedDict
 from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -101,6 +103,21 @@ SCHEMA_TYPES = {
 OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"^#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
 
 
+class ConditionConfig(TypedDict, total=False):
+    """
+    Common config options for all Conditions
+    """
+
+    # for now, this is the only key required by the schema
+    query: str
+    # and only one of these needs to be present (enforced in code, not schema)
+    upper_bound: Optional[Union[int, float]]
+    lower_bound: Optional[Union[int, float]]
+
+    # truly optional
+    dry_run: bool
+
+
 def invalid_tron_namespace(cluster, output, filename):
     return failure(
         "%s is invalid:\n  %s\n  " "More info:" % (filename, output),
@@ -141,8 +158,8 @@ def get_schema(file_type):
 
 
 def validate_rollback_bounds(
-    config: Dict[str, Any], file_loc: str
-) -> bool:  # TODO: TypedDict for rollback config
+    config: Dict[str, List[ConditionConfig]], file_loc: str
+) -> bool:
     """
     Ensure that at least one of upper_bound or lower_bound is set (and set to non-null values)
     """
