@@ -3373,6 +3373,13 @@ class DeploymentsJsonV2:
             e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'image_version' metadata."
             raise KeyError(e)
 
+    def get_image_version_for_deploy_group(self, deploy_group: str) -> str:
+        try:
+            return self.config_dict["deployments"][deploy_group]["image_version"]
+        except KeyError:
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
+
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
             return self.config_dict["controls"][control_branch].get(
