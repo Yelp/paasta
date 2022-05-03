@@ -2866,7 +2866,7 @@ def build_docker_image_name(service: str) -> str:
 
 
 def build_docker_tag(
-    service: str, upstream_git_commit: str, image_version: str = None
+    service: str, upstream_git_commit: str, image_version: Optional[str] = None
 ) -> str:
     """Builds the DOCKER_TAG string
 
