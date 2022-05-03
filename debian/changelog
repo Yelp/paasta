@@ -1,3 +1,12 @@
+paasta-tools (0.127.1) xenial; urgency=medium
+
+  * 0.127.1 tagged with 'make release'
+    Commit: Update to check all status versions before setting state to
+    stopped (#3341)  * Update to check version.replicas before setting
+    state to stopped
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Tue, 03 May 2022 12:34:39 -0700
+
 paasta-tools (0.127.0) xenial; urgency=medium
 
   * 0.127.0 tagged with 'make release'
