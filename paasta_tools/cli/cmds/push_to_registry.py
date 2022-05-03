@@ -15,10 +15,13 @@
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
+import argparse
 import base64
 import binascii
 import json
 import os
+from typing import Optional
+from typing import Tuple
 
 import requests
 from requests.exceptions import RequestException
@@ -32,11 +35,12 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
+from paasta_tools.utils import build_image_identifier
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_docker_registry
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "push-to-registry",
         help="Uploads a docker image to a registry",
@@ -67,6 +71,13 @@ def add_subparser(subparsers):
         type=validate_full_git_sha,
     )
     list_parser.add_argument(
+        "--image-version",
+        type=str,
+        required=False,
+        default=None,
+        help="Extra version metadata to use when naming the remote image",
+    )
+    list_parser.add_argument(
         "-d",
         "--soa-dir",
         dest="soa_dir",
@@ -86,25 +97,32 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 
-def build_command(upstream_job_name, upstream_git_commit):
+def build_command(
+    upstream_job_name: str,
+    upstream_git_commit: str,
+    image_version: Optional[str] = None,
+) -> str:
     # This is kinda dumb since we just cleaned the 'services-' off of the
     # service so we could validate it, but the Docker image will have the full
     # name with 'services-' so add it back.
-    tag = build_docker_tag(upstream_job_name, upstream_git_commit)
+    tag = build_docker_tag(upstream_job_name, upstream_git_commit, image_version)
     cmd = f"docker push {tag}"
     return cmd
 
 
-def paasta_push_to_registry(args):
+def paasta_push_to_registry(args: argparse.Namespace) -> int:
     """Upload a docker image to a registry"""
     service = args.service
     if service and service.startswith("services-"):
         service = service.split("services-", 1)[1]
     validate_service_name(service, args.soa_dir)
+    image_identifier = build_image_identifier(args.commit, None, args.image_version)
 
     if not args.force:
         try:
-            if is_docker_image_already_in_registry(service, args.soa_dir, args.commit):
+            if is_docker_image_already_in_registry(
+                service, args.soa_dir, args.commit, args.image_version
+            ):
                 print(
                     "The docker image is already in the PaaSTA docker registry. "
                     "I'm NOT overriding the existing image. "
@@ -119,7 +137,7 @@ def paasta_push_to_registry(args):
             )
             return 1
 
-    cmd = build_command(service, args.commit)
+    cmd = build_command(service, args.commit, args.image_version)
     loglines = []
     returncode, output = _run(
         cmd,
@@ -130,12 +148,14 @@ def paasta_push_to_registry(args):
         loglevel="debug",
     )
     if returncode != 0:
-        loglines.append("ERROR: Failed to promote image for %s." % args.commit)
+        loglines.append("ERROR: Failed to promote image for %s." % image_identifier)
         output = get_jenkins_build_output_url()
         if output:
             loglines.append("See output: %s" % output)
     else:
-        loglines.append("Successfully pushed image for %s to registry" % args.commit)
+        loglines.append(
+            "Successfully pushed image for %s to registry" % image_identifier
+        )
         _log_audit(
             action="push-to-registry",
             action_details={"commit": args.commit},
@@ -146,7 +166,9 @@ def paasta_push_to_registry(args):
     return returncode
 
 
-def read_docker_registry_creds(registry_uri):
+def read_docker_registry_creds(
+    registry_uri: str,
+) -> Tuple[Optional[str], Optional[str]]:
     dockercfg_path = os.path.expanduser("~/.dockercfg")
     try:
         with open(dockercfg_path) as f:
@@ -157,14 +179,14 @@ def read_docker_registry_creds(registry_uri):
                 return (auth[:first_colon], auth[first_colon + 1 : -2])
     except IOError:  # Can't open ~/.dockercfg
         pass
-    except json.scanner.JSONDecodeError:  # JSON decoder error
+    except json.JSONDecodeError:  # JSON decoder error
         pass
     except binascii.Error:  # base64 decode error
         pass
     return (None, None)
 
 
-def is_docker_image_already_in_registry(service, soa_dir, sha):
+def is_docker_image_already_in_registry(service: str, soa_dir: str, sha: str, image_version: Optional[str] = None) -> bool:  # type: ignore
     """Verifies that docker image exists in the paasta registry.
 
     :param service: name of the service
@@ -172,10 +194,10 @@ def is_docker_image_already_in_registry(service, soa_dir, sha):
     :returns: True, False or raises requests.exceptions.RequestException
     """
     registry_uri = get_service_docker_registry(service, soa_dir)
-    repository, tag = build_docker_image_name(service, sha).split(":")
+    repository, tag = build_docker_image_name(service, sha, image_version).split(":", 1)
 
     creds = read_docker_registry_creds(registry_uri)
-    uri = f"{registry_uri}/v2/{repository}/manifests/paasta-{sha}"
+    uri = f"{registry_uri}/v2/{repository}/manifests/{tag}"
 
     with requests.Session() as s:
         try:
