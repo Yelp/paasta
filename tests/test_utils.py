@@ -1290,12 +1290,13 @@ class TestInstanceConfig:
                 branch_dict={
                     "git_sha": "d15ea5e",
                     "docker_image": "docker_image",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
             )
         )
-        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
+        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'image_version': None, 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
         assert actual == expect
 
     def test_get_monitoring(self):
@@ -1720,6 +1721,7 @@ class TestInstanceConfig:
                 branch_dict={
                     "git_sha": "c0defeed",
                     "docker_image": "something",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
@@ -1785,6 +1787,7 @@ class TestInstanceConfig:
             branch_dict={
                 "git_sha": "abcdef0",
                 "docker_image": "whale",
+                "image_version": None,
                 "desired_state": "start",
                 "force_bounce": "blurp",
             },
@@ -1800,6 +1803,7 @@ class TestInstanceConfig:
             branch_dict={
                 "git_sha": "abcdef0",
                 "docker_image": "whale",
+                "image_version": None,
                 "desired_state": "stop",
                 "force_bounce": None,
             },

@@ -3571,6 +3571,7 @@ def test_warning_big_bounce():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
