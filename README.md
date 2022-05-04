@@ -27,7 +27,7 @@ before it works completely:
  * [Marathon](https://mesosphere.github.io/marathon/) for managing long-running services
  * [Tron](https://tron.readthedocs.io/en/latest/) for running things on a timer (nightly batches)
  * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) / [Envoy](https://www.envoyproxy.io/) for service registration and discovery
- * [Sensu](https://sensuapp.org/) for monitoring/alerting
+ * [Sensu](https://sensu.io/) for monitoring/alerting
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
 
 The main advantage to having a PaaS composed of components like these is you
