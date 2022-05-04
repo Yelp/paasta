@@ -624,6 +624,9 @@ class InstanceConfig:
             )
         except Exception:
             pass
+        image_version = self.get_image_version()
+        if image_version is not None:
+            env["PAASTA_IMAGE_VERSION"] = image_version
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -705,6 +708,14 @@ class InstanceConfig:
             return self.branch_dict["docker_image"]
         else:
             return ""
+
+    def get_image_version(self) -> Optional[str]:
+        """Get additional information identifying the Docker image from a
+        generated deployments.json file."""
+        if self.branch_dict is not None and "image_version" in self.branch_dict:
+            return self.branch_dict["image_version"]
+        else:
+            return None
 
     def get_docker_url(
         self, system_paasta_config: Optional["SystemPaastaConfig"] = None
