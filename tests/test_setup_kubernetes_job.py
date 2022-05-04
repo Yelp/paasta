@@ -67,7 +67,12 @@ def test_setup_kube_deployment_invalid_job_name():
         mock_client = mock.Mock()
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="f_m", git_sha="", config_sha="", replicas=0
+                service="kurupt",
+                instance="f_m",
+                git_sha="",
+                image_version=None,
+                config_sha="",
+                replicas=0,
             )
         ]
         mock_service_instances = ["kuruptf_m"]
@@ -196,7 +201,12 @@ def test_setup_kube_deployment_create_update():
     ):
         fake_app = mock.MagicMock(spec=Application)
         fake_app.kube_deployment = KubeDeployment(
-            service=service, instance=instance, git_sha="1", config_sha="1", replicas=1
+            service=service,
+            instance=instance,
+            git_sha="1",
+            image_version=None,
+            config_sha="1",
+            replicas=1,
         )
         fake_app.create = fake_create
         fake_app.update = fake_update
@@ -255,7 +265,12 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="2", config_sha="1", replicas=1
+                service="kurupt",
+                instance="fm",
+                git_sha="2",
+                image_version=None,
+                config_sha="1",
+                replicas=1,
             )
         ]
         setup_kube_deployments(
@@ -288,7 +303,12 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="1", config_sha="2", replicas=1
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version=None,
+                config_sha="2",
+                replicas=1,
             )
         ]
         setup_kube_deployments(
@@ -309,7 +329,12 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="1", config_sha="1", replicas=2
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version=None,
+                config_sha="1",
+                replicas=2,
             )
         ]
         setup_kube_deployments(
@@ -333,6 +358,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="2",
+                image_version=None,
                 config_sha="2",
                 replicas=1,
             )
@@ -358,6 +384,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="1",
+                image_version=None,
                 config_sha="1",
                 replicas=1,
             )
