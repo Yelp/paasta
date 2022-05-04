@@ -407,8 +407,16 @@ instance MAY have:
     is ``cmd``.
 
   * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long
-    after the container has started before liveness or readiness probes are
-    initiated. Defaults to 60 seconds.
+    after the container has started before liveness probe is initiated.
+    Defaults to 60 seconds. Readiness probes will always start after 10 seconds.
+    The application should able to receive traffic as soon as the readiness probe
+    is successful. Keep this in mind for any expensive "warm-up" requests.
+
+    A failing readiness probe will not restart the instance, it will however be
+    removed from the mesh and not receive any new traffic.
+
+    To add an additional delay after the pod has started and before probes should
+    start, see ``min_task_uptime``.
 
   * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
     healthchecks. Defaults to 10 seconds.
