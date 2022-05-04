@@ -313,6 +313,7 @@ class TestKubernetesStatusV2:
                     "ready_replicas": 0,
                     "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
                     "git_sha": "aaa000",
+                    "image_version": None,
                     "config_sha": "config000",
                     "pods": [
                         {
@@ -418,6 +419,7 @@ class TestKubernetesStatusV2:
             "ready_replicas": 1,
             "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
             "git_sha": "aaa000",
+            "image_version": None,
             "config_sha": "config000",
             "pods": [mock.ANY],
         }

@@ -831,6 +831,11 @@ components:
         git_sha:
           description: Git SHA of service code for this version of the instance
           type: string
+        image_version:
+          description: Additional metadata identifying the image used for this
+            version of the instance
+          type: string
+          nullable: true
         config_sha:
           description: SHA of configuration for this instance
           type: string
