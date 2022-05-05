@@ -26,10 +26,10 @@ import logging
 import sys
 
 from kubernetes.client import V1beta1CustomResourceDefinition
-from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.kubernetes_tools import update_crds
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
@@ -150,47 +150,9 @@ def setup_kube_internal_crd(
         label_selector=paasta_prefixed("internal")
     )
 
-    success = True
-    for desired_crd in INTERNAL_CRDS:
-        existing_crd = None
-        for crd in existing_crds.items:
-            if crd.metadata.name == desired_crd.metadata["name"]:
-                existing_crd = crd
-                break
-
-        try:
-            if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
-                kube_client.apiextensions.replace_custom_resource_definition(
-                    name=desired_crd.metadata["name"], body=desired_crd
-                )
-            else:
-                try:
-                    kube_client.apiextensions.create_custom_resource_definition(
-                        body=desired_crd
-                    )
-                except ValueError as err:
-                    # TODO: kubernetes server will sometimes reply with conditions:null,
-                    # figure out how to deal with this correctly, for more details:
-                    # https://github.com/kubernetes/kubernetes/pull/64996
-                    if "`conditions`, must not be `None`" in str(err):
-                        pass
-                    else:
-                        raise err
-            log.info(
-                f"deployed internal crd {desired_crd.metadata['name']} on cluster {cluster}"
-            )
-        except ApiException as exc:
-            log.error(
-                f"error deploying crd {desired_crd.metadata['name']} on cluster {cluster}, "
-                f"status: {exc.status}, reason: {exc.reason}"
-            )
-            log.debug(exc.body)
-            success = False
-
-    return success
+    return update_crds(
+        kube_client=kube_client, desired_crds=INTERNAL_CRDS, existing_crds=existing_crds
+    )
 
 
 if __name__ == "__main__":
