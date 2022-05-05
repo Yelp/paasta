@@ -3348,7 +3348,7 @@ class DeploymentsJsonV2:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
 
-    def get_image_version_for_deploy_group(self, deploy_group: str) -> str:
+    def get_image_version_for_deploy_group(self, deploy_group: str) -> Optional[str]:
         try:
             # TODO: Once these changes have propagated image_version should
             # always be present in the deployments.json file, so remove the
