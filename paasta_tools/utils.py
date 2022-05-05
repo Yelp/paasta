@@ -2175,6 +2175,9 @@ class SystemPaastaConfig:
             ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
         )
 
+    def get_nerve_register_k8s_terminating(self) -> bool:
+        return self.config_dict.get("nerve_register_k8s_terminating", True)
+
     def get_enforce_disk_quota(self) -> bool:
         """
         If enabled, add `--storage-opt size=SIZE` arg to `docker run` calls,

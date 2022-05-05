@@ -2351,10 +2351,11 @@ def test_get_kubernetes_services_running_here():
             ]
         }
 
-        mock_requests_get.return_value.json.return_value = {
+        mock_pod_results = {
             "items": [
+                # valid pod
                 {
-                    "status": {"phase": "Running", "podIP": "10.1.1.1"},
+                    "status": {"phase": "Running", "podIP": "10.1.1.3"},
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
@@ -2370,8 +2371,9 @@ def test_get_kubernetes_services_running_here():
                     },
                     "spec": spec,
                 },
+                # non-Running pod
                 {
-                    "status": {"phase": "Something", "podIP": "10.1.1.1"},
+                    "status": {"phase": "Something", "podIP": "10.1.1.2"},
                     "metadata": {
                         "namespace": "paasta",
                         "labels": {
@@ -2387,6 +2389,7 @@ def test_get_kubernetes_services_running_here():
                     },
                     "spec": spec,
                 },
+                # no pod IP
                 {
                     "status": {"phase": "Running"},
                     "metadata": {
@@ -2404,6 +2407,7 @@ def test_get_kubernetes_services_running_here():
                     },
                     "spec": spec,
                 },
+                # no registration annotation
                 {
                     "status": {"phase": "Running", "podIP": "10.1.1.1"},
                     "metadata": {
@@ -2420,15 +2424,23 @@ def test_get_kubernetes_services_running_here():
                 },
             ]
         }
+        mock_requests_get.return_value.json.return_value = mock_pod_results
+
         assert get_kubernetes_services_running_here() == [
             KubernetesServiceRegistration(
                 name="kurupt",
                 instance="fm",
                 port=8888,
-                pod_ip="10.1.1.1",
+                pod_ip="10.1.1.3",
                 registrations=[],
             )
         ]
+
+        # mock a terminating pod
+        mock_pod_results["items"][0]["metadata"]["deletionTimestamp"] = "now"
+        mock_requests_get.return_value.json.return_value = mock_pod_results
+        assert get_kubernetes_services_running_here(exclude_terminating=True) == []
+
         # if the kubelet is down we don't want to reconfigure nerve until it comes back
         # and we can be sure what is running or not
         mock_requests_get.side_effect = ConnectionError
