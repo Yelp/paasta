@@ -1,3 +1,10 @@
+paasta-tools (0.127.2) xenial; urgency=medium
+
+  * 0.127.2 tagged with 'make release'
+    Commit: improve healthcheck docs as post-moretem for 1520 (#3349)
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 05 May 2022 11:00:09 -0700
+
 paasta-tools (0.127.1) xenial; urgency=medium
 
   * 0.127.1 tagged with 'make release'
