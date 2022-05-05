@@ -204,7 +204,7 @@ def test_setup_kube_deployment_create_update():
             service=service,
             instance=instance,
             git_sha="1",
-            image_version=None,
+            image_version="extrastuff-1",
             config_sha="1",
             replicas=1,
         )
@@ -268,7 +268,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="fm",
                 git_sha="2",
-                image_version=None,
+                image_version="extrastuff-1",
                 config_sha="1",
                 replicas=1,
             )
@@ -296,6 +296,32 @@ def test_setup_kube_deployment_create_update():
         mock_log_obj.info.reset_mock()
         mock_no_metrics.reset_mock()
 
+        # Update when image_version changed
+        fake_create.reset_mock()
+        fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
+        mock_service_instances = ["kurupt.fm"]
+        mock_list_all_deployments.return_value = [
+            KubeDeployment(
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version="extrastuff-2",
+                config_sha="1",
+                replicas=1,
+            )
+        ]
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instances=mock_service_instances,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+        )
+        assert fake_update.call_count == 1
+        assert fake_create.call_count == 0
+        assert fake_update_related_api_objects.call_count == 1
+        mock_log_obj.info.reset_mock()
+
         # Update when configsha changed
         fake_create.reset_mock()
         fake_update.reset_mock()
@@ -306,7 +332,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="fm",
                 git_sha="1",
-                image_version=None,
+                image_version="extrastuff-1",
                 config_sha="2",
                 replicas=1,
             )
@@ -332,7 +358,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="fm",
                 git_sha="1",
-                image_version=None,
+                image_version="extrastuff-1",
                 config_sha="1",
                 replicas=2,
             )
@@ -358,7 +384,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="2",
-                image_version=None,
+                image_version="extrastuff-1",
                 config_sha="2",
                 replicas=1,
             )
@@ -384,7 +410,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="1",
-                image_version=None,
+                image_version="extrastuff-1",
                 config_sha="1",
                 replicas=1,
             )
