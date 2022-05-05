@@ -3350,7 +3350,14 @@ class DeploymentsJsonV2:
 
     def get_image_version_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict["deployments"][deploy_group]["image_version"]
+            # TODO: Once these changes have propagated image_version should
+            # always be present in the deployments.json file, so remove the
+            # check for it.
+            return (
+                self.config_dict["deployments"][deploy_group]["image_version"]
+                if "image_version" in self.config_dict["deployments"][deploy_group]
+                else None
+            )
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
