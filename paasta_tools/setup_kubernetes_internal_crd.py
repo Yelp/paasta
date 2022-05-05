@@ -17,7 +17,6 @@ Usage: ./setup_kubernetes_internal_crd.py [options]
 
 Command line options:
 
-- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -c <cluster>, --cluster <cluster>: Specify a kubernetes cluster name
 - -v, --verbose: Verbose output
 """
