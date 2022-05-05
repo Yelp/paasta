@@ -2351,7 +2351,7 @@ def test_get_kubernetes_services_running_here():
             ]
         }
 
-        mock_pod_results = {
+        mock_pod_results: dict = {
             "items": [
                 # valid pod
                 {
