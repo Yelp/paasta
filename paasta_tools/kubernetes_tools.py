@@ -53,6 +53,7 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1ControllerRevision
+from kubernetes.client import V1CustomResourceDefinitionList
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
@@ -3313,9 +3314,10 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 
 def update_crds(
+    kube_client: KubeClient,
     desired_crds: Collection[V1beta1CustomResourceDefinition],
-    existing_crds: Collection[V1beta1CustomResourceDefinition],
-):
+    existing_crds: V1CustomResourceDefinitionList,
+) -> bool:
     success = True
     for desired_crd in desired_crds:
         existing_crd = None

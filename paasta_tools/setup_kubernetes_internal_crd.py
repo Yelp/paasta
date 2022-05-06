@@ -61,6 +61,7 @@ INTERNAL_CRDS = [
                         "service": {"type": "string"},
                         "deploy_group": {"type": "string"},
                         "git_sha": {"type": "string"},
+                        "image_version": {"type": "string"},
                     },
                 }
             },
