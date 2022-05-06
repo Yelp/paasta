@@ -17,7 +17,6 @@ Usage: ./setup_kubernetes_internal_crd.py [options]
 
 Command line options:
 
-- -c <cluster>, --cluster <cluster>: Specify a kubernetes cluster name
 - -v, --verbose: Verbose output
 """
 import argparse
@@ -29,7 +28,6 @@ from kubernetes.client import V1beta1CustomResourceDefinition
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
-from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -106,14 +104,6 @@ def parse_args() -> argparse.Namespace:
         description="Creates/updates Paasta-internal kubernetes CRDs."
     )
     parser.add_argument(
-        "-c",
-        "--cluster",
-        dest="cluster",
-        metavar="CLUSTER",
-        default=None,
-        help="Kubernetes cluster name",
-    )
-    parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
@@ -127,24 +117,16 @@ def main() -> None:
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    if args.cluster:
-        cluster = args.cluster
-    else:
-        system_paasta_config = load_system_paasta_config()
-        cluster = system_paasta_config.get_cluster()
-
     kube_client = KubeClient()
 
     success = setup_kube_internal_crd(
         kube_client=kube_client,
-        cluster=cluster,
     )
     sys.exit(0 if success else 1)
 
 
 def setup_kube_internal_crd(
     kube_client: KubeClient,
-    cluster: str,
 ) -> bool:
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
         label_selector=paasta_prefixed("internal")
