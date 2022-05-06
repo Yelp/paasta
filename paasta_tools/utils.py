@@ -1931,7 +1931,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     kubernetes_add_registration_labels: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
-    enable_custom_cassandra_status_writer: bool
     ldap_host: str
     ldap_reader_password: str
     ldap_reader_username: str
@@ -2507,9 +2506,6 @@ class SystemPaastaConfig:
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
-
-    def get_enable_custom_cassandra_status_writer(self) -> bool:
-        return self.config_dict.get("enable_custom_cassandra_status_writer", False)
 
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""
