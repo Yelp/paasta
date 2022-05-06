@@ -3335,33 +3335,30 @@ class DeploymentsJsonV2:
         return self.config_dict["deployments"].keys()
 
     def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
-        key = "docker_image"
         try:
             deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
         try:
-            return deploy_group_config[key]
+            return deploy_group_config["docker_image"]
         except KeyError:
-            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain '{key}' metadata."
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'docker_image' metadata."
             raise KeyError(e)
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
-        key = "git_sha"
         try:
             deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
         try:
-            return deploy_group_config[key]
+            return deploy_group_config["git_sha"]
         except KeyError:
-            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain '{key}' metadata."
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'git_sha' metadata."
             raise KeyError(e)
 
     def get_image_version_for_deploy_group(self, deploy_group: str) -> Optional[str]:
-        key = "image_version"
         try:
             deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
@@ -3371,9 +3368,9 @@ class DeploymentsJsonV2:
             # TODO: Once these changes have propagated image_version should
             # always be present in the deployments.json file, so remove the
             # .get() call.
-            return deploy_group_config.get(key, None)
+            return deploy_group_config.get("image_version", None)
         except KeyError:
-            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain '{key}' metadata."
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'image_version' metadata."
             raise KeyError(e)
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
