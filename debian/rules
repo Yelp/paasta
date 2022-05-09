@@ -4,7 +4,7 @@
 PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 
 DISTRIB_CODENAME := $(shell sed -n 's|DISTRIB_CODENAME=\(.*\)|\1|p' </etc/lsb-release)
-PYTHON_VERSION := 3.7
+PYTHON_VERSION := $(if $(filter-out jammy,$(DISTRIB_CODENAME)),3.7,3.8)
 
 %:
 	dh $@ --with python-virtualenv
