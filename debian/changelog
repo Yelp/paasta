@@ -1,3 +1,11 @@
+paasta-tools (0.127.3) xenial; urgency=medium
+
+  * 0.127.3 tagged with 'make release'
+    Commit: Support additional version information in Kube
+    list_deployments (#3352)
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 09 May 2022 10:19:05 -0700
+
 paasta-tools (0.127.2) xenial; urgency=medium
 
   * 0.127.2 tagged with 'make release'
