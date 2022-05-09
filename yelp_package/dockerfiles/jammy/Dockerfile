@@ -30,6 +30,7 @@ RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         debhelper \
+        dh-virtualenv \
         gdebi-core \
         git \
         libffi-dev \
@@ -48,11 +49,6 @@ RUN apt-get update > /dev/null && \
 
 RUN python3.8 -m pip install --upgrade pip==20.0.2
 RUN pip3.8 install virtualenv==16.0.0
-
-RUN cd /tmp && \
-    wget http://mirrors.edge.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.2.2-1.1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 
