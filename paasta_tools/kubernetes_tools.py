@@ -214,6 +214,7 @@ class KubeDeployment(NamedTuple):
     service: str
     instance: str
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
     replicas: Optional[int]
 
@@ -2158,6 +2159,9 @@ def list_deployments(
             service=item.metadata.labels["paasta.yelp.com/service"],
             instance=item.metadata.labels["paasta.yelp.com/instance"],
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
+            image_version=item.metadata.labels.get(
+                "paasta.yelp.com/image_version", None
+            ),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas
             if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
