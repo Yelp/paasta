@@ -53,6 +53,7 @@ class TestMarathonTools:
             "desired_state": "start",
             "force_bounce": None,
             "git_sha": "deadbeef",
+            "image_version": None,
         },
     )
     fake_srv_config = {
@@ -159,6 +160,7 @@ class TestMarathonTools:
                 "force_bounce": "12345",
                 "docker_image": fake_docker,
                 "git_sha": "9",
+                "image_version": None,
             }
         )
         deployments_json_mock = mock.Mock(
@@ -1108,6 +1110,7 @@ class TestMarathonTools:
                 "docker_image": "dockervania_from_konami",
                 "force_bounce": None,
                 "git_sha": "deadbeef",
+                "image_version": None,
             },
         )
         with mock.patch(
@@ -1153,6 +1156,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "stop",
                 "git_sha": "deadbeef",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1303,6 +1307,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "start",
                 "git_sha": "cafebabe",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1328,6 +1333,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "start",
                 "git_sha": "baaaaaa",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1770,6 +1776,7 @@ class TestMarathonTools:
                 "force_bounce": "88888",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1783,6 +1790,7 @@ class TestMarathonTools:
                 "force_bounce": "99999",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1796,6 +1804,7 @@ class TestMarathonTools:
                 "force_bounce": "99999",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1855,6 +1864,7 @@ class TestMarathonTools:
                     "force_bounce": "99999",
                     "git_sha": "deadface",
                     "docker_image": "docker_image",
+                    "image_version": None,
                 },
             )
             with raises(NoSlavesAvailableError) as excinfo:
@@ -2354,6 +2364,7 @@ class TestMarathonServiceConfig:
             branch_dict={
                 "docker_image": "abcdef",
                 "git_sha": "deadbeef",
+                "image_version": None,
                 "force_bounce": None,
                 "desired_state": "start",
             },
@@ -2401,6 +2412,7 @@ def test_format_marathon_app_dict_no_smartstack():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2501,6 +2513,7 @@ def test_format_marathon_app_dict_with_smartstack():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2616,6 +2629,7 @@ def test_format_marathon_app_dict_utilizes_net():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2673,6 +2687,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2851,6 +2866,7 @@ def test_marathon_service_config_copy():
         branch_dict={
             "docker_image": "test2",
             "git_sha": "beefd00d",
+            "image_version": None,
             "desired_state": "start",
             "force_bounce": None,
         },

@@ -36,6 +36,13 @@ def test_get_deploy_group_mappings():
             branch_dict=None,
             config_dict={"deploy_group": "try_me"},
         ),
+        MarathonServiceConfig(
+            service=fake_service,
+            cluster="clusterC",
+            instance="main",
+            branch_dict=None,
+            config_dict={"deploy_group": "but_why"},
+        ),
     ]
 
     fake_remote_refs = {
@@ -44,6 +51,7 @@ def test_get_deploy_group_mappings():
         "refs/tags/paasta-okay-20160308T053933-deploy": "ijowarg",
         "refs/tags/paasta-no_thanks-20160308T053933-deploy": "789009",
         "refs/tags/paasta-nah-20160308T053933-deploy": "j8yiomwer",
+        "refs/tags/paasta-but_why-extrastuff-20220308T053933-deploy": "123456",
     }
 
     expected = {
@@ -57,16 +65,28 @@ def test_get_deploy_group_mappings():
             "desired_state": "stop",
             "force_bounce": "123",
         },
+        "fake_service:paasta-clusterC.main": {
+            "docker_image": "services-fake_service:paasta-123456-extrastuff",
+            "desired_state": "start",
+            "force_bounce": None,
+        },
     }
     expected_v2 = {
         "deployments": {
             "try_me": {
                 "docker_image": "services-fake_service:paasta-123456",
                 "git_sha": "123456",
+                "image_version": None,
             },
             "no_thanks": {
                 "docker_image": "services-fake_service:paasta-789009",
                 "git_sha": "789009",
+                "image_version": None,
+            },
+            "but_why": {
+                "docker_image": "services-fake_service:paasta-123456-extrastuff",
+                "git_sha": "123456",
+                "image_version": "extrastuff",
             },
         },
         "controls": {
@@ -77,6 +97,10 @@ def test_get_deploy_group_mappings():
             "fake_service:clusterB.main": {
                 "desired_state": "stop",
                 "force_bounce": "123",
+            },
+            "fake_service:clusterC.main": {
+                "desired_state": "start",
+                "force_bounce": None,
             },
         },
     }
@@ -98,15 +122,6 @@ def test_get_deploy_group_mappings():
         assert list_remote_refs_patch.call_count == 1
         assert expected == actual
         assert expected_v2 == actual_v2
-
-
-def test_get_service_from_docker_image():
-    mock_image = (
-        "docker-paasta.yelpcorp.com:443/"
-        "services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6"
-    )
-    actual = generate_deployments_for_service.get_service_from_docker_image(mock_image)
-    assert "example_service" == actual
 
 
 def test_main():
