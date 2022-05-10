@@ -18,6 +18,7 @@ ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 	PAASTA_ENV ?= YELP
+	DOCKER_AWS_ENV := -e AWS_SECRET_ACCESS_KEY -e AWS_ACCESS_KEY_ID -e AWS_SESSION_TOKEN
 else
 	export PIP_INDEX_URL ?= https://pypi.python.org/simple
 	export DOCKER_REGISTRY ?= ""
@@ -113,3 +114,12 @@ openapi-codegen:
 
 build-image: itest_bionic
 	docker build -t paasta-tools:latest .
+
+
+# get some tokens with something like `eval $(aws-okta -a dev -r production-engineering)` assuming your role has permissions on the target cluster (see .kubeconfig)
+run-local:
+	docker run -ti --init --rm \
+		$(DOCKER_AWS_ENV) \
+		-v $(PWD)/.kubeconfig:/root/.kube/config:ro \
+		-e KUBECONFIG=/root/.kube/config \
+		paasta-tools:latest setup_kubernetes_job example
