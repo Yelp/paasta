@@ -1,6 +1,5 @@
 */.cache
 build/
-dist/
 .tox
 .paasta
 .pip/

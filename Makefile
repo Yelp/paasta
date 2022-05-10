@@ -110,3 +110,6 @@ openapi-codegen:
 		-p pythonAttrNoneIfUnset=true
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
 	rm -rf temp-openapi-client
+
+build-image: itest_bionic
+	docker build -t paasta-tools:latest .
