@@ -14,6 +14,8 @@ RUN gdebi -n /tmp/paasta-tools_*.deb && \
 	rm /tmp/paasta-tools_*.deb
 
 RUN mkdir /etc/paasta
+COPY dockerfiles/volumes.json /etc/paasta
+
 RUN mkdir -p /nail/etc/services
 
 VOLUME /nail/etc/services
