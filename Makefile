@@ -115,11 +115,18 @@ openapi-codegen:
 build-image: itest_bionic
 	docker build -t paasta-tools:latest .
 
+run-local-soa:
+	docker run --rm --init -d \
+		-v /nail/etc/configs \
+		--name soaconfigs \
+		paasta-tools:soaconfigs true
 
 # get some tokens with something like `eval $(aws-okta -a dev -r production-engineering)` assuming your role has permissions on the target cluster (see .kubeconfig)
-run-local:
+run-local: run-local-soa
 	docker run -ti --init --rm \
 		$(DOCKER_AWS_ENV) \
+		-v $$HOME/git/yelpsoa-configs/:/nail/etc/services:ro \
 		-v $(PWD)/.kubeconfig:/root/.kube/config:ro \
 		-e KUBECONFIG=/root/.kube/config \
-		paasta-tools:latest setup_kubernetes_job example
+		--volumes-from soaconfigs \
+		paasta-tools:latest setup_kubernetes_job --cluster kubestage compute-infra-test-service.one_instance
