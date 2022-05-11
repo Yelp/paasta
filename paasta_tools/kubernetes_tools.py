@@ -115,6 +115,7 @@ from service_configuration_lib import read_soa_metadata
 
 from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
+from paasta_tools.utils import _run
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
@@ -447,11 +448,19 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self, component: Optional[str] = None) -> None:
-        kube_config.load_kube_config(
-            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
-            context=os.environ.get("KUBECONTEXT"),
-        )
+    def __init__(self, config_path: Optional[str] = None, config_dict: Optional[Mapping[Any, Any]] = None, context: Optional[str] = None, component: Optional[str] = None) -> None:
+        if config_dict:
+            kube_config.load_kube_config_from_dict(config_dict)
+        else:
+            if not config:
+                config = os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH)
+            if not context:
+                context = os.environ.get("KUBECONTEXT")
+
+            kube_config.load_kube_config(
+                config_file=config,
+                context=context,
+            )
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
@@ -3304,6 +3313,59 @@ def create_or_find_service_account_name(
 
     return sa_name
 
+def get_kube_cluster_ca_data(cluster: str) -> str:
+    # TODO: Don't be so hacky
+    ssh_cmd = ["ssh",
+        "-q",
+        "-t",
+        "-A",
+        f'k8s.paasta-{cluster}.yelp',
+        'cat /etc/kubernetes/pki/ca.crt | base64'
+    ]
+    _, output = _run(ssh_cmd)
+    return output.strip()
+
+def get_human_kube_config(cluster: str, auth_token: str) -> Mapping[str,Any]:
+    ca_cert_data = get_kube_cluster_ca_data(cluster)
+    if not ca_cert_data:
+        raise AuthentiationFailure("Could not fetch certificate")
+    if not auth_token:
+        raise AuthenticationFailure("Could not auth with Okta")
+
+    config = {
+        "clusters": [ {
+            "cluster": {
+                "certificate-authority-data": ca_cert_data,
+                "server": f'https://k8s.paasta-{cluster}.yelp:16443',
+            },
+            "name": "kubernetes",
+        }
+        ],
+        "contexts": [ {
+            "context": {
+                "cluster": "kubernetes",
+                "user": "kubernetes-human",
+            },
+            "name": "kubernetes-human@kubernetes",
+        }],
+        "current-context": "kubernetes-human@kubernetes",
+        "kind": "Config",
+        "users": [ {
+            "user": {
+                "auth-provider": {
+                    "config": {
+                        "client-id": "kubernetes",
+                        "idp-issuer-url": "noop", # Can we actually configure this correctly?
+                        "id-token": auth_token,
+                    },
+                    "name": "oidc",
+                },
+            },
+            "name": "kubernetes-human",
+        }],
+
+    }
+    return config
 
 def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
     if mode is not None:

@@ -55,6 +55,7 @@ slackclient >= 1.2.1
 sticht >= 1.1.0
 syslogmp
 task-processing
+task_processing[mesos_executor,k8s]
 thriftpy2
 transitions
 typing-extensions

@@ -113,6 +113,7 @@ PAASTA_SUBCOMMANDS = {
     "list": "list",
     "local-run": "local_run",
     "logs": "logs",
+    "k8s-remote-run": "k8s_remote_run",
     "mark-for-deployment": "mark_for_deployment",
     "mesh-status": "mesh_status",
     "metastatus": "metastatus",

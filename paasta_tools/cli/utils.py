@@ -1125,3 +1125,26 @@ def verify_instances(
                 print("  %s" % instance)
 
     return misspelled_instances
+
+#TODO: Get file + refresh cmd + max file age from paasta system config
+def get_okta_auth_token(token_file: str = "~/.cached_okta_jwt/0oafvj4jgafkv081l1t7",
+    max_file_age: int = 3599,
+    refresh_cmd: str = "okta-auth --client-id 0oafvj4jgafkv081l1t7"):
+
+    full_path = os.path.expanduser(token_file)
+    try:
+        file_mtime = os.path.getmtime(full_path)
+        file_age = datetime.datetime.now().timestamp() - file_mtime
+    except:
+        # If the file doesn't exist, we don't really care, just refresh
+        file_age = -1
+
+    if file_age < 0 or file_age > max_file_age:
+        # Refresh
+        rc, stdout = _run(refresh_cmd)
+        # stdout is actually the token as well, but we can just grab it from the file after this
+
+    try:
+        return open(full_path).read().strip()
+    except: # file still didn't exist?
+        raise Exception("Could not authenticate with Okta. Token not found.")

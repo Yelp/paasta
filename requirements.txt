@@ -103,7 +103,7 @@ sticht==1.1.13
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2
-task-processing==0.1.3
+task-processing==0.4.0
 thriftpy2==0.4.11
 transitions==0.6.9
 translationstring==1.3
