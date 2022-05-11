@@ -12,31 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
 import os
-import re
-from shlex import quote
 
+from task_processing.plugins.kubernetes.task_config import KubernetesTaskConfig
+from task_processing.task_processor import TaskProcessor
+
+from paasta_tools.cli.utils import failure
+from paasta_tools.cli.utils import get_okta_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_clusters
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.cli.utils import run_on_master
-from paasta_tools.cli.utils import get_okta_auth_token
+from paasta_tools.cli.utils import success
+from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import get_human_kube_config
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.kubernetes_tools import get_human_kube_config
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import get_all_pods
 
-#from task_processing.interfaces.event import Event
-#from task_processing.plugins.kubernetes.task_config import KubernetesTaskConfig
-#from task_processing.runners.subscription import Subscription
-#from task_processing.task_processor import TaskProcessor
-
-from typing import Optional
+# from task_processing.interfaces.event import Event
+# from task_processing.runners.subscription import Subscription
 
 ARG_DEFAULTS = dict(
     common=dict(
@@ -266,6 +263,7 @@ def add_subparser(subparsers):
 def split_constraints(constraints):
     return [c.split(",", 2) for c in constraints]
 
+
 def paasta_k8s_remote_run(args):
     system_paasta_config = get_system_paasta_config()
 
@@ -288,45 +286,51 @@ def paasta_k8s_remote_run(args):
     kube_client = KubeClient(config_dict=kube_config)
 
     pods = get_all_pods(kube_client)
-    print(f'Found {len(pods)} pods!')
-    return
+    print(f"Found {len(pods)} pods!")
+    #    return
     processor = TaskProcessor()
     processor.load_plugin(provider_module="task_processing.plugins.kubernetes")
     try:
-        executor = self.processor.executor_from_config(
+        executor = processor.executor_from_config(
             provider="kubernetes",
             provider_config={
-                "namespace": "paasta", # TODO get namespace from instance
+                "namespace": "paasta",  # TODO get namespace from instance
                 "kubeconfig_dict": kube_config,
             },
         )
         # TODO get taskconfig from cli.util.get_instance_config
         user = os.environ.get("USER", "Anonymous")
-        task_config=KubernetesTaskConfig(
-            name=f'test-task-{args.service}-{args.instance}',
-                command=f'/bin/sh -c "echo i am {user} doing TaskProc things at $(date)"',
-                image='docker-paasta.yelpcorp.com:443/services-compute-infra-test-service:paasta-833c8de1d7a4879aa2b5544c4f9bcd6fe035ffe2',
-                cpus=0.1,
-                memory=128,
-                disk=10,
-                node_selectors={"yelp.com/pool": "default"},
-                labels={'paasta.yelp.com/service': 'compute-infra-test-service', 'paasta.yelp.com/instance': 'test-remoterun-jfong'},
-                annotations={"paasta.yelp.com/routable_ip": "true"},
+        task_config = KubernetesTaskConfig(
+            name=f"test-task-{args.service}-{args.instance}",
+            command=f'/bin/sh -c "echo i am {user} doing TaskProc things at $(date)"',
+            image="docker-paasta.yelpcorp.com:443/services-compute-infra-test-service:paasta-833c8de1d7a4879aa2b5544c4f9bcd6fe035ffe2",
+            cpus=0.1,
+            memory=128,
+            disk=10,
+            node_selectors={"yelp.com/pool": "default"},
+            labels={
+                "paasta.yelp.com/service": "compute-infra-test-service",
+                "paasta.yelp.com/instance": "test-remoterun-jfong",
+            },
+            annotations={"paasta.yelp.com/routable_ip": "true"},
         )
         task_id = executor.run(task_config)
+        success(f"Started pod: {task_id}")
 
         # TODO: if interactive:
         #  create kubeclient here
         #  exec into pod
         # TODO: if noninteractive:
-           # wait here for executor to finish
-           # tail logs from pod?
-           # print status results
+        # wait here for executor to finish
+        # tail logs from pod?
+        # print status results
 
     except Exception as e:
-        failure(f'Hit exception: {repr(e)}', None)
+        failure(f"Hit exception: {repr(e)}", None)
         raise
     # Status results are streamed. This print is for possible error messages.
+
+
 #    if status is not None:
 #        for line in status.rstrip().split("\n"):
 #            print("    %s" % line)
