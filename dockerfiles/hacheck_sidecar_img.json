@@ -1,0 +1,3 @@
+{
+    "hacheck_sidecar_image_url": "docker-paasta.yelpcorp.com:443/hacheck-k8s-sidecar:4ad2ee04c036294b463d09a0a60843672a5b8ddc"
+}

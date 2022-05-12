@@ -129,4 +129,4 @@ run-local: run-local-soa
 		-v $(PWD)/.kubeconfig:/root/.kube/config:ro \
 		-e KUBECONFIG=/root/.kube/config \
 		--volumes-from soaconfigs \
-		paasta-tools:latest setup_kubernetes_job --cluster kubestage compute-infra-test-service.one_instance
+		paasta-tools:latest setup_kubernetes_job --cluster kubestage compute-infra-test-service.main_k8s

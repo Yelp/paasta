@@ -15,6 +15,7 @@ RUN gdebi -n /tmp/paasta-tools_*.deb && \
 
 RUN mkdir /etc/paasta
 COPY dockerfiles/volumes.json /etc/paasta
+COPY dockerfiles/hacheck_sidecar_img.json /etc/paasta
 
 RUN mkdir -p /nail/etc/services
 
