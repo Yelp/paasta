@@ -112,12 +112,12 @@ openapi-codegen:
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
 	rm -rf temp-openapi-client
 
-build-image: itest_bionic
+build-image:
+	make -C yelp_package PAASTA_ENV=$(PAASTA_ENV) package_bionic
 	docker build -t paasta-tools:latest .
 
 run-local-soa:
 	docker run --rm --init -d \
-		-v /nail/etc/configs \
 		--name soaconfigs \
 		paasta-tools:soaconfigs true
 
@@ -129,4 +129,4 @@ run-local: run-local-soa
 		-v $(PWD)/.kubeconfig:/root/.kube/config:ro \
 		-e KUBECONFIG=/root/.kube/config \
 		--volumes-from soaconfigs \
-		paasta-tools:latest setup_kubernetes_job --cluster kubestage compute-infra-test-service.main_k8s
+		paasta-tools:latest setup_kubernetes_job --cluster fake_baking_cluster compute-infra-test-service.one_instance

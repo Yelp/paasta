@@ -110,6 +110,7 @@ from kubernetes.client import V2beta2ObjectMetricSource
 from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
+from kubernetes.config.config_exception import ConfigException
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_soa_metadata
 
@@ -446,12 +447,24 @@ class InvalidKubernetesConfig(Exception):
         )
 
 
+def load_kube_config():
+    """
+    Try to use incluster config (to be used inside of a Pod) and
+    otherwise fall-back to loading KUBECONFIG
+    """
+
+    try:
+        kube_config.load_incluster_config()
+    except ConfigException:
+        log.warning(
+            "Failed to use incluster config, falling back to default config loading"
+        )
+        kube_config.load_kube_config()
+
+
 class KubeClient:
     def __init__(self, component: Optional[str] = None) -> None:
-        kube_config.load_kube_config(
-            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
-            context=os.environ.get("KUBECONTEXT"),
-        )
+        load_kube_config()
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
