@@ -116,6 +116,13 @@ build-image:
 	make -C yelp_package PAASTA_ENV=$(PAASTA_ENV) package_bionic
 	docker build -t paasta-tools:latest .
 
+push-image:
+	docker tag paasta-tools:latest docker-dev.yelpcorp.com/hack-2776-paasta-tools
+	docker push docker-dev.yelpcorp.com/hack-2776-paasta-tools
+
+run-kube-job:
+	kubectl --context infra-uswest2-devc apply -f paasta-tools-job.yaml
+
 run-local-soa:
 	docker run --rm --init -d \
 		--name soaconfigs \

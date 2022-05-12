@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: paasta-tools-1652354849
+  namespace: paasta-system
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      containers:
+      - args:
+        - setup_kubernetes_job
+        - --cluster
+        - fake_baking_cluster
+        - compute-infra-test-service.one_instance
+        env: []
+        #- name: KUBECONFIG
+        #  value: ""
+        image: docker-dev.yelpcorp.com/hack-2776-paasta-tools
+        imagePullPolicy: Always
+        name: setup-kubernetes-job
+        volumeMounts:
+        - name: services
+          mountPath: /nail/etc/services
+      - args:
+        - 'true'
+        env: []
+        image: docker-dev.yelpcorp.com/hack-2776-paasta-tools-soaconfigs
+        imagePullPolicy: Always
+        name: soaconfigs
+        volumeMounts:
+        - name: services
+          mountPath: /nail/etc/services
+      restartPolicy: Never
+      #serviceAccountName: aptly-service-account
+      volumes:
+      - name: services
+        emptyDir: {}
+  ttlSecondsAfterFinished: 86400
