@@ -1,3 +1,13 @@
+paasta-tools (0.128.0) xenial; urgency=medium
+
+  * 0.128.0 tagged with 'make release'
+    Commit: Build for Ubuntu Jammy (#3357)  * Build for Ubuntu Jammy  *
+    Remove custom dh-virtualenv install in favor of normal apt-get  *
+    Update debian/compat as well  * Use a consistent python version for
+    all releases  Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Daniel Grigsby <dgrigsby@10-40-27-179-uswest1cdevc.dev.yelpcorp.com>  Thu, 12 May 2022 11:17:26 -0700
+
 paasta-tools (0.127.3) xenial; urgency=medium
 
   * 0.127.3 tagged with 'make release'
