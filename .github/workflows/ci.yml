@@ -47,7 +47,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dist: [bionic]
+        dist: [bionic, jammy]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
