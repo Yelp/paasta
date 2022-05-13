@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  labels:
+    app: paasta-api
+  name: paasta-api
+  namespace: paasta-system
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: paasta-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: paasta-api
+    spec:
+      containers:
+        - image: docker-dev.yelpcorp.com/tmower-paasta-api
+          imagePullPolicy: Always
+          name: tmower-paasta-api
+          volumeMounts:
+            - mountPath: /etc/paasta
+              name: etc-paasta
+            - mountPath: /nail/srv/configs
+              name: srv-configs
+            - mountPath: /nail/etc/services
+              name: soa-configs
+      nodeSelector:
+        yelp.com/pool: default
+      volumes:
+        - name: etc-paasta
+          hostPath:
+            # directory location on host
+            path: /etc/paasta
+            # this field is optional
+            type: Directory
+        - name: srv-configs
+          hostPath:
+            # directory location on host
+            path: /nail/srv/configs
+            # this field is optional
+            type: Directory
+        - name: soa-configs
+          hostPath:
+            # directory location on host
+            path: /nail/etc/services
+            # this field is optional
+            type: Directory
+
+
