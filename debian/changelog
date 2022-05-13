@@ -1,3 +1,14 @@
+paasta-tools (0.129.0) xenial; urgency=medium
+
+  * 0.129.0 tagged with 'make release'
+    Commit: Add initial auto-rollback file schema (+ validation) (#3347)
+    For the new (and hopefully improved!) autorollback system, we"ll
+    allow users to specify any number of queries to pre-determined
+    metric sources that will control whether or not their service should
+    automatically rollback during a deployment.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 13 May 2022 07:28:15 -0700
+
 paasta-tools (0.128.0) xenial; urgency=medium
 
   * 0.128.0 tagged with 'make release'
