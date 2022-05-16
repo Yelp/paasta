@@ -631,7 +631,7 @@ def instance_status(request):
     use_new = request.swagger_data.get("new") or False
     include_smartstack = request.swagger_data.get("include_smartstack")
     if include_smartstack is None:
-        include_smartstack = True
+        include_smartstack = False
     include_envoy = request.swagger_data.get("include_envoy")
     if include_envoy is None:
         include_envoy = True
