@@ -12,6 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
+from typing import Collection
+from typing import Dict
+from typing import Generator
+from typing import Mapping
+from typing import Tuple
+
 from humanize import naturaltime
 
 from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
@@ -23,11 +30,12 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import validate_full_git_sha
 from paasta_tools.cli.utils import validate_given_deploy_groups
-from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_services
@@ -36,7 +44,7 @@ from paasta_tools.utils import parse_timestamp
 from paasta_tools.utils import RollbackTypes
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "rollback",
         help="Rollback a docker image to a previous deploy",
@@ -51,7 +59,7 @@ def add_subparser(subparsers):
             "connectivity as well as authorization to the git repo."
         ),
     )
-    list_parser.add_argument(
+    arg_commit = list_parser.add_argument(
         "-k",
         "--commit",
         help="Git SHA to mark for rollback. "
@@ -59,8 +67,19 @@ def add_subparser(subparsers):
         "paasta rollback will instead output a list of valid git shas to rollback to.",
         required=False,
         type=validate_full_git_sha,
-    ).completer = lazy_choices_completer(list_previously_deployed_shas)
-    list_parser.add_argument(
+    )
+    arg_commit.completer = lazy_choices_completer(list_previously_deployed_shas)  # type: ignore
+    arg_version = list_parser.add_argument(
+        "-i",
+        "--image-version",
+        help="Extra version metadata to mark for rollback. "
+        "If your service has enabled no-commit redeploys, both a commit and the extra metadata is required for paasta rollback to run. However if one is not provided, "
+        "paasta rollback will instead output a list of valid versions to rollback to.",
+        required=False,
+        default=None,
+    )
+    arg_version.completer = lazy_choices_completer(list_previously_deployed_image_versions)  # type: ignore
+    arg_deploy_group = list_parser.add_argument(
         "-l",
         "--deploy-groups",
         help="Mark one or more deploy groups to roll back (e.g. "
@@ -68,10 +87,12 @@ def add_subparser(subparsers):
         " all deploy groups for that service are rolled back",
         default="",
         required=False,
-    ).completer = lazy_choices_completer(list_deploy_groups)
-    list_parser.add_argument(
+    )
+    arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+    arg_service = list_parser.add_argument(
         "-s", "--service", help='Name of the service to rollback (e.g. "service1")'
-    ).completer = lazy_choices_completer(list_services)
+    )
+    arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
     list_parser.add_argument(
         "-y",
         "-d",
@@ -90,7 +111,9 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_rollback)
 
 
-def list_previously_deployed_shas(parsed_args, **kwargs):
+def list_previously_deployed_shas(
+    parsed_args: argparse.Namespace, **kwargs: None
+) -> Generator[str, None, None]:
     service = parsed_args.service
     soa_dir = parsed_args.soa_dir
     deploy_groups = {
@@ -98,63 +121,99 @@ def list_previously_deployed_shas(parsed_args, **kwargs):
         for deploy_group in parsed_args.deploy_groups.split(",")
         if deploy_group
     }
-    return (sha for sha in get_git_shas_for_service(service, deploy_groups, soa_dir))
+    return (
+        version.sha
+        for version in get_versions_for_service(service, deploy_groups, soa_dir)
+    )
 
 
-def get_git_shas_for_service(service, deploy_groups, soa_dir):
-    """Returns a dictionary of 2-tuples of the form (timestamp, deploy_group) for each deploy sha"""
+def list_previously_deployed_image_versions(
+    parsed_args: argparse.Namespace, **kwargs: None
+) -> Generator[str, None, None]:
+    service = parsed_args.service
+    soa_dir = parsed_args.soa_dir
+    deploy_groups = {
+        deploy_group
+        for deploy_group in parsed_args.deploy_groups.split(",")
+        if deploy_group
+    }
+    return (
+        version.image_version
+        for version in get_versions_for_service(service, deploy_groups, soa_dir)
+    )
+
+
+def get_versions_for_service(
+    service: str, deploy_groups: Collection[str], soa_dir: str
+) -> Mapping[DeploymentVersion, Tuple[str, str]]:
+    """Returns a dictionary of 2-tuples of the form (timestamp, deploy_group) for each version tuple of (deploy sha, image_version)"""
     if service is None:
-        return []
+        return {}
     git_url = get_git_url(service=service, soa_dir=soa_dir)
     all_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
-    previously_deployed_shas = {}
+    previously_deployed_versions: Dict[DeploymentVersion, Tuple[str, str]] = {}
     for ref, sha in list_remote_refs(git_url).items():
         regex_match = extract_tags(ref)
         try:
             deploy_group = regex_match["deploy_group"]
             tstamp = regex_match["tstamp"]
+            image_version = regex_match["image_version"]
         except KeyError:
             pass
         else:
             # Now we filter and dedup by picking the most recent sha for a deploy group
             # Note that all strings are greater than ''
             if deploy_group in deploy_groups:
-                tstamp_so_far = previously_deployed_shas.get(sha, ("all", ""))[1]
+                version = DeploymentVersion(sha=sha, image_version=image_version)
+                tstamp_so_far = previously_deployed_versions.get(version, ("all", ""))[
+                    1
+                ]
                 if tstamp > tstamp_so_far:
-                    previously_deployed_shas[sha] = (tstamp, deploy_group)
-    return previously_deployed_shas
+                    previously_deployed_versions[version] = (tstamp, deploy_group)
+    return previously_deployed_versions
 
 
-def list_previous_commits(service, deploy_groups, any_given_deploy_groups, git_shas):
-    def format_timestamp(tstamp):
+def list_previous_versions(
+    service: str,
+    deploy_groups: Collection[str],
+    any_given_deploy_groups: bool,
+    versions: Mapping[DeploymentVersion, Tuple],
+) -> None:
+    def format_timestamp(tstamp: str) -> str:
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
     print("Below is a list of recent commits:")
-    git_shas = sorted(git_shas.items(), key=lambda x: x[1], reverse=True)[:10]
-    rows = [("Timestamp -- UTC", "Human time", "deploy_group", "Git SHA")]
-    for sha, (timestamp, deploy_group) in git_shas:
-        rows.extend([(timestamp, format_timestamp(timestamp), deploy_group, sha)])
+    # Latest 10 versions sorted by deployment time
+    list_of_versions = sorted(versions.items(), key=lambda x: x[1], reverse=True)[:10]
+    rows = [("Timestamp -- UTC", "Human time", "deploy_group", "Version")]
+    for version, (timestamp, deploy_group) in list_of_versions:
+        rows.extend(
+            [(timestamp, format_timestamp(timestamp), deploy_group, repr(version))]
+        )
     for line in format_table(rows):
         print(line)
-    if len(git_shas) >= 2:
-        sha, (timestamp, deploy_group) = git_shas[1]
+    if len(list_of_versions) >= 2:
+        version, (timestamp, deploy_group) = list_of_versions[1]
         deploy_groups_arg_line = (
             "-l %s " % ",".join(deploy_groups) if any_given_deploy_groups else ""
         )
+        version_arg = (
+            f" --image-version {version.image_version}" if version.image_version else ""
+        )
         print(
-            "\nFor example, to use the second to last commit from {} used on {}, run:".format(
+            "\nFor example, to use the second to last version from {} used on {}, run:".format(
                 format_timestamp(timestamp), PaastaColors.bold(deploy_group)
             )
         )
         print(
             PaastaColors.bold(
-                f"    paasta rollback -s {service} {deploy_groups_arg_line}-k {sha}"
+                f"    paasta rollback -s {service} {deploy_groups_arg_line}-k {version.sha}{version_arg}"
             )
         )
 
 
-def paasta_rollback(args):
+def paasta_rollback(args: argparse.Namespace) -> int:
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
     deploy groups and sha. These arguments will be verified and passed onto
@@ -193,36 +252,48 @@ def paasta_rollback(args):
         )
         return 1
 
-    git_shas = get_git_shas_for_service(service, deploy_groups, soa_dir)
+    versions = get_versions_for_service(service, deploy_groups, soa_dir)
     commit = args.commit
+    image_version = args.image_version
+    new_version = DeploymentVersion(sha=commit, image_version=image_version)
     if not commit:
         print("Please specify a commit to mark for rollback (-k, --commit).")
-        list_previous_commits(
-            service, deploy_groups, bool(given_deploy_groups), git_shas
+        list_previous_versions(
+            service, deploy_groups, bool(given_deploy_groups), versions
         )
         return 1
-    elif commit not in git_shas and not args.force:
-        print(PaastaColors.red("This Git SHA has never been deployed before."))
+    elif new_version not in versions and not args.force:
+        print(
+            PaastaColors.red(
+                f"This version {new_version} has never been deployed before."
+            )
+        )
         print("Please double check it or use --force to skip this verification.\n")
-        list_previous_commits(
-            service, deploy_groups, bool(given_deploy_groups), git_shas
+        list_previous_versions(
+            service, deploy_groups, bool(given_deploy_groups), versions
         )
         return 1
 
     returncode = 0
 
     for deploy_group in deploy_groups:
-        rolled_back_from = get_currently_deployed_sha(service, deploy_group)
+        rolled_back_from = get_currently_deployed_version(service, deploy_group)
         returncode |= mark_for_deployment(
-            git_url=git_url, service=service, deploy_group=deploy_group, commit=commit
+            git_url=git_url,
+            service=service,
+            deploy_group=deploy_group,
+            commit=commit,
+            image_version=image_version,
         )
 
         # we could also gate this by the return code from m-f-d, but we probably care more about someone wanting to
         # rollback than we care about if the underlying machinery was successfully able to complete the request
-        if rolled_back_from != commit:
+
+        # TODO: Eventually we should include full version in rollback event, but currently leave things as status-quo
+        if rolled_back_from != new_version:
             audit_action_details = {
-                "rolled_back_from": rolled_back_from,
-                "rolled_back_to": commit,
+                "rolled_back_from": str(rolled_back_from),
+                "rolled_back_to": str(new_version),
                 "rollback_type": RollbackTypes.USER_INITIATED_ROLLBACK.value,
                 "deploy_group": deploy_group,
             }

@@ -58,6 +58,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -3282,6 +3283,18 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
+class DeploymentVersion(NamedTuple):
+    sha: str
+    image_version: Optional[str]
+
+    def __repr__(self) -> str:
+        return (
+            f"DeploymentVersion(sha={self.sha}, image_version={self.image_version})"
+            if self.image_version
+            else self.sha
+        )
+
+
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
 DeployGroup = str
@@ -3383,6 +3396,14 @@ class DeploymentsJsonV2:
         except KeyError:
             e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'image_version' metadata."
             raise KeyError(e)
+
+    def get_deployment_version_for_deploy_group(
+        self, deploy_group: str
+    ) -> DeploymentVersion:
+        return DeploymentVersion(
+            sha=self.get_git_sha_for_deploy_group(deploy_group),
+            image_version=self.get_image_version_for_deploy_group(deploy_group),
+        )
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
