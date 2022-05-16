@@ -1,3 +1,11 @@
+paasta-tools (0.130.0) xenial; urgency=medium
+
+  * 0.130.0 tagged with 'make release'
+    Commit: Support additional version information in TronJobConfig
+    (#3358)
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 16 May 2022 11:18:10 -0700
+
 paasta-tools (0.129.0) xenial; urgency=medium
 
   * 0.129.0 tagged with 'make release'
