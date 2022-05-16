@@ -313,6 +313,7 @@ class TestKubernetesStatusV2:
                     "ready_replicas": 0,
                     "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
                     "git_sha": "aaa000",
+                    "image_version": None,
                     "config_sha": "config000",
                     "pods": [
                         {
@@ -418,6 +419,66 @@ class TestKubernetesStatusV2:
             "ready_replicas": 1,
             "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
             "git_sha": "aaa000",
+            "image_version": None,
+            "config_sha": "config000",
+            "pods": [mock.ANY],
+        }
+
+    def test_statefulset_with_image_version(
+        self,
+        mock_controller_revisions_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_pod,
+    ):
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
+        )
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_controller_revisions_for_service_instance.return_value = [
+            Struct(
+                metadata=Struct(
+                    name="controller_revision_1",
+                    creation_timestamp=datetime.datetime(2021, 4, 1),
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                        "paasta.yelp.com/image_version": "extrastuff",
+                    },
+                ),
+            ),
+        ]
+
+        mock_pod.metadata.owner_references = []
+        mock_pods_for_service_instance.return_value = [mock_pod]
+
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.get_pod_status", autospec=True
+        ) as mock_get_pod_status:
+            mock_get_pod_status.return_value = {}
+            status = pik.kubernetes_status_v2(
+                service="service",
+                instance="instance",
+                verbose=0,
+                include_smartstack=False,
+                include_envoy=False,
+                instance_type="kubernetes",
+                settings=mock.Mock(),
+            )
+
+        assert len(status["versions"]) == 1
+        assert status["versions"][0] == {
+            "name": "controller_revision_1",
+            "type": "ControllerRevision",
+            "replicas": 1,
+            "ready_replicas": 1,
+            "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
+            "git_sha": "aaa000",
+            "image_version": "extrastuff",
             "config_sha": "config000",
             "pods": [mock.ANY],
         }
