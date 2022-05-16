@@ -1684,6 +1684,38 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_MEM": "4096",
         }
 
+    def test_get_env_image_version(self):
+        fake_conf = utils.InstanceConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={},
+            branch_dict={
+                "desired_state": "start",
+                "force_bounce": "12345",
+                "docker_image": "something",
+                "git_sha": "9",
+                "image_version": "extrastuff",
+            },
+        )
+        with mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="something",
+        ):
+            assert fake_conf.get_env() == {
+                "PAASTA_SERVICE": "fake_service",
+                "PAASTA_INSTANCE": "fake_instance",
+                "PAASTA_CLUSTER": "fake_cluster",
+                "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
+                "PAASTA_GIT_SHA": "somethin",
+                "PAASTA_DOCKER_IMAGE": "something",
+                "PAASTA_IMAGE_VERSION": "extrastuff",
+                "PAASTA_RESOURCE_CPUS": "1",
+                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_MEM": "4096",
+            }
+
     def test_get_env_handles_non_strings_and_returns_strings(self):
         fake_conf = utils.InstanceConfig(
             service="fake_service",

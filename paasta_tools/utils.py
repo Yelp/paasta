@@ -624,6 +624,9 @@ class InstanceConfig:
             )
         except Exception:
             pass
+        image_version = self.get_image_version()
+        if image_version is not None:
+            env["PAASTA_IMAGE_VERSION"] = image_version
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -705,6 +708,14 @@ class InstanceConfig:
             return self.branch_dict["docker_image"]
         else:
             return ""
+
+    def get_image_version(self) -> Optional[str]:
+        """Get additional information identifying the Docker image from a
+        generated deployments.json file."""
+        if self.branch_dict is not None and "image_version" in self.branch_dict:
+            return self.branch_dict["image_version"]
+        else:
+            return None
 
     def get_docker_url(
         self, system_paasta_config: Optional["SystemPaastaConfig"] = None
@@ -3485,10 +3496,17 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the sha.
     """
-    parts = docker_url.split("/")
-    parts = parts[-1].split("-")
-    sha = parts[-1]
-    return sha if long else sha[:8]
+    if ":paasta-" in docker_url:
+        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
+        git_sha = regex_match.group("git_sha")
+    # Fall back to the old behavior if the docker_url does not follow the
+    # expected pattern
+    else:
+        parts = docker_url.split("/")
+        parts = parts[-1].split("-")
+        git_sha = parts[-1]
+
+    return git_sha if long else git_sha[:8]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
