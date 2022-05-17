@@ -1,3 +1,10 @@
+paasta-tools (0.130.1) xenial; urgency=medium
+
+  * 0.130.1 tagged with 'make release'
+    Commit: Released 0.130.0 via make release
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 17 May 2022 09:59:14 -0700
+
 paasta-tools (0.130.0) xenial; urgency=medium
 
   * 0.130.0 tagged with 'make release'
