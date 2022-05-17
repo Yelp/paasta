@@ -1,6 +1,15 @@
 paasta-tools (0.130.0) xenial; urgency=medium
 
   * 0.130.0 tagged with 'make release'
+    Commit: Merge pull request #3360 from Yelp/COREML-
+    3095_bump_service_configuration_lib_version  COREML-3095 | bump up
+    service_configuration_lib version to 2.10.2
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 17 May 2022 09:51:31 -0700
+
+paasta-tools (0.130.0) xenial; urgency=medium
+
+  * 0.130.0 tagged with 'make release'
     Commit: Support additional version information in TronJobConfig
     (#3358)
 
