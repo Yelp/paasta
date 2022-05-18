@@ -82,6 +82,7 @@ setup(
         "paasta_tools/setup_kubernetes_job.py",
         "paasta_tools/setup_kubernetes_crd.py",
         "paasta_tools/setup_kubernetes_cr.py",
+        "paasta_tools/setup_kubernetes_internal_crd.py",
         "paasta_tools/setup_istio_mesh.py",
         "paasta_tools/setup_prometheus_adapter_config.py",
         "paasta_tools/synapse_srv_namespaces_fact.py",
