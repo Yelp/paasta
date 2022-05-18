@@ -103,7 +103,7 @@ Marathon
 
 PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising long-running services running in Mesos.
 See the `official documentation <https://mesosphere.github.io/marathon/docs/>`__ for how to get started with Marathon.
-Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-[clustername].yaml>`_ for how to define Marathon
+Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_ for how to define Marathon
 jobs.
 
 Once Marathon jobs are defined in soa-configs, there are a few tools provided by PaaSTA
