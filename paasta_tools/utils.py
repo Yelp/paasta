@@ -334,6 +334,7 @@ class BranchDictV1(TypedDict, total=False):
 class BranchDictV2(TypedDict):
     git_sha: str
     docker_image: str
+    image_version: Optional[str]
     desired_state: str
     force_bounce: Optional[str]
 
@@ -623,6 +624,9 @@ class InstanceConfig:
             )
         except Exception:
             pass
+        image_version = self.get_image_version()
+        if image_version is not None:
+            env["PAASTA_IMAGE_VERSION"] = image_version
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -704,6 +708,14 @@ class InstanceConfig:
             return self.branch_dict["docker_image"]
         else:
             return ""
+
+    def get_image_version(self) -> Optional[str]:
+        """Get additional information identifying the Docker image from a
+        generated deployments.json file."""
+        if self.branch_dict is not None and "image_version" in self.branch_dict:
+            return self.branch_dict["image_version"]
+        else:
+            return None
 
     def get_docker_url(
         self, system_paasta_config: Optional["SystemPaastaConfig"] = None
@@ -2865,13 +2877,17 @@ def build_docker_image_name(service: str) -> str:
     return name
 
 
-def build_docker_tag(service: str, upstream_git_commit: str) -> str:
+def build_docker_tag(
+    service: str, upstream_git_commit: str, image_version: Optional[str] = None
+) -> str:
     """Builds the DOCKER_TAG string
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
+    if image_version is not None:
+        tag += f"-{image_version}"
     return tag
 
 
@@ -3280,6 +3296,7 @@ class _DeploymentsJsonV2ControlsDict(TypedDict, total=False):
 class _DeploymentsJsonV2DeploymentsDict(TypedDict):
     docker_image: str
     git_sha: str
+    image_version: Optional[str]
 
 
 class DeploymentsJsonV2Dict(TypedDict):
@@ -3319,6 +3336,7 @@ class DeploymentsJsonV2:
         branch_dict: BranchDictV2 = {
             "docker_image": self.get_docker_image_for_deploy_group(deploy_group),
             "git_sha": self.get_git_sha_for_deploy_group(deploy_group),
+            "image_version": self.get_image_version_for_deploy_group(deploy_group),
             "desired_state": self.get_desired_state_for_branch(full_branch),
             "force_bounce": self.get_force_bounce_for_branch(full_branch),
         }
@@ -3329,17 +3347,42 @@ class DeploymentsJsonV2:
 
     def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict["deployments"][deploy_group]["docker_image"]
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
+        try:
+            return deploy_group_config["docker_image"]
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'docker_image' metadata."
+            raise KeyError(e)
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict["deployments"][deploy_group]["git_sha"]
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
+        try:
+            return deploy_group_config["git_sha"]
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'git_sha' metadata."
+            raise KeyError(e)
+
+    def get_image_version_for_deploy_group(self, deploy_group: str) -> Optional[str]:
+        try:
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
+        except KeyError:
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
+        try:
+            # TODO: Once these changes have propagated image_version should
+            # always be present in the deployments.json file, so remove the
+            # .get() call.
+            return deploy_group_config.get("image_version", None)
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'image_version' metadata."
+            raise KeyError(e)
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
@@ -3415,6 +3458,18 @@ def format_tag(tag: str) -> str:
     return "refs/tags/%s" % tag
 
 
+def build_image_identifier(
+    git_sha: str, sha_len: Optional[int] = None, image_version: Optional[str] = None
+) -> str:
+    image = git_sha
+    if sha_len is not None:
+        image = image[:sha_len]
+    if image_version is not None:
+        image += f"-{image_version}"
+
+    return image
+
+
 class NoDockerImageError(Exception):
     pass
 
@@ -3441,10 +3496,17 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the sha.
     """
-    parts = docker_url.split("/")
-    parts = parts[-1].split("-")
-    sha = parts[-1]
-    return sha if long else sha[:8]
+    if ":paasta-" in docker_url:
+        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
+        git_sha = regex_match.group("git_sha")
+    # Fall back to the old behavior if the docker_url does not follow the
+    # expected pattern
+    else:
+        parts = docker_url.split("/")
+        parts = parts[-1].split("-")
+        git_sha = parts[-1]
+
+    return git_sha if long else git_sha[:8]
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:

@@ -23,6 +23,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 import pytz
 import yaml
@@ -31,6 +32,7 @@ from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+from mypy_extensions import TypedDict
 from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -88,10 +90,32 @@ UNKNOWN_SERVICE = (
     % (PaastaColors.cyan("SERVICE"), PaastaColors.cyan("-s"))
 )
 
+SCHEMA_TYPES = {
+    "adhoc",
+    "kubernetes",  # long-running services
+    "marathon",  # long-running services on mesos - no longer used
+    "rollback",  # automatic rollbacks during deployments
+    "tron",  # batch workloads
+}
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"^#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
+
+
+class ConditionConfig(TypedDict, total=False):
+    """
+    Common config options for all Conditions
+    """
+
+    # for now, this is the only key required by the schema
+    query: str
+    # and only one of these needs to be present (enforced in code, not schema)
+    upper_bound: Optional[Union[int, float]]
+    lower_bound: Optional[Union[int, float]]
+
+    # truly optional
+    dry_run: bool
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -131,6 +155,34 @@ def get_schema(file_type):
     except IOError:
         return None
     return json.loads(schema)
+
+
+def validate_rollback_bounds(
+    config: Dict[str, List[ConditionConfig]], file_loc: str
+) -> bool:
+    """
+    Ensure that at least one of upper_bound or lower_bound is set (and set to non-null values)
+    """
+    errors = []
+
+    for source, queries in config.items():
+        for query in queries:
+            if not any(
+                (
+                    query.get("lower_bound"),
+                    query.get("upper_bound"),
+                ),
+            ):
+                errors.append(
+                    f"{file_loc}:{source}: {query['query']} needs one of lower_bound OR upper_bound set."
+                )
+
+    for error in errors:
+        print(
+            failure(error, link=""),  # TODO: point to actual docs once they exist
+        )
+
+    return len(errors) == 0
 
 
 def validate_instance_names(config_file_object, file_path):
@@ -196,7 +248,7 @@ def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, 
         raise
 
 
-def validate_schema(file_path, file_type):
+def validate_schema(file_path: str, file_type: str) -> bool:
     """Check if the specified config file has a valid schema
 
     :param file_path: path to file to validate
@@ -206,11 +258,12 @@ def validate_schema(file_path, file_type):
         schema = get_schema(file_type)
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
 
     if schema is None:
         print(f"{SCHEMA_NOT_FOUND}: {file_path}")
-        return
+        return False
+
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
@@ -219,21 +272,29 @@ def validate_schema(file_path, file_type):
         if file_type == "kubernetes" and not validate_instance_names(
             config_file_object, file_path
         ):
-            return
+            return False
+
+        if file_type == "rollback" and not validate_rollback_bounds(
+            config_file_object["conditions"],
+            file_path,
+        ):
+            return False
+
     except ValidationError:
         print(f"{SCHEMA_INVALID}: {file_path}")
 
         errors = validator.iter_errors(config_file_object)
         print("  Validation Message: %s" % exceptions.best_match(errors).message)
+        return False
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
     else:
         print(f"{SCHEMA_VALID}: {basename}")
         return True
 
 
-def validate_all_schemas(service_path):
+def validate_all_schemas(service_path: str) -> bool:
     """Finds all recognized config files in service directory,
     and validates their schema.
 
@@ -247,7 +308,7 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        for file_type in ["marathon", "adhoc", "tron", "kubernetes"]:
+        for file_type in SCHEMA_TYPES:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False

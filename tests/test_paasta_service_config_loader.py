@@ -40,8 +40,13 @@ def deployment_json():
                 "cluster.non_canary": {
                     "docker_image": "some_image",
                     "git_sha": "some_sha",
+                    "image_version": None,
                 },
-                "cluster.canary": {"docker_image": "some_image", "git_sha": "some_sha"},
+                "cluster.canary": {
+                    "docker_image": "some_image",
+                    "git_sha": "some_sha",
+                    "image_version": None,
+                },
             },
             "controls": {
                 "example_happyhour:%s.sample_batch"
@@ -165,6 +170,7 @@ def test_marathon_instances_configs(
                 "desired_state": "start",
                 "force_bounce": None,
                 "git_sha": "some_sha",
+                "image_version": None,
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -189,6 +195,7 @@ def test_marathon_instances_configs(
                 "desired_state": "start",
                 "force_bounce": None,
                 "git_sha": "some_sha",
+                "image_version": None,
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -242,6 +249,7 @@ def test_adhoc_instances_configs(
                 "desired_state": "start",
                 "force_bounce": None,
                 "git_sha": "some_sha",
+                "image_version": None,
             },
             soa_dir=TEST_SOA_DIR,
         ),
@@ -264,6 +272,7 @@ def test_adhoc_instances_configs(
                 "desired_state": "start",
                 "force_bounce": None,
                 "git_sha": "some_sha",
+                "image_version": None,
             },
             soa_dir=TEST_SOA_DIR,
         ),

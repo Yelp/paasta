@@ -56,6 +56,7 @@ def test_run_success_with_commit(
     args = mock.MagicMock()
     args.commit = "0" * 40
     args.service = "fake_service"
+    args.image_version = None
 
     with mock.patch(
         "paasta_tools.utils.get_service_docker_registry",
@@ -114,3 +115,35 @@ def test_run_keyboard_interrupt(
 
     assert paasta_cook_image(args) == 2
     assert not mock_log_audit.called
+
+
+@mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.cook_image.makefile_responds_to", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.cook_image._run", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.cook_image._log_audit", autospec=True)
+def test_run_success_with_image_version(
+    mock_log_audit, mock_run, mock_makefile_responds_to, mock_validate_service_name
+):
+    mock_run.return_value = (0, "Output")
+    mock_makefile_responds_to.return_value = True
+    mock_validate_service_name.return_value = True
+
+    args = mock.MagicMock()
+    args.commit = "0" * 40
+    args.service = "fake_service"
+    args.image_version = "extrastuff"
+
+    with mock.patch(
+        "paasta_tools.utils.get_service_docker_registry",
+        autospec=True,
+        return_value="fake_registry",
+    ):
+        assert paasta_cook_image(args) == 0
+
+    mock_log_audit.assert_called_once_with(
+        action="cook-image",
+        action_details={
+            "tag": f"fake_registry/services-{args.service}:paasta-{args.commit}-{args.image_version}"
+        },
+        service=args.service,
+    )

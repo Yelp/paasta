@@ -2636,6 +2636,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="fm",
             git_sha="a12345",
+            image_version=None,
             config_sha="b12345",
             replicas=replicas,
         ),
@@ -2643,6 +2644,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="am",
             git_sha="a12345",
+            image_version=None,
             config_sha="b12345",
             replicas=replicas,
         ),
@@ -3571,6 +3573,7 @@ def test_warning_big_bounce():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },

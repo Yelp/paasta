@@ -217,6 +217,7 @@ class KubeDeployment(NamedTuple):
     service: str
     instance: str
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
     replicas: Optional[int]
 
@@ -310,6 +311,7 @@ KubePodLabels = TypedDict(
         # since mypy expects TypedDict keys to be string literals
         "paasta.yelp.com/deploy_group": str,
         "paasta.yelp.com/git_sha": str,
+        "paasta.yelp.com/image_version": str,
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
@@ -1653,6 +1655,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
 
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -1811,6 +1819,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
+        image_version = self.get_image_version()
+        if image_version is not None:
+            labels["paasta.yelp.com/image_version"] = image_version
 
         if system_paasta_config.get_kubernetes_add_registration_labels():
             # Allow Kubernetes Services to easily find
@@ -2161,6 +2173,9 @@ def list_deployments(
             service=item.metadata.labels["paasta.yelp.com/service"],
             instance=item.metadata.labels["paasta.yelp.com/instance"],
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
+            image_version=item.metadata.labels.get(
+                "paasta.yelp.com/image_version", None
+            ),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas
             if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")

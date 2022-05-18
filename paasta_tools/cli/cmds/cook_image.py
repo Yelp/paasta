@@ -28,7 +28,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "cook-image",
         description="Calls 'make cook-image' as part of the PaaSTA contract",
@@ -62,6 +62,13 @@ def add_subparser(subparsers):
         "--commit",
         help="Git sha used to construct tag for built image",
     )
+    list_parser.add_argument(
+        "--image-version",
+        type=str,
+        required=False,
+        default=None,
+        help="Extra version metadata used to construct tag for built image",
+    )
     list_parser.set_defaults(command=paasta_cook_image)
 
 
@@ -69,7 +76,7 @@ def paasta_cook_image(
     args: Optional[argparse.Namespace],
     service: Optional[str] = None,
     soa_dir: Optional[str] = None,
-):
+) -> int:
     """Build a docker image"""
     if not service:
         if args is None:
@@ -97,7 +104,7 @@ def paasta_cook_image(
         # if we're given a commit, we're likely being called by Jenkins or someone
         # trying to push the cooked image to our registry - as such, we should tag
         # the cooked image as `paasta itest` would.
-        tag = build_docker_tag(service, args.commit)
+        tag = build_docker_tag(service, args.commit, args.image_version)
     else:
         default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
         tag = run_env.get("DOCKER_TAG", default_tag)

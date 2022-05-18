@@ -638,6 +638,9 @@ class TronJobConfig:
                     "git_sha": deployments_json.get_git_sha_for_deploy_group(
                         action_deploy_group
                     ),
+                    "image_version": deployments_json.get_image_version_for_deploy_group(
+                        action_deploy_group
+                    ),
                     # TODO: add Tron instances when generating deployments json
                     "desired_state": "start",
                     "force_bounce": None,
