@@ -1300,6 +1300,9 @@ def get_version_table_entry(
     verbose: int = 0,
 ) -> List[str]:
     version_name = version.git_sha[:8]
+    image_version = (
+        version.image_version if version.image_version is not None else "none"
+    )
     if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
     if version_name_suffix is not None:
@@ -1308,7 +1311,9 @@ def get_version_table_entry(
 
     start_datetime = datetime.fromtimestamp(version.create_timestamp)
     humanized_start_time = humanize.naturaltime(start_datetime)
-    entry = [f"{version_name} - Started {start_datetime} ({humanized_start_time})"]
+    entry = [
+        f"{version_name} (image_version: {image_version}) - Started {start_datetime} ({humanized_start_time})"
+    ]
     replica_states = get_replica_states(version.pods)
     replica_states = sorted(replica_states, key=lambda s: s[1].create_timestamp)
     if len(replica_states) == 0:
