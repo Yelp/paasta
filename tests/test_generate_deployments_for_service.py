@@ -51,7 +51,7 @@ def test_get_deploy_group_mappings():
         "refs/tags/paasta-okay-20160308T053933-deploy": "ijowarg",
         "refs/tags/paasta-no_thanks-20160308T053933-deploy": "789009",
         "refs/tags/paasta-nah-20160308T053933-deploy": "j8yiomwer",
-        "refs/tags/paasta-but-why:extrastuff-20220308T053933-deploy": "123456",
+        "refs/tags/paasta-but-why+extrastuff-20220308T053933-deploy": "123456",
     }
 
     expected = {
