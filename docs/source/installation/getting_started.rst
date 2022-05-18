@@ -17,7 +17,7 @@ to install things like that either. At Yelp we happen to use Puppet to deploy
 PaaSTA and the related components. Currently all of the Puppet code is not
 open source, but we hope to eventually have a fully working example deployment.
 
-We do have an `example cluster <./example_cluster.html>`_ which uses docker-compose
+We do have an `example cluster <./example_cluster.rst>`_ which uses docker-compose
 to create containers running the necessary components of a PaaSTA cluster.
 However, it is **not** a recommended production configuration.
 
@@ -52,7 +52,7 @@ that are a member of a particular cluster is the ``cluster`` setting::
 It is not necessary to define this config option for servers that only require the
 PaaSTA CLI tools (as they may not technically be part of any particular PaaSTA cluster).
 
-See more `documentation for system paasta configs <../system_configs.html>`_
+See more `documentation for system paasta configs <../system_configs.rst>`_
 
 soa-configs
 -----------
@@ -63,7 +63,7 @@ deployed and monitored.
 
 This directory needs to be deployed globally in the same location to every
 server that runs any PaaSTA component. See the
-`dedicated documentation <../soa_configs.html>`_ on how to build your own ``soa-configs``.
+`dedicated documentation <../soa_configs.rst>`_ on how to build your own ``soa-configs``.
 
 ``soa-configs`` also transport the ``deployments.json`` files for each service.
 This file contains a mapping for which shas should be deployed where. These files
@@ -95,7 +95,7 @@ Mesos
 -----
 
 PaaSTA uses Mesos to do the heavy lifting of running the actual services on
-pools of machines.  See the `official documentation <http://mesos.apache.org/gettingstarted/>`_
+pools of machines.  See the `official documentation <http://mesos.apache.org/getting-started/>`_
 on how to get started with Mesos.
 
 Marathon
@@ -103,7 +103,7 @@ Marathon
 
 PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising long-running services running in Mesos.
 See the `official documentation <https://mesosphere.github.io/marathon/docs/>`__ for how to get started with Marathon.
-Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_ for how to define Marathon
+Then, see the `PaaSTA documentation <../yelpsoa_configs.rst#marathon-[clustername].yaml>`_ for how to define Marathon
 jobs.
 
 Once Marathon jobs are defined in soa-configs, there are a few tools provided by PaaSTA
@@ -113,7 +113,7 @@ that interact with the Marathon API:
   This is the tool that handles "bouncing" to new version of code, and resizing Marathon applications when autoscaling
   is enabled.
   This is idempotent, and should be run periodically on a box with a ``marathon.json`` file in the
-  `system paasta config <../system_configs.html>`_ directory (Usually ``/etc/paasta``).
+  `system paasta config <../system_configs.rst>`_ directory (Usually ``/etc/paasta``).
   We recommend running this frequently - delays between runs of this command will limit how quickly new versions of
   services or changes to soa-configs are picked up.
 * ``cleanup_marathon_jobs``: Cleans up lost or abandoned services. This tool
@@ -144,7 +144,7 @@ Similarly, to manage the configuration of synapse, we have a package called `syn
 Each slave should have this installed, and should run ``configure_synapse`` periodically.
 ``configure_synapse`` can run less frequently than ``configure_nerve`` --
 it only limits how quickly a new service, service instance, or haproxy option changes in
-`smartstack.yaml <../yelpsoa_configs.html#smartstack-yaml>`_ will take effect.
+`smartstack.yaml <../yelpsoa_configs.rst#smartstack-yaml>`_ will take effect.
 
 Alongside SmartStack, we run `hacheck <https://github.com/Yelp/hacheck>`_.
 Hacheck is a small HTTP service that handles health checks for services.
@@ -158,16 +158,16 @@ Hacheck provides several behaviors that are useful for Paasta:
   * It can preemptively return error codes for health checks, allowing us to remove a task from load balancers before
     shutting it down.
     (This is implemented in the
-    `HacheckDrainMethod <../generated/paasta_tools.drain_lib.html#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
+    `HacheckDrainMethod <../generated/paasta_tools.drain_lib.rst#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
 
 Sensu
 -----
 
-`Sensu <https://sensuapp.org/>`_ is a flexible and scalable monitoring system
+`Sensu <https://sensu.io/>`_ is a flexible and scalable monitoring system
 that allows clients to send alerts for arbitrary events. PaaSTA uses Sensu to
 allow individual teams to get alerts for their services.
 
-The `official documentation <https://sensuapp.org/docs/latest/overview>`_ has
+The `official documentation <https://docs.sensu.io/sensu-go/latest/>`_ has
 instructions on how to set it up.
 
 Out of the box Sensu doesn't understand team-centric routing, and must be combined
@@ -203,7 +203,7 @@ Logging
 
 Paasta can use one of several backends to centrally log events about what is happening in the infrastructure and to
 power ``paasta logs``.
-The backends that are available are listed in the `system config docs <../system_configs.html>`_ under ``log_writer``
+The backends that are available are listed in the `system config docs <../system_configs.rst>`_ under ``log_writer``
 and ``log_reader``.
 
 At Yelp, we use `Scribe <https://github.com/facebookarchive/scribe>`_ for log writing, so we use the ``scribe`` log
