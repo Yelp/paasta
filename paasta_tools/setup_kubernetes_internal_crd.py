@@ -44,7 +44,7 @@ INTERNAL_CRDS = [
         },
         spec={
             "group": "paasta.yelp.com",
-            "versions": [{"name": "v1", "served": True, "storage": True}],
+            "versions": [{"name": "v1beta1", "served": True, "storage": True}],
             "scope": "Namespaced",
             "names": {
                 "plural": "deploygroups",
@@ -76,7 +76,7 @@ INTERNAL_CRDS = [
         },
         spec={
             "group": "paasta.yelp.com",
-            "versions": [{"name": "v1", "served": True, "storage": True}],
+            "versions": [{"name": "v1beta1", "served": True, "storage": True}],
             "scope": "Namespaced",
             "names": {
                 "plural": "startstopcontrols",
