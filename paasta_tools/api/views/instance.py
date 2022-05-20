@@ -218,11 +218,12 @@ def get_active_versions_for_marathon_apps(
     for (app, client) in marathon_apps_with_clients:
         git_sha = get_git_sha_from_dockerurl(app.container.docker.image, long=True)
         image_version = get_image_version_from_dockerurl(app.container.docker.image)
-        deployment_version = DeploymentVersion(sha=git_sha, image_version=image_version)
         _, _, _, config_sha = marathon_tools.deformat_job_id(app.id)
         if config_sha.startswith("config"):
             config_sha = config_sha[len("config") :]
-        ret.add((deployment_version, config_sha))
+        ret.add(
+            (DeploymentVersion(sha=git_sha, image_version=image_version), config_sha)
+        )
     return ret
 
 

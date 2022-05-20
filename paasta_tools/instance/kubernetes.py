@@ -520,7 +520,7 @@ def bounce_status(
     )
     status["active_versions"] = [
         (deployment_version.sha, deployment_version.image_version, config_sha)
-        for (deployment_version, config_sha) in active_versions
+        for deployment_version, config_sha in active_versions
     ]
     status["app_count"] = len(active_versions)
     return status
