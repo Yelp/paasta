@@ -21,6 +21,7 @@ import pytest
 
 import paasta_tools.instance.kubernetes as pik
 from paasta_tools import utils
+from paasta_tools.utils import DeploymentVersion
 from tests.conftest import Struct
 from tests.conftest import wrap_value_in_task
 
@@ -882,9 +883,9 @@ def test_bounce_status():
             "deploy_status",
             "message",
         )
-        mock_kubernetes_tools.get_active_shas_for_service.return_value = [
-            ("aaa", "config_aaa"),
-            ("bbb", "config_bbb"),
+        mock_kubernetes_tools.get_active_versions_for_service.return_value = [
+            (DeploymentVersion("aaa", None), "config_aaa"),
+            (DeploymentVersion("bbb", None), "config_bbb"),
         ]
 
         mock_settings = mock.Mock()
@@ -894,9 +895,9 @@ def test_bounce_status():
             "desired_state": mock_config.get_desired_state.return_value,
             "running_instance_count": mock_kubernetes_tools.get_kubernetes_app_by_name.return_value.status.ready_replicas,
             "deploy_status": mock_kubernetes_tools.KubernetesDeployStatus.tostring.return_value,
-            "active_shas": [
-                ("aaa", "config_aaa"),
-                ("bbb", "config_bbb"),
+            "active_versions": [
+                ("aaa", None, "config_aaa"),
+                ("bbb", None, "config_bbb"),
             ],
             "app_count": 2,
         }

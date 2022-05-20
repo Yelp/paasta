@@ -245,7 +245,7 @@ def test_marathon_job_status(
         "deploy_status": "Running",
         "running_instance_count": 2,
         "autoscaling_info": expected_autoscaling_info,
-        "active_shas": [("abc", "123")],
+        "active_versions": [("abc", None, "123")],
     }
 
     assert mock_marathon_app_status.call_count == 1
@@ -1068,7 +1068,7 @@ def test_kubernetes_instance_status_bounce_method():
         "paasta_tools.instance.kubernetes.job_status",
         autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service",
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
         autospec=True,
     ), asynctest.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
@@ -1107,7 +1107,7 @@ def test_kubernetes_instance_status_evicted_nodes():
         "paasta_tools.instance.kubernetes.job_status",
         autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service",
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
         autospec=True,
     ), asynctest.patch(
         "paasta_tools.kubernetes_tools.replicasets_for_service_instance",

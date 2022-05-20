@@ -171,9 +171,9 @@ components:
       type: object
     InstanceBounceStatus:
       properties:
-        active_shas:
+        active_versions:
           type: array
-          description: List of git/config SHAs running.
+          description: List of git SHA/image_version/config SHAs running.
           items:
             type: array
             items:
@@ -308,9 +308,9 @@ components:
       type: object
     InstanceStatusKubernetes:
       properties:
-        active_shas:
+        active_versions:
           type: array
-          description: List of git/config SHAs running.
+          description: List of git SHA/image_version/config SHAs running.
           items:
             type: array
             items:
@@ -469,9 +469,9 @@ components:
           description: Status of the service in Envoy
     InstanceStatusMarathon:
       properties:
-        active_shas:
+        active_versions:
           type: array
-          description: List of git/config SHAs running.
+          description: List of git SHA/image_version/config SHAs running.
           items:
             type: array
             items:

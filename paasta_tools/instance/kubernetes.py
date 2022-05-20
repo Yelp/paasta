@@ -515,11 +515,14 @@ def bounce_status(
         )
         version_objects = filter_actually_running_replicasets(replicasets)
 
-    active_shas = kubernetes_tools.get_active_shas_for_service(
+    active_versions = kubernetes_tools.get_active_versions_for_service(
         [app, *version_objects],
     )
-    status["active_shas"] = list(active_shas)
-    status["app_count"] = len(active_shas)
+    status["active_versions"] = [
+        (deployment_version.sha, deployment_version.image_version, config_sha)
+        for (deployment_version, config_sha) in active_versions
+    ]
+    status["app_count"] = len(active_versions)
     return status
 
 
@@ -711,7 +714,7 @@ async def get_versions_for_replicasets(
         kube_client=kube_client,
         namespace=namespace,
     )
-    # For the purpose of active_shas/app_count, don't count replicasets that
+    # For the purpose of active_versions/app_count, don't count replicasets that
     # are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
 
@@ -1072,15 +1075,18 @@ async def kubernetes_status(
         kube_client=kube_client,
         namespace=job_config.get_kubernetes_namespace(),
     )
-    # For the purpose of active_shas/app_count, don't count replicasets that are at 0/0.
+    # For the purpose of active_versions/app_count, don't count replicasets that are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-    active_shas = kubernetes_tools.get_active_shas_for_service(
+    active_versions = kubernetes_tools.get_active_versions_for_service(
         [app, *pod_list, *actually_running_replicasets]
     )
-    kstatus["app_count"] = len(active_shas)
+    kstatus["app_count"] = len(active_versions)
     kstatus["desired_state"] = job_config.get_desired_state()
     kstatus["bounce_method"] = job_config.get_bounce_method()
-    kstatus["active_shas"] = list(active_shas)
+    kstatus["active_versions"] = [
+        (deployment_version.sha, deployment_version.image_version, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
 
     await job_status(
         kstatus=kstatus,

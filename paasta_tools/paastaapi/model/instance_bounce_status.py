@@ -88,7 +88,7 @@ class InstanceBounceStatus(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'active_shas': ([[str, none_type]],),  # noqa: E501
+            'active_versions': ([[str, none_type]],),  # noqa: E501
             'app_count': (int,),  # noqa: E501
             'deploy_status': (str,),  # noqa: E501
             'desired_state': (str,),  # noqa: E501
@@ -102,7 +102,7 @@ class InstanceBounceStatus(ModelNormal):
 
 
     attribute_map = {
-        'active_shas': 'active_shas',  # noqa: E501
+        'active_versions': 'active_versions',  # noqa: E501
         'app_count': 'app_count',  # noqa: E501
         'deploy_status': 'deploy_status',  # noqa: E501
         'desired_state': 'desired_state',  # noqa: E501
@@ -156,7 +156,7 @@ class InstanceBounceStatus(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            active_shas ([[str, none_type]]): List of git/config SHAs running.. [optional]  # noqa: E501
+            active_versions ([[str, none_type]]): List of git SHA/image_version/config SHAs running.. [optional]  # noqa: E501
             app_count (int): The number of different running versions of the same service (0 for stopped, 1 for running and 1+ for bouncing). [optional]  # noqa: E501
             deploy_status (str): Deploy status of a Kubernetes service. [optional]  # noqa: E501
             desired_state (str): Desired state of a service, for Kubernetes. [optional]  # noqa: E501

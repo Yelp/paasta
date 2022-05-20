@@ -138,6 +138,7 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_config_hash
@@ -2678,9 +2679,9 @@ def parse_container_resources(resources: Mapping[str, str]) -> KubeContainerReso
     return KubeContainerResources(cpus=cpus, mem=mem_mb, disk=disk_mb)
 
 
-def get_active_shas_for_service(
+def get_active_versions_for_service(
     obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
-) -> Set[Tuple[str, str]]:
+) -> Set[Tuple[DeploymentVersion, str]]:
     ret = set()
 
     for obj in obj_list:
@@ -2692,9 +2693,16 @@ def get_active_shas_for_service(
         if git_sha and git_sha.startswith("git"):
             git_sha = git_sha[len("git") :]
 
+        image_version = obj.metadata.labels.get("paasta.yelp.com/image_version")
+
         # Suppress entries where we have no clue what's running.
         if git_sha or config_sha:
-            ret.add((git_sha, config_sha))
+            ret.add(
+                (
+                    DeploymentVersion(sha=git_sha, image_version=image_version),
+                    config_sha,
+                )
+            )
     return ret
 
 
