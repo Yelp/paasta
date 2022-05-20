@@ -886,6 +886,7 @@ def test_bounce_status():
         mock_kubernetes_tools.get_active_versions_for_service.return_value = [
             (DeploymentVersion("aaa", None), "config_aaa"),
             (DeploymentVersion("bbb", None), "config_bbb"),
+            (DeploymentVersion("ccc", "extrastuff"), "config_ccc"),
         ]
 
         mock_settings = mock.Mock()
@@ -898,8 +899,9 @@ def test_bounce_status():
             "active_versions": [
                 ("aaa", None, "config_aaa"),
                 ("bbb", None, "config_bbb"),
+                ("ccc", "extrastuff", "config_ccc"),
             ],
-            "app_count": 2,
+            "app_count": 3,
         }
 
 

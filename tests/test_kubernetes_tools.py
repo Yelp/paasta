@@ -3157,10 +3157,22 @@ def test_get_active_versions_for_service():
                 }
             )
         ),
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_config_sha": "c123",
+                    "yelp.com/paasta_git_sha": "d456",
+                    "paasta.yelp.com/config_sha": "c123",
+                    "paasta.yelp.com/git_sha": "d456",
+                    "paasta.yelp.com/image_version": "extrastuff",
+                }
+            )
+        ),
     ]
     assert get_active_versions_for_service(mock_pod_list) == {
         (DeploymentVersion("b456!!!", None), "a123!!!"),
         (DeploymentVersion("b456", None), "a123"),
+        (DeploymentVersion("d456", "extrastuff"), "c123"),
     }
 
 
