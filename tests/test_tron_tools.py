@@ -852,7 +852,6 @@ class TestTronTools:
         assert result == {
             "command": "spark-submit "
             "--conf spark.app.name=tron_spark_my_service_my_job.do_something "
-            "--conf spark.ui.port=33000 "
             "--conf spark.master=k8s://https://k8s.test-cluster.paasta:6443 "
             "--conf spark.executorEnv.PAASTA_SERVICE=my_service "
             "--conf spark.executorEnv.PAASTA_INSTANCE=my_job.do_something "
@@ -871,11 +870,16 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
+            "--conf spark.driver.host=$PAASTA_POD_IP "
             # user args
             "--conf spark.cores.max=4 "
             "--conf spark.driver.memory=1g "
             "--conf spark.executor.memory=1g "
             "--conf spark.executor.cores=2 "
+            "--conf spark.ui.port=33000 "
+            "--conf spark.driver.port=33001 "
+            "--conf spark.blockManager.port=33002 "
+            "--conf spark.driver.blockManager.port=33002 "
             "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
             # extra_volumes from config
             "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
@@ -914,8 +918,10 @@ class TestTronTools:
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
             "secret_env": {},
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
             "node_selectors": {"yelp.com/pool": "special_pool"},
+            "ports": [33000, 33001, 33002],
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
                 "paasta.yelp.com/instance": "my_job.do_something",
@@ -1045,6 +1051,7 @@ class TestTronTools:
                     "key": "secret_name",
                 }
             },
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],

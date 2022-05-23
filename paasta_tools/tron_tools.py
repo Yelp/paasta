@@ -27,6 +27,7 @@ from typing import Tuple
 from typing import Union
 
 import yaml
+from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import _filter_user_spark_opts
@@ -100,6 +101,10 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
+
+
+class FieldSelectorConfig(TypedDict):
+    field_path: str
 
 
 class TronNotConfigured(Exception):
@@ -218,6 +223,15 @@ def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
 
+def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
+    return {
+        "spark.ui.port": system_paasta_config.get_spark_ui_port(),
+        "spark.driver.port": system_paasta_config.get_spark_driver_port(),
+        "spark.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
+        "spark.driver.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
+    }
+
+
 class TronActionConfig(InstanceConfig):
     config_filename_prefix = "tron"
 
@@ -267,7 +281,6 @@ class TronActionConfig(InstanceConfig):
                 "spark.app.name",
                 f"tron_spark_{self.get_service()}_{self.get_instance()}",
             ),
-            "spark.ui.port": system_paasta_config.get_spark_ui_port(),
             # TODO: figure out how to handle dedicated spark cluster here
             "spark.master": f"k8s://https://k8s.{self.get_cluster()}.paasta:6443",
             # TODO: add PAASTA_RESOURCE_* environment variables here
@@ -292,6 +305,10 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
             "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
             "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+            # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
+            # will be, drumroll please, the routable IP for the Pod - this allows us to
+            # not need to worry about DNS
+            "spark.driver.host": "$PAASTA_POD_IP",
         }
 
         # most of the service_configuration_lib function expected string values only
@@ -306,6 +323,8 @@ class TronActionConfig(InstanceConfig):
 
         if self.get_team() is not None:
             conf["spark.kubernetes.executor.label.yelp.com/owner"] = self.get_team()
+
+        conf.update(_get_spark_ports(system_paasta_config=system_paasta_config))
 
         # Spark defaults to using the Service Account that the driver uses for executors,
         # but that has more permissions than what we'd like to give the executors, so use
@@ -416,6 +435,15 @@ class TronActionConfig(InstanceConfig):
                     "key": secret,
                 }
         return secret_env
+
+    def get_field_selector_env(self) -> Dict[str, FieldSelectorConfig]:
+        # we're not expecting users to need to add any of these themselves, so for now
+        # we'll just hardcode the env vars we want to add by default
+        return {
+            "PAASTA_POD_IP": {
+                "field_path": "status.podIP",
+            }
+        }
 
     def get_cpu_burst_add(self) -> float:
         """For Tron jobs, we don't let them burst by default, because they
@@ -793,9 +821,15 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         )
 
         result["secret_env"] = action_config.get_secret_env()
+        result["field_selector_env"] = action_config.get_field_selector_env()
         all_env = action_config.get_env()
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
-        result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
+        # or for field selector env vars to be overwritten
+        result["env"] = {
+            k: v
+            for k, v in all_env.items()
+            if not is_secret_ref(v) and k not in result["field_selector_env"]
+        }
         # for Tron-on-K8s, we want to ship tronjob output through logspout
         # such that this output eventually makes it into our per-instance
         # log streams automatically
@@ -858,6 +892,15 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=_spark_k8s_role(),
                 dry_run=action_config.for_validation,
+            )
+            # spark, unlike normal batches, needs to expose  several ports for things like the spark
+            # ui and for executor->driver communication
+            result["ports"] = list(
+                set(
+                    _get_spark_ports(
+                        system_paasta_config=load_system_paasta_config()
+                    ).values()
+                )
             )
 
     elif executor in MESOS_EXECUTOR_NAMES:
