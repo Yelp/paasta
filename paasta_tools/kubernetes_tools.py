@@ -214,6 +214,7 @@ class KubeDeployment(NamedTuple):
     service: str
     instance: str
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
     replicas: Optional[int]
 
@@ -303,13 +304,17 @@ KubePodAnnotations = TypedDict(
 KubePodLabels = TypedDict(
     "KubePodLabels",
     {
+        # NOTE: we can't use the paasta_prefixed() helper here
+        # since mypy expects TypedDict keys to be string literals
         "paasta.yelp.com/deploy_group": str,
         "paasta.yelp.com/git_sha": str,
+        "paasta.yelp.com/image_version": str,
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/service": str,
+        "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
@@ -1553,6 +1558,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                paasta_prefixed("autoscaled"): str(
+                    self.is_autoscaling_enabled()
+                ).lower(),
             },
         )
 
@@ -1644,6 +1652,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
 
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -1709,6 +1723,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
+        # TODO: see if we can remove this as we're no longer using sfx data to scale
         if metrics_provider == "uwsgi":
             annotations["autoscaling"] = metrics_provider
 
@@ -1788,9 +1803,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
+            # NOTE: we can't use the paasta_prefixed() helper here
+            # since mypy expects TypedDict keys to be string literals
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
+            "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
@@ -1798,6 +1816,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
+        image_version = self.get_image_version()
+        if image_version is not None:
+            labels["paasta.yelp.com/image_version"] = image_version
 
         if system_paasta_config.get_kubernetes_add_registration_labels():
             # Allow Kubernetes Services to easily find
@@ -2148,9 +2170,13 @@ def list_deployments(
             service=item.metadata.labels["paasta.yelp.com/service"],
             instance=item.metadata.labels["paasta.yelp.com/instance"],
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
+            image_version=item.metadata.labels.get(
+                "paasta.yelp.com/image_version", None
+            ),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas
-            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
             else None,
         )
         for item in deployments.items + stateful_sets.items

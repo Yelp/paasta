@@ -40,6 +40,7 @@ def new_adhoc_config(context):
         config_dict={"cpus": 0.1, "mem": 50},
         branch_dict={
             "docker_image": "busybox",
+            "image_version": None,
             "desired_state": "start",
             "force_bounce": None,
         },
@@ -65,6 +66,7 @@ def new_paasta_native_config(context, num):
         },
         branch_dict={
             "docker_image": "busybox",
+            "image_version": None,
             "desired_state": "start",
             "force_bounce": None,
         },

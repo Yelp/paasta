@@ -61,6 +61,7 @@ def fake_bounce_status_resp(**kwargs):
     "side_effect,expected",
     [
         (ApiException(status=500, reason=""), False),  # api bad
+        (ApiException(status=599, reason=""), False),  # temporary api issue
         (ApiException(status=404, reason=""), False),  # instance dne
         ([""], True),  # status=204 produces empty response
         (  # instance stopped

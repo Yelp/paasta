@@ -8,6 +8,7 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -80,6 +81,7 @@ class KubernetesVersionDict(TypedDict, total=False):
     ready_replicas: int
     create_timestamp: int
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
     pods: Sequence[Mapping[str, Any]]
 
@@ -739,6 +741,9 @@ async def get_replicaset_status(
         "ready_replicas": ready_replicas_from_replicaset(replicaset),
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
         "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "image_version": replicaset.metadata.labels.get(
+            "paasta.yelp.com/image_version", None
+        ),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": await asyncio.gather(*pod_status_tasks) if pod_status_tasks else [],
     }
@@ -1014,6 +1019,7 @@ async def get_version_for_controller_revision(
         "ready_replicas": len(pod_status_tasks_by_readiness[True]),
         "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
         "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "image_version": cr.metadata.labels.get("paasta.yelp.com/image_version", None),
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": [task.result() for task in all_pod_status_tasks],
     }

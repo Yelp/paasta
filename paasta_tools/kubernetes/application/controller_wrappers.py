@@ -44,13 +44,20 @@ class Application(ABC):
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
         attrs = {
-            attr: item.metadata.labels[paasta_prefixed(attr)]
-            for attr in ["service", "instance", "git_sha", "config_sha"]
+            attr: item.metadata.labels.get(paasta_prefixed(attr))
+            for attr in [
+                "service",
+                "instance",
+                "git_sha",
+                "image_version",
+                "config_sha",
+            ]
         }
 
         replicas = (
             item.spec.replicas
-            if item.spec.template.metadata.annotations.get("autoscaling") is None
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
             else None
         )
         self.kube_deployment = KubeDeployment(replicas=replicas, **attrs)

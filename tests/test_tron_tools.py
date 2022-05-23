@@ -207,9 +207,13 @@ class TestTronJobConfig:
         mock_deployments_json.get_git_sha_for_deploy_group.assert_called_once_with(
             expected_deploy
         )
+        mock_deployments_json.get_image_version_for_deploy_group.assert_called_once_with(
+            expected_deploy
+        )
         expected_branch_dict = {
             "docker_image": mock_deployments_json.get_docker_image_for_deploy_group.return_value,
             "git_sha": mock_deployments_json.get_git_sha_for_deploy_group.return_value,
+            "image_version": mock_deployments_json.get_image_version_for_deploy_group.return_value,
             "desired_state": "start",
             "force_bounce": None,
         }

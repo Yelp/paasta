@@ -1,3 +1,100 @@
+paasta-tools (0.130.1) xenial; urgency=medium
+
+  * 0.130.1 tagged with 'make release'
+    Commit: Released 0.130.0 via make release
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 17 May 2022 09:59:14 -0700
+
+paasta-tools (0.130.0) xenial; urgency=medium
+
+  * 0.130.0 tagged with 'make release'
+    Commit: Merge pull request #3360 from Yelp/COREML-
+    3095_bump_service_configuration_lib_version  COREML-3095 | bump up
+    service_configuration_lib version to 2.10.2
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 17 May 2022 09:51:31 -0700
+
+paasta-tools (0.130.0) xenial; urgency=medium
+
+  * 0.130.0 tagged with 'make release'
+    Commit: Support additional version information in TronJobConfig
+    (#3358)
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 16 May 2022 11:18:10 -0700
+
+paasta-tools (0.129.0) xenial; urgency=medium
+
+  * 0.129.0 tagged with 'make release'
+    Commit: Add initial auto-rollback file schema (+ validation) (#3347)
+    For the new (and hopefully improved!) autorollback system, we"ll
+    allow users to specify any number of queries to pre-determined
+    metric sources that will control whether or not their service should
+    automatically rollback during a deployment.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 13 May 2022 07:28:15 -0700
+
+paasta-tools (0.128.0) xenial; urgency=medium
+
+  * 0.128.0 tagged with 'make release'
+    Commit: Build for Ubuntu Jammy (#3357)  * Build for Ubuntu Jammy  *
+    Remove custom dh-virtualenv install in favor of normal apt-get  *
+    Update debian/compat as well  * Use a consistent python version for
+    all releases  Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Daniel Grigsby <dgrigsby@10-40-27-179-uswest1cdevc.dev.yelpcorp.com>  Thu, 12 May 2022 11:17:26 -0700
+
+paasta-tools (0.127.3) xenial; urgency=medium
+
+  * 0.127.3 tagged with 'make release'
+    Commit: Support additional version information in Kube
+    list_deployments (#3352)
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 09 May 2022 10:19:05 -0700
+
+paasta-tools (0.127.2) xenial; urgency=medium
+
+  * 0.127.2 tagged with 'make release'
+    Commit: improve healthcheck docs as post-moretem for 1520 (#3349)
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 05 May 2022 11:00:09 -0700
+
+paasta-tools (0.127.1) xenial; urgency=medium
+
+  * 0.127.1 tagged with 'make release'
+    Commit: Update to check all status versions before setting state to
+    stopped (#3341)  * Update to check version.replicas before setting
+    state to stopped
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Tue, 03 May 2022 12:34:39 -0700
+
+paasta-tools (0.127.0) xenial; urgency=medium
+
+  * 0.127.0 tagged with 'make release'
+    Commit: Merge pull request #3340 from Yelp/luisp/PAASTA-17604-p2
+    Add autoscaled label
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 25 Apr 2022 10:27:50 -0700
+
+paasta-tools (0.126.1) xenial; urgency=medium
+
+  * 0.126.1 tagged with 'make release'
+    Commit: Merge pull request #3325 from
+    Yelp/u/jfong/bounce_status_timeout  Catch timeout issues in
+    bounce_status and present less-drastic error message
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 21 Apr 2022 10:37:13 -0700
+
+paasta-tools (0.126.0) xenial; urgency=medium
+
+  * 0.126.0 tagged with 'make release'
+    Commit: Add verbose flag to paasta validate that displays next 5
+    cron runs sc… (#3336)  * Right now there isn"t any real insight into
+    the cron schedules when running paasta validate. This change
+    introduces a verbose flag that will dump the next 5 runs for any
+    valid cron schedule.
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Wed, 20 Apr 2022 10:24:09 -0700
+
 paasta-tools (0.125.5) xenial; urgency=medium
 
   * 0.125.5 tagged with 'make release'

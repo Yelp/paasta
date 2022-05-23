@@ -17,16 +17,22 @@ import os
 import pkgutil
 import re
 from collections import Counter
+from datetime import datetime
 from glob import glob
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Optional
+from typing import Union
 
+import pytz
 import yaml
+from croniter import croniter
 from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+from mypy_extensions import TypedDict
 from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -35,6 +41,7 @@ from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import guess_service_name
+from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
@@ -42,7 +49,10 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
+from paasta_tools.tron_tools import DEFAULT_TZ
 from paasta_tools.tron_tools import list_tron_clusters
+from paasta_tools.tron_tools import load_tron_service_config
+from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_all_instances_for_service
@@ -80,10 +90,32 @@ UNKNOWN_SERVICE = (
     % (PaastaColors.cyan("SERVICE"), PaastaColors.cyan("-s"))
 )
 
+SCHEMA_TYPES = {
+    "adhoc",
+    "kubernetes",  # long-running services
+    "marathon",  # long-running services on mesos - no longer used
+    "rollback",  # automatic rollbacks during deployments
+    "tron",  # batch workloads
+}
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"^#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
+
+
+class ConditionConfig(TypedDict, total=False):
+    """
+    Common config options for all Conditions
+    """
+
+    # for now, this is the only key required by the schema
+    query: str
+    # and only one of these needs to be present (enforced in code, not schema)
+    upper_bound: Optional[Union[int, float]]
+    lower_bound: Optional[Union[int, float]]
+
+    # truly optional
+    dry_run: bool
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -123,6 +155,34 @@ def get_schema(file_type):
     except IOError:
         return None
     return json.loads(schema)
+
+
+def validate_rollback_bounds(
+    config: Dict[str, List[ConditionConfig]], file_loc: str
+) -> bool:
+    """
+    Ensure that at least one of upper_bound or lower_bound is set (and set to non-null values)
+    """
+    errors = []
+
+    for source, queries in config.items():
+        for query in queries:
+            if not any(
+                (
+                    query.get("lower_bound"),
+                    query.get("upper_bound"),
+                ),
+            ):
+                errors.append(
+                    f"{file_loc}:{source}: {query['query']} needs one of lower_bound OR upper_bound set."
+                )
+
+    for error in errors:
+        print(
+            failure(error, link=""),  # TODO: point to actual docs once they exist
+        )
+
+    return len(errors) == 0
 
 
 def validate_instance_names(config_file_object, file_path):
@@ -188,7 +248,7 @@ def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, 
         raise
 
 
-def validate_schema(file_path, file_type):
+def validate_schema(file_path: str, file_type: str) -> bool:
     """Check if the specified config file has a valid schema
 
     :param file_path: path to file to validate
@@ -198,11 +258,12 @@ def validate_schema(file_path, file_type):
         schema = get_schema(file_type)
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
 
     if schema is None:
         print(f"{SCHEMA_NOT_FOUND}: {file_path}")
-        return
+        return False
+
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
@@ -211,21 +272,29 @@ def validate_schema(file_path, file_type):
         if file_type == "kubernetes" and not validate_instance_names(
             config_file_object, file_path
         ):
-            return
+            return False
+
+        if file_type == "rollback" and not validate_rollback_bounds(
+            config_file_object["conditions"],
+            file_path,
+        ):
+            return False
+
     except ValidationError:
         print(f"{SCHEMA_INVALID}: {file_path}")
 
         errors = validator.iter_errors(config_file_object)
         print("  Validation Message: %s" % exceptions.best_match(errors).message)
+        return False
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
     else:
         print(f"{SCHEMA_VALID}: {basename}")
         return True
 
 
-def validate_all_schemas(service_path):
+def validate_all_schemas(service_path: str) -> bool:
     """Finds all recognized config files in service directory,
     and validates their schema.
 
@@ -239,7 +308,7 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        for file_type in ["marathon", "adhoc", "tron", "kubernetes"]:
+        for file_type in SCHEMA_TYPES:
             if basename.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
@@ -258,6 +327,13 @@ def add_subparser(subparsers):
         required=False,
         help="Service that you want to validate. Like 'example_service'.",
     ).completer = lazy_choices_completer(list_services)
+    validate_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        required=False,
+        help="Toggle to display additional validation messages for humans.",
+    )
     validate_parser.add_argument(
         "-y",
         "--yelpsoa-config-root",
@@ -317,15 +393,36 @@ def path_to_soa_dir_service(service_path):
     return soa_dir, service
 
 
-def validate_tron(service_path):
+def validate_tron(service_path: str, verbose: bool = False) -> bool:
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
     for cluster in list_tron_clusters(service, soa_dir):
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
+        elif verbose:
+            # service config has been validated and cron schedules are safe to parse
+            service_config = load_tron_service_config(service, cluster)
+            for config in service_config:
+                cron_expression = config.get_cron_expression()
+                if cron_expression:
+                    print_upcoming_runs(config, cron_expression)
 
     return returncode
+
+
+def print_upcoming_runs(config: TronJobConfig, cron_expression: str) -> None:
+    print(info_message(f"Upcoming runs for {config.get_name()}:"))
+
+    config_tz = config.get_time_zone() or DEFAULT_TZ
+
+    next_cron_runs = list_upcoming_runs(
+        cron_schedule=cron_expression,
+        starting_from=pytz.timezone(config_tz).localize(datetime.today()),
+    )
+
+    for run in next_cron_runs:
+        print(f"\t{run}")
 
 
 def validate_tron_namespace(service, cluster, soa_dir, tron_dir=False):
@@ -567,6 +664,13 @@ def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vaul
     return return_value
 
 
+def list_upcoming_runs(
+    cron_schedule: str, starting_from: datetime, num_runs: int = 5
+) -> List[str]:
+    iter = croniter(cron_schedule, starting_from)
+    return [iter.get_next(datetime) for _ in range(num_runs)]
+
+
 def validate_secrets(service_path):
     soa_dir, service = path_to_soa_dir_service(service_path)
     system_paasta_config = load_system_paasta_config()
@@ -598,7 +702,9 @@ def validate_secrets(service_path):
     return return_value
 
 
-def paasta_validate_soa_configs(service, service_path):
+def paasta_validate_soa_configs(
+    service: str, service_path: str, verbose: bool = False
+) -> bool:
     """Analyze the service in service_path to determine if the conf files are valid
 
     :param service_path: Path to directory containing soa conf yaml files for service
@@ -614,7 +720,7 @@ def paasta_validate_soa_configs(service, service_path):
     if not validate_all_schemas(service_path):
         returncode = False
 
-    if not validate_tron(service_path):
+    if not validate_tron(service_path, verbose):
         returncode = False
 
     if not validate_paasta_objects(service_path):
@@ -642,5 +748,5 @@ def paasta_validate(args):
     """
     service_path = get_service_path(args.service, args.yelpsoa_config_root)
     service = args.service or guess_service_name()
-    if not paasta_validate_soa_configs(service, service_path):
+    if not paasta_validate_soa_configs(service, service_path, args.verbose):
         return 1

@@ -331,7 +331,7 @@ def test_check_parallel_fails(mock_get_config_file_dict):
         ],
     }
 
-    assert validate_schema("my/fake-service", "deploy") is None
+    assert validate_schema("my/fake-service", "deploy") is False
 
 
 @patch("paasta_tools.cli.cmds.check._run", autospec=True)
