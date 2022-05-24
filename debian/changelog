@@ -1,3 +1,10 @@
+paasta-tools (0.131.1) xenial; urgency=medium
+
+  * 0.131.1 tagged with 'make release'
+    Commit: Merge branch "u/krall/crd_for_deployments"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 May 2022 13:32:13 -0700
+
 paasta-tools (0.131.0) xenial; urgency=medium
 
   * 0.131.0 tagged with 'make release'
