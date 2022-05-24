@@ -1,3 +1,12 @@
+paasta-tools (0.131.0) xenial; urgency=medium
+
+  * 0.131.0 tagged with 'make release'
+    Commit: Revert "Revert "Forward Spark ports to Tron/task_proc
+    (#3333)" (#3338)" (#3339)  This reverts commit
+    a477e1af62919b11bcc606942e8f6005d3fc845a.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 23 May 2022 11:47:32 -0700
+
 paasta-tools (0.130.1) xenial; urgency=medium
 
   * 0.130.1 tagged with 'make release'
