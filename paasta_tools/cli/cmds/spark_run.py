@@ -796,41 +796,40 @@ def configure_and_run_docker_container(
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
-        hourly_cost, resources = "", ""
-        if cluster_manager == CLUSTER_MANAGER_MESOS:
-            try:
+        try:
+            if cluster_manager == CLUSTER_MANAGER_MESOS:
                 print("Sending resource request metrics to Clusterman")
                 hourly_cost, resources = send_and_calculate_resources_cost(
                     clusterman_metrics, spark_conf, webui_url, args.pool
                 )
-            except Boto3Error as e:
-                print(
-                    PaastaColors.red(
-                        f"Encountered {e} while attempting to send resource requirements to Clusterman."
-                    )
+            else:
+                resources = get_resources_requested(spark_conf)
+                hourly_cost = get_spark_hourly_cost(
+                    clusterman_metrics,
+                    resources,
+                    spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
+                    args.pool,
                 )
-                if args.suppress_clusterman_metrics_errors:
-                    print(
-                        "Continuing anyway since --suppress-clusterman-metrics-errors was passed"
-                    )
-                else:
-                    raise
-        else:
-            resources = get_resources_requested(spark_conf)
-            hourly_cost = get_spark_hourly_cost(
-                clusterman_metrics,
-                resources,
-                spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
-                args.pool,
+            message = (
+                f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
+                f" is estimated to cost ${hourly_cost} per hour"
             )
-        message = (
-            f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
-            f" is estimated to cost ${hourly_cost} per hour"
-        )
-        if clusterman_metrics.util.costs.should_warn(hourly_cost):
-            print(PaastaColors.red(f"WARNING: {message}"))
-        else:
-            print(message)
+            if clusterman_metrics.util.costs.should_warn(hourly_cost):
+                print(PaastaColors.red(f"WARNING: {message}"))
+            else:
+                print(message)
+        except Boto3Error as e:
+            print(
+                PaastaColors.red(
+                    f"Encountered {e} while attempting to send resource requirements to Clusterman."
+                )
+            )
+            if args.suppress_clusterman_metrics_errors:
+                print(
+                    "Continuing anyway since --suppress-clusterman-metrics-errors was passed"
+                )
+            else:
+                raise
 
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
