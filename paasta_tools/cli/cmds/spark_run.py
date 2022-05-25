@@ -64,7 +64,6 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
-SPARK_POOLS = ["stable_batch", "batch"]
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -222,7 +221,6 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-p",
         "--pool",
-        choices=SPARK_POOLS,
         help="Name of the resource pool to run the Spark job.",
         default=default_spark_pool,
     )
