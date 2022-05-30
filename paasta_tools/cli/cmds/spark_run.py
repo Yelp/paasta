@@ -19,8 +19,10 @@ import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
+from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_conf
+from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -791,14 +793,21 @@ def configure_and_run_docker_container(
             )
     print(f"Selected cluster manager: {cluster_manager}\n")
 
-    if clusterman_metrics and _should_emit_resource_requirements(
-        docker_cmd, args.mrjob, cluster_manager
-    ):
+    if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
         try:
-            print("Sending resource request metrics to Clusterman")
-            hourly_cost, resources = send_and_calculate_resources_cost(
-                clusterman_metrics, spark_conf, webui_url, args.pool
-            )
+            if cluster_manager == CLUSTER_MANAGER_MESOS:
+                print("Sending resource request metrics to Clusterman")
+                hourly_cost, resources = send_and_calculate_resources_cost(
+                    clusterman_metrics, spark_conf, webui_url, args.pool
+                )
+            else:
+                resources = get_resources_requested(spark_conf)
+                hourly_cost = get_spark_hourly_cost(
+                    clusterman_metrics,
+                    resources,
+                    spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
+                    args.pool,
+                )
             message = (
                 f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
                 f" is estimated to cost ${hourly_cost} per hour"
@@ -833,12 +842,9 @@ def configure_and_run_docker_container(
     )
 
 
-def _should_emit_resource_requirements(
-    docker_cmd: str, is_mrjob: bool, cluster_manager: str
-) -> bool:
-    return cluster_manager == CLUSTER_MANAGER_MESOS and (
-        is_mrjob
-        or any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"])
+def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
+    return is_mrjob or any(
+        c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]
     )
 
 
