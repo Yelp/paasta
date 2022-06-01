@@ -631,6 +631,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.print_who_is_running_this()
 
     def get_progress(self, summary: bool = False) -> str:
+        if not self.block:
+            return "Deploying in background, progress not tracked."
         return self.progress.human_readable(summary)
 
     def print_who_is_running_this(self) -> None:
