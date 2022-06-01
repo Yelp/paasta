@@ -1,3 +1,11 @@
+paasta-tools (0.131.2) xenial; urgency=medium
+
+  * 0.131.2 tagged with 'make release'
+    Commit: Don"t show progress in slack when not waiting for
+    deployment. PAASTA-17585
+
+ -- Evan Krall <krall@yelp.com>  Wed, 01 Jun 2022 14:10:31 -0700
+
 paasta-tools (0.131.1) xenial; urgency=medium
 
   * 0.131.1 tagged with 'make release'
