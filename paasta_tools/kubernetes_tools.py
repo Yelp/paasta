@@ -2040,13 +2040,17 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
     return services
 
 
-def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
+def get_kubernetes_services_running_here(
+    exclude_terminating: bool = False,
+) -> Sequence[KubernetesServiceRegistration]:
     services = []
     pods = get_k8s_pods()
     for pod in pods["items"]:
-        if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
-            "metadata"
-        ].get("annotations", {}):
+        if (
+            pod["status"]["phase"] != "Running"
+            or "smartstack_registrations" not in pod["metadata"].get("annotations", {})
+            or (exclude_terminating and pod["metadata"].get("deletionTimestamp"))
+        ):
             continue
         try:
             port = None
@@ -2085,10 +2089,16 @@ def get_kubernetes_services_running_here_for_nerve(
         # these custom exceptions and return [].
         if not system_paasta_config.get_register_k8s_pods():
             return []
+        exclude_terminating = (
+            not system_paasta_config.get_nerve_register_k8s_terminating()
+        )
+
     except PaastaNotConfiguredError:
         log.warning("No PaaSTA config so skipping registering k8s pods in nerve")
         return []
-    kubernetes_services = get_kubernetes_services_running_here()
+    kubernetes_services = get_kubernetes_services_running_here(
+        exclude_terminating=exclude_terminating
+    )
     nerve_list = []
     for kubernetes_service in kubernetes_services:
         try:

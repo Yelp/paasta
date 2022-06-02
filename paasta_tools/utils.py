@@ -1951,6 +1951,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
+    nerve_register_k8s_terminating: bool
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
@@ -2188,6 +2189,9 @@ class SystemPaastaConfig:
             "envoy_nerve_readiness_check_script",
             ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
         )
+
+    def get_nerve_register_k8s_terminating(self) -> bool:
+        return self.config_dict.get("nerve_register_k8s_terminating", True)
 
     def get_enforce_disk_quota(self) -> bool:
         """
