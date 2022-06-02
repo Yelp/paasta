@@ -1,3 +1,12 @@
+paasta-tools (0.131.3) xenial; urgency=medium
+
+  * 0.131.3 tagged with 'make release'
+    Commit: Merge pull request #3355 from Yelp/u/jfong/PAASTA-17640-get-
+    k8s-services  Add a toggle to exclude terminating pods when
+    reporting local pods to nerve
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 02 Jun 2022 13:53:09 -0700
+
 paasta-tools (0.131.2) xenial; urgency=medium
 
   * 0.131.2 tagged with 'make release'
