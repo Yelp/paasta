@@ -265,9 +265,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def mark_for_deployment(
-    git_url: str, deploy_group: str, service: str, commit: str
+    git_url: str,
+    deploy_group: str,
+    service: str,
+    commit: str,
+    image_version: Optional[str] = None,
 ) -> int:
     """Mark a docker image for deployment"""
+    # TODO: Handle image_version, currently does nothing
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
     )
