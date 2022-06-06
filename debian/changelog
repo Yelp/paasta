@@ -1,3 +1,12 @@
+paasta-tools (0.132.0) xenial; urgency=medium
+
+  * 0.132.0 tagged with 'make release'
+    Commit: Merge pull request #3342 from
+    Yelp/u/jfong/deployments_v2_status  Update get_actual_deployments to
+    use deployments.json v2
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 06 Jun 2022 15:01:33 -0700
+
 paasta-tools (0.131.3) xenial; urgency=medium
 
   * 0.131.3 tagged with 'make release'
