@@ -121,7 +121,7 @@ def get_latest_deployment_tag(
     most_recent_sha = None
     most_recent_image_version = None
     pattern = re.compile(
-        r"^refs/tags/paasta-%s(?:-(?P<image_version>.*)){0,1}-(?P<dtime>\d{8}T\d{6})-deploy$"
+        r"^refs/tags/paasta-%s(?:\+(?P<image_version>.*)){0,1}-(?P<dtime>\d{8}T\d{6})-deploy$"
         % deploy_group
     )
 

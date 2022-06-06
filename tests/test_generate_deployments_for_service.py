@@ -41,7 +41,7 @@ def test_get_deploy_group_mappings():
             cluster="clusterC",
             instance="main",
             branch_dict=None,
-            config_dict={"deploy_group": "but_why"},
+            config_dict={"deploy_group": "but-why"},
         ),
     ]
 
@@ -51,7 +51,7 @@ def test_get_deploy_group_mappings():
         "refs/tags/paasta-okay-20160308T053933-deploy": "ijowarg",
         "refs/tags/paasta-no_thanks-20160308T053933-deploy": "789009",
         "refs/tags/paasta-nah-20160308T053933-deploy": "j8yiomwer",
-        "refs/tags/paasta-but_why-extrastuff-20220308T053933-deploy": "123456",
+        "refs/tags/paasta-but-why+extrastuff-20220308T053933-deploy": "123456",
     }
 
     expected = {
@@ -83,7 +83,7 @@ def test_get_deploy_group_mappings():
                 "git_sha": "789009",
                 "image_version": None,
             },
-            "but_why": {
+            "but-why": {
                 "docker_image": "services-fake_service:paasta-123456-extrastuff",
                 "git_sha": "123456",
                 "image_version": "extrastuff",
