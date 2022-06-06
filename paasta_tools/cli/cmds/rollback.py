@@ -274,6 +274,8 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         )
         return 1
 
+    # TODO: Add similar check for when image_version is empty and no-commit redeploys is enforced for requested deploy_group
+
     returncode = 0
 
     for deploy_group in deploy_groups:
@@ -289,7 +291,6 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         # we could also gate this by the return code from m-f-d, but we probably care more about someone wanting to
         # rollback than we care about if the underlying machinery was successfully able to complete the request
 
-        # TODO: Eventually we should include full version in rollback event, but currently leave things as status-quo
         if rolled_back_from != new_version:
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
