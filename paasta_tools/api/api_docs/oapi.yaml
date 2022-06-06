@@ -171,6 +171,14 @@ components:
       type: object
     InstanceBounceStatus:
       properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
         active_versions:
           type: array
           description: List of git SHA/image_version/config SHAs running.
@@ -308,6 +316,16 @@ components:
       type: object
     InstanceStatusKubernetes:
       properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 2
+            maxItems: 2
         active_versions:
           type: array
           description: List of git SHA/image_version/config SHAs running.
@@ -316,8 +334,8 @@ components:
             items:
               type: string
               nullable: true
-            minItems: 2
-            maxItems: 2
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -469,6 +487,16 @@ components:
           description: Status of the service in Envoy
     InstanceStatusMarathon:
       properties:
+        active_shas:
+          type: array
+          description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 2
+            maxItems: 2
         active_versions:
           type: array
           description: List of git SHA/image_version/config SHAs running.
@@ -477,8 +505,8 @@ components:
             items:
               type: string
               nullable: true
-            minItems: 2
-            maxItems: 2
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)

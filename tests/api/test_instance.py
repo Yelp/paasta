@@ -245,6 +245,7 @@ def test_marathon_job_status(
         "deploy_status": "Running",
         "running_instance_count": 2,
         "autoscaling_info": expected_autoscaling_info,
+        "active_shas": [("abc", "123")],
         "active_versions": [("abc", None, "123")],
     }
 

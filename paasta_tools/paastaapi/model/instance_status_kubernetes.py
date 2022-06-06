@@ -110,6 +110,7 @@ class InstanceStatusKubernetes(ModelNormal):
             'app_count': (int,),  # noqa: E501
             'bounce_method': (str,),  # noqa: E501
             'desired_state': (str,),  # noqa: E501
+            'active_shas': ([[str, none_type]],),  # noqa: E501
             'active_versions': ([[str, none_type]],),  # noqa: E501
             'app_id': (str,),  # noqa: E501
             'autoscaling_status': (InstanceStatusKubernetesAutoscalingStatus,),  # noqa: E501
@@ -137,6 +138,7 @@ class InstanceStatusKubernetes(ModelNormal):
         'app_count': 'app_count',  # noqa: E501
         'bounce_method': 'bounce_method',  # noqa: E501
         'desired_state': 'desired_state',  # noqa: E501
+        'active_shas': 'active_shas',  # noqa: E501
         'active_versions': 'active_versions',  # noqa: E501
         'app_id': 'app_id',  # noqa: E501
         'autoscaling_status': 'autoscaling_status',  # noqa: E501
@@ -206,6 +208,7 @@ class InstanceStatusKubernetes(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
+            active_shas ([[str, none_type]]): List of git/config SHAs running.. [optional]  # noqa: E501
             active_versions ([[str, none_type]]): List of git SHA/image_version/config SHAs running.. [optional]  # noqa: E501
             app_id (str): ID of the desired version of a service instance. [optional]  # noqa: E501
             autoscaling_status (InstanceStatusKubernetesAutoscalingStatus): [optional]  # noqa: E501

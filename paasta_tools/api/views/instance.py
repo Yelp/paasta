@@ -241,6 +241,10 @@ def marathon_job_status(
         "desired_state": job_config.get_desired_state(),
         "bounce_method": job_config.get_bounce_method(),
         "expected_instance_count": job_config.get_instances(),
+        "active_shas": [
+            (deployment_version.sha, config_sha)
+            for deployment_version, config_sha in active_versions
+        ],
         "active_versions": [
             (deployment_version.sha, deployment_version.image_version, config_sha)
             for deployment_version, config_sha in active_versions

@@ -518,6 +518,10 @@ def bounce_status(
     active_versions = kubernetes_tools.get_active_versions_for_service(
         [app, *version_objects],
     )
+    status["active_shas"] = [
+        (deployment_version.sha, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
     status["active_versions"] = [
         (deployment_version.sha, deployment_version.image_version, config_sha)
         for deployment_version, config_sha in active_versions
@@ -1083,6 +1087,10 @@ async def kubernetes_status(
     kstatus["app_count"] = len(active_versions)
     kstatus["desired_state"] = job_config.get_desired_state()
     kstatus["bounce_method"] = job_config.get_bounce_method()
+    kstatus["active_shas"] = [
+        (deployment_version.sha, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
     kstatus["active_versions"] = [
         (deployment_version.sha, deployment_version.image_version, config_sha)
         for deployment_version, config_sha in active_versions

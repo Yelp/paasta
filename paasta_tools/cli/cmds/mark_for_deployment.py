@@ -1537,7 +1537,7 @@ def check_if_instance_is_done(
         return True
 
     short_git_sha = git_sha[:8]
-    active_shas = {g[:8] for g, _, _ in status.active_versions}
+    active_shas = {g[:8] for g, c in status.active_shas}
     if short_git_sha in active_shas:
         non_desired_shas = active_shas.difference({short_git_sha})
         # Case: bounce in-progress
@@ -1588,7 +1588,7 @@ def check_if_instance_is_done(
     # Case: completed
     print(
         f"Complete: {service}.{instance} on {cluster} is 100% deployed at "
-        f"{status.running_instance_count} replicas on {status.active_versions[0][0]}"
+        f"{status.running_instance_count} replicas on {status.active_shas[0][0]}"
     )
     return True
 

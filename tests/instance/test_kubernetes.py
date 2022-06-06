@@ -896,6 +896,11 @@ def test_bounce_status():
             "desired_state": mock_config.get_desired_state.return_value,
             "running_instance_count": mock_kubernetes_tools.get_kubernetes_app_by_name.return_value.status.ready_replicas,
             "deploy_status": mock_kubernetes_tools.KubernetesDeployStatus.tostring.return_value,
+            "active_shas": [
+                ("aaa", "config_aaa"),
+                ("bbb", "config_bbb"),
+                ("ccc", "config_ccc"),
+            ],
             "active_versions": [
                 ("aaa", None, "config_aaa"),
                 ("bbb", None, "config_bbb"),
