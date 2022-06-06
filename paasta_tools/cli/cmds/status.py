@@ -1303,7 +1303,7 @@ def get_version_table_entry(
     if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
     if version.image_version is not None:
-        version_name += f" (image version: {version.image_version})"
+        version_name += f" (image_version: {version.image_version})"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
     version_name = PaastaColors.blue(version_name)
