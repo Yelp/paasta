@@ -3058,6 +3058,11 @@ def read_service_instance_names(
     return instance_list
 
 
+def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
+    service_configuration = read_service_configuration(service, soa_dir)
+    return service_configuration.get("deploy", {}).get("production_deploy_group", None)
+
+
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
