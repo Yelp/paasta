@@ -46,7 +46,6 @@ from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
@@ -78,11 +77,10 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SPACER
 from paasta_tools.utils import SystemPaastaConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
@@ -241,8 +239,7 @@ def list_deployed_clusters(
 
 
 def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
-    """Returns a dict of branch names (typically cluster.instance) to git sha"""
-    deployments_json = load_v2_deployments_json(service, soa_dir)
+    deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
         print(
             "Warning: it looks like %s has not been deployed anywhere yet!" % service,
@@ -250,19 +247,12 @@ def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
         )
     # Create a dictionary of actual $service Jenkins deployments
     actual_deployments = {}
-    for key, branch_dict in deployments_json.config_dict.get("controls", {}).items():
+    for key, branch_dict in deployments_json.config_dict.items():
         service, namespace = key.split(":")
         if service == service:
-            # extract cluster and instance from branch name
-            cluster, instance = namespace.split(SPACER, 1)
-            instance_config = get_instance_config(
-                service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
-            )
-            actual_deployments[
-                namespace
-            ] = deployments_json.get_git_sha_for_deploy_group(
-                deploy_group=instance_config.get_deploy_group()
-            )
+            value = branch_dict["docker_image"]
+            sha = value[value.rfind("-") + 1 :]
+            actual_deployments[namespace.replace("paasta-", "", 1)] = sha
     return actual_deployments
 
 
