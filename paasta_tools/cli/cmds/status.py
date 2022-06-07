@@ -1312,6 +1312,8 @@ def get_version_table_entry(
     version_name = version.git_sha[:8]
     if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
+    if version.image_version is not None:
+        version_name += f" (image_version: {version.image_version})"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
     version_name = PaastaColors.blue(version_name)
