@@ -843,9 +843,9 @@ def get_instance_config(
     )
 
 
-def extract_tags(paasta_tag):
+def extract_tags(paasta_tag: str) -> Mapping[str, str]:
     """Returns a dictionary containing information from a git tag"""
-    regex = r"^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$"
+    regex = r"^refs/tags/(?:paasta-){1,2}(?P<deploy_group>[a-zA-Z0-9._-]+)(?:\+(?P<image_version>.*)){0,1}-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$"
     regex_match = re.match(regex, paasta_tag)
     return regex_match.groupdict() if regex_match else {}
 
