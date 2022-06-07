@@ -740,7 +740,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         ) -> List[str]:
             if waiting_on is None:
                 return [
-                    f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
+                    f"`paasta status --service {self.service} --deploy-group {self.deploy_group} -vv`"
                 ]
             commands = []
             for cluster, instances in waiting_on.items():
