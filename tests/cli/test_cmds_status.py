@@ -216,37 +216,23 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch("paasta_tools.cli.cmds.status.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.status.load_v2_deployments_json", autospec=True)
+@patch("paasta_tools.cli.cmds.status.load_deployments_json", autospec=True)
 def test_get_actual_deployments(
     mock_get_deployments,
-    mock_get_instance_config,
 ):
-    mock_get_deployments.return_value = utils.DeploymentsJsonV2(
-        service="fake_service",
-        config_dict={
-            "deployments": {
-                "deploy_group_a": {"git_sha": "this_is_a_sha"},
-                "deploy_group_b": {"git_sha": "this_is_b_sha"},
+    mock_get_deployments.return_value = utils.DeploymentsJsonV1(
+        {
+            "fake_service:paasta-b_cluster.b_instance": {
+                "docker_image": "this_is_a_sha"
             },
-            "controls": {
-                "fake_service:a_cluster.a_instance": {
-                    "state": "start",
-                },
-                "fake_service:b_cluster.b_instance": {
-                    "state": "start",
-                },
+            "fake_service:paasta-a_cluster.a_instance": {
+                "docker_image": "this_is_a_sha"
             },
-        },
+        }
     )
-
-    mock_get_deploy_group = mock.Mock()
-    mock_get_deploy_group.side_effect = ["deploy_group_a", "deploy_group_b"]
-    mock_get_instance_config.return_value.get_deploy_group = mock_get_deploy_group
-
     expected = {
         "a_cluster.a_instance": "this_is_a_sha",
-        "b_cluster.b_instance": "this_is_b_sha",
+        "b_cluster.b_instance": "this_is_a_sha",
     }
 
     actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")

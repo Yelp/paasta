@@ -1,3 +1,19 @@
+paasta-tools (0.132.2) xenial; urgency=medium
+
+  * 0.132.2 tagged with 'make release'
+    Commit: Merge pull request #3371 from
+    Yelp/u/jfong/revert_deployments_v2_status  Revert "Update
+    get_actual_deployments to use deployments.json v2"
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 07 Jun 2022 17:43:23 -0700
+
+paasta-tools (0.132.1) xenial; urgency=medium
+
+  * 0.132.1 tagged with 'make release'
+    Commit: Add util for getting production_deploy_group (#3369)
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Tue, 07 Jun 2022 12:36:50 -0700
+
 paasta-tools (0.132.0) xenial; urgency=medium
 
   * 0.132.0 tagged with 'make release'
