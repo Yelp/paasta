@@ -353,6 +353,15 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
+        "--disable-aws-credential-env-variables",
+        help="Do not put AWS credentials into environment variables.  Credentials "
+        "will still be read and set in the Spark configuration.  In Spark v3.2 "
+        "you want to set this argument.",
+        action="store_true",
+        default=False,
+    )
+
+    aws_group.add_argument(
         "--aws-region",
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
@@ -523,14 +532,15 @@ def get_spark_env(
     """Create the env config dict to configure on the docker container"""
 
     spark_env = {}
+    if not args.disable_aws_credential_env_variables:
+        access_key, secret_key, session_token = aws_creds
+        if access_key:
+            spark_env["AWS_ACCESS_KEY_ID"] = access_key
+            spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+            if session_token is not None:
+                spark_env["AWS_SESSION_TOKEN"] = session_token
 
-    access_key, secret_key, session_token = aws_creds
-    if access_key:
-        spark_env["AWS_ACCESS_KEY_ID"] = access_key
-        spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-        spark_env["AWS_DEFAULT_REGION"] = args.aws_region
-        if session_token is not None:
-            spark_env["AWS_SESSION_TOKEN"] = session_token
+    spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 

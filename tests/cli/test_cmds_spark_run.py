@@ -213,7 +213,10 @@ def mock_get_possible_launced_by_user_variable_from_env():
     [
         (
             argparse.Namespace(
-                cmd="jupyter-lab", aws_region="test-region", mrjob=False
+                cmd="jupyter-lab",
+                aws_region="test-region",
+                mrjob=False,
+                disable_aws_credential_env_variables=False,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -228,6 +231,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
+                disable_aws_credential_env_variables=False,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -238,7 +242,10 @@ def mock_get_possible_launced_by_user_variable_from_env():
         ),
         (
             argparse.Namespace(
-                cmd="spark-submit job.py", aws_region="test-region", mrjob=True
+                cmd="spark-submit job.py",
+                aws_region="test-region",
+                mrjob=True,
+                disable_aws_credential_env_variables=False,
             ),
             {},
         ),
@@ -254,7 +261,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 "AWS_ACCESS_KEY_ID": "access-key",
                 "AWS_SECRET_ACCESS_KEY": "secret-key",
                 "AWS_SESSION_TOKEN": "token",
-                "AWS_DEFAULT_REGION": "test-region",
             },
         ),
     ],
@@ -272,10 +278,33 @@ def test_get_spark_env(
         "SPARK_OPTS": "--conf spark.ui.port=1234",
         "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
         "PAASTA_INSTANCE_TYPE": "spark",
+        "AWS_DEFAULT_REGION": "test-region",
         **extra_expected,
         **expected_aws,
     }
     assert spark_run.get_spark_env(args, spark_conf_str, aws, "1234") == expected_output
+
+
+def test_disable_aws_credential_env_variables(
+    mock_get_possible_launced_by_user_variable_from_env,
+):
+    args = argparse.Namespace(
+        cmd="spark-submit job.py",
+        aws_region="test-region",
+        disable_aws_credential_env_variables=True,
+    )
+    aws = ("access-key", "secret-key", "token")
+    expected_output = {
+        "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
+        "PAASTA_INSTANCE_TYPE": "spark",
+        "SPARK_USER": "root",
+        "SPARK_OPTS": mock.sentinel.spark_opts,
+        "AWS_DEFAULT_REGION": "test-region",
+    }
+    assert (
+        spark_run.get_spark_env(args, mock.sentinel.spark_opts, aws, "1234")
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
@@ -481,6 +510,7 @@ class TestConfigureAndRunDockerContainer:
         args.nvidia = False
         args.enable_compact_bin_packing = False
         args.cluster_manager = cluster_manager
+        args.disable_aws_credential_env_variables = False
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         with mock.patch.object(
@@ -579,6 +609,7 @@ class TestConfigureAndRunDockerContainer:
         args.mrjob = False
         args.nvidia = False
         args.enable_compact_bin_packing = False
+        args.disable_aws_credential_env_variables = False
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
@@ -679,6 +710,7 @@ class TestConfigureAndRunDockerContainer:
         args.nvidia = False
         args.enable_compact_bin_packing = False
         args.cluster_manager = cluster_manager
+        args.disable_aws_credential_env_variables = False
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         with mock.patch.object(
