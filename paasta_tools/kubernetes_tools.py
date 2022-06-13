@@ -1966,6 +1966,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.get_service(), environment_variables=self.get_env()
         )
 
+        # Only record whether a boto_keys hash exists
+        # This allows the service to restart once when boto_keys secret is
+        # first added, not when the values change
+        if ahash.get("boto_keys"):
+            boto_secret_hash = self.get_boto_secret_hash()
+            ahash["boto_keys_sig"] = "present" if boto_secret_hash else ""
+
         # remove data we dont want used to hash configs
         # replica count
         if ahash["spec"] is not None:
