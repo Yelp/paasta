@@ -1,3 +1,11 @@
+paasta-tools (0.132.4) xenial; urgency=medium
+
+  * 0.132.4 tagged with 'make release'
+    Commit: Add --disable-aws-credential-env-variables to spark run cli
+    for use in Spark v3.2 (#3372)
+
+ -- Jason Sleight <jsleight@yelp.com>  Mon, 13 Jun 2022 10:22:44 -0700
+
 paasta-tools (0.132.3) xenial; urgency=medium
 
   * 0.132.3 tagged with 'make release'
