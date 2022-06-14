@@ -2,6 +2,7 @@
 
 yproperties() // Sets releng approved global properties (SCM polling, build log rotation, etc)
 
+env.PAASTA_ENV = 'YELP'
 
 CHANNELS = ['paasta']
 GIT_SERVER = 'git@github.com'

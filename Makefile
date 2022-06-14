@@ -12,9 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Set ENV to 'YELP' if FQDN ends in '.yelpcorp.com'
+# Set ENV to 'YELP' if FQDN ends in '.yelpcorp.com' or if is set via Jenkinsfile
 # Otherwise, set ENV to the FQDN
+internal_run =
+ifeq ($(PAASTA_ENV),"YELP")
+    internal_run = yes
+endif
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
+    internal_run = yes
+endif
+
+ifdef internal_run
 	export PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 	PAASTA_ENV ?= YELP
