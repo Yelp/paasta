@@ -88,7 +88,7 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
-from paasta_tools.kubernetes_tools import get_active_shas_for_service
+from paasta_tools.kubernetes_tools import get_active_versions_for_service
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
@@ -131,6 +131,7 @@ from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import CAPS_DROP
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
@@ -3124,7 +3125,7 @@ async def test_pods_for_service_instance():
     )
 
 
-def test_get_active_shas_for_service():
+def test_get_active_versions_for_service():
     mock_pod_list = [
         mock.Mock(
             metadata=mock.Mock(
@@ -3156,10 +3157,22 @@ def test_get_active_shas_for_service():
                 }
             )
         ),
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_config_sha": "c123",
+                    "yelp.com/paasta_git_sha": "d456",
+                    "paasta.yelp.com/config_sha": "c123",
+                    "paasta.yelp.com/git_sha": "d456",
+                    "paasta.yelp.com/image_version": "extrastuff",
+                }
+            )
+        ),
     ]
-    assert get_active_shas_for_service(mock_pod_list) == {
-        ("b456!!!", "a123!!!"),
-        ("b456", "a123"),
+    assert get_active_versions_for_service(mock_pod_list) == {
+        (DeploymentVersion("b456!!!", None), "a123!!!"),
+        (DeploymentVersion("b456", None), "a123"),
+        (DeploymentVersion("d456", "extrastuff"), "c123"),
     }
 
 

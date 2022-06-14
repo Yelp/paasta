@@ -3549,6 +3549,17 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     return git_sha if long else git_sha[:8]
 
 
+def get_image_version_from_dockerurl(docker_url: str) -> Optional[str]:
+    """We can optionally encode additional metadata about the docker image *in*
+    the docker url. This function takes that url as input and outputs the sha.
+    """
+    regex_match = re.match(
+        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)-(?P<image_version>.+)", docker_url
+    )
+
+    return regex_match.group("image_version") if regex_match is not None else None
+
+
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
     """code_sha is hash extracted from docker url prefixed with "git", short
     hash is used because it's embedded in marathon app names and there's length

@@ -70,7 +70,9 @@ from paasta_tools.mesos_tools import select_tasks_by_id
 from paasta_tools.mesos_tools import TaskNotFound
 from paasta_tools.utils import calculate_tail_lines
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import get_git_sha_from_dockerurl
+from paasta_tools.utils import get_image_version_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import TimeoutError
@@ -209,16 +211,19 @@ def marathon_instance_status(
     return mstatus
 
 
-def get_active_shas_for_marathon_apps(
+def get_active_versions_for_marathon_apps(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
-) -> Set[Tuple[str, str]]:
+) -> Set[Tuple[DeploymentVersion, str]]:
     ret = set()
     for (app, client) in marathon_apps_with_clients:
         git_sha = get_git_sha_from_dockerurl(app.container.docker.image, long=True)
+        image_version = get_image_version_from_dockerurl(app.container.docker.image)
         _, _, _, config_sha = marathon_tools.deformat_job_id(app.id)
         if config_sha.startswith("config"):
             config_sha = config_sha[len("config") :]
-        ret.add((git_sha, config_sha))
+        ret.add(
+            (DeploymentVersion(sha=git_sha, image_version=image_version), config_sha)
+        )
     return ret
 
 
@@ -229,15 +234,21 @@ def marathon_job_status(
     marathon_apps_with_clients: List[Tuple[MarathonApp, MarathonClient]],
     verbose: int,
 ) -> MutableMapping[str, Any]:
+    active_versions = get_active_versions_for_marathon_apps(marathon_apps_with_clients)
     job_status_fields: MutableMapping[str, Any] = {
         "app_statuses": [],
         "app_count": len(marathon_apps_with_clients),
         "desired_state": job_config.get_desired_state(),
         "bounce_method": job_config.get_bounce_method(),
         "expected_instance_count": job_config.get_instances(),
-        "active_shas": list(
-            get_active_shas_for_marathon_apps(marathon_apps_with_clients)
-        ),
+        "active_shas": [
+            (deployment_version.sha, config_sha)
+            for deployment_version, config_sha in active_versions
+        ],
+        "active_versions": [
+            (deployment_version.sha, deployment_version.image_version, config_sha)
+            for deployment_version, config_sha in active_versions
+        ],
     }
 
     try:

@@ -920,6 +920,19 @@
                         "minItems": 2,
                         "maxItems": 2
                     }
+                },
+                "active_versions": {
+                    "type": "array",
+                    "description": "List of git SHA/image_version/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "x-nullable": true
+                        },
+                        "minItems": 3,
+                        "maxItems": 3
+                    }
                 }
             },
             "required": [
@@ -1366,6 +1379,17 @@
                             "x-nullable": true
                         }
                     }
+                },
+                "active_versions": {
+                    "type": "array",
+                    "description": "List of git SHA/image_version/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "x-nullable": true
+                        }
+                    }
                 }
             }
         },
@@ -1505,6 +1529,19 @@
                         },
                         "minItems": 2,
                         "maxItems": 2
+                    }
+                },
+                "active_versions": {
+                    "type": "array",
+                    "description": "List of git SHA/image_version/config SHAs running.",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "x-nullable": true
+                        },
+                        "minItems": 3,
+                        "maxItems": 3
                     }
                 }
             },

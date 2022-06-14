@@ -50,6 +50,7 @@ def fake_bounce_status_resp(**kwargs):
         desired_state="start",
         app_count=1,
         active_shas=[["abc123", "cfg"]],
+        active_versions=[["abc123", None, "cfg"]],
         deploy_status="Running",
     )
     for k, v in kwargs.items():
@@ -72,7 +73,8 @@ def fake_bounce_status_resp(**kwargs):
         (  # bounce in-progress
             [
                 fake_bounce_status_resp(
-                    active_shas=[["wrong1", "cfg"], ["abc123", "cfg"]]
+                    active_shas=[["wrong1", "cfg"], ["abc123", "cfg"]],
+                    active_versions=[["wrong1", None, "cfg"], ["abc123", None, "cfg"]],
                 )
             ],
             False,
@@ -84,13 +86,23 @@ def fake_bounce_status_resp(**kwargs):
                         ["wrong1", "cfg"],
                         ["wrong2", "cfg"],
                         ["abc123", "cfg"],
-                    ]
+                    ],
+                    active_versions=[
+                        ["wrong1", None, "cfg"],
+                        ["wrong2", None, "cfg"],
+                        ["abc123", None, "cfg"],
+                    ],
                 )
             ],
             False,
         ),
         (  # bounce not started
-            [fake_bounce_status_resp(active_shas=[["wrong1", "cfg"]])],
+            [
+                fake_bounce_status_resp(
+                    active_shas=[["wrong1", "cfg"]],
+                    active_versions=[["wrong1", None, "cfg"]],
+                )
+            ],
             False,
         ),
         (  # instance not running
