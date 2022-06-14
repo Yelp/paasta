@@ -149,6 +149,107 @@ components:
           description: Registration name of the service in Smartstack
           type: string
       type: object
+    FlinkConfig:
+      properties:
+        flink-version:
+          type: string
+        flink-revision:
+          type: string
+      type: object
+    FlinkClusterOverview:
+      properties:
+        taskmanagers:
+          description: Number of taskmanagers in the cluster
+          type: integer
+          format: int32
+        slots-total:
+          description: Total task slots in the cluster
+          type: integer
+          format: int32
+        slots-available:
+          description: Available task slots
+          type: integer
+          format: int32
+        jobs-running:
+          description: Number of flink jobs in running state
+          type: integer
+          format: int32
+        jobs-finished:
+          description: Number of flink jobs in finished state
+          type: integer
+          format: int32
+        jobs-cancelled:
+          description: Number of flink jobs in cancelled state
+          type: integer
+          format: int32
+        jobs-failed:
+          description: Number of flink jobs in failed state
+          type: integer
+          format: int32
+      type: object
+    FlinkJob:
+      properties:
+        id:
+          type: string
+          description: ID of the flink job
+        status:
+          enum:
+            - INITIALIZING
+            - CREATED
+            - RUNNING
+            - FAILING
+            - FAILED
+            - CANCELLING
+            - CANCELED
+            - FINISHED
+            - RESTARTING
+            - SUSPENDED
+            - RECONCILING
+          type: string
+      type: object
+    FlinkJobDetails:
+      properties:
+        id:
+          type: string
+          description: ID of the flink job
+        name:
+          type: string
+          description: name of the flink job
+        status:
+          description: status of the flink job
+          enum:
+            - INITIALIZING
+            - CREATED
+            - RUNNING
+            - FAILING
+            - FAILED
+            - CANCELLING
+            - CANCELED
+            - FINISHED
+            - RESTARTING
+            - SUSPENDED
+            - RECONCILING
+          type: string
+        start-time:
+          description: timestamp of job start time
+          type: integer
+          format: int64
+        end-time:
+          description: timestamp of the job end time, or -1 if it did not end yet.
+          type: integer
+          format: int64
+        timestamps:
+          description: Mapping of the job states to the timestamp of the state
+          type: object
+        status-counts:
+          description: Mapping of task states to the number of tasks in a specific state
+          type: object
+      type: object
+    FlinkJobs:
+      properties:
+        jobs:
+          $ref: '#/components/schemas/FlinkJob'
+          description: Flink jobs
     FloatAndError:
       properties:
         error_message:
