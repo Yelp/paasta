@@ -27,6 +27,7 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import TimeoutError
 
 
@@ -133,7 +134,7 @@ def test_check_if_instance_is_done(
         service="fake_service",
         instance="fake_instance",
         cluster="fake_cluster",
-        git_sha="abc123",
+        version=DeploymentVersion(sha="abc123", image_version=None),
         instance_config=mock_marathon_instance_config("fake_instance"),
     )
 

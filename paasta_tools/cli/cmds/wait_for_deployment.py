@@ -82,6 +82,13 @@ def add_subparser(subparsers):
         type=validate_short_git_sha,
     )
     list_parser.add_argument(
+        "-i",
+        "--image-version",
+        help="Extra version metadata to mark for deployment",
+        required=False,
+        default=None,
+    )
+    list_parser.add_argument(
         "-l",
         "--deploy-group",
         help="deploy group (e.g. cluster1.canary, cluster2.main).",
