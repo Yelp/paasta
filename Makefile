@@ -16,10 +16,10 @@
 # Otherwise, set ENV to the FQDN
 internal_run =
 ifeq ($(PAASTA_ENV),"YELP")
-    internal_run = yes
+	internal_run = yes
 endif
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
-    internal_run = yes
+	internal_run = yes
 endif
 
 ifdef internal_run
