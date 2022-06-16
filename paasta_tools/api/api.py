@@ -98,6 +98,17 @@ def make_app(global_config=None):
 
     config.include("pyramid_swagger")
     config.include(request_logger)
+
+    config.add_route(
+        "flink.service.instance.jobs", "/v1/flink/{service}/{instance}/jobs"
+    )
+    config.add_route(
+        "flink.service.instance.overview", "/v1/flink/{service}/{instance}/overview"
+    )
+    config.add_route(
+        "flink.service.instance.config", "/v1/flink/{service}/{instance}/config"
+    )
+
     config.add_route("resources.utilization", "/v1/resources/utilization")
     config.add_route(
         "service.instance.status", "/v1/services/{service}/{instance}/status"

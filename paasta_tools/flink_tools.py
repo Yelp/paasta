@@ -167,6 +167,20 @@ def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
     return response.text
 
 
+def curl_flink_endpoint(cr_name: str, cluster: str, endpoint: str) -> Mapping[str, Any]:
+    try:
+        response = _dashboard_get(cr_name, cluster, endpoint)
+        return json.loads(response)
+    except requests.RequestException as e:
+        url = e.request.url
+        err = e.response or str(e)
+        raise ValueError(f"failed HTTP request to flink API {url}: {err}")
+    except json.JSONDecodeError as e:
+        raise ValueError(f"JSON decoding error from flink API: {e}")
+    except ConnectionError as e:
+        raise ValueError(f"failed HTTP request to flink API: {e}")
+
+
 def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
     try:
         response = _dashboard_get(cr_name, cluster, "overview")
