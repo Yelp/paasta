@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Yelp Inc.
+# Copyright 2015-2022 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:focal
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
@@ -23,12 +23,14 @@ RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 
 RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         debhelper \
+        dh-virtualenv \
         gdebi-core \
         git \
         libffi-dev \
@@ -36,19 +38,17 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.8-dev \
+        python3.7-dev \
         python3-pip \
+        python3.7-distutils \
         tox \
         wget \
         sphinx-rtd-theme-common \
-        zsh \
-        > /dev/null \
+        zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.2.1-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
+RUN python3.7 -m pip install --upgrade pip==20.0.2
+RUN pip3.7 install virtualenv==16.0.0
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

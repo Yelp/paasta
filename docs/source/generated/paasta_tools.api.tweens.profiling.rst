@@ -1,7 +1,7 @@
-paasta\_tools.graceful\_app\_drain module
+paasta\_tools.api.tweens.profiling module
 =========================================
 
-.. automodule:: paasta_tools.graceful_app_drain
+.. automodule:: paasta_tools.api.tweens.profiling
    :members:
    :undoc-members:
    :show-inheritance:

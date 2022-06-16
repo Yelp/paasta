@@ -3,6 +3,9 @@ import pytest
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
+    create_instance_arbitrary_promql_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_cpu_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -256,7 +259,8 @@ def test_create_instance_cpu_scaling_rule() -> None:
     ],
 )
 def test_get_rules_for_service_instance(
-    autoscaling_config: AutoscalingParamsDict, expected_rules: int,
+    autoscaling_config: AutoscalingParamsDict,
+    expected_rules: int,
 ) -> None:
     assert (
         len(
@@ -286,3 +290,47 @@ def test_get_rules_for_service_instance(
 )
 def test__minify_promql(query: str, expected: str) -> None:
     assert _minify_promql(query) == expected
+
+
+def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
+    rule = create_instance_arbitrary_promql_scaling_rule(
+        service="service",
+        instance="instance",
+        autoscaling_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
+        paasta_cluster="cluster",
+    )
+
+    assert rule == {
+        "name": {"as": "service-instance-arbitrary-promql"},
+        "resources": {
+            "overrides": {
+                "namespace": {"resource": "namespace"},
+                "deployment": {"group": "apps", "resource": "deployments"},
+            },
+        },
+        "metricsQuery": "label_replace( label_replace( foo, 'deployment', 'service-instance', '', '' ), 'namespace', 'paasta', '', '' )",
+        "seriesQuery": "kube_deployment_labels{ deployment='service-instance', paasta_cluster='cluster', namespace='paasta' }",
+    }
+
+
+def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
+    rule = create_instance_arbitrary_promql_scaling_rule(
+        service="service",
+        instance="instance",
+        autoscaling_config={
+            "prometheus_adapter_config": {"metricsQuery": "foo", "seriesQuery": "bar"}
+        },
+        paasta_cluster="cluster",
+    )
+
+    assert rule == {
+        "name": {"as": "service-instance-arbitrary-promql"},
+        "resources": {
+            "overrides": {
+                "namespace": {"resource": "namespace"},
+                "deployment": {"group": "apps", "resource": "deployments"},
+            },
+        },
+        "metricsQuery": "foo",  # if seriesQuery is specified, the user's metricsQuery should be unaltered.
+        "seriesQuery": "bar",
+    }

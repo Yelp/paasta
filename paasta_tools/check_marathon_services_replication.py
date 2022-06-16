@@ -68,7 +68,10 @@ def filter_healthy_marathon_instances_for_short_app_id(all_tasks, app_id):
 
 
 def check_healthy_marathon_tasks_for_service_instance(
-    instance_config, expected_count, all_tasks, dry_run=False,
+    instance_config,
+    expected_count,
+    all_tasks,
+    dry_run=False,
 ):
     app_id = format_job_id(instance_config.service, instance_config.instance)
     num_healthy_tasks = filter_healthy_marathon_instances_for_short_app_id(

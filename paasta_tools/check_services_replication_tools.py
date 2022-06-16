@@ -160,7 +160,10 @@ def check_services_replication(
 
 
 def emit_cluster_replication_metrics(
-    pct_under_replicated: float, cluster: str, scheduler: str, dry_run: bool = False,
+    pct_under_replicated: float,
+    cluster: str,
+    scheduler: str,
+    dry_run: bool = False,
 ) -> None:
     metric_name = "paasta.pct_services_under_replicated"
     if dry_run:
@@ -190,12 +193,14 @@ def main(
     if mesos:
         tasks_or_pods, slaves = get_mesos_tasks_and_slaves(system_paasta_config)
         replication_checker = MesosSmartstackEnvoyReplicationChecker(
-            mesos_slaves=slaves, system_paasta_config=system_paasta_config,
+            mesos_slaves=slaves,
+            system_paasta_config=system_paasta_config,
         )
     else:
         tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
-            nodes=nodes, system_paasta_config=system_paasta_config,
+            nodes=nodes,
+            system_paasta_config=system_paasta_config,
         )
 
     count_under_replicated, total = check_services_replication(

@@ -10,7 +10,6 @@ certifi
 choice >= 0.1
 cookiecutter >= 1.4.0
 croniter
-dataclasses >= 0.7; python_version < '3.7'
 # Don't update this unless you have confirmed the client works with
 # the Docker version deployed on PaaSTA servers
 docker-py >= 1.2.3
@@ -50,7 +49,7 @@ requests-cache >= 0.4.10
 retry
 ruamel.yaml
 sensu-plugin
-service-configuration-lib >= 2.6.0
+service-configuration-lib >= 2.10.4
 signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0
@@ -60,7 +59,6 @@ thriftpy2
 transitions
 typing-extensions
 tzlocal
-ujson >= 1.35
 urllib3
 utaw >= 0.2.0
 wsgicors

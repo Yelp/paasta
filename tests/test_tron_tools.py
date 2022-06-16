@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 
 import mock
 import pytest
@@ -16,6 +17,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
         "docker_registry": "mock_registry",
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
+        "spark_k8s_role": "spark",
     },
     "/mock/system/configs",
 )
@@ -72,120 +74,27 @@ class TestTronActionConfig:
             branch_dict={"docker_image": "foo:latest"},
         )
 
-    @pytest.fixture
-    def spark_action_config(self):
-        action_dict = {
-            "name": "print",
-            "command": "spark-submit something",
-            "aws_credentials_yaml": "/some/yaml/path",
-            "executor": "spark",
-            "spark_args": {"spark.eventLog.enabled": "false"},
-            "spark_paasta_cluster": "fake-spark-cluster",
-            "spark_paasta_pool": "fake-spark-pool",
-            "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
-            ],
-        }
-        return tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("cool_job", "print"),
-            cluster="fake-cluster",
-            config_dict=action_dict,
-            branch_dict={"docker_image": ""},
-        )
-
     def test_action_config(self, action_config):
         assert action_config.get_job_name() == "cool_job"
         assert action_config.get_action_name() == "print"
         assert action_config.get_cluster() == "fake-cluster"
 
-    @pytest.mark.parametrize("for_validation", [True, "N/A"])
-    @pytest.mark.parametrize("cluster_manager", ["mesos", "kubernetes"])
-    def test_get_spark_config_dict(
-        self, spark_action_config, for_validation, cluster_manager
-    ):
-        spark_action_config.config_dict["spark_cluster_manager"] = cluster_manager
-        spark_action_config.for_validation = for_validation
-        with mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
-        ) as system_paasta_config, mock.patch(
-            "paasta_tools.tron_tools.get_spark_conf", autospec=True
-        ) as mock_get_spark_conf, mock.patch(
-            "paasta_tools.tron_tools.get_aws_credentials", autospec=True
-        ) as mock_get_aws_credentials:
-            if cluster_manager == "mesos":
-                expected_mesos_leader = (
-                    "N/A" if for_validation else "zk://1.2.3.4/mesos"
-                )
-                expected_extra_volumes = [
-                    {
-                        "containerPath": "/nail/tmp",
-                        "hostPath": "/nail/tmp",
-                        "mode": "RW",
-                    }
-                ]
-                if not for_validation:
-                    system_paasta_config.return_value.get_zk_hosts.return_value = (
-                        "1.2.3.4/mesos"
-                    )
-            elif cluster_manager == "kubernetes":
-                expected_mesos_leader = None
-                expected_extra_volumes = [
-                    {
-                        "containerPath": "/nail/tmp",
-                        "hostPath": "/nail/tmp",
-                        "mode": "RW",
-                    },
-                ]
-
-            spark_action_config.get_spark_config_dict()
-            mock_get_spark_conf.assert_called_once_with(
-                cluster_manager=cluster_manager,
-                spark_app_base_name="tron_spark_my_service_cool_job.print",
-                user_spark_opts={"spark.eventLog.enabled": "false"},
-                paasta_cluster="fake-spark-cluster",
-                paasta_pool="fake-spark-pool",
-                paasta_service="my_service",
-                paasta_instance="cool_job.print",
-                docker_img="",
-                aws_creds=mock_get_aws_credentials.return_value,
-                extra_volumes=expected_extra_volumes,
-                with_secret=False,
-                mesos_leader=expected_mesos_leader,
-                load_paasta_default_volumes=False,
-            )
-
     @pytest.mark.parametrize("executor", MESOS_EXECUTOR_NAMES)
-    def test_get_env(self, action_config, executor, monkeypatch):
+    def test_get_env(
+        self, mock_read_soa_metadata, action_config, executor, monkeypatch
+    ):
         monkeypatch.setattr(tron_tools, "clusterman_metrics", mock.Mock())
         action_config.config_dict["executor"] = executor
         with mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.stringify_spark_env", autospec=True,
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
-        ), mock.patch(
-            "paasta_tools.tron_tools.get_aws_credentials",
-            autospec=True,
-            return_value=("access", "secret", "token"),
-        ), mock.patch(
-            "paasta_tools.tron_tools.generate_clusterman_metrics_entries",
-            autospec=True,
-            return_value={
-                "cpus": ("cpus|dimension=2", 1900),
-                "mem": ("mem|dimension=1", "42"),
-            },
         ):
             env = action_config.get_env()
-            if executor == "spark":
-                assert all([env["SPARK_OPTS"], env["CLUSTERMAN_RESOURCES"]])
-                assert env["AWS_ACCESS_KEY_ID"] == "access"
-                assert env["AWS_SECRET_ACCESS_KEY"] == "secret"
-                assert env["AWS_DEFAULT_REGION"] == "us-west-2"
-                assert env["SPARK_MESOS_SECRET"] == "SHARED_SECRET(SPARK_MESOS_SECRET)"
-            else:
-                assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
+            assert not any([env.get("SPARK_OPTS"), env.get("CLUSTERMAN_RESOURCES")])
+
+        assert "PAASTA_SOA_CONFIGS_SHA" not in env
 
     @pytest.mark.parametrize(
         "test_env,expected_env",
@@ -217,26 +126,6 @@ class TestTronActionConfig:
         action_config.config_dict["env"] = test_env
         secret_env = action_config.get_secret_env()
         assert secret_env == expected_env
-
-    def test_spark_get_cmd(self, action_config):
-        action_config.config_dict["executor"] = "spark"
-        with mock.patch.object(
-            action_config,
-            "get_spark_config_dict",
-            return_value={"spark.master": "mesos://host:port"},
-        ), mock.patch(
-            "paasta_tools.utils.get_service_docker_registry", autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools.load_system_paasta_config", autospec=True
-        ), mock.patch(
-            "paasta_tools.tron_tools.get_aws_credentials",
-            autospec=True,
-            return_value=("access", "secret", "token"),
-        ):
-            assert (
-                action_config.get_cmd()
-                == "unset MESOS_DIRECTORY MESOS_SANDBOX; spark-submit --conf spark.master=mesos://host:port something"
-            )
 
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() == "paasta"
@@ -318,9 +207,13 @@ class TestTronJobConfig:
         mock_deployments_json.get_git_sha_for_deploy_group.assert_called_once_with(
             expected_deploy
         )
+        mock_deployments_json.get_image_version_for_deploy_group.assert_called_once_with(
+            expected_deploy
+        )
         expected_branch_dict = {
             "docker_image": mock_deployments_json.get_docker_image_for_deploy_group.return_value,
             "git_sha": mock_deployments_json.get_git_sha_for_deploy_group.return_value,
+            "image_version": mock_deployments_json.get_image_version_for_deploy_group.return_value,
             "desired_state": "start",
             "force_bounce": None,
         }
@@ -414,7 +307,8 @@ class TestTronJobConfig:
             job_config, action_name, action_dict
         )
         mock_format_action.assert_called_once_with(
-            action_config=mock_get_action_config.return_value, use_k8s=False,
+            action_config=mock_get_action_config.return_value,
+            use_k8s=False,
         )
 
         assert result == {
@@ -468,7 +362,8 @@ class TestTronJobConfig:
             job_config, action_name, action_dict
         )
         mock_format_action.assert_called_once_with(
-            action_config=mock_get_action_config.return_value, use_k8s=True,
+            action_config=mock_get_action_config.return_value,
+            use_k8s=True,
         )
 
         assert result == {
@@ -833,6 +728,10 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -865,6 +764,181 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
+    def test_format_tron_action_dict_spark(self):
+        action_dict = {
+            "iam_role_provider": "aws",
+            "iam_role": "arn:aws:iam::000000000000:role/some_role",
+            "spark_args": {
+                "spark.cores.max": 4,
+                "spark.driver.memory": "1g",
+                "spark.executor.memory": "1g",
+                "spark.executor.cores": 2,
+            },
+            "command": "spark-submit file://this/is/a_test.py",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "executor": "spark",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "pool": "special_pool",
+            "env": {"SHELL": "/bin/bash"},
+            "extra_volumes": [
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance=tron_tools.compose_instance("my_job", "do_something"),
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.kube_client",
+            autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools._spark_k8s_role",
+            autospec=True,
+            return_value="spark",
+        ), mock.patch(
+            "paasta_tools.spark_tools.get_default_spark_configuration",
+            autospec=True,
+            return_value={
+                "environments": {
+                    "testenv": {
+                        "account_id": 1,
+                        "default_event_log_dir": "s3a://test",
+                        "history_server": "yelp.com",
+                    },
+                },
+            },
+        ), mock.patch(
+            "paasta_tools.spark_tools.get_runtimeenv",
+            autospec=True,
+            return_value="testenv",
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+
+        assert result == {
+            "command": "spark-submit "
+            "--conf spark.app.name=tron_spark_my_service_my_job.do_something "
+            "--conf spark.master=k8s://https://k8s.test-cluster.paasta:6443 "
+            "--conf spark.executorEnv.PAASTA_SERVICE=my_service "
+            "--conf spark.executorEnv.PAASTA_INSTANCE=my_job.do_something "
+            "--conf spark.executorEnv.PAASTA_CLUSTER=test-cluster "
+            "--conf spark.executorEnv.PAASTA_INSTANCE_TYPE=spark "
+            "--conf spark.executorEnv.SPARK_EXECUTOR_DIRS=/tmp "
+            "--conf spark.kubernetes.authenticate.driver.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role--spark "
+            "--conf spark.kubernetes.pyspark.pythonVersion=3 "
+            "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
+            "--conf spark.kubernetes.namespace=paasta-spark "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_service=my_service "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_instance=my_job.do_something "
+            "--conf spark.kubernetes.executor.label.yelp.com/paasta_cluster=test-cluster "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/service=my_service "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
+            "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
+            "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
+            "--conf spark.driver.host=$PAASTA_POD_IP "
+            # user args
+            "--conf spark.cores.max=4 "
+            "--conf spark.driver.memory=1g "
+            "--conf spark.executor.memory=1g "
+            "--conf spark.executor.cores=2 "
+            "--conf spark.ui.port=33000 "
+            "--conf spark.driver.port=33001 "
+            "--conf spark.blockManager.port=33002 "
+            "--conf spark.driver.blockManager.port=33002 "
+            "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role "
+            # extra_volumes from config
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=false "
+            # default spark volumes
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
+            # coreml adjustments
+            "--conf spark.executor.instances=2 "
+            "--conf spark.kubernetes.allocation.batch.size=512 "
+            "--conf spark.kubernetes.executor.limit.cores=2 "
+            "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
+            "--conf spark.sql.shuffle.partitions=8 "
+            "--conf spark.eventLog.enabled=true "
+            "--conf spark.eventLog.dir=s3a://test "
+            # actual script to run
+            "file://this/is/a_test.py",
+            "requires": ["required_action"],
+            "retries": 2,
+            "retries_delay": "5m",
+            "docker_image": mock.ANY,
+            "executor": "spark",
+            "cpus": 2,
+            "mem": 1200,
+            "disk": 42,
+            "env": mock.ANY,
+            "extra_volumes": [
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "trigger_downstreams": True,
+            "triggered_by": ["foo.bar.{shortdate}"],
+            "trigger_timeout": "5m",
+            "secret_env": {},
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
+            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "ports": [33000, 33001, 33002],
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+            },
+            "annotations": {"paasta.yelp.com/routable_ip": "true"},
+            "cap_drop": CAPS_DROP,
+            "cap_add": [],
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["SHELL"] == "/bin/bash"
+        assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
+
     @pytest.mark.parametrize(
         "instance_name,expected_instance_label",
         (
@@ -879,8 +953,15 @@ class TestTronTools:
         self, instance_name, expected_instance_label
     ):
         action_dict = {
+            "iam_role_provider": "aws",
+            "iam_role": "arn:aws:iam::000000000000:role/some_role",
             "command": "echo something",
-            "node_selectors": {"instance_type": ["c5.2xlarge", "c5n.17xlarge",]},
+            "node_selectors": {
+                "instance_type": [
+                    "c5.2xlarge",
+                    "c5n.17xlarge",
+                ]
+            },
             "requires": ["required_action"],
             "retries": 2,
             "retries_delay": "5m",
@@ -889,7 +970,9 @@ class TestTronTools:
             "executor": "paasta",
             "cpus": 2,
             "mem": 1200,
-            "monitoring": {"team": "some_sensu_team",},
+            "monitoring": {
+                "team": "some_sensu_team",
+            },
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
@@ -920,6 +1003,14 @@ class TestTronTools:
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.create_or_find_service_account_name",
+            autospec=True,
+            return_value="some--service--account",
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=False,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -942,6 +1033,9 @@ class TestTronTools:
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "some_sensu_team",
             },
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+            },
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "node_affinities": [
                 {
@@ -957,12 +1051,14 @@ class TestTronTools:
                     "key": "secret_name",
                 }
             },
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
+            "service_account_name": "some--service--account",
         }
         expected_docker = "{}/{}".format(
             "docker-registry.com:400", branch_dict["docker_image"]
@@ -999,6 +1095,10 @@ class TestTronTools:
 
         with mock.patch(
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
         ):
@@ -1051,109 +1151,6 @@ class TestTronTools:
             service_name="service", extra_info="tron-test-cluster", soa_dir="fake"
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
-    @pytest.mark.parametrize(
-        "spark_cluster_manager, expected_extra_volumes",
-        [
-            (
-                "mesos",
-                [
-                    {
-                        "container_path": "/nail/tmp",
-                        "host_path": "/nail/tmp",
-                        "mode": "RW",
-                    },
-                ],
-            ),
-            (
-                "kubernetes",
-                [
-                    {
-                        "container_path": "/nail/tmp",
-                        "host_path": "/nail/tmp",
-                        "mode": "RW",
-                    },
-                ],
-            ),
-        ],
-    )
-    def test_format_tron_action_dict_spark(
-        self, mock_system_paasta_config, spark_cluster_manager, expected_extra_volumes,
-    ):
-        action_dict = {
-            "command": "echo something",
-            "requires": ["required_action"],
-            "retries": 2,
-            "retries_delay": "5m",
-            "service": "my_service",
-            "deploy_group": "prod",
-            "executor": "spark",
-            "cpus": 2,
-            "mem": 1200,
-            "disk": 42,
-            "pool": "special_pool",
-            "env": {"SHELL": "/bin/bash"},
-            "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
-            ],
-            "trigger_downstreams": True,
-            "triggered_by": ["foo.bar.{shortdate}"],
-            "trigger_timeout": "5m",
-            "spark_args": {"spark.eventLog.enabled": "false"},
-            "spark_cluster_manager": spark_cluster_manager,
-        }
-        branch_dict = {
-            "docker_image": "my_service:paasta-123abcde",
-            "git_sha": "aabbcc44",
-            "desired_state": "start",
-            "force_bounce": None,
-        }
-        action_config = tron_tools.TronActionConfig(
-            service="my_service",
-            instance=tron_tools.compose_instance("my_job", "do_something"),
-            config_dict=action_dict,
-            branch_dict=branch_dict,
-            cluster="test-cluster",
-        )
-
-        with mock.patch.object(
-            action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch.object(action_config, "get_env", return_value={}), mock.patch(
-            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch.object(
-            action_config, "get_spark_config_dict", return_value={},
-        ):
-            result = tron_tools.format_tron_action_dict(action_config)
-
-        assert result == {
-            "command": "unset MESOS_DIRECTORY MESOS_SANDBOX; echo something",
-            "requires": ["required_action"],
-            "retries": 2,
-            "retries_delay": "5m",
-            "docker_image": mock.ANY,
-            "executor": "mesos",
-            "cpus": 2,
-            "mem": 1200,
-            "disk": 42,
-            "env": mock.ANY,
-            "extra_volumes": expected_extra_volumes,
-            "docker_parameters": mock.ANY,
-            "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
-            ],
-            "trigger_downstreams": True,
-            "triggered_by": ["foo.bar.{shortdate}"],
-            "trigger_timeout": "5m",
-        }
-        expected_docker = "{}/{}".format(
-            "docker-registry.com:400", branch_dict["docker_image"]
-        )
-        assert result["docker_image"] == expected_docker
-        assert isinstance(result["docker_parameters"], list)
-        assert {"key": "net", "value": "host"} in result["docker_parameters"]
-
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config_empty(self, mock_read_extra_service_information):
         mock_read_extra_service_information.return_value = {}
@@ -1200,7 +1197,11 @@ class TestTronTools:
             == mock_yaml_dump.return_value
         )
         mock_tron_service_config.assert_called_once_with(
-            service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir
+            service=service,
+            cluster=cluster,
+            for_validation=False,
+            load_deployments=True,
+            soa_dir=soa_dir,
         )
         mock_format_job.assert_called_once_with(
             job_config=job_config, k8s_enabled=k8s_enabled
@@ -1209,6 +1210,54 @@ class TestTronTools:
         mock_yaml_dump.assert_called_once_with(
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
         )
+
+    @mock.patch(
+        "paasta_tools.tron_tools.load_system_paasta_config", mock.Mock(), autospec=None
+    )
+    @mock.patch(
+        "paasta_tools.utils.load_system_paasta_config", mock.Mock(), autospec=None
+    )
+    def test_create_complete_config_e2e(self, tmpdir):
+        soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
+        job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
+        job_file.write(
+            """
+fake_job:
+    node: paasta
+    time_zone: 'US/Pacific'
+    schedule: 'cron 0 * * * *'
+    monitoring:
+        team: fake_team
+        ticket: false
+        slack_channels: ['#fake-channel']
+    deploy_group: dev
+    actions:
+        run:
+            command: '/bin/true'
+            cpus: 0.1
+            mem: 1000
+            retries: 3
+            env:
+                PAASTA_ENV_VAR: 'fake_value'
+            """
+        )
+
+        tronfig = tron_tools.create_complete_config(
+            service="fake_service",
+            cluster="fake-cluster",
+            soa_dir=str(soa_dir),
+            k8s_enabled=True,
+        )
+
+        hasher = hashlib.md5()
+        hasher.update(tronfig.encode("UTF-8"))
+        # warning: if this hash changes, all tron jobs will be reconfigured (like
+        # a long-running service big bounce) the next time `setup_tron_namespace`
+        # runs after the change is released. if the change introduces configs
+        # that are not static, this will cause continuous reconfiguration, which
+        # will add significant load to the Tron API, which happened in DAR-1461.
+        # but if this is intended, just change the hash.
+        assert hasher.hexdigest() == "0cf8f28701c88533c89b5b142fc829b0"
 
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
@@ -1259,7 +1308,10 @@ class TestTronTools:
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
     @mock.patch("subprocess.run", autospec=True)
     def test_validate_complete_config_passes(
-        self, mock_run, mock_format_job, mock_load_config,
+        self,
+        mock_run,
+        mock_format_job,
+        mock_load_config,
     ):
         job_config = mock.Mock(spec_set=tron_tools.TronJobConfig)
         job_config.get_name.return_value = "my_job"

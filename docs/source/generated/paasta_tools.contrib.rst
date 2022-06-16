@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.contrib.add_to_deploy_queue
    paasta_tools.contrib.bounce_log_latency_parser
    paasta_tools.contrib.check_orphans
    paasta_tools.contrib.create_dynamodb_table
@@ -21,8 +20,10 @@ Submodules
    paasta_tools.contrib.paasta_get_num_deployments
    paasta_tools.contrib.paasta_update_soa_memcpu
    paasta_tools.contrib.rightsizer_soaconfigs_update
+   paasta_tools.contrib.service_shard_remove
    paasta_tools.contrib.service_shard_update
    paasta_tools.contrib.shared_ip_check
+   paasta_tools.contrib.timeouts_metrics_prom
    paasta_tools.contrib.utilization_check
 
 Module contents

@@ -80,7 +80,7 @@ class ResourceUtilization(NamedTuple):
 
 
 def get_num_masters() -> int:
-    """ Gets the number of masters from mesos state """
+    """Gets the number of masters from mesos state"""
     zookeeper_host_path = get_zookeeper_host_path()
     return get_number_of_mesos_masters(
         zookeeper_host_path.host, zookeeper_host_path.path
@@ -107,7 +107,9 @@ def get_mesos_cpu_status(
     return total, used, available
 
 
-def get_kube_cpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
+def get_kube_cpu_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
@@ -144,7 +146,9 @@ def get_mesos_memory_status(
     return total, used, available
 
 
-def get_kube_memory_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
+def get_kube_memory_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
@@ -182,7 +186,9 @@ def get_mesos_disk_status(
     return total, used, available
 
 
-def get_kube_disk_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
+def get_kube_disk_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
@@ -220,7 +226,9 @@ def get_mesos_gpu_status(
     return total, used, available
 
 
-def get_kube_gpu_status(nodes: Sequence[V1Node],) -> Tuple[float, float, float]:
+def get_kube_gpu_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[float, float, float]:
     """Takes in the list of Kubernetes nodes and analyzes them, returning the status.
 
     :param nodes: list of Kubernetes nodes.
@@ -290,7 +298,7 @@ def allocated_node_resources(pods: Sequence[V1Pod]) -> Mapping[str, float]:
 def healthcheck_result_for_resource_utilization(
     resource_utilization: ResourceUtilization, threshold: int
 ) -> HealthCheckResult:
-    """ Given a resource data dict, assert that cpu
+    """Given a resource data dict, assert that cpu
     data is ok.
 
     :param resource_utilization: the resource_utilization tuple to check
@@ -439,7 +447,9 @@ def assert_gpu_health(
         )
 
 
-def assert_mesos_tasks_running(metrics: MesosMetrics,) -> HealthCheckResult:
+def assert_mesos_tasks_running(
+    metrics: MesosMetrics,
+) -> HealthCheckResult:
     running = metrics["master/tasks_running"]
     staging = metrics["master/tasks_staging"]
     starting = metrics["master/tasks_starting"]
@@ -450,7 +460,9 @@ def assert_mesos_tasks_running(metrics: MesosMetrics,) -> HealthCheckResult:
     )
 
 
-def assert_kube_pods_running(kube_client: KubeClient,) -> HealthCheckResult:
+def assert_kube_pods_running(
+    kube_client: KubeClient,
+) -> HealthCheckResult:
     statuses = [get_pod_status(pod) for pod in get_all_pods_cached(kube_client)]
     running = statuses.count(PodStatus.RUNNING)
     pending = statuses.count(PodStatus.PENDING)
@@ -516,16 +528,22 @@ def assert_frameworks_exist(
         )
 
 
-def get_mesos_slaves_health_status(metrics: MesosMetrics,) -> Tuple[int, int]:
+def get_mesos_slaves_health_status(
+    metrics: MesosMetrics,
+) -> Tuple[int, int]:
     return metrics["master/slaves_active"], metrics["master/slaves_inactive"]
 
 
-def get_kube_nodes_health_status(nodes: Sequence[V1Node],) -> Tuple[int, int]:
+def get_kube_nodes_health_status(
+    nodes: Sequence[V1Node],
+) -> Tuple[int, int]:
     statuses = [is_node_ready(node) for node in nodes]
     return statuses.count(True), statuses.count(False)
 
 
-def assert_nodes_health(nodes_health_status: Tuple[int, int],) -> HealthCheckResult:
+def assert_nodes_health(
+    nodes_health_status: Tuple[int, int],
+) -> HealthCheckResult:
     active, inactive = nodes_health_status
     healthy = active > 0
     return HealthCheckResult(
@@ -567,8 +585,10 @@ _GenericNodeFilterFunctionT = Callable[[_GenericNodeT], bool]
 _GenericNodeSortFunctionT = Callable[[Sequence[_GenericNodeT]], Sequence[_GenericNodeT]]
 
 
-def key_func_for_attribute(attribute: str,) -> Callable[[_SlaveT], str]:
-    """ Return a closure that given a slave, will return the value of a specific
+def key_func_for_attribute(
+    attribute: str,
+) -> Callable[[_SlaveT], str]:
+    """Return a closure that given a slave, will return the value of a specific
     attribute.
 
     :param attribute: the attribute to inspect in the slave
@@ -584,7 +604,7 @@ def key_func_for_attribute(attribute: str,) -> Callable[[_SlaveT], str]:
 def key_func_for_attribute_multi(
     attributes: Sequence[str],
 ) -> _GenericNodeGroupingFunctionT:
-    """ Return a closure that given a slave, will return the value of a list of
+    """Return a closure that given a slave, will return the value of a list of
     attributes, compiled into a hashable tuple
 
     :param attributes: the attributes to inspect in the slave
@@ -606,7 +626,7 @@ def key_func_for_attribute_multi(
 def key_func_for_attribute_multi_kube(
     attributes: Sequence[str],
 ) -> Callable[[V1Node], _KeyFuncRetT]:
-    """ Return a closure that given a node, will return the value of a list of
+    """Return a closure that given a node, will return the value of a list of
     attributes, compiled into a hashable tuple
 
     :param attributes: the attributes to inspect in the slave
@@ -622,7 +642,9 @@ def key_func_for_attribute_multi_kube(
     return key_func
 
 
-def sort_func_for_attributes(attributes: Sequence[str],) -> _GenericNodeSortFunctionT:
+def sort_func_for_attributes(
+    attributes: Sequence[str],
+) -> _GenericNodeSortFunctionT:
     def sort(slaves):
         for attribute in attributes:
             slaves = sorted(slaves, key=key_func_for_attribute(attribute))
@@ -636,7 +658,7 @@ def group_slaves_by_key_func(
     slaves: Sequence[_GenericNodeT],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, Sequence[_GenericNodeT]]:
-    """ Given a function for grouping slaves, return a
+    """Given a function for grouping slaves, return a
     dict where keys are the unique values returned by
     the key_func and the values are all those slaves which
     have that specific value.
@@ -663,7 +685,7 @@ class ResourceUtilizationDict(TypedDict):
 def calculate_resource_utilization_for_slaves(
     slaves: Sequence[_SlaveT], tasks: Sequence[MesosTask]
 ) -> ResourceUtilizationDict:
-    """ Given a list of slaves and a list of tasks, calculate the total available
+    """Given a list of slaves and a list of tasks, calculate the total available
     resource available in that list of slaves, and the resources consumed by tasks
     running on those slaves.
 
@@ -704,16 +726,16 @@ def calculate_resource_utilization_for_slaves(
 
 _IEC_NUMBER_SUFFIXES = {
     "k": 1000,
-    "m": 1000 ** -1,
-    "M": 1000 ** 2,
-    "G": 1000 ** 3,
-    "T": 1000 ** 4,
-    "P": 1000 ** 5,
+    "m": 1000**-1,
+    "M": 1000**2,
+    "G": 1000**3,
+    "T": 1000**4,
+    "P": 1000**5,
     "Ki": 1024,
-    "Mi": 1024 ** 2,
-    "Gi": 1024 ** 3,
-    "Ti": 1024 ** 4,
-    "Pi": 1024 ** 5,
+    "Mi": 1024**2,
+    "Gi": 1024**3,
+    "Ti": 1024**4,
+    "Pi": 1024**5,
 }
 
 
@@ -733,9 +755,10 @@ def suffixed_number_dict_values(d: Mapping[Any, str]) -> Mapping[Any, float]:
 
 
 def calculate_resource_utilization_for_kube_nodes(
-    nodes: Sequence[V1Node], pods_by_node: Mapping[str, Sequence[V1Pod]],
+    nodes: Sequence[V1Node],
+    pods_by_node: Mapping[str, Sequence[V1Pod]],
 ) -> ResourceUtilizationDict:
-    """ Given a list of Kubernetes nodes, calculate the total available
+    """Given a list of Kubernetes nodes, calculate the total available
     resource available and the resources consumed in that list of nodes.
 
     :param nodes: a list of Kubernetes nodes to calculate resource usage for
@@ -764,14 +787,14 @@ def calculate_resource_utilization_for_kube_nodes(
     return {
         "free": ResourceInfo(
             cpus=resource_free_dict["cpu"],
-            disk=resource_free_dict["ephemeral-storage"] / (1024 ** 2),
-            mem=resource_free_dict["memory"] / (1024 ** 2),
+            disk=resource_free_dict["ephemeral-storage"] / (1024**2),
+            mem=resource_free_dict["memory"] / (1024**2),
             gpus=resource_free_dict.get("nvidia.com/gpu", 0),
         ),
         "total": ResourceInfo(
             cpus=resource_total_dict["cpu"],
-            disk=resource_total_dict["ephemeral-storage"] / (1024 ** 2),
-            mem=resource_total_dict["memory"] / (1024 ** 2),
+            disk=resource_total_dict["ephemeral-storage"] / (1024**2),
+            mem=resource_total_dict["memory"] / (1024**2),
             gpus=resource_total_dict.get("nvidia.com/gpu", 0),
         ),
         "slave_count": len(nodes),
@@ -781,7 +804,7 @@ def calculate_resource_utilization_for_kube_nodes(
 def filter_tasks_for_slaves(
     slaves: Sequence[_SlaveT], tasks: Sequence[MesosTask]
 ) -> Sequence[MesosTask]:
-    """ Given a list of slaves and a list of tasks, return a filtered
+    """Given a list of slaves and a list of tasks, return a filtered
     list of tasks, where those returned belong to slaves in the list of
     slaves
 
@@ -807,7 +830,7 @@ def make_filter_slave_func(
 def filter_slaves(
     slaves: Sequence[_GenericNodeT], filters: Sequence[_GenericNodeFilterFunctionT]
 ) -> Sequence[_GenericNodeT]:
-    """ Filter slaves by attributes
+    """Filter slaves by attributes
 
     :param slaves: list of slaves to filter
     :param filters: list of functions that take a slave and return whether the
@@ -825,7 +848,7 @@ def get_resource_utilization_by_grouping(
     filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
-    """ Given a function used to group slaves and mesos state, calculate
+    """Given a function used to group slaves and mesos state, calculate
     resource utilization for each value of a given attribute.
 
     :grouping_func: a function that given a slave, will return the value of an
@@ -862,7 +885,7 @@ def get_resource_utilization_by_grouping_kube(
     filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
-    """ Given a function used to group nodes, calculate resource utilization
+    """Given a function used to group nodes, calculate resource utilization
     for each value of a given attribute.
 
     :grouping_func: a function that given a node, will return the value of an
@@ -914,8 +937,10 @@ def resource_utillizations_from_resource_info(
     ]
 
 
-def has_registered_slaves(mesos_state: MesosState,) -> bool:
-    """ Return a boolean indicating if there are any slaves registered
+def has_registered_slaves(
+    mesos_state: MesosState,
+) -> bool:
+    """Return a boolean indicating if there are any slaves registered
     to the master according to the mesos state.
     :param mesos_state: the mesos state from the master
     :returns: a boolean, indicating if there are > 0 slaves
@@ -960,7 +985,9 @@ def get_kube_resource_utilization_health(
     ]
 
 
-def get_mesos_state_status(mesos_state: MesosState,) -> Sequence[HealthCheckResult]:
+def get_mesos_state_status(
+    mesos_state: MesosState,
+) -> Sequence[HealthCheckResult]:
     """Perform healthchecks against mesos state.
     :param mesos_state: a dict exposing the mesos state described in
     https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
@@ -982,7 +1009,9 @@ def run_healthchecks_with_param(
     ]
 
 
-def assert_marathon_apps(clients: Sequence[MarathonClient],) -> HealthCheckResult:
+def assert_marathon_apps(
+    clients: Sequence[MarathonClient],
+) -> HealthCheckResult:
     num_apps = [len(get_all_marathon_apps(c)) for c in clients]
     if sum(num_apps) < 1:
         return HealthCheckResult(
@@ -994,7 +1023,9 @@ def assert_marathon_apps(clients: Sequence[MarathonClient],) -> HealthCheckResul
         )
 
 
-def assert_marathon_tasks(clients: Sequence[MarathonClient],) -> HealthCheckResult:
+def assert_marathon_tasks(
+    clients: Sequence[MarathonClient],
+) -> HealthCheckResult:
     num_tasks = [len(c.list_tasks()) for c in clients]
     return HealthCheckResult(
         message="marathon tasks: %9d" % sum(num_tasks), healthy=True
@@ -1010,7 +1041,9 @@ def assert_marathon_deployments(
     )
 
 
-def assert_kube_deployments(kube_client: KubeClient,) -> HealthCheckResult:
+def assert_kube_deployments(
+    kube_client: KubeClient,
+) -> HealthCheckResult:
     num_deployments = len(list_all_deployments(kube_client))
     return HealthCheckResult(
         message=f"Kubernetes deployments: {num_deployments:>3}", healthy=True
@@ -1020,15 +1053,17 @@ def assert_kube_deployments(kube_client: KubeClient,) -> HealthCheckResult:
 def get_marathon_status(
     clients: Sequence[MarathonClient],
 ) -> Sequence[HealthCheckResult]:
-    """ Gathers information about marathon.
-    :return: string containing the status.  """
+    """Gathers information about marathon.
+    :return: string containing the status."""
     return run_healthchecks_with_param(
         clients,
         [assert_marathon_apps, assert_marathon_tasks, assert_marathon_deployments],
     )
 
 
-def get_kube_status(kube_client: KubeClient,) -> Sequence[HealthCheckResult]:
+def get_kube_status(
+    kube_client: KubeClient,
+) -> Sequence[HealthCheckResult]:
     """Gather information about Kubernetes.
     :param kube_client: the KUbernetes client
     :return: string containing the status
@@ -1039,8 +1074,7 @@ def get_kube_status(kube_client: KubeClient,) -> Sequence[HealthCheckResult]:
 
 
 def critical_events_in_outputs(healthcheck_outputs):
-    """Given a list of HealthCheckResults return those which are unhealthy.
-    """
+    """Given a list of HealthCheckResults return those which are unhealthy."""
     return [
         healthcheck
         for healthcheck in healthcheck_outputs
@@ -1153,7 +1187,7 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
 def get_table_rows_for_resource_info_dict(
     attribute_values, healthcheck_utilization_pairs
 ):
-    """ A wrapper method to join together
+    """A wrapper method to join together
 
     :param attribute: The attribute value and formatted columns to be shown in
     a single row.  :param attribute_value: The value of the attribute
@@ -1167,5 +1201,7 @@ def get_table_rows_for_resource_info_dict(
     )
 
 
-def reserved_maintenence_resources(resources: MesosResources,):
+def reserved_maintenence_resources(
+    resources: MesosResources,
+):
     return resources.get(MAINTENANCE_ROLE, {"cpus": 0, "mem": 0, "disk": 0, "gpus": 0})

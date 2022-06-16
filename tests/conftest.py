@@ -1,5 +1,7 @@
+import asyncio
 import time
 
+import mock
 import pytest
 
 from paasta_tools.utils import SystemPaastaConfig
@@ -35,6 +37,26 @@ def system_paasta_config():
     )
 
 
+@pytest.fixture(autouse=True)
+def mock_read_soa_metadata():
+    with mock.patch(
+        "service_configuration_lib.read_soa_metadata",
+        autospec=True,
+    ) as m:
+        m.return_value = {"git_sha": "fake_soa_git_sha"}
+        yield m
+
+
+@pytest.fixture(autouse=True)
+def mock_ktools_read_soa_metadata(mock_read_soa_metadata):
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.read_soa_metadata",
+        mock_read_soa_metadata,
+        autospec=None,
+    ):
+        yield mock_read_soa_metadata
+
+
 class Struct:
     """
     convert a dictionary to an object
@@ -60,3 +82,10 @@ class Struct:
 
     def to_dict(self):
         return self.__dict__
+
+
+def wrap_value_in_task(value):
+    async def returner():
+        return value
+
+    return asyncio.create_task(returner())

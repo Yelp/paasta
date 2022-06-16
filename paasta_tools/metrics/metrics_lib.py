@@ -2,6 +2,7 @@ import logging
 import time
 from abc import ABC
 from abc import abstractmethod
+from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -24,13 +25,24 @@ _metrics_interfaces: Dict[str, Type["BaseMetrics"]] = {}
 
 
 class TimerProtocol(Protocol):
+    def __enter__(self) -> "TimerProtocol":
+        raise NotImplementedError()
+
+    def __exit__(
+        self,
+        err_type: Optional[type],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        raise NotImplementedError()
+
     def start(self) -> None:
         raise NotImplementedError()
 
-    def stop(self) -> None:
+    def stop(self, **kwargs: Any) -> None:
         raise NotImplementedError()
 
-    def record(self, value: float) -> None:
+    def record(self, value: float, **kwargs: Any) -> None:
         raise NotImplementedError()
 
 
@@ -60,6 +72,10 @@ class BaseMetrics(ABC):
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
         raise NotImplementedError()
 
+    @abstractmethod
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        raise NotImplementedError()
+
 
 def get_metrics_interface(base_name: str) -> BaseMetrics:
     metrics_provider = load_system_paasta_config().get_metrics_provider()
@@ -86,26 +102,42 @@ class MeteoriteMetrics(BaseMetrics):
             )
 
     def create_timer(self, name: str, **kwargs: Any) -> TimerProtocol:
-        return yelp_meteorite.create_timer(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_timer(self.base_name + "." + name, **kwargs)
 
     def create_gauge(self, name: str, **kwargs: Any) -> GaugeProtocol:
-        return yelp_meteorite.create_gauge(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_gauge(self.base_name + "." + name, **kwargs)
 
     def create_counter(self, name: str, **kwargs: Any) -> CounterProtocol:
-        return yelp_meteorite.create_counter(self.base_name + "." + name, kwargs)
+        return yelp_meteorite.create_counter(self.base_name + "." + name, **kwargs)
+
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        return yelp_meteorite.emit_event(self.base_name + "." + name, **kwargs)
 
 
 class Timer(TimerProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
 
+    def __enter__(self) -> TimerProtocol:
+        self.start()
+        return self
+
+    def __exit__(
+        self,
+        err_type: Optional[type],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        if not err_type:
+            self.stop()
+
     def start(self) -> None:
         log.debug("timer {} start at {}".format(self.name, time.time()))
 
-    def stop(self) -> None:
+    def stop(self, **kwargs: Any) -> None:
         log.debug("timer {} stop at {}".format(self.name, time.time()))
 
-    def record(self, value: float) -> None:
+    def record(self, value: float, **kwargs: Any) -> None:
         log.debug(f"timer {self.name} record value {value}")
 
 
@@ -140,3 +172,7 @@ class NoMetrics(BaseMetrics):
 
     def create_counter(self, name: str, **kwargs: Any) -> Counter:
         return Counter(self.base_name + "." + name)
+
+    def emit_event(self, name: str, **kwargs: Any) -> bool:
+        log.debug(f"event {name} occurred with properties: {kwargs}")
+        return True

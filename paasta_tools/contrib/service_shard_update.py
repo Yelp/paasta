@@ -20,7 +20,10 @@ def parse_args():
         dest="git_remote",
     )
     parser.add_argument(
-        "--branch", help="Branch name to push to", required=True, dest="branch",
+        "--branch",
+        help="Branch name to push to",
+        required=True,
+        dest="branch",
     )
     parser.add_argument(
         "--local-dir",
@@ -44,20 +47,80 @@ def parse_args():
         dest="source_id",
     )
     parser.add_argument(
-        "--service", help="Service to modify", required=True, dest="service",
+        "--service",
+        help="Service to modify",
+        required=True,
+        dest="service",
     )
     parser.add_argument(
-        "--instance-count",
-        help="If a deploy group is added, the default instance count to create it with",
+        "--min-instance-count",
+        help="If a deploy group is added, the min_instance count to create it with",
         required=False,
         default=1,
-        dest="instance_count",
+        dest="min_instance_count",
+    )
+    parser.add_argument(
+        "--prod-max-instance-count",
+        help="If a deploy group is added, the prod max_instance count to create it with",
+        required=False,
+        default=100,
+        type=int,
+        dest="prod_max_instance_count",
+    )
+    parser.add_argument(
+        "--non-prod-max-instance-count",
+        help="If a deploy group is added, the non-prod max_instance count to create it with",
+        required=False,
+        default=5,
+        type=int,
+        dest="non_prod_max_instance_count",
+    )
+    parser.add_argument(
+        "--cpus",
+        help="If a deploy group is added, the cpu value to create it with",
+        required=False,
+        type=float,
+        dest="cpus",
+    )
+    parser.add_argument(
+        "--mem",
+        help="If a deploy group is added, the mem value to create it with",
+        required=False,
+        type=int,
+        dest="mem",
+    )
+    parser.add_argument(
+        "--setpoint",
+        help="If a deploy group is added, the autoscaling.setpoint value to create it with",
+        required=False,
+        type=float,
+        dest="setpoint",
     )
     parser.add_argument(
         "--shard-name",
         help="Shard name to add if it does not exist",
         required=True,
         dest="shard_name",
+    )
+    parser.add_argument(
+        "--metrics-provider",
+        help="Autoscaling metrics provider",
+        required=False,
+        dest="metrics_provider",
+    )
+    parser.add_argument(
+        "--timeout-client-ms",
+        help="smartstack client timeout",
+        required=False,
+        type=int,
+        dest="timeout_client_ms",
+    )
+    parser.add_argument(
+        "--timeout-server-ms",
+        help="smartstack server timeout",
+        required=False,
+        type=int,
+        dest="timeout_server_ms",
     )
     return parser.parse_args()
 
@@ -105,7 +168,11 @@ def main(args):
             # Add the missing steps and write to deploy config
             for step in steps_to_add:
                 deploy_file["pipeline"].append(
-                    {"step": step, "wait_for_deployment": True, "disabled": True,}
+                    {
+                        "step": step,
+                        "wait_for_deployment": True,
+                        "disabled": True,
+                    }
                 )
                 log.info(f"{step} added to deploy config")
             updater.write_configs(args.service, "deploy", deploy_file)
@@ -113,16 +180,32 @@ def main(args):
             for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
                 for config_path in config_paths:
                     kube_file = updater.get_existing_configs(args.service, config_path)
+                    instance_config = {
+                        "deploy_group": f"{deploy_prefix}.{args.shard_name}",
+                        "min_instances": args.min_instance_count,
+                        "max_instances": args.prod_max_instance_count
+                        if deploy_prefix == "prod"
+                        else args.non_prod_max_instance_count,
+                        "env": {
+                            "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
+                        },
+                    }
+                    if args.metrics_provider is not None or args.setpoint is not None:
+                        instance_config["autoscaling"] = {}
+                        if args.metrics_provider is not None:
+                            instance_config["autoscaling"][
+                                "metrics_provider"
+                            ] = args.metrics_provider
+                        if args.setpoint is not None:
+                            instance_config["autoscaling"]["setpoint"] = args.setpoint
+                    if args.cpus is not None:
+                        instance_config["cpus"] = args.cpus
+                    if args.mem is not None:
+                        instance_config["mem"] = args.mem
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in kube_file.keys():
-                        kube_file[args.shard_name] = {
-                            "deploy_group": f"{deploy_prefix}.{args.shard_name}",
-                            "instances": args.instance_count,
-                            "env": {
-                                "PAASTA_SECRET_BUGSNAG_API_KEY": "SECRET(bugsnag_api_key)",
-                            },
-                        }
+                        kube_file[args.shard_name] = instance_config
                         updater.write_configs(args.service, config_path, kube_file)
                         log.info(
                             f"{deploy_prefix}.{args.shard_name} added to {config_path}"
@@ -138,6 +221,14 @@ def main(args):
                 "proxy_port": None,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
+            if args.timeout_client_ms:
+                smartstack_file[args.shard_name][
+                    "timeout_client_ms"
+                ] = args.timeout_client_ms
+            if args.timeout_server_ms:
+                smartstack_file[args.shard_name][
+                    "timeout_server_ms"
+                ] = args.timeout_server_ms
             updater.write_configs(args.service, "smartstack", smartstack_file)
         else:
             log.info(f"{args.shard_name} is in smartstack config already, skipping.")

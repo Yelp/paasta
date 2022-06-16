@@ -32,6 +32,7 @@ from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceSt
 from paasta_tools.paastaapi.model.instance_mesh_status import InstanceMeshStatus
 from paasta_tools.paastaapi.model.instance_status import InstanceStatus
 from paasta_tools.paastaapi.model.instance_status_adhoc import InstanceStatusAdhoc
+from paasta_tools.paastaapi.model.instance_status_cassandracluster import InstanceStatusCassandracluster
 from paasta_tools.paastaapi.model.instance_status_flink import InstanceStatusFlink
 from paasta_tools.paastaapi.model.instance_status_kafkacluster import InstanceStatusKafkacluster
 from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStatusKubernetes

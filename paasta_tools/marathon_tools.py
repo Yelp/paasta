@@ -185,7 +185,9 @@ class MarathonClients:
         return dedupe_clients(self.current + self.previous)  # type: ignore
 
 
-def dedupe_clients(all_clients: Iterable[MarathonClient],) -> Sequence[MarathonClient]:
+def dedupe_clients(
+    all_clients: Iterable[MarathonClient],
+) -> Sequence[MarathonClient]:
     """Return a subset of the clients with no servers in common. The assumption here is that if there's any overlap in
     servers, then two clients are talking about the same cluster."""
     all_seen_servers: Set[str] = set()
@@ -360,7 +362,11 @@ def load_marathon_service_config_no_cache(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "marathon", cluster, soa_dir=soa_dir,
+        service,
+        instance,
+        "marathon",
+        cluster,
+        soa_dir=soa_dir,
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -886,12 +892,14 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def set_autoscaled_instances(self, instance_count: int) -> None:
         """Set the number of instances in the same way that the autoscaler does."""
         set_instances_for_marathon_service(
-            service=self.service, instance=self.instance, instance_count=instance_count,
+            service=self.service,
+            instance=self.instance,
+            instance_count=instance_count,
         )
 
 
 class MarathonDeployStatus:
-    """ An enum to represent Marathon app deploy status.
+    """An enum to represent Marathon app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
 
@@ -1218,7 +1226,9 @@ def get_classic_services_running_here_for_nerve(
     return classic_services
 
 
-def list_all_marathon_app_ids(client: MarathonClient,) -> Sequence[str]:
+def list_all_marathon_app_ids(
+    client: MarathonClient,
+) -> Sequence[str]:
     """List all marathon app_ids, regardless of state
 
     The raw marathon API returns app ids in their URL form, with leading '/'s

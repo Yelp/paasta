@@ -106,6 +106,13 @@ def x_mark():
     return PaastaColors.red("\u2717")
 
 
+def info_mark() -> str:
+    """
+    :return: string that can print an info symbol
+    """
+    return PaastaColors.blue("\u2139")
+
+
 def success(msg):
     """Format a paasta check success message.
 
@@ -122,6 +129,10 @@ def failure(msg, link):
     :return: a beautiful string
     """
     return "{} {} {}".format(x_mark(), msg, PaastaColors.blue(link))
+
+
+def info_message(msg: str) -> str:
+    return f"{info_mark()} {msg}"
 
 
 class PaastaCheckMessages:
@@ -809,8 +820,8 @@ def get_instance_config(
     load_deployments: bool = False,
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
-    """ Returns the InstanceConfig object for whatever type of instance
-    it is. (marathon) """
+    """Returns the InstanceConfig object for whatever type of instance
+    it is. (marathon)"""
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
@@ -832,9 +843,9 @@ def get_instance_config(
     )
 
 
-def extract_tags(paasta_tag):
+def extract_tags(paasta_tag: str) -> Mapping[str, str]:
     """Returns a dictionary containing information from a git tag"""
-    regex = r"^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$"
+    regex = r"^refs/tags/(?:paasta-){1,2}(?P<deploy_group>[a-zA-Z0-9._-]+)(?:\+(?P<image_version>.*)){0,1}-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$"
     regex_match = re.match(regex, paasta_tag)
     return regex_match.groupdict() if regex_match else {}
 
@@ -1035,7 +1046,8 @@ def pick_random_port(service_name):
 
 
 def trigger_deploys(
-    service: str, system_config: Optional["SystemPaastaConfig"] = None,
+    service: str,
+    system_config: Optional["SystemPaastaConfig"] = None,
 ) -> None:
     """Connects to the deploymentsd watcher on sysgit, which is an extremely simple
     service that listens for a service string and then generates a service deployment"""
@@ -1044,7 +1056,8 @@ def trigger_deploys(
     if not system_config:
         system_config = load_system_paasta_config()
     server = system_config.get_git_repo_config("yelpsoa-configs").get(
-        "deploy_server", DEFAULT_SOA_CONFIGS_GIT_URL,
+        "deploy_server",
+        DEFAULT_SOA_CONFIGS_GIT_URL,
     )
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

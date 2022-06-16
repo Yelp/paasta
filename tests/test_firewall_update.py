@@ -66,7 +66,8 @@ def test_parse_args_default_cron():
 
 
 @mock.patch(
-    "paasta_tools.utils.load_system_paasta_config", autospec=True,
+    "paasta_tools.utils.load_system_paasta_config",
+    autospec=True,
 )
 @mock.patch.object(
     firewall_update,

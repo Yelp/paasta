@@ -58,6 +58,7 @@ from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Set
@@ -133,6 +134,17 @@ INSTANCE_TYPES = (
     "monkrelays",
     "nrtsearchservice",
 )
+
+INSTANCE_TYPE_TO_K8S_NAMESPACE = {
+    "marathon": "paasta",
+    "adhoc": "paasta",
+    "kubernetes": "paasta",
+    "tron": "tron",
+    "flink": "paasta-flinks",
+    "cassandracluster": "paasta-cassandraclusters",
+    "kafkacluster": "paasta-kafkaclusters",
+    "nrtsearchservice": "paasta-nrtsearchservices",
+}
 
 CAPS_DROP = [
     "SETPCAP",
@@ -307,6 +319,11 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_docker_args: Dict[str, str]
     gpus: int
     branch: str
+    iam_role: str
+    iam_role_provider: str
+    # the values for this dict can be anything since it's whatever
+    # spark accepts
+    spark_args: Dict[str, Any]
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -318,6 +335,7 @@ class BranchDictV1(TypedDict, total=False):
 class BranchDictV2(TypedDict):
     git_sha: str
     docker_image: str
+    image_version: Optional[str]
     desired_state: str
     force_bounce: Optional[str]
 
@@ -607,6 +625,9 @@ class InstanceConfig:
             )
         except Exception:
             pass
+        image_version = self.get_image_version()
+        if image_version is not None:
+            env["PAASTA_IMAGE_VERSION"] = image_version
         team = self.get_team()
         if team:
             env["PAASTA_MONITORING_TEAM"] = team
@@ -688,6 +709,14 @@ class InstanceConfig:
             return self.branch_dict["docker_image"]
         else:
             return ""
+
+    def get_image_version(self) -> Optional[str]:
+        """Get additional information identifying the Docker image from a
+        generated deployments.json file."""
+        if self.branch_dict is not None and "image_version" in self.branch_dict:
+            return self.branch_dict["image_version"]
+        else:
+            return None
 
     def get_docker_url(
         self, system_paasta_config: Optional["SystemPaastaConfig"] = None
@@ -837,7 +866,10 @@ class InstanceConfig:
                 'Your service config specifies "%s", an unsupported parameter.' % param,
             )
 
-    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+    def validate(
+        self,
+        params: Optional[List[str]] = None,
+    ) -> List[str]:
         if params is None:
             params = [
                 "cpus",
@@ -879,9 +911,14 @@ class InstanceConfig:
     def get_secret_volumes(self) -> List[SecretVolume]:
         return self.config_dict.get("secret_volumes", [])
 
+    def get_iam_role(self) -> str:
+        return self.config_dict.get("iam_role", "")
+
+    def get_iam_role_provider(self) -> str:
+        return self.config_dict.get("iam_role_provider", "kiam")
+
     def get_role(self) -> Optional[str]:
-        """Which mesos role of nodes this job should run on.
-        """
+        """Which mesos role of nodes this job should run on."""
         return self.config_dict.get("role")
 
     def get_pool(self) -> str:
@@ -1560,7 +1597,9 @@ try:
             **kwargs: Any,
         ) -> None:
             super().__init__(
-                monk_host=monk_host, monk_port=monk_port, monk_disable=monk_disable,
+                monk_host=monk_host,
+                monk_port=monk_port,
+                monk_disable=monk_disable,
             )
 
     @register_log_writer("scribe")
@@ -1577,7 +1616,6 @@ try:
                 scribe_port=scribe_port,
                 scribe_disable=scribe_disable,
             )
-
 
 except ImportError:
     warnings.warn("clog is unavailable")
@@ -1728,7 +1766,7 @@ def flock(fd: _AnyIO) -> Iterator[None]:
 
 @contextlib.contextmanager
 def timed_flock(fd: _AnyIO, seconds: int = 1) -> Iterator[None]:
-    """ Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
+    """Attempt to grab an exclusive flock with a timeout. Uses Timeout, so will
     raise a TimeoutError if `seconds` elapses before the flock can be obtained
     """
     # We don't want to wrap the user code in the timeout, just the flock grab
@@ -1846,6 +1884,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 class SystemPaastaConfigDict(TypedDict, total=False):
     api_endpoints: Dict[str, str]
+    api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_hostname_unique_size: int
@@ -1893,6 +1932,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     kubernetes_add_registration_labels: bool
     kubernetes_custom_resources: List[KubeCustomResourceDict]
     kubernetes_use_hacheck_sidecar: bool
+    enable_custom_cassandra_status_writer: bool
     ldap_host: str
     ldap_reader_password: str
     ldap_reader_username: str
@@ -1912,6 +1952,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
+    nerve_register_k8s_terminating: bool
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
@@ -1942,6 +1983,14 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    skip_cpu_override_validation: List[str]
+    spark_k8s_role: str
+    tron_use_suffixed_log_streams: bool
+    cluster_aliases: Dict[str, str]
+    hacheck_match_initial_delay: bool
+    spark_ui_port: int
+    spark_driver_port: int
+    spark_blockmanager_port: int
 
 
 def load_system_paasta_config(
@@ -2142,6 +2191,9 @@ class SystemPaastaConfig:
             ["/check_proxy_up.sh", "--enable-smartstack", "--enable-envoy"],
         )
 
+    def get_nerve_register_k8s_terminating(self) -> bool:
+        return self.config_dict.get("nerve_register_k8s_terminating", True)
+
     def get_enforce_disk_quota(self) -> bool:
         """
         If enabled, add `--storage-opt size=SIZE` arg to `docker run` calls,
@@ -2160,12 +2212,6 @@ class SystemPaastaConfig:
         by policy in Vault
         """
         return self.config_dict.get("auth_certificate_ttl", "11h")
-
-    def get_pki_backend(self) -> str:
-        """
-        The Vault pki backend to use for issueing certificates
-        """
-        return self.config_dict.get("pki_backend", "paastaca")
 
     def get_fsm_template(self) -> str:
         fsm_path = os.path.dirname(paasta_tools.cli.fsm.__file__)
@@ -2290,33 +2336,33 @@ class SystemPaastaConfig:
         return self.config_dict.get("cluster_autoscaling_resources", {})
 
     def get_cluster_autoscaling_draining_enabled(self) -> bool:
-        """ Enable mesos maintenance mode and trigger draining of instances before the
+        """Enable mesos maintenance mode and trigger draining of instances before the
         autoscaler terminates the instance.
 
         :returns A bool"""
         return self.config_dict.get("cluster_autoscaling_draining_enabled", True)
 
     def get_cluster_autoscaler_max_increase(self) -> float:
-        """ Set the maximum increase that the cluster autoscaler can make in each run
+        """Set the maximum increase that the cluster autoscaler can make in each run
 
         :returns A float"""
         return self.config_dict.get("cluster_autoscaler_max_increase", 0.2)
 
     def get_cluster_autoscaler_max_decrease(self) -> float:
-        """ Set the maximum decrease that the cluster autoscaler can make in each run
+        """Set the maximum decrease that the cluster autoscaler can make in each run
 
         :returns A float"""
         return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
 
     def get_maintenance_resource_reservation_enabled(self) -> bool:
-        """ Enable un/reserving of resources when we un/drain a host in mesos maintenance
+        """Enable un/reserving of resources when we un/drain a host in mesos maintenance
         *and* after tasks are killed in setup_marathon_job etc.
 
         :returns A bool"""
         return self.config_dict.get("maintenance_resource_reservation_enabled", True)
 
     def get_cluster_boost_enabled(self) -> bool:
-        """ Enable the cluster boost. Note that the boost only applies to the CPUs.
+        """Enable the cluster boost. Note that the boost only applies to the CPUs.
         If the boost is toggled on here but not configured, it will be transparent.
 
         :returns A bool: True means cluster boost is enabled."""
@@ -2457,11 +2503,14 @@ class SystemPaastaConfig:
         return self.config_dict.get("kubernetes_add_registration_labels", False)
 
     def get_kubernetes_custom_resources(self) -> Sequence[KubeCustomResourceDict]:
-        """List of custom resources that should be synced by setup_kubernetes_cr """
+        """List of custom resources that should be synced by setup_kubernetes_cr"""
         return self.config_dict.get("kubernetes_custom_resources", [])
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
+
+    def get_enable_custom_cassandra_status_writer(self) -> bool:
+        return self.config_dict.get("enable_custom_cassandra_status_writer", False)
 
     def get_register_marathon_services(self) -> bool:
         """Enable registration of marathon services in nerve"""
@@ -2478,24 +2527,24 @@ class SystemPaastaConfig:
         return self.config_dict.get("disabled_watchers", [])
 
     def get_vault_environment(self) -> Optional[str]:
-        """ Get the environment name for the vault cluster
+        """Get the environment name for the vault cluster
         This must match the environment keys in the secret json files
         used by all services in this cluster"""
         return self.config_dict.get("vault_environment")
 
     def get_vault_cluster_config(self) -> dict:
-        """ Get a map from paasta_cluster to vault ecosystem. We need
+        """Get a map from paasta_cluster to vault ecosystem. We need
         this because not every ecosystem will have its own vault cluster"""
         return self.config_dict.get("vault_cluster_map", {})
 
     def get_secret_provider_name(self) -> str:
-        """ Get the name for the configured secret_provider, used to
+        """Get the name for the configured secret_provider, used to
         decrypt secrets"""
         return self.config_dict.get("secret_provider", "paasta_tools.secret_providers")
 
     def get_slack_token(self) -> str:
-        """ Get a slack token for slack notifications. Returns None if there is
-        none available """
+        """Get a slack token for slack notifications. Returns None if there is
+        none available"""
         return self.config_dict.get("slack", {}).get("token", None)
 
     def get_tron_config(self) -> dict:
@@ -2508,14 +2557,14 @@ class SystemPaastaConfig:
         return self.config_dict.get("supported_storage_classes", [])
 
     def get_envoy_admin_endpoint_format(self) -> str:
-        """ Get the format string for Envoy's admin interface. """
+        """Get the format string for Envoy's admin interface."""
         return self.config_dict.get(
             "envoy_admin_endpoint_format", "http://{host:s}:{port:d}/{endpoint:s}"
         )
 
     def get_envoy_admin_port(self) -> int:
-        """ Get the port that Envoy's admin interface is listening on
-        from /etc/services. """
+        """Get the port that Envoy's admin interface is listening on
+        from /etc/services."""
         return socket.getservbyname(
             self.config_dict.get("envoy_admin_domain_name", "envoy-admin")
         )
@@ -2606,6 +2655,40 @@ class SystemPaastaConfig:
 
     def get_tron_use_k8s_default(self) -> bool:
         return self.config_dict.get("tron_use_k8s", False)
+
+    def get_spark_k8s_role(self) -> str:
+        return self.config_dict.get("spark_k8s_role", "spark")
+
+    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
+        return self.config_dict.get("tron_use_suffixed_log_streams", False)
+
+    def get_spark_ui_port(self) -> int:
+        # 33000 was picked arbitrarily (it was the base port when we used to
+        # randomly reserve port numbers)
+        return self.config_dict.get("spark_ui_port", 33000)
+
+    def get_spark_driver_port(self) -> int:
+        # default value is an arbitrary value
+        return self.config_dict.get("spark_driver_port", 33001)
+
+    def get_spark_blockmanager_port(self) -> int:
+        # default value is an arbitrary value
+        return self.config_dict.get("spark_blockmanager_port", 33002)
+
+    def get_api_profiling_config(self) -> Dict:
+        return self.config_dict.get(
+            "api_profiling_config",
+            {"cprofile_sampling_enabled": False},
+        )
+
+    def get_skip_cpu_override_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_override_validation", [])
+
+    def get_cluster_aliases(self) -> Dict[str, str]:
+        return self.config_dict.get("cluster_aliases", {})
+
+    def get_hacheck_match_initial_delay(self) -> bool:
+        return self.config_dict.get("hacheck_match_initial_delay", False)
 
 
 def _run(
@@ -2809,13 +2892,17 @@ def build_docker_image_name(service: str) -> str:
     return name
 
 
-def build_docker_tag(service: str, upstream_git_commit: str) -> str:
+def build_docker_tag(
+    service: str, upstream_git_commit: str, image_version: Optional[str] = None
+) -> str:
     """Builds the DOCKER_TAG string
 
     upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     tag = "{}:paasta-{}".format(build_docker_image_name(service), upstream_git_commit)
+    if image_version is not None:
+        tag += f"-{image_version}"
     return tag
 
 
@@ -2953,7 +3040,10 @@ def read_service_instance_names(
     instance_list = []
     conf_file = f"{instance_type}-{cluster}"
     config = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir, deepcopy=False,
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
     config = filter_templates_from_config(config)
     if instance_type == "tron":
@@ -2968,6 +3058,11 @@ def read_service_instance_names(
     return instance_list
 
 
+def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
+    service_configuration = read_service_configuration(service, soa_dir)
+    return service_configuration.get("deploy", {}).get("production_deploy_group", None)
+
+
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
@@ -2976,7 +3071,18 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
 def get_pipeline_deploy_groups(
     service: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[str]:
-    pipeline_steps = [step["step"] for step in get_pipeline_config(service, soa_dir)]
+    pipeline_steps = []
+    for step in get_pipeline_config(service, soa_dir):
+        # added support for parallel steps in a deploy.yaml
+        # parallel steps would break previous functionality as steps arent
+        # expected to be nested in a parallel block
+        if step.get("parallel"):
+            for parallel_step in step.get("parallel"):
+                if parallel_step.get("step"):
+                    pipeline_steps.append(parallel_step["step"])
+        else:
+            pipeline_steps.append(step["step"])
+
     return [step for step in pipeline_steps if is_deploy_step(step)]
 
 
@@ -3063,11 +3169,17 @@ def get_services_for_cluster(
 
 
 def load_service_instance_configs(
-    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+    service: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, InstanceConfigDict]:
     conf_file = f"{instance_type}-{cluster}"
     user_configs = service_configuration_lib.read_extra_service_information(
-        service, conf_file, soa_dir=soa_dir, deepcopy=False,
+        service,
+        conf_file,
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
     user_configs = filter_templates_from_config(user_configs)
     auto_configs = load_service_instance_auto_configs(
@@ -3077,7 +3189,8 @@ def load_service_instance_configs(
     for instance_name, user_config in user_configs.items():
         auto_config = auto_configs.get(instance_name, {})
         merged[instance_name] = deep_merge_dictionaries(
-            overrides=user_config, defaults=auto_config,
+            overrides=user_config,
+            defaults=auto_config,
         )
     return merged
 
@@ -3110,11 +3223,17 @@ def load_service_instance_config(
     auto_config = load_service_instance_auto_configs(
         service, instance_type, cluster, soa_dir
     ).get(instance, {})
-    return deep_merge_dictionaries(overrides=user_config, defaults=auto_config,)
+    return deep_merge_dictionaries(
+        overrides=user_config,
+        defaults=auto_config,
+    )
 
 
 def load_service_instance_auto_configs(
-    service: str, instance_type: str, cluster: str, soa_dir: str = DEFAULT_SOA_DIR,
+    service: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, Any]]:
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
     conf_file = f"{instance_type}-{cluster}"
@@ -3183,6 +3302,18 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
+class DeploymentVersion(NamedTuple):
+    sha: str
+    image_version: Optional[str]
+
+    def __repr__(self) -> str:
+        return (
+            f"DeploymentVersion(sha={self.sha}, image_version={self.image_version})"
+            if self.image_version
+            else self.sha
+        )
+
+
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
 DeployGroup = str
@@ -3197,6 +3328,7 @@ class _DeploymentsJsonV2ControlsDict(TypedDict, total=False):
 class _DeploymentsJsonV2DeploymentsDict(TypedDict):
     docker_image: str
     git_sha: str
+    image_version: Optional[str]
 
 
 class DeploymentsJsonV2Dict(TypedDict):
@@ -3236,6 +3368,7 @@ class DeploymentsJsonV2:
         branch_dict: BranchDictV2 = {
             "docker_image": self.get_docker_image_for_deploy_group(deploy_group),
             "git_sha": self.get_git_sha_for_deploy_group(deploy_group),
+            "image_version": self.get_image_version_for_deploy_group(deploy_group),
             "desired_state": self.get_desired_state_for_branch(full_branch),
             "force_bounce": self.get_force_bounce_for_branch(full_branch),
         }
@@ -3246,17 +3379,50 @@ class DeploymentsJsonV2:
 
     def get_docker_image_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict["deployments"][deploy_group]["docker_image"]
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
+        try:
+            return deploy_group_config["docker_image"]
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'docker_image' metadata."
+            raise KeyError(e)
 
     def get_git_sha_for_deploy_group(self, deploy_group: str) -> str:
         try:
-            return self.config_dict["deployments"][deploy_group]["git_sha"]
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
         except KeyError:
             e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
+        try:
+            return deploy_group_config["git_sha"]
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'git_sha' metadata."
+            raise KeyError(e)
+
+    def get_image_version_for_deploy_group(self, deploy_group: str) -> Optional[str]:
+        try:
+            deploy_group_config = self.config_dict["deployments"][deploy_group]
+        except KeyError:
+            e = f"{self.service} not deployed to {deploy_group}. Has mark-for-deployment been run?"
+            raise NoDeploymentsAvailable(e)
+        try:
+            # TODO: Once these changes have propagated image_version should
+            # always be present in the deployments.json file, so remove the
+            # .get() call.
+            return deploy_group_config.get("image_version", None)
+        except KeyError:
+            e = f"The configuration for service {self.service} in deploy group {deploy_group} does not contain 'image_version' metadata."
+            raise KeyError(e)
+
+    def get_deployment_version_for_deploy_group(
+        self, deploy_group: str
+    ) -> DeploymentVersion:
+        return DeploymentVersion(
+            sha=self.get_git_sha_for_deploy_group(deploy_group),
+            image_version=self.get_image_version_for_deploy_group(deploy_group),
+        )
 
     def get_desired_state_for_branch(self, control_branch: str) -> str:
         try:
@@ -3332,6 +3498,18 @@ def format_tag(tag: str) -> str:
     return "refs/tags/%s" % tag
 
 
+def build_image_identifier(
+    git_sha: str, sha_len: Optional[int] = None, image_version: Optional[str] = None
+) -> str:
+    image = git_sha
+    if sha_len is not None:
+        image = image[:sha_len]
+    if image_version is not None:
+        image += f"-{image_version}"
+
+    return image
+
+
 class NoDockerImageError(Exception):
     pass
 
@@ -3355,17 +3533,35 @@ def get_config_hash(config: Any, force_bounce: str = None) -> str:
 
 
 def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
-    """ We encode the sha of the code that built a docker image *in* the docker
+    """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the sha.
     """
-    parts = docker_url.split("/")
-    parts = parts[-1].split("-")
-    sha = parts[-1]
-    return sha if long else sha[:8]
+    if ":paasta-" in docker_url:
+        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
+        git_sha = regex_match.group("git_sha")
+    # Fall back to the old behavior if the docker_url does not follow the
+    # expected pattern
+    else:
+        parts = docker_url.split("/")
+        parts = parts[-1].split("-")
+        git_sha = parts[-1]
+
+    return git_sha if long else git_sha[:8]
+
+
+def get_image_version_from_dockerurl(docker_url: str) -> Optional[str]:
+    """We can optionally encode additional metadata about the docker image *in*
+    the docker url. This function takes that url as input and outputs the sha.
+    """
+    regex_match = re.match(
+        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)-(?P<image_version>.+)", docker_url
+    )
+
+    return regex_match.group("image_version") if regex_match is not None else None
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
-    """ code_sha is hash extracted from docker url prefixed with "git", short
+    """code_sha is hash extracted from docker url prefixed with "git", short
     hash is used because it's embedded in marathon app names and there's length
     limit.
     """
@@ -3433,7 +3629,7 @@ def deploy_whitelist_to_constraints(
 
 
 def terminal_len(text: str) -> int:
-    """Return the number of characters that text will take up on a terminal. """
+    """Return the number of characters that text will take up on a terminal."""
     return len(remove_ansi_escape_sequences(text))
 
 
@@ -3609,8 +3805,10 @@ def prompt_pick_one(sequence: Collection[str], choosing: str) -> str:
         return choices[0][0]
 
     chooser = choice.Menu(choices=choices, global_actions=global_actions)
-    chooser.title = 'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
-        choosing=str(choosing)
+    chooser.title = (
+        'Please pick a {choosing} from the choices below (or "quit" to quit):'.format(
+            choosing=str(choosing)
+        )
     )
     try:
         result = chooser.ask()
@@ -3788,3 +3986,15 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
         v["containerPath"].rstrip("/") + v["hostPath"].rstrip("/"): v for v in volumes
     }.values()
     return sort_dicts(deduped)
+
+
+@lru_cache(maxsize=1)
+def get_runtimeenv() -> str:
+    try:
+        with open("/nail/etc/runtimeenv", mode="r") as f:
+            return f.read()
+    except OSError:
+        log.error("Unable to read runtimeenv - this is not expected if inside Yelp.")
+        # we could also just crash or return None, but this seems a little easier to find
+        # should we somehow run into this at Yelp
+        return "unknown"

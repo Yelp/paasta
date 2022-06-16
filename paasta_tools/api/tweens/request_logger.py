@@ -47,11 +47,15 @@ class request_logger_tween_factory:
         self.handler = handler
         self.registry = registry
         self.log_name = registry.settings.get(
-            "request_log_name", DEFAULT_REQUEST_LOG_NAME,
+            "request_log_name",
+            DEFAULT_REQUEST_LOG_NAME,
         )
 
     def _log(
-        self, timestamp=None, level="INFO", additional_fields=None,
+        self,
+        timestamp=None,
+        level="INFO",
+        additional_fields=None,
     ):
         if clog is not None:
             # `settings` values are set by paasta_tools.api.api:setup_paasta_api

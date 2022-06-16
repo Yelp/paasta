@@ -68,6 +68,7 @@ from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -85,7 +86,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import RollbackTypes
 from paasta_tools.utils import TimeoutError
-
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3 * 3600  # seconds
 DEFAULT_WARN_PERCENT = 17  # ~30min for default timeout
@@ -265,9 +265,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 
 def mark_for_deployment(
-    git_url: str, deploy_group: str, service: str, commit: str
+    git_url: str,
+    deploy_group: str,
+    service: str,
+    commit: str,
+    image_version: Optional[str] = None,
 ) -> int:
     """Mark a docker image for deployment"""
+    # TODO: Handle image_version, currently does nothing
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy"
     )
@@ -304,8 +309,18 @@ def mark_for_deployment(
     return 1
 
 
-def deploy_authz_check(deploy_info: Dict[str, Any], service: str) -> None:
+def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
     deploy_username = get_username()
+
+    # Tronjobs can run paasta stop/start/restart
+    ssh_client_env = os.environ.get("SSH_CLIENT")
+    if ssh_client_env and deploy_username == "batch":
+        ssh_client = ssh_client_env.split()[0]
+        hostname = socket.gethostbyaddr(ssh_client)[0]
+
+        if "tron" in hostname:
+            return True
+
     system_paasta_config = load_system_paasta_config()
     allowed_groups = (
         deploy_info["allowed_push_groups"]
@@ -330,7 +345,8 @@ def deploy_authz_check(deploy_info: Dict[str, Any], service: str) -> None:
             logline = f"current user is not authorized to perform this action (should be in one of {allowed_groups})"
             _log(service=service, line=logline, component="deploy", level="event")
             print(logline, file=sys.stderr)
-            sys.exit(1)
+            return False
+    return True
 
 
 def report_waiting_aborted(service: str, deploy_group: str) -> None:
@@ -402,7 +418,7 @@ def print_rollback_cmd(
         )
 
 
-def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
+def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     """Wrapping mark_for_deployment"""
     if args.verbose:
         log.setLevel(level=logging.DEBUG)
@@ -461,30 +477,56 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> None:
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
-    deploy_authz_check(deploy_info, service)
+    if not can_user_deploy_service(deploy_info, service):
+        sys.exit(1)
 
-    deploy_process = MarkForDeploymentProcess(
-        service=service,
-        deploy_info=deploy_info,
-        deploy_group=deploy_group,
-        commit=commit,
-        old_git_sha=old_git_sha,
-        git_url=args.git_url,
-        auto_rollback=args.auto_rollback,
-        block=args.block,
-        soa_dir=args.soa_dir,
-        timeout=args.timeout,
-        warn_pct=args.warn,
-        auto_certify_delay=args.auto_certify_delay,
-        auto_abandon_delay=args.auto_abandon_delay,
-        auto_rollback_delay=args.auto_rollback_delay,
-        authors=args.authors,
-        polling_interval=args.polling_interval,
-        diagnosis_interval=args.diagnosis_interval,
-        time_before_first_diagnosis=args.time_before_first_diagnosis,
+    metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
+    # only time if wait for deployment and we are actually deploying a new sha
+    if args.block and old_git_sha != commit:
+        metrics_factory = metrics_lib.get_metrics_interface
+    metrics = metrics_factory("paasta.mark_for_deployment")
+    deploy_timer = metrics.create_timer(
+        name="deploy_duration",
+        default_dimensions=dict(
+            paasta_service=service,
+            deploy_group=deploy_group,
+            old_version=old_git_sha,
+            new_version=commit,
+            deploy_timeout=args.timeout,
+        ),
     )
-    ret = deploy_process.run()
-    return ret
+
+    # meteorite deploy timers can be used as context managers; however, they
+    # won't emit if the context is exited with an exception, so we need to use
+    # a try/finally.
+    deploy_timer.start()
+    ret = 1  # assume exc, since if success will be set to 0 anyway
+    try:
+        deploy_process = MarkForDeploymentProcess(
+            service=service,
+            deploy_info=deploy_info,
+            deploy_group=deploy_group,
+            commit=commit,
+            old_git_sha=old_git_sha,
+            git_url=args.git_url,
+            auto_rollback=args.auto_rollback,
+            block=args.block,
+            soa_dir=args.soa_dir,
+            timeout=args.timeout,
+            warn_pct=args.warn,
+            auto_certify_delay=args.auto_certify_delay,
+            auto_abandon_delay=args.auto_abandon_delay,
+            auto_rollback_delay=args.auto_rollback_delay,
+            authors=args.authors,
+            polling_interval=args.polling_interval,
+            diagnosis_interval=args.diagnosis_interval,
+            time_before_first_diagnosis=args.time_before_first_diagnosis,
+            metrics_interface=metrics,
+        )
+        ret = deploy_process.run()
+        return ret
+    finally:
+        deploy_timer.stop(tmp_dimensions={"exit_status": ret})
 
 
 class Progress:
@@ -547,6 +589,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         polling_interval: float = None,
         diagnosis_interval: float = None,
         time_before_first_diagnosis: float = None,
+        metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics(
+            "paasta.mark_for_deployment"
+        ),
     ) -> None:
         self.service = service
         self.deploy_info = deploy_info
@@ -570,6 +615,12 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.polling_interval = polling_interval
         self.diagnosis_interval = diagnosis_interval
         self.time_before_first_diagnosis = time_before_first_diagnosis
+        self.metrics_interface = metrics_interface
+        self.instance_configs_per_cluster: Dict[
+            str, List[LongRunningServiceConfig]
+        ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
+            service, deploy_group, commit, soa_dir
+        )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
         self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
@@ -585,6 +636,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.print_who_is_running_this()
 
     def get_progress(self, summary: bool = False) -> str:
+        if not self.block:
+            return "Deploying in background, progress not tracked."
         return self.progress.human_readable(summary)
 
     def print_who_is_running_this(self) -> None:
@@ -633,9 +686,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         return get_slack_client().sc
 
     def get_slack_channel(self) -> str:
-        """ Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
+        """Safely get some slack channel to post to. Defaults to ``DEFAULT_SLACK_CHANNEL``.
         Currently only uses the first slack channel available, and doesn't support
-        multi-channel notifications. """
+        multi-channel notifications."""
         if self.deploy_info.get("slack_notify", True):
             try:
                 channel = self.deploy_info.get("slack_channels")[0]
@@ -687,7 +740,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         ) -> List[str]:
             if waiting_on is None:
                 return [
-                    f"`paasta status --service {self.service} --{self.deploy_group}` -vv"
+                    f"`paasta status --service {self.service} --deploy-group {self.deploy_group} -vv`"
                 ]
             commands = []
             for cluster, instances in waiting_on.items():
@@ -707,7 +760,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                         datetime.timedelta(seconds=self.timeout)
                     )
                     stuck_bounce_runbook = os.environ.get(
-                        "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+                        "STUCK_BOUNCE_RUNBOOK",
+                        DEFAULT_STUCK_BOUNCE_RUNBOOK,
                     )
                     status_commands = "\n".join(
                         waiting_on_to_status(self.progress.waiting_on)
@@ -1050,6 +1104,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 wait_for_deployment(
                     service=self.service,
                     deploy_group=self.deploy_group,
+                    instance_configs_per_cluster=self.instance_configs_per_cluster,
                     git_sha=target_commit,
                     soa_dir=self.soa_dir,
                     timeout=self.timeout,
@@ -1185,20 +1240,31 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         }
 
     def log_slo_rollback(self) -> None:
-        _log_audit(
-            action="rollback",
-            action_details=self.__build_rollback_audit_details(
-                RollbackTypes.AUTOMATIC_SLO_ROLLBACK
-            ),
-            service=self.service,
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_SLO_ROLLBACK
         )
+        self._log_rollback(rollback_details)
 
     def log_user_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.USER_INITIATED_ROLLBACK
+        )
+        self._log_rollback(rollback_details)
+
+    def _log_rollback(self, rollback_details: Dict[str, str]) -> None:
+        base_dimensions = dict(rollback_details)
+        base_dimensions["paasta_service"] = self.service
+        # Emit one event per cluster to sfx
+        for cluster in self.instance_configs_per_cluster.keys():
+            dimensions = dict(base_dimensions)
+            dimensions["paasta_cluster"] = cluster
+            self.metrics_interface.emit_event(
+                name="rollback",
+                dimensions=dimensions,
+            )
         _log_audit(
             action="rollback",
-            action_details=self.__build_rollback_audit_details(
-                RollbackTypes.USER_INITIATED_ROLLBACK
-            ),
+            action_details=rollback_details,
             service=self.service,
         )
 
@@ -1444,6 +1510,10 @@ def check_if_instance_is_done(
                     instance, service, cluster
                 )
             )
+        elif e.status == 599:  # Temporary issue
+            log.warning(
+                f"Temporary issue fetching service status from PaaSTA API for {cluster}. Will retry on next poll interval."
+            )
         else:  # 500 - error talking to api
             log.warning(
                 "Error getting service status from PaaSTA API for "
@@ -1575,17 +1645,21 @@ async def wait_for_deployment(
     git_sha: str,
     soa_dir: str,
     timeout: float,
+    instance_configs_per_cluster: Optional[
+        Dict[str, List[LongRunningServiceConfig]]
+    ] = None,
     progress: Optional[Progress] = None,
     polling_interval: float = None,
     diagnosis_interval: float = None,
     time_before_first_diagnosis: float = None,
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
-    instance_configs_per_cluster: Dict[
-        str, List[LongRunningServiceConfig]
-    ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-        service, deploy_group, git_sha, soa_dir
-    )
+    if not instance_configs_per_cluster:
+        instance_configs_per_cluster = (
+            get_instance_configs_for_service_in_deploy_group_all_clusters(
+                service, deploy_group, git_sha, soa_dir
+            )
+        )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
     if not instance_configs_per_cluster:
@@ -1745,7 +1819,8 @@ def compose_timeout_message(
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
             stuck_bounce_runbook=os.environ.get(
-                "STUCK_BOUNCE_RUNBOOK", DEFAULT_STUCK_BOUNCE_RUNBOOK,
+                "STUCK_BOUNCE_RUNBOOK",
+                DEFAULT_STUCK_BOUNCE_RUNBOOK,
             ),
         )
     )

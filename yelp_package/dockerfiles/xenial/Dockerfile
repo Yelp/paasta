@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:xenial
+FROM ${DOCKER_REGISTRY}xenial_pkgbuild
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
@@ -23,32 +23,23 @@ RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sou
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
 
-# Need Python 3.7
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
-
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         debhelper \
+        dh-virtualenv \
         gdebi-core \
         git \
         libffi-dev \
         libgpgme11 \
         libssl-dev \
         libyaml-dev \
-        python3.7-dev \
         python-pip \
-        python-tox \
+        python3.7-dev \
+        software-properties-common \
         wget \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
-
-RUN cd /tmp && \
-    wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_1.0-1_all.deb && \
-    gdebi -n dh-virtualenv*.deb && \
-    rm dh-virtualenv_*.deb
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

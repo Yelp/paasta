@@ -1,5 +1,7 @@
+import kubernetes.client
 import mock
 import pytest
+from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.application.controller_wrappers import Application
@@ -59,6 +61,39 @@ def test_brutal_bounce(mock_load_system_paasta_config):
             mock_deep_delete_and_create.assert_called_once_with(
                 target=app.deep_delete_and_create, args=[mock_cloned_client]
             )
+
+
+def test_deep_delete_and_create(mock_load_system_paasta_config):
+    with mock.patch(
+        "paasta_tools.kubernetes.application.controller_wrappers.sleep", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes.application.controller_wrappers.list_all_deployments",
+        autospec=True,
+    ) as mock_list_deployments, mock.patch(
+        "paasta_tools.kubernetes.application.controller_wrappers.force_delete_pods",
+        autospec=True,
+    ) as mock_force_delete_pods:
+        mock_kube_client = mock.MagicMock()
+        mock_kube_client.deployments = mock.Mock(spec=kubernetes.client.AppsV1Api)
+        config_dict = {"instances": 1, "bounce_method": "brutal"}
+        app = setup_app(config_dict, True)
+        # This mocks being unable to delete the deployment
+        mock_list_deployments.return_value = [app.kube_deployment]
+        delete_options = V1DeleteOptions(propagation_policy="Background")
+
+        with pytest.raises(Exception):
+            # test deep_delete_and_create makes kubeclient calls correctly
+            app.deep_delete_and_create(mock_kube_client)
+        mock_force_delete_pods.assert_called_with(
+            app.item.metadata.name,
+            app.kube_deployment.service,
+            app.kube_deployment.instance,
+            app.item.metadata.namespace,
+            mock_kube_client,
+        )
+        mock_kube_client.deployments.delete_namespaced_deployment.assert_called_with(
+            app.item.metadata.name, app.item.metadata.namespace, body=delete_options
+        )
 
 
 @pytest.mark.parametrize("bounce_margin_factor_set", [True, False])
@@ -278,7 +313,10 @@ def test_sync_horizontal_pod_autoscaler_create_hpa(mock_autoscaling_is_paused):
     mock_client.autoscaling.create_namespaced_horizontal_pod_autoscaler.assert_called_once_with(
         namespace="faasta",
         body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", mock_client, namespace="faasta",
+            "fake_name",
+            "cluster",
+            mock_client,
+            namespace="faasta",
         ),
         pretty=True,
     )
@@ -331,7 +369,10 @@ def test_sync_horizontal_pod_autoscaler_update_hpa(mock_autoscaling_is_paused):
         namespace="faasta",
         name="fake_name",
         body=app.soa_config.get_autoscaling_metric_spec(
-            "fake_name", "cluster", mock_client, namespace="faasta",
+            "fake_name",
+            "cluster",
+            mock_client,
+            namespace="faasta",
         ),
         pretty=True,
     )

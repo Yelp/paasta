@@ -11,7 +11,7 @@ class MacAddressException(Exception):
 
 
 def reserve_unique_mac_address(lock_directory):
-    """ Pick and reserve a unique mac address for a container
+    """Pick and reserve a unique mac address for a container
     returns (mac_address, lockfile)
     where the mac address is a string in the form of 00:00:00:00:00:00
     and lockfile is a file object that holds an exclusive lock
@@ -32,8 +32,7 @@ def reserve_unique_mac_address(lock_directory):
 
 
 def obtain_lock(lock_filepath):
-    """ Open and obtain a flock on the parameter. Returns a file if successful, None if not
-    """
+    """Open and obtain a flock on the parameter. Returns a file if successful, None if not"""
     lock_file = open(lock_filepath, "w")
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)

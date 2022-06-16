@@ -262,7 +262,6 @@ try:
         assert mock_clog.log_line.call_count == 1
         assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
 
-
 except ImportError:
     warnings.warn("ScribeLogWriter is unavailable")
 
@@ -980,7 +979,8 @@ def test_read_service_instance_names_tron():
 
 
 @mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+    "paasta_tools.utils.load_service_instance_auto_configs",
+    autospec=True,
 )
 @mock.patch(
     "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
@@ -1009,7 +1009,10 @@ def test_load_service_instance_configs(
     )
     assert result == expected
     mock_read_extra_service_information.assert_called_with(
-        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
+        "fake_service",
+        "kubernetes-fake",
+        soa_dir="fake_dir",
+        deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1047,7 +1050,8 @@ def test_load_service_instance_config_not_found(mock_read_service_information):
 
 
 @mock.patch(
-    "paasta_tools.utils.load_service_instance_auto_configs", autospec=True,
+    "paasta_tools.utils.load_service_instance_auto_configs",
+    autospec=True,
 )
 @mock.patch(
     "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
@@ -1082,7 +1086,10 @@ def test_load_service_instance_config(
     )
     assert result == expected_config
     mock_read_extra_service_information.assert_called_with(
-        "fake_service", "kubernetes-fake", soa_dir="fake_dir", deepcopy=False,
+        "fake_service",
+        "kubernetes-fake",
+        soa_dir="fake_dir",
+        deepcopy=False,
     )
     mock_load_auto_configs.assert_called_with(
         service="fake_service",
@@ -1097,7 +1104,8 @@ def test_load_service_instance_config(
     autospec=True,
 )
 @mock.patch(
-    "paasta_tools.utils.load_system_paasta_config", autospec=True,
+    "paasta_tools.utils.load_system_paasta_config",
+    autospec=True,
 )
 @pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
 def test_load_service_instance_auto_configs(
@@ -1282,12 +1290,13 @@ class TestInstanceConfig:
                 branch_dict={
                     "git_sha": "d15ea5e",
                     "docker_image": "docker_image",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
             )
         )
-        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
+        expect = "InstanceConfig('fakeservice', 'fakeinstance', 'fakecluster', {}, {'git_sha': 'd15ea5e', 'docker_image': 'docker_image', 'image_version': None, 'desired_state': 'start', 'force_bounce': None}, '/nail/etc/services')"
         assert actual == expect
 
     def test_get_monitoring(self):
@@ -1675,6 +1684,38 @@ class TestInstanceConfig:
             "PAASTA_RESOURCE_MEM": "4096",
         }
 
+    def test_get_env_image_version(self):
+        fake_conf = utils.InstanceConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={},
+            branch_dict={
+                "desired_state": "start",
+                "force_bounce": "12345",
+                "docker_image": "something",
+                "git_sha": "9",
+                "image_version": "extrastuff",
+            },
+        )
+        with mock.patch(
+            "paasta_tools.utils.get_service_docker_registry",
+            autospec=True,
+            return_value="something",
+        ):
+            assert fake_conf.get_env() == {
+                "PAASTA_SERVICE": "fake_service",
+                "PAASTA_INSTANCE": "fake_instance",
+                "PAASTA_CLUSTER": "fake_cluster",
+                "PAASTA_DEPLOY_GROUP": "fake_cluster.fake_instance",
+                "PAASTA_GIT_SHA": "somethin",
+                "PAASTA_DOCKER_IMAGE": "something",
+                "PAASTA_IMAGE_VERSION": "extrastuff",
+                "PAASTA_RESOURCE_CPUS": "1",
+                "PAASTA_RESOURCE_DISK": "1024",
+                "PAASTA_RESOURCE_MEM": "4096",
+            }
+
     def test_get_env_handles_non_strings_and_returns_strings(self):
         fake_conf = utils.InstanceConfig(
             service="fake_service",
@@ -1712,6 +1753,7 @@ class TestInstanceConfig:
                 branch_dict={
                     "git_sha": "c0defeed",
                     "docker_image": "something",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
@@ -1777,6 +1819,7 @@ class TestInstanceConfig:
             branch_dict={
                 "git_sha": "abcdef0",
                 "docker_image": "whale",
+                "image_version": None,
                 "desired_state": "start",
                 "force_bounce": "blurp",
             },
@@ -1792,6 +1835,7 @@ class TestInstanceConfig:
             branch_dict={
                 "git_sha": "abcdef0",
                 "docker_image": "whale",
+                "image_version": None,
                 "desired_state": "stop",
                 "force_bounce": None,
             },

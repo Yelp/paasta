@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.110.4
+RELEASE=0.132.4
 
 SHELL=/bin/bash
 
@@ -74,7 +74,6 @@ package_%: build_$$*_docker go_entrypoint
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_VERSION_SUFFIX)
-	cat ../extra-linux-requirements.txt >> ../requirements.txt
 
 	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"

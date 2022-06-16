@@ -84,6 +84,7 @@ class KubernetesVersion(ModelNormal):
             'type': (str,),  # noqa: E501
             'create_timestamp': (float,),  # noqa: E501
             'git_sha': (str,),  # noqa: E501
+            'image_version': (str, none_type,),  # noqa: E501
             'config_sha': (str,),  # noqa: E501
             'name': (str,),  # noqa: E501
             'pods': ([KubernetesPodV2],),  # noqa: E501
@@ -100,6 +101,7 @@ class KubernetesVersion(ModelNormal):
         'type': 'type',  # noqa: E501
         'create_timestamp': 'create_timestamp',  # noqa: E501
         'git_sha': 'git_sha',  # noqa: E501
+        'image_version': 'image_version',  # noqa: E501
         'config_sha': 'config_sha',  # noqa: E501
         'name': 'name',  # noqa: E501
         'pods': 'pods',  # noqa: E501
@@ -156,6 +158,7 @@ class KubernetesVersion(ModelNormal):
             type (str): Type of version (ReplicaSet or ControllerRevision). [optional]  # noqa: E501
             create_timestamp (float): Unix timestamp when version was created. [optional]  # noqa: E501
             git_sha (str): Git SHA of service code for this version of the instance. [optional]  # noqa: E501
+            image_version (str, none_type): Additional metadata identifying the image used for this version of the instance. [optional]  # noqa: E501
             config_sha (str): SHA of configuration for this instance. [optional]  # noqa: E501
             name (str): Name of the version (only valid for ReplicaSets). [optional]  # noqa: E501
             pods ([KubernetesPodV2]): Pods associated to this version. [optional]  # noqa: E501

@@ -340,7 +340,8 @@ def test_get_replication_for_all_services(mock_get_multiple_backends):
 
 
 @mock.patch(
-    "paasta_tools.utils.socket.getservbyname", autospec=True,
+    "paasta_tools.utils.socket.getservbyname",
+    autospec=True,
 )
 @mock.patch(
     "paasta_tools.smartstack_tools.marathon_tools.load_service_namespace_config",
@@ -510,7 +511,8 @@ def mock_kube_replication_checker():
         "envoy": {},
     }
     return smartstack_tools.KubeSmartstackEnvoyReplicationChecker(
-        nodes=mock_nodes, system_paasta_config=mock_system_paasta_config,
+        nodes=mock_nodes,
+        system_paasta_config=mock_system_paasta_config,
     )
 
 

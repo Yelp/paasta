@@ -20,6 +20,7 @@ from collections import Counter
 from collections import defaultdict
 from datetime import datetime
 from datetime import timedelta
+from datetime import timezone
 from enum import Enum
 from itertools import groupby
 from typing import Any
@@ -106,7 +107,9 @@ InstanceStatusWriter = Callable[
 ]
 
 
-def add_subparser(subparsers,) -> None:
+def add_subparser(
+    subparsers,
+) -> None:
     status_parser = subparsers.add_parser(
         "status",
         help="Display the status of a PaaSTA service.",
@@ -193,14 +196,18 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
     )
 
 
-def missing_deployments_message(service: str,) -> str:
+def missing_deployments_message(
+    service: str,
+) -> str:
     message = (
         f"{service} has no deployments in deployments.json yet.\n  " "Has Jenkins run?"
     )
     return message
 
 
-def get_deploy_info(deploy_file_path: str,) -> Mapping:
+def get_deploy_info(
+    deploy_file_path: str,
+) -> Mapping:
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
         print("Error encountered with %s" % deploy_file_path)
@@ -288,6 +295,11 @@ def paasta_status_on_api_endpoint(
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
     instance_type = find_instance_type(status)
+
+    if system_paasta_config.get_enable_custom_cassandra_status_writer():
+        if status.get("cassandracluster") is not None:
+            instance_type = "cassandracluster"
+
     if instance_type is not None:
         # check the actual status value and call the corresponding status writer
         service_status_value = getattr(status, instance_type)
@@ -404,7 +416,9 @@ def print_marathon_status(
     envoy = marathon_status.envoy
     if envoy is not None:
         envoy_status_human = get_envoy_status_human(
-            envoy.registration, envoy.expected_backends_per_location, envoy.locations,
+            envoy.registration,
+            envoy.expected_backends_per_location,
+            envoy.locations,
         )
         output.extend([f"    {line}" for line in envoy_status_human])
 
@@ -446,7 +460,8 @@ def create_autoscaling_info_table(autoscaling_info):
 
 
 def marathon_mesos_status_human(
-    mesos_status, expected_instance_count,
+    mesos_status,
+    expected_instance_count,
 ):
     if mesos_status.error_message:
         return [f"Mesos: {PaastaColors.red(mesos_status.error_message)}"]
@@ -744,7 +759,9 @@ def format_kubernetes_replicaset_table(replicasets):
 
 
 def get_smartstack_status_human(
-    registration: str, expected_backends_per_location: int, locations: Collection[Any],
+    registration: str,
+    expected_backends_per_location: int,
+    locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Smartstack: ERROR - {registration} is NOT in smartstack at all!"]
@@ -800,7 +817,9 @@ def build_smartstack_backends_table(backends: Iterable[Any]) -> List[str]:
 
 
 def get_envoy_status_human(
-    registration: str, expected_backends_per_location: int, locations: Collection[Any],
+    registration: str,
+    expected_backends_per_location: int,
+    locations: Collection[Any],
 ) -> List[str]:
     if len(locations) == 0:
         return [f"Envoy: ERROR - {registration} is NOT in Envoy at all!"]
@@ -913,8 +932,10 @@ def status_kubernetes_job_human(
             if evicted_count > 0
             else PaastaColors.green(str(evicted_count))
         )
-        return "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
-            status, instance_count, evicted, deploy_status
+        return (
+            "Kubernetes:   {} - up with {} instances ({} evicted). Status: {}".format(
+                status, instance_count, evicted, deploy_status
+            )
         )
     else:
         status = PaastaColors.yellow("Warning")
@@ -1190,7 +1211,7 @@ def get_instance_state(status: InstanceStatusKubernetesV2) -> str:
     num_versions = len(status.versions)
     num_ready_replicas = sum(r.ready_replicas for r in status.versions)
     if status.desired_state == "stop":
-        if num_versions == 1 and status.versions[0].replicas == 0:
+        if all(version.replicas == 0 for version in status.versions):
             return PaastaColors.red("Stopped")
         else:
             return PaastaColors.red("Stopping")
@@ -1281,6 +1302,8 @@ def get_version_table_entry(
     version_name = version.git_sha[:8]
     if show_config_sha or verbose > 1:
         version_name += f", {version.config_sha}"
+    if version.image_version is not None:
+        version_name += f" (image_version: {version.image_version})"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
     version_name = PaastaColors.blue(version_name)
@@ -1743,6 +1766,240 @@ def print_tron_status(
     return 0
 
 
+def print_cassandra_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    cassandra_status,
+    verbose: int = 0,
+) -> int:
+    tab = "    "
+    indent = 1
+
+    status = cassandra_status.get("status")
+    if status is None:
+        output.append(
+            indent * tab + PaastaColors.red("Cassandra cluster is not available yet")
+        )
+        return 1
+
+    output.append(indent * tab + "Cassandra cluster:")
+    indent += 1
+
+    status = cassandra_status.get("status")
+    state = status.get("state")
+
+    if state == "Running":
+        state = PaastaColors.green(state)
+    else:
+        state = PaastaColors.red(state)
+
+    nodes: List[Dict[str, Any]] = status.get("nodes") or []
+    output.append(indent * tab + "State: " + state)
+
+    if not nodes:
+        output.append(
+            indent * tab + "Nodes: " + PaastaColors.red("No node status available")
+        )
+        return 0
+
+    output.append(indent * tab + "Nodes:")
+    indent += 1
+    all_rows: List[CassandraNodeStatusRow] = []
+
+    for node in nodes:
+        if node.get("properties"):
+            row: CassandraNodeStatusRow = {}
+            for prop in node.get("properties"):
+                verbosity = prop.get("verbosity", 0)
+                name = prop["name"]
+
+                if verbosity > verbose:
+                    continue
+                if not prop.get("name"):
+                    continue
+
+                row[name] = node_property_to_str(prop, verbose)
+            all_rows.append(row)
+        else:
+            # TODO: Remove this section when properties is deployed on all
+            # clusters (see DREIMP-7953):
+            now = datetime.now(timezone.utc)
+            ip = node.get("ip")
+            err = node.get("error")
+            start_age = "None"
+            if node.get("startTime"):
+                start_time = datetime.strptime(
+                    node.get("startTime"), "%Y-%m-%dT%H:%M:%SZ"
+                ).replace(tzinfo=timezone.utc)
+                start_age = (
+                    humanize.naturaldelta(
+                        timedelta(seconds=(now - start_time).total_seconds())
+                    )
+                    + " ago"
+                )
+            inspect_time = datetime.strptime(
+                node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
+            ).replace(tzinfo=timezone.utc)
+            details = node.get("details")
+
+            inspect_age = (
+                humanize.naturaldelta(
+                    timedelta(seconds=(now - inspect_time).total_seconds())
+                )
+                + " ago"
+            )
+
+            if err is not None:
+                row = {}
+                row["IP"] = ip
+                row["StartTime"] = start_age
+                row["InspectedAt"] = inspect_age
+                row["Error"] = PaastaColors.red(err)
+                if verbose > 0:
+                    # Show absolute times:
+                    row["StartTime"] = node.get("startTime", "None")
+                    row["InspectedAt"] = node.get("inspectTime", "None")
+                all_rows.append(row)
+            elif details:
+                row = {}
+                row["IP"] = ip
+                row["Available"] = "Yes" if details.get("available") else "No"
+                row["OperationMode"] = details.get("operationMode")
+                row["Joined"] = "Yes" if details.get("joined") else "No"
+                row["Datacenter"] = details.get("datacenter")
+                row["Rack"] = details.get("rack")
+                row["Load"] = details.get("loadString")
+                row["Tokens"] = str(details.get("tokenRangesCount"))
+                row["StartTime"] = start_age
+                row["InspectedAt"] = inspect_age
+                if verbose > 0:
+                    row["Starting"] = "Yes" if details.get("starting") else "No"
+                    row["Initialized"] = "Yes" if details.get("initialized") else "No"
+                    row["Drained"] = "Yes" if details.get("drained") else "No"
+                    row["Draining"] = "Yes" if details.get("draining") else "No"
+                    # Show absolute times:
+                    row["StartTime"] = node.get("startTime", "None")
+                    row["InspectedAt"] = node.get("inspectTime", "None")
+                if verbose > 1:
+                    row["LocalHostID"] = details.get("localHostId")
+                    row["Schema"] = details.get("schemaVersion")
+                    row["RemovalStatus"] = details.get("removalStatus")
+                    row["DrainProgress"] = details.get("drainProgress")
+                    row["RPCServerRunning"] = (
+                        "Yes" if details.get("rpcServerRunning") else "No"
+                    )
+                    row["NativeTransportRunning"] = (
+                        "Yes" if details.get("nativeTransportRunning") else "No"
+                    )
+                    row["GossipRunning"] = (
+                        "Yes" if details.get("gossipRunning") else "No"
+                    )
+                    row["IncBackupEnabled"] = (
+                        "Yes" if details.get("incrementalBackupsEnabled") else "No"
+                    )
+                    row["Version"] = details.get("releaseVersion")
+                    row["ClusterName"] = details.get("clusterName")
+                    row["HintsInProgress"] = str(details.get("hintsInProgress"))
+                    row["ReadRepairAttempted"] = str(details.get("readRepairAttempted"))
+                    row["NumberOfTables"] = str(details.get("numberOfTables"))
+                    row["TotalHints"] = str(details.get("totalHints"))
+                    row["HintedHandoffEnabled"] = (
+                        "Yes" if details.get("hintedHandoffEnabled") else "No"
+                    )
+                    row["LoggingLevels"] = str(details.get("loggingLevels"))
+                all_rows.append(row)
+
+    if verbose < 2:
+        for rows in group_nodes_by_header(all_rows):
+            lines = nodes_to_lines(verbose, rows)
+            ftable = format_table(lines)
+            output.extend([indent * tab + line for line in ftable])
+            output.extend([indent * tab])
+    else:
+        for rows in group_nodes_by_header(all_rows):
+            for node in rows:
+                output.append(indent * tab + "Node:")
+                indent += 1
+                for key in node.keys():
+                    output.append(
+                        indent * tab + "{key}: {value}".format(key=key, value=node[key])
+                    )
+                indent -= 1
+    return 0
+
+
+CassandraNodeStatusRow = Dict[str, str]
+
+
+# group_nodes_by_header groups the given nodes into several lists of rows. The
+# rows in each group have the same headers.
+def group_nodes_by_header(
+    rows: List[CassandraNodeStatusRow] = [],
+) -> List[List[CassandraNodeStatusRow]]:
+    groups: Dict[str, List[CassandraNodeStatusRow]] = {}
+    for row in rows:
+        header = list(row.keys())
+        header.sort()
+        # "\0" is just a character that is unlikely to be in the header names.
+        header_id = "\0".join(header)
+        group = groups.get(header_id, [])
+        group.append(row)
+        groups[header_id] = group
+
+    return list(groups.values())
+
+
+def nodes_to_lines(
+    verbose: int = 0,
+    rows: List[CassandraNodeStatusRow] = [],
+) -> List[List[str]]:
+    header: List[str] = []
+    lines: List[List[str]] = []
+    for row in rows:
+        if len(header) == 0:
+            header = list(row.keys())
+            lines.append(list(header))
+        line: List[str] = []
+        for key in header:
+            line.append(row.get(key, ""))
+        lines.append(line)
+    return lines
+
+
+def node_property_to_str(prop: Dict[str, Any], verbose: int) -> str:
+    typ = prop.get("type")
+    value = prop.get("value")
+
+    if value is None:
+        return "None"
+
+    if typ == "string":
+        return value
+    elif typ in ["int", "float64"]:
+        return str(value)
+    elif typ == "bool":
+        return "Yes" if value else "No"
+    elif typ == "error":
+        return PaastaColors.red(value)
+    elif typ == "time":
+        if verbose > 0:
+            return value
+        parsed_time = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
+        now = datetime.now(timezone.utc)
+        return (
+            humanize.naturaldelta(
+                timedelta(seconds=(now - parsed_time).total_seconds())
+            )
+            + " ago"
+        )
+    else:
+        return str(value)
+
+
 def print_kafka_status(
     cluster: str,
     service: str,
@@ -1943,7 +2200,9 @@ def normalize_registrations(
     return ret
 
 
-def get_filters(args,) -> Sequence[Callable[[InstanceConfig], bool]]:
+def get_filters(
+    args,
+) -> Sequence[Callable[[InstanceConfig], bool]]:
     """Figures out which filters to apply from an args object, and returns them
 
     :param args: args object
@@ -2197,8 +2456,10 @@ def marathon_app_deploy_status_human(status, backoff_seconds=None):
             % PaastaColors.red(status_string)
         )
     elif status == MarathonDeployStatus.Delayed:
-        deploy_status = "{} (tasks are crashing, next won't launch for another {} seconds)".format(
-            PaastaColors.red(status_string), backoff_seconds
+        deploy_status = (
+            "{} (tasks are crashing, next won't launch for another {} seconds)".format(
+                PaastaColors.red(status_string), backoff_seconds
+            )
         )
     elif status == MarathonDeployStatus.Deploying:
         deploy_status = PaastaColors.yellow(status_string)
@@ -2273,4 +2534,5 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     adhoc=print_adhoc_status,
     flink=print_flink_status,
     kafkacluster=print_kafka_status,
+    cassandracluster=print_cassandra_status,
 )

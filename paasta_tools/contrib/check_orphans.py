@@ -126,7 +126,7 @@ async def transfer_one_file(
     logger.debug(f"getting file from {host}")
     try:
         reader, _ = await asyncio.wait_for(
-            asyncio.open_connection(host=host, port=port, limit=2 ** 32), timeout=1.0
+            asyncio.open_connection(host=host, port=port, limit=2**32), timeout=1.0
         )
         resp = await asyncio.wait_for(reader.read(), timeout=1.0)
     except (asyncio.TimeoutError, ConnectionRefusedError) as ex:

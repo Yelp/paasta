@@ -17,8 +17,6 @@ jobs:
         toxenv:
           - py37-linux,docs,mypy,tests
           - general_itests
-          - paasta_itests
-          - example_cluster
     env:
       PIP_INDEX_URL: https://pypi.python.org/simple
       DOCKER_REGISTRY: ""
@@ -49,11 +47,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dist: [xenial, bionic, focal]
+        dist: [bionic, jammy]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
+      - run: sudo apt-get update
       - run: sudo apt-get install -yq devscripts
       - run: make itest_${{ matrix.dist }}

@@ -31,6 +31,7 @@ import paasta_tools.api
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
+from paasta_tools.api.tweens import profiling
 from paasta_tools.api.tweens import request_logger
 from paasta_tools.utils import load_system_paasta_config
 
@@ -108,6 +109,7 @@ def make_app(global_config=None):
     config.add_route(
         "flink.service.instance.config", "/v1/flink/{service}/{instance}/config"
     )
+    config.include(profiling)
 
     config.add_route("resources.utilization", "/v1/resources/utilization")
     config.add_route(

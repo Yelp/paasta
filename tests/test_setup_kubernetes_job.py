@@ -25,6 +25,9 @@ def test_parse_args():
 
 def test_main():
     with mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+        autospec=True,
+    ) as mock_get_metrics_interface, mock.patch(
         "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
     ) as mock_parse_args, mock.patch(
         "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
@@ -34,6 +37,7 @@ def test_main():
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
     ) as mock_setup_kube_deployments:
         mock_setup_kube_deployments.return_value = True
+        mock_metrics_interface = mock_get_metrics_interface.return_value
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
@@ -44,6 +48,7 @@ def test_main():
             cluster=mock_parse_args.return_value.cluster,
             soa_dir=mock_parse_args.return_value.soa_dir,
             rate_limit=mock_parse_args.return_value.rate_limit,
+            metrics_interface=mock_metrics_interface,
         )
         mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
@@ -62,7 +67,12 @@ def test_setup_kube_deployment_invalid_job_name():
         mock_client = mock.Mock()
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="f_m", git_sha="", config_sha="", replicas=0
+                service="kurupt",
+                instance="f_m",
+                git_sha="",
+                image_version=None,
+                config_sha="",
+                replicas=0,
             )
         ]
         mock_service_instances = ["kuruptf_m"]
@@ -191,7 +201,12 @@ def test_setup_kube_deployment_create_update():
     ):
         fake_app = mock.MagicMock(spec=Application)
         fake_app.kube_deployment = KubeDeployment(
-            service=service, instance=instance, git_sha="1", config_sha="1", replicas=1
+            service=service,
+            instance=instance,
+            git_sha="1",
+            image_version="extrastuff-1",
+            config_sha="1",
+            replicas=1,
         )
         fake_app.create = fake_create
         fake_app.update = fake_update
@@ -209,7 +224,9 @@ def test_setup_kube_deployment_create_update():
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ) as mock_list_all_deployments, mock.patch(
         "paasta_tools.setup_kubernetes_job.log", autospec=True
-    ) as mock_log_obj:
+    ) as mock_log_obj, mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.NoMetrics", autospec=True
+    ) as mock_no_metrics:
         mock_client = mock.Mock()
         # No instances created
         mock_service_instances: Sequence[str] = []
@@ -232,11 +249,14 @@ def test_setup_kube_deployment_create_update():
             service_instances=mock_service_instances,
             cluster="fake_cluster",
             soa_dir="/nail/blah",
+            metrics_interface=mock_no_metrics,
         )
         assert fake_create.call_count == 1
         assert fake_update.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
+        assert mock_no_metrics.emit_event.call_count == 1
         mock_log_obj.info.reset_mock()
+        mock_no_metrics.reset_mock()
 
         # Update when gitsha changed
         fake_create.reset_mock()
@@ -245,7 +265,50 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="2", config_sha="1", replicas=1
+                service="kurupt",
+                instance="fm",
+                git_sha="2",
+                image_version="extrastuff-1",
+                config_sha="1",
+                replicas=1,
+            )
+        ]
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instances=mock_service_instances,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            metrics_interface=mock_no_metrics,
+        )
+
+        assert fake_update.call_count == 1
+        assert fake_create.call_count == 0
+        assert fake_update_related_api_objects.call_count == 1
+        mock_no_metrics.emit_event.assert_called_with(
+            name="deploy",
+            dimensions={
+                "paasta_cluster": "fake_cluster",
+                "paasta_service": "kurupt",
+                "paasta_instance": "fm",
+                "deploy_event": "update",
+            },
+        )
+        mock_log_obj.info.reset_mock()
+        mock_no_metrics.reset_mock()
+
+        # Update when image_version changed
+        fake_create.reset_mock()
+        fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
+        mock_service_instances = ["kurupt.fm"]
+        mock_list_all_deployments.return_value = [
+            KubeDeployment(
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version="extrastuff-2",
+                config_sha="1",
+                replicas=1,
             )
         ]
         setup_kube_deployments(
@@ -254,7 +317,6 @@ def test_setup_kube_deployment_create_update():
             cluster="fake_cluster",
             soa_dir="/nail/blah",
         )
-
         assert fake_update.call_count == 1
         assert fake_create.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
@@ -267,7 +329,12 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="1", config_sha="2", replicas=1
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version="extrastuff-1",
+                config_sha="2",
+                replicas=1,
             )
         ]
         setup_kube_deployments(
@@ -288,7 +355,12 @@ def test_setup_kube_deployment_create_update():
         mock_service_instances = ["kurupt.fm"]
         mock_list_all_deployments.return_value = [
             KubeDeployment(
-                service="kurupt", instance="fm", git_sha="1", config_sha="1", replicas=2
+                service="kurupt",
+                instance="fm",
+                git_sha="1",
+                image_version="extrastuff-1",
+                config_sha="1",
+                replicas=2,
             )
         ]
         setup_kube_deployments(
@@ -312,6 +384,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="2",
+                image_version="extrastuff-1",
                 config_sha="2",
                 replicas=1,
             )
@@ -337,6 +410,7 @@ def test_setup_kube_deployment_create_update():
                 service="kurupt",
                 instance="garage",
                 git_sha="1",
+                image_version="extrastuff-1",
                 config_sha="1",
                 replicas=1,
             )
@@ -357,7 +431,8 @@ def test_setup_kube_deployment_create_update():
 
 def test_setup_kube_deployments_rate_limit():
     with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+        "paasta_tools.setup_kubernetes_job.create_application_object",
+        autospec=True,
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ), mock.patch(
@@ -395,7 +470,8 @@ def test_setup_kube_deployments_rate_limit():
 
 def test_setup_kube_deployments_skip_malformed_apps():
     with mock.patch(
-        "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True,
+        "paasta_tools.setup_kubernetes_job.create_application_object",
+        autospec=True,
     ) as mock_create_application_object, mock.patch(
         "paasta_tools.setup_kubernetes_job.list_all_deployments", autospec=True
     ), mock.patch(

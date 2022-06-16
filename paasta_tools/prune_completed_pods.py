@@ -60,14 +60,26 @@ def setup_logging(verbose):
     logging.getLogger("kubernetes.client.rest").setLevel(logging.ERROR)
 
 
-def _completed_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
-    time_finished = get_pod_condition(pod, "ContainersReady").last_transition_time
+def __condition_transition_longer_than_threshold(
+    pod: V1Pod, condition: str, threshold: int
+) -> bool:
+    time_finished = get_pod_condition(pod, condition).last_transition_time
     time_now = datetime.now(tzutc())
 
     # convert total seconds since completion to minutes
-    completed_since_minutes = (time_now - time_finished).total_seconds() / 60
+    since_minutes = (time_now - time_finished).total_seconds() / 60
 
-    return completed_since_minutes > threshold
+    return since_minutes > threshold
+
+
+def _completed_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
+    return __condition_transition_longer_than_threshold(
+        pod, "ContainersReady", threshold
+    )
+
+
+def _scheduled_longer_than_threshold(pod: V1Pod, threshold: int) -> bool:
+    return __condition_transition_longer_than_threshold(pod, "PodScheduled", threshold)
 
 
 def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
@@ -114,11 +126,19 @@ def main():
             # (kubectl looks at phase and then container statuses to give something descriptive)
             # but, in the end, we really just care that a Pod is in a Failed phase
             and pod.status.phase == "Failed"
-            # and that said Pod has been around for a while (generally longer than we'd leave
-            # Pods that exited sucessfully)
-            and _completed_longer_than_threshold(pod, allowed_error_minutes)
         ):
-            errored_pods.append(pod)
+            try:
+                # and that said Pod has been around for a while (generally longer than we'd leave
+                # Pods that exited sucessfully)
+                # NOTE: we do this in a try-except since we're intermittently seeing pods in an error
+                # state without a PodScheduled condition (even though that should be impossible)
+                # this is not ideal, but its fine to skip these since this isn't a critical process
+                if _scheduled_longer_than_threshold(pod, allowed_error_minutes):
+                    errored_pods.append(pod)
+            except AttributeError:
+                log.exception(
+                    f"Unable to check {pod.metadata.name}'s schedule time. Pod status: {pod.status}.'"
+                )
 
     if not (completed_pods or errored_pods):
         log.debug("No pods to terminate.")
@@ -154,6 +174,10 @@ def main():
                 + "\n ".join(pod_names)
             )
 
+    # we've only really seen this fail recently due to the k8s API being flaky and returning
+    # 404s for Pods that its returning to us when we get all Pods, so we just print the error
+    # here for now and don't exit with a non-zero exit code since, again, this isn't a critical
+    # process
     for typ, pod_names_and_errors in errors.items():
         if pod_names_and_errors:
             log.error(
@@ -162,9 +186,6 @@ def main():
                     f"{pod_name}: {error}" for pod_name, error in pod_names_and_errors
                 )
             )
-
-    if completed_errors or errored_errors:
-        sys.exit(1)
 
 
 if __name__ == "__main__":

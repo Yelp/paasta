@@ -13,14 +13,12 @@
 import datetime
 import difflib
 import glob
-import hashlib
 import json
 import logging
 import os
 import pkgutil
 import re
 import subprocess
-import traceback
 from functools import lru_cache
 from string import Formatter
 from typing import List
@@ -29,12 +27,10 @@ from typing import Tuple
 from typing import Union
 
 import yaml
+from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
-from service_configuration_lib.spark_config import generate_clusterman_metrics_entries
-from service_configuration_lib.spark_config import get_aws_credentials
-from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_spark_conf
+from service_configuration_lib.spark_config import _filter_user_spark_opts
 from service_configuration_lib.spark_config import stringify_spark_env
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -48,7 +44,6 @@ from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import DockerParameter
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -60,17 +55,24 @@ from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
+    create_or_find_service_account_name,
     limit_size_with_hash,
     raw_selectors_to_requirements,
     sanitise_kubernetes_name,
     to_node_label,
 )
+from paasta_tools.spark_tools import (
+    adjust_spark_resources,
+    inject_spark_conf_str,
+    setup_event_log_configuration,
+    setup_shuffle_partitions,
+    setup_volume_mounts,
+)
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.spark_tools import get_webui_url
-from paasta_tools.spark_tools import inject_spark_conf_str
+from paasta_tools.spark_tools import KUBERNETES_NAMESPACE as SPARK_KUBERNETES_NAMESPACE
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -88,10 +90,21 @@ VALID_MONITORING_KEYS = set(
         pkgutil.get_data("paasta_tools.cli", "schemas/tron_schema.json").decode()
     )["definitions"]["job"]["properties"]["monitoring"]["properties"].keys()
 )
-MESOS_EXECUTOR_NAMES = ("paasta", "spark")
-KUBERNETES_EXECUTOR_NAMES = ("paasta",)
+MESOS_EXECUTOR_NAMES = ("paasta",)
+KUBERNETES_EXECUTOR_NAMES = ("paasta", "spark")
+EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE = {"paasta": "kubernetes", "spark": "spark"}
+KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
+EXECUTOR_TYPE_TO_NAMESPACE = {
+    "paasta": "tron",
+    "spark": "paasta-spark",
+}
+DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
+
+
+class FieldSelectorConfig(TypedDict):
+    field_path: str
 
 
 class TronNotConfigured(Exception):
@@ -195,18 +208,28 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
-def pick_spark_ui_port(service, instance):
-    # We don't know what ports will be available on the agent that the driver
-    # will be scheduled on, so we just try to make them unique per service / instance.
-    hash_key = f"{service} {instance}".encode()
-    hash_number = int(hashlib.sha1(hash_key).hexdigest(), 16)
-    preferred_port = 33000 + (hash_number % 25000)
-    return preferred_port
-
-
 @lru_cache(maxsize=1)
 def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
+
+
+@lru_cache(maxsize=1)
+def _spark_k8s_role() -> str:
+    return load_system_paasta_config().get_spark_k8s_role()
+
+
+@lru_cache(maxsize=1)
+def _use_suffixed_log_streams_k8s() -> bool:
+    return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
+
+
+def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
+    return {
+        "spark.ui.port": system_paasta_config.get_spark_ui_port(),
+        "spark.driver.port": system_paasta_config.get_spark_driver_port(),
+        "spark.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
+        "spark.driver.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
+    }
 
 
 class TronActionConfig(InstanceConfig):
@@ -234,43 +257,124 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
-    def get_spark_config_dict(self):
-        spark_config_dict = getattr(self, "_spark_config_dict", None)
-        # cached the created dict, so that we don't need to process it multiple
-        # times, and having inconsistent result
-        if spark_config_dict is not None:
-            return spark_config_dict
+    def _build_spark_config(self) -> Dict[str, str]:
+        # this service account will either be used solely for k8s access or for
+        # k8s + AWS access - the executor will have its own account though: and
+        # only if users opt into using pod identity
+        driver_service_account = create_or_find_service_account_name(
+            iam_role=self.get_iam_role(),
+            namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+            k8s_role=_spark_k8s_role(),
+            dry_run=self.for_validation,
+        )
 
-        if self.get_spark_cluster_manager() == "mesos":
-            mesos_leader = (
-                f"zk://{load_system_paasta_config().get_zk_hosts()}"
-                if not self.for_validation
-                else "N/A"
+        # this is pretty similar to what's done in service_configuration_lib, but it doesn't seem
+        # worth refactoring things there when it's unlikely that other users of that library will
+        # have the k8s creds to deal with service account creation (or the role bindings for the
+        # driver service account as done above)
+        spark_args = self.config_dict.get("spark_args", {})
+        truncated_service = limit_size_with_hash(self.get_service())
+        truncated_instance = limit_size_with_hash(self.get_instance())
+        system_paasta_config = load_system_paasta_config()
+        conf = {
+            "spark.app.name": spark_args.get(
+                "spark.app.name",
+                f"tron_spark_{self.get_service()}_{self.get_instance()}",
+            ),
+            # TODO: figure out how to handle dedicated spark cluster here
+            "spark.master": f"k8s://https://k8s.{self.get_cluster()}.paasta:6443",
+            # TODO: add PAASTA_RESOURCE_* environment variables here
+            "spark.executorEnv.PAASTA_SERVICE": self.get_service(),
+            "spark.executorEnv.PAASTA_INSTANCE": self.get_instance(),
+            "spark.executorEnv.PAASTA_CLUSTER": self.get_cluster(),
+            "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
+            "spark.executorEnv.SPARK_EXECUTOR_DIRS": "/tmp",
+            # XXX: do we need to set this for the driver if the pod running the driver was created with
+            # this SA already?
+            "spark.kubernetes.authenticate.driver.serviceAccountName": driver_service_account,
+            "spark.kubernetes.pyspark.pythonVersion": "3",
+            "spark.kubernetes.container.image": self.get_docker_url(
+                system_paasta_config
+            ),
+            "spark.kubernetes.namespace": SPARK_KUBERNETES_NAMESPACE,
+            "spark.kubernetes.executor.label.yelp.com/paasta_service": truncated_service,
+            "spark.kubernetes.executor.label.yelp.com/paasta_instance": truncated_instance,
+            "spark.kubernetes.executor.label.yelp.com/paasta_cluster": self.get_cluster(),
+            "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
+            "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
+            "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
+            "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+            # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
+            # will be, drumroll please, the routable IP for the Pod - this allows us to
+            # not need to worry about DNS
+            "spark.driver.host": "$PAASTA_POD_IP",
+        }
+
+        # most of the service_configuration_lib function expected string values only
+        # so let's go ahead and convert the values now instead of once per-wrapper
+        stringified_spark_args = {
+            k: (str(v) if not isinstance(v, bool) else str(v).lower())
+            for k, v in spark_args.items()
+        }
+        # now that we've added all the required stuff, we can add in all the stuff that users have added
+        # themselves
+        conf.update(_filter_user_spark_opts(user_spark_opts=stringified_spark_args))
+
+        if self.get_team() is not None:
+            conf["spark.kubernetes.executor.label.yelp.com/owner"] = self.get_team()
+
+        conf.update(_get_spark_ports(system_paasta_config=system_paasta_config))
+
+        # Spark defaults to using the Service Account that the driver uses for executors,
+        # but that has more permissions than what we'd like to give the executors, so use
+        # the default service account instead
+        conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = "default"
+        if self.get_iam_role() and self.get_iam_role_provider() == "aws":
+            conf[
+                "spark.kubernetes.authenticate.executor.serviceAccountName"
+            ] = create_or_find_service_account_name(
+                iam_role=self.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+                dry_run=self.for_validation,
             )
-        else:
-            mesos_leader = None
 
-        aws_creds = get_aws_credentials(
-            aws_credentials_yaml=self.config_dict.get("aws_credentials_yaml")
+        conf.update(
+            setup_volume_mounts(
+                volumes=self.get_volumes(
+                    system_volumes=system_paasta_config.get_volumes(),
+                ),
+            ),
         )
-        self._spark_config_dict = get_spark_conf(
-            cluster_manager=self.get_spark_cluster_manager(),
-            spark_app_base_name=f"tron_spark_{self.get_service()}_{self.get_instance()}",
-            user_spark_opts=self.config_dict.get("spark_args", {}),
-            paasta_cluster=self.get_spark_paasta_cluster(),
-            paasta_pool=self.get_spark_paasta_pool(),
-            paasta_service=self.get_service(),
-            paasta_instance=self.get_instance(),
-            docker_img=self.get_docker_url(),
-            aws_creds=aws_creds,
-            extra_volumes=self.get_volumes(load_system_paasta_config().get_volumes()),
-            # tron is using environment variable to load the required creds
-            with_secret=False,
-            mesos_leader=mesos_leader,
-            # load_system_paasta already load the default volumes
-            load_paasta_default_volumes=False,
+
+        # Core ML has some translation logic to go from Mesos->k8s options for people living in the past
+        conf.update(
+            adjust_spark_resources(
+                spark_args=stringified_spark_args, desired_pool=self.get_pool()
+            )
         )
-        return self._spark_config_dict
+        # as well as some QoL tweaks for other options
+        conf.update(setup_shuffle_partitions(spark_args=stringified_spark_args))
+        conf.update(setup_event_log_configuration(spark_args=stringified_spark_args))
+
+        return conf
+
+    def get_cmd(self):
+        command = self.config_dict.get("command")
+
+        if self.get_executor() == "spark":
+            # until we switch drivers to use pod identity, we need to use the Yelp's legacy AWS credential system
+            # and ensure that the AWS access keys are part of the environment variables that the driver is started
+            # with - this is more secure than what we appear to have tried to do in the previous attempt and also
+            # still allows us to use the new CEP-1713 "private" boto_cfg system should the pod identity migration
+            # require more work/time than expected.
+            aws_credentials = self.config_dict.get("aws_credentials")
+            cmd_setup = (
+                f". /etc/boto_cfg/{aws_credentials}.sh && " if aws_credentials else ""
+            )
+            command = f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
+
+        return command
 
     def get_job_name(self):
         return self.job
@@ -296,68 +400,22 @@ class TronActionConfig(InstanceConfig):
             else super().get_docker_url(system_paasta_config=system_paasta_config)
         )
 
-    def get_cmd(self):
-        command = self.config_dict.get("command")
+    def get_env(
+        self,
+        system_paasta_config: Optional["SystemPaastaConfig"] = None,
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
+
         if self.get_executor() == "spark":
-            # Spark expects to be able to write to MESOS_SANDBOX if it is set
-            # but the default value (/mnt/mesos/sandbox) doesn't get mounted in
-            # our Docker containers, so we unset it here.  (Un-setting is fine,
-            # since Spark will just write to /tmp instead).
-            command = "unset MESOS_DIRECTORY MESOS_SANDBOX; " + inject_spark_conf_str(
-                command, stringify_spark_env(self.get_spark_config_dict())
-            )
-        return command
-
-    def get_spark_paasta_cluster(self):
-        return self.config_dict.get("spark_paasta_cluster", self.get_cluster())
-
-    def get_spark_paasta_pool(self):
-        return self.config_dict.get("spark_paasta_pool", "batch")
-
-    def get_spark_cluster_manager(self):
-        return self.config_dict.get("spark_cluster_manager", "mesos")
-
-    def get_env(self):
-        env = super().get_env()
-        if self.get_executor() == "spark":
-            spark_config_dict = self.get_spark_config_dict()
-            env["EXECUTOR_CLUSTER"] = self.get_spark_paasta_cluster()
-            env["EXECUTOR_POOL"] = self.get_spark_paasta_pool()
-            env["SPARK_OPTS"] = stringify_spark_env(spark_config_dict)
-            # The actual mesos secret will be decrypted and injected on mesos master when assigning
-            # tasks.
-            env["SPARK_MESOS_SECRET"] = "SHARED_SECRET(SPARK_MESOS_SECRET)"
-            if clusterman_metrics:
-                env["CLUSTERMAN_RESOURCES"] = json.dumps(
-                    generate_clusterman_metrics_entries(
-                        clusterman_metrics,
-                        get_resources_requested(spark_config_dict),
-                        spark_config_dict["spark.app.name"],
-                        get_webui_url(spark_config_dict["spark.ui.port"]),
-                    )
-                )
-            else:
-                env["CLUSTERMAN_RESOURCES"] = "{}"
-
-            if "AWS_ACCESS_KEY_ID" not in env or "AWS_SECRET_ACCESS_KEY" not in env:
-                try:
-                    access_key, secret_key, session_token = get_aws_credentials(
-                        service=self.get_service(),
-                        aws_credentials_yaml=self.config_dict.get(
-                            "aws_credentials_yaml"
-                        ),
-                    )
-                    env["AWS_ACCESS_KEY_ID"] = access_key
-                    env["AWS_SECRET_ACCESS_KEY"] = secret_key
-                except Exception:
-                    log.warning(
-                        f"Cannot set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment "
-                        f"variables for tron action {self.get_instance()} of service "
-                        f"{self.get_service()} via credentail file. Traceback:\n"
-                        f"{traceback.format_exc()}"
-                    )
-            if "AWS_DEFAULT_REGION" not in env:
-                env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
+            env["PAASTA_INSTANCE_TYPE"] = "spark"
+            # XXX: is this actually necessary? every PR that's added this hasn't really mentioned why,
+            # and Chesterton's Fence makes me very wary about removing it
+            env["SPARK_USER"] = "root"
+            # XXX: we were adding the commandline we were starting the Spark driver with to SPARK_OPTS
+            # before, but that doesn't really seem necessary from my testing (driver starts just fine)
+            # if this changes and we do need it - please add a comment about *why* we need it!
+            # XXX: update PAASTA_RESOURCE_* env vars to use the correct value from spark_args and set
+            # these to the correct values for the executors as part of the driver commandline
 
         return env
 
@@ -378,10 +436,19 @@ class TronActionConfig(InstanceConfig):
                 }
         return secret_env
 
+    def get_field_selector_env(self) -> Dict[str, FieldSelectorConfig]:
+        # we're not expecting users to need to add any of these themselves, so for now
+        # we'll just hardcode the env vars we want to add by default
+        return {
+            "PAASTA_POD_IP": {
+                "field_path": "status.podIP",
+            }
+        }
+
     def get_cpu_burst_add(self) -> float:
-        """ For Tron jobs, we don't let them burst by default, because they
+        """For Tron jobs, we don't let them burst by default, because they
         don't represent "real-time" workloads, and should not impact
-        neighbors """
+        neighbors"""
         return self.config_dict.get("cpu_burst_add", 0)
 
     def get_executor(self):
@@ -434,7 +501,8 @@ class TronActionConfig(InstanceConfig):
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
         requirements = allowlist_denylist_to_requirements(
-            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+            allowlist=self.get_deploy_whitelist(),
+            denylist=self.get_deploy_blacklist(),
         )
         requirements.extend(
             raw_selectors_to_requirements(
@@ -485,21 +553,6 @@ class TronActionConfig(InstanceConfig):
             )
         return error_msgs
 
-    def format_docker_parameters(
-        self,
-        with_labels: bool = True,
-        system_paasta_config: Optional[SystemPaastaConfig] = None,
-    ) -> List[DockerParameter]:
-        """Formats extra flags for running docker.  Will be added in the format
-        `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
-        Note: values must be strings"""
-        parameters = super().format_docker_parameters(
-            with_labels=with_labels, system_paasta_config=system_paasta_config
-        )
-        if self.get_executor() == "spark":
-            parameters.append({"key": "net", "value": "host"})
-        return parameters
-
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
@@ -534,6 +587,22 @@ class TronJobConfig:
 
     def get_schedule(self):
         return self.config_dict.get("schedule")
+
+    def get_cron_expression(self) -> Optional[str]:
+        schedule = self.config_dict.get("schedule")
+        # TODO(TRON-1746): once we simplify this format, we can clean this code up
+        if (
+            isinstance(schedule, dict)
+            and "type" in schedule
+            and schedule["type"] == "cron"
+        ):
+            return schedule["value"]
+        elif isinstance(schedule, str) and schedule.startswith("cron"):
+            # most cron parsers won't understand our schedule tag, so we need to strip
+            # that off before passing it to anything else
+            return schedule.replace("cron", "")
+
+        return None
 
     def get_monitoring(self):
         srv_monitoring = dict(
@@ -595,6 +664,9 @@ class TronJobConfig:
                         action_deploy_group
                     ),
                     "git_sha": deployments_json.get_git_sha_for_deploy_group(
+                        action_deploy_group
+                    ),
+                    "image_version": deployments_json.get_image_version_for_deploy_group(
                         action_deploy_group
                     ),
                     # TODO: add Tron instances when generating deployments json
@@ -708,7 +780,9 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
     if k8s_options:
         # Only add default volumes if we already have k8s_options
         k8s_options.update(
-            {"default_volumes": format_volumes(default_volumes),}
+            {
+                "default_volumes": format_volumes(default_volumes),
+            }
         )
         master_config["k8s_options"] = k8s_options
     return master_config
@@ -740,16 +814,33 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
     # there are slight differences between k8s and Mesos configs, so we'll translate
     # whatever is in soaconfigs to the k8s equivalent here as well.
     if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
-        result["executor"] = "kubernetes"
+        # we'd like Tron to be able to distinguish between spark and normal actions
+        # even though they both run on k8s
+        result["executor"] = EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE.get(
+            executor, "kubernetes"
+        )
 
         result["secret_env"] = action_config.get_secret_env()
+        result["field_selector_env"] = action_config.get_field_selector_env()
         all_env = action_config.get_env()
         # For k8s, we do not want secret envvars to be duplicated in both `env` and `secret_env`
-        result["env"] = {k: v for k, v in all_env.items() if not is_secret_ref(v)}
+        # or for field selector env vars to be overwritten
+        result["env"] = {
+            k: v
+            for k, v in all_env.items()
+            if not is_secret_ref(v) and k not in result["field_selector_env"]
+        }
         # for Tron-on-K8s, we want to ship tronjob output through logspout
         # such that this output eventually makes it into our per-instance
         # log streams automatically
-        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        # however, we're missing infrastructure in the superregion where we run spark jobs (and
+        # some normal tron jobs), so we take a slightly different approach here
+        if _use_suffixed_log_streams_k8s():
+            result["env"]["STREAM_SUFFIX_LOGSPOUT"] = (
+                "spark" if executor == "spark" else "tron"
+            )
+        else:
+            result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
         result["node_selectors"] = action_config.get_node_selectors()
         result["node_affinities"] = action_config.get_node_affinities()
 
@@ -762,12 +853,55 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             "paasta.yelp.com/pool": action_config.get_pool(),
             "paasta.yelp.com/service": action_config.get_service(),
             "paasta.yelp.com/instance": limit_size_with_hash(
-                action_config.get_instance(), limit=63, suffix=4,
+                action_config.get_instance(),
+                limit=63,
+                suffix=4,
             ),
+        }
+
+        # we can hardcode this for now as batches really shouldn't
+        # need routable IPs and we know that Spark probably does.
+        result["annotations"] = {
+            "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
         }
 
         if action_config.get_team() is not None:
             result["labels"]["yelp.com/owner"] = action_config.get_team()
+
+        # create_or_find_service_account_name requires k8s credentials, and we don't
+        # have those available for CI to use (nor do we check these for normal PaaSTA
+        # services, so we're not doing anything "new" by skipping this)
+        if (
+            action_config.get_iam_role_provider() == "aws"
+            and action_config.get_iam_role()
+            and not action_config.for_validation
+        ):
+            # this service account will be used for normal Tron batches as well as for Spark executors
+            result["service_account_name"] = create_or_find_service_account_name(
+                iam_role=action_config.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
+                k8s_role=None,
+                dry_run=action_config.for_validation,
+            )
+
+        if executor == "spark":
+            # this service account will only be used by Spark drivers since executors don't
+            # need Kubernetes access permissions
+            result["service_account_name"] = create_or_find_service_account_name(
+                iam_role=action_config.get_iam_role(),
+                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
+                k8s_role=_spark_k8s_role(),
+                dry_run=action_config.for_validation,
+            )
+            # spark, unlike normal batches, needs to expose  several ports for things like the spark
+            # ui and for executor->driver communication
+            result["ports"] = list(
+                set(
+                    _get_spark_ports(
+                        system_paasta_config=load_system_paasta_config()
+                    ).values()
+                )
+            )
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
@@ -874,7 +1008,11 @@ def load_tron_service_config(
     for_validation=False,
 ):
     return load_tron_service_config_no_cache(
-        service, cluster, load_deployments, soa_dir, for_validation,
+        service,
+        cluster,
+        load_deployments,
+        soa_dir,
+        for_validation,
     )
 
 
@@ -922,10 +1060,15 @@ def create_complete_config(
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
     k8s_enabled: bool = False,
+    dry_run: bool = False,
 ):
     """Generate a namespace configuration file for Tron, for a service."""
     job_configs = load_tron_service_config(
-        service=service, cluster=cluster, load_deployments=True, soa_dir=soa_dir,
+        service=service,
+        cluster=cluster,
+        load_deployments=True,
+        soa_dir=soa_dir,
+        for_validation=dry_run,
     )
     preproccessed_config = {}
     preproccessed_config["jobs"] = {

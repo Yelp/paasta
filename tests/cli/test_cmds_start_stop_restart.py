@@ -14,8 +14,12 @@
 import mock
 
 from paasta_tools import remote_git
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
+from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfigDict
 from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import start_stop_restart
+from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import FlinkDeploymentConfigDict
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
@@ -32,7 +36,10 @@ def test_format_tag():
 @mock.patch("dulwich.client.get_transport_and_path", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.log_event", autospec=True)
 def test_issue_state_change_for_service(
-    mock_log_event, get_transport_and_path, get_git_url, mock_trigger_deploys,
+    mock_log_event,
+    get_transport_and_path,
+    get_git_url,
+    mock_trigger_deploys,
 ):
     fake_git_url = "BLOORGRGRGRGR.yelpcorp.com"
     fake_path = "somepath"
@@ -129,6 +136,9 @@ def test_log_event():
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -160,6 +170,7 @@ def test_paasta_start_or_stop(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -179,7 +190,7 @@ def test_paasta_start_or_stop(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None, "canary": None}},
@@ -238,6 +249,9 @@ def test_paasta_start_or_stop(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -269,6 +283,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -288,7 +303,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = args.deploy_group
     mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"instance1": None}}
@@ -315,6 +330,9 @@ def test_paasta_start_or_stop_with_deploy_group(
     assert ret == 0
 
 
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
 @mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
@@ -347,6 +365,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_issue_state_change_for_service,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
 ):
     args, _ = parse_args(
         [
@@ -366,7 +385,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None}},
@@ -417,6 +436,9 @@ def test_stop_or_start_figures_out_correct_instances(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -435,6 +457,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_get_remote_refs,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
     capfd,
 ):
     args, _ = parse_args(
@@ -455,6 +478,9 @@ def test_stop_or_start_handle_ls_remote_failures(
 
 
 @mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+@mock.patch(
     "paasta_tools.cli.cmds.start_stop_restart.confirm_to_continue", autospec=True
 )
 @mock.patch(
@@ -471,6 +497,7 @@ def test_start_or_stop_bad_refs(
     mock_get_instance_config,
     mock_apply_args_filters,
     mock_confirm_to_continue,
+    mock_can_user_deploy_service,
     capfd,
 ):
     args, _ = parse_args(
@@ -529,7 +556,7 @@ def test_cluster_list_defaults_to_all():
 )
 @mock.patch("paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
-def test_stop_or_start_warn_on_multi_instance(
+def test_start_warn_on_multi_instance(
     mock_list_clusters,
     mock_get_git_url,
     mock_get_instance_config,
@@ -557,7 +584,7 @@ def test_stop_or_start_warn_on_multi_instance(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None}, "other_service": {"main1": None}},
@@ -567,3 +594,190 @@ def test_stop_or_start_warn_on_multi_instance(
     out, err = capfd.readouterr()
     assert ret == 1
     assert "Warning: trying to start/stop/restart multiple services" in out
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.paasta_start_or_stop",
+    autospec=True,
+)
+class TestStopErrorsIfUnderspecified:
+    def run_and_assert_with_args(self, args, capfd):
+        parsed_args, _ = parse_args(args)
+        ret = parsed_args.command(parsed_args)
+        out, err = capfd.readouterr()
+        assert ret == 1
+        assert start_stop_restart.PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE in out
+
+    def test_no_cluster(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-s", "service", "-i", "instance"],
+            capfd,
+        )
+
+    def test_no_service(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-c", "cluster", "-i", "instance"],
+            capfd,
+        )
+
+    def test_no_instance(self, mock_paasta_start_or_stop, capfd):
+        self.run_and_assert_with_args(
+            ["stop", "-c", "cluster", "-s", "service"],
+            capfd,
+        )
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.issue_state_change_for_service",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.can_user_deploy_service", autospec=True
+)
+def test_error_if_no_deploy_permissions(
+    mock_can_user_deploy_service,
+    mock_issue_state_change_for_service,
+    mock_apply_args_filters,
+):
+    args, _ = parse_args(
+        [
+            "start",
+            "-s",
+            "service",
+            "-c",
+            "cluster",
+            "-i",
+            "instance",
+            "-d",
+            "/soa/dir",
+        ]
+    )
+    mock_apply_args_filters.return_value = {"cluster": {"service": {"instance": None}}}
+    mock_can_user_deploy_service.return_value = False
+    ret = args.command(args)
+
+    assert ret == 1
+    assert not mock_issue_state_change_for_service.called
+
+
+@mock.patch("choice.basicterm.BasicTermBinaryChoice", autospec=True)
+@mock.patch("choice.Binary", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.start_stop_restart.paasta_start", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.get_instance_config", autospec=True
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.start_stop_restart.apply_args_filters", autospec=True
+)
+class TestRestartCmd:
+    def test_flink_and_non_flink_instances(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_binary,
+        mock_binary_choice,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"flink_instance": None, "cas_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkDeploymentConfig(
+                "service",
+                "cluster",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+            CassandraClusterDeploymentConfig(
+                "service",
+                "cluster",
+                "cas_instance",
+                CassandraClusterDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        mock_paasta_start.return_value = 1
+        mock_binary_choice.ask.return_value = True
+        mock_binary.return_value = mock_binary_choice
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i flink_instance,cas_instance -d /soa/dir".split(
+                " "
+            )
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 1
+        assert mock_paasta_start.called
+        assert "paasta restart is currently unsupported for Flink instances" in out
+
+    def test_only_non_flink_instances(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_binary,
+        mock_binary_choice,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"cas_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            CassandraClusterDeploymentConfig(
+                "service",
+                "cluster",
+                "cas_instance",
+                CassandraClusterDeploymentConfigDict(),
+                None,
+            ),
+        ]
+        mock_paasta_start.return_value = 1
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i cas_instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 1
+        assert mock_paasta_start.called
+        assert "paasta restart is currently unsupported for Flink instances" not in out
+
+    def test_only_flink_instances(
+        self,
+        mock_apply_args_filters,
+        mock_get_instance_config,
+        mock_paasta_start,
+        mock_binary,
+        mock_binary_choice,
+        capfd,
+    ):
+        mock_apply_args_filters.return_value = {
+            "cluster": {"service": {"flink_instance": None}}
+        }
+        mock_get_instance_config.side_effect = [
+            FlinkDeploymentConfig(
+                "service",
+                "cluster",
+                "flink_instance",
+                FlinkDeploymentConfigDict(),
+                None,
+            ),
+        ]
+
+        args, _ = parse_args(
+            "restart -s service -c cluster -i flink_instance -d /soa/dir".split(" ")
+        )
+        ret = args.command(args)
+        out, _ = capfd.readouterr()
+
+        assert ret == 1
+        assert not mock_paasta_start.called
+        assert "paasta restart is currently unsupported for Flink instances" in out

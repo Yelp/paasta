@@ -25,9 +25,9 @@ import logging
 import os
 import sys
 import time
+from functools import partial
 from typing import AbstractSet
 from typing import Iterator
-from typing import List
 from typing import Mapping
 from typing import Set
 
@@ -55,10 +55,17 @@ ANNOTATIONS = {paasta_prefixed("managed_by"): "setup_istio_mesh"}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates Kubernetes services.")
     parser.add_argument(
-        "-v", "--verbose", action="store_true", dest="verbose", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
     )
     parser.add_argument(
-        "--dry-run", action="store_true", dest="dry_run", default=False,
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        default=False,
     )
     parser.add_argument(
         "-l",
@@ -107,8 +114,6 @@ def sanitise_kubernetes_service_name(name: str) -> str:
 
 def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     service_objects = kube_client.core.list_namespaced_service(PAASTA_NAMESPACE)
-    if not service_objects:
-        raise RuntimeError("Error retrieving services list from k8s api")
 
     return {
         item.metadata.name
@@ -119,11 +124,22 @@ def get_existing_kubernetes_service_names(kube_client: KubeClient) -> Set[str]:
     }
 
 
-def setup_unified_service(kube_client: KubeClient, port_list: List) -> Iterator:
+def get_existing_kubernetes_virtual_services(kube_client: KubeClient) -> Set[str]:
+    virtual_service_objects = kube_client.custom.list_namespaced_custom_object(
+        "networking.istio.io", "v1beta1", PAASTA_NAMESPACE, "virtualservices"
+    )
+
+    return {item["metadata"]["name"] for item in virtual_service_objects["items"]}
+
+
+def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterator:
     # Add smartstack ports for routing, Clients can connect to this
     # Directly without need of setting x-yelp-svc header
     # Add port 1337 for envoy unified listener.
     # Clients can connect to this listenner and set x-yelp-svc header for routing
+    port_list = sorted(
+        val["proxy_port"] for val in namespaces.values() if val.get("proxy_port")
+    )
     ports = [
         k8s.V1ServicePort(
             name=f"p{port}",
@@ -138,41 +154,109 @@ def setup_unified_service(kube_client: KubeClient, port_list: List) -> Iterator:
     service_meta = k8s.V1ObjectMeta(name=UNIFIED_K8S_SVC_NAME, annotations=ANNOTATIONS)
     service_spec = k8s.V1ServiceSpec(ports=ports)
     service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-    yield kube_client.core.create_namespaced_service, (PAASTA_NAMESPACE, service_object)
+    yield partial(
+        kube_client.core.create_namespaced_service, PAASTA_NAMESPACE, service_object
+    )
+
+    sorted_namespaces = sorted(namespaces.keys())
+    x_yelp_svc_routes = [
+        dict(
+            match=[dict(headers={"x-yelp-svc": dict(exact=mesh_ns)})],
+            delegate=dict(
+                name=sanitise_kubernetes_service_name(mesh_ns),
+                namespace=PAASTA_NAMESPACE,
+            ),
+        )
+        for mesh_ns in sorted_namespaces
+    ]
+    port_routes = [
+        dict(
+            match=[dict(port=namespaces[mesh_ns]["proxy_port"])],
+            delegate=dict(
+                name=sanitise_kubernetes_service_name(mesh_ns),
+                namespace=PAASTA_NAMESPACE,
+            ),
+        )
+        for mesh_ns in sorted_namespaces
+        if namespaces[mesh_ns].get("proxy_port")
+    ]
+    virtual_service = dict(
+        apiVersion="networking.istio.io/v1alpha3",
+        kind="VirtualService",
+        metadata=dict(
+            name="paasta-routing",
+            namespace=PAASTA_NAMESPACE,
+        ),
+        spec=dict(
+            hosts=["paasta-routing", "169.254.255.254"],
+            http=x_yelp_svc_routes + port_routes,
+        ),
+    )
+
+    yield partial(
+        kube_client.custom.create_namespaced_custom_object,
+        "networking.istio.io",
+        "v1alpha3",
+        PAASTA_NAMESPACE,
+        "virtualservices",
+        virtual_service,
+    )
 
 
 def setup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
-    existing_namespace_services: Set[str] = set(),
+    existing_namespace_services: Set[str],
+    existing_virtual_services: Set[str],
 ) -> Iterator:
     for namespace in paasta_namespaces:
         service = sanitise_kubernetes_service_name(namespace)
+        if service not in existing_namespace_services:
+            log.info(f"Creating k8s service {service} because it does not exist yet.")
 
-        if service in existing_namespace_services:
-            log.debug(f"Service {service} alredy exists, skipping")
-            continue
+            service_meta = k8s.V1ObjectMeta(name=service, annotations=ANNOTATIONS)
+            port_spec = k8s.V1ServicePort(
+                name="http", port=PAASTA_SVC_PORT, protocol="TCP", app_protocol="http"
+            )
+            service_spec = k8s.V1ServiceSpec(
+                selector={registration_label(namespace): "true"}, ports=[port_spec]
+            )
+            service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
+            yield partial(
+                kube_client.core.create_namespaced_service,
+                PAASTA_NAMESPACE,
+                service_object,
+            )
 
-        log.info(f"Creating {service} because it does not exist yet.")
+        if service not in existing_virtual_services:
+            log.info(
+                f"Creating istio virtualservice {service} because it does not exist yet."
+            )
 
-        service_meta = k8s.V1ObjectMeta(name=service, annotations=ANNOTATIONS)
-        port_spec = k8s.V1ServicePort(
-            name="http", port=PAASTA_SVC_PORT, protocol="TCP", app_protocol="http"
-        )
-        service_spec = k8s.V1ServiceSpec(
-            selector={registration_label(namespace): "true"}, ports=[port_spec]
-        )
-        service_object = k8s.V1APIService(metadata=service_meta, spec=service_spec)
-        yield kube_client.core.create_namespaced_service, (
-            PAASTA_NAMESPACE,
-            service_object,
-        )
+            route = dict(
+                destination=dict(host=service, port=dict(number=PAASTA_SVC_PORT))
+            )
+            virtual_service = dict(
+                apiVersion="networking.istio.io/v1alpha3",
+                kind="VirtualService",
+                metadata=dict(name=service, namespace=PAASTA_NAMESPACE),
+                spec=dict(http=[dict(route=[route])]),
+            )
+            yield partial(
+                kube_client.custom.create_namespaced_custom_object,
+                "networking.istio.io",
+                "v1alpha3",
+                PAASTA_NAMESPACE,
+                "virtualservices",
+                virtual_service,
+            )
 
 
 def cleanup_paasta_namespace_services(
     kube_client: KubeClient,
     paasta_namespaces: AbstractSet,
     existing_namespace_services: Set[str],
+    existing_virtual_services: Set[str],
 ) -> Iterator:
     declared_services = {
         sanitise_kubernetes_service_name(ns) for ns in paasta_namespaces
@@ -180,60 +264,88 @@ def cleanup_paasta_namespace_services(
     for service in existing_namespace_services:
         if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
             continue
-        log.info(
-            f"Garbage collecting {service} since there is no reference in services.yaml"
+        log.info(f"Garbage collecting K8s Service {service}")
+        yield partial(
+            kube_client.core.delete_namespaced_service, service, PAASTA_NAMESPACE
         )
-        yield kube_client.core.delete_namespaced_service, (service, PAASTA_NAMESPACE)
+    for service in existing_virtual_services:
+        if service == UNIFIED_K8S_SVC_NAME or service in declared_services:
+            continue
+        log.info(f"Garbage collecting Istio VS {service}")
+        yield partial(
+            kube_client.custom.delete_namespaced_custom_object,
+            "networking.istio.io",
+            "v1beta1",
+            PAASTA_NAMESPACE,
+            "virtualservices",
+            service,
+        )
 
 
 def process_kube_services(
     kube_client: KubeClient, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Iterator:
+
     existing_namespace_services = get_existing_kubernetes_service_names(kube_client)
+    existing_virtual_services = get_existing_kubernetes_virtual_services(kube_client)
+
     namespaces = load_smartstack_namespaces(soa_dir)
 
-    if UNIFIED_K8S_SVC_NAME not in existing_namespace_services:
+    should_setup_unified = (
+        UNIFIED_K8S_SVC_NAME not in existing_namespace_services
+        or UNIFIED_K8S_SVC_NAME not in existing_virtual_services
+    )
+
+    if should_setup_unified:
         log.info(f"Creating {UNIFIED_K8S_SVC_NAME} because it does not exist yet.")
-        yield from setup_unified_service(
+        yield from setup_paasta_routing(
             kube_client=kube_client,
-            port_list=sorted(
-                val["proxy_port"]
-                for val in namespaces.values()
-                if val.get("proxy_port")
-            ),
+            namespaces=namespaces,
         )
 
     yield from setup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_namespace_services
+        kube_client,
+        namespaces.keys(),
+        existing_namespace_services,
+        existing_virtual_services,
     )
 
     yield from cleanup_paasta_namespace_services(
-        kube_client, namespaces.keys(), existing_namespace_services
+        kube_client,
+        namespaces.keys(),
+        existing_namespace_services,
+        existing_virtual_services,
     )
+
+
+def setup_istio_mesh(
+    kube_client: KubeClient,
+    rate_limit: int = 0,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> bool:
+    delay = 0 if rate_limit == 0 else 1.0 / float(rate_limit)
+    took = delay
+    success = True
+    for fn in process_kube_services(kube_client=kube_client, soa_dir=soa_dir):
+        time.sleep(max(0, delay - took))
+        try:
+            log.debug(f"Calling yielded {fn.func}({fn.args})")
+            start = time.time()
+            result = fn()
+            took = time.time() - start
+            log.debug(f"Result: {result}, took {took}s")
+        except Exception:
+            success = False
+            log.exception(f"Failed calling {fn.func}({fn.args})")
+    return success
 
 
 def main() -> None:
     args = parse_args()
-
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
     kube_client = KubeClient()
-    ensure_namespace(kube_client, namespace="paasta")
-    delay = 0 if args.rate_limit == 0 else 1.0 / float(args.rate_limit)
-    success = True
-    for (fn, args) in process_kube_services(
-        kube_client=kube_client, soa_dir=args.soa_dir
-    ):
-        time.sleep(delay)
-        try:
-            fn(*args)
-        except Exception:
-            success = False
-            log.exception(f"Failed setting up {fn}({args})")
-
+    ensure_namespace(kube_client, namespace=PAASTA_NAMESPACE)
+    success = setup_istio_mesh(kube_client, args.rate_limit, args.soa_dir)
     sys.exit(0 if success else 1)
 
 

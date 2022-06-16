@@ -30,7 +30,9 @@ def updater(tmpdir):
 
 def test_write_auto_config_data_service_dne(tmpdir):
     with mock.patch(
-        "paasta_tools.config_utils.open", new=mock.mock_open(), autospec=None,
+        "paasta_tools.config_utils.open",
+        new=mock.mock_open(),
+        autospec=None,
     ) as mock_open:
         result = config_utils.write_auto_config_data(
             service="something",
@@ -122,7 +124,10 @@ def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
 
     tmpdir.mkdir(service)
     filepath = config_utils.write_auto_config_data(
-        service=service, extra_info=conf_file, data=data, soa_dir=tmpdir,
+        service=service,
+        extra_info=conf_file,
+        data=data,
+        soa_dir=tmpdir,
     )
     assert (
         config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
@@ -159,7 +164,11 @@ def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
     remote = "git_remote"
     working_dir = tmpdir.mkdir("testing")
     updater = config_utils.AutoConfigUpdater(
-        "test_source", remote, branch=branch, working_dir=working_dir, do_clone=False,
+        "test_source",
+        remote,
+        branch=branch,
+        working_dir=working_dir,
+        do_clone=False,
     )
     initial_wd = os.getcwd()
 

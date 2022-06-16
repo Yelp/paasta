@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 
 import asynctest
@@ -41,6 +42,7 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
+from tests.conftest import wrap_value_in_task
 
 
 @pytest.mark.parametrize("include_mesos", [False, True])
@@ -244,6 +246,7 @@ def test_marathon_job_status(
         "running_instance_count": 2,
         "autoscaling_info": expected_autoscaling_info,
         "active_shas": [("abc", "123")],
+        "active_versions": [("abc", None, "123")],
     }
 
     assert mock_marathon_app_status.call_count == 1
@@ -524,92 +527,87 @@ def test_marathon_service_mesh_status(
     }
 
 
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.smartstack_tools.get_backends", autospec=True
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.KubeSmartstackEnvoyReplicationChecker",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.pik.kubernetes_tools.get_all_nodes", autospec=True
-)
-@mock.patch(
-    "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
-    autospec=True,
-)
-def test_kubernetes_smartstack_status(
-    mock_get_expected_instance_count_for_namespace,
-    mock_get_all_nodes,
-    mock_kube_smartstack_replication_checker,
-    mock_get_backends,
-    mock_match_backends_and_pods,
-):
-    mock_get_all_nodes.return_value = [
-        {"hostname": "host1.paasta.party", "attributes": {"region": "us-north-3"}}
-    ]
+@pytest.mark.asyncio
+async def test_kubernetes_smartstack_status():
+    with asynctest.patch(
+        "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
+    ) as mock_match_backends_and_pods, asynctest.patch(
+        "paasta_tools.api.views.instance.pik.smartstack_tools.get_backends",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.api.views.instance.pik.KubeSmartstackEnvoyReplicationChecker",
+        autospec=True,
+    ) as mock_kube_smartstack_replication_checker, asynctest.patch(
+        "paasta_tools.api.views.instance.pik.kubernetes_tools.get_all_nodes",
+        autospec=True,
+    ) as mock_get_all_nodes, asynctest.patch(
+        "paasta_tools.api.views.instance.marathon_tools.get_expected_instance_count_for_namespace",
+        autospec=True,
+    ) as mock_get_expected_instance_count_for_namespace:
+        mock_get_all_nodes.return_value = [
+            {"hostname": "host1.paasta.party", "attributes": {"region": "us-north-3"}}
+        ]
 
-    mock_kube_smartstack_replication_checker.return_value.get_allowed_locations_and_hosts.return_value = {
-        "us-north-3": [DiscoveredHost(hostname="host1.paasta.party", pool="default")]
-    }
+        mock_kube_smartstack_replication_checker.return_value.get_allowed_locations_and_hosts.return_value = {
+            "us-north-3": [
+                DiscoveredHost(hostname="host1.paasta.party", pool="default")
+            ]
+        }
 
-    mock_get_expected_instance_count_for_namespace.return_value = 2
-    mock_backend = HaproxyBackend(
-        status="UP",
-        svname="host1_1.2.3.4:123",
-        check_status="L7OK",
-        check_code="0",
-        check_duration="1",
-        lastchg="9876",
-    )
-    mock_pod = mock.create_autospec(V1Pod)
-    mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
+        mock_get_expected_instance_count_for_namespace.return_value = 2
+        mock_backend = HaproxyBackend(
+            status="UP",
+            svname="host1_1.2.3.4:123",
+            check_status="L7OK",
+            check_code="0",
+            check_duration="1",
+            lastchg="9876",
+        )
+        mock_pod = mock.create_autospec(V1Pod)
+        mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
 
-    mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
-        service="fake_service",
-        cluster="fake_cluster",
-        instance="fake_instance",
-        config_dict={"bounce_method": "fake_bounce"},
-        branch_dict=None,
-    )
-    mock_service_namespace_config = ServiceNamespaceConfig()
-    mock_settings = mock.Mock()
+        mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"bounce_method": "fake_bounce"},
+            branch_dict=None,
+        )
+        mock_service_namespace_config = ServiceNamespaceConfig()
+        mock_settings = mock.Mock()
 
-    smartstack_status = instance.pik.mesh_status(
-        service="fake_service",
-        service_mesh=ServiceMesh.SMARTSTACK,
-        instance="fake_instance",
-        job_config=mock_job_config,
-        service_namespace_config=mock_service_namespace_config,
-        pods=[mock_pod],
-        should_return_individual_backends=True,
-        settings=mock_settings,
-    )
-    assert smartstack_status == {
-        "registration": "fake_service.fake_instance",
-        "expected_backends_per_location": 2,
-        "locations": [
-            {
-                "name": "us-north-3",
-                "running_backends_count": 1,
-                "backends": [
-                    {
-                        "hostname": "host1:1.2.3.4",
-                        "port": 123,
-                        "status": "UP",
-                        "check_status": "L7OK",
-                        "check_code": "0",
-                        "last_change": 9876,
-                        "has_associated_task": True,
-                        "check_duration": 1,
-                    }
-                ],
-            }
-        ],
-    }
+        smartstack_status = await instance.pik.mesh_status(
+            service="fake_service",
+            service_mesh=ServiceMesh.SMARTSTACK,
+            instance="fake_instance",
+            job_config=mock_job_config,
+            service_namespace_config=mock_service_namespace_config,
+            pods_task=wrap_value_in_task([mock_pod]),
+            should_return_individual_backends=True,
+            settings=mock_settings,
+        )
+        assert smartstack_status == {
+            "registration": "fake_service.fake_instance",
+            "expected_backends_per_location": 2,
+            "locations": [
+                {
+                    "name": "us-north-3",
+                    "running_backends_count": 1,
+                    "backends": [
+                        {
+                            "hostname": "host1:1.2.3.4",
+                            "port": 123,
+                            "status": "UP",
+                            "check_status": "L7OK",
+                            "check_code": "0",
+                            "last_change": 9876,
+                            "has_associated_task": True,
+                            "check_duration": 1,
+                        }
+                    ],
+                }
+            ],
+        }
 
 
 class TestMarathonMesosStatus:
@@ -1063,80 +1061,81 @@ def test_tron_instance_status(
     assert response["tron"]["action_stderr"] == "fake_stderr"
 
 
-@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
-@mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
-@mock.patch(
-    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-)
-@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_kubernetes_instance_status_bounce_method(
-    mock_long_running_instance_type_handlers,
-    mock_pods_for_service_instance,
-    mock_replicasets_for_service_instance,
-    mock_get_active_shas_for_service,
-    mock_kubernetes_job_status,
-    mock_get_kubernetes_app_by_name,
-):
-    settings.kubernetes_client = True
-    svc = "fake-svc"
-    inst = "fake-inst"
+def test_kubernetes_instance_status_bounce_method():
+    with asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+        autospec=True,
+    ) as mock_get_kubernetes_app_by_name, asynctest.patch(
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ) as mock_long_running_instance_type_handlers:
+        settings.kubernetes_client = True
+        svc = "fake-svc"
+        inst = "fake-inst"
 
-    mock_job_config = mock.Mock()
-    mock_long_running_instance_type_handlers.__getitem__ = mock.Mock(
-        return_value=mock.Mock(loader=mock.Mock(return_value=mock_job_config))
-    )
-    mock_get_kubernetes_app_by_name.return_value = mock.Mock()
+        mock_job_config = mock.Mock()
+        mock_long_running_instance_type_handlers.__getitem__ = mock.Mock(
+            return_value=mock.Mock(loader=mock.Mock(return_value=mock_job_config))
+        )
+        mock_get_kubernetes_app_by_name.return_value = mock.Mock()
 
-    actual = instance.pik.kubernetes_status(
-        service=svc,
-        instance=inst,
-        instance_type="kubernetes",
-        verbose=0,
-        include_smartstack=False,
-        include_envoy=False,
-        settings=settings,
-    )
-    assert actual["bounce_method"] == mock_job_config.get_bounce_method()
+        actual = instance.pik.kubernetes_status(
+            service=svc,
+            instance=inst,
+            instance_type="kubernetes",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            settings=settings,
+        )
+        assert actual["bounce_method"] == mock_job_config.get_bounce_method()
 
 
-@mock.patch("paasta_tools.instance.kubernetes.job_status", autospec=True)
-@mock.patch("paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True)
-@mock.patch(
-    "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-)
-@mock.patch("paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True)
-@mock.patch(
-    "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-    autospec=True,
-)
-def test_kubernetes_instance_status_evicted_nodes(
-    mock_long_running_instance_type_handlers,
-    mock_pods_for_service_instance,
-    mock_replicasets_for_service_instance,
-    mock_get_active_shas_for_service,
-    mock_kubernetes_job_status,
-):
-    mock_pod_1 = mock.Mock(status=mock.Mock(reason="Evicted"))
-    mock_pod_2 = mock.Mock()
-    mock_pods_for_service_instance.return_value = [mock_pod_1, mock_pod_2]
+def test_kubernetes_instance_status_evicted_nodes():
+    with asynctest.patch(
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
+    ), asynctest.patch(
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
+    ) as mock_pods_for_service_instance, asynctest.patch(
+        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
+        autospec=True,
+    ):
+        mock_pod_1 = mock.Mock(status=mock.Mock(reason="Evicted"))
+        mock_pod_2 = mock.Mock()
+        mock_pods_for_service_instance.return_value = [mock_pod_1, mock_pod_2]
 
-    mock_settings = mock.Mock(cluster="kubernetes")
+        mock_settings = mock.Mock(cluster="kubernetes")
 
-    instance_status = instance.pik.kubernetes_status(
-        service="fake-svc",
-        instance="fake-inst",
-        instance_type="kubernetes",
-        verbose=0,
-        include_smartstack=False,
-        include_envoy=False,
-        settings=mock_settings,
-    )
-    assert instance_status["evicted_count"] == 1
+        instance_status = instance.pik.kubernetes_status(
+            service="fake-svc",
+            instance="fake-inst",
+            instance_type="kubernetes",
+            verbose=0,
+            include_smartstack=False,
+            include_envoy=False,
+            settings=mock_settings,
+        )
+        assert instance_status["evicted_count"] == 1
 
 
 def test_get_marathon_dashboard_links():
@@ -1180,7 +1179,8 @@ def test_get_marathon_dashboard_links():
 @mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 def test_instance_mesh_status(
-    mock_validate_service_instance, mock_kubernetes_mesh_status,
+    mock_validate_service_instance,
+    mock_kubernetes_mesh_status,
 ):
     mock_validate_service_instance.return_value = "flink"
     mock_kubernetes_mesh_status.return_value = {
@@ -1276,14 +1276,20 @@ class TestBounceStatus:
         return request
 
     def test_success(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         response = instance.bounce_status(mock_request)
         assert response == mock_pik_bounce_status.return_value
 
     def test_not_found(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         with pytest.raises(ApiFailure) as excinfo:
@@ -1291,8 +1297,28 @@ class TestBounceStatus:
         assert excinfo.value.err == 404
 
     def test_not_kubernetes(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "not_kubernetes"
         response = instance.bounce_status(mock_request)
         assert response.status_code == 204
+
+    def test_timeout(
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
+        mock_settings,
+    ):
+        mock_pik_bounce_status.side_effect = [asyncio.TimeoutError]
+        mock_validate_service_instance.return_value = "kubernetes"
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 599
+        assert (
+            excinfo.value.msg
+            == "Temporary issue fetching bounce status. Please try again."
+        )

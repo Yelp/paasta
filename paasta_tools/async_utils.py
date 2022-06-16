@@ -74,7 +74,9 @@ def async_ttl_cache(
             return inner
 
     else:
-        cache2: Dict = cache if cache is not None else {}  # Should be Dict[Any, T] but that doesn't work.
+        cache2: Dict = (
+            cache if cache is not None else {}
+        )  # Should be Dict[Any, T] but that doesn't work.
 
         def outer(wrapped):
             @functools.wraps(wrapped)
@@ -86,7 +88,9 @@ def async_ttl_cache(
     return outer
 
 
-async def aiter_to_list(aiter: AsyncIterable[T],) -> List[T]:
+async def aiter_to_list(
+    aiter: AsyncIterable[T],
+) -> List[T]:
     return [x async for x in aiter]
 
 

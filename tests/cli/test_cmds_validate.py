@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 
 import mock
@@ -21,6 +22,7 @@ from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
@@ -30,10 +32,12 @@ from paasta_tools.cli.cmds.validate import validate_autoscaling_configs
 from paasta_tools.cli.cmds.validate import validate_instance_names
 from paasta_tools.cli.cmds.validate import validate_min_max_instances
 from paasta_tools.cli.cmds.validate import validate_paasta_objects
+from paasta_tools.cli.cmds.validate import validate_rollback_bounds
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @patch("paasta_tools.cli.cmds.validate.validate_autoscaling_configs", autospec=True)
@@ -257,6 +261,36 @@ def test_validate_instance_names(mock_get_file_contents, capsys):
     assert not validate_instance_names(fake_instances, "fake_path")
     output, _ = capsys.readouterr()
     assert "Length of instance name" in output
+
+
+@pytest.mark.parametrize(
+    "mock_config, expected",
+    (
+        ({}, False),
+        ({"upper_bound": None}, False),
+        ({"lower_bound": None}, False),
+        ({"lower_bound": None, "upper_bound": None}, False),
+        ({"lower_bound": 1, "upper_bound": None}, True),
+        ({"lower_bound": None, "upper_bound": 1}, True),
+        ({"lower_bound": 1}, True),
+        ({"upper_bound": 1}, True),
+    ),
+)
+def test_validate_rollback_bounds(mock_config, expected):
+    assert (
+        validate_rollback_bounds(
+            {
+                "prometheus": [
+                    {
+                        "query": "test",
+                        **mock_config,
+                    }
+                ]
+            },
+            "fake_path",
+        )
+        is expected
+    )
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -569,6 +603,118 @@ test_job:
     assert SCHEMA_INVALID in output
 
 
+@pytest.mark.parametrize(
+    "mock_content",
+    (
+        """\
+    conditions:
+        signalfx: []
+        prometheus: []
+        splunk: []
+    """,
+        """\
+    conditions:
+        signalfx: []
+        prometheus: []
+        splunk: []
+    rollback_window_s: 1000
+    check_interval_s: 10
+    enable_slo_rollback: false
+    allowed_failing_queries: 1
+    """,
+        """\
+    conditions:
+        signalfx: []
+        splunk: []
+    """,
+        """\
+    conditions:
+        splunk:
+            - query: "some fun splunk query here"
+              upper_bound: 100
+              lower_bound: null
+    """,
+        """\
+    conditions:
+        splunk:
+            - query: "some fun splunk query here"
+              upper_bound: 100
+    """,
+        """\
+    conditions:
+        splunk:
+            - query: "some fun splunk query here"
+              query_type: results
+              upper_bound: 100
+              dry_run: true
+    """,
+    ),
+)
+def test_rollback_validate_schema(mock_content, capsys):
+    # TODO: if we wanted to get fancy, we could use some advanced pytest
+    # parametrization to get an exhaustive test of all sources (in this
+    # test and in test_rollback_validate_schema_invalid), but that doesn't
+    # seem worth it at the moment
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents",
+        autospec=True,
+        return_value=mock_content,
+    ):
+        assert validate_schema("rollback-not-real.yaml", "rollback")
+    output, _ = capsys.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@pytest.mark.parametrize(
+    "mock_content",
+    (
+        "",
+        "not_a_property: true",
+        "conditions: []",
+        """\
+        conditions:
+            splunk:
+                - upper_bound: 100
+        """,
+        """\
+        conditions:
+            splunk:
+                - query: testing...
+                  upper_bound: "100"
+        """,
+        """\
+        conditions:
+            splunk:
+                - query: testing...
+                  query_type: "100"
+        """,
+        """\
+        conditions:
+            prometheus:
+                - query: testing...
+                  query_type: "results"
+        """,
+        """\
+    conditions:
+        splarnk:
+            - query: "some fun splunk query here"
+              query_type: results
+              upper_bound: 100
+              dry_run: true
+    """,
+    ),
+)
+def test_rollback_validate_schema_invalid(mock_content, capsys):
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents",
+        autospec=True,
+        return_value=mock_content,
+    ):
+        assert not validate_schema("rollback-not-real.yaml", "rollback")
+    output, _ = capsys.readouterr()
+    assert SCHEMA_INVALID in output
+
+
 @patch("paasta_tools.cli.cmds.validate.list_tron_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.validate_complete_config", autospec=True)
 def test_validate_tron_with_service_invalid(
@@ -772,7 +918,11 @@ def test_check_secrets_for_instance_missing_secret(
 
 @pytest.mark.parametrize(
     "setpoint,offset,expected",
-    [(0.5, 0.5, False), (0.5, 0.6, False), (0.8, 0.25, True),],
+    [
+        (0.5, 0.5, False),
+        (0.5, 0.6, False),
+        (0.8, 0.25, True),
+    ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
@@ -803,7 +953,15 @@ def test_validate_autoscaling_configs(
         ),
     )
 
-    assert validate_autoscaling_configs("fake-service-path") is expected
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is expected
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
@@ -824,8 +982,59 @@ def test_validate_autoscaling_configs_no_offset_specified(
         get_instance_type=mock.Mock(return_value="kubernetes"),
         is_autoscaling_enabled=mock.Mock(return_value=True),
         get_autoscaling_params=mock.Mock(
-            return_value={"metrics_provider": "uwsgi", "setpoint": 0.8,}
+            return_value={
+                "metrics_provider": "uwsgi",
+                "setpoint": 0.8,
+            }
         ),
     )
 
-    assert validate_autoscaling_configs("fake-service-path") is True
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is True
+
+
+@pytest.mark.parametrize(
+    "schedule, starting_from, num_runs, expected",
+    [
+        (
+            "0 22 * * 1-5",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            5,
+            [
+                datetime.datetime(2022, 4, 12, 22, 0),
+                datetime.datetime(2022, 4, 13, 22, 0),
+                datetime.datetime(2022, 4, 14, 22, 0),
+                datetime.datetime(2022, 4, 15, 22, 0),
+                datetime.datetime(2022, 4, 18, 22, 0),
+            ],
+        ),
+        (
+            "5 4 * * *",
+            datetime.datetime(2020, 12, 4, 18, 0),
+            2,
+            [
+                datetime.datetime(2020, 12, 5, 4, 5),
+                datetime.datetime(2020, 12, 6, 4, 5),
+            ],
+        ),
+        (
+            "0 17 29 2 *",
+            datetime.datetime(2022, 4, 12, 0, 0),
+            3,
+            [
+                datetime.datetime(2024, 2, 29, 17, 0),
+                datetime.datetime(2028, 2, 29, 17, 0),
+                datetime.datetime(2032, 2, 29, 17, 0),
+            ],
+        ),
+    ],
+)
+def test_list_upcoming_runs(schedule, starting_from, num_runs, expected):
+    assert list_upcoming_runs(schedule, starting_from, num_runs) == expected

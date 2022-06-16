@@ -58,8 +58,10 @@ class TestLongRunningServiceConfig:
             config_dict={},
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {"mode": "http", "healthcheck_uri": fake_path}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig(
+                {"mode": "http", "healthcheck_uri": fake_path}
+            )
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -88,8 +90,8 @@ class TestLongRunningServiceConfig:
             config_dict={},
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {"mode": "http"}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig({"mode": "http"})
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -115,8 +117,8 @@ class TestLongRunningServiceConfig:
             config_dict={},
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {"mode": "tcp"}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig({"mode": "tcp"})
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -146,8 +148,8 @@ class TestLongRunningServiceConfig:
             },
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig({})
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -172,8 +174,8 @@ class TestLongRunningServiceConfig:
             config_dict={"healthcheck_mode": None},
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig({})
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -199,8 +201,8 @@ class TestLongRunningServiceConfig:
             config_dict={"healthcheck_mode": None},
             branch_dict=None,
         )
-        fake_service_namespace_config = long_running_service_tools.ServiceNamespaceConfig(
-            {}
+        fake_service_namespace_config = (
+            long_running_service_tools.ServiceNamespaceConfig({})
         )
         with mock.patch(
             "paasta_tools.long_running_service_tools.load_service_namespace_config",
@@ -232,6 +234,7 @@ class TestLongRunningServiceConfig:
                 "desired_state": "start",
                 "git_sha": "c0ded00d",
                 "docker_image": "docker_image",
+                "image_version": None,
                 "force_bounce": None,
             },
         )
@@ -257,6 +260,7 @@ class TestLongRunningServiceConfig:
                 "desired_state": "start",
                 "git_sha": "c0debabe",
                 "docker_image": "docker_image",
+                "image_version": None,
                 "force_bounce": None,
             },
         )

@@ -30,6 +30,7 @@ DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 # we set a different default moving average window so that we can reuse our existing PromQL
 # without having to write a different query for existing users that want to autoscale on
 # instantaneous CPU
@@ -48,13 +49,12 @@ class AutoscalingParamsDict(TypedDict, total=False):
     uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
     good_enough_window: List[float]
+    prometheus_adapter_config: Optional[dict]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     drain_method: str
-    iam_role: str
-    iam_role_provider: str
     fs_group: int
     container_port: int
     drain_method_params: Dict
@@ -232,12 +232,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 50)
 
-    def get_iam_role(self) -> str:
-        return self.config_dict.get("iam_role", "")
-
-    def get_iam_role_provider(self) -> str:
-        return self.config_dict.get("iam_role_provider", "kiam")
-
     def get_fs_group(self) -> Optional[int]:
         return self.config_dict.get("fs_group")
 
@@ -328,7 +322,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'.
-                  """
+        """
         if self.get_desired_state() == "start":
             return self.get_instances()
         else:
@@ -354,7 +348,10 @@ class LongRunningServiceConfig(InstanceConfig):
             defaults=default_params,
         )
 
-    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+    def validate(
+        self,
+        params: Optional[List[str]] = None,
+    ) -> List[str]:
         error_messages = super().validate(params=params)
         invalid_registrations = self.get_invalid_registrations()
         if invalid_registrations:
@@ -443,7 +440,10 @@ def load_service_namespace_config(
     """
 
     smartstack_config = service_configuration_lib.read_extra_service_information(
-        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
+        service_name=service,
+        extra_info="smartstack",
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
 
     namespace_config_from_file = smartstack_config.get(namespace, {})

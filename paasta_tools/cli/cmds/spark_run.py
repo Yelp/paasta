@@ -19,8 +19,10 @@ import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
+from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_conf
+from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -29,6 +31,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
@@ -56,6 +59,11 @@ clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
+# Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
+DEFAULT_DRIVER_CORES_BY_SPARK = 1
+DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
+# Extra room for memory overhead and for any other running inside container
+DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -65,7 +73,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    spark: exec-{spark_app_name}
+    spark: {spark_pod_label}
 spec:
   affinity:
     podAffinity:
@@ -77,7 +85,7 @@ spec:
             - key: spark
               operator: In
               values:
-              - exec-{spark_app_name}
+              - {spark_pod_label}
           topologyKey: topology.kubernetes.io/hostname
 """
 
@@ -139,9 +147,37 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-e",
         "--enable-compact-bin-packing",
-        help="Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes.",
+        help=(
+            "Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes."
+            " Always true by default, keep around for backward compability."
+        ),
+        action="store_true",
+        default=True,
+    )
+    list_parser.add_argument(
+        "--disable-compact-bin-packing",
+        help=(
+            "Disable compact bin packing. Requires --cluster-manager to be kubernetes. Note: this option is only for advanced Spark configurations,"
+            " don't use it unless you've been instructed to do so."
+        ),
         action="store_true",
         default=False,
+    )
+    list_parser.add_argument(
+        "--docker-memory-limit",
+        help=(
+            "Set docker memory limit. Should be greater than driver memory. Defaults to 2x spark.driver.memory. Example: 2g, 500m, Max: 64g"
+            "Note: If memory limit provided is greater than associated with the batch instance, it will default to max memory of the box."
+        ),
+        default=None,
+    )
+    list_parser.add_argument(
+        "--docker-cpu-limit",
+        help=(
+            "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
+            "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
+        ),
+        default=None,
     )
     list_parser.add_argument(
         "--docker-registry",
@@ -244,7 +280,7 @@ def add_subparser(subparsers):
         help="Specify which cluster manager to use. Support for certain cluster managers may be experimental",
         dest="cluster_manager",
         choices=CLUSTER_MANAGERS,
-        default=CLUSTER_MANAGER_MESOS,
+        default=CLUSTER_MANAGER_K8S,
     )
 
     if clusterman_metrics:
@@ -317,6 +353,15 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
+        "--disable-aws-credential-env-variables",
+        help="Do not put AWS credentials into environment variables.  Credentials "
+        "will still be read and set in the Spark configuration.  In Spark v3.2 "
+        "you want to set this argument.",
+        action="store_true",
+        default=False,
+    )
+
+    aws_group.add_argument(
         "--aws-region",
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
@@ -357,8 +402,8 @@ def generate_pod_template_path():
     return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
 
 
-def should_enable_compact_bin_packing(enable_compact_bin_packing, cluster_manager):
-    if not enable_compact_bin_packing:
+def should_enable_compact_bin_packing(disable_compact_bin_packing, cluster_manager):
+    if disable_compact_bin_packing:
         return False
 
     if cluster_manager != CLUSTER_MANAGER_K8S:
@@ -376,8 +421,22 @@ def should_enable_compact_bin_packing(enable_compact_bin_packing, cluster_manage
     return True
 
 
-def get_docker_run_cmd(container_name, volumes, env, docker_img, docker_cmd, nvidia):
+def get_docker_run_cmd(
+    container_name,
+    volumes,
+    env,
+    docker_img,
+    docker_cmd,
+    nvidia,
+    docker_memory_limit,
+    docker_cpu_limit,
+):
+    print(
+        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} core(s) respectively."
+    )
     cmd = ["paasta_docker_wrapper", "run"]
+    cmd.append(f"--memory={docker_memory_limit}")
+    cmd.append(f"--cpus={docker_cpu_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
 
@@ -473,14 +532,15 @@ def get_spark_env(
     """Create the env config dict to configure on the docker container"""
 
     spark_env = {}
+    if not args.disable_aws_credential_env_variables:
+        access_key, secret_key, session_token = aws_creds
+        if access_key:
+            spark_env["AWS_ACCESS_KEY_ID"] = access_key
+            spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+            if session_token is not None:
+                spark_env["AWS_SESSION_TOKEN"] = session_token
 
-    access_key, secret_key, session_token = aws_creds
-    if access_key:
-        spark_env["AWS_ACCESS_KEY_ID"] = access_key
-        spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-        spark_env["AWS_DEFAULT_REGION"] = args.aws_region
-        if session_token is not None:
-            spark_env["AWS_SESSION_TOKEN"] = session_token
+    spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
     spark_env["PAASTA_INSTANCE_TYPE"] = "spark"
 
@@ -557,7 +617,15 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
 
 
 def run_docker_container(
-    container_name, volumes, environment, docker_img, docker_cmd, dry_run, nvidia
+    container_name,
+    volumes,
+    environment,
+    docker_img,
+    docker_cmd,
+    dry_run,
+    nvidia,
+    docker_memory_limit,
+    docker_cpu_limit,
 ) -> int:
 
     docker_run_args = dict(
@@ -567,6 +635,8 @@ def run_docker_container(
         docker_img=docker_img,
         docker_cmd=docker_cmd,
         nvidia=nvidia,
+        docker_memory_limit=docker_memory_limit,
+        docker_cpu_limit=docker_cpu_limit,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
 
@@ -606,6 +676,51 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     return spark_app_name
 
 
+def _calculate_docker_memory_limit(
+    spark_conf: Mapping[str, str], memory_limit: Optional[str]
+) -> str:
+    """In Order of preference:
+    1. Argument: --docker-memory-limit
+    2. --spark-args or spark-submit: spark.driver.memory
+    3. Default
+    """
+    if memory_limit:
+        return memory_limit
+
+    try:
+        docker_memory_limit_str = spark_conf.get(
+            "spark.driver.memory", DEFAULT_DRIVER_MEMORY_BY_SPARK
+        )
+        adjustment_factor = DOCKER_RESOURCE_ADJUSTMENT_FACTOR
+        match = re.match(r"([0-9]+)([a-z]*)", docker_memory_limit_str)
+        memory_val = int(match[1]) * adjustment_factor
+        memory_unit = match[2]
+        docker_memory_limit = f"{memory_val}{memory_unit}"
+    except Exception as e:
+        # For any reason it fails, continue with default value
+        print(
+            f"ERROR: Failed to parse docker memory limit. Error: {e}. Example values: 1g, 200m."
+        )
+        raise
+
+    return docker_memory_limit
+
+
+def _calculate_docker_cpu_limit(
+    spark_conf: Mapping[str, str], cpu_limit: Optional[str]
+) -> str:
+    """In Order of preference:
+    1. Argument: --docker-cpu-limit
+    2. --spark-args or spark-submit: spark.driver.cores
+    3. Default
+    """
+    return (
+        cpu_limit
+        if cpu_limit
+        else spark_conf.get("spark.driver.cores", str(DEFAULT_DRIVER_CORES_BY_SPARK))
+    )
+
+
 def configure_and_run_docker_container(
     args: argparse.Namespace,
     docker_img: str,
@@ -619,6 +734,15 @@ def configure_and_run_docker_container(
 
     # driver specific volumes
     volumes: List[str] = []
+
+    docker_memory_limit = _calculate_docker_memory_limit(
+        spark_conf, args.docker_memory_limit
+    )
+    docker_cpu_limit = _calculate_docker_cpu_limit(
+        spark_conf,
+        args.docker_cpu_limit,
+    )
+
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = (
             spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
@@ -679,14 +803,21 @@ def configure_and_run_docker_container(
             )
     print(f"Selected cluster manager: {cluster_manager}\n")
 
-    if clusterman_metrics and _should_emit_resource_requirements(
-        docker_cmd, args.mrjob
-    ):
+    if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
         try:
-            print("Sending resource request metrics to Clusterman")
-            hourly_cost, resources = send_and_calculate_resources_cost(
-                clusterman_metrics, spark_conf, webui_url, args.pool
-            )
+            if cluster_manager == CLUSTER_MANAGER_MESOS:
+                print("Sending resource request metrics to Clusterman")
+                hourly_cost, resources = send_and_calculate_resources_cost(
+                    clusterman_metrics, spark_conf, webui_url, args.pool
+                )
+            else:
+                resources = get_resources_requested(spark_conf)
+                hourly_cost = get_spark_hourly_cost(
+                    clusterman_metrics,
+                    resources,
+                    spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
+                    args.pool,
+                )
             message = (
                 f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
                 f" is estimated to cost ${hourly_cost} per hour"
@@ -716,10 +847,12 @@ def configure_and_run_docker_container(
         docker_cmd=docker_cmd,
         dry_run=args.dry_run,
         nvidia=args.nvidia,
+        docker_memory_limit=docker_memory_limit,
+        docker_cpu_limit=docker_cpu_limit,
     )
 
 
-def _should_emit_resource_requirements(docker_cmd, is_mrjob):
+def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
     return is_mrjob or any(
         c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]
     )
@@ -839,7 +972,9 @@ def paasta_spark_run(args):
         instance_config = get_instance_config(
             service=args.service,
             instance=args.instance,
-            cluster=args.cluster,
+            cluster=system_paasta_config.get_cluster_aliases().get(
+                args.cluster, args.cluster
+            ),
             load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
@@ -878,14 +1013,16 @@ def paasta_spark_run(args):
 
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
-        args.enable_compact_bin_packing, args.cluster_manager
+        args.disable_compact_bin_packing, args.cluster_manager
     )
 
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
     if args.enable_compact_bin_packing:
-        document = POD_TEMPLATE.format(spark_app_name=app_base_name)
+        document = POD_TEMPLATE.format(
+            spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
+        )
         parsed_pod_template = yaml.load(document)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
@@ -894,6 +1031,17 @@ def paasta_spark_run(args):
     user_spark_opts = _parse_user_spark_args(
         args.spark_args, pod_template_path, args.enable_compact_bin_packing
     )
+
+    # This is required if configs are provided as part of `spark-submit`
+    # Other way to provide is with --spark-args
+    sub_cmds = args.cmd.split(" ")  # spark.driver.memory=10g
+    for cmd in sub_cmds:
+        if cmd.startswith("spark.driver.memory") or cmd.startswith(
+            "spark.driver.cores"
+        ):
+            key, value = cmd.split("=")
+            user_spark_opts[key] = value
+
     paasta_instance = get_smart_paasta_instance_name(args)
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,

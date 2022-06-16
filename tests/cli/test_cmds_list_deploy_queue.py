@@ -35,7 +35,8 @@ def mock_load_system_paasta_config():
 @pytest.fixture(autouse=True)
 def mock_list_clusters():
     with mock.patch(
-        "paasta_tools.cli.cmds.list_deploy_queue.list_clusters", autospec=True,
+        "paasta_tools.cli.cmds.list_deploy_queue.list_clusters",
+        autospec=True,
     ) as _mock_list_clusters:
         _mock_list_clusters.return_value = ["westeros-prod"]
         yield
@@ -44,7 +45,8 @@ def mock_list_clusters():
 @pytest.fixture()
 def mock_api():
     with mock.patch(
-        "paasta_tools.cli.cmds.list_deploy_queue.get_paasta_oapi_client", autospec=True,
+        "paasta_tools.cli.cmds.list_deploy_queue.get_paasta_oapi_client",
+        autospec=True,
     ) as m:
         yield m.return_value
 
@@ -93,7 +95,8 @@ def test_list_deploy_queue(mock_api, capfd):
 def test_list_deploy_queue_json(mock_api, capfd):
     args = mock.Mock(cluster="westeros-prod", json=True)
     mock_api.default.deploy_queue.return_value = DeployQueue(
-        available_service_instances=[], unavailable_service_instances=[],
+        available_service_instances=[],
+        unavailable_service_instances=[],
     )
 
     return_value = list_deploy_queue(args)

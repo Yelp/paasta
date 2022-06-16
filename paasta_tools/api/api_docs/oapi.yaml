@@ -280,6 +280,14 @@ components:
             items:
               type: string
               nullable: true
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -333,6 +341,12 @@ components:
     InstanceSpecKafkaCluster:
       description: Kafka instance spec
       type: object
+    InstanceMetadataCassandraCluster:
+      description: Cassandra instance metadata
+      type: object
+    InstanceSpecCassandraCluster:
+      description: Cassandra instance spec
+      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -352,6 +366,14 @@ components:
         instance:
           description: Instance name
           type: string
+        cassandracluster:
+          description: Nullable CassandraCluster instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceMetadataCassandraCluster'
+            status:
+              $ref: '#/components/schemas/InstanceStatusCassandraCluster'
+          type: object
         kafkacluster:
           description: Nullable KafkaCluster instance status and metadata
           properties:
@@ -387,6 +409,9 @@ components:
     InstanceStatusFlinkStatus:
       description: Flink instance status
       type: object
+    InstanceStatusCassandraCluster:
+      description: Cassandra instance status
+      type: object
     InstanceStatusKafkaCluster:
       description: Kafka instance status
       type: object
@@ -402,6 +427,16 @@ components:
               nullable: true
             minItems: 2
             maxItems: 2
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -563,6 +598,16 @@ components:
               nullable: true
             minItems: 2
             maxItems: 2
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -915,6 +960,11 @@ components:
         git_sha:
           description: Git SHA of service code for this version of the instance
           type: string
+        image_version:
+          description: Additional metadata identifying the image used for this
+            version of the instance
+          type: string
+          nullable: true
         config_sha:
           description: SHA of configuration for this instance
           type: string
@@ -1561,6 +1611,8 @@ paths:
           description: Deployment key not found
         "500":
           description: Instance failure
+        "599":
+          description: Temporary issue fetching instance status
       summary: Get bounce status of service_name.instance_name
       tags:
       - service

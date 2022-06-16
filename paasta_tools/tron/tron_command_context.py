@@ -44,9 +44,9 @@ class CommandContext:
 
     def __init__(self, base=None, next=None):
         """
-          base - Object to look for attributes in
-          next - Next place to look for more pieces of context
-                 Generally this will be another instance of CommandContext
+        base - Object to look for attributes in
+        next - Next place to look for more pieces of context
+               Generally this will be another instance of CommandContext
         """
         self.base = base or {}
         self.next = next or {}

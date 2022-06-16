@@ -13,19 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains methods used by the paasta client to build a docker image."""
+import argparse
 import os
 import sys
+from typing import Optional
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
+from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_username
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     list_parser = subparsers.add_parser(
         "cook-image",
         description="Calls 'make cook-image' as part of the PaaSTA contract",
@@ -54,22 +57,57 @@ def add_subparser(subparsers):
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
+    list_parser.add_argument(
+        "-c",
+        "--commit",
+        help="Git sha used to construct tag for built image",
+    )
+    list_parser.add_argument(
+        "--image-version",
+        type=str,
+        required=False,
+        default=None,
+        help="Extra version metadata used to construct tag for built image",
+    )
     list_parser.set_defaults(command=paasta_cook_image)
 
 
-def paasta_cook_image(args, service=None, soa_dir=None):
+def paasta_cook_image(
+    args: Optional[argparse.Namespace],
+    service: Optional[str] = None,
+    soa_dir: Optional[str] = None,
+) -> int:
     """Build a docker image"""
     if not service:
+        if args is None:
+            print(
+                "ERROR: No arguments or service passed to cook-image - unable to determine what service to cook an image for",
+                file=sys.stderr,
+            )
+            return 1
         service = args.service
-    if service.startswith("services-"):
+    if service and service.startswith("services-"):
         service = service.split("services-", 1)[1]
     if not soa_dir:
+        if args is None:
+            print(
+                "ERROR: No arguments or soadir passed to cook-image - unable to determine where to look for soa-configs",
+                file=sys.stderr,
+            )
+            return 1
         soa_dir = args.yelpsoa_config_root
+
     validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
-    default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
-    tag = run_env.get("DOCKER_TAG", default_tag)
+    if args is not None and args.commit is not None:
+        # if we're given a commit, we're likely being called by Jenkins or someone
+        # trying to push the cooked image to our registry - as such, we should tag
+        # the cooked image as `paasta itest` would.
+        tag = build_docker_tag(service, args.commit, args.image_version)
+    else:
+        default_tag = "paasta-cook-image-{}-{}".format(service, get_username())
+        tag = run_env.get("DOCKER_TAG", default_tag)
     run_env["DOCKER_TAG"] = tag
 
     if not makefile_responds_to("cook-image"):

@@ -98,9 +98,9 @@ def list_remote_refs(git_url):
 
 
 def get_authors(git_url, from_sha, to_sha):
-    """ Gets the list of authors who contributed to a git changeset.
+    """Gets the list of authors who contributed to a git changeset.
     Currently only supports fetching this in a very "yelpy" way by
-    executing a gitolite command """
+    executing a gitolite command"""
     matches = re.match("(?P<git_server>.*):(?P<git_repo>.*)", git_url)
     if matches is None:
         return (1, f"could not understand the git url {git_url} for authors detection")

@@ -50,6 +50,7 @@ def fake_bounce_status_resp(**kwargs):
         desired_state="start",
         app_count=1,
         active_shas=[["abc123", "cfg"]],
+        active_versions=[["abc123", None, "cfg"]],
         deploy_status="Running",
     )
     for k, v in kwargs.items():
@@ -61,6 +62,7 @@ def fake_bounce_status_resp(**kwargs):
     "side_effect,expected",
     [
         (ApiException(status=500, reason=""), False),  # api bad
+        (ApiException(status=599, reason=""), False),  # temporary api issue
         (ApiException(status=404, reason=""), False),  # instance dne
         ([""], True),  # status=204 produces empty response
         (  # instance stopped
@@ -71,7 +73,8 @@ def fake_bounce_status_resp(**kwargs):
         (  # bounce in-progress
             [
                 fake_bounce_status_resp(
-                    active_shas=[["wrong1", "cfg"], ["abc123", "cfg"]]
+                    active_shas=[["wrong1", "cfg"], ["abc123", "cfg"]],
+                    active_versions=[["wrong1", None, "cfg"], ["abc123", None, "cfg"]],
                 )
             ],
             False,
@@ -83,13 +86,23 @@ def fake_bounce_status_resp(**kwargs):
                         ["wrong1", "cfg"],
                         ["wrong2", "cfg"],
                         ["abc123", "cfg"],
-                    ]
+                    ],
+                    active_versions=[
+                        ["wrong1", None, "cfg"],
+                        ["wrong2", None, "cfg"],
+                        ["abc123", None, "cfg"],
+                    ],
                 )
             ],
             False,
         ),
         (  # bounce not started
-            [fake_bounce_status_resp(active_shas=[["wrong1", "cfg"]])],
+            [
+                fake_bounce_status_resp(
+                    active_shas=[["wrong1", "cfg"]],
+                    active_versions=[["wrong1", None, "cfg"]],
+                )
+            ],
             False,
         ),
         (  # instance not running
@@ -222,7 +235,9 @@ def test_wait_for_deployment(
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment._log", autospec=True)
 def test_wait_for_deployment_raise_no_such_cluster(
-    mock__log, mock_paasta_service_config_loader, mock_load_system_paasta_config,
+    mock__log,
+    mock_paasta_service_config_loader,
+    mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value.get_api_endpoints.return_value = {
         "cluster1": "some_url_1",

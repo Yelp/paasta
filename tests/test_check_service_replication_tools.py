@@ -17,9 +17,11 @@ def test_main_kubernetes():
         "paasta_tools.check_services_replication_tools.load_system_paasta_config",
         autospec=True,
     ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.check_services_replication_tools.yelp_meteorite", autospec=True,
+        "paasta_tools.check_services_replication_tools.yelp_meteorite",
+        autospec=True,
     ) as mock_yelp_meteorite, mock.patch(
-        "paasta_tools.check_services_replication_tools.sys.exit", autospec=True,
+        "paasta_tools.check_services_replication_tools.sys.exit",
+        autospec=True,
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
@@ -27,7 +29,9 @@ def test_main_kubernetes():
         mock_check_services_replication.return_value = (6, 100)
 
         check_services_replication_tools.main(
-            instance_type_class=None, check_service_replication=None, namespace="baz",
+            instance_type_class=None,
+            check_service_replication=None,
+            namespace="baz",
         )
         assert mock_check_services_replication.called
 
@@ -58,9 +62,11 @@ def test_main_mesos():
         "paasta_tools.check_services_replication_tools.load_system_paasta_config",
         autospec=True,
     ) as mock_load_system_paasta_config, mock.patch(
-        "paasta_tools.check_services_replication_tools.yelp_meteorite", autospec=True,
+        "paasta_tools.check_services_replication_tools.yelp_meteorite",
+        autospec=True,
     ) as mock_yelp_meteorite, mock.patch(
-        "paasta_tools.check_services_replication_tools.sys.exit", autospec=True,
+        "paasta_tools.check_services_replication_tools.sys.exit",
+        autospec=True,
     ) as mock_sys_exit:
         mock_parse_args.return_value.under_replicated_crit_pct = 5
         mock_parse_args.return_value.min_count_critical = 1
