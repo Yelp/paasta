@@ -39,7 +39,10 @@ class TestGetClusterOverview:
         return request
 
     def test_success(
-        self, mock_get_cluster_overview, mock_curl_flink_endpoint, mock_request,
+        self,
+        mock_get_cluster_overview,
+        mock_curl_flink_endpoint,
+        mock_request,
     ):
         mock_curl_flink_endpoint.return_value = {
             "taskmanagers": 5,
@@ -55,10 +58,74 @@ class TestGetClusterOverview:
         response = flink.get_cluster_overview(mock_request)
         assert response == mock_get_cluster_overview.return_value
 
-    # def test_not_found(
-    #     self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
-    # ):
-    #     mock_validate_service_instance.side_effect = NoConfigurationForServiceError
-    #     with pytest.raises(ApiFailure) as excinfo:
-    #         instance.bounce_status(mock_request)
-    #     assert excinfo.value.err == 404
+
+@mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
+@mock.patch("paasta_tools.api.views.flink.get_cluster_config", autospec=True)
+class TestGetClusterConfig:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.flink.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+        }
+        return request
+
+    def test_success(
+        self,
+        mock_get_cluster_config,
+        mock_curl_flink_endpoint,
+        mock_request,
+    ):
+        mock_curl_flink_endpoint.return_value = {
+            "refresh-interval": 3000,
+            "timezone-name": "Coordinated Universal Time",
+            "timezone-offset": 0,
+            "flink-version": "1.13.5",
+            "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
+            "features": {"web-submit": True},
+        }
+
+        response = flink.get_cluster_config(mock_request)
+        assert response == mock_get_cluster_config.return_value
+
+
+@mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
+@mock.patch("paasta_tools.api.views.flink.list_cluster_jobs", autospec=True)
+class TestListClusterJobs:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.flink.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+        }
+        return request
+
+    def test_success(
+        self,
+        mock_list_cluster_jobs,
+        mock_curl_flink_endpoint,
+        mock_request,
+    ):
+        mock_list_cluster_jobs.return_value = {
+            "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
+        }
+        response = flink.list_cluster_jobs(mock_request)
+        assert response == mock_list_cluster_jobs.return_value

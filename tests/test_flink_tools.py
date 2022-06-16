@@ -23,6 +23,104 @@ def test_get_flink_ingress_url_root():
     )
 
 
+def test_curl_flink_endpoint_overview():
+    with mock.patch(
+        "paasta_tools.flink_tools._dashboard_get",
+        autospec=True,
+        return_value="""
+        {
+            "taskmanagers": 5,
+            "slots-total": 25,
+            "slots-available": 3,
+            "jobs-running": 1,
+            "jobs-finished": 0,
+            "jobs-cancelled": 0,
+            "jobs-failed": 0,
+            "flink-version": "1.13.5",
+            "flink-commit": "0ff28a7"
+        }
+        """,
+    ) as mock_dashboard_get:
+        cluster = "test_cluster"
+        cr_name = "kurupt--fm-7c7b459d59"
+        overview = flink_tools.curl_flink_endpoint(cr_name, cluster, "overview")
+        mock_dashboard_get.assert_called_once_with(
+            cr_name=cr_name, cluster=cluster, path="overview"
+        )
+
+        assert overview == {
+            "taskmanagers": 5,
+            "slots-total": 25,
+            "slots-available": 3,
+            "jobs-running": 1,
+            "jobs-finished": 0,
+            "jobs-cancelled": 0,
+            "jobs-failed": 0,
+            "flink-version": "1.13.5",
+            "flink-commit": "0ff28a7",
+        }
+
+
+def test_curl_flink_endpoint_config():
+    with mock.patch(
+        "paasta_tools.flink_tools._dashboard_get",
+        autospec=True,
+        return_value="""
+            {
+                "refresh-interval":3000,
+                "timezone-name":"Coordinated Universal Time",
+                "timezone-offset":0,
+                "flink-version":"1.13.5",
+                "flink-revision":"0ff28a7 @ 2021-12-14T23:26:04+01:00",
+                "features": { "web-submit":true }
+            }
+        """,
+    ) as mock_dashboard_get:
+        cluster = "test_cluster"
+        cr_name = "kurupt--fm-7c7b459d59"
+        config = flink_tools.curl_flink_endpoint(cr_name, cluster, "config")
+        mock_dashboard_get.assert_called_once_with(
+            cr_name=cr_name, cluster=cluster, path="config"
+        )
+
+        assert config == {
+            "refresh-interval": 3000,
+            "timezone-name": "Coordinated Universal Time",
+            "timezone-offset": 0,
+            "flink-version": "1.13.5",
+            "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
+            "features": {"web-submit": True},
+        }
+
+
+def test_curl_flink_endpoint_list_jobs():
+    with mock.patch(
+        "paasta_tools.flink_tools._dashboard_get",
+        autospec=True,
+        return_value="""
+            {
+                "jobs":
+                    [
+                        {
+                            "id": "4210f0646f5c9ce1db0b3e5ae4372b82",
+                            "status":"RUNNING"
+                        }
+                    ]
+            }
+        """,
+    ) as mock_dashboard_get:
+        cluster = "test_cluster"
+        cr_name = "kurupt--fm-7c7b459d59"
+        jobs = flink_tools.curl_flink_endpoint(cr_name, cluster, "jobs")
+        mock_dashboard_get.assert_called_once_with(
+            cr_name=cr_name, cluster=cluster, path="jobs"
+        )
+
+        assert jobs == {
+            "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
+        }
+
+
 def test_get_flink_jobmanager_overview():
     with mock.patch(
         "paasta_tools.flink_tools._dashboard_get",
