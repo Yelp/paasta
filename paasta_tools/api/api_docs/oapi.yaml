@@ -1298,6 +1298,102 @@ paths:
                 $ref: '#/components/schemas/DeployQueue'
           description: Contents of deploy queue
       summary: Get deploy queue contents
+  /flink/{service}/{instance}/config:
+    get:
+      operationId: get_flink_cluster_config
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkConfig'
+          description: Get config of a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get config of a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/jobs:
+    get:
+      operationId: list_flink_cluster_jobs
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkJobs'
+          description: Get list of flink jobs in a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get list of flink jobs in a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/overview:
+    get:
+      operationId: get_flink_cluster_overview
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkClusterOverview'
+          description: Getoverview of a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get overview of a flink cluster
+      tags:
+      - service
   /marathon_dashboard:
     get:
       operationId: marathon_dashboard

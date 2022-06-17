@@ -26,7 +26,7 @@ from paasta_tools.flink_tools import curl_flink_endpoint
 @view_config(
     route_name="flink.service.instance.jobs", request_method="GET", renderer="json"
 )
-def list_cluster_jobs(request):
+def list_flink_cluster_jobs(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:
@@ -38,7 +38,7 @@ def list_cluster_jobs(request):
 @view_config(
     route_name="flink.service.instance.overview", request_method="GET", renderer="json"
 )
-def get_cluster_overview(request):
+def get_flink_cluster_overview(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:
@@ -52,7 +52,7 @@ def get_cluster_overview(request):
 @view_config(
     route_name="flink.service.instance.config", request_method="GET", renderer="json"
 )
-def get_cluster_config(request):
+def get_flink_cluster_config(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:

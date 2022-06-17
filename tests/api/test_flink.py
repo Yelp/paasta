@@ -19,8 +19,8 @@ from paasta_tools.api.views import flink
 
 
 @mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
-@mock.patch("paasta_tools.api.views.flink.get_cluster_overview", autospec=True)
-class TestGetClusterOverview:
+@mock.patch("paasta_tools.api.views.flink.get_flink_cluster_overview", autospec=True)
+class TestGetFlinkClusterOverview:
     @pytest.fixture(autouse=True)
     def mock_settings(self):
         with mock.patch(
@@ -40,7 +40,7 @@ class TestGetClusterOverview:
 
     def test_success(
         self,
-        mock_get_cluster_overview,
+        mock_get_flink_cluster_overview,
         mock_curl_flink_endpoint,
         mock_request,
     ):
@@ -55,13 +55,13 @@ class TestGetClusterOverview:
             "flink-version": "1.13.5",
             "flink-commit": "0ff28a7",
         }
-        response = flink.get_cluster_overview(mock_request)
-        assert response == mock_get_cluster_overview.return_value
+        response = flink.get_flink_cluster_overview(mock_request)
+        assert response == mock_get_flink_cluster_overview.return_value
 
 
 @mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
-@mock.patch("paasta_tools.api.views.flink.get_cluster_config", autospec=True)
-class TestGetClusterConfig:
+@mock.patch("paasta_tools.api.views.flink.get_flink_cluster_config", autospec=True)
+class TestGetFlinkClusterConfig:
     @pytest.fixture(autouse=True)
     def mock_settings(self):
         with mock.patch(
@@ -81,7 +81,7 @@ class TestGetClusterConfig:
 
     def test_success(
         self,
-        mock_get_cluster_config,
+        mock_get_flink_cluster_config,
         mock_curl_flink_endpoint,
         mock_request,
     ):
@@ -94,13 +94,13 @@ class TestGetClusterConfig:
             "features": {"web-submit": True},
         }
 
-        response = flink.get_cluster_config(mock_request)
-        assert response == mock_get_cluster_config.return_value
+        response = flink.get_flink_cluster_config(mock_request)
+        assert response == mock_get_flink_cluster_config.return_value
 
 
 @mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
-@mock.patch("paasta_tools.api.views.flink.list_cluster_jobs", autospec=True)
-class TestListClusterJobs:
+@mock.patch("paasta_tools.api.views.flink.list_flink_cluster_jobs", autospec=True)
+class TestListFlinkClusterJobs:
     @pytest.fixture(autouse=True)
     def mock_settings(self):
         with mock.patch(
@@ -127,5 +127,5 @@ class TestListClusterJobs:
         mock_list_cluster_jobs.return_value = {
             "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
         }
-        response = flink.list_cluster_jobs(mock_request)
+        response = flink.list_flink_cluster_jobs(mock_request)
         assert response == mock_list_cluster_jobs.return_value
