@@ -637,7 +637,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
-        self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
+        self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -1837,8 +1837,7 @@ def compose_timeout_message(
     timeout: float,
     deploy_group: str,
     service: str,
-    git_sha: str,
-    image_version: Optional[str] = None,
+    version: DeploymentVersion,
 ) -> str:
     paasta_status = []
     paasta_logs = []
@@ -1871,8 +1870,10 @@ def compose_timeout_message(
             timeout=timeout,
             deploy_group=deploy_group,
             service=service,
-            git_sha=git_sha,
-            image_arg=f" --image-version {image_version}" if image_version else "",
+            git_sha=version.sha,
+            image_arg=f" --image-version {version.image_version}"
+            if version.image_version
+            else "",
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
             stuck_bounce_runbook=os.environ.get(
