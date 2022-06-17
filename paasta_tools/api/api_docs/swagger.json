@@ -341,6 +341,123 @@
                 ]
             }
         },
+        "/flink/{service}/{instance}/jobs": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "List of jobs in flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkJobs"
+                        }
+                    },
+                    "404": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Internal failure"
+                    }
+                },
+                "summary": "Get list of jobs in flink cluster",
+                "operationId": "list_cluster_jobs",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/flink/{service}/{instance}/config": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Get config of flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkConfig"
+                        }
+                    },
+                    "404": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Internal failure"
+                    }
+                },
+                "summary": "Get config of flink cluster",
+                "operationId": "get_cluster_config",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
+        "/flink/{service}/{instance}/overview": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "Get overview of a flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkClusterOverview"
+                        }
+                    },
+                    "404": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Internal failure"
+                    }
+                },
+                "summary": "Get overview of a flink cluster",
+                "operationId": "get_cluster_overview",
+                "tags": [
+                    "service"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "description": "Service name",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "in": "path",
+                        "description": "Instance name",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ]
+            }
+        },
         "/services/{service}/{instance}/status": {
             "get": {
                 "responses": {
