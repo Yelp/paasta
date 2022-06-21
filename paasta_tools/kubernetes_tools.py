@@ -102,6 +102,7 @@ from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V1WeightedPodAffinityTerm
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerCondition
@@ -264,6 +265,10 @@ class KubeAffinityCondition(TypedDict, total=False):
     instance: str
 
 
+class KubeWeightedAffinityCondition(KubeAffinityCondition):
+    weight: int
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -336,6 +341,9 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
+    anti_affinity_preferred: Union[
+        KubeWeightedAffinityCondition, List[KubeWeightedAffinityCondition]
+    ]
     prometheus_shard: str
     prometheus_path: str
     prometheus_port: int
@@ -1915,12 +1923,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             required_during_scheduling_ignored_during_execution=selector,
         )
 
-    def get_pod_anti_affinity(self) -> Optional[V1PodAntiAffinity]:
-        """
-        Converts the given anti-affinity on service and instance to pod
-        affinities with the "paasta.yelp.com" prefixed label selector
-        :return:
-        """
+    def get_pod_required_anti_affinity_terms(
+        self,
+    ) -> Optional[List[V1PodAffinityTerm]]:
         conditions = self.config_dict.get("anti_affinity", [])
         if not conditions:
             return None
@@ -1941,9 +1946,50 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         label_selector=label_selector,
                     )
                 )
+        return affinity_terms
+
+    def get_pod_preferred_anti_affinity_terms(
+        self,
+    ) -> Optional[List[V1WeightedPodAffinityTerm]]:
+        conditions = self.config_dict.get("anti_affinity_preferred", [])
+        if not conditions:
+            return None
+
+        if not isinstance(conditions, list):
+            conditions = [conditions]
+
+        affinity_terms = []
+        for condition in conditions:
+            label_selector = self._kube_affinity_condition_to_label_selector(condition)
+            if label_selector:
+                affinity_terms.append(
+                    V1WeightedPodAffinityTerm(
+                        # Topology of a hostname means the pod of this service
+                        # cannot be scheduled on host containing another pod
+                        # matching the label_selector
+                        topology_key="kubernetes.io/hostname",
+                        label_selector=label_selector,
+                        weight=condition["weight"],
+                    )
+                )
+        return affinity_terms
+
+    def get_pod_anti_affinity(self) -> Optional[V1PodAntiAffinity]:
+        """
+        Converts the given anti-affinity on service and instance to pod
+        affinities with the "paasta.yelp.com" prefixed label selector
+        :return:
+        """
+
+        required_terms = self.get_pod_required_anti_affinity_terms()
+        preferred_terms = self.get_pod_preferred_anti_affinity_terms()
+
+        if required_terms is None and preferred_terms is None:
+            return None
 
         return V1PodAntiAffinity(
-            required_during_scheduling_ignored_during_execution=affinity_terms
+            required_during_scheduling_ignored_during_execution=required_terms,
+            preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
     def _kube_affinity_condition_to_label_selector(

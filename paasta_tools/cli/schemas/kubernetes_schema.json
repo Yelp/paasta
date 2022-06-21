@@ -737,6 +737,43 @@
                         }
                     ]
                 },
+                "anti_affinity_preferred": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string"
+                                },
+                                "instance": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string"
+                                    },
+                                    "instance": {
+                                        "type": "string"
+                                    },
+                                    "weight": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 100,
+                                        "exclusiveMinimum": false,
+                                        "exclusiveMaximum": false
+                                    }
+                                }
+                            },
+                            "uniqueItems": true
+                        }
+                    ]
+                },
                 "prometheus_shard": {
                     "type": "string"
                 },
