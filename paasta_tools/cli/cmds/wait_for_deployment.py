@@ -172,9 +172,9 @@ def get_latest_marked_version(
 def validate_version_is_latest(
     version: DeploymentVersion, git_url: str, deploy_group: str, service: str
 ):
-    """Verify if git_sha is the latest sha marked for deployment.
+    """Verify if the requested version  is the latest marked for deployment.
 
-    Raise exception when the provided git_sha is not the latest
+    Raise exception when the provided version is not the latest
     marked for deployment in 'deploy_group' for 'service'.
     """
     try:
