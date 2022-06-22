@@ -81,7 +81,7 @@ class FlinkJobs(ModelNormal):
         """
         lazy_import()
         return {
-            'jobs': (FlinkJob,),  # noqa: E501
+            'jobs': ([FlinkJob],),  # noqa: E501
         }
 
     @cached_property
@@ -139,7 +139,7 @@ class FlinkJobs(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            jobs (FlinkJob): [optional]  # noqa: E501
+            jobs ([FlinkJob]): Flink jobs. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

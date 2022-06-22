@@ -209,14 +209,14 @@ components:
       type: object
     FlinkJobDetails:
       properties:
-        id:
+        jid:
           type: string
           description: ID of the flink job
         name:
           type: string
           description: name of the flink job
-        status:
-          description: status of the flink job
+        state:
+          description: state of the flink job
           enum:
             - INITIALIZING
             - CREATED
@@ -232,24 +232,16 @@ components:
           type: string
         start-time:
           description: timestamp of job start time
-          type: integer
-          format: int64
-        end-time:
-          description: timestamp of the job end time, or -1 if it did not end yet.
-          type: integer
-          format: int64
-        timestamps:
-          description: Mapping of the job states to the timestamp of the state
-          type: object
-        status-counts:
-          description: Mapping of task states to the number of tasks in a specific state
-          type: object
+          format: float
+          type: number
       type: object
     FlinkJobs:
       properties:
         jobs:
-          $ref: '#/components/schemas/FlinkJob'
+          items:
+            $ref: '#/components/schemas/FlinkJob'
           description: Flink jobs
+          type: array
     FloatAndError:
       properties:
         error_message:
@@ -1360,6 +1352,44 @@ paths:
         "599":
           description: Temporary issue fetching instance
       summary: Get list of flink jobs in a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/jobs/{job_id}:
+    get:
+      operationId: get_flink_cluster_job_details
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Job id
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkJobDetails'
+          description: Get details of a flink job in a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get details of a flink job in a flink cluster
       tags:
       - service
   /flink/{service}/{instance}/overview:

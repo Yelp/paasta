@@ -56,7 +56,7 @@ class FlinkJobDetails(ModelNormal):
     """
 
     allowed_values = {
-        ('status',): {
+        ('state',): {
             'INITIALIZING': "INITIALIZING",
             'CREATED': "CREATED",
             'RUNNING': "RUNNING",
@@ -89,13 +89,10 @@ class FlinkJobDetails(ModelNormal):
                 and the value is attribute type.
         """
         return {
-            'id': (str,),  # noqa: E501
+            'jid': (str,),  # noqa: E501
             'name': (str,),  # noqa: E501
-            'status': (str,),  # noqa: E501
-            'start_time': (int,),  # noqa: E501
-            'end_time': (int,),  # noqa: E501
-            'timestamps': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),  # noqa: E501
-            'status_counts': ({str: (bool, date, datetime, dict, float, int, list, str, none_type)},),  # noqa: E501
+            'state': (str,),  # noqa: E501
+            'start_time': (float,),  # noqa: E501
         }
 
     @cached_property
@@ -104,13 +101,10 @@ class FlinkJobDetails(ModelNormal):
 
 
     attribute_map = {
-        'id': 'id',  # noqa: E501
+        'jid': 'jid',  # noqa: E501
         'name': 'name',  # noqa: E501
-        'status': 'status',  # noqa: E501
+        'state': 'state',  # noqa: E501
         'start_time': 'start-time',  # noqa: E501
-        'end_time': 'end-time',  # noqa: E501
-        'timestamps': 'timestamps',  # noqa: E501
-        'status_counts': 'status-counts',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -159,13 +153,10 @@ class FlinkJobDetails(ModelNormal):
                                 Animal class but this time we won't travel
                                 through its discriminator because we passed in
                                 _visited_composed_classes = (Animal,)
-            id (str): ID of the flink job. [optional]  # noqa: E501
+            jid (str): ID of the flink job. [optional]  # noqa: E501
             name (str): name of the flink job. [optional]  # noqa: E501
-            status (str): status of the flink job. [optional]  # noqa: E501
-            start_time (int): timestamp of job start time. [optional]  # noqa: E501
-            end_time (int): timestamp of the job end time, or -1 if it did not end yet.. [optional]  # noqa: E501
-            timestamps ({str: (bool, date, datetime, dict, float, int, list, str, none_type)}): Mapping of the job states to the timestamp of the state. [optional]  # noqa: E501
-            status_counts ({str: (bool, date, datetime, dict, float, int, list, str, none_type)}): Mapping of task states to the number of tasks in a specific state. [optional]  # noqa: E501
+            state (str): state of the flink job. [optional]  # noqa: E501
+            start_time (float): timestamp of job start time. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

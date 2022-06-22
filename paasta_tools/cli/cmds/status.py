@@ -53,6 +53,10 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_job_details_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -1011,6 +1015,13 @@ def print_flink_status(
     flink: Mapping[str, Any],
     verbose: int,
 ) -> int:
+    system_paasta_config = load_system_paasta_config()
+
+    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    if not client:
+        print("Cannot get a paasta-api client")
+        exit(1)
+
     status = flink.get("status")
     if status is None:
         output.append(PaastaColors.red("    Flink cluster is not available yet"))
@@ -1027,14 +1038,21 @@ def print_flink_status(
         config_sha = config_sha[6:]
 
     output.append(f"    Config SHA: {config_sha}")
+    try:
+        flink_config = get_flink_config_from_paasta_api_client(
+            service=service, instance=instance, client=client, verbose=verbose
+        )
+    except Exception as e:
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(str(e))
+        return 1
 
-    status_config = status["config"]
     if verbose:
         output.append(
-            f"    Flink version: {status_config['flink-version']} {status_config['flink-revision']}"
+            f"    Flink version: {flink_config.flink_version} {flink_config.flink_revision}"
         )
     else:
-        output.append(f"    Flink version: {status_config['flink-version']}")
+        output.append(f"    Flink version: {flink_config.flink_version}")
     # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
     dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
@@ -1074,32 +1092,58 @@ def print_flink_status(
             append_pod_status(status["pod_status"], output)
         output.append(f"    No other information available in non-running state")
         return 0
+    # Flink cluster overview from paasta api client
+    try:
+        overview = get_flink_overview_from_paasta_api_client(
+            service=service, instance=instance, client=client, verbose=verbose
+        )
+    except Exception as e:
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(str(e))
+        return 1
 
     output.append(
         "    Jobs:"
-        f" {status['overview']['jobs-running']} running,"
-        f" {status['overview']['jobs-finished']} finished,"
-        f" {status['overview']['jobs-failed']} failed,"
-        f" {status['overview']['jobs-cancelled']} cancelled"
+        f" {overview.jobs_running} running,"
+        f" {overview.jobs_finished} finished,"
+        f" {overview.jobs_failed} failed,"
+        f" {overview.jobs_cancelled} cancelled"
     )
     output.append(
         "   "
-        f" {status['overview']['taskmanagers']} taskmanagers,"
-        f" {status['overview']['slots-available']}/{status['overview']['slots-total']} slots available"
+        f" {overview.taskmanagers} taskmanagers,"
+        f" {overview.slots_available}/{overview.slots_total} slots available"
     )
 
-    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    if status["jobs"]:
-        max_job_name_length = max(
-            [len(get_flink_job_name(job)) for job in status["jobs"]]
+    # Flink cluster jobs from paasta api client
+    try:
+        flink_jobs = get_flink_jobs_from_paasta_api_client(
+            service=service, instance=instance, client=client, verbose=verbose
         )
-    else:
-        max_job_name_length = 10
+    except Exception as e:
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(str(e))
+        return 1
+
+    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
+    max_job_name_length = 10
+    max_job_name_length = max([len(get_flink_job_name(job)) for job in flink_jobs.jobs])
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
     # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
+
+    jobs = []
+    for job in flink_jobs.jobs:
+        try:
+            job_details = get_flink_job_details_from_paasta_api_client(
+                service=service, instance=instance, job_id=job.id, verbose=verbose
+            )
+            jobs.append(job_details)
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
 
     output.append(f"    Jobs:")
     if verbose > 1:
@@ -1113,10 +1157,10 @@ def print_flink_status(
 
     # Use only the most recent jobs
     unique_jobs = (
-        sorted(jobs, key=lambda j: -j["start-time"])[0]
+        sorted(jobs, key=lambda j: -j["start_time"])[0]
         for _, jobs in groupby(
             sorted(
-                (j for j in status["jobs"] if j.get("name") and j.get("start-time")),
+                (j for j in status["jobs"] if j.get("name") and j.get("start_time")),
                 key=lambda j: j["name"],
             ),
             lambda j: j["name"],
@@ -1133,7 +1177,7 @@ def print_flink_status(
         {dashboard_url}"""
         else:
             fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
-        start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
+        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
         if verbose or job_printed_count < allowed_max_jobs_printed:
             job_printed_count += 1
             color_fn = (

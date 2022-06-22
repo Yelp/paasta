@@ -36,6 +36,23 @@ def list_flink_cluster_jobs(request):
 
 
 @view_config(
+    route_name="flink.service.instance.job_details",
+    request_method="GET",
+    renderer="json",
+)
+def get_flink_cluster_job_details(request):
+    service = request.swagger_data.get("service")
+    instance = request.swagger_data.get("instance")
+    job_id = request.swagger_data.get("job_id")
+    try:
+        return curl_flink_endpoint(
+            cr_id(service, instance), settings.cluster, f"jobs/{job_id}"
+        )
+    except ValueError as e:
+        raise ApiFailure(e, 500)
+
+
+@view_config(
     route_name="flink.service.instance.overview", request_method="GET", renderer="json"
 )
 def get_flink_cluster_overview(request):

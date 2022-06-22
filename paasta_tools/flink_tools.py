@@ -20,9 +20,14 @@ import requests
 import service_configuration_lib
 from mypy_extensions import TypedDict
 
+from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
+from paasta_tools.paastaapi.model.flink_config import FlinkConfig
+from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
+from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -31,6 +36,17 @@ from paasta_tools.utils import load_v2_deployments_json
 
 FLINK_INGRESS_PORT = 31080
 FLINK_DASHBOARD_TIMEOUT_SECONDS = 5
+CONFIG_KEYS = {"flink-version", "flink-revision"}
+OVERVIEW_KEYS = {
+    "taskmanagers",
+    "slots-total",
+    "slots-available",
+    "jobs-running",
+    "jobs-finished",
+    "jobs-cancelled",
+    "jobs-failed",
+}
+JOB_DETAILS_KEYS = {"jid", "name", "state", "start-time"}
 
 
 class TaskManagerConfig(TypedDict, total=False):
@@ -166,10 +182,33 @@ def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
     return response.text
 
 
+def _filter_for_endpoint(json_response, endpoint) -> Mapping[str, Any]:
+    """
+    filter json response to include subset of fields only
+    """
+    if endpoint == "config":
+        return {
+            key: value for key, value in json_response.items() if key in CONFIG_KEYS
+        }
+    elif endpoint == "overview":
+        return {
+            key: value for key, value in json_response.items() if key in OVERVIEW_KEYS
+        }
+    elif endpoint == "jobs":
+        return json_response
+    elif endpoint.startswith("jobs"):
+        return {
+            key: value
+            for key, value in json_response.items()
+            if key in JOB_DETAILS_KEYS
+        }
+    return json_response
+
+
 def curl_flink_endpoint(cr_name: str, cluster: str, endpoint: str) -> Mapping[str, Any]:
     try:
         response = _dashboard_get(cr_name, cluster, endpoint)
-        return json.loads(response)
+        return _filter_for_endpoint(json.loads(response), endpoint)
     except requests.RequestException as e:
         url = e.request.url
         err = e.response or str(e)
@@ -192,3 +231,96 @@ def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, An
         raise ValueError(f"JSON decoding error from Jobmanager dashboard: {e}")
     except ConnectionError as e:
         raise ValueError(f"failed HTTP request to Jobmanager dashboard: {e}")
+
+
+def get_flink_jobs_from_paasta_api_client(
+    service: str, instance: str, client: PaastaOApiClient, verbose: int
+) -> FlinkJobs:
+    """Get flink jobs for (service, instance) pair by connecting to the paasta api endpoint.
+
+    Appends exception to output list if any.
+
+    :param service: The service name
+    :param instance: The instance of the service to retrieve
+    :param client: The paasta api client
+    :returns: Flink jobs in the flink cluster"""
+    try:
+        jobs = client.service.list_flink_cluster_jobs(
+            service=service,
+            instance=instance,
+            verbose=verbose,
+            include_smartstack=False,
+        )
+    except Exception as e:
+        raise e
+    return jobs
+
+
+def get_flink_job_details_from_paasta_api_client(
+    service: str, instance: str, job_id: str, client: PaastaOApiClient, verbose: int
+) -> FlinkJobDetails:
+    """Get flink job details for (service, instance) pair by connecting to the paasta api endpoint.
+
+    Appends exception to output list if any.
+
+    :param service: The service name
+    :param instance: The instance of the service to retrieve
+    :param client: The paasta api client
+    :returns: Flink jobs in the flink cluster"""
+    try:
+        job_details = client.service.get_flink_cluster_job_details(
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            verbose=verbose,
+            include_smartstack=False,
+        )
+    except Exception as e:
+        raise e
+    return job_details
+
+
+def get_flink_config_from_paasta_api_client(
+    service: str, instance: str, client: PaastaOApiClient, verbose: int
+) -> FlinkConfig:
+    """Get flink config for (service, instance) pair by connecting to the paasta api endpoint.
+
+    Appends exception to output list if any.
+
+    :param service: The service name
+    :param instance: The instance of the service to retrieve
+    :param client: The paasta api client
+    :returns: Flink cluster configurations"""
+    try:
+        config = client.service.get_flink_cluster_config(
+            service=service,
+            instance=instance,
+            verbose=verbose,
+            include_smartstack=False,
+        )
+    except Exception as e:
+        raise e
+    return config
+
+
+def get_flink_overview_from_paasta_api_client(
+    service: str, instance: str, client: PaastaOApiClient, verbose: int
+) -> FlinkClusterOverview:
+    """Get flink cluster overview for (service, instance) pair by connecting to the paasta api endpoint.
+
+    Appends exception to output list if any.
+
+    :param service: The service name
+    :param instance: The instance of the service to retrieve
+    :param client: The paasta api client
+    :returns: Flink cluster overview"""
+    try:
+        overview = client.service.get_flink_cluster_overview(
+            service=service,
+            instance=instance,
+            verbose=verbose,
+            include_smartstack=False,
+        )
+    except Exception as e:
+        raise e
+    return overview
