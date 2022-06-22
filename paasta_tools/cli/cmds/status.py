@@ -294,39 +294,46 @@ def paasta_status_on_api_endpoint(
     if status.git_sha != "":
         output.append("    Git sha:    %s (desired)" % status.git_sha)
 
-    instance_type = find_instance_type(status)
-
-    if system_paasta_config.get_enable_custom_cassandra_status_writer():
-        if status.get("cassandracluster") is not None:
-            instance_type = "cassandracluster"
-
-    if instance_type is not None:
-        # check the actual status value and call the corresponding status writer
-        service_status_value = getattr(status, instance_type)
-        writer_callable = INSTANCE_TYPE_WRITERS.get(instance_type)
-        return writer_callable(
-            cluster, service, instance, output, service_status_value, verbose
-        )
-    else:
-        print(
-            "Not implemented: Looks like %s is not a Marathon or Kubernetes instance"
-            % instance
+    instance_types = find_instance_types(status)
+    if not instance_types:
+        output.append(
+            PaastaColors.red(
+                f"{instance} is not currently supported by `paasta status` - "
+                f"unable to find status metadata in API response."
+            )
         )
         return 0
 
+    ret_code = 0
+    for instance_type in instance_types:
+        # check the actual status value and call the corresponding status writer
+        service_status_value = getattr(status, instance_type)
+        writer_callable = INSTANCE_TYPE_WRITERS.get(instance_type)
+        ret = writer_callable(
+            cluster, service, instance, output, service_status_value, verbose
+        )
+        if ret != 0:
+            output.append(
+                f"Status writer failed for {instance_type} with return value {ret}"
+            )
+            ret_code = ret
 
-def find_instance_type(status: Any) -> str:
+    return ret_code
+
+
+def find_instance_types(status: Any) -> List[str]:
     """
-    find_instance_type finds the instance type from the status api response it
-    iterates over all instance type registered in `INSTANCE_TYPE_WRITERS`
+    find_instance_types finds the instance types from the status api response.
+    It iterates over all instance type registered in `INSTANCE_TYPE_WRITERS`.
 
     :param status: paasta api status object
-    :return: the first matching instance type or else None
+    :return: the list of matching instance types
     """
+    types: List[str] = []
     for instance_type in INSTANCE_TYPE_WRITERS.keys():
         if status.get(instance_type) is not None:
-            return instance_type
-    return None
+            types.append(instance_type)
+    return types
 
 
 def print_adhoc_status(
