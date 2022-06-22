@@ -188,18 +188,18 @@ def _filter_for_endpoint(json_response, endpoint) -> Mapping[str, Any]:
     """
     if endpoint == "config":
         return {
-            key: value for key, value in json_response.items() if key in CONFIG_KEYS
+            key: value for (key, value) in json_response.items() if key in CONFIG_KEYS
         }
     elif endpoint == "overview":
         return {
-            key: value for key, value in json_response.items() if key in OVERVIEW_KEYS
+            key: value for (key, value) in json_response.items() if key in OVERVIEW_KEYS
         }
     elif endpoint == "jobs":
         return json_response
     elif endpoint.startswith("jobs"):
         return {
             key: value
-            for key, value in json_response.items()
+            for (key, value) in json_response.items()
             if key in JOB_DETAILS_KEYS
         }
     return json_response

@@ -52,9 +52,8 @@ class TestGetFlinkClusterOverview:
             "jobs-finished": 0,
             "jobs-cancelled": 0,
             "jobs-failed": 0,
-            "flink-version": "1.13.5",
-            "flink-commit": "0ff28a7",
         }
+
         response = flink.get_flink_cluster_overview(mock_request)
         assert response == mock_get_flink_cluster_overview.return_value
 
@@ -86,12 +85,8 @@ class TestGetFlinkClusterConfig:
         mock_request,
     ):
         mock_curl_flink_endpoint.return_value = {
-            "refresh-interval": 3000,
-            "timezone-name": "Coordinated Universal Time",
-            "timezone-offset": 0,
             "flink-version": "1.13.5",
             "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
-            "features": {"web-submit": True},
         }
 
         response = flink.get_flink_cluster_config(mock_request)
@@ -124,8 +119,45 @@ class TestListFlinkClusterJobs:
         mock_curl_flink_endpoint,
         mock_request,
     ):
-        mock_list_cluster_jobs.return_value = {
+        mock_curl_flink_endpoint.return_value = {
             "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
         }
         response = flink.list_flink_cluster_jobs(mock_request)
         assert response == mock_list_cluster_jobs.return_value
+
+
+@mock.patch("paasta_tools.flink_tools.curl_flink_endpoint", autospec=True)
+@mock.patch("paasta_tools.api.views.flink.get_flink_cluster_job_details", autospec=True)
+class TestGetFlinkJobDetails:
+    @pytest.fixture(autouse=True)
+    def mock_settings(self):
+        with mock.patch(
+            "paasta_tools.api.views.flink.settings", autospec=True
+        ) as _mock_settings:
+            _mock_settings.cluster = "test_cluster"
+            yield
+
+    @pytest.fixture
+    def mock_request(self):
+        request = testing.DummyRequest()
+        request.swagger_data = {
+            "service": "test_service",
+            "instance": "test_instance",
+            "job_id": "4210f0646f5c9ce1db0b3e5ae4372b82",
+        }
+        return request
+
+    def test_success(
+        self,
+        mock_get_flink_cluster_job_details,
+        mock_curl_flink_endpoint,
+        mock_request,
+    ):
+        mock_curl_flink_endpoint.return_value = {
+            "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
+            "name": "beam_happyhour.main.test_job",
+            "start-time": 1655053223341,
+        }
+
+        response = flink.get_flink_cluster_job_details(mock_request)
+        assert response == mock_get_flink_cluster_job_details.return_value

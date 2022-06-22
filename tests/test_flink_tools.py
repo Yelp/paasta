@@ -56,8 +56,6 @@ def test_curl_flink_endpoint_overview():
             "jobs-finished": 0,
             "jobs-cancelled": 0,
             "jobs-failed": 0,
-            "flink-version": "1.13.5",
-            "flink-commit": "0ff28a7",
         }
 
 
@@ -84,12 +82,8 @@ def test_curl_flink_endpoint_config():
         )
 
         assert config == {
-            "refresh-interval": 3000,
-            "timezone-name": "Coordinated Universal Time",
-            "timezone-offset": 0,
             "flink-version": "1.13.5",
             "flink-revision": "0ff28a7 @ 2021-12-14T23:26:04+01:00",
-            "features": {"web-submit": True},
         }
 
 
@@ -118,6 +112,56 @@ def test_curl_flink_endpoint_list_jobs():
 
         assert jobs == {
             "jobs": [{"id": "4210f0646f5c9ce1db0b3e5ae4372b82", "status": "RUNNING"}]
+        }
+
+
+def test_curl_flink_endpoint_get_job_details():
+    with mock.patch(
+        "paasta_tools.flink_tools._dashboard_get",
+        autospec=True,
+        return_value="""
+                        {
+                            "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
+                            "name": "beam_happyhour.main.test_job",
+                            "isStoppable": false,
+                            "state": "RUNNING",
+                            "start-time": 1655053223341,
+                            "end-time": -1,
+                            "duration": 855872054,
+                            "maxParallelism": -1,
+                            "now": 1655909095395,
+                            "timestamps": {
+                                "CREATED": 1655053223735,
+                                "SUSPENDED": 0,
+                                "FAILING": 0,
+                                "FINISHED": 0,
+                                "FAILED": 0,
+                                "RUNNING": 1655842396454,
+                                "CANCELLING": 0,
+                                "RESTARTING": 1655842393301,
+                                "RECONCILING": 0,
+                                "CANCELED": 0,
+                                "INITIALIZING": 1655053223341
+                            }
+                        }
+        """,
+    ) as mock_dashboard_get:
+        cluster = "test_cluster"
+        cr_name = "kurupt--fm-7c7b459d59"
+        job = flink_tools.curl_flink_endpoint(
+            cr_name, cluster, "jobs/4210f0646f5c9ce1db0b3e5ae4372b82"
+        )
+        mock_dashboard_get.assert_called_once_with(
+            cr_name=cr_name,
+            cluster=cluster,
+            path="jobs/4210f0646f5c9ce1db0b3e5ae4372b82",
+        )
+
+        assert job == {
+            "jid": "4210f0646f5c9ce1db0b3e5ae4372b82",
+            "state": "RUNNING",
+            "name": "beam_happyhour.main.test_job",
+            "start-time": 1655053223341,
         }
 
 
