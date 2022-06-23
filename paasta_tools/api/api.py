@@ -103,6 +103,12 @@ def make_app(global_config=None):
     config.add_route(
         "flink.service.instance.jobs", "/v1/flink/{service}/{instance}/jobs"
     )
+
+    config.add_route(
+        "flink.service.instance.job_details",
+        "/v1/flink/{service}/{instance}/jobs/{job_id}",
+    )
+
     config.add_route(
         "flink.service.instance.overview", "/v1/flink/{service}/{instance}/overview"
     )
