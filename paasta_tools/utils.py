@@ -3485,9 +3485,14 @@ def format_timestamp(dt: datetime.datetime = None) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
-def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
+def get_paasta_tag_from_deploy_group(
+    identifier: str, desired_state: str, image_version: Optional[str] = None
+) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f"paasta-{identifier}-{timestamp}-{desired_state}"
+    if image_version:
+        return f"paasta-{identifier}-{image_version}-{timestamp}-{desired_state}"
+    else:
+        return f"paasta-{identifier}-{timestamp}-{desired_state}"
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:

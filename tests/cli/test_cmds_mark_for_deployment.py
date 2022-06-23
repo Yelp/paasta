@@ -24,6 +24,7 @@ from pytest import raises
 from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.utils import DeploymentVersion
 
 
 class FakeArgs:
@@ -78,7 +79,11 @@ def test_mark_for_deployment_happy(
     )
     mock__log_audit.assert_called_once_with(
         action="mark-for-deployment",
-        action_details={"deploy_group": "fake_deploy_group", "commit": "fake_commit"},
+        action_details={
+            "deploy_group": "fake_deploy_group",
+            "commit": "fake_commit",
+            "image_version": None,
+        },
         service="fake_service",
     )
 
@@ -139,13 +144,13 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     autospec=True,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha",
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
 def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     mock_list_deploy_groups,
-    mock_get_currently_deployed_sha,
+    mock_get_currently_deployed_version,
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
 ):
@@ -157,7 +162,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
     mock_is_docker_image_already_in_registry.assert_called_with(
-        "test_service", "fake_soa_dir", "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+        "test_service", "fake_soa_dir", "d670460b4b4aece5915caf5c68d12f560a9fe3e4", None
     )
 
 
@@ -179,7 +184,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     autospec=True,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha",
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
@@ -191,7 +196,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_metrics,
     mock_load_system_paasta_config,
     mock_list_deploy_groups,
-    mock_get_currently_deployed_sha,
+    mock_get_currently_deployed_version,
     mock_do_wait_for_deployment,
     mock_mark_for_deployment,
     mock_validate_service_name,
@@ -230,7 +235,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     def on_enter_rolled_back_side_effect(self):
         self.trigger("abandon_button_clicked")
 
-    mock_get_currently_deployed_sha.return_value = "old-sha"
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        "old-sha", None
+    )
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back",
         autospec=True,
@@ -244,12 +251,14 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         deploy_group="test_deploy_group",
         commit="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
         git_url="git://false.repo/services/test_services",
+        image_version=None,
     )
     mock_mark_for_deployment.assert_any_call(
         service="test_service",
         deploy_group="test_deploy_group",
         commit="old-sha",
         git_url="git://false.repo/services/test_services",
+        image_version=None,
     )
     assert mock_mark_for_deployment.call_count == 2
 
@@ -265,8 +274,10 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         action="rollback",
         action_details={
             "deploy_group": "test_deploy_group",
-            "rolled_back_from": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-            "rolled_back_to": "old-sha",
+            "rolled_back_from_sha": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            "rolled_back_from_image_version": None,
+            "rolled_back_to_sha": "old-sha",
+            "rolled_back_to_image_version": None,
             "rollback_type": "user_initiated_rollback",
         },
         service="test_service",
@@ -290,8 +301,10 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     event_dimensions = dict(
         paasta_service="test_service",
         deploy_group="test_deploy_group",
-        rolled_back_from="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-        rolled_back_to="old-sha",
+        rolled_back_from_sha="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+        rolled_back_from_image_version=None,
+        rolled_back_to_sha="old-sha",
+        rolled_back_to_image_version=None,
         rollback_type="user_initiated_rollback",
     )
     expected_calls = []
