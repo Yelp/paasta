@@ -16,6 +16,7 @@ import concurrent.futures
 import difflib
 import shutil
 import sys
+from asyncio.log import logger
 from collections import Counter
 from collections import defaultdict
 from datetime import datetime
@@ -1053,6 +1054,7 @@ def print_flink_status(
         )
     else:
         output.append(f"    Flink version: {flink_config.flink_version}")
+
     # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
     dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
@@ -1125,25 +1127,40 @@ def print_flink_status(
         output.append(str(e))
         return 1
 
+    jobs = []
+    logger.log(1, f"Object of flink jobs {flink_jobs}")
+    for job in flink_jobs["jobs"]:
+        logger.log(1, f"Inside the loop over jobs {job}")
+        try:
+            job_details = get_flink_job_details_from_paasta_api_client(
+                service=service,
+                instance=instance,
+                job_id=job.id,
+                client=client,
+                verbose=verbose,
+            )
+            logger.log(1, f"Returned job details {job_details}")
+            jobs.append(job_details)
+        except Exception as e:
+            logger.log(1, str(e))
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+    logger.log(1, f"Appended jobs {jobs}")
+
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    max_job_name_length = 10
-    max_job_name_length = max([len(get_flink_job_name(job)) for job in flink_jobs.jobs])
+    if jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
+    else:
+        max_job_name_length = 10
+
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
     # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
 
-    jobs = []
-    for job in flink_jobs.jobs:
-        try:
-            job_details = get_flink_job_details_from_paasta_api_client(
-                service=service, instance=instance, job_id=job.id, verbose=verbose
-            )
-            jobs.append(job_details)
-        except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
-            output.append(str(e))
+    logger.log(1, max_job_name_length)
+    logger.log(1, allowed_max_job_name_length)
 
     output.append(f"    Jobs:")
     if verbose > 1:
@@ -1160,7 +1177,7 @@ def print_flink_status(
         sorted(jobs, key=lambda j: -j["start_time"])[0]
         for _, jobs in groupby(
             sorted(
-                (j for j in status["jobs"] if j.get("name") and j.get("start_time")),
+                (j for j in jobs if j.get("name") and j.get("start_time")),
                 key=lambda j: j["name"],
             ),
             lambda j: j["name"],
