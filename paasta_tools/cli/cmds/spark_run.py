@@ -362,6 +362,14 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
+        "--auto-set-temporary-credentials-provider",
+        help="Automatically set the TemporaryCredentialsProvider if a session token "
+        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument "
+        "to false.",
+        default=True,
+    )
+
+    aws_group.add_argument(
         "--aws-region",
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
@@ -1055,6 +1063,7 @@ def paasta_spark_run(args):
         extra_volumes=volumes,
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
+        auto_set_temporary_credentials_provider=args.auto_set_temporary_credentials_provider,
     )
     return configure_and_run_docker_container(
         args,

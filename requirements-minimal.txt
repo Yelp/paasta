@@ -49,7 +49,7 @@ requests-cache >= 0.4.10
 retry
 ruamel.yaml
 sensu-plugin
-service-configuration-lib >= 2.10.4
+service-configuration-lib >= 2.10.6
 signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0
