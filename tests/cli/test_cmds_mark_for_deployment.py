@@ -32,7 +32,7 @@ class FakeArgs:
     service = "test_service"
     git_url = "git://false.repo/services/test_services"
     commit = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
-    image_version = None
+    image_version = "extrastuff"
     soa_dir = "fake_soa_dir"
     block = False
     verbose = False
@@ -72,6 +72,7 @@ def test_mark_for_deployment_happy(
         deploy_group="fake_deploy_group",
         service="fake_service",
         commit="fake_commit",
+        image_version="extrastuff",
     )
     assert actual == 0
     mock_create_remote_refs.assert_called_once_with(
@@ -82,7 +83,7 @@ def test_mark_for_deployment_happy(
         action_details={
             "deploy_group": "fake_deploy_group",
             "commit": "fake_commit",
-            "image_version": None,
+            "image_version": "extrastuff",
         },
         service="fake_service",
     )
@@ -162,7 +163,10 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
     mock_is_docker_image_already_in_registry.assert_called_with(
-        "test_service", "fake_soa_dir", "d670460b4b4aece5915caf5c68d12f560a9fe3e4", None
+        "test_service",
+        "fake_soa_dir",
+        "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+        "extrastuff",
     )
 
 
@@ -251,19 +255,19 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         deploy_group="test_deploy_group",
         commit="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
         git_url="git://false.repo/services/test_services",
-        image_version=None,
+        image_version="extrastuff",
     )
     mock_mark_for_deployment.assert_any_call(
         service="test_service",
         deploy_group="test_deploy_group",
         commit="old-sha",
         git_url="git://false.repo/services/test_services",
-        image_version=None,
+        image_version="extrastuff",
     )
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", None
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
     )
     mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha", None)
     assert mock_do_wait_for_deployment.call_count == 2
@@ -275,7 +279,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         action_details={
             "deploy_group": "test_deploy_group",
             "rolled_back_from_sha": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-            "rolled_back_from_image_version": None,
+            "rolled_back_from_image_version": "extrastuff",
             "rolled_back_to_sha": "old-sha",
             "rolled_back_to_image_version": None,
             "rollback_type": "user_initiated_rollback",
@@ -302,7 +306,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         paasta_service="test_service",
         deploy_group="test_deploy_group",
         rolled_back_from_sha="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-        rolled_back_from_image_version=None,
+        rolled_back_from_image_version="extrastuff",
         rolled_back_to_sha="old-sha",
         rolled_back_to_image_version=None,
         rollback_type="user_initiated_rollback",
