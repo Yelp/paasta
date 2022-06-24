@@ -957,6 +957,22 @@ def validate_work_dir(s):
             sys.exit(1)
 
 
+def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
+    timeout_present = re.match(r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd)
+    if not timeout_present:
+        split_cmd = cmd.split("spark-submit")
+        assert len(split_cmd) == 2, "Invalid cmd: {cmd}"
+        cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
+        print(
+            PaastaColors.red(
+                f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                f"Adjust timeout value using --timeout-job-timeout. "
+                f"New Updated Command with timeout: {cmd}'))."
+            ),
+        )
+    return cmd
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1049,23 +1065,10 @@ def paasta_spark_run(args):
         args.spark_args, pod_template_path, args.enable_compact_bin_packing
     )
 
+    args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
+
     # This is required if configs are provided as part of `spark-submit`
     # Other way to provide is with --spark-args
-    timeout_present = re.match(
-        r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", args.cmd
-    )
-    if not timeout_present:
-        split_cmd = args.cmd.split("spark-submit")
-        assert len(split_cmd) == 2, "Invalid cmd: {args.cmd}"
-        args.cmd = f"{split_cmd[0]}timeout {args.timeout_job_runtime} spark-submit{split_cmd[1]}"
-        print(
-            PaastaColors.red(
-                f"NOTE: Job will exit in given time {args.timeout_job_runtime}. "
-                f"Adjust timeout value using --timeout-job-timeout. "
-                f"New Updated Command with timeout: {args.cmd}'))."
-            ),
-        )
-
     sub_cmds = args.cmd.split(" ")  # spark.driver.memory=10g
     for cmd in sub_cmds:
         if cmd.startswith("spark.driver.memory") or cmd.startswith(
