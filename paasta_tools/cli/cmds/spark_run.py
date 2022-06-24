@@ -362,11 +362,11 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
-        "--auto-set-temporary-credentials-provider",
-        help="Automatically set the TemporaryCredentialsProvider if a session token "
-        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument "
-        "to false.",
-        default=True,
+        "--disable-temporary-credentials-provider",
+        help="Disable explicit setting of TemporaryCredentialsProvider if a session token "
+        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument ",
+        action="store_true",
+        default=False,
     )
 
     aws_group.add_argument(
@@ -1051,6 +1051,9 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
+    auto_set_temporary_credentials_provider = (
+        args.disable_temporary_credentials_provider is False
+    )
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1063,7 +1066,7 @@ def paasta_spark_run(args):
         extra_volumes=volumes,
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
-        auto_set_temporary_credentials_provider=args.auto_set_temporary_credentials_provider,
+        auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
     return configure_and_run_docker_container(
         args,
