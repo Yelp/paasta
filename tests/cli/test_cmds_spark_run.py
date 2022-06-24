@@ -1007,7 +1007,7 @@ def test_paasta_spark_run(
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
-        auto_set_temporary_credentials_provider=mock.sentinel.temp_provider,
+        disable_temporary_credentials_provider=True,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1044,7 +1044,7 @@ def test_paasta_spark_run(
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
-        auto_set_temporary_credentials_provider=mock.sentinel.temp_provider,
+        auto_set_temporary_credentials_provider=False,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
