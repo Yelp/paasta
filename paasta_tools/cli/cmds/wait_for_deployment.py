@@ -261,7 +261,6 @@ def paasta_wait_for_deployment(args):
                 time_before_first_diagnosis=args.time_before_first_diagnosis,
             )
         )
-        print(f"{type(version)} {type(version.sha)} {type(version.image_version)}")
         _log(
             service=service,
             component="deploy",
