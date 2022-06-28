@@ -432,7 +432,7 @@ def load_service_namespace_config(
       e.g. [('region:dc6-prod', 'region:useast1-prod')]
     - extra_healthcheck_headers: a dict of HTTP headers that must
       be supplied when health checking. E.g. { 'Host': 'example.com' }
-    - lb_policy: Envoy load balancer policies. E.g. ["ROUND_ROBIN","LEAST_REQUEST"]
+    - lb_policy: Envoy load balancer policies. E.g. "ROUND_ROBIN"
 
     :param service: The service name
     :param namespace: The namespace to read
