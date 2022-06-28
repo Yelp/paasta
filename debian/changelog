@@ -1,3 +1,11 @@
+paasta-tools (0.132.7) xenial; urgency=medium
+
+  * 0.132.7 tagged with 'make release'
+    Commit: Merge pull request #3384 from Yelp/envoy-lb-schema  Adding
+    Envoy lb_policy in smartstack schema
+
+ -- Ankit Tripathi <tripathi@yelp.com>  Tue, 28 Jun 2022 11:05:05 -0700
+
 paasta-tools (0.132.6) xenial; urgency=medium
 
   * 0.132.6 tagged with 'make release'
