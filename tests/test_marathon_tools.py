@@ -287,6 +287,7 @@ class TestMarathonTools:
         fake_discover = "myhabitat"
         fake_advertise = ["red", "blue"]
         fake_body_expect = r'"master\/elected":1'
+        fake_lb_policy = "ROUND_ROBIN"
         fake_info = {
             "healthcheck_mode": fake_healthcheck_mode,
             "healthcheck_uri": fake_uri,
@@ -307,6 +308,7 @@ class TestMarathonTools:
             "advertise": fake_advertise,
             "extra_advertise": {"alpha": ["beta"], "gamma": ["delta", "epsilon"]},
             "extra_healthcheck_headers": {"Host": "example.com"},
+            "lb_policy": fake_lb_policy,
         }
         expected = {
             "healthcheck_mode": fake_healthcheck_mode,
@@ -333,6 +335,7 @@ class TestMarathonTools:
                 ("gamma", "epsilon"),
             ],
             "extra_healthcheck_headers": {"Host": "example.com"},
+            "lb_policy": fake_lb_policy,
         }
         with mock.patch(
             "service_configuration_lib.read_extra_service_information",
