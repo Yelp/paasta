@@ -132,8 +132,7 @@
                     "RING_HASH",
                     "RANDOM",
                     "MAGLEV",
-                    "CLUSTER_PROVIDED",
-                    "LOAD_BALANCING_POLICY_CONFIG"
+                    "CLUSTER_PROVIDED"
                 ]
             },
             "chaos": {
