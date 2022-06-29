@@ -992,7 +992,7 @@ def test_paasta_spark_run(
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
-        cmd="spark-submit test.py",
+        cmd="USER=test spark-submit test.py",
         build=True,
         image=None,
         enable_compact_bin_packing=False,
@@ -1007,11 +1007,13 @@ def test_paasta_spark_run(
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
+    assert args.cmd == "USER=test timeout 1m spark-submit test.py"
     mock_get_instance_config.assert_called_once_with(
         service="test-service",
         instance="test-instance",
@@ -1028,7 +1030,7 @@ def test_paasta_spark_run(
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
     )
-    mock_get_spark_app_name.assert_called_once_with("spark-submit test.py")
+    mock_get_spark_app_name.assert_called_once_with("USER=test spark-submit test.py")
     mock_parse_user_spark_args.assert_called_once_with(
         "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
     )
