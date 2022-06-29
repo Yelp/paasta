@@ -182,7 +182,7 @@ def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
     return response.text
 
 
-def _filter_for_endpoint(json_response, endpoint) -> Mapping[str, Any]:
+def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]:
     """
     filter json response to include subset of fields only
     """

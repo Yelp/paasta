@@ -1174,7 +1174,7 @@ def print_flink_status(
 
     # Use only the most recent jobs
     unique_jobs = (
-        sorted(jobs, key=lambda j: -j["start_time"])[0]
+        sorted(jobs, key=lambda j: -j["start_time"])[0]  # type: ignore
         for _, jobs in groupby(
             sorted(
                 (j for j in jobs if j.get("name") and j.get("start_time")),
