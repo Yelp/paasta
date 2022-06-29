@@ -234,7 +234,7 @@ def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, An
 
 
 def get_flink_jobs_from_paasta_api_client(
-    service: str, instance: str, client: PaastaOApiClient, verbose: int
+    service: str, instance: str, client: PaastaOApiClient
 ) -> FlinkJobs:
     """Get flink jobs for (service, instance) pair by connecting to the paasta api endpoint.
 
@@ -248,8 +248,6 @@ def get_flink_jobs_from_paasta_api_client(
         jobs = client.service.list_flink_cluster_jobs(
             service=service,
             instance=instance,
-            verbose=verbose,
-            include_smartstack=False,
         )
     except Exception as e:
         raise e
@@ -257,7 +255,7 @@ def get_flink_jobs_from_paasta_api_client(
 
 
 def get_flink_job_details_from_paasta_api_client(
-    service: str, instance: str, job_id: str, client: PaastaOApiClient, verbose: int
+    service: str, instance: str, job_id: str, client: PaastaOApiClient
 ) -> FlinkJobDetails:
     """Get flink job details for (service, instance) pair by connecting to the paasta api endpoint.
 
@@ -272,8 +270,6 @@ def get_flink_job_details_from_paasta_api_client(
             service=service,
             instance=instance,
             job_id=job_id,
-            verbose=verbose,
-            include_smartstack=False,
         )
     except Exception as e:
         raise e
@@ -281,7 +277,7 @@ def get_flink_job_details_from_paasta_api_client(
 
 
 def get_flink_config_from_paasta_api_client(
-    service: str, instance: str, client: PaastaOApiClient, verbose: int
+    service: str, instance: str, client: PaastaOApiClient
 ) -> FlinkConfig:
     """Get flink config for (service, instance) pair by connecting to the paasta api endpoint.
 
@@ -295,8 +291,6 @@ def get_flink_config_from_paasta_api_client(
         config = client.service.get_flink_cluster_config(
             service=service,
             instance=instance,
-            verbose=verbose,
-            include_smartstack=False,
         )
     except Exception as e:
         raise e
@@ -304,7 +298,7 @@ def get_flink_config_from_paasta_api_client(
 
 
 def get_flink_overview_from_paasta_api_client(
-    service: str, instance: str, client: PaastaOApiClient, verbose: int
+    service: str, instance: str, client: PaastaOApiClient
 ) -> FlinkClusterOverview:
     """Get flink cluster overview for (service, instance) pair by connecting to the paasta api endpoint.
 
@@ -318,8 +312,6 @@ def get_flink_overview_from_paasta_api_client(
         overview = client.service.get_flink_cluster_overview(
             service=service,
             instance=instance,
-            verbose=verbose,
-            include_smartstack=False,
         )
     except Exception as e:
         raise e

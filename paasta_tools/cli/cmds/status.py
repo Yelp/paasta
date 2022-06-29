@@ -1041,7 +1041,7 @@ def print_flink_status(
     output.append(f"    Config SHA: {config_sha}")
     try:
         flink_config = get_flink_config_from_paasta_api_client(
-            service=service, instance=instance, client=client, verbose=verbose
+            service=service, instance=instance, client=client
         )
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
@@ -1097,7 +1097,7 @@ def print_flink_status(
     # Flink cluster overview from paasta api client
     try:
         overview = get_flink_overview_from_paasta_api_client(
-            service=service, instance=instance, client=client, verbose=verbose
+            service=service, instance=instance, client=client
         )
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
@@ -1120,7 +1120,7 @@ def print_flink_status(
     # Flink cluster jobs from paasta api client
     try:
         flink_jobs = get_flink_jobs_from_paasta_api_client(
-            service=service, instance=instance, client=client, verbose=verbose
+            service=service, instance=instance, client=client
         )
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
@@ -1137,7 +1137,6 @@ def print_flink_status(
                 instance=instance,
                 job_id=job.id,
                 client=client,
-                verbose=verbose,
             )
             logger.log(1, f"Returned job details {job_details}")
             jobs.append(job_details)
