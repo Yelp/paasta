@@ -1414,7 +1414,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FlinkClusterOverview'
-          description: Getoverview of a flink cluster
+          description: Get overview of a flink cluster
         "404":
           description: Flink cluster not found
         "500":
