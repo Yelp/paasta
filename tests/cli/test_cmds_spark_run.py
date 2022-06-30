@@ -1061,6 +1061,100 @@ def test_paasta_spark_run(
     mock_generate_pod_template_path.assert_called_once()
 
 
+@mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
+@mock.patch.object(spark_run, "get_instance_config", autospec=True)
+@mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
+@mock.patch.object(spark_run, "get_docker_image", autospec=True)
+@mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch.object(spark_run, "get_spark_conf", autospec=True)
+@mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
+@mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
+def test_paasta_spark_run_pyspark(
+    mock_get_smart_paasta_instance_name,
+    mock_configure_and_run_docker_container,
+    mock_get_spark_conf,
+    mock_parse_user_spark_args,
+    mock_get_spark_app_name,
+    mock_get_docker_image,
+    mock_get_aws_credentials,
+    mock_get_instance_config,
+    mock_load_system_paasta_config,
+    mock_validate_work_dir,
+    mock_generate_pod_template_path,
+):
+    args = argparse.Namespace(
+        work_dir="/tmp/local",
+        cmd="pyspark",
+        build=True,
+        image=None,
+        enable_compact_bin_packing=False,
+        disable_compact_bin_packing=False,
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        pool="test-pool",
+        yelpsoa_config_root="/path/to/soa",
+        no_aws_credentials=False,
+        aws_credentials_yaml="/path/to/creds",
+        aws_profile=None,
+        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        timeout_job_runtime="1m",
+        disable_temporary_credentials_provider=True,
+    )
+    mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
+    spark_run.paasta_spark_run(args)
+    mock_validate_work_dir.assert_called_once_with("/tmp/local")
+    assert args.cmd == "pyspark"
+    mock_get_instance_config.assert_called_once_with(
+        service="test-service",
+        instance="test-instance",
+        cluster="test-cluster",
+        load_deployments=False,
+        soa_dir="/path/to/soa",
+    )
+    mock_get_aws_credentials.assert_called_once_with(
+        service="test-service",
+        no_aws_credentials=False,
+        aws_credentials_yaml="/path/to/creds",
+        profile_name=None,
+    )
+    mock_get_docker_image.assert_called_once_with(
+        args, mock_get_instance_config.return_value
+    )
+    mock_get_spark_app_name.assert_called_once_with("pyspark")
+    mock_parse_user_spark_args.assert_called_once_with(
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+    )
+    mock_get_spark_conf.assert_called_once_with(
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        spark_app_base_name=mock_get_spark_app_name.return_value,
+        docker_img=mock_get_docker_image.return_value,
+        user_spark_opts=mock_parse_user_spark_args.return_value,
+        paasta_cluster="test-cluster",
+        paasta_pool="test-pool",
+        paasta_service="test-service",
+        paasta_instance=mock_get_smart_paasta_instance_name.return_value,
+        extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
+        aws_creds=mock_get_aws_credentials.return_value,
+        needs_docker_cfg=False,
+        auto_set_temporary_credentials_provider=False,
+    )
+    mock_configure_and_run_docker_container.assert_called_once_with(
+        args,
+        docker_img=mock_get_docker_image.return_value,
+        instance_config=mock_get_instance_config.return_value,
+        system_paasta_config=mock_load_system_paasta_config.return_value,
+        spark_conf=mock_get_spark_conf.return_value,
+        aws_creds=mock_get_aws_credentials.return_value,
+        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        pod_template_path="unique-run",
+    )
+    mock_generate_pod_template_path.assert_called_once()
+
+
 @pytest.mark.parametrize(
     "docker_cmd, is_mrjob, expected",
     (

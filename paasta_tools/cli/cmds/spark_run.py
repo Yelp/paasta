@@ -958,18 +958,31 @@ def validate_work_dir(s):
 
 
 def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
-    timeout_present = re.match(r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd)
-    if not timeout_present:
-        split_cmd = cmd.split("spark-submit")
-        assert len(split_cmd) == 2, "Invalid cmd: {cmd}"
-        cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
-        print(
-            PaastaColors.red(
-                f"NOTE: Job will exit in given time {timeout_job_runtime}. "
-                f"Adjust timeout value using --timeout-job-timeout. "
-                f"New Updated Command with timeout: {cmd}'))."
-            ),
+    # Timeout only to be added for spark-submit commands
+    # TODO: Add timeout for jobs using mrjob with spark-runner
+    if "spark-submit" not in cmd:
+        return cmd
+    try:
+        timeout_present = re.match(
+            r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd
         )
+        if not timeout_present:
+            split_cmd = cmd.split("spark-submit")
+            cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
+            print(
+                PaastaColors.blue(
+                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                    f"Adjust timeout value using --timeout-job-timeout. "
+                    f"New Updated Command with timeout: {cmd}"
+                ),
+            )
+    except Exception as e:
+        err_msg = (
+            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
+            "Please report to #spark."
+        )
+        log.warn(err_msg)
+        print(PaastaColors.red(err_msg))
     return cmd
 
 
