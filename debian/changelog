@@ -1,3 +1,12 @@
+paasta-tools (0.132.9) xenial; urgency=medium
+
+  * 0.132.9 tagged with 'make release'
+    Commit: Merge pull request #3388 from
+    Yelp/d/manpreet/fix_auto_timeout_fix  Add fix for auto timeout add
+    for non spark-submit commands
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 30 Jun 2022 09:58:20 -0700
+
 paasta-tools (0.132.8) xenial; urgency=medium
 
   * 0.132.8 tagged with 'make release'
