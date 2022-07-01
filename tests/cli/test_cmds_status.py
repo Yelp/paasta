@@ -2922,7 +2922,7 @@ class TestPrintKafkaStatus:
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-    def test_error(
+    def test_error_no_flink(
         self,
         mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
@@ -2934,7 +2934,7 @@ class TestPrintFlinkStatus:
         mock_flink_status["status"] = None
         output = []
         return_value = print_flink_status(
-            cluster="fake_Cluster",
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2944,6 +2944,139 @@ class TestPrintFlinkStatus:
 
         assert return_value == 1
         assert output == [PaastaColors.red("    Flink cluster is not available yet")]
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_client(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_get_paasta_oapi_client.return_value = None
+        output = []
+        with pytest.raises(SystemExit):
+            print_flink_status(
+                cluster="fake_cluster",
+                service="fake_service",
+                instance="fake_instance",
+                output=output,
+                flink=mock_flink_status,
+                verbose=1,
+            )
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_config(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_overview(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_jobs(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_job_details(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+
+        # Errors while requesing job details
+        mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        # should not blow up the the whole request
+        assert return_value == 0
+
+        # but should output that an error has occurred
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
