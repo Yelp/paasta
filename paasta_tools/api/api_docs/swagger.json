@@ -2094,10 +2094,6 @@
             "type": "object",
             "description": "Kafka instance metadata"
         },
-        "InstanceSpecKafkaCluster": {
-            "type": "object",
-            "description": "Kafka instance spec"
-        },
         "InstanceStatusCassandraCluster": {
             "type": "object",
             "description": "Cassandra instance status"
