@@ -1,3 +1,14 @@
+paasta-tools (0.132.10) xenial; urgency=medium
+
+  * 0.132.10 tagged with 'make release'
+    Commit: Use make --question to check if a Makefile has a given
+    target (#3389)  --dry-run can, in certain cases, actually result in
+    Make doing real work. To ensure that we don"t inadvertantly run
+    anything while figuring out if a Makefile does respond to a target,
+    we"ll switch to using --question which won"t execute anything.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 01 Jul 2022 10:14:21 -0700
+
 paasta-tools (0.132.9) xenial; urgency=medium
 
   * 0.132.9 tagged with 'make release'
