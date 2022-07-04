@@ -376,8 +376,6 @@ def report_waiting_aborted(service: str, deploy_group: str) -> None:
     print()
 
 
-# TODO: Do we need to do anything here? I guess having image_version now means we
-# don't always redeploy between two shas?
 def get_authors_to_be_notified(
     git_url: str, from_sha: str, to_sha: str, authors: Optional[Collection[str]]
 ) -> str:
@@ -496,8 +494,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         default_dimensions=dict(
             paasta_service=service,
             deploy_group=deploy_group,
-            old_version=old_deployment_version.sha,
-            new_version=commit,
+            old_version=str(old_deployment_version),
+            new_version=str(deployment_version),
             deploy_timeout=args.timeout,
         ),
     )
@@ -725,11 +723,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             return DEFAULT_SLACK_CHANNEL
 
     def get_deployment_name(self) -> str:
-        # TODO: Does this need to be a short sha?
         return f"Deploy of `{self.deployment_version}` of `{self.service}` to `{self.deploy_group}`:"
 
     def on_enter_start_deploy(self) -> None:
-        # TODO: Does this need to be a short sha?
         self.update_slack_status(
             f"Marking `{self.deployment_version}` for deployment for {self.deploy_group}..."
         )
@@ -1043,7 +1039,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         }.get(self.state)
 
     def on_enter_mfd_failed(self) -> None:
-        # TODO: Does this need to be a short sha?
         self.update_slack_status(
             f"Marking `{self.deployment_version}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
@@ -1176,7 +1171,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("deploy_errored")
 
     def on_enter_rolled_back(self) -> None:
-        # TODO: Does this need to be a short sha?
         self.update_slack_status(
             f"Finished rolling back to `{self.old_deployment_version}` in {self.deploy_group}"
         )
@@ -1185,7 +1179,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
     def on_enter_deployed(self) -> None:
-        # TODO: Does this need to be a short sha?
         self.update_slack_status(
             f"Finished deployment of `{self.deployment_version}` to {self.deploy_group}"
         )
@@ -1280,13 +1273,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def __build_rollback_audit_details(
         self, rollback_type: RollbackTypes
     ) -> Dict[str, str]:
-        # TODO: Do we want to just change this, or check if image_version is
-        # set and leave it as-is if not?
         return {
-            "rolled_back_from_sha": self.commit,
-            "rolled_back_from_image_version": self.image_version,
-            "rolled_back_to_sha": self.old_git_sha,
-            "rolled_back_to_image_version": self.old_image_version,
+            "rolled_back_from": str(self.deployment_version),
+            "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
         }

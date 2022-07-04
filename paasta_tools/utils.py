@@ -3490,7 +3490,7 @@ def get_paasta_tag_from_deploy_group(
 ) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
     if image_version:
-        return f"paasta-{identifier}-{image_version}-{timestamp}-{desired_state}"
+        return f"paasta-{identifier}+{image_version}-{timestamp}-{desired_state}"
     else:
         return f"paasta-{identifier}-{timestamp}-{desired_state}"
 

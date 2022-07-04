@@ -278,10 +278,8 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         action="rollback",
         action_details={
             "deploy_group": "test_deploy_group",
-            "rolled_back_from_sha": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-            "rolled_back_from_image_version": "extrastuff",
-            "rolled_back_to_sha": "old-sha",
-            "rolled_back_to_image_version": None,
+            "rolled_back_from": "DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
+            "rolled_back_to": "old-sha",
             "rollback_type": "user_initiated_rollback",
         },
         service="test_service",
@@ -294,7 +292,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             paasta_service="test_service",
             deploy_group="test_deploy_group",
             old_version="old-sha",
-            new_version="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            new_version="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             deploy_timeout=600,
         ),
     )
@@ -305,10 +303,8 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     event_dimensions = dict(
         paasta_service="test_service",
         deploy_group="test_deploy_group",
-        rolled_back_from_sha="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
-        rolled_back_from_image_version="extrastuff",
-        rolled_back_to_sha="old-sha",
-        rolled_back_to_image_version=None,
+        rolled_back_from="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
+        rolled_back_to="old-sha",
         rollback_type="user_initiated_rollback",
     )
     expected_calls = []
