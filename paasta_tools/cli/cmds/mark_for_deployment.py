@@ -281,7 +281,6 @@ def mark_for_deployment(
     image_version: Optional[str] = None,
 ) -> int:
     """Mark a docker image for deployment"""
-    # TODO: Handle image_version, currently does nothing
     tag = get_paasta_tag_from_deploy_group(
         identifier=deploy_group, desired_state="deploy", image_version=image_version
     )
@@ -488,7 +487,6 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     if args.block and deployment_version != old_deployment_version:
         metrics_factory = metrics_lib.get_metrics_interface
     metrics = metrics_factory("paasta.mark_for_deployment")
-    # TODO: Do we have to do anything with image_version here?
     deploy_timer = metrics.create_timer(
         name="deploy_duration",
         default_dimensions=dict(
@@ -1701,7 +1699,6 @@ async def wait_for_deployment(
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
-        # TODO: git_sha doesn't seem to be actually used in his function
         instance_configs_per_cluster = (
             get_instance_configs_for_service_in_deploy_group_all_clusters(
                 service, deploy_group, soa_dir
