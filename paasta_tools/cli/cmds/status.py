@@ -16,7 +16,6 @@ import concurrent.futures
 import difflib
 import shutil
 import sys
-from asyncio.log import logger
 from collections import Counter
 from collections import defaultdict
 from datetime import datetime
@@ -1128,9 +1127,7 @@ def print_flink_status(
         return 1
 
     jobs = []
-    logger.log(1, f"Object of flink jobs {flink_jobs}")
     for job in flink_jobs["jobs"]:
-        logger.log(1, f"Inside the loop over jobs {job}")
         try:
             job_details = get_flink_job_details_from_paasta_api_client(
                 service=service,
@@ -1138,13 +1135,10 @@ def print_flink_status(
                 job_id=job.id,
                 client=client,
             )
-            logger.log(1, f"Returned job details {job_details}")
             jobs.append(job_details)
         except Exception as e:
-            logger.log(1, str(e))
             output.append(PaastaColors.red(f"Exception when talking to the API:"))
             output.append(str(e))
-    logger.log(1, f"Appended jobs {jobs}")
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if jobs:
@@ -1157,9 +1151,6 @@ def print_flink_status(
     allowed_max_job_name_length = min(
         max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
     )
-
-    logger.log(1, max_job_name_length)
-    logger.log(1, allowed_max_job_name_length)
 
     output.append(f"    Jobs:")
     if verbose > 1:

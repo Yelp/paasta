@@ -184,19 +184,19 @@ def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
 
 def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]:
     """
-    filter json response to include subset of fields only
+    Filter json response to include only a subset of fields.
     """
     if endpoint == "config":
         return {
             key: value for (key, value) in json_response.items() if key in CONFIG_KEYS
         }
-    elif endpoint == "overview":
+    if endpoint == "overview":
         return {
             key: value for (key, value) in json_response.items() if key in OVERVIEW_KEYS
         }
-    elif endpoint == "jobs":
+    if endpoint == "jobs":
         return json_response
-    elif endpoint.startswith("jobs"):
+    if endpoint.startswith("jobs"):
         return {
             key: value
             for (key, value) in json_response.items()
@@ -244,14 +244,10 @@ def get_flink_jobs_from_paasta_api_client(
     :param instance: The instance of the service to retrieve
     :param client: The paasta api client
     :returns: Flink jobs in the flink cluster"""
-    try:
-        jobs = client.service.list_flink_cluster_jobs(
-            service=service,
-            instance=instance,
-        )
-    except Exception as e:
-        raise e
-    return jobs
+    return client.service.list_flink_cluster_jobs(
+        service=service,
+        instance=instance,
+    )
 
 
 def get_flink_job_details_from_paasta_api_client(
@@ -265,15 +261,11 @@ def get_flink_job_details_from_paasta_api_client(
     :param instance: The instance of the service to retrieve
     :param client: The paasta api client
     :returns: Flink jobs in the flink cluster"""
-    try:
-        job_details = client.service.get_flink_cluster_job_details(
-            service=service,
-            instance=instance,
-            job_id=job_id,
-        )
-    except Exception as e:
-        raise e
-    return job_details
+    return client.service.get_flink_cluster_job_details(
+        service=service,
+        instance=instance,
+        job_id=job_id,
+    )
 
 
 def get_flink_config_from_paasta_api_client(
@@ -287,14 +279,10 @@ def get_flink_config_from_paasta_api_client(
     :param instance: The instance of the service to retrieve
     :param client: The paasta api client
     :returns: Flink cluster configurations"""
-    try:
-        config = client.service.get_flink_cluster_config(
-            service=service,
-            instance=instance,
-        )
-    except Exception as e:
-        raise e
-    return config
+    return client.service.get_flink_cluster_config(
+        service=service,
+        instance=instance,
+    )
 
 
 def get_flink_overview_from_paasta_api_client(
@@ -308,11 +296,7 @@ def get_flink_overview_from_paasta_api_client(
     :param instance: The instance of the service to retrieve
     :param client: The paasta api client
     :returns: Flink cluster overview"""
-    try:
-        overview = client.service.get_flink_cluster_overview(
-            service=service,
-            instance=instance,
-        )
-    except Exception as e:
-        raise e
-    return overview
+    return client.service.get_flink_cluster_overview(
+        service=service,
+        instance=instance,
+    )
