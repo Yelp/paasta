@@ -1779,13 +1779,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 pod_spec_kwargs[
                     "service_account_name"
                 ] = create_or_find_service_account_name(iam_role)
-                # PAASTA-16919: remove everything related to fs_group when
-                # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
-                # will be fixed.
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
-                    # running inside the container.  Seems like most of such
+                    # running inside the container. Seems like most of such
                     # programs run as `nobody`, let's use that as a default.
+                    #
+                    # PAASTA-16919: This should be removed when
+                    # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
+                    # is fixed.
                     fs_group = 65534
         else:
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
