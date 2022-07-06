@@ -20,10 +20,13 @@ import requests
 import service_configuration_lib
 from mypy_extensions import TypedDict
 
+from paasta_tools.api import settings
 from paasta_tools.api.client import PaastaOApiClient
+from paasta_tools.kubernetes_tools import get_cr
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.paastaapi.exceptions import ApiException
 from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
 from paasta_tools.paastaapi.model.flink_config import FlinkConfig
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
@@ -205,9 +208,17 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
     return json_response
 
 
-def curl_flink_endpoint(cr_name: str, cluster: str, endpoint: str) -> Mapping[str, Any]:
+def _get_dashboard_url_from_flink_cr(cr: Mapping[str, Any]) -> str:
+    return cr["metadata"]["annotations"]["flink.yelp.com/dashboard_url"]
+
+
+def curl_flink_endpoint(cr_id: str, endpoint: str) -> Mapping[str, Any]:
     try:
-        response = _dashboard_get(cr_name, cluster, endpoint)
+        cr = get_cr(settings.kubernetes_client, cr_id)
+        if cr is None:
+            raise ValueError(f"failed to get CR for id: {cr_id}")
+        url = _get_dashboard_url_from_flink_cr(cr)
+        response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
         return _filter_for_endpoint(json.loads(response), endpoint)
     except requests.RequestException as e:
         url = e.request.url
@@ -216,6 +227,8 @@ def curl_flink_endpoint(cr_name: str, cluster: str, endpoint: str) -> Mapping[st
     except json.JSONDecodeError as e:
         raise ValueError(f"JSON decoding error from flink API: {e}")
     except ConnectionError as e:
+        raise ValueError(f"failed HTTP request to flink API: {e}")
+    except ApiException as e:
         raise ValueError(f"failed HTTP request to flink API: {e}")
 
 
