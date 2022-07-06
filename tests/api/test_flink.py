@@ -21,14 +21,6 @@ from paasta_tools.api.views.exception import ApiFailure
 
 @mock.patch("paasta_tools.api.views.flink.curl_flink_endpoint", autospec=True)
 class TestGetFlinkClusterOverview:
-    @pytest.fixture(autouse=True)
-    def mock_settings(self):
-        with mock.patch(
-            "paasta_tools.api.views.flink.settings", autospec=True
-        ) as _mock_settings:
-            _mock_settings.cluster = "test_cluster"
-            yield
-
     @pytest.fixture
     def mock_request(self):
         request = testing.DummyRequest()
@@ -68,14 +60,6 @@ class TestGetFlinkClusterOverview:
 
 @mock.patch("paasta_tools.api.views.flink.curl_flink_endpoint", autospec=True)
 class TestGetFlinkClusterConfig:
-    @pytest.fixture(autouse=True)
-    def mock_settings(self):
-        with mock.patch(
-            "paasta_tools.api.views.flink.settings", autospec=True
-        ) as _mock_settings:
-            _mock_settings.cluster = "test_cluster"
-            yield
-
     @pytest.fixture
     def mock_request(self):
         request = testing.DummyRequest()
@@ -110,14 +94,6 @@ class TestGetFlinkClusterConfig:
 
 @mock.patch("paasta_tools.api.views.flink.curl_flink_endpoint", autospec=True)
 class TestListFlinkClusterJobs:
-    @pytest.fixture(autouse=True)
-    def mock_settings(self):
-        with mock.patch(
-            "paasta_tools.api.views.flink.settings", autospec=True
-        ) as _mock_settings:
-            _mock_settings.cluster = "test_cluster"
-            yield
-
     @pytest.fixture
     def mock_request(self):
         request = testing.DummyRequest()
@@ -151,14 +127,6 @@ class TestListFlinkClusterJobs:
 
 @mock.patch("paasta_tools.api.views.flink.curl_flink_endpoint", autospec=True)
 class TestGetFlinkJobDetails:
-    @pytest.fixture(autouse=True)
-    def mock_settings(self):
-        with mock.patch(
-            "paasta_tools.api.views.flink.settings", autospec=True
-        ) as _mock_settings:
-            _mock_settings.cluster = "test_cluster"
-            yield
-
     @pytest.fixture
     def mock_request(self):
         request = testing.DummyRequest()

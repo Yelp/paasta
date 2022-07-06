@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import concurrent.futures
 import difflib
 import shutil
@@ -37,13 +38,16 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
+import a_sync
 import humanize
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
+from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -54,7 +58,6 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
-from paasta_tools.flink_tools import get_flink_job_details_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
@@ -1127,18 +1130,12 @@ def print_flink_status(
         return 1
 
     jobs = []
-    for job in flink_jobs["jobs"]:
-        try:
-            job_details = get_flink_job_details_from_paasta_api_client(
-                service=service,
-                instance=instance,
-                job_id=job.id,
-                client=client,
-            )
-            jobs.append(job_details)
-        except Exception as e:
-            output.append(PaastaColors.red(f"Exception when talking to the API:"))
-            output.append(str(e))
+    job_ids = [job.id for job in flink_jobs["jobs"]]
+    try:
+        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
+    except Exception as e:
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(str(e))
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if jobs:
@@ -1214,6 +1211,20 @@ def print_flink_status(
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
     return 0
+
+
+async def get_flink_job_details(
+    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
+):
+    jobs_details = await asyncio.gather(
+        *[
+            flink_tools.get_flink_job_details_from_paasta_api_client(
+                service, instance, job_id, client
+            )
+            for job_id in job_ids
+        ]
+    )
+    return [jd for jd in jobs_details]
 
 
 def print_kubernetes_status_v2(

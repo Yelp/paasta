@@ -17,7 +17,6 @@ PaaSTA flink service list jobs, overview and config.
 """
 from pyramid.view import view_config
 
-from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.flink_tools import cr_id
 from paasta_tools.flink_tools import curl_flink_endpoint
@@ -30,7 +29,7 @@ def list_flink_cluster_jobs(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:
-        return curl_flink_endpoint(cr_id(service, instance), settings.cluster, "jobs")
+        return curl_flink_endpoint(cr_id(service, instance), "jobs")
     except ValueError as e:
         raise ApiFailure(e, 500)
 
@@ -45,9 +44,7 @@ def get_flink_cluster_job_details(request):
     instance = request.swagger_data.get("instance")
     job_id = request.swagger_data.get("job_id")
     try:
-        return curl_flink_endpoint(
-            cr_id(service, instance), settings.cluster, f"jobs/{job_id}"
-        )
+        return curl_flink_endpoint(cr_id(service, instance), f"jobs/{job_id}")
     except ValueError as e:
         raise ApiFailure(e, 500)
 
@@ -59,9 +56,7 @@ def get_flink_cluster_overview(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:
-        return curl_flink_endpoint(
-            cr_id(service, instance), settings.cluster, "overview"
-        )
+        return curl_flink_endpoint(cr_id(service, instance), "overview")
     except ValueError as e:
         raise ApiFailure(e, 500)
 
@@ -73,6 +68,6 @@ def get_flink_cluster_config(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
     try:
-        return curl_flink_endpoint(cr_id(service, instance), settings.cluster, "config")
+        return curl_flink_endpoint(cr_id(service, instance), "config")
     except ValueError as e:
         raise ApiFailure(e, 500)

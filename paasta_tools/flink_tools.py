@@ -22,6 +22,7 @@ from mypy_extensions import TypedDict
 
 from paasta_tools.api import settings
 from paasta_tools.api.client import PaastaOApiClient
+from paasta_tools.async_utils import async_timeout
 from paasta_tools.kubernetes_tools import get_cr
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -263,7 +264,8 @@ def get_flink_jobs_from_paasta_api_client(
     )
 
 
-def get_flink_job_details_from_paasta_api_client(
+@async_timeout()
+async def get_flink_job_details_from_paasta_api_client(
     service: str, instance: str, job_id: str, client: PaastaOApiClient
 ) -> FlinkJobDetails:
     """Get flink job details for (service, instance) pair by connecting to the paasta api endpoint.
