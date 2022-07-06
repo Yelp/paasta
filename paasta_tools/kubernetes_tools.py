@@ -1770,6 +1770,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "termination_grace_period_seconds"
             ] = termination_grace_period
 
+        fs_group = self.get_fs_group()
+
         if self.get_iam_role_provider() == "aws":
             annotations["iam.amazonaws.com/role"] = ""
             iam_role = self.get_iam_role()
@@ -1780,17 +1782,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 # PAASTA-16919: remove everything related to fs_group when
                 # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
                 # will be fixed.
-                fs_group = self.get_fs_group()
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
                     # running inside the container.  Seems like most of such
                     # programs run as `nobody`, let's use that as a default.
                     fs_group = 65534
-                pod_spec_kwargs["security_context"] = V1PodSecurityContext(
-                    fs_group=fs_group
-                )
         else:
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
+
+        if fs_group is not None:
+            pod_spec_kwargs["security_context"] = V1PodSecurityContext(
+                fs_group=fs_group
+            )
 
         # prometheus_path is used to override the default scrape path in Prometheus
         prometheus_path = self.get_prometheus_path()
