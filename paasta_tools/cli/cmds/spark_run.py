@@ -1077,7 +1077,10 @@ def paasta_spark_run(args):
 
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(
-        args.spark_args, pod_template_path, args.enable_compact_bin_packing, args.enable_dra
+        args.spark_args,
+        pod_template_path,
+        args.enable_compact_bin_packing,
+        args.enable_dra,
     )
 
     args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
