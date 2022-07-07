@@ -295,8 +295,9 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--enable-dra",
         help=(
-            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in https://yelpwiki.yelpcorp.com/display/AML/Spark+Dynamic+Resource+Allocation+%28DRA%29+Runbook. "
-            " Disabled by default. Does not override Spark DRA configs explicitly specified by the user."
+            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in y/spark-dra. DRA aims "
+            "to utilize cluster resources in a more efficient way and save costs by requesting and releasing "
+            "resources dynamically. Disabled by default. Does not override Spark DRA configs specified by the user."
         ),
         action="store_true",
         default=False,
