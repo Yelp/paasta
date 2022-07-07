@@ -71,6 +71,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -951,7 +952,7 @@ def status_kubernetes_job_human(
         )
 
 
-def get_flink_job_name(flink_job):
+def get_flink_job_name(flink_job: FlinkJobDetails):
     return flink_job["name"].split(".", 2)[-1]
 
 
@@ -1129,10 +1130,10 @@ def print_flink_status(
         output.append(str(e))
         return 1
 
-    jobs = []
+    jobs: List[FlinkJobDetails] = []
     job_ids = [job.id for job in flink_jobs["jobs"]]
     try:
-        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
+        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)  # type: ignore
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
         output.append(str(e))
@@ -1215,7 +1216,7 @@ def print_flink_status(
 
 async def get_flink_job_details(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
-):
+) -> List[FlinkJobDetails]:
     jobs_details = await asyncio.gather(
         *[
             flink_tools.get_flink_job_details_from_paasta_api_client(

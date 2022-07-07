@@ -213,14 +213,15 @@ def _get_dashboard_url_from_flink_cr(cr: Mapping[str, Any]) -> str:
     return cr["metadata"]["annotations"]["flink.yelp.com/dashboard_url"]
 
 
-def curl_flink_endpoint(cr_id: str, endpoint: str) -> Mapping[str, Any]:
+def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str, Any]:
     try:
         cr = get_cr(settings.kubernetes_client, cr_id)
         if cr is None:
             raise ValueError(f"failed to get CR for id: {cr_id}")
         url = _get_dashboard_url_from_flink_cr(cr)
         response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-        return _filter_for_endpoint(json.loads(response), endpoint)
+        response.raise_for_status()
+        return _filter_for_endpoint(json.loads(response.text), endpoint)
     except requests.RequestException as e:
         url = e.request.url
         err = e.response or str(e)
