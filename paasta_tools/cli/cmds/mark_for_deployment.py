@@ -721,11 +721,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             return DEFAULT_SLACK_CHANNEL
 
     def get_deployment_name(self) -> str:
-        return f"Deploy of `{self.deployment_version}` of `{self.service}` to `{self.deploy_group}`:"
+        return f"Deploy of `{self.deployment_version.short_sha_repr()}` of `{self.service}` to `{self.deploy_group}`:"
 
     def on_enter_start_deploy(self) -> None:
         self.update_slack_status(
-            f"Marking `{self.deployment_version}` for deployment for {self.deploy_group}..."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group}..."
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
@@ -1038,7 +1038,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_mfd_failed(self) -> None:
         self.update_slack_status(
-            f"Marking `{self.deployment_version}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
 
     def on_enter_deploying(self) -> None:
@@ -1170,19 +1170,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_rolled_back(self) -> None:
         self.update_slack_status(
-            f"Finished rolling back to `{self.old_deployment_version}` in {self.deploy_group}"
+            f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
         )
-        line = f"Rollback to {self.old_deployment_version} for {self.deploy_group} complete"
+        line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
     def on_enter_deployed(self) -> None:
         self.update_slack_status(
-            f"Finished deployment of `{self.deployment_version}` to {self.deploy_group}"
+            f"Finished deployment of `{self.deployment_version.short_sha_repr()}` to {self.deploy_group}"
         )
-        line = (
-            f"Deployment of {self.deployment_version} for {self.deploy_group} complete"
-        )
+        line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
         if self.any_slo_failing() and self.auto_rollbacks_enabled():

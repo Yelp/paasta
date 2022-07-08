@@ -3314,6 +3314,15 @@ class DeploymentVersion(NamedTuple):
             else self.sha
         )
 
+    def short_sha_repr(self, sha_len: int = 8) -> str:
+        # Same as __repr__ but allows us to print the shortned commit sha.
+        short_sha = self.sha[:sha_len]
+        return (
+            f"DeploymentVersion(sha={short_sha}, image_version={self.image_version})"
+            if self.image_version
+            else short_sha
+        )
+
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
