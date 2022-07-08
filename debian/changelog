@@ -1,3 +1,12 @@
+paasta-tools (0.133.0) xenial; urgency=medium
+
+  * 0.133.0 tagged with 'make release'
+    Commit: Merge pull request #3376 from Yelp/u/jfong/w-f-d-with-image-
+    version  Update mark-for-deployment"s wait-for-deployment components
+    to use image_version
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 08 Jul 2022 10:31:06 -0700
+
 paasta-tools (0.132.11) xenial; urgency=medium
 
   * 0.132.11 tagged with 'make release'
