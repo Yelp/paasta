@@ -401,7 +401,9 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
         elif verbose:
-            # service config has been validated and cron schedules should be safe to parse TODO: TRON-1761
+            # service config has been validated and cron schedules should be safe to parse
+
+            # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
             service_config = load_tron_service_config(
                 service=service, cluster=cluster, soa_dir=soa_dir
             )
