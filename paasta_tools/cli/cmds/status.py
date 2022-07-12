@@ -72,6 +72,7 @@ from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
+from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -1042,25 +1043,27 @@ def print_flink_status(
         config_sha = config_sha[6:]
 
     output.append(f"    Config SHA: {config_sha}")
-    try:
-        flink_config = get_flink_config_from_paasta_api_client(
-            service=service, instance=instance, client=client
-        )
-    except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
-        output.append(str(e))
-        return 1
 
-    if verbose:
-        output.append(
-            f"    Flink version: {flink_config.flink_version} {flink_config.flink_revision}"
-        )
-    else:
-        output.append(f"    Flink version: {flink_config.flink_version}")
+    if status["state"] == "running":
+        try:
+            flink_config = get_flink_config_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
 
-    # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
-    dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
-    output.append(f"    URL: {dashboard_url}/")
+        if verbose:
+            output.append(
+                f"    Flink version: {flink_config.flink_version} {flink_config.flink_revision}"
+            )
+        else:
+            output.append(f"    Flink version: {flink_config.flink_version}")
+
+        # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
+        dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
+        output.append(f"    URL: {dashboard_url}/")
 
     color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
     output.append(f"    State: {color(status['state'].title())}")
@@ -1097,41 +1100,48 @@ def print_flink_status(
             append_pod_status(status["pod_status"], output)
         output.append(f"    No other information available in non-running state")
         return 0
-    # Flink cluster overview from paasta api client
-    try:
-        overview = get_flink_overview_from_paasta_api_client(
-            service=service, instance=instance, client=client
-        )
-    except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
-        output.append(str(e))
-        return 1
 
-    output.append(
-        "    Jobs:"
-        f" {overview.jobs_running} running,"
-        f" {overview.jobs_finished} finished,"
-        f" {overview.jobs_failed} failed,"
-        f" {overview.jobs_cancelled} cancelled"
-    )
-    output.append(
-        "   "
-        f" {overview.taskmanagers} taskmanagers,"
-        f" {overview.slots_available}/{overview.slots_total} slots available"
-    )
+    if status["state"] == "running":
+        # Flink cluster overview from paasta api client
+        try:
+            overview = get_flink_overview_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
 
-    # Flink cluster jobs from paasta api client
-    try:
-        flink_jobs = get_flink_jobs_from_paasta_api_client(
-            service=service, instance=instance, client=client
+        output.append(
+            "    Jobs:"
+            f" {overview.jobs_running} running,"
+            f" {overview.jobs_finished} finished,"
+            f" {overview.jobs_failed} failed,"
+            f" {overview.jobs_cancelled} cancelled"
         )
-    except Exception as e:
-        output.append(PaastaColors.red(f"Exception when talking to the API:"))
-        output.append(str(e))
-        return 1
+        output.append(
+            "   "
+            f" {overview.taskmanagers} taskmanagers,"
+            f" {overview.slots_available}/{overview.slots_total} slots available"
+        )
+
+    flink_jobs = FlinkJobs()
+    flink_jobs.jobs = []
+    if status["state"] == "running":
+        # Flink cluster jobs from paasta api client
+        try:
+            flink_jobs = get_flink_jobs_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
 
     jobs: List[FlinkJobDetails] = []
-    job_ids = [job.id for job in flink_jobs["jobs"]]
+    job_ids: List[str] = []
+    if flink_jobs.get("jobs"):
+        job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
         jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)  # type: ignore
     except Exception as e:

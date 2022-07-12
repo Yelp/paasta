@@ -3174,8 +3174,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -3217,8 +3217,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]

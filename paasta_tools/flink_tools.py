@@ -221,7 +221,9 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         base_url = _get_dashboard_url_from_flink_cr(cr)
         url = f"{base_url}/{endpoint}"
         response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-        return _filter_for_endpoint(response.json(), endpoint)
+        if response.ok:
+            return _filter_for_endpoint(response.json(), endpoint)
+        return {}
     except requests.RequestException as e:
         url = e.request.url
         err = e.response or str(e)
