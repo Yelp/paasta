@@ -14,7 +14,6 @@
 # limitations under the License.
 import concurrent.futures
 import difflib
-import shutil
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -22,7 +21,6 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import timezone
 from enum import Enum
-from itertools import groupby
 from typing import Any
 from typing import Callable
 from typing import Collection
@@ -1028,13 +1026,6 @@ def print_flink_status(
 
     output.append(f"    Config SHA: {config_sha}")
 
-    status_config = status["config"]
-    if verbose:
-        output.append(
-            f"    Flink version: {status_config['flink-version']} {status_config['flink-revision']}"
-        )
-    else:
-        output.append(f"    Flink version: {status_config['flink-version']}")
     # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
     dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
@@ -1075,93 +1066,9 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    output.append(
-        "    Jobs:"
-        f" {status['overview']['jobs-running']} running,"
-        f" {status['overview']['jobs-finished']} finished,"
-        f" {status['overview']['jobs-failed']} failed,"
-        f" {status['overview']['jobs-cancelled']} cancelled"
-    )
-    output.append(
-        "   "
-        f" {status['overview']['taskmanagers']} taskmanagers,"
-        f" {status['overview']['slots-available']}/{status['overview']['slots-total']} slots available"
-    )
-
-    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
-    if status["jobs"]:
-        max_job_name_length = max(
-            [len(get_flink_job_name(job)) for job in status["jobs"]]
-        )
-    else:
-        max_job_name_length = 10
-    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
-    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
-    allowed_max_job_name_length = min(
-        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
-    )
-
-    output.append(f"    Jobs:")
-    if verbose > 1:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
-        )
-    else:
-        output.append(
-            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
-        )
-
-    # Use only the most recent jobs
-    unique_jobs = (
-        sorted(jobs, key=lambda j: -j["start-time"])[0]
-        for _, jobs in groupby(
-            sorted(
-                (j for j in status["jobs"] if j.get("name") and j.get("start-time")),
-                key=lambda j: j["name"],
-            ),
-            lambda j: j["name"],
-        )
-    )
-
-    allowed_max_jobs_printed = 3
-    job_printed_count = 0
-
-    for job in unique_jobs:
-        job_id = job["jid"]
-        if verbose > 1:
-            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
-        {dashboard_url}"""
-        else:
-            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
-        start_time = datetime.fromtimestamp(int(job["start-time"]) // 1000)
-        if verbose or job_printed_count < allowed_max_jobs_printed:
-            job_printed_count += 1
-            color_fn = (
-                PaastaColors.green
-                if job.get("state") and job.get("state") == "RUNNING"
-                else PaastaColors.red
-                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
-                else PaastaColors.yellow
-            )
-            job_info_str = fmt.format(
-                job_id=job_id,
-                job_name=get_flink_job_name(job),
-                allowed_max_job_name_length=allowed_max_job_name_length,
-                state=color_fn((job.get("state").title() or "Unknown")),
-                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
-                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
-            )
-            output.append(job_info_str)
-        else:
-            output.append(
-                PaastaColors.yellow(
-                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
-                )
-            )
-            break
-
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
+
     return 0
 
 

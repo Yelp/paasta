@@ -2967,11 +2967,6 @@ class TestPrintFlinkStatus:
         expected_output = _get_base_status_verbose_0(status, metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
-            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
-            f"    1 taskmanagers, 3/4 slots available",
-            f"    Jobs:",
-            f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 
@@ -3055,19 +3050,9 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        job_start_time = str(
-            datetime.datetime.fromtimestamp(
-                int(status["jobs"][0]["start-time"]) // 1000
-            )
-        )
         expected_output = _get_base_status_verbose_1(status, metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
-            f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
-            f"    1 taskmanagers, 3/4 slots available",
-            f"    Jobs:",
-            f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
         ]
         append_pod_status(status["pod_status"], expected_output)
         assert expected_output == output
@@ -3076,7 +3061,6 @@ class TestPrintFlinkStatus:
 def _get_base_status_verbose_0(status, metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
@@ -3084,7 +3068,6 @@ def _get_base_status_verbose_0(status, metadata):
 def _get_base_status_verbose_1(status, metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']} {status['config']['flink-revision']}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
