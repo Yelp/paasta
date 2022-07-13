@@ -1048,12 +1048,14 @@ def test_paasta_spark_run_bash(
         needs_docker_cfg=False,
         auto_set_temporary_credentials_provider=False,
     )
+    mock_spark_conf = mock_get_spark_conf.return_value
+    mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
         docker_img=mock_get_docker_image.return_value,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
-        spark_conf=mock_get_spark_conf.return_value,
+        spark_conf=mock_spark_conf,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         pod_template_path="unique-run",
