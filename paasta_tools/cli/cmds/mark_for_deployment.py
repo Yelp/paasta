@@ -509,7 +509,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             deploy_info=deploy_info,
             deploy_group=deploy_group,
             commit=commit,
-            old_git_sha=old_deployment_version.sha,
+            old_git_sha=old_deployment_version.sha if old_deployment_version else None,
             git_url=args.git_url,
             auto_rollback=args.auto_rollback,
             block=args.block,
@@ -520,7 +520,9 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             auto_abandon_delay=args.auto_abandon_delay,
             auto_rollback_delay=args.auto_rollback_delay,
             image_version=deployment_version.image_version,
-            old_image_version=old_deployment_version.image_version,
+            old_image_version=old_deployment_version.image_version
+            if old_deployment_version
+            else None,
             authors=args.authors,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,

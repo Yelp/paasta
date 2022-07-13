@@ -82,6 +82,7 @@ def step_paasta_mark_for_deployments_when(context):
         service="fake_deployments_json_service",
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
+        image_version=None,
         soa_dir="fake_soa_configs",
         block=False,
         verify_image=False,
