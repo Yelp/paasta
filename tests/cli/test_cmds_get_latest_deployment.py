@@ -15,13 +15,14 @@ from mock import MagicMock
 from mock import patch
 
 from paasta_tools.cli.cmds import get_latest_deployment
+from paasta_tools.utils import DeploymentVersion
 
 
 def test_get_latest_deployment(capfd):
     mock_args = MagicMock(service="", deploy_group="", soa_dir="")
     with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha",
-        return_value="FAKE_SHA",
+        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
+        return_value=DeploymentVersion(sha="FAKE_SHA", image_version=None),
         autospec=True,
     ), patch(
         "paasta_tools.cli.cmds.get_latest_deployment.validate_service_name",
@@ -36,7 +37,7 @@ def test_get_latest_deployment_no_deployment_tag(capfd):
         service="fake_service", deploy_group="fake_deploy_group", soa_dir=""
     )
     with patch(
-        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_sha",
+        "paasta_tools.cli.cmds.get_latest_deployment.get_currently_deployed_version",
         return_value=None,
         autospec=True,
     ), patch(
