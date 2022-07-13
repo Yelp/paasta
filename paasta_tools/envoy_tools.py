@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import collections
+import logging
 import os
 import socket
 from typing import AbstractSet
@@ -34,9 +35,12 @@ import requests
 import yaml
 from kubernetes.client import V1Pod
 from mypy_extensions import TypedDict
+from requests import RequestException
 
 from paasta_tools import marathon_tools
 from paasta_tools.utils import get_user_agent
+
+log = logging.getLogger(__name__)
 
 
 class EnvoyBackend(TypedDict, total=False):
@@ -217,17 +221,22 @@ def get_multiple_backends(
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
-    clusters_info = retrieve_envoy_clusters(
-        envoy_host=envoy_host,
-        envoy_admin_port=envoy_admin_port,
-        envoy_admin_endpoint_format=envoy_admin_endpoint_format,
-    )
-
-    casper_endpoints = get_casper_endpoints(clusters_info)
-
     backends: DefaultDict[
         str, List[Tuple[EnvoyBackend, bool]]
     ] = collections.defaultdict(list)
+
+    try:
+        clusters_info = retrieve_envoy_clusters(
+            envoy_host=envoy_host,
+            envoy_admin_port=envoy_admin_port,
+            envoy_admin_endpoint_format=envoy_admin_endpoint_format,
+        )
+    except RequestException as exc:
+        log.error("Failed to get envoy clusters", exc)
+        return backends
+
+    casper_endpoints = get_casper_endpoints(clusters_info)
+
     for cluster_status in clusters_info["cluster_statuses"]:
         if "host_statuses" in cluster_status:
             if cluster_status["name"].endswith(".egress_cluster"):
