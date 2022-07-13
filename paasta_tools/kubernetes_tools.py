@@ -323,6 +323,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/pool": str,
     },
     total=False,
 )
