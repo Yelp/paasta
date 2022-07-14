@@ -1069,7 +1069,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.old_git_sha,
-            image_version=self.image_version,
+            image_version=self.old_image_version,
         )
 
         if self.mark_for_deployment_return_code != 0:
@@ -1209,7 +1209,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 f"--commit {self.old_git_sha}`"
             )
             if self.old_deployment_version.image_version:
-                message += f" --image-version {self.old_deployment_version}"
+                message += (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
 
             self.update_slack_thread(message)
             print(message)

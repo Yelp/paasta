@@ -262,7 +262,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         deploy_group="test_deploy_group",
         commit="old-sha",
         git_url="git://false.repo/services/test_services",
-        image_version="extrastuff",
+        image_version=None,
     )
     assert mock_mark_for_deployment.call_count == 2
 
