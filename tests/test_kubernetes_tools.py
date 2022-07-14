@@ -1589,7 +1589,7 @@ class TestKubernetesDeploymentConfig:
             service_account_name=None,
             containers=mock_get_kubernetes_containers.return_value,
             share_process_namespace=True,
-            node_selector={"yelp.com/pool": "default"},
+            node_selector={"paasta.yelp.com/pool": "default"},
             restart_policy="Always",
             volumes=[],
             dns_policy="foo",
@@ -1665,13 +1665,13 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "raw_selectors,expected",
         [
-            ({}, {"yelp.com/pool": "default"}),  # no node_selectors case
+            ({}, {"paasta.yelp.com/pool": "default"}),  # no node_selectors case
             (  # node_selectors configs case, simple items become k8s selectors
                 {
                     "select_key": "select_value",
                     "affinity_key": {"operator": "In", "values": ["affinity_value"]},
                 },
-                {"yelp.com/pool": "default", "select_key": "select_value"},
+                {"paasta.yelp.com/pool": "default", "select_key": "select_value"},
             ),
         ],
     )
@@ -3626,7 +3626,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c177d7a"
+            == "config8071a86f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3731,7 +3731,7 @@ def test_running_task_allocation_get_kubernetes_metadata():
 
 def test_running_task_allocation_get_pod_pool():
     mock_node = mock.MagicMock()
-    mock_node.metadata.labels = {"yelp.com/pool": "foo"}
+    mock_node.metadata.labels = {"paasta.yelp.com/pool": "foo"}
     with mock.patch(
         "paasta_tools.kubernetes_tools.get_pod_node",
         autospec=True,

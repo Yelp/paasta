@@ -920,7 +920,7 @@ class TestTronTools:
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
-            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "node_selectors": {"paasta.yelp.com/pool": "special_pool"},
             "ports": [33000, 33001, 33002],
             "labels": {
                 "paasta.yelp.com/cluster": "test-cluster",
@@ -1036,7 +1036,7 @@ class TestTronTools:
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
             },
-            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "node_selectors": {"paasta.yelp.com/pool": "special_pool"},
             "node_affinities": [
                 {
                     "key": "node.kubernetes.io/instance-type",
