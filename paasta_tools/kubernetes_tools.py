@@ -1873,7 +1873,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for label, value in raw_selectors.items()
             if type(value) is str
         }
-        node_selectors["yelp.com/pool"] = self.get_pool()
+        node_selectors["paasta.yelp.com/pool"] = self.get_pool()
         return node_selectors
 
     def get_node_affinity(self) -> Optional[V1NodeAffinity]:

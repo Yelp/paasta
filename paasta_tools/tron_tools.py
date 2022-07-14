@@ -303,8 +303,8 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
             "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
             "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
-            "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
-            "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.node.selector.paasta.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.executor.label.paasta.yelp.com/pool": self.get_pool(),
             # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
             # will be, drumroll please, the routable IP for the Pod - this allows us to
             # not need to worry about DNS
@@ -491,7 +491,7 @@ class TronActionConfig(InstanceConfig):
             for label, value in raw_selectors.items()
             if isinstance(value, str)
         }
-        node_selectors["yelp.com/pool"] = self.get_pool()
+        node_selectors["paasta.yelp.com/pool"] = self.get_pool()
         return node_selectors
 
     def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
