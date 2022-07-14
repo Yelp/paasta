@@ -91,7 +91,7 @@ def create_marathon_dashboard(
     dashboard_links = system_paasta_config.get_dashboard_links()
     marathon_links = dashboard_links.get(cluster, {}).get("Marathon RO")
 
-    # e.g. 'http://10.64.97.75:5052': 'http://marathon-norcal-prod.yelpcorp.com'
+    # e.g. 'http://10.64.97.75:5052': 'http://marathon-pnw-prod.yelpcorp.com'
     shard_url_to_marathon_link_dict: Dict[str, str] = {}
     if isinstance(marathon_links, list):
         # Sanity check and log error if necessary
