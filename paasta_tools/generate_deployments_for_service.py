@@ -56,6 +56,7 @@ from paasta_tools.cli.utils import get_instance_configs_for_service
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_latest_deployment_tag
 
 log = logging.getLogger(__name__)
 TARGET_FILE = "deployments.json"
@@ -101,41 +102,6 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     return args
-
-
-def get_latest_deployment_tag(
-    refs: Dict[str, str], deploy_group: str
-) -> Tuple[str, str, Optional[str]]:
-    """Gets the latest deployment tag and sha for the specified deploy_group
-
-    :param refs: A dictionary mapping git refs to shas
-    :param deploy_group: The deployment group to return a deploy tag for
-
-    :returns: A tuple of the form (ref, sha, image_version) where ref is the
-              actual deployment tag (with the most recent timestamp), sha is
-              the sha it points at and image_version provides additional
-              version information about the image
-    """
-    most_recent_dtime = None
-    most_recent_ref = None
-    most_recent_sha = None
-    most_recent_image_version = None
-    pattern = re.compile(
-        r"^refs/tags/paasta-%s(?:\+(?P<image_version>.*)){0,1}-(?P<dtime>\d{8}T\d{6})-deploy$"
-        % deploy_group
-    )
-
-    for ref_name, sha in refs.items():
-        match = pattern.match(ref_name)
-        if match:
-            gd = match.groupdict()
-            dtime = gd["dtime"]
-            if most_recent_dtime is None or dtime > most_recent_dtime:
-                most_recent_dtime = dtime
-                most_recent_ref = ref_name
-                most_recent_sha = sha
-                most_recent_image_version = gd["image_version"]
-    return most_recent_ref, most_recent_sha, most_recent_image_version
 
 
 def get_deploy_group_mappings(

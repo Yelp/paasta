@@ -125,6 +125,16 @@
                     "tcp"
                 ]
             },
+            "lb_policy": {
+                "enum": [
+                    "ROUND_ROBIN",
+                    "LEAST_REQUEST",
+                    "RING_HASH",
+                    "RANDOM",
+                    "MAGLEV",
+                    "CLUSTER_PROVIDED"
+                ]
+            },
             "chaos": {
                 "type": "object",
                 "additionalProperties": {

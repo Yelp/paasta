@@ -17,6 +17,7 @@ of a docker image to a cluster.instance.
 """
 import asyncio
 import logging
+from typing import Optional
 
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
 from paasta_tools.cli.cmds.mark_for_deployment import report_waiting_aborted
@@ -32,11 +33,12 @@ from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.remote_git import LSRemoteException
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_latest_deployment_tag
 from paasta_tools.utils import list_services
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import TimeoutError
-
 
 DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 
@@ -44,7 +46,7 @@ DEFAULT_DEPLOYMENT_TIMEOUT = 3600  # seconds
 log = logging.getLogger(__name__)
 
 
-class GitShaError(Exception):
+class VersionError(Exception):
     pass
 
 
@@ -80,6 +82,13 @@ def add_subparser(subparsers):
         help="Git sha to wait for deployment",
         required=True,
         type=validate_short_git_sha,
+    )
+    list_parser.add_argument(
+        "-i",
+        "--image-version",
+        help="Extra version metadata to mark for deployment",
+        required=False,
+        default=None,
     )
     list_parser.add_argument(
         "-l",
@@ -147,50 +156,51 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_wait_for_deployment)
 
 
-def get_latest_marked_sha(git_url, deploy_group):
-    """Return the latest marked for deployment git sha or ''"""
+def get_latest_marked_version(
+    git_url: str, deploy_group: str
+) -> Optional[DeploymentVersion]:
+    """Return the latest marked for deployment version or None"""
+    # TODO: correct this function for new tag format
     refs = list_remote_refs(git_url)
-    last_ref = ""
-    for ref in refs:
-        if (
-            ref.startswith(f"refs/tags/paasta-{deploy_group}-")
-            and ref.endswith("-deploy")
-            and ref > last_ref
-        ):
-            last_ref = ref
-    return refs[last_ref] if last_ref else ""
+    _, sha, image_version = get_latest_deployment_tag(refs, deploy_group)
+    if sha:
+        return DeploymentVersion(sha=sha, image_version=image_version)
+    # We did not find a ref for this deploy group
+    return None
 
 
-def validate_git_sha_is_latest(git_sha, git_url, deploy_group, service):
-    """Verify if git_sha is the latest sha marked for deployment.
+def validate_version_is_latest(
+    version: DeploymentVersion, git_url: str, deploy_group: str, service: str
+):
+    """Verify if the requested version  is the latest marked for deployment.
 
-    Raise exception when the provided git_sha is not the latest
+    Raise exception when the provided version is not the latest
     marked for deployment in 'deploy_group' for 'service'.
     """
     try:
-        marked_sha = get_latest_marked_sha(git_url, deploy_group)
+        marked_version = get_latest_marked_version(git_url, deploy_group)
     except LSRemoteException as e:
         print(
             "Error talking to the git server: {}\n"
             "It is not possible to verify that {} is marked for deployment in {}, "
             "but I assume that it is marked and will continue waiting..".format(
-                e, git_sha, deploy_group
+                e, version, deploy_group
             )
         )
         return
-    if marked_sha == "":
-        raise GitShaError(
+    if marked_version is None:
+        raise VersionError(
             "ERROR: Nothing is marked for deployment "
             "in {} for {}".format(deploy_group, service)
         )
-    if git_sha != marked_sha:
-        raise GitShaError(
-            "ERROR: The latest git SHA marked for "
-            "deployment in {} is {}".format(deploy_group, marked_sha)
+    if version != marked_version:
+        raise VersionError(
+            "ERROR: The latest version marked for "
+            "deployment in {} is {}".format(deploy_group, marked_version)
         )
 
 
-def validate_deploy_group(deploy_group, service, soa_dir):
+def validate_deploy_group(deploy_group: str, service: str, soa_dir: str):
     """Validate deploy_group.
 
     Raise exception if the specified deploy group is not used anywhere.
@@ -227,13 +237,13 @@ def paasta_wait_for_deployment(args):
 
     args.commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
 
+    version = DeploymentVersion(sha=args.commit, image_version=args.image_version)
+
     try:
         validate_service_name(service, soa_dir=args.soa_dir)
         validate_deploy_group(args.deploy_group, service, args.soa_dir)
-        validate_git_sha_is_latest(
-            args.commit, args.git_url, args.deploy_group, service
-        )
-    except (GitShaError, DeployGroupError, NoSuchService) as e:
+        validate_version_is_latest(version, args.git_url, args.deploy_group, service)
+    except (VersionError, DeployGroupError, NoSuchService) as e:
         print(PaastaColors.red(f"{e}"))
         return 1
 
@@ -243,6 +253,7 @@ def paasta_wait_for_deployment(args):
                 service=service,
                 deploy_group=args.deploy_group,
                 git_sha=args.commit,
+                image_version=args.image_version,
                 soa_dir=args.soa_dir,
                 timeout=args.timeout,
                 polling_interval=args.polling_interval,
@@ -253,11 +264,7 @@ def paasta_wait_for_deployment(args):
         _log(
             service=service,
             component="deploy",
-            line=(
-                "Deployment of {} for {} complete".format(
-                    args.commit, args.deploy_group
-                )
-            ),
+            line=(f"Deployment of {version} for {args.deploy_group} complete"),
             level="event",
         )
 
