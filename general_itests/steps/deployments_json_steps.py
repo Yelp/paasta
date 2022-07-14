@@ -63,6 +63,8 @@ def step_impl_given(context):
     context.expected_commit_as_bytes = commit.id
     context.expected_commit = context.expected_commit_as_bytes.decode()
 
+    context.image_version = None
+
 
 @given("a valid system paasta config")
 def generate_system_paasta_config(context):
@@ -82,6 +84,7 @@ def step_paasta_mark_for_deployments_when(context):
         service="fake_deployments_json_service",
         git_url=context.test_git_repo_dir,
         commit=context.expected_commit,
+        image_version=context.image_version,
         soa_dir="fake_soa_configs",
         block=False,
         verify_image=False,

@@ -3310,6 +3310,15 @@ class DeploymentVersion(NamedTuple):
             else self.sha
         )
 
+    def short_sha_repr(self, sha_len: int = 8) -> str:
+        # Same as __repr__ but allows us to print the shortned commit sha.
+        short_sha = self.sha[:sha_len]
+        return (
+            f"DeploymentVersion(sha={short_sha}, image_version={self.image_version})"
+            if self.image_version
+            else short_sha
+        )
+
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
@@ -3481,9 +3490,14 @@ def format_timestamp(dt: datetime.datetime = None) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
-def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
+def get_paasta_tag_from_deploy_group(
+    identifier: str, desired_state: str, image_version: Optional[str] = None
+) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f"paasta-{identifier}-{timestamp}-{desired_state}"
+    if image_version:
+        return f"paasta-{identifier}+{image_version}-{timestamp}-{desired_state}"
+    else:
+        return f"paasta-{identifier}-{timestamp}-{desired_state}"
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
