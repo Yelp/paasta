@@ -295,9 +295,9 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--enable-dra",
         help=(
-            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in y/spark-dra. DRA aims "
-            "to utilize cluster resources in a more efficient way and save costs by requesting and releasing "
-            "resources dynamically. Disabled by default. Does not override Spark DRA configs specified by the user."
+            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in (y/spark-dra). DRA "
+            "dynamically scales up and down the executor instance count based on the number of pending tasks "
+            "and requirements. Disabled by default. Does not override Spark DRA configs if specified by the user."
         ),
         action="store_true",
         default=False,
@@ -627,6 +627,20 @@ def _parse_user_spark_args(
         user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
 
     if enable_spark_dra:
+        if (
+            "spark.dynamicAllocation.enabled" in user_spark_opts
+            and user_spark_opts["spark.dynamicAllocation.enabled"] == "false"
+        ):
+            print(
+                PaastaColors.red(
+                    "Error: --enable-dra flag is provided while spark.dynamicAllocation.enabled "
+                    "is explicitly set to false in --spark-args. If you want to enable DRA, please remove the "
+                    "spark.dynamicAllocation.enabled=false config from spark-args. If you don't want to "
+                    "enable DRA, please remove the --enable-dra flag."
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
         user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
 
     return user_spark_opts
