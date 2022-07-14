@@ -868,8 +868,8 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/service=my_service "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
-            "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
-            "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
+            "--conf spark.kubernetes.node.selector.paasta.yelp.com/pool=special_pool "
+            "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
             "--conf spark.driver.host=$PAASTA_POD_IP "
             # user args
             "--conf spark.cores.max=4 "
