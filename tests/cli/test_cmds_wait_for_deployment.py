@@ -20,13 +20,14 @@ from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
 from paasta_tools.cli.cmds.mark_for_deployment import NoSuchCluster
-from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_sha
+from paasta_tools.cli.cmds.wait_for_deployment import get_latest_marked_version
 from paasta_tools.cli.cmds.wait_for_deployment import paasta_wait_for_deployment
-from paasta_tools.cli.cmds.wait_for_deployment import validate_git_sha_is_latest
+from paasta_tools.cli.cmds.wait_for_deployment import validate_version_is_latest
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paastaapi import ApiException
 from paasta_tools.remote_git import LSRemoteException
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import TimeoutError
 
 
@@ -35,6 +36,7 @@ class fake_args:
     service = "test_service"
     git_url = ""
     commit = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+    image_version = None
     soa_dir = "fake_soa_dir"
     timeout = 0
     verbose = False
@@ -133,7 +135,7 @@ def test_check_if_instance_is_done(
         service="fake_service",
         instance="fake_instance",
         cluster="fake_cluster",
-        git_sha="abc123",
+        version=DeploymentVersion(sha="abc123", image_version=None),
         instance_config=mock_marathon_instance_config("fake_instance"),
     )
 
@@ -164,7 +166,7 @@ def test_wait_for_deployment(
     }
 
     def check_if_instance_is_done_side_effect(
-        service, instance, cluster, git_sha, instance_config, api=None
+        service, instance, cluster, version, instance_config, api=None
     ):
         return instance in ["instance1", "instance2"]
 
@@ -285,7 +287,7 @@ def test_paasta_wait_for_deployment_return_1_when_deploy_group_not_found(
 @patch("paasta_tools.cli.cmds.wait_for_deployment.validate_service_name", autospec=True)
 @patch("paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.wait_for_deployment.validate_git_sha_is_latest",
+    "paasta_tools.cli.cmds.wait_for_deployment.validate_version_is_latest",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.wait_for_deployment.list_deploy_groups", autospec=True)
@@ -295,7 +297,7 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
     mock__log1,
     mock__log2,
     mock_list_deploy_groups,
-    mock_validate_git_sha_is_latest,
+    mock_validate_version_is_latest,
     mock_validate_git_sha,
     mock_validate_service_name,
     mock_paasta_service_config_loader,
@@ -309,30 +311,43 @@ def test_paasta_wait_for_deployment_return_0_when_no_instances_in_deploy_group(
         mock_marathon_instance_config("some_instance")
     ]
     mock_list_deploy_groups.return_value = {"test_deploy_group"}
+    mock_validate_git_sha.return_value = fake_args.commit
     assert paasta_wait_for_deployment(fake_args) == 0
     assert mock_validate_service_name.called
 
 
 @patch("paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs", autospec=True)
-def test_get_latest_marked_sha_good(mock_list_remote_refs):
+def test_get_latest_marked_version_good(mock_list_remote_refs):
     mock_list_remote_refs.return_value = {
         "refs/tags/paasta-fake_group1-20161129T203750-deploy": "968b948b3fca457326718dc7b2e278f89ccc5c87",
         "refs/tags/paasta-fake_group1-20161117T122449-deploy": "eac9a6d7909d09ffec00538bbc43b64502aa2dc0",
         "refs/tags/paasta-fake_group2-20161125T095651-deploy": "a4911648beb2e53886658ba7ea7eb93d582d754c",
         "refs/tags/paasta-fake_group1.everywhere-20161109T223959-deploy": "71e97ec397a3f0e7c4ee46e8ea1e2982cbcb0b79",
     }
-    assert (
-        get_latest_marked_sha("", "fake_group1")
-        == "968b948b3fca457326718dc7b2e278f89ccc5c87"
+    assert get_latest_marked_version("", "fake_group1") == DeploymentVersion(
+        sha="968b948b3fca457326718dc7b2e278f89ccc5c87", image_version=None
     )
 
 
 @patch("paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs", autospec=True)
-def test_get_latest_marked_sha_bad(mock_list_remote_refs):
+def test_get_latest_marked_version_with_image_good(mock_list_remote_refs):
+    mock_list_remote_refs.return_value = {
+        "refs/tags/paasta-fake_group1+20161128image-20161129T203750-deploy": "968b948b3fca457326718dc7b2e278f89ccc5c87",
+        "refs/tags/paasta-fake_group1-20161117T122449-deploy": "eac9a6d7909d09ffec00538bbc43b64502aa2dc0",
+        "refs/tags/paasta-fake_group2-20161125T095651-deploy": "a4911648beb2e53886658ba7ea7eb93d582d754c",
+        "refs/tags/paasta-fake_group1.everywhere-20161109T223959-deploy": "71e97ec397a3f0e7c4ee46e8ea1e2982cbcb0b79",
+    }
+    assert get_latest_marked_version("", "fake_group1") == DeploymentVersion(
+        sha="968b948b3fca457326718dc7b2e278f89ccc5c87", image_version="20161128image"
+    )
+
+
+@patch("paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs", autospec=True)
+def test_get_latest_marked_version_bad(mock_list_remote_refs):
     mock_list_remote_refs.return_value = {
         "refs/tags/paasta-fake_group2-20161129T203750-deploy": "968b948b3fca457326718dc7b2e278f89ccc5c87"
     }
-    assert get_latest_marked_sha("", "fake_group1") == ""
+    assert get_latest_marked_version("", "fake_group1") is None
 
 
 @patch("paasta_tools.cli.cmds.wait_for_deployment.list_remote_refs", autospec=True)
@@ -340,8 +355,11 @@ def test_validate_deploy_group_when_is_git_not_available(mock_list_remote_refs, 
     test_error_message = "Git error"
     mock_list_remote_refs.side_effect = LSRemoteException(test_error_message)
     assert (
-        validate_git_sha_is_latest(
-            "fake sha", "fake_git_url", "fake_group", "fake_service"
+        validate_version_is_latest(
+            DeploymentVersion(sha="fake sha", image_version=None),
+            "fake_git_url",
+            "fake_group",
+            "fake_service",
         )
         is None
     )
@@ -366,7 +384,11 @@ def test_compose_timeout_message():
     }
 
     message = mark_for_deployment.compose_timeout_message(
-        remaining_instances, 1, "fake_group", "someservice", "some_git_sha"
+        remaining_instances,
+        1,
+        "fake_group",
+        "someservice",
+        DeploymentVersion(sha="some_git_sha", image_version="extrastuff"),
     )
     assert (
         "  paasta status -c cluster1 -s someservice -i instance1,instance2" in message
@@ -378,5 +400,9 @@ def test_compose_timeout_message():
     )
     assert (
         "  paasta logs -c cluster2 -s someservice -i instance3 -C deploy -l 1000"
+        in message
+    )
+    assert (
+        " paasta wait-for-deployment -s someservice -l fake_group -c some_git_sha --image-version extrastuff"
         in message
     )

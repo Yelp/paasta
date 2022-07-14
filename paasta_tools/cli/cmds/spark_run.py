@@ -67,6 +67,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
+DEFAULT_RUNTIME_TIMEOUT = "12h"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -244,6 +245,14 @@ def add_subparser(subparsers):
         "-C",
         "--cmd",
         help="Run the spark-shell, pyspark, spark-submit, jupyter-lab, or history-server command.",
+    )
+
+    list_parser.add_argument(
+        "--timeout-job-runtime",
+        type=str,
+        help="Timeout value which will be added before spark-submit. Job will exit if it doesn't "
+        "finishes in given runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_RUNTIME_TIMEOUT}",
+        default=DEFAULT_RUNTIME_TIMEOUT,
     )
 
     list_parser.add_argument(
@@ -948,6 +957,35 @@ def validate_work_dir(s):
             sys.exit(1)
 
 
+def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
+    # Timeout only to be added for spark-submit commands
+    # TODO: Add timeout for jobs using mrjob with spark-runner
+    if "spark-submit" not in cmd:
+        return cmd
+    try:
+        timeout_present = re.match(
+            r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd
+        )
+        if not timeout_present:
+            split_cmd = cmd.split("spark-submit")
+            cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
+            print(
+                PaastaColors.blue(
+                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                    f"Adjust timeout value using --timeout-job-timeout. "
+                    f"New Updated Command with timeout: {cmd}"
+                ),
+            )
+    except Exception as e:
+        err_msg = (
+            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
+            "Please report to #spark."
+        )
+        log.warn(err_msg)
+        print(PaastaColors.red(err_msg))
+    return cmd
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1039,6 +1077,8 @@ def paasta_spark_run(args):
     user_spark_opts = _parse_user_spark_args(
         args.spark_args, pod_template_path, args.enable_compact_bin_packing
     )
+
+    args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
 
     # This is required if configs are provided as part of `spark-submit`
     # Other way to provide is with --spark-args
