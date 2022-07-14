@@ -1,3 +1,11 @@
+paasta-tools (0.133.3) xenial; urgency=medium
+
+  * 0.133.3 tagged with 'make release'
+    Commit: Remove mentions of norcal-prod (#3397)  This cluster no
+    longer exists and mentions of it confuses folks.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Jul 2022 14:25:43 -0700
+
 paasta-tools (0.133.2) xenial; urgency=medium
 
   * 0.133.2 tagged with 'make release'
