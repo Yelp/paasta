@@ -1889,6 +1889,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_hostname_unique_size: int
     boost_regions: List[str]
+    cluster: str
+    cluster_aliases: Dict[str, str]
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
     cluster_autoscaling_draining_enabled: bool
@@ -1896,11 +1898,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
-    cluster: str
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
+    deploy_whitelist: UnsafeDeployWhitelist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
     deployd_maintenance_polling_frequency: int
@@ -1911,13 +1913,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     deployd_startup_oracle_enabled: bool
     deployd_use_zk_queue: bool
     deployd_worker_failure_backoff_factor: int
-    deploy_whitelist: UnsafeDeployWhitelist
     disabled_watchers: List
-    dockercfg_location: str
     docker_registry: str
+    dockercfg_location: str
     enable_client_cert_auth: bool
-    enable_nerve_readiness_check: bool
     enable_envoy_readiness_check: bool
+    enable_nerve_readiness_check: bool
     enforce_disk_quota: bool
     envoy_admin_domain_name: str
     envoy_admin_endpoint_format: str
@@ -1927,6 +1928,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     git_config: Dict
+    hacheck_match_initial_delay: bool
     hacheck_sidecar_image_url: str
     hacheck_sidecar_volumes: List[DockerVolume]
     kubernetes_add_registration_labels: bool
@@ -1942,16 +1944,17 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     log_writer: LogWriterConfig
     maintenance_resource_reservation_enabled: bool
     marathon_servers: List[MarathonConfigDict]
-    mark_for_deployment_max_polling_threads: int
-    mark_for_deployment_default_polling_interval: float
-    mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
+    mark_for_deployment_default_diagnosis_interval: float
+    mark_for_deployment_default_polling_interval: float
+    mark_for_deployment_max_polling_threads: int
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
     mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
+    paasta_api_number_workers: int
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
@@ -1968,28 +1971,26 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sensu_host: str
     sensu_port: int
     service_discovery_providers: Dict[str, Any]
+    skip_cpu_override_validation: List[str]
     slack: Dict[str, str]
+    spark_blockmanager_port: int
+    spark_driver_port: int
+    spark_k8s_role: str
     spark_run_config: SparkRunConfig
+    spark_ui_port: int
     supported_storage_classes: Sequence[str]
     synapse_haproxy_url_format: str
     synapse_host: str
     synapse_port: int
     taskproc: Dict
     tron: Dict
+    tron_use_k8s: bool
+    tron_use_suffixed_log_streams: bool
     uwsgi_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
     zookeeper: str
-    tron_use_k8s: bool
-    skip_cpu_override_validation: List[str]
-    spark_k8s_role: str
-    tron_use_suffixed_log_streams: bool
-    cluster_aliases: Dict[str, str]
-    hacheck_match_initial_delay: bool
-    spark_ui_port: int
-    spark_driver_port: int
-    spark_blockmanager_port: int
 
 
 def load_system_paasta_config(
@@ -2685,6 +2686,9 @@ class SystemPaastaConfig:
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
+
+    def get_paasta_api_number_workers(self) -> int:
+        return self.config_dict.get("paasta_api_number_workers", 4)
 
 
 def _run(

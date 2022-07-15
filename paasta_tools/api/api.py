@@ -254,7 +254,7 @@ def main(argv=None):
         os.path.join(sys.exec_prefix, "bin", "gunicorn"),
         "gunicorn",
         "-w",
-        "4",
+        str(load_system_paasta_config().get_paasta_api_number_workers()),
         "--bind",
         f":{args.port}",
         "--timeout",
