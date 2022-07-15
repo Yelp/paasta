@@ -1954,7 +1954,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
-    paasta_api_number_workers: int
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
@@ -2686,9 +2685,6 @@ class SystemPaastaConfig:
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
-
-    def get_paasta_api_number_workers(self) -> int:
-        return self.config_dict.get("paasta_api_number_workers", 4)
 
 
 def _run(
