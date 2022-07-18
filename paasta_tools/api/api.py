@@ -73,6 +73,12 @@ def parse_paasta_api_args():
         dest="max_request_seconds",
         help="Maximum seconds allowed for a worker to process a request",
     )
+    parser.add_argument(
+        "-w",
+        "--workers",
+        default=4,
+        help="Number of gunicorn workers to run",
+    )
     args = parser.parse_args()
     return args
 
@@ -254,7 +260,7 @@ def main(argv=None):
         os.path.join(sys.exec_prefix, "bin", "gunicorn"),
         "gunicorn",
         "-w",
-        "4",
+        str(args.workers),
         "--bind",
         f":{args.port}",
         "--timeout",
