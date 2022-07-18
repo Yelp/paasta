@@ -1,3 +1,11 @@
+paasta-tools (0.135.0) xenial; urgency=medium
+
+  * 0.135.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/master" into
+    u/sids/PAASTA-17654
+
+ -- Siddharth Shettigar <sids@yelp.com>  Mon, 18 Jul 2022 13:52:21 -0700
+
 paasta-tools (0.134.0) xenial; urgency=medium
 
   * 0.134.0 tagged with 'make release'
