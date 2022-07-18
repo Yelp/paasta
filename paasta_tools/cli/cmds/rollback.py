@@ -90,14 +90,14 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         required=False,
     )
     arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
-    arg_all_deploy_groups = list_parser.add_argument(
+    list_parser.add_argument(
         "-a",
         "--all-deploy-groups",
         help="Rollback all deploy groups for the service",
         action="store_true",
         required=False,
     )
-    arg_all_deploy_groups.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+
     arg_service = list_parser.add_argument(
         "-s", "--service", help='Name of the service to rollback (e.g. "service1")'
     )
