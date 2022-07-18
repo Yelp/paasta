@@ -323,6 +323,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "yelp.com/pool": str,
         "paasta.yelp.com/pool": str,
     },
     total=False,
@@ -1818,6 +1819,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
+            "yelp.com/pool": self.get_pool(),
             "paasta.yelp.com/pool": self.get_pool(),
         }
 
@@ -1877,7 +1879,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for label, value in raw_selectors.items()
             if type(value) is str
         }
-        node_selectors["paasta.yelp.com/pool"] = self.get_pool()
+        node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
     def get_node_affinity(self) -> Optional[V1NodeAffinity]:

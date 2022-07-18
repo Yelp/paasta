@@ -21,6 +21,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.kubernetes_tools import paasta_prefixed
 
 
 MAIN_CONTAINER_TYPE = "main"
@@ -150,7 +151,7 @@ def get_pod_pool(
     pool = "default"
     if node:
         if node.metadata.labels:
-            pool = node.metadata.labels.get("paasta.yelp.com/pool", "default")
+            pool = node.metadata.labels.get(paasta_prefixed("pool"), "default")
     return pool
 
 

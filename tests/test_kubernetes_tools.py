@@ -1589,7 +1589,7 @@ class TestKubernetesDeploymentConfig:
             service_account_name=None,
             containers=mock_get_kubernetes_containers.return_value,
             share_process_namespace=True,
-            node_selector={"paasta.yelp.com/pool": "default"},
+            node_selector={"yelp.com/pool": "default"},
             restart_policy="Always",
             volumes=[],
             dns_policy="foo",
@@ -1599,6 +1599,7 @@ class TestKubernetesDeploymentConfig:
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
+                    "yelp.com/pool": "default",
                     "paasta.yelp.com/pool": "default",
                     "yelp.com/paasta_git_sha": "aaaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
@@ -1665,13 +1666,13 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "raw_selectors,expected",
         [
-            ({}, {"paasta.yelp.com/pool": "default"}),  # no node_selectors case
+            ({}, {"yelp.com/pool": "default"}),  # no node_selectors case
             (  # node_selectors configs case, simple items become k8s selectors
                 {
                     "select_key": "select_value",
                     "affinity_key": {"operator": "In", "values": ["affinity_value"]},
                 },
-                {"paasta.yelp.com/pool": "default", "select_key": "select_value"},
+                {"yelp.com/pool": "default", "select_key": "select_value"},
             ),
         ],
     )
