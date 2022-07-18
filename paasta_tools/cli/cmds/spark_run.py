@@ -863,7 +863,7 @@ def configure_and_run_docker_container(
             else:
                 raise
 
-    final_spark_submit_cmd_msg = f"Executing spark-submit command: {docker_cmd}"
+    final_spark_submit_cmd_msg = f"Final command: {docker_cmd}"
     print(PaastaColors.grey(final_spark_submit_cmd_msg))
     log.info(final_spark_submit_cmd_msg)
     return run_docker_container(
