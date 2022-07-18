@@ -947,7 +947,7 @@ def get_subparser(subparsers, function, command, help_text, description):
         "-c",
         "--cluster",
         help="Cluster on which the service is running"
-        "For example: --cluster norcal-prod",
+        "For example: --cluster pnw-prod",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     new_parser.add_argument(

@@ -97,13 +97,12 @@ def docker_check():
 
 
 def makefile_responds_to(target):
-    """Runs `make --dry-run <target>` to detect if a makefile responds to the
+    """Runs `make --question <target>` to detect if a makefile responds to the
     specified target."""
-    cmd = "make --dry-run %s" % target
     # According to http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make,
-    # 0 means OK, and 2 means error
-    returncode, _ = _run(cmd, timeout=5)
-    return returncode == 0
+    # 0 means OK, 1 means the target is not up to date, and 2 means error
+    returncode, _ = _run(["make", "--question", target], timeout=5)
+    return returncode != 2
 
 
 def makefile_has_a_tab(makefile_path):

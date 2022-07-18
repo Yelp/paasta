@@ -165,7 +165,7 @@ def add_instance_filter_arguments(status_parser, verb: str = "inspect") -> None:
         "-c",
         "--clusters",
         help=f"A comma-separated list of clusters to {verb}. By default, will {verb} all clusters.\n"
-        f"For example: --clusters norcal-prod,nova-prod",
+        f"For example: --clusters pnw-prod,nova-prod",
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.add_argument(
         "-i",

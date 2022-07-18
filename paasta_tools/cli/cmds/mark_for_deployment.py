@@ -65,6 +65,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -76,6 +77,7 @@ from paasta_tools.slack import get_slack_client
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
@@ -127,6 +129,13 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Git sha to mark for deployment",
         required=True,
         type=validate_short_git_sha,
+    )
+    list_parser.add_argument(
+        "-i",
+        "--image-version",
+        help="Extra version metadata to mark for deployment",
+        required=False,
+        default=None,
     )
     arg_deploy_group = list_parser.add_argument(
         "-l",
@@ -272,15 +281,15 @@ def mark_for_deployment(
     image_version: Optional[str] = None,
 ) -> int:
     """Mark a docker image for deployment"""
-    # TODO: Handle image_version, currently does nothing
     tag = get_paasta_tag_from_deploy_group(
-        identifier=deploy_group, desired_state="deploy"
+        identifier=deploy_group, desired_state="deploy", image_version=image_version
     )
     remote_tag = format_tag(tag)
     ref_mutator = remote_git.make_force_push_mutate_refs_func(
         targets=[remote_tag], sha=commit
     )
 
+    deployment_version = DeploymentVersion(commit, image_version)
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
@@ -290,15 +299,19 @@ def mark_for_deployment(
             if "yelpcorp.com" in git_url:
                 trigger_deploys(service)
         except Exception as e:
-            logline = f"Failed to mark {commit} for deployment in deploy group {deploy_group}! (attempt \
+            logline = f"Failed to mark {deployment_version} for deployment in deploy group {deploy_group}! (attempt \
                         {attempt}/{max_attempts}, error: {e}) \n Have you pushed your commit?"
             _log(service=service, line=logline, component="deploy", level="event")
             time.sleep(5 * attempt)
         else:
-            logline = f"Marked {commit} for deployment in deploy group {deploy_group}"
+            logline = f"Marked {deployment_version} for deployment in deploy group {deploy_group}"
             _log(service=service, line=logline, component="deploy", level="event")
 
-            audit_action_details = {"deploy_group": deploy_group, "commit": commit}
+            audit_action_details = {
+                "deploy_group": deploy_group,
+                "commit": commit,
+                "image_version": image_version,
+            }
             _log_audit(
                 action="mark-for-deployment",
                 action_details=audit_action_details,
@@ -402,22 +415,6 @@ def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     return read_deploy(file_path)
 
 
-def print_rollback_cmd(
-    old_git_sha: str, commit: str, auto_rollback: bool, service: str, deploy_group: str
-) -> None:
-    if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
-        print()
-        print("If you wish to roll back, you can run:")
-        print()
-        print(
-            PaastaColors.bold(
-                "    paasta rollback --service {} --deploy-group {} --commit {} ".format(
-                    service, deploy_group, old_git_sha
-                )
-            )
-        )
-
-
 def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -461,19 +458,24 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
     commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
+    deployment_version = DeploymentVersion(commit, args.image_version)
 
-    old_git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group)
-    if old_git_sha == commit:
+    old_deployment_version = get_currently_deployed_version(
+        service=service, deploy_group=deploy_group
+    )
+    if deployment_version == old_deployment_version:
         print(
-            "Warning: The sha asked to be deployed already matches what is set to be deployed:"
+            "Warning: The image asked to be deployed already matches what is set to be deployed:"
         )
-        print(old_git_sha)
+        print(deployment_version)
         print("Continuing anyway.")
 
     if args.verify_image:
-        if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
+        if not is_docker_image_already_in_registry(
+            service, args.soa_dir, commit, deployment_version.image_version
+        ):
             raise ValueError(
-                "Failed to find image in the registry for the following sha %s" % commit
+                f"Failed to find image in the registry for the following version {deployment_version}"
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
@@ -481,8 +483,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         sys.exit(1)
 
     metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
-    # only time if wait for deployment and we are actually deploying a new sha
-    if args.block and old_git_sha != commit:
+    # only time if wait for deployment and we are actually deploying a new image
+    if args.block and deployment_version != old_deployment_version:
         metrics_factory = metrics_lib.get_metrics_interface
     metrics = metrics_factory("paasta.mark_for_deployment")
     deploy_timer = metrics.create_timer(
@@ -490,8 +492,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         default_dimensions=dict(
             paasta_service=service,
             deploy_group=deploy_group,
-            old_version=old_git_sha,
-            new_version=commit,
+            old_version=str(old_deployment_version),
+            new_version=str(deployment_version),
             deploy_timeout=args.timeout,
         ),
     )
@@ -507,7 +509,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             deploy_info=deploy_info,
             deploy_group=deploy_group,
             commit=commit,
-            old_git_sha=old_git_sha,
+            old_git_sha=old_deployment_version.sha if old_deployment_version else None,
             git_url=args.git_url,
             auto_rollback=args.auto_rollback,
             block=args.block,
@@ -517,6 +519,10 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             auto_certify_delay=args.auto_certify_delay,
             auto_abandon_delay=args.auto_abandon_delay,
             auto_rollback_delay=args.auto_rollback_delay,
+            image_version=deployment_version.image_version,
+            old_image_version=old_deployment_version.image_version
+            if old_deployment_version
+            else None,
             authors=args.authors,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
@@ -585,6 +591,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         auto_certify_delay: float,
         auto_abandon_delay: float,
         auto_rollback_delay: float,
+        image_version: Optional[str] = None,
+        old_image_version: Optional[str] = None,
         authors: Optional[List[str]] = None,
         polling_interval: float = None,
         diagnosis_interval: float = None,
@@ -598,9 +606,15 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.deploy_group = deploy_group
         self.commit = commit
         self.old_git_sha = old_git_sha
+        self.image_version = image_version
+        self.old_image_version = old_image_version
+        self.deployment_version = DeploymentVersion(commit, image_version)
+        self.old_deployment_version = DeploymentVersion(old_git_sha, old_image_version)
         self.git_url = git_url
         self.auto_rollback = (
-            auto_rollback and old_git_sha is not None and old_git_sha != commit
+            auto_rollback
+            and old_git_sha is not None
+            and self.deployment_version != self.old_deployment_version
         )
         self.auto_rollbacks_ever_enabled = self.auto_rollback
         self.block = block
@@ -619,11 +633,11 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, commit, soa_dir
+            service, deploy_group, soa_dir
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
-        self.wait_for_deployment_tasks: Dict[str, asyncio.Task] = {}
+        self.wait_for_deployment_tasks: Dict[DeploymentVersion, asyncio.Task] = {}
 
         self.human_readable_status = "Waiting on mark-for-deployment to initialize..."
         self.progress = Progress()
@@ -667,6 +681,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             )
         # If there's no production deploy group, or the production deploy group
         # has never been deployed to, just use the old SHA from this deploy group.
+        # TODO: do we need to get author information from image_version-only bumps?
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
@@ -694,9 +709,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 channel = self.deploy_info.get("slack_channels")[0]
                 # Nightly jenkins builds will often re-deploy master. This causes Slack noise that wasn't present before
                 # the auto-rollbacks work.
-                if self.commit == self.old_git_sha:
+                if self.deployment_version == self.old_deployment_version:
                     print(
-                        f"Rollback SHA matches rollforward SHA: {self.commit}, "
+                        f"Rollback image matches rollforward image: {self.deployment_version}, "
                         f"Sending slack notifications to {DEFAULT_SLACK_CHANNEL} instead of {channel}."
                     )
                     return DEFAULT_SLACK_CHANNEL
@@ -708,17 +723,18 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             return DEFAULT_SLACK_CHANNEL
 
     def get_deployment_name(self) -> str:
-        return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
+        return f"Deploy of `{self.deployment_version.short_sha_repr()}` of `{self.service}` to `{self.deploy_group}`:"
 
     def on_enter_start_deploy(self) -> None:
         self.update_slack_status(
-            f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}..."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group}..."
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.commit,
+            image_version=self.image_version,
         )
         if self.mark_for_deployment_return_code != 0:
             self.trigger("mfd_failed")
@@ -838,7 +854,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def valid_transitions(self) -> Iterator[state_machine.TransitionDefinition]:
         rollback_is_possible = (
-            self.old_git_sha is not None and self.old_git_sha != self.commit
+            self.old_git_sha is not None
+            and self.deployment_version != self.old_deployment_version
         )
 
         yield {"source": "_begin", "dest": "start_deploy", "trigger": "start_deploy"}
@@ -1023,7 +1040,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_mfd_failed(self) -> None:
         self.update_slack_status(
-            f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
 
     def on_enter_deploying(self) -> None:
@@ -1031,7 +1048,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         # Don't bother starting the background thread in this case.
         if self.block:
             thread = Thread(
-                target=self.do_wait_for_deployment, args=(self.commit,), daemon=True
+                target=self.do_wait_for_deployment,
+                args=(self.commit, self.image_version),
+                daemon=True,
             )
             thread.start()
             self.cancel_paasta_status_reminder()
@@ -1043,13 +1062,14 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_start_rollback(self) -> None:
         self.update_slack_status(
-            f"Rolling back ({self.deploy_group}) to {self.old_git_sha}"
+            f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.old_git_sha,
+            image_version=self.old_image_version,
         )
 
         if self.mark_for_deployment_return_code != 0:
@@ -1070,13 +1090,13 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.block:
             thread = Thread(
                 target=self.do_wait_for_deployment,
-                args=(self.old_git_sha,),
+                args=(self.old_git_sha, self.old_image_version),
                 daemon=True,
             )
             thread.start()
 
     def on_exit_rolling_back(self) -> None:
-        self.stop_waiting_for_deployment(self.old_git_sha)
+        self.stop_waiting_for_deployment(self.old_git_sha, self.old_image_version)
 
     def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
@@ -1089,23 +1109,34 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         if self.deploy_group_is_set_to_notify("notify_after_abort"):
             self.ping_authors("Deploy cancelled")
 
-    def stop_waiting_for_deployment(self, target_commit: str) -> None:
+    def stop_waiting_for_deployment(
+        self, target_commit: str, target_image_version: Optional[str] = None
+    ) -> None:
         try:
-            self.wait_for_deployment_tasks[target_commit].cancel()
-            del self.wait_for_deployment_tasks[target_commit]
+            target_version = DeploymentVersion(
+                sha=target_commit, image_version=target_image_version
+            )
+            self.wait_for_deployment_tasks[target_version].cancel()
+            del self.wait_for_deployment_tasks[target_version]
         except (KeyError, asyncio.InvalidStateError):
             pass
 
     @a_sync.to_blocking
-    async def do_wait_for_deployment(self, target_commit: str) -> None:
+    async def do_wait_for_deployment(
+        self, target_commit: str, target_image_version: Optional[str] = None
+    ) -> None:
         try:
-            self.stop_waiting_for_deployment(target_commit)
+            target_version = DeploymentVersion(
+                sha=target_commit, image_version=target_image_version
+            )
+            self.stop_waiting_for_deployment(target_commit, target_image_version)
             wait_for_deployment_task = asyncio.create_task(
                 wait_for_deployment(
                     service=self.service,
                     deploy_group=self.deploy_group,
                     instance_configs_per_cluster=self.instance_configs_per_cluster,
                     git_sha=target_commit,
+                    image_version=target_image_version,
                     soa_dir=self.soa_dir,
                     timeout=self.timeout,
                     progress=self.progress,
@@ -1115,13 +1146,15 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                     notify_fn=self.ping_authors,
                 )
             )
-            self.wait_for_deployment_tasks[target_commit] = wait_for_deployment_task
+            self.wait_for_deployment_tasks[target_version] = wait_for_deployment_task
             await wait_for_deployment_task
             if self.deploy_group_is_set_to_notify("notify_after_wait"):
-                self.ping_authors(f"Finished waiting for deployment of {target_commit}")
+                self.ping_authors(
+                    f"Finished waiting for deployment of {target_version}"
+                )
             else:
                 self.update_slack_thread(
-                    f"Finished waiting for deployment of {target_commit}"
+                    f"Finished waiting for deployment of {target_version}"
                 )
             self.trigger("deploy_finished")
 
@@ -1139,17 +1172,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def on_enter_rolled_back(self) -> None:
         self.update_slack_status(
-            f"Finished rolling back to `{self.old_git_sha[:8]}` in {self.deploy_group}"
+            f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
         )
-        line = f"Rollback to {self.old_git_sha[:8]} for {self.deploy_group} complete"
+        line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
     def on_enter_deployed(self) -> None:
         self.update_slack_status(
-            f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}"
+            f"Finished deployment of `{self.deployment_version.short_sha_repr()}` to {self.deploy_group}"
         )
-        line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
+        line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
         if self.any_slo_failing() and self.auto_rollbacks_enabled():
@@ -1169,12 +1202,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.ping_authors()
 
     def send_manual_rollback_instructions(self) -> None:
-        if self.old_git_sha != self.commit:
+        if self.deployment_version != self.old_deployment_version:
             message = (
                 "If you need to roll back manually, run: "
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                 f"--commit {self.old_git_sha}`"
             )
+            if self.old_deployment_version.image_version:
+                message += (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
+
             self.update_slack_thread(message)
             print(message)
 
@@ -1190,6 +1228,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:
+        # TODO: Update button text for image_version
+        #  Will require thought on shortening
         active_button_texts = {
             "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
         }
@@ -1201,6 +1241,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
 
+        # TODO: Update to check image_version also
         if self.old_git_sha is not None:
             active_button_texts.update(
                 {"rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:"}
@@ -1233,8 +1274,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self, rollback_type: RollbackTypes
     ) -> Dict[str, str]:
         return {
-            "rolled_back_from": self.commit,
-            "rolled_back_to": self.old_git_sha,
+            "rolled_back_from": str(self.deployment_version),
+            "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
         }
@@ -1274,7 +1315,7 @@ async def wait_until_instance_is_done(
     service: str,
     instance: str,
     cluster: str,
-    git_sha: str,
+    version: DeploymentVersion,
     instance_config: LongRunningServiceConfig,
     polling_interval: float,
     diagnosis_interval: float,
@@ -1289,7 +1330,7 @@ async def wait_until_instance_is_done(
             service,
             instance,
             cluster,
-            git_sha,
+            version,
             instance_config,
             diagnosis_interval,
             time_before_first_diagnosis,
@@ -1305,7 +1346,7 @@ async def wait_until_instance_is_done(
                 service,
                 instance,
                 cluster,
-                git_sha,
+                version,
                 instance_config,
             ),
         ):
@@ -1323,7 +1364,7 @@ async def periodically_diagnose_instance(
     service: str,
     instance: str,
     cluster: str,
-    git_sha: str,
+    version: DeploymentVersion,
     instance_config: LongRunningServiceConfig,
     diagnosis_interval: float,
     time_before_first_diagnosis: float,
@@ -1341,7 +1382,7 @@ async def periodically_diagnose_instance(
                     service,
                     instance,
                     cluster,
-                    git_sha,
+                    version,
                     instance_config,
                     should_ping_for_unhealthy_pods,
                     notify_fn,
@@ -1359,7 +1400,7 @@ def diagnose_why_instance_is_stuck(
     service: str,
     instance: str,
     cluster: str,
-    git_sha: str,
+    version: DeploymentVersion,
     instance_config: LongRunningServiceConfig,
     should_ping_for_unhealthy_pods: bool,
     notify_fn: Optional[Callable[[str], None]] = None,
@@ -1382,16 +1423,19 @@ def diagnose_why_instance_is_stuck(
         return
 
     print(f"  Status for {service}.{instance} in {cluster}:")
-    for version in status.kubernetes_v2.versions:
+    for active_version in status.kubernetes_v2.versions:
         # We call get_version_table_entry directly so that we can set version_name_suffix based on git_sha instead of
         # creation time of the version (which is what get_versions_table does.)
         # Without this, we'd call the old version "new" until the new version is actually created, which would be confusing.
         for line in get_version_table_entry(
-            version,
+            active_version,
             service,
             instance,
             cluster,
-            version_name_suffix="new" if version.git_sha == git_sha else "old",
+            version_name_suffix="new"
+            if active_version.git_sha == version.sha
+            and active_version.image_version == version.image_version
+            else "old",
             show_config_sha=True,
             verbose=0,
         ):
@@ -1400,7 +1444,7 @@ def diagnose_why_instance_is_stuck(
 
     if should_ping_for_unhealthy_pods and notify_fn:
         maybe_ping_for_unhealthy_pods(
-            service, instance, cluster, git_sha, status, notify_fn
+            service, instance, cluster, version, status, notify_fn
         )
 
 
@@ -1411,7 +1455,7 @@ def maybe_ping_for_unhealthy_pods(
     service: str,
     instance: str,
     cluster: str,
-    git_sha: str,
+    version: DeploymentVersion,
     status: InstanceStatusKubernetesV2,
     notify_fn: Callable[[str], None],
 ) -> None:
@@ -1420,12 +1464,14 @@ def maybe_ping_for_unhealthy_pods(
     if not already_pinged:
         # there can be multiple current versions, e.g. if someone changes yelpsoa-configs during a bounce.
         current_versions = [
-            v for v in status.kubernetes_v2.versions if v.git_sha == git_sha
+            v
+            for v in status.kubernetes_v2.versions
+            if v.git_sha == version.sha and v.image_version == version.image_version
         ]
         pingable_pods = [
             pod
-            for version in current_versions
-            for pod in version.pods
+            for current_version in current_versions
+            for pod in current_version.pods
             if should_ping_for_pod(pod)
         ]
         if pingable_pods:
@@ -1480,7 +1526,7 @@ def check_if_instance_is_done(
     service: str,
     instance: str,
     cluster: str,
-    git_sha: str,
+    version: DeploymentVersion,
     instance_config: LongRunningServiceConfig,
     api: Optional[client.PaastaOApiClient] = None,
 ) -> bool:
@@ -1536,30 +1582,29 @@ def check_if_instance_is_done(
         log.debug(f"{inst_str} is marked as stopped. Ignoring it.")
         return True
 
-    short_git_sha = git_sha[:8]
-    active_shas = {g[:8] for g, c in status.active_shas}
-    if short_git_sha in active_shas:
-        non_desired_shas = active_shas.difference({short_git_sha})
+    active_deploy_versions = {
+        DeploymentVersion(sha=g, image_version=i) for g, i, c in status.active_versions
+    }
+    if version in active_deploy_versions:
+        non_desired_versions = active_deploy_versions.difference({version})
         # Case: bounce in-progress
-        if len(non_desired_shas) == 1:
-            (other_sha,) = non_desired_shas
-            print(
-                f"  {inst_str} is still bouncing, from {other_sha} to {short_git_sha}"
-            )
+        if len(non_desired_versions) == 1:
+            (other_version,) = non_desired_versions
+            print(f"  {inst_str} is still bouncing, from {other_version} to {version}")
             return False
 
         # Case: previous bounces not yet finished when this one was triggered
-        elif len(non_desired_shas) > 1:
+        elif len(non_desired_versions) > 1:
             print(
-                f"  {inst_str} is still bouncing to {short_git_sha}, but there are "
-                f"multiple other bouncing versions running: {non_desired_shas}"
+                f"  {inst_str} is still bouncing to {version}, but there are "
+                f"multiple other bouncing versions running: {non_desired_versions}"
             )
             return False
     else:
         # Case: bounce not yet started
         print(
-            f"  {inst_str} hasn't started bouncing to {short_git_sha}; "
-            f"only the following versions are running: {active_shas}"
+            f"  {inst_str} hasn't started bouncing to {version}; "
+            f"only the following versions are running: {active_deploy_versions}"
         )
         return False
 
@@ -1588,7 +1633,7 @@ def check_if_instance_is_done(
     # Case: completed
     print(
         f"Complete: {service}.{instance} on {cluster} is 100% deployed at "
-        f"{status.running_instance_count} replicas on {status.active_shas[0][0]}"
+        f"{status.running_instance_count} replicas on {DeploymentVersion(sha=status.active_versions[0][0], image_version=status.active_versions[0][1])}"
     )
     return True
 
@@ -1612,7 +1657,7 @@ def get_instance_configs_for_service_in_cluster_and_deploy_group(
 
 
 def get_instance_configs_for_service_in_deploy_group_all_clusters(
-    service: str, deploy_group: str, git_sha: str, soa_dir: str
+    service: str, deploy_group: str, soa_dir: str
 ) -> Dict[str, List[LongRunningServiceConfig]]:
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
@@ -1645,6 +1690,7 @@ async def wait_for_deployment(
     git_sha: str,
     soa_dir: str,
     timeout: float,
+    image_version: Optional[str] = None,
     instance_configs_per_cluster: Optional[
         Dict[str, List[LongRunningServiceConfig]]
     ] = None,
@@ -1657,11 +1703,12 @@ async def wait_for_deployment(
     if not instance_configs_per_cluster:
         instance_configs_per_cluster = (
             get_instance_configs_for_service_in_deploy_group_all_clusters(
-                service, deploy_group, git_sha, soa_dir
+                service, deploy_group, soa_dir
             )
         )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
 
+    target_version = DeploymentVersion(sha=git_sha, image_version=image_version)
     if not instance_configs_per_cluster:
         _log(
             service=service,
@@ -1677,7 +1724,7 @@ async def wait_for_deployment(
 
     print(
         "Waiting for deployment of {} for '{}' to complete...".format(
-            git_sha, deploy_group
+            target_version, deploy_group
         )
     )
 
@@ -1708,7 +1755,7 @@ async def wait_for_deployment(
                                 service,
                                 instance_config.get_instance(),
                                 cluster,
-                                git_sha,
+                                target_version,
                                 instance_config,
                                 polling_interval=polling_interval,
                                 diagnosis_interval=diagnosis_interval,
@@ -1753,7 +1800,11 @@ async def wait_for_deployment(
                     service=service,
                     component="deploy",
                     line=compose_timeout_message(
-                        remaining_instances, timeout, deploy_group, service, git_sha
+                        remaining_instances,
+                        timeout,
+                        deploy_group,
+                        service,
+                        target_version,
                     ),
                     level="event",
                 )
@@ -1782,7 +1833,7 @@ def compose_timeout_message(
     timeout: float,
     deploy_group: str,
     service: str,
-    git_sha: str,
+    version: DeploymentVersion,
 ) -> str:
     paasta_status = []
     paasta_logs = []
@@ -1811,11 +1862,14 @@ def compose_timeout_message(
         "\n\nIf the service is known to be slow to start you may wish to "
         "increase the timeout on this step.\n"
         "To wait a little longer run:\n\n"
-        "  paasta wait-for-deployment -s {service} -l {deploy_group} -c {git_sha}".format(
+        "  paasta wait-for-deployment -s {service} -l {deploy_group} -c {git_sha}{image_arg}".format(
             timeout=timeout,
             deploy_group=deploy_group,
             service=service,
-            git_sha=git_sha,
+            git_sha=version.sha,
+            image_arg=f" --image-version {version.image_version}"
+            if version.image_version
+            else "",
             status_commands="\n  ".join(paasta_status),
             logs_commands="\n  ".join(paasta_logs),
             stuck_bounce_runbook=os.environ.get(

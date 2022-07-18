@@ -463,9 +463,9 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 ``marathon-[clustername].yaml``
 -------------------------------
 
-e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
+e.g. ``marathon-pnw-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
-lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
+lives (``pnw-prod``), but not always (``mesosstage``). It MUST be all
 lowercase. (non alphanumeric lowercase characters are ignored)
 
 **Note:** All values in this file except the following will cause PaaSTA to
