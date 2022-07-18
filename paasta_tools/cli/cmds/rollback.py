@@ -84,20 +84,20 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--deploy-groups",
         help="Mark one or more deploy groups to roll back (e.g. "
         '"all.main", "all.main,all.canary"). If no deploy groups specified,'
-        "no deploy groups for that service are rolled back. To rollback all-deploy-groups "
+        "no deploy groups for that service are rolled back. To rollback all deploy groups "
         "use the flag -a or --all-deploy-groups",
         default="",
         required=False,
     )
     arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
-    arg_all_deploy_groups = list_parser.add_argument(
+    list_parser.add_argument(
         "-a",
         "--all-deploy-groups",
         help="Rollback all deploy groups for the service",
         action="store_true",
         required=False,
     )
-    arg_all_deploy_groups.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+
     arg_service = list_parser.add_argument(
         "-s", "--service", help='Name of the service to rollback (e.g. "service1")'
     )
