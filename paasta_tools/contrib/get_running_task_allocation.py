@@ -151,7 +151,7 @@ def get_pod_pool(
     pool = "default"
     if node:
         if node.metadata.labels:
-            pool = node.metadata.labels.get(paasta_prefixed("pool"), "default")
+            pool = node.metadata.labels.get("paasta.yelp.com/pool", "default")
     return pool
 
 
