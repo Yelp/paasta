@@ -491,7 +491,7 @@ class TronActionConfig(InstanceConfig):
             for label, value in raw_selectors.items()
             if isinstance(value, str)
         }
-        node_selectors["paasta.yelp.com/pool"] = self.get_pool()
+        node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
     def get_node_affinities(self) -> Optional[List[Dict[str, Union[str, List[str]]]]]:
