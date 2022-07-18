@@ -84,7 +84,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--deploy-groups",
         help="Mark one or more deploy groups to roll back (e.g. "
         '"all.main", "all.main,all.canary"). If no deploy groups specified,'
-        "no deploy groups for that service are rolled back. To rollback all-deploy-groups "
+        "no deploy groups for that service are rolled back. To rollback all deploy groups "
         "use the flag -a or --all-deploy-groups",
         default="",
         required=False,
