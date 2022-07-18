@@ -1,3 +1,12 @@
+paasta-tools (0.134.0) xenial; urgency=medium
+
+  * 0.134.0 tagged with 'make release'
+    Commit: Enable starting arbitrary # of paasta-api workers (#3400)
+    Until we make this an actual service, we can "scale up" by adding
+    more gunicorn workers.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Jul 2022 12:51:06 -0700
+
 paasta-tools (0.133.3) xenial; urgency=medium
 
   * 0.133.3 tagged with 'make release'
