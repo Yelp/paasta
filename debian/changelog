@@ -1,3 +1,35 @@
+paasta-tools (0.135.0) xenial; urgency=medium
+
+  * 0.135.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/master" into
+    u/sids/PAASTA-17654
+
+ -- Siddharth Shettigar <sids@yelp.com>  Mon, 18 Jul 2022 13:52:21 -0700
+
+paasta-tools (0.134.0) xenial; urgency=medium
+
+  * 0.134.0 tagged with 'make release'
+    Commit: Enable starting arbitrary # of paasta-api workers (#3400)
+    Until we make this an actual service, we can "scale up" by adding
+    more gunicorn workers.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Jul 2022 12:51:06 -0700
+
+paasta-tools (0.133.3) xenial; urgency=medium
+
+  * 0.133.3 tagged with 'make release'
+    Commit: Remove mentions of norcal-prod (#3397)  This cluster no
+    longer exists and mentions of it confuses folks.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Jul 2022 14:25:43 -0700
+
+paasta-tools (0.133.2) xenial; urgency=medium
+
+  * 0.133.2 tagged with 'make release'
+    Commit: Use image-version in mark-for-deployment (#3379)
+
+ -- Daniel Popa Cristobal <dpopacristobal@yelp.com>  Thu, 14 Jul 2022 09:58:54 -0700
+
 paasta-tools (0.133.1) xenial; urgency=medium
 
   * 0.133.1 tagged with 'make release'

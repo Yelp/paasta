@@ -86,9 +86,9 @@ def add_subparser(subparsers):
         "Note: this is translated to ecosystems because Vault is run "
         "at an ecosystem level. As a result you can only have different "
         "secrets per ecosystem. (it is not possible for example to encrypt "
-        "a different value for norcal-prod vs nova-prod. "
+        "a different value for pnw-prod vs nova-prod. "
         "Defaults to all clusters in which the service runs. "
-        "For example: --clusters norcal-prod,nova-prod ",
+        "For example: --clusters pnw-prod,nova-prod ",
     ).completer = lazy_choices_completer(list_clusters)
     secret_parser.add_argument(
         "-p",

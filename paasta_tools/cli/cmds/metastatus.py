@@ -56,7 +56,7 @@ def add_subparser(
     )
     clusters_help = (
         "A comma separated list of clusters to view. Defaults to view all clusters. "
-        "Try: --clusters norcal-prod,nova-prod"
+        "Try: --clusters pnw-prod,nova-prod"
     )
     status_parser.add_argument(
         "-c", "--clusters", help=clusters_help

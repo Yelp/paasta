@@ -296,6 +296,73 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
         sha="1234" * 10, image_version=None
     )
 
+    assert paasta_rollback(fake_args) == 1
+
+    assert mock_mark_for_deployment.call_count == 0
+
+    mock_log_audit.call_count == len(fake_args.deploy_groups)
+    for call_args in mock_log_audit.call_args_list:
+        _, call_kwargs = call_args
+        assert call_kwargs["action"] == "rollback"
+        assert call_kwargs["action_details"]["rolled_back_from"] == str(
+            mock_get_currently_deployed_version.return_value
+        )
+        assert call_kwargs["action_details"]["rolled_back_to"] == fake_args.commit
+        assert (
+            call_kwargs["action_details"]["rollback_type"]
+            == RollbackTypes.USER_INITIATED_ROLLBACK.value
+        )
+        assert (
+            call_kwargs["action_details"]["deploy_group"]
+            in mock_list_deploy_groups.return_value
+        )
+        assert call_kwargs["service"] == fake_args.service
+
+
+@patch("paasta_tools.cli.cmds.rollback.get_currently_deployed_version", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback._log_audit", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.list_deploy_groups", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.figure_out_service_name", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.get_git_url", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.mark_for_deployment", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.get_versions_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.rollback.can_user_deploy_service", autospec=True)
+def test_paasta_rollback_mark_for_deployment_all_deploy_groups_arg(
+    mock_can_user_deploy_service,
+    mock_get_versions_for_service,
+    mock_mark_for_deployment,
+    mock_get_git_url,
+    mock_figure_out_service_name,
+    mock_list_deploy_groups,
+    mock_log_audit,
+    mock_get_currently_deployed_version,
+):
+    fake_args, _ = parse_args(
+        ["rollback", "-s", "fakeservice", "-k", "abcd" * 10, "-a"]
+    )
+
+    mock_get_versions_for_service.return_value = {
+        DeploymentVersion(sha="fake_sha1", image_version=None): (
+            "20170403T025512",
+            "fake_deploy_group1",
+        ),
+        DeploymentVersion(sha=fake_args.commit, image_version=None): (
+            "20161006T025416",
+            "fake_deploy_group2",
+        ),
+    }
+
+    mock_get_git_url.return_value = "git://git.repo"
+    mock_figure_out_service_name.return_value = fake_args.service
+    mock_list_deploy_groups.return_value = [
+        "fake_deploy_group",
+        "fake_cluster.fake_instance",
+    ]
+    mock_mark_for_deployment.return_value = 0
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        sha="1234" * 10, image_version=None
+    )
+
     assert paasta_rollback(fake_args) == 0
 
     expected = [
@@ -499,7 +566,7 @@ def test_validate_given_deploy_groups_no_arg():
     service_deploy_groups = ["deploy_group1", "deploy_group2"]
     given_deploy_groups = []
 
-    expected_valid = {"deploy_group1", "deploy_group2"}
+    expected_valid = set()
     expected_invalid = set()
 
     actual_valid, actual_invalid = validate_given_deploy_groups(
@@ -647,10 +714,7 @@ def test_list_previously_deployed_shas_no_deploy_groups():
             soa_dir="/fake/soa/dir",
             force=None,
         )
-        assert set(list_previously_deployed_shas(fake_args)) == {
-            "SHA_IN_OUTPUT",
-            "SHA_IN_OUTPUT_2",
-        }
+        assert set(list_previously_deployed_shas(fake_args)) == set()
 
 
 def test_get_versions_for_service_no_service_name():

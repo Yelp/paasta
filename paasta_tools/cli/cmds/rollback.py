@@ -84,11 +84,20 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "--deploy-groups",
         help="Mark one or more deploy groups to roll back (e.g. "
         '"all.main", "all.main,all.canary"). If no deploy groups specified,'
-        " all deploy groups for that service are rolled back",
+        "no deploy groups for that service are rolled back. To rollback all deploy groups "
+        "use the flag -a or --all-deploy-groups",
         default="",
         required=False,
     )
     arg_deploy_group.completer = lazy_choices_completer(list_deploy_groups)  # type: ignore
+    list_parser.add_argument(
+        "-a",
+        "--all-deploy-groups",
+        help="Rollback all deploy groups for the service",
+        action="store_true",
+        required=False,
+    )
+
     arg_service = list_parser.add_argument(
         "-s", "--service", help='Name of the service to rollback (e.g. "service1")'
     )
@@ -227,9 +236,15 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         return 1
 
     git_url = get_git_url(service, soa_dir)
-    given_deploy_groups = {
-        deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group
-    }
+
+    if args.all_deploy_groups:
+        given_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
+    else:
+        given_deploy_groups = {
+            deploy_group
+            for deploy_group in args.deploy_groups.split(",")
+            if deploy_group
+        }
 
     all_deploy_groups = list_deploy_groups(service=service, soa_dir=soa_dir)
     deploy_groups, invalid = validate_given_deploy_groups(
@@ -244,10 +259,11 @@ def paasta_rollback(args: argparse.Namespace) -> int:
             )
         )
 
-    if len(deploy_groups) == 0:
+    if len(deploy_groups) == 0 and not args.all_deploy_groups:
         print(
             PaastaColors.red(
-                "ERROR: No valid deploy groups specified for %s.\n" % (service)
+                "ERROR: No valid deploy groups specified for %s.\n Use the flag -a to rollback all valid deploy groups for this service"
+                % (service)
             )
         )
         return 1

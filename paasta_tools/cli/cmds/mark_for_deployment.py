@@ -65,6 +65,7 @@ from paasta_tools.cli.utils import validate_given_deploy_groups
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
+from paasta_tools.deployment_utils import get_currently_deployed_version
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -280,15 +281,15 @@ def mark_for_deployment(
     image_version: Optional[str] = None,
 ) -> int:
     """Mark a docker image for deployment"""
-    # TODO: Handle image_version, currently does nothing
     tag = get_paasta_tag_from_deploy_group(
-        identifier=deploy_group, desired_state="deploy"
+        identifier=deploy_group, desired_state="deploy", image_version=image_version
     )
     remote_tag = format_tag(tag)
     ref_mutator = remote_git.make_force_push_mutate_refs_func(
         targets=[remote_tag], sha=commit
     )
 
+    deployment_version = DeploymentVersion(commit, image_version)
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
         try:
@@ -298,15 +299,19 @@ def mark_for_deployment(
             if "yelpcorp.com" in git_url:
                 trigger_deploys(service)
         except Exception as e:
-            logline = f"Failed to mark {commit} for deployment in deploy group {deploy_group}! (attempt \
+            logline = f"Failed to mark {deployment_version} for deployment in deploy group {deploy_group}! (attempt \
                         {attempt}/{max_attempts}, error: {e}) \n Have you pushed your commit?"
             _log(service=service, line=logline, component="deploy", level="event")
             time.sleep(5 * attempt)
         else:
-            logline = f"Marked {commit} for deployment in deploy group {deploy_group}"
+            logline = f"Marked {deployment_version} for deployment in deploy group {deploy_group}"
             _log(service=service, line=logline, component="deploy", level="event")
 
-            audit_action_details = {"deploy_group": deploy_group, "commit": commit}
+            audit_action_details = {
+                "deploy_group": deploy_group,
+                "commit": commit,
+                "image_version": image_version,
+            }
             _log_audit(
                 action="mark-for-deployment",
                 action_details=audit_action_details,
@@ -410,22 +415,6 @@ def get_deploy_info(service: str, soa_dir: str) -> Dict[str, Any]:
     return read_deploy(file_path)
 
 
-def print_rollback_cmd(
-    old_git_sha: str, commit: str, auto_rollback: bool, service: str, deploy_group: str
-) -> None:
-    if old_git_sha is not None and old_git_sha != commit and not auto_rollback:
-        print()
-        print("If you wish to roll back, you can run:")
-        print()
-        print(
-            PaastaColors.bold(
-                "    paasta rollback --service {} --deploy-group {} --commit {} ".format(
-                    service, deploy_group, old_git_sha
-                )
-            )
-        )
-
-
 def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
     """Wrapping mark_for_deployment"""
     if args.verbose:
@@ -469,20 +458,24 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         args.git_url = get_git_url(service=service, soa_dir=args.soa_dir)
 
     commit = validate_git_sha(sha=args.commit, git_url=args.git_url)
+    deployment_version = DeploymentVersion(commit, args.image_version)
 
-    old_git_sha = get_currently_deployed_sha(service=service, deploy_group=deploy_group)
-    if old_git_sha == commit:
+    old_deployment_version = get_currently_deployed_version(
+        service=service, deploy_group=deploy_group
+    )
+    if deployment_version == old_deployment_version:
         print(
-            "Warning: The sha asked to be deployed already matches what is set to be deployed:"
+            "Warning: The image asked to be deployed already matches what is set to be deployed:"
         )
-        print(old_git_sha)
+        print(deployment_version)
         print("Continuing anyway.")
 
-    # TODO: fetch and set old_image_version
     if args.verify_image:
-        if not is_docker_image_already_in_registry(service, args.soa_dir, commit):
+        if not is_docker_image_already_in_registry(
+            service, args.soa_dir, commit, deployment_version.image_version
+        ):
             raise ValueError(
-                "Failed to find image in the registry for the following sha %s" % commit
+                f"Failed to find image in the registry for the following version {deployment_version}"
             )
 
     deploy_info = get_deploy_info(service=service, soa_dir=args.soa_dir)
@@ -490,8 +483,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         sys.exit(1)
 
     metrics_factory: Callable[[str], metrics_lib.BaseMetrics] = metrics_lib.NoMetrics
-    # only time if wait for deployment and we are actually deploying a new sha
-    if args.block and old_git_sha != commit:
+    # only time if wait for deployment and we are actually deploying a new image
+    if args.block and deployment_version != old_deployment_version:
         metrics_factory = metrics_lib.get_metrics_interface
     metrics = metrics_factory("paasta.mark_for_deployment")
     deploy_timer = metrics.create_timer(
@@ -499,8 +492,8 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
         default_dimensions=dict(
             paasta_service=service,
             deploy_group=deploy_group,
-            old_version=old_git_sha,
-            new_version=commit,
+            old_version=str(old_deployment_version),
+            new_version=str(deployment_version),
             deploy_timeout=args.timeout,
         ),
     )
@@ -516,7 +509,7 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             deploy_info=deploy_info,
             deploy_group=deploy_group,
             commit=commit,
-            old_git_sha=old_git_sha,
+            old_git_sha=old_deployment_version.sha if old_deployment_version else None,
             git_url=args.git_url,
             auto_rollback=args.auto_rollback,
             block=args.block,
@@ -526,6 +519,10 @@ def paasta_mark_for_deployment(args: argparse.Namespace) -> int:
             auto_certify_delay=args.auto_certify_delay,
             auto_abandon_delay=args.auto_abandon_delay,
             auto_rollback_delay=args.auto_rollback_delay,
+            image_version=deployment_version.image_version,
+            old_image_version=old_deployment_version.image_version
+            if old_deployment_version
+            else None,
             authors=args.authors,
             polling_interval=args.polling_interval,
             diagnosis_interval=args.diagnosis_interval,
@@ -611,10 +608,13 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.old_git_sha = old_git_sha
         self.image_version = image_version
         self.old_image_version = old_image_version
+        self.deployment_version = DeploymentVersion(commit, image_version)
+        self.old_deployment_version = DeploymentVersion(old_git_sha, old_image_version)
         self.git_url = git_url
-        # TODO: Update to check image_version also
         self.auto_rollback = (
-            auto_rollback and old_git_sha is not None and old_git_sha != commit
+            auto_rollback
+            and old_git_sha is not None
+            and self.deployment_version != self.old_deployment_version
         )
         self.auto_rollbacks_ever_enabled = self.auto_rollback
         self.block = block
@@ -633,7 +633,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.instance_configs_per_cluster: Dict[
             str, List[LongRunningServiceConfig]
         ] = get_instance_configs_for_service_in_deploy_group_all_clusters(
-            service, deploy_group, commit, soa_dir
+            service, deploy_group, soa_dir
         )
 
         # Keep track of each wait_for_deployment task so we can cancel it.
@@ -709,10 +709,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
                 channel = self.deploy_info.get("slack_channels")[0]
                 # Nightly jenkins builds will often re-deploy master. This causes Slack noise that wasn't present before
                 # the auto-rollbacks work.
-                # TODO: Check full version
-                if self.commit == self.old_git_sha:
+                if self.deployment_version == self.old_deployment_version:
                     print(
-                        f"Rollback SHA matches rollforward SHA: {self.commit}, "
+                        f"Rollback image matches rollforward image: {self.deployment_version}, "
                         f"Sending slack notifications to {DEFAULT_SLACK_CHANNEL} instead of {channel}."
                     )
                     return DEFAULT_SLACK_CHANNEL
@@ -724,19 +723,18 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             return DEFAULT_SLACK_CHANNEL
 
     def get_deployment_name(self) -> str:
-        # TODO: Update to use DeploymentVersion
-        return f"Deploy of `{self.commit[:8]}` of `{self.service}` to `{self.deploy_group}`:"
+        return f"Deploy of `{self.deployment_version.short_sha_repr()}` of `{self.service}` to `{self.deploy_group}`:"
 
     def on_enter_start_deploy(self) -> None:
-        # TODO: Update messages/logs to use DeploymentVersion, pass image_version for mark_for_deployment
         self.update_slack_status(
-            f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group}..."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group}..."
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.commit,
+            image_version=self.image_version,
         )
         if self.mark_for_deployment_return_code != 0:
             self.trigger("mfd_failed")
@@ -855,9 +853,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         return "start_deploy"
 
     def valid_transitions(self) -> Iterator[state_machine.TransitionDefinition]:
-        # TODO: Update rollback_is_possible to use image_version
         rollback_is_possible = (
-            self.old_git_sha is not None and self.old_git_sha != self.commit
+            self.old_git_sha is not None
+            and self.deployment_version != self.old_deployment_version
         )
 
         yield {"source": "_begin", "dest": "start_deploy", "trigger": "start_deploy"}
@@ -1041,9 +1039,8 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         }.get(self.state)
 
     def on_enter_mfd_failed(self) -> None:
-        # TODO: update message to use DeploymentVersion
         self.update_slack_status(
-            f"Marking `{self.commit[:8]}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
+            f"Marking `{self.deployment_version.short_sha_repr()}` for deployment for {self.deploy_group} failed. Please see Jenkins for more output."
         )  # noqa E501
 
     def on_enter_deploying(self) -> None:
@@ -1064,15 +1061,15 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.cancel_paasta_status_reminder()
 
     def on_enter_start_rollback(self) -> None:
-        # TODO: Pass image_version, update messages to use DeploymentVersion
         self.update_slack_status(
-            f"Rolling back ({self.deploy_group}) to {self.old_git_sha}"
+            f"Rolling back ({self.deploy_group}) to {self.old_deployment_version}"
         )
         self.mark_for_deployment_return_code = mark_for_deployment(
             git_url=self.git_url,
             deploy_group=self.deploy_group,
             service=self.service,
             commit=self.old_git_sha,
+            image_version=self.old_image_version,
         )
 
         if self.mark_for_deployment_return_code != 0:
@@ -1099,8 +1096,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             thread.start()
 
     def on_exit_rolling_back(self) -> None:
-        # TODO: Pass image_version
-        self.stop_waiting_for_deployment(self.old_git_sha)
+        self.stop_waiting_for_deployment(self.old_git_sha, self.old_image_version)
 
     def on_enter_deploy_errored(self) -> None:
         report_waiting_aborted(self.service, self.deploy_group)
@@ -1175,20 +1171,18 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("deploy_errored")
 
     def on_enter_rolled_back(self) -> None:
-        # TODO: Update messages/logs to use DeploymentVersion
         self.update_slack_status(
-            f"Finished rolling back to `{self.old_git_sha[:8]}` in {self.deploy_group}"
+            f"Finished rolling back to `{self.old_deployment_version.short_sha_repr()}` in {self.deploy_group}"
         )
-        line = f"Rollback to {self.old_git_sha[:8]} for {self.deploy_group} complete"
+        line = f"Rollback to {self.old_deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.start_timer(self.auto_abandon_delay, "auto_abandon", "abandon")
 
     def on_enter_deployed(self) -> None:
-        # TODO: Update messages/logs to use DeploymentVersion
         self.update_slack_status(
-            f"Finished deployment of `{self.commit[:8]}` to {self.deploy_group}"
+            f"Finished deployment of `{self.deployment_version.short_sha_repr()}` to {self.deploy_group}"
         )
-        line = f"Deployment of {self.commit[:8]} for {self.deploy_group} complete"
+        line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
         if self.any_slo_failing() and self.auto_rollbacks_enabled():
@@ -1208,13 +1202,17 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.ping_authors()
 
     def send_manual_rollback_instructions(self) -> None:
-        # TODO: Update to check image_version also
-        if self.old_git_sha != self.commit:
+        if self.deployment_version != self.old_deployment_version:
             message = (
                 "If you need to roll back manually, run: "
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
                 f"--commit {self.old_git_sha}`"
             )
+            if self.old_deployment_version.image_version:
+                message += (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
+
             self.update_slack_thread(message)
             print(message)
 
@@ -1275,10 +1273,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
     def __build_rollback_audit_details(
         self, rollback_type: RollbackTypes
     ) -> Dict[str, str]:
-        # TODO: Use DeploymentVersion instead of sha only
         return {
-            "rolled_back_from": self.commit,
-            "rolled_back_to": self.old_git_sha,
+            "rolled_back_from": str(self.deployment_version),
+            "rolled_back_to": str(self.old_deployment_version),
             "rollback_type": rollback_type.value,
             "deploy_group": self.deploy_group,
         }
@@ -1660,7 +1657,7 @@ def get_instance_configs_for_service_in_cluster_and_deploy_group(
 
 
 def get_instance_configs_for_service_in_deploy_group_all_clusters(
-    service: str, deploy_group: str, git_sha: str, soa_dir: str
+    service: str, deploy_group: str, soa_dir: str
 ) -> Dict[str, List[LongRunningServiceConfig]]:
     service_configs = PaastaServiceConfigLoader(
         service=service, soa_dir=soa_dir, load_deployments=False
@@ -1704,10 +1701,9 @@ async def wait_for_deployment(
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> Optional[int]:
     if not instance_configs_per_cluster:
-        # TODO: git_sha doesn't seem to be actually used in his function
         instance_configs_per_cluster = (
             get_instance_configs_for_service_in_deploy_group_all_clusters(
-                service, deploy_group, git_sha, soa_dir
+                service, deploy_group, soa_dir
             )
         )
     total_instances = sum(len(ics) for ics in instance_configs_per_cluster.values())
