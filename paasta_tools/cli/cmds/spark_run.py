@@ -67,6 +67,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
+DEFAULT_RUNTIME_TIMEOUT = "12h"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -247,6 +248,14 @@ def add_subparser(subparsers):
     )
 
     list_parser.add_argument(
+        "--timeout-job-runtime",
+        type=str,
+        help="Timeout value which will be added before spark-submit. Job will exit if it doesn't "
+        "finishes in given runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_RUNTIME_TIMEOUT}",
+        default=DEFAULT_RUNTIME_TIMEOUT,
+    )
+
+    list_parser.add_argument(
         "-d",
         "--dry-run",
         help="Shows the arguments supplied to docker as json.",
@@ -362,11 +371,11 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
-        "--auto-set-temporary-credentials-provider",
-        help="Automatically set the TemporaryCredentialsProvider if a session token "
-        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument "
-        "to false.",
-        default=True,
+        "--disable-temporary-credentials-provider",
+        help="Disable explicit setting of TemporaryCredentialsProvider if a session token "
+        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument ",
+        action="store_true",
+        default=False,
     )
 
     aws_group.add_argument(
@@ -948,6 +957,35 @@ def validate_work_dir(s):
             sys.exit(1)
 
 
+def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
+    # Timeout only to be added for spark-submit commands
+    # TODO: Add timeout for jobs using mrjob with spark-runner
+    if "spark-submit" not in cmd:
+        return cmd
+    try:
+        timeout_present = re.match(
+            r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd
+        )
+        if not timeout_present:
+            split_cmd = cmd.split("spark-submit")
+            cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
+            print(
+                PaastaColors.blue(
+                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                    f"Adjust timeout value using --timeout-job-timeout. "
+                    f"New Updated Command with timeout: {cmd}"
+                ),
+            )
+    except Exception as e:
+        err_msg = (
+            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
+            "Please report to #spark."
+        )
+        log.warn(err_msg)
+        print(PaastaColors.red(err_msg))
+    return cmd
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1040,6 +1078,8 @@ def paasta_spark_run(args):
         args.spark_args, pod_template_path, args.enable_compact_bin_packing
     )
 
+    args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
+
     # This is required if configs are provided as part of `spark-submit`
     # Other way to provide is with --spark-args
     sub_cmds = args.cmd.split(" ")  # spark.driver.memory=10g
@@ -1051,6 +1091,9 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
+    auto_set_temporary_credentials_provider = (
+        args.disable_temporary_credentials_provider is False
+    )
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1063,7 +1106,7 @@ def paasta_spark_run(args):
         extra_volumes=volumes,
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
-        auto_set_temporary_credentials_provider=args.auto_set_temporary_credentials_provider,
+        auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
     return configure_and_run_docker_container(
         args,
