@@ -618,7 +618,7 @@ class TestKubernetesDeploymentConfig:
                             command=[
                                 "timeout",
                                 "--signal=KILL",
-                                "1s",
+                                "9s",
                                 "/nail/blah.sh",
                                 "8888",
                                 "universal.credit",
@@ -626,7 +626,7 @@ class TestKubernetesDeploymentConfig:
                         ),
                         initial_delay_seconds=10,
                         period_seconds=10,
-                        timeout_seconds=1,
+                        timeout_seconds=9,
                     ),
                 )
             ]
