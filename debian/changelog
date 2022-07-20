@@ -1,3 +1,11 @@
+paasta-tools (0.135.1) xenial; urgency=medium
+
+  * 0.135.1 tagged with 'make release'
+    Commit: Merge pull request #3395 from Yelp/d/manpreet/add_aqe
+    Enable spark.sql.adaptive.enabled to true for all spark jobs
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 20 Jul 2022 13:25:44 -0700
+
 paasta-tools (0.135.0) xenial; urgency=medium
 
   * 0.135.0 tagged with 'make release'
