@@ -1599,7 +1599,6 @@ class TestKubernetesDeploymentConfig:
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
-                    "yelp.com/pool": "default",
                     "paasta.yelp.com/pool": "default",
                     "yelp.com/paasta_git_sha": "aaaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
