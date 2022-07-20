@@ -1,3 +1,14 @@
+paasta-tools (0.135.2) xenial; urgency=medium
+
+  * 0.135.2 tagged with 'make release'
+    Commit: Randomize host selected in mesh_status (#3403)  We sometimes
+    see single hosts have envoy issues, and having these cascade into
+    paasta status breaking for the pool these hosts are in is not a
+    great experience.  To minimize the impact here, grab a random host
+    from the target pool rather than the "first".
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 20 Jul 2022 15:05:23 -0700
+
 paasta-tools (0.135.1) xenial; urgency=medium
 
   * 0.135.1 tagged with 'make release'
