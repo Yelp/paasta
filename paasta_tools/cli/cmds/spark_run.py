@@ -834,19 +834,26 @@ def configure_and_run_docker_container(
     )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
+    webui_url_msg = f"\nSpark monitoring URL {webui_url}\n"
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
         print(f"\nSpark history server URL {webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         signalfx_url = get_signalfx_url(spark_conf)
-        print(f"\nSpark monitoring URL {webui_url}\n")
-        print(f"\nSignalfx dashboard: {signalfx_url}\n")
+        signalfx_url_msg = f"\nSignalfx dashboard: {signalfx_url}\n"
+        print(webui_url_msg)
+        print(signalfx_url_msg)
+        log.info(webui_url_msg)
+        log.info(signalfx_url_msg)
         history_server_url = get_history_url(spark_conf)
         if history_server_url:
-            print(
+            history_server_url_msg = (
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
+                "Check y/spark-recent-history for faster access to prod logs\n"
             )
+            print(history_server_url_msg)
+            log.info(history_server_url_msg)
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
@@ -885,6 +892,9 @@ def configure_and_run_docker_container(
             else:
                 raise
 
+    final_spark_submit_cmd_msg = f"Final command: {docker_cmd}"
+    print(PaastaColors.grey(final_spark_submit_cmd_msg))
+    log.info(final_spark_submit_cmd_msg)
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
         volumes=volumes,
@@ -987,18 +997,31 @@ def validate_work_dir(s):
 
 
 def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
-    timeout_present = re.match(r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd)
-    if not timeout_present:
-        split_cmd = cmd.split("spark-submit")
-        assert len(split_cmd) == 2, "Invalid cmd: {cmd}"
-        cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
-        print(
-            PaastaColors.red(
-                f"NOTE: Job will exit in given time {timeout_job_runtime}. "
-                f"Adjust timeout value using --timeout-job-timeout. "
-                f"New Updated Command with timeout: {cmd}'))."
-            ),
+    # Timeout only to be added for spark-submit commands
+    # TODO: Add timeout for jobs using mrjob with spark-runner
+    if "spark-submit" not in cmd:
+        return cmd
+    try:
+        timeout_present = re.match(
+            r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd
         )
+        if not timeout_present:
+            split_cmd = cmd.split("spark-submit")
+            cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
+            print(
+                PaastaColors.blue(
+                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
+                    f"Adjust timeout value using --timeout-job-timeout. "
+                    f"New Updated Command with timeout: {cmd}"
+                ),
+            )
+    except Exception as e:
+        err_msg = (
+            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
+            "Please report to #spark."
+        )
+        log.warn(err_msg)
+        print(PaastaColors.red(err_msg))
     return cmd
 
 
@@ -1127,6 +1150,13 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
+    # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
+    # Enable AQE: Adaptive Query Execution
+    if "spark.sql.adaptive.enabled" not in spark_conf:
+        spark_conf["spark.sql.adaptive.enabled"] = "true"
+        aqe_msg = "Spark performance improving feature Adaptive Query Execution (AQE) is enabled. Set spark.sql.adaptive.enabled as false to disable."
+        log.info(aqe_msg)
+        print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
         docker_img=docker_image,

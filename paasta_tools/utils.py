@@ -3303,10 +3303,20 @@ class DeploymentVersion(NamedTuple):
     image_version: Optional[str]
 
     def __repr__(self) -> str:
+        # Represented as commit if no image_version, standard tuple repr otherwise
         return (
             f"DeploymentVersion(sha={self.sha}, image_version={self.image_version})"
             if self.image_version
             else self.sha
+        )
+
+    def short_sha_repr(self, sha_len: int = 8) -> str:
+        # Same as __repr__ but allows us to print the shortned commit sha.
+        short_sha = self.sha[:sha_len]
+        return (
+            f"DeploymentVersion(sha={short_sha}, image_version={self.image_version})"
+            if self.image_version
+            else short_sha
         )
 
 
@@ -3480,9 +3490,14 @@ def format_timestamp(dt: datetime.datetime = None) -> str:
     return dt.strftime("%Y%m%dT%H%M%S")
 
 
-def get_paasta_tag_from_deploy_group(identifier: str, desired_state: str) -> str:
+def get_paasta_tag_from_deploy_group(
+    identifier: str, desired_state: str, image_version: Optional[str] = None
+) -> str:
     timestamp = format_timestamp(datetime.datetime.utcnow())
-    return f"paasta-{identifier}-{timestamp}-{desired_state}"
+    if image_version:
+        return f"paasta-{identifier}+{image_version}-{timestamp}-{desired_state}"
+    else:
+        return f"paasta-{identifier}-{timestamp}-{desired_state}"
 
 
 def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
@@ -3492,6 +3507,41 @@ def get_paasta_tag(cluster: str, instance: str, desired_state: str) -> str:
 
 def format_tag(tag: str) -> str:
     return "refs/tags/%s" % tag
+
+
+def get_latest_deployment_tag(
+    refs: Dict[str, str], deploy_group: str
+) -> Tuple[str, str, Optional[str]]:
+    """Gets the latest deployment tag and sha for the specified deploy_group
+
+    :param refs: A dictionary mapping git refs to shas
+    :param deploy_group: The deployment group to return a deploy tag for
+
+    :returns: A tuple of the form (ref, sha, image_version) where ref is the
+              actual deployment tag (with the most recent timestamp), sha is
+              the sha it points at and image_version provides additional
+              version information about the image
+    """
+    most_recent_dtime = None
+    most_recent_ref = None
+    most_recent_sha = None
+    most_recent_image_version = None
+    pattern = re.compile(
+        r"^refs/tags/paasta-%s(?:\+(?P<image_version>.*)){0,1}-(?P<dtime>\d{8}T\d{6})-deploy$"
+        % deploy_group
+    )
+
+    for ref_name, sha in refs.items():
+        match = pattern.match(ref_name)
+        if match:
+            gd = match.groupdict()
+            dtime = gd["dtime"]
+            if most_recent_dtime is None or dtime > most_recent_dtime:
+                most_recent_dtime = dtime
+                most_recent_ref = ref_name
+                most_recent_sha = sha
+                most_recent_image_version = gd["image_version"]
+    return most_recent_ref, most_recent_sha, most_recent_image_version
 
 
 def build_image_identifier(

@@ -1,3 +1,98 @@
+paasta-tools (0.135.2) xenial; urgency=medium
+
+  * 0.135.2 tagged with 'make release'
+    Commit: Randomize host selected in mesh_status (#3403)  We sometimes
+    see single hosts have envoy issues, and having these cascade into
+    paasta status breaking for the pool these hosts are in is not a
+    great experience.  To minimize the impact here, grab a random host
+    from the target pool rather than the "first".
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 20 Jul 2022 15:05:23 -0700
+
+paasta-tools (0.135.1) xenial; urgency=medium
+
+  * 0.135.1 tagged with 'make release'
+    Commit: Merge pull request #3395 from Yelp/d/manpreet/add_aqe
+    Enable spark.sql.adaptive.enabled to true for all spark jobs
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 20 Jul 2022 13:25:44 -0700
+
+paasta-tools (0.135.0) xenial; urgency=medium
+
+  * 0.135.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/master" into
+    u/sids/PAASTA-17654
+
+ -- Siddharth Shettigar <sids@yelp.com>  Mon, 18 Jul 2022 13:52:21 -0700
+
+paasta-tools (0.134.0) xenial; urgency=medium
+
+  * 0.134.0 tagged with 'make release'
+    Commit: Enable starting arbitrary # of paasta-api workers (#3400)
+    Until we make this an actual service, we can "scale up" by adding
+    more gunicorn workers.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Jul 2022 12:51:06 -0700
+
+paasta-tools (0.133.3) xenial; urgency=medium
+
+  * 0.133.3 tagged with 'make release'
+    Commit: Remove mentions of norcal-prod (#3397)  This cluster no
+    longer exists and mentions of it confuses folks.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Jul 2022 14:25:43 -0700
+
+paasta-tools (0.133.2) xenial; urgency=medium
+
+  * 0.133.2 tagged with 'make release'
+    Commit: Use image-version in mark-for-deployment (#3379)
+
+ -- Daniel Popa Cristobal <dpopacristobal@yelp.com>  Thu, 14 Jul 2022 09:58:54 -0700
+
+paasta-tools (0.133.1) xenial; urgency=medium
+
+  * 0.133.1 tagged with 'make release'
+    Commit: Add soa_dir arg to verbose logging (#3392)  * Add soa_dir
+    arg to verbose logging
+
+ -- Kevin Kaspari <kkasp@yelp.com>  Mon, 11 Jul 2022 11:56:12 -0700
+
+paasta-tools (0.133.0) xenial; urgency=medium
+
+  * 0.133.0 tagged with 'make release'
+    Commit: Merge pull request #3376 from Yelp/u/jfong/w-f-d-with-image-
+    version  Update mark-for-deployment"s wait-for-deployment components
+    to use image_version
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 08 Jul 2022 10:31:06 -0700
+
+paasta-tools (0.132.11) xenial; urgency=medium
+
+  * 0.132.11 tagged with 'make release'
+    Commit: Make comments clearer
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Wed, 06 Jul 2022 08:20:03 -0700
+
+paasta-tools (0.132.10) xenial; urgency=medium
+
+  * 0.132.10 tagged with 'make release'
+    Commit: Use make --question to check if a Makefile has a given
+    target (#3389)  --dry-run can, in certain cases, actually result in
+    Make doing real work. To ensure that we don"t inadvertantly run
+    anything while figuring out if a Makefile does respond to a target,
+    we"ll switch to using --question which won"t execute anything.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 01 Jul 2022 10:14:21 -0700
+
+paasta-tools (0.132.9) xenial; urgency=medium
+
+  * 0.132.9 tagged with 'make release'
+    Commit: Merge pull request #3388 from
+    Yelp/d/manpreet/fix_auto_timeout_fix  Add fix for auto timeout add
+    for non spark-submit commands
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 30 Jun 2022 09:58:20 -0700
+
 paasta-tools (0.132.8) xenial; urgency=medium
 
   * 0.132.8 tagged with 'make release'

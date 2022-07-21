@@ -46,7 +46,7 @@ def add_subparser(subparsers):
     autoscale_parser.add_argument(
         "-c",
         "--cluster",
-        help="The PaaSTA cluster that has the service instance you want to stop. Like 'norcal-prod'.",
+        help="The PaaSTA cluster that has the service instance you want to stop. Like 'pnw-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
     autoscale_parser.add_argument(
