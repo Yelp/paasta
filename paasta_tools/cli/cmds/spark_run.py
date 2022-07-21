@@ -65,6 +65,9 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
+# Mass enable DRA configs
+EXECUTOR_RANGES = {(0,64), (256,2048)}
+
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 DEFAULT_RUNTIME_TIMEOUT = "12h"
@@ -1150,6 +1153,30 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
+
+    # Mass enable DRA config
+    if args.cluster_manager == CLUSTER_MANAGER_K8S and 'spark.dynamicAllocation.enabled' not in spark_conf:
+        num_executors = int(spark_conf['spark.executor.instances'])
+        for exec_range in EXECUTOR_RANGES:
+            if num_executors in range(exec_range[0], exec_range[1]):
+                user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
+                spark_conf = get_spark_conf(
+                    cluster_manager=args.cluster_manager,
+                    spark_app_base_name=app_base_name,
+                    docker_img=docker_image,
+                    user_spark_opts=user_spark_opts,
+                    paasta_cluster=args.cluster,
+                    paasta_pool=args.pool,
+                    paasta_service=args.service,
+                    paasta_instance=paasta_instance,
+                    extra_volumes=volumes,
+                    aws_creds=aws_creds,
+                    needs_docker_cfg=needs_docker_cfg,
+                    auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
+                )
+                break
+
+
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
     if "spark.sql.adaptive.enabled" not in spark_conf:
