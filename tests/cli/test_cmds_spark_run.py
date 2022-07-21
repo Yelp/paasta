@@ -1023,6 +1023,7 @@ def test_paasta_spark_run_bash(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
+        enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1046,7 +1047,7 @@ def test_paasta_spark_run_bash(
     )
     mock_get_spark_app_name.assert_called_once_with("/bin/bash")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
@@ -1214,6 +1215,7 @@ def test_paasta_spark_run_pyspark(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
+        enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1237,7 +1239,7 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
