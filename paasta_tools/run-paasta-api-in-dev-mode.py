@@ -34,13 +34,12 @@ def main():
 
     # export config path
     os.environ["PAASTA_SYSTEM_CONFIG_DIR"] = config_path
-    os.execl(
-        ".tox/py37-linux/bin/python",
-        ".tox/py37-linux/bin/python",
-        "-m",
-        "paasta_tools.api.api",
-        *["-D", "-c", cluster, str(port)],
-    )
+    from paasta_tools.api.api import redirect_argv
+
+    with redirect_argv(["-D", "-c", cluster, str(port)]):
+        from paasta_tools.api import api
+
+        api.main("dev-mode")
 
 
 if __name__ == "__main__":
