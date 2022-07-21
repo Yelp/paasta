@@ -16,6 +16,7 @@
 Responds to paasta service and instance requests.
 """
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -256,19 +257,45 @@ def main(argv=None):
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
 
-    os.execlp(
-        os.path.join(sys.exec_prefix, "bin", "gunicorn"),
-        "gunicorn",
-        "-w",
-        str(args.workers),
-        "--bind",
-        f":{args.port}",
-        "--timeout",
-        str(args.max_request_seconds),
-        "--graceful-timeout",
-        str(args.max_request_seconds),
-        "paasta_tools.api.api:application",
-    )
+    if argv:
+        args = [
+            "gunicorn",
+            "-w",
+            str(args.workers),
+            "--bind",
+            f":{args.port}",
+            "--timeout",
+            str(args.max_request_seconds),
+            "--graceful-timeout",
+            str(args.max_request_seconds),
+            "paasta_tools.api.api:application",
+        ]
+        with redirect_argv(args):
+            from gunicorn.app import wsgiapp
+
+            wsgiapp.run()
+    else:
+        os.execlp(
+            os.path.join(sys.exec_prefix, "bin", "gunicorn"),
+            "gunicorn",
+            "-w",
+            str(args.workers),
+            "--bind",
+            f":{args.port}",
+            "--timeout",
+            str(args.max_request_seconds),
+            "--graceful-timeout",
+            str(args.max_request_seconds),
+            "paasta_tools.api.api:application",
+        )
+
+
+@contextlib.contextmanager
+def redirect_argv(args):
+    sys._argv = sys.argv[:]
+    sys.argv = args
+    yield
+    sys.argv = sys._argv
 
 
 if __name__ == "__main__":
