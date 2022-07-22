@@ -308,25 +308,39 @@ def test_disable_aws_credential_env_variables(
 
 
 @pytest.mark.parametrize(
-    "spark_args,expected",
+    "spark_args,enable_spark_dra,expected",
     [
         (
             "spark.cores.max=1  spark.executor.memory=24g",
+            False,
             {"spark.cores.max": "1", "spark.executor.memory": "24g"},
         ),
-        ("spark.cores.max", None),
-        (None, {}),
+        (
+            "spark.cores.max=1  spark.executor.memory=24g",
+            True,
+            {
+                "spark.cores.max": "1",
+                "spark.executor.memory": "24g",
+                "spark.dynamicAllocation.enabled": "true",
+            },
+        ),
+        ("spark.cores.max", False, None),
+        (None, False, {}),
     ],
 )
-def test_parse_user_spark_args(spark_args, expected, capsys):
+def test_parse_user_spark_args(spark_args, enable_spark_dra, expected, capsys):
     if expected is not None:
         assert (
-            spark_run._parse_user_spark_args(spark_args, "unique-run", False)
+            spark_run._parse_user_spark_args(
+                spark_args, "unique-run", False, enable_spark_dra
+            )
             == expected
         )
     else:
         with pytest.raises(SystemExit):
-            spark_run._parse_user_spark_args(spark_args, "unique-run", False)
+            spark_run._parse_user_spark_args(
+                spark_args, "unique-run", False, enable_spark_dra
+            )
             assert (
                 capsys.readouterr().err
                 == "Spark option spark.cores.max is not in format option=value."
@@ -1009,6 +1023,7 @@ def test_paasta_spark_run_bash(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
+        enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1032,7 +1047,7 @@ def test_paasta_spark_run_bash(
     )
     mock_get_spark_app_name.assert_called_once_with("/bin/bash")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
@@ -1105,6 +1120,7 @@ def test_paasta_spark_run(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
+        enable_dra=True,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1128,7 +1144,7 @@ def test_paasta_spark_run(
     )
     mock_get_spark_app_name.assert_called_once_with("USER=test spark-submit test.py")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, True
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
@@ -1199,6 +1215,7 @@ def test_paasta_spark_run_pyspark(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
+        enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1222,7 +1239,7 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
