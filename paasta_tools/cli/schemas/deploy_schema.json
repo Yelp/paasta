@@ -101,6 +101,9 @@
                 },
                 "confirm_complete": {
                     "type": "boolean"
+                },
+                "enable_automated_redeploys": {
+                    "type": "boolean"
                 }
             },
             "required": [
