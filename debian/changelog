@@ -1,3 +1,15 @@
+paasta-tools (0.135.3) xenial; urgency=medium
+
+  * 0.135.3 tagged with 'make release'
+    Commit: MLCOMPUTE-23 | Enable DRA in paasta spark-run through a flag
+    (#3386)  * MLCOMPUTE-23 | added enable dra flag  * MLCOMPUTE-23 |
+    added and fixed unit tests  * MLCOMPUTE-23 | improved logging  *
+    MLCOMPUTE-23 | bump up service configuration lib version  Co-
+    authored-by: Sameer Sharma <sameersharma@c02gm03pmd6w.lan> Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 22 Jul 2022 08:20:27 -0700
+
 paasta-tools (0.135.2) xenial; urgency=medium
 
   * 0.135.2 tagged with 'make release'
