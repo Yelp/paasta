@@ -1,3 +1,16 @@
+paasta-tools (0.135.4) xenial; urgency=medium
+
+  * 0.135.4 tagged with 'make release'
+    Commit: Wrap readiness check script with a timeout (#3402)  In
+    PAASTA-17673 we noticed that even though there"s a 1s timeout set on
+    this V1Probe, that timeout doesn"t actually kill the script that the
+    probe runs - which can lead to these checks stacking up in our
+    hacheck sidecar and overwhelming the CPU request+limit of that
+    sidecar and leads to the hacheck sidecar getting heavily throttled
+    (which doesn"t help :p)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 22 Jul 2022 10:34:27 -0700
+
 paasta-tools (0.135.3) xenial; urgency=medium
 
   * 0.135.3 tagged with 'make release'
