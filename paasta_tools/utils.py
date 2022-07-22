@@ -2902,7 +2902,11 @@ def build_docker_tag(
     return tag
 
 
-def check_docker_image(service: str, tag: str) -> bool:
+def check_docker_image(
+    service: str,
+    commit: str,
+    image_version: Optional[str] = None,
+) -> bool:
     """Checks whether the given image for :service: with :tag: exists.
 
     :raises: ValueError if more than one docker image with :tag: found.
@@ -2910,7 +2914,7 @@ def check_docker_image(service: str, tag: str) -> bool:
     """
     docker_client = get_docker_client()
     image_name = build_docker_image_name(service)
-    docker_tag = build_docker_tag(service, tag)
+    docker_tag = build_docker_tag(service, commit, image_version)
     images = docker_client.images(name=image_name)
     # image['RepoTags'] may be None
     # Fixed upstream but only in docker-py 2.

@@ -50,6 +50,13 @@ def add_subparser(subparsers):
         required=True,
     )
     list_parser.add_argument(
+        "--image-version",
+        type=str,
+        required=False,
+        default=None,
+        help="Extra version metadata used to construct tag for built image",
+    )
+    list_parser.add_argument(
         "-d",
         "--soa-dir",
         dest="soa_dir",
@@ -74,7 +81,7 @@ def paasta_itest(args):
         service = service.split("services-", 1)[1]
     validate_service_name(service, soa_dir=soa_dir)
 
-    tag = build_docker_tag(service, args.commit)
+    tag = build_docker_tag(service, args.commit, args.image_version)
     run_env = os.environ.copy()
     run_env["DOCKER_TAG"] = tag
     cmd = "make itest"
@@ -102,7 +109,7 @@ def paasta_itest(args):
             loglines.append("See output: %s" % output)
     else:
         loglines.append("itest passed for %s." % args.commit)
-        if not check_docker_image(service, args.commit):
+        if not check_docker_image(service, args.commit, args.image_version):
             loglines.append("ERROR: itest has not created %s" % tag)
             returncode = 1
     for logline in loglines:
