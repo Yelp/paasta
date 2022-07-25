@@ -615,18 +615,10 @@ class TestKubernetesDeploymentConfig:
                     volume_mounts=expected_volumes,
                     readiness_probe=V1Probe(
                         _exec=V1ExecAction(
-                            command=[
-                                "timeout",
-                                "--signal=KILL",
-                                "9s",
-                                "/nail/blah.sh",
-                                "8888",
-                                "universal.credit",
-                            ]
+                            command=["/nail/blah.sh", "8888", "universal.credit"]
                         ),
                         initial_delay_seconds=10,
                         period_seconds=10,
-                        timeout_seconds=9,
                     ),
                 )
             ]
