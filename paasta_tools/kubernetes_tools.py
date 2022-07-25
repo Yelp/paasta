@@ -937,10 +937,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if not system_paasta_config.get_hacheck_match_initial_delay():
                 initial_delay = 10
 
-            period_s = 10  # we probably don't need to make this configurable...
+            period_s = 60  # we probably don't need to make this configurable...
             timeout_s = (
-                period_s - 1
-            )  # same here, one second less than the period is probably ok
+                period_s - 5
+            )  # same here, five seconds less than the period is probably ok
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
                     command=["timeout", "--signal=KILL", f"{timeout_s}s"]
