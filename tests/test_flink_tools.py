@@ -26,7 +26,7 @@ def test_get_flink_ingress_url_root():
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_dashboard_url_from_flink_cr", autospec=True)
+@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_overview(
     mock_get_dashboard,
     mock_get_cr,
@@ -74,7 +74,7 @@ def test_curl_flink_endpoint_overview(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_dashboard_url_from_flink_cr", autospec=True)
+@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_config(
     mock_get_dashboard,
     mock_get_cr,
@@ -116,7 +116,7 @@ def test_curl_flink_endpoint_config(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_dashboard_url_from_flink_cr", autospec=True)
+@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_list_jobs(
     mock_get_dashboard,
     mock_get_cr,
@@ -150,7 +150,7 @@ def test_curl_flink_endpoint_list_jobs(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_dashboard_url_from_flink_cr", autospec=True)
+@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_get_job_details(
     mock_get_dashboard,
     mock_get_cr,

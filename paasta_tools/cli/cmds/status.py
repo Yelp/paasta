@@ -953,7 +953,7 @@ def status_kubernetes_job_human(
         )
 
 
-def get_flink_job_name(flink_job: FlinkJobDetails):
+def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
     return flink_job["name"].split(".", 2)[-1]
 
 
@@ -1024,8 +1024,12 @@ def print_flink_status(
 
     client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
-        print("Cannot get a paasta-api client")
-        exit(1)
+        output.append(
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        )
+        return 1
 
     status = flink.get("status")
     if status is None:
@@ -1128,7 +1132,6 @@ def print_flink_status(
     flink_jobs = FlinkJobs()
     flink_jobs.jobs = []
     if status["state"] == "running":
-        # Flink cluster jobs from paasta api client
         try:
             flink_jobs = get_flink_jobs_from_paasta_api_client(
                 service=service, instance=instance, client=client
@@ -1143,10 +1146,11 @@ def print_flink_status(
     if flink_jobs.get("jobs"):
         job_ids = [job.id for job in flink_jobs.get("jobs")]
     try:
-        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)  # type: ignore
+        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
     except Exception as e:
         output.append(PaastaColors.red(f"Exception when talking to the API:"))
         output.append(str(e))
+        return 1
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if jobs:

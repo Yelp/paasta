@@ -209,7 +209,9 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
     return json_response
 
 
-def _get_dashboard_url_from_flink_cr(cr: Mapping[str, Any]) -> str:
+def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
+    # The public base URL of the JM REST API is the same as the public full URL
+    # of the Flink dashboard
     return cr["metadata"]["annotations"]["flink.yelp.com/dashboard_url"]
 
 
@@ -218,7 +220,7 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         cr = get_cr(settings.kubernetes_client, cr_id)
         if cr is None:
             raise ValueError(f"failed to get CR for id: {cr_id}")
-        base_url = _get_dashboard_url_from_flink_cr(cr)
+        base_url = _get_jm_rest_api_base_url(cr)
         url = f"{base_url}/{endpoint}"
         response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
         if response.ok:
