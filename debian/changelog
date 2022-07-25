@@ -1,3 +1,12 @@
+paasta-tools (0.135.5) xenial; urgency=medium
+
+  * 0.135.5 tagged with 'make release'
+    Commit: Merge pull request #3407 from
+    Yelp/u/mpiano/itest_image_version  Support additional version
+    information in "paasta itest"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 25 Jul 2022 00:46:49 -0700
+
 paasta-tools (0.135.4) xenial; urgency=medium
 
   * 0.135.4 tagged with 'make release'
