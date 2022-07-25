@@ -1,3 +1,11 @@
+paasta-tools (0.135.6) xenial; urgency=medium
+
+  * 0.135.6 tagged with 'make release'
+    Commit: Revert "Wrap readiness check script with a timeout (#3402)"
+    This reverts commit dba5e4ee3b41a8e745dd3043a3b44a3bb4c90315.
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Mon, 25 Jul 2022 06:32:47 -0700
+
 paasta-tools (0.135.5) xenial; urgency=medium
 
   * 0.135.5 tagged with 'make release'
