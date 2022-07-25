@@ -488,7 +488,7 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
             autospec=True,
-            return_value={},
+            return_value=[],
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
             autospec=True,
@@ -543,7 +543,11 @@ class TestKubernetesDeploymentConfig:
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(
+                            name="SERVICE_REGISTRATIONS", value="universal.credit"
+                        ),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
@@ -587,7 +591,11 @@ class TestKubernetesDeploymentConfig:
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(
+                            name="SERVICE_REGISTRATIONS", value="universal.credit"
+                        ),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
