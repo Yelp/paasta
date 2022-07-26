@@ -3323,6 +3323,9 @@ class DeploymentVersion(NamedTuple):
             else short_sha
         )
 
+    def json(self) -> str:
+        return json.dumps(self._asdict())
+
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
 
