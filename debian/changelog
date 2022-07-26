@@ -1,3 +1,12 @@
+paasta-tools (0.135.7) xenial; urgency=medium
+
+  * 0.135.7 tagged with 'make release'
+    Commit: Merge pull request #3396 from Yelp/u/jfong/COMPINFRA-1248-
+    get-latest-deployment  COMPINFRA-1248: update get-latest-deployment
+    for full DeploymentVersion & add json option
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 26 Jul 2022 15:05:32 -0700
+
 paasta-tools (0.135.6) xenial; urgency=medium
 
   * 0.135.6 tagged with 'make release'
