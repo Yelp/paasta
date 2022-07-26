@@ -1,3 +1,64 @@
+paasta-tools (0.135.6) xenial; urgency=medium
+
+  * 0.135.6 tagged with 'make release'
+    Commit: Revert "Wrap readiness check script with a timeout (#3402)"
+    This reverts commit dba5e4ee3b41a8e745dd3043a3b44a3bb4c90315.
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Mon, 25 Jul 2022 06:32:47 -0700
+
+paasta-tools (0.135.5) xenial; urgency=medium
+
+  * 0.135.5 tagged with 'make release'
+    Commit: Merge pull request #3407 from
+    Yelp/u/mpiano/itest_image_version  Support additional version
+    information in "paasta itest"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 25 Jul 2022 00:46:49 -0700
+
+paasta-tools (0.135.4) xenial; urgency=medium
+
+  * 0.135.4 tagged with 'make release'
+    Commit: Wrap readiness check script with a timeout (#3402)  In
+    PAASTA-17673 we noticed that even though there"s a 1s timeout set on
+    this V1Probe, that timeout doesn"t actually kill the script that the
+    probe runs - which can lead to these checks stacking up in our
+    hacheck sidecar and overwhelming the CPU request+limit of that
+    sidecar and leads to the hacheck sidecar getting heavily throttled
+    (which doesn"t help :p)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 22 Jul 2022 10:34:27 -0700
+
+paasta-tools (0.135.3) xenial; urgency=medium
+
+  * 0.135.3 tagged with 'make release'
+    Commit: MLCOMPUTE-23 | Enable DRA in paasta spark-run through a flag
+    (#3386)  * MLCOMPUTE-23 | added enable dra flag  * MLCOMPUTE-23 |
+    added and fixed unit tests  * MLCOMPUTE-23 | improved logging  *
+    MLCOMPUTE-23 | bump up service configuration lib version  Co-
+    authored-by: Sameer Sharma <sameersharma@c02gm03pmd6w.lan> Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 22 Jul 2022 08:20:27 -0700
+
+paasta-tools (0.135.2) xenial; urgency=medium
+
+  * 0.135.2 tagged with 'make release'
+    Commit: Randomize host selected in mesh_status (#3403)  We sometimes
+    see single hosts have envoy issues, and having these cascade into
+    paasta status breaking for the pool these hosts are in is not a
+    great experience.  To minimize the impact here, grab a random host
+    from the target pool rather than the "first".
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 20 Jul 2022 15:05:23 -0700
+
+paasta-tools (0.135.1) xenial; urgency=medium
+
+  * 0.135.1 tagged with 'make release'
+    Commit: Merge pull request #3395 from Yelp/d/manpreet/add_aqe
+    Enable spark.sql.adaptive.enabled to true for all spark jobs
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 20 Jul 2022 13:25:44 -0700
+
 paasta-tools (0.135.0) xenial; urgency=medium
 
   * 0.135.0 tagged with 'make release'

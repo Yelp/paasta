@@ -325,7 +325,7 @@ async def mesh_status(
 
     pods = await pods_task
     for location, hosts in node_hostname_by_location.items():
-        host = replication_checker.get_first_host_in_pool(hosts, instance_pool)
+        host = replication_checker.get_hostname_in_pool(hosts, instance_pool)
         if service_mesh == ServiceMesh.SMARTSTACK:
             mesh_status["locations"].append(
                 _build_smartstack_location_dict(

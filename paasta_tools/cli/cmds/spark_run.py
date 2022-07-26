@@ -292,6 +292,17 @@ def add_subparser(subparsers):
         default=CLUSTER_MANAGER_K8S,
     )
 
+    list_parser.add_argument(
+        "--enable-dra",
+        help=(
+            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in (y/spark-dra). DRA "
+            "dynamically scales up and down the executor instance count based on the number of pending tasks "
+            "and requirements. Disabled by default. Does not override Spark DRA configs if specified by the user."
+        ),
+        action="store_true",
+        default=False,
+    )
+
     if clusterman_metrics:
         list_parser.add_argument(
             "--suppress-clusterman-metrics-errors",
@@ -594,6 +605,7 @@ def _parse_user_spark_args(
     spark_args: Optional[str],
     pod_template_path: str,
     enable_compact_bin_packing: bool = False,
+    enable_spark_dra: bool = False,
 ) -> Dict[str, str]:
     if not spark_args:
         return {}
@@ -613,6 +625,23 @@ def _parse_user_spark_args(
 
     if enable_compact_bin_packing:
         user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
+
+    if enable_spark_dra:
+        if (
+            "spark.dynamicAllocation.enabled" in user_spark_opts
+            and user_spark_opts["spark.dynamicAllocation.enabled"] == "false"
+        ):
+            print(
+                PaastaColors.red(
+                    "Error: --enable-dra flag is provided while spark.dynamicAllocation.enabled "
+                    "is explicitly set to false in --spark-args. If you want to enable DRA, please remove the "
+                    "spark.dynamicAllocation.enabled=false config from spark-args. If you don't want to "
+                    "enable DRA, please remove the --enable-dra flag."
+                ),
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
 
     return user_spark_opts
 
@@ -805,19 +834,26 @@ def configure_and_run_docker_container(
     )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
+    webui_url_msg = f"\nSpark monitoring URL {webui_url}\n"
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
         print(f"\nSpark history server URL {webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         signalfx_url = get_signalfx_url(spark_conf)
-        print(f"\nSpark monitoring URL {webui_url}\n")
-        print(f"\nSignalfx dashboard: {signalfx_url}\n")
+        signalfx_url_msg = f"\nSignalfx dashboard: {signalfx_url}\n"
+        print(webui_url_msg)
+        print(signalfx_url_msg)
+        log.info(webui_url_msg)
+        log.info(signalfx_url_msg)
         history_server_url = get_history_url(spark_conf)
         if history_server_url:
-            print(
+            history_server_url_msg = (
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
+                "Check y/spark-recent-history for faster access to prod logs\n"
             )
+            print(history_server_url_msg)
+            log.info(history_server_url_msg)
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
@@ -856,6 +892,9 @@ def configure_and_run_docker_container(
             else:
                 raise
 
+    final_spark_submit_cmd_msg = f"Final command: {docker_cmd}"
+    print(PaastaColors.grey(final_spark_submit_cmd_msg))
+    log.info(final_spark_submit_cmd_msg)
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
         volumes=volumes,
@@ -1075,7 +1114,10 @@ def paasta_spark_run(args):
 
     needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(
-        args.spark_args, pod_template_path, args.enable_compact_bin_packing
+        args.spark_args,
+        pod_template_path,
+        args.enable_compact_bin_packing,
+        args.enable_dra,
     )
 
     args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
@@ -1108,6 +1150,13 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
+    # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
+    # Enable AQE: Adaptive Query Execution
+    if "spark.sql.adaptive.enabled" not in spark_conf:
+        spark_conf["spark.sql.adaptive.enabled"] = "true"
+        aqe_msg = "Spark performance improving feature Adaptive Query Execution (AQE) is enabled. Set spark.sql.adaptive.enabled as false to disable."
+        log.info(aqe_msg)
+        print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
         docker_img=docker_image,
