@@ -304,6 +304,7 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
             "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
             "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
             # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
             # will be, drumroll please, the routable IP for the Pod - this allows us to
             # not need to worry about DNS
