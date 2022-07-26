@@ -1003,7 +1003,7 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
         return cmd
     try:
         timeout_present = re.match(
-            r"^.*timeout[\s]+[\d]*[m|h][\s]+spark-submit .*$", cmd
+            r"^.*timeout[\s]+[\d]+[\.]?[\d]*[m|h][\s]+spark-submit .*$", cmd
         )
         if not timeout_present:
             split_cmd = cmd.split("spark-submit")
