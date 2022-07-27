@@ -1599,6 +1599,7 @@ class TestKubernetesDeploymentConfig:
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
+                    "paasta.yelp.com/pool": "default",
                     "yelp.com/paasta_git_sha": "aaaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
                     "yelp.com/paasta_service": mock_get_service.return_value,
@@ -3625,7 +3626,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "confige0334534"
+            == "config2c177d7a"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3730,7 +3731,7 @@ def test_running_task_allocation_get_kubernetes_metadata():
 
 def test_running_task_allocation_get_pod_pool():
     mock_node = mock.MagicMock()
-    mock_node.metadata.labels = {"yelp.com/pool": "foo"}
+    mock_node.metadata.labels = {"paasta.yelp.com/pool": "foo"}
     with mock.patch(
         "paasta_tools.kubernetes_tools.get_pod_node",
         autospec=True,
