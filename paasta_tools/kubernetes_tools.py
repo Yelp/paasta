@@ -917,6 +917,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             sidecars.append(uwsgi_exporter_container)
         return sidecars
 
+    def get_readiness_check_prefix(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        initial_delay: float,
+        period_seconds: float,
+    ) -> List[str]:
+        return [
+            x.format(initial_delay=initial_delay, period_seconds=period_seconds)
+            for x in system_paasta_config.get_readiness_check_prefix_template()
+        ]
+
     def get_hacheck_sidecar_container(
         self,
         system_paasta_config: SystemPaastaConfig,
@@ -936,14 +947,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # and to not cause rolling updates on everything at once this is a config option for now
             if not system_paasta_config.get_hacheck_match_initial_delay():
                 initial_delay = 10
+            period_seconds = 10
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
-                    command=self.get_readiness_check_script(system_paasta_config)
+                    command=self.get_readiness_check_prefix(
+                        system_paasta_config=system_paasta_config,
+                        initial_delay=initial_delay,
+                        period_seconds=period_seconds,
+                    )
+                    + self.get_readiness_check_script(system_paasta_config)
                     + [str(self.get_container_port())]
                     + self.get_registrations()
                 ),
                 initial_delay_seconds=initial_delay,
-                period_seconds=10,
+                period_seconds=period_seconds,
             )
         else:
             readiness_probe = None

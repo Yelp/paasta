@@ -1958,6 +1958,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     previous_marathon_servers: List[MarathonConfigDict]
+    readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -2685,6 +2686,13 @@ class SystemPaastaConfig:
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
+
+    def get_readiness_check_prefix_template(self) -> List[str]:
+        """A prefix that will be added to the beginning of the readiness check command. Meant for e.g. `flock` and `timeout`."""
+        return self.config_dict.get(
+            "readiness_check_prefix_template",
+            ["flock", "-n", "/readiness_check_lock", "timeout", "120"],
+        )
 
 
 def _run(
