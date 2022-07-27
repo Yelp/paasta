@@ -1,3 +1,11 @@
+paasta-tools (0.135.8) xenial; urgency=medium
+
+  * 0.135.8 tagged with 'make release'
+    Commit: CLUSTERMAN-582, add pool label to pods that come from nodes
+    (#3383)  * COMPINFRA-582, add pool label to pods
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Wed, 27 Jul 2022 05:50:23 -0700
+
 paasta-tools (0.135.7) xenial; urgency=medium
 
   * 0.135.7 tagged with 'make release'
