@@ -1,3 +1,12 @@
+paasta-tools (0.135.9) xenial; urgency=medium
+
+  * 0.135.9 tagged with 'make release'
+    Commit: Merge pull request #3412 from
+    Yelp/d/manpreet/timeout_value_should_accept_regex  Fix regex to also
+    assert timeout values of type float
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 27 Jul 2022 07:52:42 -0700
+
 paasta-tools (0.135.8) xenial; urgency=medium
 
   * 0.135.8 tagged with 'make release'
