@@ -1,3 +1,11 @@
+paasta-tools (0.137.0) xenial; urgency=medium
+
+  * 0.137.0 tagged with 'make release'
+    Commit: Merge pull request #3417 from Yelp/revert-flink-changes
+    Revert "[FLINK-4097] Get Flink cluster status via JM API (#3399)"
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 28 Jul 2022 11:07:17 -0700
+
 paasta-tools (0.136.0) xenial; urgency=medium
 
   * 0.136.0 tagged with 'make release'
