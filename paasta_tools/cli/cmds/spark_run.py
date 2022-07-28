@@ -18,6 +18,7 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_dra_configs
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -1172,21 +1173,8 @@ def paasta_spark_run(args):
                         "spark.dynamicAllocation.enabled=false in --spark-args\n"
                     )
                 )
-                user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
-                spark_conf = get_spark_conf(
-                    cluster_manager=args.cluster_manager,
-                    spark_app_base_name=app_base_name,
-                    docker_img=docker_image,
-                    user_spark_opts=user_spark_opts,
-                    paasta_cluster=args.cluster,
-                    paasta_pool=args.pool,
-                    paasta_service=args.service,
-                    paasta_instance=paasta_instance,
-                    extra_volumes=volumes,
-                    aws_creds=aws_creds,
-                    needs_docker_cfg=needs_docker_cfg,
-                    auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
-                )
+                spark_conf["spark.dynamicAllocation.enabled"] = "true"
+                spark_conf = get_dra_configs(spark_conf)
                 break
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues

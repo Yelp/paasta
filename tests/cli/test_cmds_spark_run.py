@@ -1180,6 +1180,7 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch.object(spark_run, "get_dra_config", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
@@ -1187,6 +1188,7 @@ def test_paasta_spark_run_pyspark(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
+    mock_get_dra_conf,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1212,12 +1214,14 @@ def test_paasta_spark_run_pyspark(
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
-        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
         enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
+    mock_get_spark_conf.return_value = {"spark.executor.instances": "10"}
+
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "pyspark"
@@ -1239,7 +1243,7 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", False, False
+        "spark.cores.max=100 spark.executor.cores=10", "unique-run", True, False
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
@@ -1254,6 +1258,9 @@ def test_paasta_spark_run_pyspark(
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
         auto_set_temporary_credentials_provider=False,
+    )
+    mock_get_dra_conf.assert_called_once_with(
+        {"spark.executor.instances": "10", "spark.dynamicAllocation.enabled": "true"}
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
