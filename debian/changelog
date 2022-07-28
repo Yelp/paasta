@@ -1,3 +1,10 @@
+paasta-tools (0.135.10) xenial; urgency=medium
+
+  * 0.135.10 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/double-push-to-registry"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 28 Jul 2022 00:49:39 -0700
+
 paasta-tools (0.135.9) xenial; urgency=medium
 
   * 0.135.9 tagged with 'make release'
