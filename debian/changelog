@@ -1,3 +1,20 @@
+paasta-tools (0.136.0) xenial; urgency=medium
+
+  * 0.136.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3399)  *
+    Add flink apis to paasta-api opi  * Add routes and sample test  *
+    Add tests for flink routes  * Add routes to swagger  * Adapt
+    print_flink_status to the paasta api  * Add missing job details
+    route to api.py  * Add mocking for paasta config load  * Remove
+    unused parameters  * Add swagger spec for new endpoints  * Remove
+    unused model `InstanceSpecKafkaCluster`  * Add makefile target to
+    validate swagger.json  * Add fail-case unit tests  * Fix for the JM
+    url  * Add concurrent fetch of job details  * Gracefully handle non-
+    running flink cluster states  * Small corrections after review  Co-
+    authored-by: Ahmed Soliman <asoliman@yelp.com>
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Thu, 28 Jul 2022 06:40:10 -0700
+
 paasta-tools (0.135.10) xenial; urgency=medium
 
   * 0.135.10 tagged with 'make release'
