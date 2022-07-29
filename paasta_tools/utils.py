@@ -1958,6 +1958,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     previous_marathon_servers: List[MarathonConfigDict]
+    readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -2685,6 +2686,23 @@ class SystemPaastaConfig:
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
+
+    def get_readiness_check_prefix_template(self) -> List[str]:
+        """A prefix that will be added to the beginning of the readiness check command. Meant for e.g. `flock` and
+        `timeout`."""
+        # We use flock+timeout here to work around issues discovered in PAASTA-17673:
+        # In k8s 1.18, probe timeout wasn't respected at all.
+        # When we upgraded to k8s 1.20, the timeout started being partially respected - k8s would stop waiting for a
+        # response, but wouldn't kill the command within the container (with the dockershim CRI).
+        # Flock prevents multiple readiness probes from running at once, using lots of CPU.
+        # The generous timeout allows for a slow readiness probe, but ensures that a truly-stuck readiness probe command
+        # will eventually be killed so another process can retry.
+        # Once we move off dockershim, we'll likely need to increase the readiness probe timeout, but we can then remove
+        # this wrapper.
+        return self.config_dict.get(
+            "readiness_check_prefix_template",
+            ["flock", "-n", "/readiness_check_lock", "timeout", "120"],
+        )
 
 
 def _run(
