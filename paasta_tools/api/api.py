@@ -257,37 +257,26 @@ def main(argv=None):
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
 
+    gunicorn_args = [
+        "gunicorn",
+        "-w",
+        str(args.workers),
+        "--bind",
+        f":{args.port}",
+        "--timeout",
+        str(args.max_request_seconds),
+        "--graceful-timeout",
+        str(args.max_request_seconds),
+        "paasta_tools.api.api:application",
+    ]
+
     if argv:
-        args = [
-            "gunicorn",
-            "-w",
-            str(args.workers),
-            "--bind",
-            f":{args.port}",
-            "--timeout",
-            str(args.max_request_seconds),
-            "--graceful-timeout",
-            str(args.max_request_seconds),
-            "paasta_tools.api.api:application",
-        ]
-        with redirect_argv(args):
+        with redirect_argv(gunicorn_args):
             from gunicorn.app import wsgiapp
 
             wsgiapp.run()
     else:
-        os.execlp(
-            os.path.join(sys.exec_prefix, "bin", "gunicorn"),
-            "gunicorn",
-            "-w",
-            str(args.workers),
-            "--bind",
-            f":{args.port}",
-            "--timeout",
-            str(args.max_request_seconds),
-            "--graceful-timeout",
-            str(args.max_request_seconds),
-            "paasta_tools.api.api:application",
-        )
+        os.execlp(os.path.join(sys.exec_prefix, "bin", "gunicorn"), *gunicorn_args)
 
 
 @contextlib.contextmanager
