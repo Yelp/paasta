@@ -79,6 +79,181 @@
                 "operationId": "deploy_queue"
             }
         },
+        "/flink/{service}/{instance}/config": {
+            "get": {
+                "operationId": "get_flink_cluster_config",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Get config of a flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkConfig"
+                        }
+                    },
+                    "404": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    },
+                    "599": {
+                        "description": "Temporary issue fetching instance"
+                    }
+                },
+                "summary": "Get config of a flink cluster",
+                "tags": [
+                    "service"
+                ]
+            }
+        },
+        "/flink/{service}/{instance}/jobs": {
+            "get": {
+                "operationId": "list_flink_cluster_jobs",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Get list of flink jobs in a flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkJobs"
+                        }
+                    },
+                    "400": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    },
+                    "599": {
+                        "description": "Temporary issue fetching instance"
+                    }
+                },
+                "summary": "Get list of flink jobs in a flink cluster",
+                "tags": [
+                    "service"
+                ]
+            }
+        },
+        "/flink/{service}/{instance}/jobs/{job_id}": {
+            "get": {
+                "operationId": "get_flink_cluster_job_details",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Job id",
+                        "in": "path",
+                        "name": "job_id",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Get details of a flink job in a flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkJobDetails"
+                        }
+                    },
+                    "400": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    },
+                    "599": {
+                        "description": "Temporary issue fetching instance"
+                    }
+                },
+                "summary": "Get details of a flink job in a flink cluster",
+                "tags": [
+                    "service"
+                ]
+            }
+        },
+        "/flink/{service}/{instance}/overview": {
+            "get": {
+                "operationId": "get_flink_cluster_overview",
+                "parameters": [
+                    {
+                        "description": "Service name",
+                        "in": "path",
+                        "name": "service",
+                        "required": true,
+                        "type": "string"
+                    },
+                    {
+                        "description": "Instance name",
+                        "in": "path",
+                        "name": "instance",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Get overview of a flink cluster",
+                        "schema": {
+                            "$ref": "#/definitions/FlinkClusterOverview"
+                        }
+                    },
+                    "404": {
+                        "description": "Flink cluster not found"
+                    },
+                    "500": {
+                        "description": "Instance failure"
+                    },
+                    "599": {
+                        "description": "Temporary issue fetching instance"
+                    }
+                },
+                "summary": "Get overview of a flink cluster",
+                "tags": [
+                    "service"
+                ]
+            }
+        },
         "/service_autoscaler/pause": {
             "get": {
                 "responses": {
@@ -1919,10 +2094,6 @@
             "type": "object",
             "description": "Kafka instance metadata"
         },
-        "InstanceSpecKafkaCluster": {
-            "type": "object",
-            "description": "Kafka instance spec"
-        },
         "InstanceStatusCassandraCluster": {
             "type": "object",
             "description": "Cassandra instance status"
@@ -2025,6 +2196,129 @@
                     "items": {
                         "$ref": "#/definitions/DeployQueueServiceInstance"
                     }
+                }
+            }
+        },
+        "FlinkConfig": {
+            "type": "object",
+            "properties": {
+                "flink-version": {
+                    "type": "string"
+                },
+                "flink-revision": {
+                    "type": "string"
+                }
+            }
+        },
+        "FlinkJobs": {
+            "type": "object",
+            "properties": {
+                "jobs": {
+                    "type": "array",
+                    "description": "Flink jobs",
+                    "items": {
+                        "$ref": "#/definitions/FlinkJob"
+                    }
+                }
+            }
+        },
+        "FlinkJob": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "ID of the flink job"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "INITIALIZING",
+                        "CREATED",
+                        "RUNNING",
+                        "FAILING",
+                        "FAILED",
+                        "CANCELLING",
+                        "CANCELED",
+                        "FINISHED",
+                        "RESTARTING",
+                        "SUSPENDED",
+                        "RECONCILING"
+                    ]
+                }
+            }
+        },
+        "FlinkJobDetails": {
+            "type": "object",
+            "properties": {
+                "jid": {
+                    "type": "string",
+                    "description": "ID of the flink job"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "name of the flink job"
+                },
+                "state": {
+                    "type": "string",
+                    "description": "state of the flink job",
+                    "enum": [
+                        "INITIALIZING",
+                        "CREATED",
+                        "RUNNING",
+                        "FAILING",
+                        "FAILED",
+                        "CANCELLING",
+                        "CANCELED",
+                        "FINISHED",
+                        "RESTARTING",
+                        "SUSPENDED",
+                        "RECONCILING"
+                    ]
+                },
+                "start-time": {
+                    "description": "timestamp of job start time",
+                    "type": "number",
+                    "format": "float"
+                }
+            }
+        },
+        "FlinkClusterOverview": {
+            "type": "object",
+            "properties": {
+                "taskmanagers": {
+                    "description": "Number of taskmanagers in the cluster",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "slots-total": {
+                    "description": "Total task slots in the cluster",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "slots-available": {
+                    "description": "Available task slots",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "jobs-running": {
+                    "description": "Number of flink jobs in running state",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "jobs-finished": {
+                    "description": "Number of flink jobs in finished state",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "jobs-cancelled": {
+                    "description": "Number of flink jobs in cancelled state",
+                    "type": "integer",
+                    "format": "int32"
+                },
+                "jobs-failed": {
+                    "description": "Number of flink jobs in failed state",
+                    "type": "integer",
+                    "format": "int32"
                 }
             }
         },
