@@ -1,3 +1,10 @@
+paasta-tools (0.138.0) xenial; urgency=medium
+
+  * 0.138.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/flock_timeout" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 29 Jul 2022 10:21:46 -0700
+
 paasta-tools (0.137.0) xenial; urgency=medium
 
   * 0.137.0 tagged with 'make release'
