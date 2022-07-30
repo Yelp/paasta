@@ -149,7 +149,7 @@ class Gauge(GaugeProtocol):
         log.debug(f"gauge {self.name} set to {value}")
 
 
-class Counter(GaugeProtocol):
+class Counter(CounterProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
         self.counter = 0
