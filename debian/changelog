@@ -1,3 +1,105 @@
+paasta-tools (0.138.1) xenial; urgency=medium
+
+  * 0.138.1 tagged with 'make release'
+    Commit: Update hash for test_warning_big_bounce_routable_pod
+
+ -- Evan Krall <krall@yelp.com>  Fri, 29 Jul 2022 10:46:55 -0700
+
+paasta-tools (0.138.0) xenial; urgency=medium
+
+  * 0.138.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/flock_timeout" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 29 Jul 2022 10:21:46 -0700
+
+paasta-tools (0.137.0) xenial; urgency=medium
+
+  * 0.137.0 tagged with 'make release'
+    Commit: Merge pull request #3417 from Yelp/revert-flink-changes
+    Revert "[FLINK-4097] Get Flink cluster status via JM API (#3399)"
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 28 Jul 2022 11:07:17 -0700
+
+paasta-tools (0.136.0) xenial; urgency=medium
+
+  * 0.136.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3399)  *
+    Add flink apis to paasta-api opi  * Add routes and sample test  *
+    Add tests for flink routes  * Add routes to swagger  * Adapt
+    print_flink_status to the paasta api  * Add missing job details
+    route to api.py  * Add mocking for paasta config load  * Remove
+    unused parameters  * Add swagger spec for new endpoints  * Remove
+    unused model `InstanceSpecKafkaCluster`  * Add makefile target to
+    validate swagger.json  * Add fail-case unit tests  * Fix for the JM
+    url  * Add concurrent fetch of job details  * Gracefully handle non-
+    running flink cluster states  * Small corrections after review  Co-
+    authored-by: Ahmed Soliman <asoliman@yelp.com>
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Thu, 28 Jul 2022 08:22:11 -0700
+
+paasta-tools (0.135.10) xenial; urgency=medium
+
+  * 0.135.10 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/double-push-to-registry"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 28 Jul 2022 00:49:39 -0700
+
+paasta-tools (0.135.9) xenial; urgency=medium
+
+  * 0.135.9 tagged with 'make release'
+    Commit: Merge pull request #3412 from
+    Yelp/d/manpreet/timeout_value_should_accept_regex  Fix regex to also
+    assert timeout values of type float
+
+ -- Manpreet Singh <manpreet@yelp.com>  Wed, 27 Jul 2022 07:52:42 -0700
+
+paasta-tools (0.135.8) xenial; urgency=medium
+
+  * 0.135.8 tagged with 'make release'
+    Commit: CLUSTERMAN-582, add pool label to pods that come from nodes
+    (#3383)  * COMPINFRA-582, add pool label to pods
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Wed, 27 Jul 2022 05:50:23 -0700
+
+paasta-tools (0.135.7) xenial; urgency=medium
+
+  * 0.135.7 tagged with 'make release'
+    Commit: Merge pull request #3396 from Yelp/u/jfong/COMPINFRA-1248-
+    get-latest-deployment  COMPINFRA-1248: update get-latest-deployment
+    for full DeploymentVersion & add json option
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 26 Jul 2022 15:05:32 -0700
+
+paasta-tools (0.135.6) xenial; urgency=medium
+
+  * 0.135.6 tagged with 'make release'
+    Commit: Revert "Wrap readiness check script with a timeout (#3402)"
+    This reverts commit dba5e4ee3b41a8e745dd3043a3b44a3bb4c90315.
+
+ -- Amjad Mashaal <amashaal@yelp.com>  Mon, 25 Jul 2022 06:32:47 -0700
+
+paasta-tools (0.135.5) xenial; urgency=medium
+
+  * 0.135.5 tagged with 'make release'
+    Commit: Merge pull request #3407 from
+    Yelp/u/mpiano/itest_image_version  Support additional version
+    information in "paasta itest"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 25 Jul 2022 00:46:49 -0700
+
+paasta-tools (0.135.4) xenial; urgency=medium
+
+  * 0.135.4 tagged with 'make release'
+    Commit: Wrap readiness check script with a timeout (#3402)  In
+    PAASTA-17673 we noticed that even though there"s a 1s timeout set on
+    this V1Probe, that timeout doesn"t actually kill the script that the
+    probe runs - which can lead to these checks stacking up in our
+    hacheck sidecar and overwhelming the CPU request+limit of that
+    sidecar and leads to the hacheck sidecar getting heavily throttled
+    (which doesn"t help :p)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 22 Jul 2022 10:34:27 -0700
+
 paasta-tools (0.135.3) xenial; urgency=medium
 
   * 0.135.3 tagged with 'make release'
