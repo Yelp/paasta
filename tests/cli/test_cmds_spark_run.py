@@ -1180,7 +1180,7 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch.object(spark_run, "get_dra_config", autospec=True)
+@mock.patch.object(spark_run, "get_dra_configs", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
@@ -1188,7 +1188,7 @@ def test_paasta_spark_run_pyspark(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
-    mock_get_dra_conf,
+    mock_get_dra_configs,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1246,7 +1246,7 @@ def test_paasta_spark_run_pyspark(
         "spark.cores.max=100 spark.executor.cores=10", "unique-run", True, False
     )
     mock_get_spark_conf.assert_called_once_with(
-        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         spark_app_base_name=mock_get_spark_app_name.return_value,
         docker_img=mock_get_docker_image.return_value,
         user_spark_opts=mock_parse_user_spark_args.return_value,
@@ -1259,7 +1259,7 @@ def test_paasta_spark_run_pyspark(
         needs_docker_cfg=False,
         auto_set_temporary_credentials_provider=False,
     )
-    mock_get_dra_conf.assert_called_once_with(
+    mock_get_dra_configs.assert_called_once_with(
         {"spark.executor.instances": "10", "spark.dynamicAllocation.enabled": "true"}
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
@@ -1267,9 +1267,9 @@ def test_paasta_spark_run_pyspark(
         docker_img=mock_get_docker_image.return_value,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
-        spark_conf=mock_get_spark_conf.return_value,
+        spark_conf=mock_get_dra_configs.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
-        cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
+        cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="unique-run",
     )
     mock_generate_pod_template_path.assert_called_once()

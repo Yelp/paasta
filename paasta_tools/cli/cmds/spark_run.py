@@ -67,7 +67,7 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 # Mass enable DRA configs
-EXECUTOR_RANGES = {(0, 64), (256, 2048)}
+EXECUTOR_RANGES = {(0, 32)}
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -1157,7 +1157,10 @@ def paasta_spark_run(args):
         auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
 
-    # Mass enable DRA config
+    # Mass enable Spark DRA. This is to enable Dynamic Resource Allocation in Spark through executor ranges.
+    # If the number of executor instances of a Spark job lie in the specified range, dynamicAllocation configs
+    # will be added. More info: y/spark-dra
+    # TODO: To be removed when DRA is enabled by default
     if (
         args.cluster_manager == CLUSTER_MANAGER_K8S
         and "spark.dynamicAllocation.enabled" not in spark_conf
@@ -1165,11 +1168,11 @@ def paasta_spark_run(args):
         num_executors = int(spark_conf["spark.executor.instances"])
         for exec_range in EXECUTOR_RANGES:
             if exec_range[0] <= num_executors <= exec_range[1]:
-
                 log.warn(
                     PaastaColors.yellow(
                         "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                        "More info: y/spark-dra. If you wish to disable DRA, please provide "
+                        "More info: y/spark-dra. If your job is performing worse because "
+                        "of DRA, consider disabling DRA. To disable, please provide "
                         "spark.dynamicAllocation.enabled=false in --spark-args\n"
                     )
                 )
