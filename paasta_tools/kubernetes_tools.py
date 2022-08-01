@@ -966,6 +966,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             readiness_probe = None
 
+        hacheck_registrations_env = V1EnvVar(
+            name="SERVICE_REGISTRATIONS",
+            value=" ".join(self.get_registrations()),
+        )
+
         if service_namespace_config.is_in_smartstack():
             return V1Container(
                 image=system_paasta_config.get_hacheck_sidecar_image_url(),
@@ -982,7 +987,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
                 resources=self.get_sidecar_resource_requirements("hacheck"),
                 name=HACHECK_POD_NAME,
-                env=self.get_kubernetes_environment(),
+                env=self.get_kubernetes_environment() + [hacheck_registrations_env],
                 ports=[V1ContainerPort(container_port=6666)],
                 readiness_probe=readiness_probe,
                 volume_mounts=self.get_volume_mounts(
