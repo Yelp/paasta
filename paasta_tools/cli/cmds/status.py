@@ -1404,7 +1404,7 @@ def print_flink_status(
         return 1
 
     api_version_minor = client.default.show_version().split(".")[1]
-    if api_version_minor <= "137":  # fallback
+    if api_version_minor <= "138":  # fallback
         return _print_flink_status_from_custom_resource(flink, output, verbose)
     else:
         return _print_flink_status_from_job_manager(
