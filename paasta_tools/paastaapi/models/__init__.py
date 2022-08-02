@@ -18,6 +18,11 @@ from paasta_tools.paastaapi.model.deploy_queue_service_instance import DeployQue
 from paasta_tools.paastaapi.model.envoy_backend import EnvoyBackend
 from paasta_tools.paastaapi.model.envoy_location import EnvoyLocation
 from paasta_tools.paastaapi.model.envoy_status import EnvoyStatus
+from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
+from paasta_tools.paastaapi.model.flink_config import FlinkConfig
+from paasta_tools.paastaapi.model.flink_job import FlinkJob
+from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
+from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.model.float_and_error import FloatAndError
 from paasta_tools.paastaapi.model.hpa_metric import HPAMetric
 from paasta_tools.paastaapi.model.inline_object import InlineObject
