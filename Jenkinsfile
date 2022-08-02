@@ -13,7 +13,7 @@ commit = ''
 
 ircMsgResult(CHANNELS) {
     ystage('Test') {
-        node {
+        ynode.forConfiguredHostType(ownerName: 'Yelp', repoName: 'paasta') {
             ensureCleanWorkspace {
                 commit = clone(
                     PACKAGE_NAME,
@@ -32,7 +32,7 @@ ircMsgResult(CHANNELS) {
     )
 
     ystage('Upload to PyPi') {
-        node {
+        ynode.forConfiguredHostType(ownerName: 'Yelp', repoName: 'paasta') {
             promoteToPypi(
                 "git@git.yelpcorp.com:mirrors/Yelp/paasta.git",
                 commit,
