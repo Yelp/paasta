@@ -967,7 +967,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             readiness_probe = None
 
         hacheck_registrations_env = V1EnvVar(
-            name="SERVICE_REGISTRATIONS",
+            name="MESH_REGISTRATIONS",
             value=" ".join(self.get_registrations()),
         )
 

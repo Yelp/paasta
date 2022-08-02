@@ -544,9 +544,7 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(
-                            name="SERVICE_REGISTRATIONS", value="universal.credit"
-                        ),
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
@@ -592,9 +590,7 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(
-                            name="SERVICE_REGISTRATIONS", value="universal.credit"
-                        ),
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
@@ -3686,7 +3682,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config6c2cfd32"
+            == "configf46d563a"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
