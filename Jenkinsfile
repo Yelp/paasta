@@ -13,7 +13,7 @@ commit = ''
 
 ircMsgResult(CHANNELS) {
     ystage('Test') {
-        ynode.forConfiguredHostType(ownerName: 'Yelp', repoName: 'paasta') {
+        ynode {
             ensureCleanWorkspace {
                 commit = clone(
                     PACKAGE_NAME,
