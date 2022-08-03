@@ -490,6 +490,18 @@ class TestConfigureAndRunDockerContainer:
                 },
                 ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
             ),
+            (
+                spark_run.CLUSTER_MANAGER_LOCAL,
+                {
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                    "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
+                },
+                ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+            ),
         ],
     )
     def test_configure_and_run_docker_container(
@@ -578,6 +590,18 @@ class TestConfigureAndRunDockerContainer:
             ),
             (
                 spark_run.CLUSTER_MANAGER_K8S,
+                {
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                    "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
+                },
+                ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+            ),
+            (
+                spark_run.CLUSTER_MANAGER_LOCAL,
                 {
                     "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
                     "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
@@ -678,6 +702,18 @@ class TestConfigureAndRunDockerContainer:
             ),
             (
                 spark_run.CLUSTER_MANAGER_K8S,
+                {
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+                    "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/k8s/volume0",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+                    "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/k8s/volume1",
+                    "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
+                },
+                ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+            ),
+            (
+                spark_run.CLUSTER_MANAGER_LOCAL,
                 {
                     "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
                     "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/k8s/volume0",

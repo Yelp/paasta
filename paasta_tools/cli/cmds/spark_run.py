@@ -24,6 +24,7 @@ from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
+from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
@@ -33,6 +34,8 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
+from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
+from paasta_tools.spark_tools import get_volumes_from_spark_mesos_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
@@ -58,7 +61,8 @@ SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKE
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
 CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
-CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S}
+CLUSTER_MANAGER_LOCAL = "local"
+CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
@@ -777,10 +781,6 @@ def configure_and_run_docker_container(
     cluster_manager: str,
     pod_template_path: str,
 ) -> int:
-
-    # driver specific volumes
-    volumes: List[str] = []
-
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
     )
@@ -790,36 +790,13 @@ def configure_and_run_docker_container(
     )
 
     if cluster_manager == CLUSTER_MANAGER_MESOS:
-        volumes = (
-            spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
-            if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
-            else []
-        )
-    elif cluster_manager == CLUSTER_MANAGER_K8S:
-        volume_names = [
-            re.match(
-                r"spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path", key
-            ).group(1)
-            for key in spark_conf.keys()
-            if "spark.kubernetes.executor.volumes.hostPath." in key
-            and ".mount.path" in key
-        ]
-        for volume_name in volume_names:
-            read_only = (
-                "ro"
-                if spark_conf.get(
-                    f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly"
-                )
-                == "true"
-                else "rw"
-            )
-            container_path = spark_conf.get(
-                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path"
-            )
-            host_path = spark_conf.get(
-                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path"
-            )
-            volumes.append(f"{host_path}:{container_path}:{read_only}")
+        volumes = get_volumes_from_spark_mesos_configs(spark_conf)
+    elif cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
+        # service_configuration_lib puts volumes into the k8s
+        # configs for local mode
+        volumes = get_volumes_from_spark_k8s_configs(spark_conf)
+    else:
+        raise UnsupportedClusterManagerException(cluster_manager)
 
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
