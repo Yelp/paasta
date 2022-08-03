@@ -1,6 +1,14 @@
 paasta-tools (0.139.0) xenial; urgency=medium
 
   * 0.139.0 tagged with 'make release'
+    Commit: Expose --cluster-manager=local for spark-run command.
+    (#3424)  Expose --cluster-manager=local for spark-run command.
+
+ -- Jason Sleight <jsleight@yelp.com>  Wed, 03 Aug 2022 13:31:50 -0700
+
+paasta-tools (0.139.0) xenial; urgency=medium
+
+  * 0.139.0 tagged with 'make release'
     Commit: [FLINK-4097] Get Flink cluster status via JM API (#3418)  *
     Revert "Revert "[FLINK-4097] Get Flink cluster status via JM API
     (#3399)""  This reverts commit
