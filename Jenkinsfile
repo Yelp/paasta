@@ -32,7 +32,7 @@ ircMsgResult(CHANNELS) {
     )
 
     ystage('Upload to PyPi') {
-        ynode.forConfiguredHostType(ownerName: 'Yelp', repoName: 'paasta') {
+        ynode {
             promoteToPypi(
                 "git@git.yelpcorp.com:mirrors/Yelp/paasta.git",
                 commit,
