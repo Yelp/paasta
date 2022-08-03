@@ -507,16 +507,24 @@ def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
     # this is a little weird, but ruamel is returning a list that looks like:
     # [None, None, CommentToken(...), None] for some reason instead of just a
     # single string
-    raw_comments = [
-        comment.value for comment in data.ca.items.get(key, []) if comment is not None
-    ]
+    # Sometimes ruamel returns a recursive list of as well that looks like
+    # [None, None, [CommentToken(...),CommentToken(...),None], CommentToken(...), None]
+    def _flatten_comments(comments):
+        for comment in comments:
+            if comment is None:
+                continue
+            if isinstance(comment, list):
+                yield from _flatten_comments(comment)
+            else:
+                yield comment.value
+
+    raw_comments = [*_flatten_comments(data.ca.items.get(key, []))]
     if not raw_comments:
         # return None so that we don't return an empty string below if there really aren't
         # any comments
         return None
-    # there should really just be a single item in the list, but just in case...
+    # joining all comments together before returning them
     comment = "".join(raw_comments)
-
     return comment
 
 
