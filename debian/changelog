@@ -1,3 +1,10 @@
+paasta-tools (0.139.1) xenial; urgency=medium
+
+  * 0.139.1 tagged with 'make release'
+    Commit: Released 0.139.0 via make release
+
+ -- Jason Sleight <jsleight@yelp.com>  Wed, 03 Aug 2022 13:33:40 -0700
+
 paasta-tools (0.139.0) xenial; urgency=medium
 
   * 0.139.0 tagged with 'make release'
