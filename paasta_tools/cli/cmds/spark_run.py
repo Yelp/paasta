@@ -791,7 +791,7 @@ def configure_and_run_docker_container(
 
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = get_volumes_from_spark_mesos_configs(spark_conf)
-    elif cluster_manager in [CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL]:
+    elif cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
         # service_configuration_lib puts volumes into the k8s
         # configs for local mode
         volumes = get_volumes_from_spark_k8s_configs(spark_conf)
