@@ -608,6 +608,7 @@ def validate_autoscaling_configs(service_path):
                         )
                         is None
                     ):
+                        returncode = False
                         print(
                             failure(
                                 msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
