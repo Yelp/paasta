@@ -1180,6 +1180,7 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch.object(spark_run, "get_dra_configs", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
@@ -1189,6 +1190,7 @@ def test_paasta_spark_run_pyspark(
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
     mock_get_dra_configs,
+    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1241,9 +1243,15 @@ def test_paasta_spark_run_pyspark(
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
     )
+    mock_should_enable_compact_bin_packing.assert_called_once_with(
+        False, spark_run.CLUSTER_MANAGER_K8S
+    )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", True, False
+        "spark.cores.max=100 spark.executor.cores=10",
+        "unique-run",
+        mock_should_enable_compact_bin_packing.return_value,
+        False,
     )
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
