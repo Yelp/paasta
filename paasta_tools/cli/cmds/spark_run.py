@@ -4,7 +4,6 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import socket
 import sys
 import uuid
@@ -473,8 +472,6 @@ def get_docker_run_cmd(
     cmd.append("--rm")
     cmd.append("--net=host")
 
-    sensitive_env = {}
-
     non_interactive_cmd = ["spark-submit", "history-server"]
     if not any(c in docker_cmd for c in non_interactive_cmd):
         cmd.append("--interactive=true")
@@ -486,7 +483,6 @@ def get_docker_run_cmd(
     for k, v in env.items():
         cmd.append("--env")
         if k in SENSITIVE_ENV:
-            sensitive_env[k] = v
             cmd.append(k)
         else:
             cmd.append(f"{k}={v}")
@@ -498,7 +494,6 @@ def get_docker_run_cmd(
         cmd.append("--volume=%s" % volume)
     cmd.append("%s" % docker_img)
     cmd.extend(("sh", "-c", docker_cmd))
-    cmd.append(sensitive_env)
 
     return cmd
 
@@ -695,11 +690,9 @@ def run_docker_container(
         return 0
 
     merged_env = {**os.environ, **environment}
-    wrapper_path = shutil.which("paasta_docker_wrapper")
 
     # Remove the environment variables provided as the last argument
-    docker_run_cmd = docker_run_cmd[:-1]
-    os.execlpe(wrapper_path, *docker_run_cmd, merged_env)
+    os.execlpe("paasta_docker_wrapper", *docker_run_cmd, merged_env)
     return 0
 
 
