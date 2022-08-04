@@ -1,10 +1,12 @@
 import copy
 import logging
+import re
 import socket
 from functools import lru_cache
 from typing import cast
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Set
 
@@ -155,6 +157,42 @@ def setup_shuffle_partitions(spark_args: Dict[str, str]) -> Dict[str, str]:
     return _append_sql_shuffle_partitions_conf(
         spark_opts=copy.copy(spark_args),
     )
+
+
+def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[str]:
+    return (
+        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
+        else []
+    )
+
+
+def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
+    volume_names = [
+        re.match(
+            r"spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path", key
+        ).group(1)
+        for key in spark_conf.keys()
+        if "spark.kubernetes.executor.volumes.hostPath." in key and ".mount.path" in key
+    ]
+    volumes = []
+    for volume_name in volume_names:
+        read_only = (
+            "ro"
+            if spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly"
+            )
+            == "true"
+            else "rw"
+        )
+        container_path = spark_conf.get(
+            f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path"
+        )
+        host_path = spark_conf.get(
+            f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path"
+        )
+        volumes.append(f"{host_path}:{container_path}:{read_only}")
+    return volumes
 
 
 def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:

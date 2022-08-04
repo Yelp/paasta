@@ -128,6 +128,7 @@ from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import CAPS_DROP
@@ -487,7 +488,7 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
             autospec=True,
-            return_value={},
+            return_value=[],
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
             autospec=True,
@@ -542,7 +543,9 @@ class TestKubernetesDeploymentConfig:
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
@@ -579,13 +582,16 @@ class TestKubernetesDeploymentConfig:
                     return_value="some-docker-image"
                 ),
                 get_hacheck_match_initial_delay=mock.Mock(return_value=False),
+                get_readiness_check_prefix_template=mock.Mock(return_value=[]),
             )
             ret = self.deployment.get_sidecar_containers(
                 mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
@@ -1599,6 +1605,7 @@ class TestKubernetesDeploymentConfig:
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels={
+                    "paasta.yelp.com/pool": "default",
                     "yelp.com/paasta_git_sha": "aaaa123",
                     "yelp.com/paasta_instance": mock_get_instance.return_value,
                     "yelp.com/paasta_service": mock_get_service.return_value,
@@ -3620,13 +3627,63 @@ def test_warning_big_bounce():
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         new=mock_load_system_paasta_config,
         autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        return_value=ServiceNamespaceConfig(),
+        autospec=True,
     ):
         assert (
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "confige0334534"
+            == "config2c177d7a"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+
+
+def test_warning_big_bounce_routable_pod():
+    job_config = kubernetes_tools.KubernetesDeploymentConfig(
+        service="service",
+        instance="instance",
+        cluster="cluster",
+        config_dict={
+            "registrations": ["service.instance"],
+        },
+        branch_dict={
+            "docker_image": "abcdef",
+            "git_sha": "deadbeef",
+            "image_version": None,
+            "force_bounce": None,
+            "desired_state": "start",
+        },
+    )
+
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "volumes": [],
+                "hacheck_sidecar_volumes": [],
+                "expected_slave_attributes": [{"region": "blah"}],
+                "docker_registry": "docker-registry.local",
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        return_value=ServiceNamespaceConfig({"proxy_port": 1}),
+        autospec=True,
+    ):
+        assert (
+            job_config.format_kubernetes_app().spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
+            ]
+            == "configf46d563a"
+        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
 @pytest.mark.parametrize(
@@ -3730,7 +3787,7 @@ def test_running_task_allocation_get_kubernetes_metadata():
 
 def test_running_task_allocation_get_pod_pool():
     mock_node = mock.MagicMock()
-    mock_node.metadata.labels = {"yelp.com/pool": "foo"}
+    mock_node.metadata.labels = {"paasta.yelp.com/pool": "foo"}
     with mock.patch(
         "paasta_tools.kubernetes_tools.get_pod_node",
         autospec=True,

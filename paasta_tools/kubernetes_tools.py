@@ -323,6 +323,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/pool": str,
     },
     total=False,
 )
@@ -917,6 +918,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             sidecars.append(uwsgi_exporter_container)
         return sidecars
 
+    def get_readiness_check_prefix(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        initial_delay: float,
+        period_seconds: float,
+    ) -> List[str]:
+        return [
+            x.format(initial_delay=initial_delay, period_seconds=period_seconds)
+            for x in system_paasta_config.get_readiness_check_prefix_template()
+        ]
+
     def get_hacheck_sidecar_container(
         self,
         system_paasta_config: SystemPaastaConfig,
@@ -936,17 +948,28 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # and to not cause rolling updates on everything at once this is a config option for now
             if not system_paasta_config.get_hacheck_match_initial_delay():
                 initial_delay = 10
+            period_seconds = 10
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
-                    command=self.get_readiness_check_script(system_paasta_config)
+                    command=self.get_readiness_check_prefix(
+                        system_paasta_config=system_paasta_config,
+                        initial_delay=initial_delay,
+                        period_seconds=period_seconds,
+                    )
+                    + self.get_readiness_check_script(system_paasta_config)
                     + [str(self.get_container_port())]
                     + self.get_registrations()
                 ),
                 initial_delay_seconds=initial_delay,
-                period_seconds=10,
+                period_seconds=period_seconds,
             )
         else:
             readiness_probe = None
+
+        hacheck_registrations_env = V1EnvVar(
+            name="MESH_REGISTRATIONS",
+            value=" ".join(self.get_registrations()),
+        )
 
         if service_namespace_config.is_in_smartstack():
             return V1Container(
@@ -964,7 +987,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
                 resources=self.get_sidecar_resource_requirements("hacheck"),
                 name=HACHECK_POD_NAME,
-                env=self.get_kubernetes_environment(),
+                env=self.get_kubernetes_environment() + [hacheck_registrations_env],
                 ports=[V1ContainerPort(container_port=6666)],
                 readiness_probe=readiness_probe,
                 volume_mounts=self.get_volume_mounts(
@@ -1817,6 +1840,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
+            "paasta.yelp.com/pool": self.get_pool(),
         }
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
