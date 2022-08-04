@@ -690,8 +690,6 @@ def run_docker_container(
         return 0
 
     merged_env = {**os.environ, **environment}
-
-    # Remove the environment variables provided as the last argument
     os.execlpe("paasta_docker_wrapper", *docker_run_cmd, merged_env)
     return 0
 
