@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import socket
 import sys
 import uuid
@@ -689,12 +690,16 @@ def run_docker_container(
         docker_cpu_limit=docker_cpu_limit,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
-
     if dry_run:
         print(json.dumps(docker_run_cmd))
         return 0
 
-    os.execlp("paasta_docker_wrapper", *docker_run_cmd)
+    merged_env = {**os.environ, **environment}
+    wrapper_path = shutil.which("paasta_docker_wrapper")
+
+    # Remove the environment variables provided as the last argument
+    docker_run_cmd = docker_run_cmd[:-1]
+    os.execlpe(wrapper_path, *docker_run_cmd, merged_env)
     return 0
 
 
