@@ -1031,6 +1031,24 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
+def _mass_enable_dra(spark_conf):
+    num_executors = int(spark_conf["spark.executor.instances"])
+    for lower_bound, upper_bound in EXECUTOR_RANGES:
+        if lower_bound <= num_executors <= upper_bound:
+            log.warn(
+                PaastaColors.yellow(
+                    "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
+                    "More info: y/spark-dra. If your job is performing worse because "
+                    "of DRA, consider disabling DRA. To disable, please provide "
+                    "spark.dynamicAllocation.enabled=false in --spark-args\n"
+                )
+            )
+            spark_conf["spark.dynamicAllocation.enabled"] = "true"
+            spark_conf = get_dra_configs(spark_conf)
+            break
+    return spark_conf
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1165,20 +1183,7 @@ def paasta_spark_run(args):
         args.cluster_manager == CLUSTER_MANAGER_K8S
         and "spark.dynamicAllocation.enabled" not in spark_conf
     ):
-        num_executors = int(spark_conf["spark.executor.instances"])
-        for exec_range in EXECUTOR_RANGES:
-            if exec_range[0] <= num_executors <= exec_range[1]:
-                log.warn(
-                    PaastaColors.yellow(
-                        "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                        "More info: y/spark-dra. If your job is performing worse because "
-                        "of DRA, consider disabling DRA. To disable, please provide "
-                        "spark.dynamicAllocation.enabled=false in --spark-args\n"
-                    )
-                )
-                spark_conf["spark.dynamicAllocation.enabled"] = "true"
-                spark_conf = get_dra_configs(spark_conf)
-                break
+        spark_conf = _mass_enable_dra(spark_conf)
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
