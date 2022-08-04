@@ -694,7 +694,7 @@ def run_docker_container(
         print(json.dumps(docker_run_cmd))
         return 0
 
-    os.execlpe("paasta_docker_wrapper", *docker_run_cmd)
+    os.execlp("paasta_docker_wrapper", *docker_run_cmd)
     return 0
 
 
