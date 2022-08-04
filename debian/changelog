@@ -1,3 +1,30 @@
+paasta-tools (0.139.1) xenial; urgency=medium
+
+  * 0.139.1 tagged with 'make release'
+    Commit: Released 0.139.0 via make release
+
+ -- Jason Sleight <jsleight@yelp.com>  Wed, 03 Aug 2022 13:33:40 -0700
+
+paasta-tools (0.139.0) xenial; urgency=medium
+
+  * 0.139.0 tagged with 'make release'
+    Commit: Expose --cluster-manager=local for spark-run command.
+    (#3424)  Expose --cluster-manager=local for spark-run command.
+
+ -- Jason Sleight <jsleight@yelp.com>  Wed, 03 Aug 2022 13:31:50 -0700
+
+paasta-tools (0.139.0) xenial; urgency=medium
+
+  * 0.139.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3418)  *
+    Revert "Revert "[FLINK-4097] Get Flink cluster status via JM API
+    (#3399)""  This reverts commit
+    68630affc1e43cfd42fe8b283085913af589bb73.  * [FLINK-4097] Add a
+    fallback for paasta APIs w/o the new endpoints * [FLINK-4097] Bump
+    fallback to the current minor version (138)
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Tue, 02 Aug 2022 08:02:29 -0700
+
 paasta-tools (0.138.1) xenial; urgency=medium
 
   * 0.138.1 tagged with 'make release'
