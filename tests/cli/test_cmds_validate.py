@@ -1014,7 +1014,7 @@ def test_validate_autoscaling_configs_no_offset_specified(
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_cpu_autotune_override_no_comments(
+def test_validate_cpu_autotune_override(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_list_all_instances_for_service,
