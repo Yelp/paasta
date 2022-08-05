@@ -1,3 +1,12 @@
+paasta-tools (0.139.3) xenial; urgency=medium
+
+  * 0.139.3 tagged with 'make release'
+    Commit: Merge pull request #3422 from Yelp/PAASTA-17666-
+    fix_paastavalidate_preceding_comment  PAASTA-17666: Fixes paasta
+    validate to allow preceding comments
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 05 Aug 2022 11:38:10 -0700
+
 paasta-tools (0.139.2) xenial; urgency=medium
 
   * 0.139.2 tagged with 'make release'
