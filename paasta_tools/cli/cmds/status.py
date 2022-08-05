@@ -1088,6 +1088,7 @@ def _print_flink_status_from_custom_resource(
         output.append(f"    No other information available in non-running state")
         return 0
 
+    if status["state"] == "running":
         output.append(
             "    Jobs:"
             f" {status['overview']['jobs-running']} running,"
