@@ -100,7 +100,7 @@ SCHEMA_TYPES = {
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
 # comment
-OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
+OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9]+.+\)"
 
 
 class ConditionConfig(TypedDict, total=False):
