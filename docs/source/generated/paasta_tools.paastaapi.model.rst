@@ -13,11 +13,6 @@ Submodules
    paasta_tools.paastaapi.model.envoy_backend
    paasta_tools.paastaapi.model.envoy_location
    paasta_tools.paastaapi.model.envoy_status
-   paasta_tools.paastaapi.model.flink_cluster_overview
-   paasta_tools.paastaapi.model.flink_config
-   paasta_tools.paastaapi.model.flink_job
-   paasta_tools.paastaapi.model.flink_job_details
-   paasta_tools.paastaapi.model.flink_jobs
    paasta_tools.paastaapi.model.float_and_error
    paasta_tools.paastaapi.model.hpa_metric
    paasta_tools.paastaapi.model.inline_object
