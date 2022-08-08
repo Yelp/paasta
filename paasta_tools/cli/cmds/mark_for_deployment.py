@@ -21,6 +21,7 @@ import concurrent
 import datetime
 import functools
 import getpass
+import json
 import logging
 import math
 import os
@@ -46,8 +47,9 @@ import progressbar
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
-from sticht.slo import SLOSlackDeploymentProcess
-from sticht.slo import SLOWatcher
+from sticht.rollbacks.base import RollbackSlackDeploymentProcess
+from sticht.rollbacks.slo import SLOWatcher
+from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -568,7 +570,7 @@ class Progress:
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
+class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
@@ -644,7 +646,9 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.last_action = None
         self.slo_watchers: List[SLOWatcher] = []
 
-        self.start_slo_watcher_threads(self.service, self.soa_dir)
+        # self.start_slo_watcher_threads(self.service, self.soa_dir)
+        self.start_metric_watcher_threads(self.service, self.soa_dir)
+
         # Initialize Slack threads and send the first message
         super().__init__()
         self.print_who_is_running_this()
@@ -1225,6 +1229,16 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             load_system_paasta_config()
             .get_monitoring_config()
             .get("signalfx_api_key", None)
+        )
+
+    def get_splunk_api_token(self) -> str:
+        # TODO: Get as jenkins env var
+        auth = json.loads(os.environ["token"])
+        return SplunkAuth(
+            host=auth["host"],
+            port=auth["port"],
+            username=auth["username"],
+            password=auth["password"],
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:

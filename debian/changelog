@@ -1,3 +1,11 @@
+paasta-tools (0.139.4) xenial; urgency=medium
+
+  * 0.139.4 tagged with 'make release'
+    Commit: Merge pull request #3429 from Yelp/u/mhaseeb/revert-flink-
+    status-changes  Revert Flink status changes
+
+ -- Mohammad Haseeb <mhaseeb@yelp.com>  Mon, 08 Aug 2022 15:45:07 -0700
+
 paasta-tools (0.139.3) xenial; urgency=medium
 
   * 0.139.3 tagged with 'make release'
