@@ -160,6 +160,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
+        lock=MagicMock(),
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
         [], ["instance1", "instance2"], "instance"
@@ -314,7 +315,7 @@ def test_status_calls_sergeants(
     args.registration = None
     args.service_instance = None
     args.new = False
-    return_value = paasta_status(args)
+    return_value, lock = paasta_status(args)
 
     assert return_value == 1776
 
@@ -326,6 +327,7 @@ def test_status_calls_sergeants(
         cluster=cluster,
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
+        lock=lock,
         verbose=False,
         new=False,
     )
@@ -790,7 +792,7 @@ def test_status_with_owner(
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None
-    return_value = paasta_status(args)
+    return_value, _ = paasta_status(args)
 
     assert return_value == 0
     assert mock_report_status.call_count == 2
@@ -864,7 +866,7 @@ def test_status_with_registration(
         service_instance=None,
         new=False,
     )
-    return_value = paasta_status(args)
+    return_value, lock = paasta_status(args)
 
     assert return_value == 0
     assert mock_report_status.call_count == 1
@@ -878,6 +880,7 @@ def test_status_with_registration(
             "instance2": mock_inst_2.__class__,
         },
         system_paasta_config=system_paasta_config,
+        lock=lock,
         verbose=args.verbose,
         new=False,
     )
@@ -1798,13 +1801,12 @@ def test_paasta_status_on_api_endpoint_marathon(
     mock_api = mock_get_paasta_oapi_client.return_value
     mock_api.service.status_instance.return_value = fake_status_obj
 
-    output = []
     paasta_status_on_api_endpoint(
         cluster="fake_cluster",
         service="fake_service",
         instance="fake_instance",
-        output=output,
         system_paasta_config=system_paasta_config,
+        lock=MagicMock(),
         verbose=0,
     )
 
@@ -1823,8 +1825,8 @@ def test_paasta_status_exception(system_paasta_config):
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
-            output=[],
             system_paasta_config=system_paasta_config,
+            lock=MagicMock(),
             verbose=False,
         )
 
