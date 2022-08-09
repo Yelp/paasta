@@ -16,11 +16,12 @@ yproperties(
 
 ircMsgResult(CHANNELS) {
     ystage('Test') {
-        def head_tag = sh(script: 'git describe --abbrev=0 --tags', returnStdout: true).trim()
         node {
+            def head_tag = sh(script: 'git describe --abbrev=0 --tags', returnStdout: true).trim()
             ensureCleanWorkspace {
                 commit = clone(
-                    PACKAGE_NAME,
+                    repo: PACKAGE_NAME,
+                    fetchTags: true,
                     repoBranch: head_tag
                 )['GIT_COMMIT']
                 sh 'make itest'
