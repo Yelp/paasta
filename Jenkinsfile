@@ -23,7 +23,7 @@ ircMsgResult(CHANNELS) {
                     fetchTags: true
                 )['GIT_COMMIT']
                 def head_tag = sh(script: 'git describe --abbrev=0 --tags', returnStdout: true).trim()
-                def commit_sha = sh(script: 'git rev-list -n 1 ${head_tag}', returnStdout: true).trim()
+                def commit_sha = sh(script: 'git rev-list --tags --max-count=1', returnStdout: true).trim()
                 sh "git checkout ${head_tag}"
                 sh 'make itest'
             }
