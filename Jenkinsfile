@@ -23,6 +23,7 @@ ircMsgResult(CHANNELS) {
                     fetchTags: true
                 )['GIT_COMMIT']
                 def head_tag = sh(script: 'git describe --abbrev=0 --tags', returnStdout: true).trim()
+                def commit_sha = sh(script: 'git rev-list -n 1 ${head_tag}', returnStdout: true).trim()
                 sh "git checkout ${head_tag}"
                 sh 'make itest'
             }
@@ -34,14 +35,14 @@ ircMsgResult(CHANNELS) {
     // debItestUpload(
     //     repo: PACKAGE_NAME,
     //     versions: DIST,
-    //     committish: commit,
+    //     committish: commit_sha,
     // )
 
     // ystage('Upload to PyPi') {
     //     node {
     //         promoteToPypi(
     //             "git@git.yelpcorp.com:mirrors/Yelp/paasta.git",
-    //             commit,
+    //             commit_sha,
     //         )
     //     }
     // }
