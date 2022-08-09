@@ -19,8 +19,7 @@ ircMsgResult(CHANNELS) {
         node {
             ensureCleanWorkspace {
                 commit = clone(
-                    PACKAGE_NAME,
-                    repoBranch: BRANCH_REGEX
+                    PACKAGE_NAME
                 )['GIT_COMMIT']
                 sh 'make itest'
             }
