@@ -480,7 +480,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
