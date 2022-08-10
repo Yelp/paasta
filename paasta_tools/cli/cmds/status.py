@@ -1088,6 +1088,7 @@ def _print_flink_status_from_custom_resource(
         output.append(f"    No other information available in non-running state")
         return 0
 
+    if status["state"] == "running":
         output.append(
             "    Jobs:"
             f" {status['overview']['jobs-running']} running,"
@@ -1404,12 +1405,11 @@ def print_flink_status(
         return 1
 
     api_version_minor = client.default.show_version().split(".")[1]
-    if api_version_minor <= "138":  # fallback
+    if api_version_minor <= "139":  # fallback
         return _print_flink_status_from_custom_resource(flink, output, verbose)
-    else:
-        return _print_flink_status_from_job_manager(
-            service, instance, output, flink, client, verbose
-        )
+    return _print_flink_status_from_job_manager(
+        service, instance, output, flink, client, verbose
+    )
 
 
 async def get_flink_job_details(

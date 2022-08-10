@@ -2920,7 +2920,7 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    new_api_version = "0.139.0"
+    new_api_version = "0.140.0"
 
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
