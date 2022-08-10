@@ -271,7 +271,7 @@ def paasta_status_on_api_endpoint(
     service: str,
     instance: str,
     system_paasta_config: SystemPaastaConfig,
-    lock: Lock(),
+    lock: Lock,
     verbose: int,
     new: bool = False,
 ) -> int:
@@ -2367,7 +2367,7 @@ def report_status_for_cluster(
     actual_deployments: Mapping[str, str],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
-    lock: Lock(),
+    lock: Lock,
     verbose: int = 0,
     new: bool = False,
 ) -> Tuple[int, Sequence[str]]:
@@ -2657,7 +2657,7 @@ def paasta_status(args) -> int:
             return_code, output = future.result()
             return_codes.append(return_code)
 
-    return max(return_codes), lock
+    return max(return_codes)
 
 
 def bouncing_status_human(app_count, bounce_method):
