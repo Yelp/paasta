@@ -1,3 +1,10 @@
+paasta-tools (0.140.0) xenial; urgency=medium
+
+  * 0.140.0 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into master
+
+ -- Siddharth Shettigar <sids@yelp.com>  Thu, 11 Aug 2022 13:44:21 -0700
+
 paasta-tools (0.139.5) xenial; urgency=medium
 
   * 0.139.5 tagged with 'make release'
