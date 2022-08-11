@@ -2681,6 +2681,9 @@ class SystemPaastaConfig:
     def get_skip_cpu_override_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_override_validation", [])
 
+    def get_skip_cpu_burst_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_burst_validation", [])
+
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
 
