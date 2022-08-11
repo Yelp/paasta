@@ -22,6 +22,7 @@ from functools import lru_cache
 from functools import partial
 from glob import glob
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -802,7 +803,7 @@ def paasta_validate_soa_configs(
     if not validate_service_name(service):
         return False
 
-    checks = [
+    checks: List[Callable[[str], bool]] = [
         validate_all_schemas,
         partial(validate_tron, verbose=verbose),
         validate_paasta_objects,

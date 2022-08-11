@@ -1991,6 +1991,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_ui_port: int
     spark_driver_port: int
     spark_blockmanager_port: int
+    skip_cpu_burst_validation: List[str]
 
 
 def load_system_paasta_config(
