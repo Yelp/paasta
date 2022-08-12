@@ -217,9 +217,10 @@ def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     cluster = metadata["labels"][paasta_prefixed("cluster")]
     base_url = get_flink_ingress_url_root(cluster)
 
-    # dashboard_url = http://flink-jobmanager-host:port/paasta-service-cr-name
-    dashboard_url = urlparse(metadata["annotations"]["flink.yelp.com/dashboard_url"])
-    service_cr_name = dashboard_url.path
+    # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
+    _, _, service_cr_name, *_ = urlparse(
+        metadata["annotations"]["flink.yelp.com/dashboard_url"]
+    )
 
     return urljoin(base_url, service_cr_name)
 
