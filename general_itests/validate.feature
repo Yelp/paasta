@@ -11,4 +11,4 @@ Feature: paasta validate can be used
     When we run paasta validate
     Then it should have a return code of "1"
      And it should report an error in the output
-     And the output should contain "There were failures validating fake_invalid_service"
+     And the output should contain "Failed to"
