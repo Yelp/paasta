@@ -26,21 +26,52 @@ def test_get_flink_ingress_url_root():
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
-def test_curl_flink_endpoint_overview(
-    mock_get_dashboard,
+def test_curl_flink_endpoint_error(
     mock_get_cr,
     mock_requests_get,
     mock_response,
 ):
-    mock_get_dashboard.return_value = "http://flink.k8s.test_cluster.paasta:31080/"
     mock_get_cr.return_value = {
         "metadata": {
-            "annotations": [
-                {
-                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-                }
-            ]
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
+        }
+    }
+    mock_requests_get.return_value = mock_response
+    mock_response.ok = False
+    mock_response.status_code = 401
+    mock_response.reason = "Unauthorized"
+    mock_response.text = "401 Authorization Required"
+
+    service = "kurupt"
+    instance = "main"
+    response = flink_tools.curl_flink_endpoint(
+        flink_tools.cr_id(service, instance), "overview"
+    )
+
+    assert response == {
+        "status": 401,
+        "error": "Unauthorized",
+        "text": "401 Authorization Required",
+    }
+
+
+@mock.patch("requests.Response", autospec=True)
+@mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
+@mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
+def test_curl_flink_endpoint_overview(
+    mock_get_cr,
+    mock_requests_get,
+    mock_response,
+):
+    mock_get_cr.return_value = {
+        "metadata": {
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
         }
     }
     mock_requests_get.return_value = mock_response
@@ -74,21 +105,17 @@ def test_curl_flink_endpoint_overview(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_config(
-    mock_get_dashboard,
     mock_get_cr,
     mock_requests_get,
     mock_response,
 ):
-    mock_get_dashboard.return_value = "http://flink.k8s.test_cluster.paasta:31080/"
     mock_get_cr.return_value = {
         "metadata": {
-            "annotations": [
-                {
-                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-                }
-            ]
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
         }
     }
     mock_requests_get.return_value = mock_response
@@ -116,21 +143,17 @@ def test_curl_flink_endpoint_config(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_list_jobs(
-    mock_get_dashboard,
     mock_get_cr,
     mock_requests_get,
     mock_response,
 ):
-    mock_get_dashboard.return_value = "http://flink.k8s.test_cluster.paasta:31080/"
     mock_get_cr.return_value = {
         "metadata": {
-            "annotations": [
-                {
-                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-                }
-            ]
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
         }
     }
     mock_requests_get.return_value = mock_response
@@ -150,21 +173,17 @@ def test_curl_flink_endpoint_list_jobs(
 @mock.patch("requests.Response", autospec=True)
 @mock.patch("paasta_tools.flink_tools.requests.get", autospec=True)
 @mock.patch("paasta_tools.flink_tools.get_cr", autospec=True)
-@mock.patch("paasta_tools.flink_tools._get_jm_rest_api_base_url", autospec=True)
 def test_curl_flink_endpoint_get_job_details(
-    mock_get_dashboard,
     mock_get_cr,
     mock_requests_get,
     mock_response,
 ):
-    mock_get_dashboard.return_value = "http://flink.k8s.test_cluster.paasta:31080/"
     mock_get_cr.return_value = {
         "metadata": {
-            "annotations": [
-                {
-                    "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
-                }
-            ]
+            "labels": {"paasta.yelp.com/cluster": "mocked"},
+            "annotations": {
+                "flink.yelp.com/dashboard_url": "http://flink.k8s.test_cluster.paasta:31080/kurupt-7f5cfd8ffc"
+            },
         }
     }
     mock_requests_get.return_value = mock_response
