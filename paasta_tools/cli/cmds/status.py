@@ -266,7 +266,7 @@ def paasta_status_on_api_endpoint(
     verbose: int,
     new: bool = False,
 ) -> int:
-    output = [""]
+    output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
     client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
@@ -2160,9 +2160,6 @@ def report_status_for_cluster(
     return_code = 0
     return_codes = []
     for deployed_instance in instances:
-        print(
-            f"\n{service}.{PaastaColors.cyan(deployed_instance)} in {cluster}", end=""
-        )
         return_codes.append(
             paasta_status_on_api_endpoint(
                 cluster=cluster,
