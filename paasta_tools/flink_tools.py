@@ -15,6 +15,8 @@ from typing import Any
 from typing import List
 from typing import Mapping
 from typing import Optional
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 import requests
 import service_configuration_lib
@@ -216,10 +218,10 @@ def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     base_url = get_flink_ingress_url_root(cluster)
 
     # dashboard_url = http://flink-jobmanager-host:port/paasta-service-cr-name
-    dashboard_url = metadata["annotations"]["flink.yelp.com/dashboard_url"]
-    service_cr_name = dashboard_url[dashboard_url.rfind("/") + 1 :]
+    dashboard_url = urlparse(metadata["annotations"]["flink.yelp.com/dashboard_url"])
+    service_cr_name = dashboard_url.path
 
-    return base_url + service_cr_name
+    return urljoin(base_url, service_cr_name)
 
 
 def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str, Any]:
@@ -228,11 +230,18 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         if cr is None:
             raise ValueError(f"failed to get CR for id: {cr_id}")
         base_url = _get_jm_rest_api_base_url(cr)
-        url = f"{base_url}/{endpoint}"
+
+        # Closing 'base_url' with '/' to force urljoin to append 'endpoint' to the path.
+        # If not, urljoin replaces the 'base_url' path with 'endpoint'.
+        url = urljoin(base_url + "/", endpoint)
         response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-        if response.ok:
-            return _filter_for_endpoint(response.json(), endpoint)
-        return {}
+        if not response.ok:
+            return {
+                "status": response.status_code,
+                "error": response.reason,
+                "text": response.text,
+            }
+        return _filter_for_endpoint(response.json(), endpoint)
     except requests.RequestException as e:
         url = e.request.url
         err = e.response or str(e)
