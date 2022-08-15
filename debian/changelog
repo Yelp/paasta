@@ -1,3 +1,14 @@
+paasta-tools (0.141.0) xenial; urgency=medium
+
+  * 0.141.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3435)
+    [FLINK-4097] Get Flink cluster status via JM API.  - Rework of
+    37d0dc25eb940bd758997aafa5ef8a242d118bd2 - Talk to the JM API using
+    the ingress not the dashboard url  Co-authored-by: Ahmed Soliman
+    <asoliman@yelp.com>
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Mon, 15 Aug 2022 02:23:46 -0700
+
 paasta-tools (0.140.1) xenial; urgency=medium
 
   * 0.140.1 tagged with 'make release'
