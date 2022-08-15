@@ -39,6 +39,7 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
+from paasta_tools.cli.cmds.status import get_flink_job_name
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
@@ -2921,11 +2922,24 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    def test_error(self, mock_flink_status):
+    new_api_version = "0.141.0"
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_flink_status["status"] = None
         output = []
         return_value = print_flink_status(
-            cluster="fake_Cluster",
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -2936,7 +2950,167 @@ class TestPrintFlinkStatus:
         assert return_value == 1
         assert output == [PaastaColors.red("    Flink cluster is not available yet")]
 
-    def test_successful_return_value(self, mock_flink_status):
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_client(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_get_paasta_oapi_client.return_value = None
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert (
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+            in output
+        )
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_config(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_overview(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_jobs(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_job_details(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.default.show_version.return_value = self.new_api_version
+
+        # Errors while requesing job details
+        mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        # should blow up the whole request
+        assert return_value == 1
+
+        # and output that an error has occurred
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_successful_return_value(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
+
         return_value = print_flink_status(
             cluster="fake_cluster",
             service="fake_service",
@@ -2947,12 +3121,24 @@ class TestPrintFlinkStatus:
         )
         assert return_value == 0
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_0_verbose(
         self,
         mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
         mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -2966,24 +3152,37 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(status, metadata) + [
+        expected_output = _get_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
             f"    1 taskmanagers, 3/4 slots available",
             f"    Jobs:",
             f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
+            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_jobmanager(
         self,
         mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
         mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
         print_flink_status(
@@ -2995,8 +3194,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -3006,12 +3205,24 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_taskmanagers(
         self,
         mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
         mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
@@ -3027,8 +3238,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -3038,12 +3249,24 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_output_1_verbose(
         self,
+        mock_get_paasta_oapi_client,
         mock_naturaltime,
+        mock_load_system_paasta_config,
         mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -3058,35 +3281,71 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
         job_start_time = str(
-            datetime.datetime.fromtimestamp(
-                int(status["jobs"][0]["start-time"]) // 1000
-            )
+            datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = _get_base_status_verbose_1(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
             f"    1 taskmanagers, 3/4 slots available",
             f"    Jobs:",
             f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
+            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
         ]
         append_pod_status(status["pod_status"], expected_output)
         assert expected_output == output
 
 
-def _get_base_status_verbose_0(status, metadata):
+overview_obj = paastamodels.FlinkClusterOverview(
+    taskmanagers=1,
+    slots_total=4,
+    slots_available=3,
+    jobs_running=1,
+    jobs_finished=0,
+    jobs_cancelled=0,
+    jobs_failed=0,
+)
+
+config_obj = paastamodels.FlinkConfig(
+    flink_version="1.13.5", flink_revision="0ff28a7 @ 2021-12-14T23:26:04+01:00"
+)
+
+job_details_obj = paastamodels.FlinkJobDetails(
+    jid="4210f0646f5c9ce1db0b3e5ae4372b82",
+    name="beam_happyhour.main.beam_happyhour",
+    state="RUNNING",
+    start_time=float(1655053223341),
+)
+
+jobs_obj = paastamodels.FlinkJobs(
+    jobs=[
+        paastamodels.FlinkJob(id="4210f0646f5c9ce1db0b3e5ae4372b82", status="RUNNING")
+    ]
+)
+
+
+def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
+    mock_api = mock_get_paasta_oapi_client.return_value
+    mock_api.get_flink_config_from_paasta_api_client.return_value = config_obj
+    mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+    mock_api.service.get_flink_jobs_from_paasta_api_client.return_value = jobs_obj
+    mock_api.service.get_flink_job_details_from_paasta_api_client.return_value = (
+        job_details_obj
+    )
+
+
+def _get_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']}",
+        f"    Flink version: {config_obj.flink_version}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
 
-def _get_base_status_verbose_1(status, metadata):
+def _get_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']} {status['config']['flink-revision']}",
+        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 

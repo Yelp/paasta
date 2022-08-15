@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import concurrent.futures
 import difflib
 import shutil
@@ -38,13 +39,16 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
+import a_sync
 import humanize
 from mypy_extensions import Arg
 from service_configuration_lib import read_deploy
 
+from paasta_tools import flink_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
@@ -54,6 +58,9 @@ from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
+from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -65,6 +72,8 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
+from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.models import KubernetesContainerV2
 from paasta_tools.paastaapi.models import KubernetesPodV2
@@ -955,7 +964,7 @@ def status_kubernetes_job_human(
         )
 
 
-def get_flink_job_name(flink_job):
+def get_flink_job_name(flink_job: FlinkJobDetails) -> str:
     return flink_job["name"].split(".", 2)[-1]
 
 
@@ -1014,12 +1023,9 @@ def append_pod_status(pod_status, output: List[str]):
     output.extend([f"      {line}" for line in pods_table])
 
 
-def print_flink_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
+def _print_flink_status_from_custom_resource(
     flink: Mapping[str, Any],
+    output: List[str],
     verbose: int,
 ) -> int:
     status = flink.get("status")
@@ -1038,7 +1044,6 @@ def print_flink_status(
         config_sha = config_sha[6:]
 
     output.append(f"    Config SHA: {config_sha}")
-
     status_config = status["config"]
     if verbose:
         output.append(
@@ -1046,6 +1051,7 @@ def print_flink_status(
         )
     else:
         output.append(f"    Flink version: {status_config['flink-version']}")
+
     # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
     dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
     output.append(f"    URL: {dashboard_url}/")
@@ -1086,18 +1092,19 @@ def print_flink_status(
         output.append(f"    No other information available in non-running state")
         return 0
 
-    output.append(
-        "    Jobs:"
-        f" {status['overview']['jobs-running']} running,"
-        f" {status['overview']['jobs-finished']} finished,"
-        f" {status['overview']['jobs-failed']} failed,"
-        f" {status['overview']['jobs-cancelled']} cancelled"
-    )
-    output.append(
-        "   "
-        f" {status['overview']['taskmanagers']} taskmanagers,"
-        f" {status['overview']['slots-available']}/{status['overview']['slots-total']} slots available"
-    )
+    if status["state"] == "running":
+        output.append(
+            "    Jobs:"
+            f" {status['overview']['jobs-running']} running,"
+            f" {status['overview']['jobs-finished']} finished,"
+            f" {status['overview']['jobs-failed']} failed,"
+            f" {status['overview']['jobs-cancelled']} cancelled"
+        )
+        output.append(
+            "   "
+            f" {status['overview']['taskmanagers']} taskmanagers,"
+            f" {status['overview']['slots-available']}/{status['overview']['slots-total']} slots available"
+        )
 
     # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
     if status["jobs"]:
@@ -1106,6 +1113,7 @@ def print_flink_status(
         )
     else:
         max_job_name_length = 10
+
     # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
     # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
     allowed_max_job_name_length = min(
@@ -1174,6 +1182,252 @@ def print_flink_status(
     if verbose and len(status["pod_status"]) > 0:
         append_pod_status(status["pod_status"], output)
     return 0
+
+
+def _print_flink_status_from_job_manager(
+    service: str,
+    instance: str,
+    output: List[str],
+    flink: Mapping[str, Any],
+    client: PaastaOApiClient,
+    verbose: int,
+) -> int:
+    status = flink.get("status")
+    if status is None:
+        output.append(PaastaColors.red("    Flink cluster is not available yet"))
+        return 1
+
+    # Since metadata should be available no matter the state, we show it first. If this errors out
+    # then we cannot really do much to recover, because cluster is not in usable state anyway
+    metadata = flink.get("metadata")
+    labels = metadata.get("labels")
+    config_sha = labels.get(paasta_prefixed("config_sha"))
+    if config_sha is None:
+        raise ValueError(f"expected config sha on Flink, but received {metadata}")
+    if config_sha.startswith("config"):
+        config_sha = config_sha[6:]
+
+    output.append(f"    Config SHA: {config_sha}")
+
+    if status["state"] == "running":
+        try:
+            flink_config = get_flink_config_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
+
+        if verbose:
+            output.append(
+                f"    Flink version: {flink_config.flink_version} {flink_config.flink_revision}"
+            )
+        else:
+            output.append(f"    Flink version: {flink_config.flink_version}")
+
+        # Annotation "flink.yelp.com/dashboard_url" is populated by flink-operator
+        dashboard_url = metadata["annotations"].get("flink.yelp.com/dashboard_url")
+        output.append(f"    URL: {dashboard_url}/")
+
+    color = PaastaColors.green if status["state"] == "running" else PaastaColors.yellow
+    output.append(f"    State: {color(status['state'].title())}")
+
+    pod_running_count = pod_evicted_count = pod_other_count = 0
+    # default for evicted in case where pod status is not available
+    evicted = f"{pod_evicted_count}"
+
+    for pod in status["pod_status"]:
+        if pod["phase"] == "Running":
+            pod_running_count += 1
+        elif pod["phase"] == "Failed" and pod["reason"] == "Evicted":
+            pod_evicted_count += 1
+        else:
+            pod_other_count += 1
+        evicted = (
+            PaastaColors.red(f"{pod_evicted_count}")
+            if pod_evicted_count > 0
+            else f"{pod_evicted_count}"
+        )
+
+    output.append(
+        "    Pods:"
+        f" {pod_running_count} running,"
+        f" {evicted} evicted,"
+        f" {pod_other_count} other"
+    )
+
+    if not should_job_info_be_shown(status["state"]):
+        # In case where the jobmanager of cluster is in crashloopbackoff
+        # The pods for the cluster will be available and we need to show the pods.
+        # So that paasta status -v and kubectl get pods show the same consistent result.
+        if verbose and len(status["pod_status"]) > 0:
+            append_pod_status(status["pod_status"], output)
+        output.append(f"    No other information available in non-running state")
+        return 0
+
+    if status["state"] == "running":
+        # Flink cluster overview from paasta api client
+        try:
+            overview = get_flink_overview_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
+
+        output.append(
+            "    Jobs:"
+            f" {overview.jobs_running} running,"
+            f" {overview.jobs_finished} finished,"
+            f" {overview.jobs_failed} failed,"
+            f" {overview.jobs_cancelled} cancelled"
+        )
+        output.append(
+            "   "
+            f" {overview.taskmanagers} taskmanagers,"
+            f" {overview.slots_available}/{overview.slots_total} slots available"
+        )
+
+    flink_jobs = FlinkJobs()
+    flink_jobs.jobs = []
+    if status["state"] == "running":
+        try:
+            flink_jobs = get_flink_jobs_from_paasta_api_client(
+                service=service, instance=instance, client=client
+            )
+        except Exception as e:
+            output.append(PaastaColors.red(f"Exception when talking to the API:"))
+            output.append(str(e))
+            return 1
+
+    jobs: List[FlinkJobDetails] = []
+    job_ids: List[str] = []
+    if flink_jobs.get("jobs"):
+        job_ids = [job.id for job in flink_jobs.get("jobs")]
+    try:
+        jobs = a_sync.block(get_flink_job_details, service, instance, job_ids, client)
+    except Exception as e:
+        output.append(PaastaColors.red(f"Exception when talking to the API:"))
+        output.append(str(e))
+        return 1
+
+    # Avoid cutting job name. As opposed to default hardcoded value of 32, we will use max length of job name
+    if jobs:
+        max_job_name_length = max([len(get_flink_job_name(job)) for job in jobs])
+    else:
+        max_job_name_length = 10
+
+    # Apart from this column total length of one row is around 52 columns, using remaining terminal columns for job name
+    # Note: for terminals smaller than 90 columns the row will overflow in verbose printing
+    allowed_max_job_name_length = min(
+        max(10, shutil.get_terminal_size().columns - 52), max_job_name_length
+    )
+
+    output.append(f"    Jobs:")
+    if verbose > 1:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Job ID                           Started'
+        )
+    else:
+        output.append(
+            f'      {"Job Name": <{allowed_max_job_name_length}} State       Started'
+        )
+
+    # Use only the most recent jobs
+    unique_jobs = (
+        sorted(jobs, key=lambda j: -j["start_time"])[0]  # type: ignore
+        for _, jobs in groupby(
+            sorted(
+                (j for j in jobs if j.get("name") and j.get("start_time")),
+                key=lambda j: j["name"],
+            ),
+            lambda j: j["name"],
+        )
+    )
+
+    allowed_max_jobs_printed = 3
+    job_printed_count = 0
+
+    for job in unique_jobs:
+        job_id = job["jid"]
+        if verbose > 1:
+            fmt = """      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {job_id} {start_time}
+        {dashboard_url}"""
+        else:
+            fmt = "      {job_name: <{allowed_max_job_name_length}.{allowed_max_job_name_length}} {state: <11} {start_time}"
+        start_time = datetime.fromtimestamp(int(job["start_time"]) // 1000)
+        if verbose or job_printed_count < allowed_max_jobs_printed:
+            job_printed_count += 1
+            color_fn = (
+                PaastaColors.green
+                if job.get("state") and job.get("state") == "RUNNING"
+                else PaastaColors.red
+                if job.get("state") and job.get("state") in ("FAILED", "FAILING")
+                else PaastaColors.yellow
+            )
+            job_info_str = fmt.format(
+                job_id=job_id,
+                job_name=get_flink_job_name(job),
+                allowed_max_job_name_length=allowed_max_job_name_length,
+                state=color_fn((job.get("state").title() or "Unknown")),
+                start_time=f"{str(start_time)} ({humanize.naturaltime(start_time)})",
+                dashboard_url=PaastaColors.grey(f"{dashboard_url}/#/jobs/{job_id}"),
+            )
+            output.append(job_info_str)
+        else:
+            output.append(
+                PaastaColors.yellow(
+                    f"    Only showing {allowed_max_jobs_printed} Flink jobs, use -v to show all"
+                )
+            )
+            break
+
+    if verbose and len(status["pod_status"]) > 0:
+        append_pod_status(status["pod_status"], output)
+    return 0
+
+
+def print_flink_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    flink: Mapping[str, Any],
+    verbose: int,
+) -> int:
+    system_paasta_config = load_system_paasta_config()
+
+    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    if not client:
+        output.append(
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        )
+        return 1
+
+    api_version_minor = client.default.show_version().split(".")[1]
+    if api_version_minor <= "140":  # fallback
+        return _print_flink_status_from_custom_resource(flink, output, verbose)
+    return _print_flink_status_from_job_manager(
+        service, instance, output, flink, client, verbose
+    )
+
+
+async def get_flink_job_details(
+    service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
+) -> List[FlinkJobDetails]:
+    jobs_details = await asyncio.gather(
+        *[
+            flink_tools.get_flink_job_details_from_paasta_api_client(
+                service, instance, job_id, client
+            )
+            for job_id in job_ids
+        ]
+    )
+    return [jd for jd in jobs_details]
 
 
 def print_kubernetes_status_v2(
