@@ -2922,20 +2922,14 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    new_api_version = "0.141.0"
-
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_error_no_flink(
         self,
-        mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_flink_status["status"] = None
         output = []
         return_value = print_flink_status(
@@ -2991,7 +2985,6 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3018,7 +3011,6 @@ class TestPrintFlinkStatus:
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3046,7 +3038,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3074,7 +3065,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.default.show_version.return_value = self.new_api_version
 
         # Errors while requesing job details
         mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
@@ -3109,7 +3099,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3138,7 +3127,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -3180,7 +3168,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
 
         output = []
@@ -3222,7 +3209,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
@@ -3266,7 +3252,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
