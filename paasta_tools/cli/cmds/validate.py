@@ -541,6 +541,12 @@ def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
     return comment
 
 
+def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> bool:
+    return os.path.exists(
+        os.path.join(os.path.abspath(soa_dir), service, f"{workload}-{cluster}.in")
+    )
+
+
 def validate_autoscaling_configs(service_path):
     """Validate new autoscaling configurations that are not validated by jsonschema for the service of interest.
 
@@ -567,6 +573,10 @@ def validate_autoscaling_configs(service_path):
             if (
                 instance_config.get_instance_type() == "kubernetes"
                 and instance_config.is_autoscaling_enabled()
+                # we should eventually make the python templates add the override comment
+                # to the correspoding YAML line, but until then we just opt these out of that validation
+                and __is_templated(service, soa_dir, cluster, workload="kubernetes")
+                is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
                 if autoscaling_params["metrics_provider"] in {
@@ -631,12 +641,6 @@ def validate_autoscaling_configs(service_path):
                         )
 
     return returncode
-
-
-def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> bool:
-    return os.path.exists(
-        os.path.join(os.path.abspath(soa_dir), service, f"{workload}-{cluster}.in")
-    )
 
 
 def validate_min_max_instances(service_path):
