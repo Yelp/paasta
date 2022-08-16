@@ -633,6 +633,12 @@ def validate_autoscaling_configs(service_path):
     return returncode
 
 
+def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> bool:
+    return os.path.exists(
+        os.path.join(os.path.abspath(soa_dir), service, f"{workload}-{cluster}.in")
+    )
+
+
 def validate_min_max_instances(service_path):
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
@@ -736,6 +742,10 @@ def validate_cpu_burst(service_path: str) -> bool:
 
     returncode = True
     for cluster in list_clusters(service, soa_dir):
+        if __is_templated(service, soa_dir, cluster, workload="kubernetes"):
+            # we should eventually make the python templates add the override comment
+            # to the correspoding YAML line, but until then we just opt these out of that validation
+            continue
         for instance in list_all_instances_for_service(
             service=service, clusters=[cluster], soa_dir=soa_dir
         ):
