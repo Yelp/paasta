@@ -1991,6 +1991,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_ui_port: int
     spark_driver_port: int
     spark_blockmanager_port: int
+    skip_cpu_burst_validation: List[str]
 
 
 def load_system_paasta_config(
@@ -2680,6 +2681,9 @@ class SystemPaastaConfig:
 
     def get_skip_cpu_override_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_override_validation", [])
+
+    def get_skip_cpu_burst_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_burst_validation", [])
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
