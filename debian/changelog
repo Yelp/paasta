@@ -1,3 +1,18 @@
+paasta-tools (0.142.0) xenial; urgency=medium
+
+  * 0.142.0 tagged with 'make release'
+    Commit: Add validation to discourage large cpu_burst_add (#3436)
+    cpu_burst_add is added on to the `cpus` value (which we use for k8s
+    cpu requests to get a k8s cpu limit - and we"ve seen internal users
+    set excessively high values here (which can impact other services
+    running on the same node).  To discourage this without blocking
+    legitimate usecases (/providing a smooth transition to outright
+    blocking this if possible in the future), we allow users to bypass
+    this validation by adding a special comment (just like we do with
+    the cpu-autoscaled-but-not-autotuned validation)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Aug 2022 12:42:30 -0700
+
 paasta-tools (0.141.0) xenial; urgency=medium
 
   * 0.141.0 tagged with 'make release'
