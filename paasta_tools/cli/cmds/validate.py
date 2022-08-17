@@ -828,7 +828,10 @@ def paasta_validate_soa_configs(
         validate_cpu_burst,
     ]
 
-    return all(check(service_path) for check in checks)
+    # NOTE: we're explicitly passing a list comprehension to all()
+    # instead of a generator expression so that we run all checks
+    # no matter what
+    return all([check(service_path) for check in checks])
 
 
 def paasta_validate(args):
