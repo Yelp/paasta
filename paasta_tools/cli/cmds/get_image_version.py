@@ -58,7 +58,7 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser.add_argument(
         "-y",
         "--soa-dir",
-        help="A directory from which soa-configs should be read from",
+        help="A directory from which soa-configs should be read",
         default=DEFAULT_SOA_DIR,
     )
     parser.set_defaults(command=paasta_get_image_version)
