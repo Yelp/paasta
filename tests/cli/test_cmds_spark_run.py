@@ -72,7 +72,6 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
         "sh",
         "-c",
         "pyspark",
-        {},
     ]
 
 
@@ -399,37 +398,44 @@ def test_run_docker_container(
     docker_img = "docker-image"
     docker_cmd = "spark-submit --conf spark.cores.max=1"
     nvidia = False
-
-    spark_run.run_docker_container(
-        container_name=container_name,
-        volumes=volumes,
-        environment=env,
-        docker_img=docker_img,
-        docker_cmd=docker_cmd,
-        dry_run=dry_run,
-        nvidia=nvidia,
-        docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
-        docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
-    )
-    mock_get_docker_run_cmd.assert_called_once_with(
-        container_name=container_name,
-        volumes=volumes,
-        env=env,
-        docker_img=docker_img,
-        docker_cmd=docker_cmd,
-        nvidia=nvidia,
-        docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
-        docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
-    )
-
-    if dry_run:
-        assert not mock_os_execlpe.called
-        assert capsys.readouterr().out == '["docker", "run", "commands"]\n'
-
-    else:
-        mock_os_execlpe.assert_called_once_with(
-            "paasta_docker_wrapper", "docker", "run", "commands"
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.os.environ",
+        {"env-2": "val-2"},
+        autospec=None,
+    ):
+        spark_run.run_docker_container(
+            container_name=container_name,
+            volumes=volumes,
+            environment=env,
+            docker_img=docker_img,
+            docker_cmd=docker_cmd,
+            dry_run=dry_run,
+            nvidia=nvidia,
+            docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+            docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
         )
+        mock_get_docker_run_cmd.assert_called_once_with(
+            container_name=container_name,
+            volumes=volumes,
+            env=env,
+            docker_img=docker_img,
+            docker_cmd=docker_cmd,
+            nvidia=nvidia,
+            docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+            docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
+        )
+        if dry_run:
+            assert not mock_os_execlpe.called
+            assert capsys.readouterr().out == '["docker", "run", "commands"]\n'
+
+        else:
+            mock_os_execlpe.assert_called_once_with(
+                "paasta_docker_wrapper",
+                "docker",
+                "run",
+                "commands",
+                {"env-2": "val-2", "SPARK_OPTS": "--conf spark.cores.max=1"},
+            )
 
 
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True)

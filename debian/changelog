@@ -1,3 +1,51 @@
+paasta-tools (0.142.0) xenial; urgency=medium
+
+  * 0.142.0 tagged with 'make release'
+    Commit: Add validation to discourage large cpu_burst_add (#3436)
+    cpu_burst_add is added on to the `cpus` value (which we use for k8s
+    cpu requests to get a k8s cpu limit - and we"ve seen internal users
+    set excessively high values here (which can impact other services
+    running on the same node).  To discourage this without blocking
+    legitimate usecases (/providing a smooth transition to outright
+    blocking this if possible in the future), we allow users to bypass
+    this validation by adding a special comment (just like we do with
+    the cpu-autoscaled-but-not-autotuned validation)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Aug 2022 12:42:30 -0700
+
+paasta-tools (0.141.0) xenial; urgency=medium
+
+  * 0.141.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3435)
+    [FLINK-4097] Get Flink cluster status via JM API.  - Rework of
+    37d0dc25eb940bd758997aafa5ef8a242d118bd2 - Talk to the JM API using
+    the ingress not the dashboard url  Co-authored-by: Ahmed Soliman
+    <asoliman@yelp.com>
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Mon, 15 Aug 2022 02:23:46 -0700
+
+paasta-tools (0.140.1) xenial; urgency=medium
+
+  * 0.140.1 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17657_print_once" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 12 Aug 2022 11:42:15 -0700
+
+paasta-tools (0.140.0) xenial; urgency=medium
+
+  * 0.140.0 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into master
+
+ -- Siddharth Shettigar <sids@yelp.com>  Thu, 11 Aug 2022 13:44:21 -0700
+
+paasta-tools (0.139.5) xenial; urgency=medium
+
+  * 0.139.5 tagged with 'make release'
+    Commit: Merge pull request #3426 from Yelp/d/manpreet/MLCOMPUTE-436-
+    fix-docker-daemon-issue  Use execlp instead of execlpe
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 11 Aug 2022 08:15:18 -0700
+
 paasta-tools (0.139.4) xenial; urgency=medium
 
   * 0.139.4 tagged with 'make release'

@@ -67,7 +67,6 @@ dev-api: .tox/py37-linux
 
 itest: test .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e general_itests
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -115,3 +114,9 @@ openapi-codegen:
 		-p pythonAttrNoneIfUnset=true
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
 	rm -rf temp-openapi-client
+
+swagger-validate:
+	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
+		yelp/openapi-generator-cli:20201026 \
+		validate \
+		-i paasta_tools/api/api_docs/swagger.json

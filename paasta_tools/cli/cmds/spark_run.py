@@ -472,8 +472,6 @@ def get_docker_run_cmd(
     cmd.append("--rm")
     cmd.append("--net=host")
 
-    sensitive_env = {}
-
     non_interactive_cmd = ["spark-submit", "history-server"]
     if not any(c in docker_cmd for c in non_interactive_cmd):
         cmd.append("--interactive=true")
@@ -485,7 +483,6 @@ def get_docker_run_cmd(
     for k, v in env.items():
         cmd.append("--env")
         if k in SENSITIVE_ENV:
-            sensitive_env[k] = v
             cmd.append(k)
         else:
             cmd.append(f"{k}={v}")
@@ -497,7 +494,6 @@ def get_docker_run_cmd(
         cmd.append("--volume=%s" % volume)
     cmd.append("%s" % docker_img)
     cmd.extend(("sh", "-c", docker_cmd))
-    cmd.append(sensitive_env)
 
     return cmd
 
@@ -689,12 +685,12 @@ def run_docker_container(
         docker_cpu_limit=docker_cpu_limit,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
-
     if dry_run:
         print(json.dumps(docker_run_cmd))
         return 0
 
-    os.execlpe("paasta_docker_wrapper", *docker_run_cmd)
+    merged_env = {**os.environ, **environment}
+    os.execlpe("paasta_docker_wrapper", *docker_run_cmd, merged_env)
     return 0
 
 

@@ -18,8 +18,11 @@ import pkgutil
 import re
 from collections import Counter
 from datetime import datetime
+from functools import lru_cache
+from functools import partial
 from glob import glob
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -101,6 +104,15 @@ SCHEMA_TYPES = {
 # but we don't have a $ anchor in case users want to add an additional
 # comment
 OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9]+.+\)"
+
+# we expect a comment that looks like # override-cpu-burst PROJ-1234
+# but we don't have a $ anchor in case users want to add an additional
+# comment
+OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+# for now, double the autotune cap to give people the benefit of the doubt
+# if we see that people are still misusing this configuration, we can lower
+# this to the autotune cap (i.e., 1)
+CPU_BURST_THRESHOLD = 2
 
 
 class ConditionConfig(TypedDict, total=False):
@@ -218,6 +230,7 @@ def validate_service_name(service):
     return True
 
 
+@lru_cache()
 def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, Any]:
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
@@ -528,6 +541,12 @@ def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
     return comment
 
 
+def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> bool:
+    return os.path.exists(
+        os.path.join(os.path.abspath(soa_dir), service, f"{workload}-{cluster}.in")
+    )
+
+
 def validate_autoscaling_configs(service_path):
     """Validate new autoscaling configurations that are not validated by jsonschema for the service of interest.
 
@@ -554,6 +573,10 @@ def validate_autoscaling_configs(service_path):
             if (
                 instance_config.get_instance_type() == "kubernetes"
                 and instance_config.is_autoscaling_enabled()
+                # we should eventually make the python templates add the override comment
+                # to the correspoding YAML line, but until then we just opt these out of that validation
+                and __is_templated(service, soa_dir, cluster, workload="kubernetes")
+                is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
                 if autoscaling_params["metrics_provider"] in {
@@ -715,6 +738,72 @@ def validate_secrets(service_path):
     return return_value
 
 
+def validate_cpu_burst(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    skip_cpu_burst_validation_list = (
+        load_system_paasta_config().get_skip_cpu_burst_validation_services()
+    )
+
+    returncode = True
+    for cluster in list_clusters(service, soa_dir):
+        if __is_templated(service, soa_dir, cluster, workload="kubernetes"):
+            # we should eventually make the python templates add the override comment
+            # to the correspoding YAML line, but until then we just opt these out of that validation
+            continue
+        for instance in list_all_instances_for_service(
+            service=service, clusters=[cluster], soa_dir=soa_dir
+        ):
+            instance_config = get_instance_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                load_deployments=False,
+                soa_dir=soa_dir,
+            )
+            is_k8s_service = instance_config.get_instance_type() == "kubernetes"
+            should_skip_cpu_burst_validation = service in skip_cpu_burst_validation_list
+            if is_k8s_service and not should_skip_cpu_burst_validation:
+                # we need access to the comments, so we need to read the config with ruamel to be able
+                # to actually get them in a "nice" automated fashion
+                config = get_config_file_dict(
+                    os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                    use_ruamel=True,
+                )
+
+                if config[instance].get("cpu_burst_add") is None:
+                    # using autotuned values - can skip
+                    continue
+                if config[instance]["cpu_burst_add"] <= CPU_BURST_THRESHOLD:
+                    # under the threshold - can also skip
+                    continue
+
+                burst_comment = _get_comments_for_key(
+                    data=config[instance], key="cpu_burst_add"
+                )
+                # we could probably have a separate error message if there's a comment that doesn't match
+                # the ack pattern, but that seems like overkill - especially for something that could cause
+                # a DAR if people aren't being careful.
+                if (
+                    burst_comment is None
+                    or re.search(
+                        pattern=OVERRIDE_CPU_BURST_ACK_PATTERN,
+                        string=burst_comment,
+                    )
+                    is None
+                ):
+                    returncode = False
+                    print(
+                        failure(
+                            msg=f"Potentially excessive CPU burst (cpu_burst_add: {config[instance]['cpu_burst_add']} "
+                            f"higher than current threshold of {CPU_BURST_THRESHOLD} cores) detected in {cluster}: {service}.{instance}."
+                            " Please read the following link for next steps:",
+                            link="y/high-cpu-burst",
+                        )
+                    )
+
+    return returncode
+
+
 def paasta_validate_soa_configs(
     service: str, service_path: str, verbose: bool = False
 ) -> bool:
@@ -728,30 +817,21 @@ def paasta_validate_soa_configs(
     if not validate_service_name(service):
         return False
 
-    returncode = True
+    checks: List[Callable[[str], bool]] = [
+        validate_all_schemas,
+        partial(validate_tron, verbose=verbose),
+        validate_paasta_objects,
+        validate_unique_instance_names,
+        validate_autoscaling_configs,
+        validate_secrets,
+        validate_min_max_instances,
+        validate_cpu_burst,
+    ]
 
-    if not validate_all_schemas(service_path):
-        returncode = False
-
-    if not validate_tron(service_path, verbose):
-        returncode = False
-
-    if not validate_paasta_objects(service_path):
-        returncode = False
-
-    if not validate_unique_instance_names(service_path):
-        returncode = False
-
-    if not validate_autoscaling_configs(service_path):
-        returncode = False
-
-    if not validate_secrets(service_path):
-        returncode = False
-
-    if not validate_min_max_instances(service_path):
-        returncode = False
-
-    return returncode
+    # NOTE: we're explicitly passing a list comprehension to all()
+    # instead of a generator expression so that we run all checks
+    # no matter what
+    return all([check(service_path) for check in checks])
 
 
 def paasta_validate(args):
