@@ -646,8 +646,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.last_action = None
         self.slo_watchers: List[SLOWatcher] = []
 
-        # self.start_slo_watcher_threads(self.service, self.soa_dir)
-        self.start_metric_watcher_threads(self.service, self.soa_dir)
+        self.start_slo_watcher_threads(self.service, self.soa_dir)
+
+        # TODO: Enable once Rollback Conditions are available
+        # self.start_metric_watcher_threads(self.service, self.soa_dir)
 
         # Initialize Slack threads and send the first message
         super().__init__()
