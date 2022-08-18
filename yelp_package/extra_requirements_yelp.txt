@@ -28,6 +28,7 @@ scribereader==0.15.0
 signalform-tools==0.0.16
 slo-transcoder==3.3.0
 smmap2==2.0.3
+splunk-sdk==1.7.0
 srv-configs==1.1.0
 sticht[yelp_internal]==1.1.14
 vault-tools==0.9.2
