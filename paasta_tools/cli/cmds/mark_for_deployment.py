@@ -21,7 +21,6 @@ import concurrent
 import datetime
 import functools
 import getpass
-import json
 import logging
 import math
 import os
@@ -1233,14 +1232,19 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             .get("signalfx_api_key", None)
         )
 
-    def get_splunk_api_token(self) -> str:
-        # TODO: Get as jenkins env var
-        auth = json.loads(os.environ["token"])
+    def get_splunk_api_token(self) -> SplunkAuth:
+        auth_token = os.environ["SPLUNK_MFD_TOKEN"]
+        auth_data = (
+            load_system_paasta_config()
+            .get_monitoring_config()
+            .get("splunk_mfd_authentication")
+        )
+
         return SplunkAuth(
-            host=auth["host"],
-            port=auth["port"],
-            username=auth["username"],
-            password=auth["password"],
+            host=auth_data["host"],
+            port=auth_data["port"],
+            username=auth_data["username"],
+            password=auth_token,
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:
