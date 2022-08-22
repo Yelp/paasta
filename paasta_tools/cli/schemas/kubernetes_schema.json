@@ -195,7 +195,6 @@
                         "metrics_provider": {
                             "enum": [
                                 "uwsgi",
-                                "mesos_cpu",
                                 "cpu",
                                 "piscina",
                                 "arbitrary_promql"
@@ -284,7 +283,6 @@
                                             "$comment": "The long string at the end of the enum is there to make the error message more helpful to users. Without it, you just get `Validation Message: 'prometheus_adapter_config' is a required property`.",
                                             "enum": [
                                                 "uwsgi",
-                                                "mesos_cpu",
                                                 "cpu",
                                                 "piscina",
                                                 "if metrics_provider is arbitrary_promql, the prometheus_adapter_config parameter is required"

@@ -696,8 +696,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = (
             f"{self.namespace_external_metric_name(metrics_provider)}-prom"
         )
-        # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
-        if metrics_provider in ("mesos_cpu", "cpu"):
+
+        if metrics_provider == "cpu":
             use_prometheus = autoscaling_params.get(
                 "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
             )

@@ -64,10 +64,6 @@ The currently available metrics providers are:
   The default autoscaling method if none is provided.
   Measures the CPU usage of your service's container.
 
-:mesos_cpu:
-  Alias of ``cpu``.
-  This is allowed for compatibility with old marathon configs.
-
 :uwsgi:
   With the ``uwsgi`` metrics provider, Paasta will configure your pods to run an additional container with the `uwsgi_exporter <https://github.com/timonwong/uwsgi_exporter>`_ image.
   This sidecar will listen on port 9117, and will request metrics from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.

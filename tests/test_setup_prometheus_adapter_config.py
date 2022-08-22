@@ -23,15 +23,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
     [
         (
             {
-                "metrics_provider": "mesos_cpu",
-                "decision_policy": "bespoke",
-                "moving_average_window_seconds": 123,
-                "setpoint": 0.653,
-            },
-            False,
-        ),
-        (
-            {
                 "metrics_provider": "uwsgi",
                 "moving_average_window_seconds": 124,
                 "setpoint": 0.425,
@@ -109,29 +100,12 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     [
         (
             {
-                "metrics_provider": "mesos_cpu",
-                "use_prometheus": True,
-                "moving_average_window_seconds": 123,
-                "setpoint": 0.653,
-            },
-            True,
-        ),
-        (
-            {
                 "metrics_provider": "cpu",
                 "use_prometheus": True,
                 "moving_average_window_seconds": 123,
                 "setpoint": 0.653,
             },
             True,
-        ),
-        (
-            {
-                "metrics_provider": "mesos_cpu",
-                "moving_average_window_seconds": 123,
-                "setpoint": 0.653,
-            },
-            False,
         ),
         (
             {
@@ -222,15 +196,6 @@ def test_create_instance_cpu_scaling_rule() -> None:
         ),
         (
             {
-                "metrics_provider": "mesos_cpu",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
-            },
-            1,
-        ),
-        (
-            {
                 "metrics_provider": "cpu",
                 "setpoint": 0.1234567890,
                 "moving_average_window_seconds": 20120302,
@@ -246,15 +211,6 @@ def test_create_instance_cpu_scaling_rule() -> None:
                 "use_prometheus": True,
             },
             1,
-        ),
-        (
-            {
-                "metrics_provider": "mesos_cpu",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": False,
-            },
-            0,
         ),
     ],
 )

@@ -339,7 +339,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_autoscaling_params(self) -> AutoscalingParamsDict:
         default_params: AutoscalingParamsDict = {
-            "metrics_provider": "mesos_cpu",
+            "metrics_provider": "cpu",
             "decision_policy": "proportional",
             "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
         }
