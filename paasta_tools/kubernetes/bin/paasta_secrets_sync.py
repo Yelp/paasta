@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
         help="Overwrite destination namespace for secrets",
     )
     parser.add_argument(
-        "-vtf",
+        "-t",
         "--vault-token-file",
         dest="vault_token_file",
         default=DEFAULT_VAULT_TOKEN_FILE,
@@ -165,7 +165,7 @@ def sync_all_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    vault_token_file: str,
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
@@ -207,7 +207,7 @@ def sync_secrets(
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
     namespace: str,
-    vault_token_file: str,
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
