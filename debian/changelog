@@ -1,3 +1,12 @@
+paasta-tools (0.143.0) xenial; urgency=medium
+
+  * 0.143.0 tagged with 'make release'
+    Commit: Merge pull request #3441 from Yelp/u/jfong/COMPINFRA-1244-
+    get-image-version  COMPINFRA-1244: Add get-image-version cli tool to
+    generate extra image version
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 23 Aug 2022 15:40:49 -0700
+
 paasta-tools (0.142.0) xenial; urgency=medium
 
   * 0.142.0 tagged with 'make release'
