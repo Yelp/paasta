@@ -90,6 +90,7 @@ PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
     "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
 )
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+DEFAULT_VAULT_TOKEN_FILE = "/root/.vault_token"
 AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
