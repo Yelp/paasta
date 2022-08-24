@@ -1,3 +1,11 @@
+paasta-tools (0.144.0) xenial; urgency=medium
+
+  * 0.144.0 tagged with 'make release'
+    Commit: Adds specifying vault token path PAASTA-17437 (#3446)  *
+    Adds specifying vault token path
+
+ -- Jon Lee <jonlee@yelp.com>  Wed, 24 Aug 2022 11:02:47 -0700
+
 paasta-tools (0.143.0) xenial; urgency=medium
 
   * 0.143.0 tagged with 'make release'
