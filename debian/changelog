@@ -1,3 +1,11 @@
+paasta-tools (0.144.1) xenial; urgency=medium
+
+  * 0.144.1 tagged with 'make release'
+    Commit: Bump service_configuration_library to fix an issue with
+    spark 3.2 on mesos. (#3447)
+
+ -- Jason Sleight <jsleight@yelp.com>  Thu, 25 Aug 2022 12:02:17 -0700
+
 paasta-tools (0.144.0) xenial; urgency=medium
 
   * 0.144.0 tagged with 'make release'
