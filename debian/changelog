@@ -1,3 +1,11 @@
+paasta-tools (0.144.3) xenial; urgency=medium
+
+  * 0.144.3 tagged with 'make release'
+    Commit: Merge pull request #3449 from Yelp/PAASTA-17754-maintain-
+    yaml-comments  maintain yaml comments when autoupdating configs
+
+ -- Kedar Vaidya <kedar@yelp.com>  Tue, 30 Aug 2022 14:40:29 -0700
+
 paasta-tools (0.144.2) xenial; urgency=medium
 
   * 0.144.2 tagged with 'make release'
