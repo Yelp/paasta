@@ -2107,7 +2107,7 @@ def get_kubernetes_services_running_here(
 
 def get_kubernetes_services_running_here_for_nerve(
     cluster: Optional[str], soa_dir: str
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+) -> List[Tuple[str, ServiceNamespaceConfig]]:
     try:
         system_paasta_config = load_system_paasta_config()
         if not cluster:

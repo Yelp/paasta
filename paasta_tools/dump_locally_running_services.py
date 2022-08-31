@@ -25,14 +25,16 @@ Command line options:
 import argparse
 import json
 import sys
+from typing import List
+from typing import Tuple
 
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
-from paasta_tools.marathon_tools import get_marathon_services_running_here_for_nerve
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.marathon_tools import get_puppet_services_running_here_for_nerve
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-def parse_args(argv):
+def parse_args(argv) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Dumps information about locally running services."
     )
@@ -47,14 +49,16 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def main(argv=None):
+def main(argv=None) -> None:
     args = parse_args(argv)
     soa_dir = args.soa_dir
 
-    service_dump = (
-        get_marathon_services_running_here_for_nerve(cluster=None, soa_dir=soa_dir)
-        + get_puppet_services_running_here_for_nerve(soa_dir=soa_dir)
-        + get_kubernetes_services_running_here_for_nerve(cluster=None, soa_dir=soa_dir)
+    service_dump: List[
+        Tuple[str, ServiceNamespaceConfig]
+    ] = get_puppet_services_running_here_for_nerve(
+        soa_dir=soa_dir
+    ) + get_kubernetes_services_running_here_for_nerve(
+        cluster=None, soa_dir=soa_dir
     )
 
     print(json.dumps(service_dump))
