@@ -780,6 +780,10 @@
                 },
                 "is_istio_sidecar_injection_enabled": {
                     "type": "boolean"
+                },
+                "weight": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         }

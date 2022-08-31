@@ -325,6 +325,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
         "paasta.yelp.com/pool": str,
+        "paasta.yelp.com/weight": str,
     },
     total=False,
 )
@@ -1843,6 +1844,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
         }
+        if service_namespace_config.is_in_smartstack():
+            labels["paasta.yelp.com/weight"] = str(self.get_weight())
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod

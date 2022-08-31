@@ -1602,19 +1602,24 @@ class TestKubernetesDeploymentConfig:
             termination_grace_period_seconds=termination_grace_period,
         )
         pod_spec_kwargs.update(spec_affinity)
+
+        expected_labels = {
+            "paasta.yelp.com/pool": "default",
+            "yelp.com/paasta_git_sha": "aaaa123",
+            "yelp.com/paasta_instance": mock_get_instance.return_value,
+            "yelp.com/paasta_service": mock_get_service.return_value,
+            "paasta.yelp.com/git_sha": "aaaa123",
+            "paasta.yelp.com/instance": mock_get_instance.return_value,
+            "paasta.yelp.com/service": mock_get_service.return_value,
+            "paasta.yelp.com/autoscaled": "false",
+            "registrations.paasta.yelp.com/kurupt.fm": "true",
+        }
+        if in_smtstk:
+            expected_labels["paasta.yelp.com/weight"] = "10"
+
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
-                labels={
-                    "paasta.yelp.com/pool": "default",
-                    "yelp.com/paasta_git_sha": "aaaa123",
-                    "yelp.com/paasta_instance": mock_get_instance.return_value,
-                    "yelp.com/paasta_service": mock_get_service.return_value,
-                    "paasta.yelp.com/git_sha": "aaaa123",
-                    "paasta.yelp.com/instance": mock_get_instance.return_value,
-                    "paasta.yelp.com/service": mock_get_service.return_value,
-                    "paasta.yelp.com/autoscaled": "false",
-                    "registrations.paasta.yelp.com/kurupt.fm": "true",
-                },
+                labels=expected_labels,
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',
                     "paasta.yelp.com/routable_ip": routable_ip,
@@ -3688,7 +3693,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configf46d563a"
+            == "config1404b38f"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

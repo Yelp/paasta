@@ -447,6 +447,14 @@ instance MAY have:
     accessed externally. This option is implied when registered to smartstack or
     when specifying a ``prometheus_port``. Defaults to ``false``
 
+  * ``weight``: Load balancer/service mesh weight to assign to pods belonging to this instance.
+    Pods should receive traffic proportional to their weight, i.e. a pod with
+    weight 20 should receive 2x as much traffic as a pod with weight 10.
+    Defaults to 10.
+    Must be an integer.
+    This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
+
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier
