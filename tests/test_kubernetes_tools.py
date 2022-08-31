@@ -2441,6 +2441,7 @@ def test_get_kubernetes_services_running_here():
                 port=8888,
                 pod_ip="10.1.1.3",
                 registrations=[],
+                weight=10,
             )
         ]
 
@@ -2481,6 +2482,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="unkurupt",
@@ -2488,6 +2490,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="kurupt",
@@ -2495,6 +2498,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=[],
+                weight=10,
             ),
         ]
 
@@ -2519,6 +2523,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "hacheck_ip": "10.1.1.1",
                     "service_ip": "10.1.1.1",
                     "port": 8888,
+                    "weight": 10,
                 },
             )
         ]
@@ -2537,6 +2542,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "service_ip": "10.1.1.1",
                     "port": 8888,
                     "extra_healthcheck_headers": {"X-Nerve-Check-IP": "10.1.1.1"},
+                    "weight": 10,
                 },
             )
         ]

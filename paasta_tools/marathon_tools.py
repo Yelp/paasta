@@ -20,6 +20,7 @@ import copy
 import datetime
 import json
 import logging
+import multiprocessing
 import os
 import socket
 from collections import defaultdict
@@ -1196,6 +1197,12 @@ def get_classic_service_information_for_nerve(
 def _namespaced_get_classic_service_information_for_nerve(
     name: str, namespace: str, soa_dir: str
 ) -> Tuple[str, ServiceNamespaceConfig]:
+    try:
+        # This max(cpu_count, 10) emulates the previous behavior of configure_nerve.
+        cpus = max(multiprocessing.cpu_count(), 10)
+    except NotImplementedError:
+        cpus = 10
+
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, "port")
     # If the namespace defines a port, prefer that, otherwise use the
@@ -1204,6 +1211,9 @@ def _namespaced_get_classic_service_information_for_nerve(
         "port", None
     ) or service_configuration_lib.read_port(port_file)
     nerve_name = compose_job_id(name, namespace)
+
+    nerve_dict["weight"] = cpus
+
     return (nerve_name, nerve_dict)
 
 

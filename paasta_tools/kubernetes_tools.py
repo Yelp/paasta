@@ -245,6 +245,7 @@ class KubernetesServiceRegistration(NamedTuple):
     port: int
     pod_ip: str
     registrations: Sequence[str]
+    weight: int
 
 
 class CustomResourceDefinition(NamedTuple):
@@ -2087,6 +2088,12 @@ def get_kubernetes_services_running_here(
                 if container["name"] != HACHECK_POD_NAME:
                     port = container["ports"][0]["containerPort"]
                     break
+
+            try:
+                weight = int(pod["metadata"]["labels"]["paasta.yelp.com/weight"])
+            except (KeyError, ValueError):
+                weight = 10
+
             services.append(
                 KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
@@ -2096,6 +2103,7 @@ def get_kubernetes_services_running_here(
                     registrations=json.loads(
                         pod["metadata"]["annotations"]["smartstack_registrations"]
                     ),
+                    weight=weight,
                 )
             )
         except KeyError as e:
@@ -2154,6 +2162,7 @@ def get_kubernetes_services_running_here_for_nerve(
                     nerve_dict["extra_healthcheck_headers"] = {
                         "X-Nerve-Check-IP": kubernetes_service.pod_ip
                     }
+                nerve_dict["weight"] = kubernetes_service.weight
                 nerve_list.append((registration, nerve_dict))
         except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
