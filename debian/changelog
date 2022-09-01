@@ -1,3 +1,12 @@
+paasta-tools (0.144.4) xenial; urgency=medium
+
+  * 0.144.4 tagged with 'make release'
+    Commit: Merge pull request #3451 from
+    Yelp/d/manpreet/bump_service_configuration_lib_version  Bump
+    service_configurtion_lib to 2.11.2 to update signalfx link
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 01 Sep 2022 09:49:07 -0700
+
 paasta-tools (0.144.3) xenial; urgency=medium
 
   * 0.144.3 tagged with 'make release'
