@@ -66,7 +66,7 @@ jobs:
     needs: build_debs
     steps:
       - uses: actions/checkout@v2
-      - run: mkdir -p dist/bionic dist/jammy
+      - run: mkdir -p dist/
       - uses: actions/download-artifact@v3
         with:
           name: deb-bionic
