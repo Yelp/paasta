@@ -77,9 +77,8 @@ jobs:
           path: dist/
       - name: Release
         uses: softprops/action-gh-release@v1
-        # if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v')
         with:
-          draft: true  # remove me, just testing
           files: |
             dist/paasta-tools_*.deb
           fail_on_unmatched_files: true
