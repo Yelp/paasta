@@ -65,6 +65,10 @@ to build a cohesive PaaS. It is not a turn-key PaaS solution.
 See the [getting started](http://paasta.readthedocs.io/en/latest/installation/getting_started.html)
 documentation for how to deploy PaaSTA.
 
+## Debugging PaaSTA (in VS Code)
+
+To debug PaaSTA in VS Code, please refer to the internal PaaSTA wiki page "[Debugging PaaSTA (in VS Code)](https://y.yelpcorp.com/paasta-vscode)".
+
 ## Documentation
 
 Read the documentation at [Read the Docs](http://paasta.readthedocs.io/en/latest/).

@@ -121,6 +121,6 @@ swagger-validate:
 		validate \
 		-i paasta_tools/api/api_docs/swagger.json
 
-.PHONY: my_life_easier
-my_life_easier:
+.PHONY: vscode_settings
+vscode_settings:
 	.paasta/bin/python paasta_tools/contrib/ide_helper.py
