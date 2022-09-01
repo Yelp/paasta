@@ -105,6 +105,7 @@ PAASTA_SUBCOMMANDS = {
     "check": "check",
     "cook-image": "cook_image",
     "get-docker-image": "get_docker_image",
+    "get-image-version": "get_image_version",
     "get-latest-deployment": "get_latest_deployment",
     "info": "info",
     "itest": "itest",

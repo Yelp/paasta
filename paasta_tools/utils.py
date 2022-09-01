@@ -90,6 +90,7 @@ PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
     "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
 )
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+DEFAULT_VAULT_TOKEN_FILE = "/root/.vault_token"
 AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
@@ -3090,9 +3091,9 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
     return service_configuration.get("deploy", {}).get("pipeline", [])
 
 
-def get_pipeline_deploy_groups(
+def get_pipeline_deploy_group_configs(
     service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> List[str]:
+) -> List[Dict]:
     pipeline_steps = []
     for step in get_pipeline_config(service, soa_dir):
         # added support for parallel steps in a deploy.yaml
@@ -3101,11 +3102,17 @@ def get_pipeline_deploy_groups(
         if step.get("parallel"):
             for parallel_step in step.get("parallel"):
                 if parallel_step.get("step"):
-                    pipeline_steps.append(parallel_step["step"])
+                    pipeline_steps.append(parallel_step)
         else:
-            pipeline_steps.append(step["step"])
+            pipeline_steps.append(step)
+    return [step for step in pipeline_steps if is_deploy_step(step["step"])]
 
-    return [step for step in pipeline_steps if is_deploy_step(step)]
+
+def get_pipeline_deploy_groups(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[str]:
+    deploy_group_configs = get_pipeline_deploy_group_configs(service, soa_dir)
+    return [step["step"] for step in deploy_group_configs]
 
 
 def get_service_instance_list_no_cache(
