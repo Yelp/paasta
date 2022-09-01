@@ -1674,7 +1674,9 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
     reason = pod.reason
-    if phase is None or not pod.scheduled:
+    if phase == "Failed" or reason == "Evicted":
+        state = ReplicaState.NOT_RUNNING
+    elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
         state = ReplicaState.TERMINATING
@@ -1715,10 +1717,6 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         else:
             state = ReplicaState.UNKNOWN
 
-        # Catch
-    elif phase == "Failed" or reason == "Evicted":
-        # e.g. pod.reason == evicted
-        state = ReplicaState.NOT_RUNNING
     return state
 
 
