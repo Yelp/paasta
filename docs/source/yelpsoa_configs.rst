@@ -958,8 +958,6 @@ Routing and Reliability
    in milliseconds, defaults to 200.
  * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
    in milliseconds, defaults to 1000.
- * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
-   in milliseconds, defaults to 1000.
  * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
     Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for

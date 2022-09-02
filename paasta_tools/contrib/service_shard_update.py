@@ -109,13 +109,6 @@ def parse_args():
         dest="metrics_provider",
     )
     parser.add_argument(
-        "--timeout-client-ms",
-        help="smartstack client timeout",
-        required=False,
-        type=int,
-        dest="timeout_client_ms",
-    )
-    parser.add_argument(
         "--timeout-server-ms",
         help="smartstack server timeout",
         required=False,
@@ -221,10 +214,6 @@ def main(args):
                 "proxy_port": None,
                 "extra_advertise": {"ecosystem:devc": ["ecosystem:devc"]},
             }
-            if args.timeout_client_ms:
-                smartstack_file[args.shard_name][
-                    "timeout_client_ms"
-                ] = args.timeout_client_ms
             if args.timeout_server_ms:
                 smartstack_file[args.shard_name][
                     "timeout_server_ms"

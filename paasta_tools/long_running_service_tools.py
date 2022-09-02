@@ -422,7 +422,6 @@ def load_service_namespace_config(
     - updown_timeout_s: updown_service timeout in seconds
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
-    - timeout_client_ms: proxy server client timeout in milliseconds
     - retries: the number of retries on a proxy backend
     - mode: the mode the service is run in (http or tcp)
     - routes: a list of tuples of (source, destination)
@@ -465,7 +464,6 @@ def load_service_namespace_config(
         "proxy_port",
         "timeout_connect_ms",
         "timeout_server_ms",
-        "timeout_client_ms",
         "retries",
         "mode",
         "discover",

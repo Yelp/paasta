@@ -61,11 +61,6 @@
                 "minimum": 0,
                 "maximum": 60000
             },
-            "timeout_client_ms": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 86400000
-            },
             "timeout_server_ms": {
                 "type": "integer",
                 "minimum": 0,
