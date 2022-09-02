@@ -18,8 +18,6 @@ FROM ${DOCKER_REGISTRY}xenial_pkgbuild
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-# RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
-
 # Install packages to allow apt to use a repository over HTTPS
 # https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/#xenial-1604
 RUN apt-get update > /dev/null && \
