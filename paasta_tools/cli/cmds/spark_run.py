@@ -63,6 +63,7 @@ CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
+POOLS = {"batch", "stable_batch"}
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
@@ -227,6 +228,7 @@ def add_subparser(subparsers):
         "-p",
         "--pool",
         help="Name of the resource pool to run the Spark job.",
+        choices=POOLS,
         default=default_spark_pool,
     )
 
@@ -502,22 +504,22 @@ def get_docker_image(args, instance_config):
     if args.build:
         return build_and_push_docker_image(args)
     if args.image:
-        return args.image
-
-    try:
-        docker_url = instance_config.get_docker_url()
-    except NoDockerImageError:
-        print(
-            PaastaColors.red(
-                "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s\n"
-                % (instance_config.get_deploy_group(), args.service)
-            ),
-            sep="",
-            file=sys.stderr,
-        )
-        return None
+        docker_url = args.image
+    else:
+        try:
+            docker_url = instance_config.get_docker_url()
+        except NoDockerImageError:
+            print(
+                PaastaColors.red(
+                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                    "Please ensure this service has either run through a jenkins pipeline "
+                    "or paasta mark-for-deployment has been run for %s\n"
+                    % (instance_config.get_deploy_group(), args.service)
+                ),
+                sep="",
+                file=sys.stderr,
+            )
+            return None
     print(
         "Please wait while the image (%s) is pulled (times out after 5m)..."
         % docker_url,
