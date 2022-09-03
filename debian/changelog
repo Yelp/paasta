@@ -1,3 +1,33 @@
+paasta-tools (0.144.7) xenial; urgency=medium
+
+  * 0.144.7 tagged with 'make release'
+    Commit: Merge branch "u/krall/release_fixes" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 16:26:06 -0700
+
+paasta-tools (0.144.6) xenial; urgency=medium
+
+  * 0.144.6 tagged with 'make release'
+    Commit: Released 0.144.5 via make release
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 16:24:09 -0700
+
+paasta-tools (0.144.5) xenial; urgency=medium
+
+  * 0.144.5 tagged with 'make release'
+    Commit: Merge branch "u/krall/releases" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 14:34:45 -0700
+
+paasta-tools (0.144.4) xenial; urgency=medium
+
+  * 0.144.4 tagged with 'make release'
+    Commit: Merge pull request #3451 from
+    Yelp/d/manpreet/bump_service_configuration_lib_version  Bump
+    service_configurtion_lib to 2.11.2 to update signalfx link
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 01 Sep 2022 09:49:07 -0700
+
 paasta-tools (0.144.3) xenial; urgency=medium
 
   * 0.144.3 tagged with 'make release'
