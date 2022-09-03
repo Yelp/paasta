@@ -26,6 +26,8 @@ import argparse
 import json
 import sys
 from typing import List
+from typing import Optional
+from typing import Sequence
 from typing import Tuple
 
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
@@ -34,7 +36,7 @@ from paasta_tools.marathon_tools import get_puppet_services_running_here_for_ner
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
-def parse_args(argv) -> argparse.Namespace:
+def parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Dumps information about locally running services."
     )
@@ -49,7 +51,7 @@ def parse_args(argv) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def main(argv=None) -> None:
+def main(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
     soa_dir = args.soa_dir
 
