@@ -2388,6 +2388,15 @@ class TestGetVersionsTable:
             assert any(["1 Warning" in row for row in versions_table])
             assert any(["Healthchecks are failing" in row for row in versions_table])
 
+    def test_evicted_pods_unhealthy(self, mock_replicasets):
+        mock_replicasets[1].pods[1].phase = ""
+        mock_replicasets[1].pods[1].scheduled = False
+        mock_replicasets[1].pods[1].host = ""
+        versions_table = get_versions_table(
+            mock_replicasets, "service", "instance", "cluster", verbose=1
+        )
+        assert any(["1 Not Running" in row for row in versions_table])
+
 
 class TestPrintKubernetesStatus:
     def test_error(self, mock_kubernetes_status):
