@@ -914,7 +914,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": self.rollforward_states,
                 "dest": "start_rollback",
                 "trigger": "rollback_metric_failure",
-                "before": self.log_slo_rollback,
+                "before": self.log_metric_rollback,
             }
             # TODO COMPINFRA-1140 - Is this transition necessary? Internal transition with no before/after/prepare does...nothing?
             yield {
@@ -1342,6 +1342,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     def log_slo_rollback(self) -> None:
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
+        )
+        self._log_rollback(rollback_details)
+
+    def log_metric_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 

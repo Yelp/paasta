@@ -167,6 +167,7 @@ CAPS_DROP = [
 
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
+    AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
