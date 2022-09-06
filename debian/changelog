@@ -1,3 +1,10 @@
+paasta-tools (0.145.0) xenial; urgency=medium
+
+  * 0.145.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/weight" into master
+
+ -- Evan Krall <krall@yelp.com>  Tue, 06 Sep 2022 13:11:03 -0700
+
 paasta-tools (0.144.7) xenial; urgency=medium
 
   * 0.144.7 tagged with 'make release'
