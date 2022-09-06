@@ -686,7 +686,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             )
         # If there's no production deploy group, or the production deploy group
         # has never been deployed to, just use the old SHA from this deploy group.
-        # TODO: do we need to get author information from image_version-only bumps?
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
@@ -745,7 +744,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("mfd_failed")
         else:
             self.update_slack_thread(
-                f"Marked `{self.commit[:8]}` for {self.deploy_group}."
+                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}."
                 + (
                     "\n" + self.get_authors()
                     if self.deploy_group_is_set_to_notify("notify_after_mark")
@@ -1248,28 +1247,35 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:
-        # TODO: Update button text for image_version
-        #  Will require thought on shortening
+        # Button text max length 75 characters
+        # Current button templates allow version max length of 36
+        version_short_str = self.deployment_version.short_sha_repr()
+        if len(version_short_str) > 36:
+            # we'll have to depend on subsequent slack messages to show full version
+            version_short_str = "new version"
         active_button_texts = {
-            "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
+            "forward": f"Rolling Forward to {version_short_str} :zombocom:"
         }
         inactive_button_texts = {
-            "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
-            "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
+            "forward": f"Continue Forward to {version_short_str} :arrow_forward:",
+            "complete": f"Complete deploy to {version_short_str} :white_check_mark:",
             "snooze": f"Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
 
-        # TODO: Update to check image_version also
-        if self.old_git_sha is not None:
+        if self.old_deployment_version is not None:
+            old_version_short_str = self.old_deployment_version.short_sha_repr()
+            # Current button templates allow old version max length 43
+            if len(old_version_short_str) > 43:
+                old_version_short_str = "old version"
             active_button_texts.update(
-                {"rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:"}
+                {"rollback": f"Rolling Back to {old_version_short_str} :zombocom:"}
             )
             inactive_button_texts.update(
                 {
-                    "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
-                    "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
+                    "rollback": f"Roll Back to {old_version_short_str} :arrow_backward:",
+                    "abandon": f"Abandon deploy, staying on {old_version_short_str} :x:",
                 }
             )
 
