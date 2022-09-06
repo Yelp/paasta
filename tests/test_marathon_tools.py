@@ -920,11 +920,15 @@ class TestMarathonTools:
             "paasta_tools.marathon_tools.load_service_namespace_config",
             autospec=True,
             return_value={"ten": 10},
+        ), mock.patch(
+            "multiprocessing.cpu_count",
+            return_value=13,
+            autospec=True,
         ):
             info = marathon_tools.get_classic_service_information_for_nerve(
                 "no_water", "we_are_the_one"
             )
-            assert info == ("no_water.main", {"ten": 10, "port": 101})
+            assert info == ("no_water.main", {"ten": 10, "port": 101, "weight": 13})
 
     def test_get_puppet_services_that_run_here(self):
         with mock.patch(
