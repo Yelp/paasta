@@ -1,3 +1,12 @@
+paasta-tools (0.146.0) xenial; urgency=medium
+
+  * 0.146.0 tagged with 'make release'
+    Commit: Merge pull request #3452 from Yelp/u/emanelsabban/CIPXIDEAS-
+    209-vscodeDebugSettings  Added VS code debug settings for paasta -
+    CIPXIDEAS-209
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 07 Sep 2022 06:44:35 -0700
+
 paasta-tools (0.145.0) xenial; urgency=medium
 
   * 0.145.0 tagged with 'make release'
