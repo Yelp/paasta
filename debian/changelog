@@ -1,3 +1,12 @@
+paasta-tools (0.146.1) xenial; urgency=medium
+
+  * 0.146.1 tagged with 'make release'
+    Commit: Merge pull request #3458 from
+    Yelp/u/jfong/nocommits_get_image_version_with_current_commit  Take
+    in commit for get-image-version
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Sep 2022 10:47:03 -0700
+
 paasta-tools (0.146.0) xenial; urgency=medium
 
   * 0.146.0 tagged with 'make release'
