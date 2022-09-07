@@ -17,7 +17,9 @@ import pytest
 from mock import MagicMock
 from mock import patch
 
+from paasta_tools.cli.cmds.get_image_version import get_latest_image_version
 from paasta_tools.cli.cmds.get_image_version import paasta_get_image_version
+from paasta_tools.utils import DeploymentsJsonV2Dict
 
 
 @pytest.mark.parametrize(
@@ -50,6 +52,7 @@ def test_get_image_version(
         soa_dir="",
         max_age=3600,
         force=force,
+        commit="abcdabcd",
     )
     with patch(
         "paasta_tools.cli.cmds.get_image_version.check_enable_automated_redeploys",
@@ -76,3 +79,37 @@ def test_get_image_version(
         out, err = capfd.readouterr()
         assert expected_out == out.strip()
         assert expected_err_match in err
+
+
+def test_get_latest_image_version():
+    mock_deployments = {
+        "a": {
+            "docker_image": "image",
+            "git_sha": "abcabc",
+            "image_version": None,
+        },
+        "b": {
+            "docker_image": "image",
+            "git_sha": "abcabc",
+            "image_version": "20220101T000000",
+        },
+        "c": {
+            "docker_image": "image",
+            "git_sha": "abcabc",
+            "image_version": "20220102T000000",
+        },
+    }
+
+    mock_deployments_json = DeploymentsJsonV2Dict(deployments=mock_deployments)
+
+    latest = get_latest_image_version(
+        deployments=mock_deployments_json, commit="abcabc"
+    )
+    assert latest == "20220102T000000"
+
+    mock_deployments["c"]["git_sha"] = "xyzxyz"
+
+    latest = get_latest_image_version(
+        deployments=mock_deployments_json, commit="abcabc"
+    )
+    assert latest == "20220101T000000"
