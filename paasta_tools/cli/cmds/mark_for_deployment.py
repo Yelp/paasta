@@ -1207,16 +1207,16 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def send_manual_rollback_instructions(self) -> None:
         if self.deployment_version != self.old_deployment_version:
+            extra_rollback_args = ""
+            if self.old_deployment_version.image_version:
+                extra_rollback_args = (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
             message = (
                 "If you need to roll back manually, run: "
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                f"--commit {self.old_git_sha}`"
+                f"--commit {self.old_git_sha}{extra_rollback_args}`"
             )
-            if self.old_deployment_version.image_version:
-                message += (
-                    f" --image-version {self.old_deployment_version.image_version}"
-                )
-
             self.update_slack_thread(message)
             print(message)
 
