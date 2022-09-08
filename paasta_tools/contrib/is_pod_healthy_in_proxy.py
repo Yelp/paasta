@@ -36,6 +36,13 @@ envoy_admin_endpoint_format = system_paasta_config.get_envoy_admin_endpoint_form
 envoy_eds_path = "/nail/etc/envoy/endpoints"
 pod_ip = os.environ["PAASTA_POD_IP"]
 
+###############################################################
+#
+# This file is used in the hacheck sidecar, make sure to updated `check_proxy_up.sh`
+# when changing this file
+#
+###############################################################
+
 
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()

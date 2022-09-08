@@ -5,7 +5,7 @@ ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update && \
-    apt-get install -y hacheck=${HACHECK_VERSION} paasta-tools=0.97.72-yelp1 && \
+    apt-get install -y hacheck=${HACHECK_VERSION} paasta-tools && \
     mkdir -p /etc/paasta
 
 ADD ./check_smartstack_up.sh /check_smartstack_up.sh
