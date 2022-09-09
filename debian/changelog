@@ -1,3 +1,12 @@
+paasta-tools (0.146.2) xenial; urgency=medium
+
+  * 0.146.2 tagged with 'make release'
+    Commit: Merge pull request #3457 from Yelp/u/jfong/COMPINFRA-1040-
+    update-buttons  Update last few references to sha-only versions in
+    mark-for-deployment
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 09 Sep 2022 10:31:57 -0700
+
 paasta-tools (0.146.1) xenial; urgency=medium
 
   * 0.146.1 tagged with 'make release'
