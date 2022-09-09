@@ -2072,6 +2072,10 @@ def print_cassandra_status(
     indent += 1
     all_rows: List[CassandraNodeStatusRow] = []
 
+    if not nodes:
+        output.append(indent * tab + "No nodes found in CR status")
+        return 0
+
     for node in nodes:
         if node.get("properties"):
             row: CassandraNodeStatusRow = {}
@@ -2086,94 +2090,6 @@ def print_cassandra_status(
 
                 row[name] = node_property_to_str(prop, verbose)
             all_rows.append(row)
-        else:
-            # TODO: Remove this section when properties is deployed on all
-            # clusters (see DREIMP-7953):
-            now = datetime.now(timezone.utc)
-            ip = node.get("ip")
-            err = node.get("error")
-            start_age = "None"
-            if node.get("startTime"):
-                start_time = datetime.strptime(
-                    node.get("startTime"), "%Y-%m-%dT%H:%M:%SZ"
-                ).replace(tzinfo=timezone.utc)
-                start_age = (
-                    humanize.naturaldelta(
-                        timedelta(seconds=(now - start_time).total_seconds())
-                    )
-                    + " ago"
-                )
-            inspect_time = datetime.strptime(
-                node.get("inspectTime"), "%Y-%m-%dT%H:%M:%SZ"
-            ).replace(tzinfo=timezone.utc)
-            details = node.get("details")
-
-            inspect_age = (
-                humanize.naturaldelta(
-                    timedelta(seconds=(now - inspect_time).total_seconds())
-                )
-                + " ago"
-            )
-
-            if err is not None:
-                row = {}
-                row["IP"] = ip
-                row["StartTime"] = start_age
-                row["InspectedAt"] = inspect_age
-                row["Error"] = PaastaColors.red(err)
-                if verbose > 0:
-                    # Show absolute times:
-                    row["StartTime"] = node.get("startTime", "None")
-                    row["InspectedAt"] = node.get("inspectTime", "None")
-                all_rows.append(row)
-            elif details:
-                row = {}
-                row["IP"] = ip
-                row["Available"] = "Yes" if details.get("available") else "No"
-                row["OperationMode"] = details.get("operationMode")
-                row["Joined"] = "Yes" if details.get("joined") else "No"
-                row["Datacenter"] = details.get("datacenter")
-                row["Rack"] = details.get("rack")
-                row["Load"] = details.get("loadString")
-                row["Tokens"] = str(details.get("tokenRangesCount"))
-                row["StartTime"] = start_age
-                row["InspectedAt"] = inspect_age
-                if verbose > 0:
-                    row["Starting"] = "Yes" if details.get("starting") else "No"
-                    row["Initialized"] = "Yes" if details.get("initialized") else "No"
-                    row["Drained"] = "Yes" if details.get("drained") else "No"
-                    row["Draining"] = "Yes" if details.get("draining") else "No"
-                    # Show absolute times:
-                    row["StartTime"] = node.get("startTime", "None")
-                    row["InspectedAt"] = node.get("inspectTime", "None")
-                if verbose > 1:
-                    row["LocalHostID"] = details.get("localHostId")
-                    row["Schema"] = details.get("schemaVersion")
-                    row["RemovalStatus"] = details.get("removalStatus")
-                    row["DrainProgress"] = details.get("drainProgress")
-                    row["RPCServerRunning"] = (
-                        "Yes" if details.get("rpcServerRunning") else "No"
-                    )
-                    row["NativeTransportRunning"] = (
-                        "Yes" if details.get("nativeTransportRunning") else "No"
-                    )
-                    row["GossipRunning"] = (
-                        "Yes" if details.get("gossipRunning") else "No"
-                    )
-                    row["IncBackupEnabled"] = (
-                        "Yes" if details.get("incrementalBackupsEnabled") else "No"
-                    )
-                    row["Version"] = details.get("releaseVersion")
-                    row["ClusterName"] = details.get("clusterName")
-                    row["HintsInProgress"] = str(details.get("hintsInProgress"))
-                    row["ReadRepairAttempted"] = str(details.get("readRepairAttempted"))
-                    row["NumberOfTables"] = str(details.get("numberOfTables"))
-                    row["TotalHints"] = str(details.get("totalHints"))
-                    row["HintedHandoffEnabled"] = (
-                        "Yes" if details.get("hintedHandoffEnabled") else "No"
-                    )
-                    row["LoggingLevels"] = str(details.get("loggingLevels"))
-                all_rows.append(row)
 
     if verbose < 2:
         for rows in group_nodes_by_header(all_rows):
