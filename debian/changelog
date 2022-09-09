@@ -1,3 +1,172 @@
+paasta-tools (0.146.1) xenial; urgency=medium
+
+  * 0.146.1 tagged with 'make release'
+    Commit: Merge pull request #3458 from
+    Yelp/u/jfong/nocommits_get_image_version_with_current_commit  Take
+    in commit for get-image-version
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 07 Sep 2022 10:47:03 -0700
+
+paasta-tools (0.146.0) xenial; urgency=medium
+
+  * 0.146.0 tagged with 'make release'
+    Commit: Merge pull request #3452 from Yelp/u/emanelsabban/CIPXIDEAS-
+    209-vscodeDebugSettings  Added VS code debug settings for paasta -
+    CIPXIDEAS-209
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 07 Sep 2022 06:44:35 -0700
+
+paasta-tools (0.145.0) xenial; urgency=medium
+
+  * 0.145.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/weight" into master
+
+ -- Evan Krall <krall@yelp.com>  Tue, 06 Sep 2022 13:11:03 -0700
+
+paasta-tools (0.144.7) xenial; urgency=medium
+
+  * 0.144.7 tagged with 'make release'
+    Commit: Merge branch "u/krall/release_fixes" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 16:26:06 -0700
+
+paasta-tools (0.144.6) xenial; urgency=medium
+
+  * 0.144.6 tagged with 'make release'
+    Commit: Released 0.144.5 via make release
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 16:24:09 -0700
+
+paasta-tools (0.144.5) xenial; urgency=medium
+
+  * 0.144.5 tagged with 'make release'
+    Commit: Merge branch "u/krall/releases" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 02 Sep 2022 14:34:45 -0700
+
+paasta-tools (0.144.4) xenial; urgency=medium
+
+  * 0.144.4 tagged with 'make release'
+    Commit: Merge pull request #3451 from
+    Yelp/d/manpreet/bump_service_configuration_lib_version  Bump
+    service_configurtion_lib to 2.11.2 to update signalfx link
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 01 Sep 2022 09:49:07 -0700
+
+paasta-tools (0.144.3) xenial; urgency=medium
+
+  * 0.144.3 tagged with 'make release'
+    Commit: Merge pull request #3449 from Yelp/PAASTA-17754-maintain-
+    yaml-comments  maintain yaml comments when autoupdating configs
+
+ -- Kedar Vaidya <kedar@yelp.com>  Tue, 30 Aug 2022 14:40:29 -0700
+
+paasta-tools (0.144.2) xenial; urgency=medium
+
+  * 0.144.2 tagged with 'make release'
+    Commit: Merge pull request #3433 from Yelp/introduce-rollback-
+    conditions  MarkForDeploymentProcess is now
+    RollbackSlackDeploymentProcess
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Mon, 29 Aug 2022 14:13:06 -0700
+
+paasta-tools (0.144.1) xenial; urgency=medium
+
+  * 0.144.1 tagged with 'make release'
+    Commit: Bump service_configuration_library to fix an issue with
+    spark 3.2 on mesos. (#3447)
+
+ -- Jason Sleight <jsleight@yelp.com>  Thu, 25 Aug 2022 12:02:17 -0700
+
+paasta-tools (0.144.0) xenial; urgency=medium
+
+  * 0.144.0 tagged with 'make release'
+    Commit: Adds specifying vault token path PAASTA-17437 (#3446)  *
+    Adds specifying vault token path
+
+ -- Jon Lee <jonlee@yelp.com>  Wed, 24 Aug 2022 11:02:47 -0700
+
+paasta-tools (0.143.0) xenial; urgency=medium
+
+  * 0.143.0 tagged with 'make release'
+    Commit: Merge pull request #3441 from Yelp/u/jfong/COMPINFRA-1244-
+    get-image-version  COMPINFRA-1244: Add get-image-version cli tool to
+    generate extra image version
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 23 Aug 2022 15:40:49 -0700
+
+paasta-tools (0.142.0) xenial; urgency=medium
+
+  * 0.142.0 tagged with 'make release'
+    Commit: Add validation to discourage large cpu_burst_add (#3436)
+    cpu_burst_add is added on to the `cpus` value (which we use for k8s
+    cpu requests to get a k8s cpu limit - and we"ve seen internal users
+    set excessively high values here (which can impact other services
+    running on the same node).  To discourage this without blocking
+    legitimate usecases (/providing a smooth transition to outright
+    blocking this if possible in the future), we allow users to bypass
+    this validation by adding a special comment (just like we do with
+    the cpu-autoscaled-but-not-autotuned validation)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Aug 2022 12:42:30 -0700
+
+paasta-tools (0.141.0) xenial; urgency=medium
+
+  * 0.141.0 tagged with 'make release'
+    Commit: [FLINK-4097] Get Flink cluster status via JM API (#3435)
+    [FLINK-4097] Get Flink cluster status via JM API.  - Rework of
+    37d0dc25eb940bd758997aafa5ef8a242d118bd2 - Talk to the JM API using
+    the ingress not the dashboard url  Co-authored-by: Ahmed Soliman
+    <asoliman@yelp.com>
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Mon, 15 Aug 2022 02:23:46 -0700
+
+paasta-tools (0.140.1) xenial; urgency=medium
+
+  * 0.140.1 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-17657_print_once" into master
+
+ -- Evan Krall <krall@yelp.com>  Fri, 12 Aug 2022 11:42:15 -0700
+
+paasta-tools (0.140.0) xenial; urgency=medium
+
+  * 0.140.0 tagged with 'make release'
+    Commit: Merge branch "master" of github.com:Yelp/paasta into master
+
+ -- Siddharth Shettigar <sids@yelp.com>  Thu, 11 Aug 2022 13:44:21 -0700
+
+paasta-tools (0.139.5) xenial; urgency=medium
+
+  * 0.139.5 tagged with 'make release'
+    Commit: Merge pull request #3426 from Yelp/d/manpreet/MLCOMPUTE-436-
+    fix-docker-daemon-issue  Use execlp instead of execlpe
+
+ -- Manpreet Singh <manpreet@yelp.com>  Thu, 11 Aug 2022 08:15:18 -0700
+
+paasta-tools (0.139.4) xenial; urgency=medium
+
+  * 0.139.4 tagged with 'make release'
+    Commit: Merge pull request #3429 from Yelp/u/mhaseeb/revert-flink-
+    status-changes  Revert Flink status changes
+
+ -- Mohammad Haseeb <mhaseeb@yelp.com>  Mon, 08 Aug 2022 15:45:07 -0700
+
+paasta-tools (0.139.3) xenial; urgency=medium
+
+  * 0.139.3 tagged with 'make release'
+    Commit: Merge pull request #3422 from Yelp/PAASTA-17666-
+    fix_paastavalidate_preceding_comment  PAASTA-17666: Fixes paasta
+    validate to allow preceding comments
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 05 Aug 2022 11:38:10 -0700
+
+paasta-tools (0.139.2) xenial; urgency=medium
+
+  * 0.139.2 tagged with 'make release'
+    Commit: [FLINK-4124] Small fix to display status info (#3425)
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Fri, 05 Aug 2022 06:13:54 -0700
+
 paasta-tools (0.139.1) xenial; urgency=medium
 
   * 0.139.1 tagged with 'make release'

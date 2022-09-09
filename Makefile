@@ -67,7 +67,6 @@ dev-api: .tox/py37-linux
 
 itest: test .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e general_itests
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -121,3 +120,7 @@ swagger-validate:
 		yelp/openapi-generator-cli:20201026 \
 		validate \
 		-i paasta_tools/api/api_docs/swagger.json
+
+.PHONY: vscode_settings
+vscode_settings:
+	.paasta/bin/python paasta_tools/contrib/ide_helper.py

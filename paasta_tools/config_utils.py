@@ -9,7 +9,6 @@ from typing import Optional
 from typing import Set
 
 import ruamel.yaml as yaml
-from service_configuration_lib import read_extra_service_information
 
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -49,15 +48,25 @@ def write_auto_config_data(
     if not os.path.exists(subdir):
         os.mkdir(subdir)
     filename = f"{subdir}/{extra_info}.yaml"
+
     with open(filename, "w") as f:
-        content = (
-            yaml.round_trip_load(
-                comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+        # TODO: this can be collapsed into one codeblock. It is separated as two
+        # because doing content.update(data) results in losing comments from `data`
+        # we should be able to handle adding a header comment and yaml with comments in it
+        # without this if/else block
+        if comment:
+            content = (
+                yaml.round_trip_load(
+                    comment.format(regular_filename=f"{service}/{extra_info}.yaml")
+                )
+                if comment
+                else {}
             )
-            if comment
-            else {}
-        )
-        content.update(data)
+            content.update(data)
+        else:
+            # avoids content.update to preserve comments in `data`
+            content = data
+
         f.write(yaml.round_trip_dump(content))
     return filename
 
@@ -193,14 +202,18 @@ class AutoConfigUpdater:
             self.files_changed.add(result)
 
     def get_existing_configs(
-        self, service: str, extra_info: str, sub_dir: Optional[str] = None
+        self, service: str, file_name: str, sub_dir: Optional[str] = None
     ) -> Dict[str, Any]:
-        path = f"{sub_dir}/{extra_info}" if sub_dir else extra_info
-        return read_extra_service_information(
+        config_file_path = f"{sub_dir}/{file_name}" if sub_dir else file_name
+        config_file_abs_path = os.path.join(
+            os.path.abspath(self.working_dir),
             service,
-            path,
-            soa_dir=self.working_dir,
+            config_file_path + ".yaml",
         )
+        try:
+            return yaml.round_trip_load(open(config_file_abs_path))
+        except FileNotFoundError:
+            return {}
 
     def validate(self):
         return_code = True

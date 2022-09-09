@@ -306,7 +306,6 @@ def paasta_rollback(args: argparse.Namespace) -> int:
 
         # we could also gate this by the return code from m-f-d, but we probably care more about someone wanting to
         # rollback than we care about if the underlying machinery was successfully able to complete the request
-
         if rolled_back_from != new_version:
             audit_action_details = {
                 "rolled_back_from": str(rolled_back_from),
@@ -317,5 +316,12 @@ def paasta_rollback(args: argparse.Namespace) -> int:
             _log_audit(
                 action="rollback", action_details=audit_action_details, service=service
             )
+
+    if returncode == 0:
+        print(
+            PaastaColors.cyan(
+                f"Warning: Don't forget to revert in git as well. Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "
+            )
+        )
 
     return returncode

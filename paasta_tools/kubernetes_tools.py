@@ -245,6 +245,7 @@ class KubernetesServiceRegistration(NamedTuple):
     port: int
     pod_ip: str
     registrations: Sequence[str]
+    weight: int
 
 
 class CustomResourceDefinition(NamedTuple):
@@ -324,6 +325,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
         "paasta.yelp.com/pool": str,
+        "paasta.yelp.com/weight": str,
     },
     total=False,
 )
@@ -1842,6 +1844,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
         }
+        if service_namespace_config.is_in_smartstack():
+            labels["paasta.yelp.com/weight"] = str(self.get_weight())
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod
@@ -2087,6 +2091,12 @@ def get_kubernetes_services_running_here(
                 if container["name"] != HACHECK_POD_NAME:
                     port = container["ports"][0]["containerPort"]
                     break
+
+            try:
+                weight = int(pod["metadata"]["labels"]["paasta.yelp.com/weight"])
+            except (KeyError, ValueError):
+                weight = 10
+
             services.append(
                 KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
@@ -2096,6 +2106,7 @@ def get_kubernetes_services_running_here(
                     registrations=json.loads(
                         pod["metadata"]["annotations"]["smartstack_registrations"]
                     ),
+                    weight=weight,
                 )
             )
         except KeyError as e:
@@ -2107,7 +2118,7 @@ def get_kubernetes_services_running_here(
 
 def get_kubernetes_services_running_here_for_nerve(
     cluster: Optional[str], soa_dir: str
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+) -> List[Tuple[str, ServiceNamespaceConfig]]:
     try:
         system_paasta_config = load_system_paasta_config()
         if not cluster:
@@ -2154,6 +2165,7 @@ def get_kubernetes_services_running_here_for_nerve(
                     nerve_dict["extra_healthcheck_headers"] = {
                         "X-Nerve-Check-IP": kubernetes_service.pod_ip
                     }
+                nerve_dict["weight"] = kubernetes_service.weight
                 nerve_list.append((registration, nerve_dict))
         except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up

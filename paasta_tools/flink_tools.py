@@ -15,6 +15,8 @@ from typing import Any
 from typing import List
 from typing import Mapping
 from typing import Optional
+from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 import requests
 import service_configuration_lib
@@ -24,6 +26,7 @@ from paasta_tools.api import settings
 from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.kubernetes_tools import get_cr
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
@@ -210,9 +213,16 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
 
 
 def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
-    # The public base URL of the JM REST API is the same as the public full URL
-    # of the Flink dashboard
-    return cr["metadata"]["annotations"]["flink.yelp.com/dashboard_url"]
+    metadata = cr["metadata"]
+    cluster = metadata["labels"][paasta_prefixed("cluster")]
+    base_url = get_flink_ingress_url_root(cluster)
+
+    # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
+    _, _, service_cr_name, *_ = urlparse(
+        metadata["annotations"]["flink.yelp.com/dashboard_url"]
+    )
+
+    return urljoin(base_url, service_cr_name)
 
 
 def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str, Any]:
@@ -221,11 +231,18 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         if cr is None:
             raise ValueError(f"failed to get CR for id: {cr_id}")
         base_url = _get_jm_rest_api_base_url(cr)
-        url = f"{base_url}/{endpoint}"
+
+        # Closing 'base_url' with '/' to force urljoin to append 'endpoint' to the path.
+        # If not, urljoin replaces the 'base_url' path with 'endpoint'.
+        url = urljoin(base_url + "/", endpoint)
         response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
-        if response.ok:
-            return _filter_for_endpoint(response.json(), endpoint)
-        return {}
+        if not response.ok:
+            return {
+                "status": response.status_code,
+                "error": response.reason,
+                "text": response.text,
+            }
+        return _filter_for_endpoint(response.json(), endpoint)
     except requests.RequestException as e:
         url = e.request.url
         err = e.response or str(e)

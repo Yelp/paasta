@@ -24,6 +24,7 @@ from datetime import timedelta
 from datetime import timezone
 from enum import Enum
 from itertools import groupby
+from threading import Lock
 from typing import Any
 from typing import Callable
 from typing import Collection
@@ -269,12 +270,12 @@ def paasta_status_on_api_endpoint(
     cluster: str,
     service: str,
     instance: str,
-    output: List[str],
     system_paasta_config: SystemPaastaConfig,
+    lock: Lock,
     verbose: int,
     new: bool = False,
 ) -> int:
-    output.append("    instance: %s" % PaastaColors.cyan(instance))
+    output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
     client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
@@ -326,6 +327,9 @@ def paasta_status_on_api_endpoint(
                 f"Status writer failed for {instance_type} with return value {ret}"
             )
             ret_code = ret
+
+    with lock:
+        print("\n".join(output), flush=True)
 
     return ret_code
 
@@ -1088,6 +1092,7 @@ def _print_flink_status_from_custom_resource(
         output.append(f"    No other information available in non-running state")
         return 0
 
+    if status["state"] == "running":
         output.append(
             "    Jobs:"
             f" {status['overview']['jobs-running']} running,"
@@ -1404,12 +1409,11 @@ def print_flink_status(
         return 1
 
     api_version_minor = client.default.show_version().split(".")[1]
-    if api_version_minor <= "138":  # fallback
+    if api_version_minor <= "140":  # fallback
         return _print_flink_status_from_custom_resource(flink, output, verbose)
-    else:
-        return _print_flink_status_from_job_manager(
-            service, instance, output, flink, client, verbose
-        )
+    return _print_flink_status_from_job_manager(
+        service, instance, output, flink, client, verbose
+    )
 
 
 async def get_flink_job_details(
@@ -1669,7 +1673,10 @@ def get_main_container(pod: KubernetesPodV2) -> Optional[KubernetesContainerV2]:
 def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
-    if phase is None or not pod.scheduled:
+    reason = pod.reason
+    if phase == "Failed" or reason == "Evicted":
+        state = ReplicaState.NOT_RUNNING
+    elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
         state = ReplicaState.TERMINATING
@@ -1710,10 +1717,6 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
         else:
             state = ReplicaState.UNKNOWN
 
-        # Catch
-    elif phase == "Failed":
-        # e.g. pod.reason == evicted
-        state = ReplicaState.NOT_RUNNING
     return state
 
 
@@ -2363,6 +2366,7 @@ def report_status_for_cluster(
     actual_deployments: Mapping[str, str],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
+    lock: Lock,
     verbose: int = 0,
     new: bool = False,
 ) -> Tuple[int, Sequence[str]]:
@@ -2407,18 +2411,20 @@ def report_status_for_cluster(
             output.append("    Git sha:    None (not deployed yet)")
 
     return_code = 0
-    return_codes = [
-        paasta_status_on_api_endpoint(
-            cluster=cluster,
-            service=service,
-            instance=deployed_instance,
-            output=output,
-            system_paasta_config=system_paasta_config,
-            verbose=verbose,
-            new=new,
+    return_codes = []
+    for deployed_instance in instances:
+        return_codes.append(
+            paasta_status_on_api_endpoint(
+                cluster=cluster,
+                service=service,
+                instance=deployed_instance,
+                system_paasta_config=system_paasta_config,
+                lock=lock,
+                verbose=verbose,
+                new=new,
+            )
         )
-        for deployed_instance in instances
-    ]
+
     if any(return_codes):
         return_code = 1
 
@@ -2607,6 +2613,7 @@ def paasta_status(args) -> int:
     system_paasta_config = load_system_paasta_config()
 
     return_codes = [0]
+    lock = Lock()
     tasks = []
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
@@ -2630,6 +2637,7 @@ def paasta_status(args) -> int:
                             actual_deployments=actual_deployments,
                             instance_whitelist=instances,
                             system_paasta_config=system_paasta_config,
+                            lock=lock,
                             verbose=args.verbose,
                             new=new,
                         ),
@@ -2643,7 +2651,6 @@ def paasta_status(args) -> int:
         tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
         for future in concurrent.futures.as_completed(tasks):  # type: ignore
             return_code, output = future.result()
-            print("\n".join(output))
             return_codes.append(return_code)
 
     return max(return_codes)

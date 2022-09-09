@@ -216,6 +216,38 @@ def test_auto_config_updater_read_write(updater):
     assert len(updater.files_changed) == 1
 
 
+def test_auto_config_updater_read_write_with_comments(updater):
+    service = "foo"
+    conf_file = "something"
+    data = {"key": "g_minor", "bar": "foo"}
+
+    with open(f"{updater.working_dir}/{service}/{conf_file}.yaml", "x") as f:
+        f.write(
+            """# top comment
+key: c_minor # inline comment
+"""
+        )
+
+    existing_data = updater.get_existing_configs(service, conf_file)
+    assert existing_data == {"key": "c_minor"}
+
+    # Update existing config and add another key
+    existing_data["key"] = "g_minor"
+    existing_data["bar"] = "foo"
+
+    updater.write_configs(service, conf_file, existing_data)
+    assert updater.get_existing_configs(service, conf_file) == data
+    assert len(updater.files_changed) == 1
+    with open(f"{updater.working_dir}/{service}/{conf_file}.yaml", "r") as f:
+        assert (
+            f.read()
+            == """# top comment
+key: g_minor # inline comment
+bar: foo
+"""
+        )
+
+
 @mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)
 @mock.patch("paasta_tools.config_utils._commit_files", autospec=True)
 def test_auto_config_updater_commit_validate_fails(mock_push, mock_commit, updater):
