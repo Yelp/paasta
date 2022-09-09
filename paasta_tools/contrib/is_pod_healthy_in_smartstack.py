@@ -28,7 +28,7 @@ services = sys.argv[2:]
 
 ###############################################################
 #
-# This file is used in the hacheck sidecar, make sure to updated `check_smartstack_up.sh`
+# This file is used in the hacheck sidecar, make sure to update `check_smartstack_up.sh`
 # when changing this file
 #
 ###############################################################

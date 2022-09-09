@@ -38,7 +38,7 @@ pod_ip = os.environ["PAASTA_POD_IP"]
 
 ###############################################################
 #
-# This file is used in the hacheck sidecar, make sure to updated `check_proxy_up.sh`
+# This file is used in the hacheck sidecar, make sure to update `check_proxy_up.sh`
 # when changing this file
 #
 ###############################################################
