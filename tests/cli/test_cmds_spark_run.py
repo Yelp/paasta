@@ -1068,6 +1068,9 @@ def test_paasta_spark_run_bash(
         enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
+    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
+        "test-cluster": ["test-pool"]
+    }
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "/bin/bash"
@@ -1165,6 +1168,9 @@ def test_paasta_spark_run(
         enable_dra=True,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
+    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
+        "test-cluster": ["test-pool"]
+    }
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "USER=test timeout 1m spark-submit test.py"
@@ -1260,6 +1266,9 @@ def test_paasta_spark_run_pyspark(
         enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
+    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
+        "test-cluster": ["test-pool"]
+    }
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "pyspark"
