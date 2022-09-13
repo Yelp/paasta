@@ -573,9 +573,6 @@
                     "maximum": 1000000,
                     "exclusiveMinimum": false
                 },
-                "net": {
-                    "type": "string"
-                },
                 "container_port": {
                     "type": "number"
                 },
