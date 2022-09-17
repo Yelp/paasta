@@ -1613,6 +1613,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/service": mock_get_service.return_value,
             "paasta.yelp.com/autoscaled": "false",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
+            "yelp.com/owner": "compute_infra",
         }
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
