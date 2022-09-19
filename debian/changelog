@@ -1,3 +1,15 @@
+paasta-tools (0.147.0) xenial; urgency=medium
+
+  * 0.147.0 tagged with 'make release'
+    Commit: Delete support for using host network in k8s (#3463)  This
+    was never plumbed through for k8s and we don"t seem to actually need
+    it, so let"s prevent folks from adding a misleading config option
+    that will actually noop  NB: we could support this, but it"s pretty
+    insecure so until someone has a good reason to need this - we can
+    punt on that.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 19 Sep 2022 09:41:00 -0700
+
 paasta-tools (0.146.2) xenial; urgency=medium
 
   * 0.146.2 tagged with 'make release'
