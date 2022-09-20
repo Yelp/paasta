@@ -1844,7 +1844,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
-            "yelp.com/owner": "compute_infra",
+            "yelp.com/owner": "compute_infrastructure_platform_experience",
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
