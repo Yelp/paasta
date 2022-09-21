@@ -44,9 +44,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     parser.add_argument(
         "--max-age",
-        help="max age in seconds",
+        help="max age in seconds (default %(default)s)",
         type=int,
-        default=3600,  # TODO: Get from paasta system config
+        default=2592000,  # TODO: Get from paasta system config
     )
     arg_service = parser.add_argument(
         "-s",
