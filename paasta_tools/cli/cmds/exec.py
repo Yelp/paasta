@@ -14,6 +14,7 @@
 # limitations under the License.
 """PaaSTA exec for humans"""
 import argparse
+import random
 import shlex
 import subprocess
 import sys
@@ -101,66 +102,43 @@ def paasta_exec(args: argparse.Namespace) -> int:
 
     cluster = cluster[0]
     instance = args.instance
-
+    pods = (
+        subprocess.run(
+            [
+                f"kubectl-{cluster}",
+                "get",
+                "po",
+                "-n",
+                "paasta",
+                "-l",
+                f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+                "--field-selector=status.phase==Running",
+                "--no-headers",
+                "-o",
+                "custom-columns=:.metadata.name",
+                "|",
+                "shuf",
+            ],
+            stdout=subprocess.PIPE,
+        )
+        .stdout.decode("utf-8")
+        .strip()
+        .split("\n")
+    )
     if args.pod is None:
-        pod = (
-            subprocess.run(
-                [
-                    f"kubectl-{cluster}",
-                    "get",
-                    "po",
-                    "-n",
-                    "paasta",
-                    "|",
-                    "grep",
-                    "-E",
-                    f"'{service.replace('_','--')}-{instance.replace('_','--')}.*Running'",
-                    "|",
-                    "shuf",
-                    "|",
-                    "awk",
-                    "'END {{print $1}}'",
-                ],
-                stdout=subprocess.PIPE,
-            )
-            .stdout.decode("utf-8")
-            .strip()
-        )
+        pod = random.choice(pods)
     else:
-        pods = (
-            subprocess.run(
-                [
-                    f"kubectl-{cluster}",
-                    "get",
-                    "po",
-                    "-n",
-                    "paasta",
-                    "|",
-                    "grep",
-                    "-E",
-                    f"'{service.replace('_','--')}-{instance.replace('_','--')}.*Running'",
-                    "|",
-                    "shuf",
-                    "|",
-                    "awk",
-                    "'{{print $1}}'",
-                ],
-                stdout=subprocess.PIPE,
-            )
-            .stdout.decode("utf-8")
-            .split("\n")
-        )
         pod = args.pods
         if pod not in pods:
             pod = ""
-    if pod == "":
+    if not pod:
         print(
             PaastaColors.red("We can't find a running pod for your service."),
             file=sys.stderr,
         )
         return 1
 
-    cmd = f"kubectl-{cluster} -i -t -n paasta exec {pod} -- sh -c '\"clear; (fish || zsh || bash || ash || sh)\"'"
+    cmd = f"kubectl-{cluster} -i -t -n paasta exec {pod} -- sh -c '\"clear; (bash || ash || sh)\"'"
     subprocess.check_call(shlex.split(cmd))
 
     return 0
