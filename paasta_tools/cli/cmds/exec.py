@@ -48,7 +48,7 @@ def add_subparser(subparsers) -> None:
         "-c",
         "--cluster",
         help="The cluster to exec into.",
-        nargs=1,
+        type=str,
     ).completer = completer_clusters
     exec_parser.add_argument(
         "-i",
@@ -97,10 +97,9 @@ def paasta_exec(args: argparse.Namespace) -> int:
         )
         return 1
     cluster = args.cluster
-    if verify_instances(args.instance, service, cluster):
+    if verify_instances(args.instance, service, [cluster]):
         return 1
 
-    cluster = cluster[0]
     instance = args.instance
     pods = (
         subprocess.run(
