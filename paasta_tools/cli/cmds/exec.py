@@ -160,7 +160,7 @@ def paasta_exec(args: argparse.Namespace) -> int:
         )
         return 1
 
-    cmd = f'kubectl-{cluster} -i -t -n paasta exec {pod} -- sh -c "clear; (fish || zsh || bash || ash || sh)"'
+    cmd = f"kubectl-{cluster} -i -t -n paasta exec {pod} -- sh -c '\"clear; (fish || zsh || bash || ash || sh)\"'"
     subprocess.check_call(shlex.split(cmd))
 
     return 0
