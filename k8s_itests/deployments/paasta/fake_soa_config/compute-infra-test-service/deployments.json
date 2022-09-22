@@ -1,20 +1,24 @@
 {
     "v1": {
-        "compute-infra-test-service:<%cluster%>.autoscaling": {
-            "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
+        "compute-infra-test-service:paasta-kind-emanelsabban-k8s-test.autoscaling": {
+            "docker_image": "services-compute-infra-test-service:paasta-0ae13cf29612fb38bbf1ad40652cdf93abfe41df",
             "desired_state": "start",
             "force_bounce": null
         }
     },
     "v2": {
         "deployments": {
-            "<%cluster%>.autoscaling": {
-                "docker_image": "services-compute-infra-test-service:paasta-a0ec9b362e29123022e5cebb6612aedc58a0889b",
-                "git_sha": "a0ec9b362e29123022e5cebb6612aedc58a0889b"
+            "prod.main": {
+                "docker_image": "services-compute-infra-test-service:paasta-0ae13cf29612fb38bbf1ad40652cdf93abfe41df",
+                "git_sha": "0ae13cf29612fb38bbf1ad40652cdf93abfe41df",
+                "image_version": null
             }
         },
         "controls": {
-            "compute-infra-test-service:<%cluster%>.autoscaling": {}
+            "compute-infra-test-service:kind-emanelsabban-k8s-test.autoscaling": {
+                "desired_state": "start",
+                "force_bounce": null
+            }
         }
     }
 }

@@ -122,5 +122,13 @@ swagger-validate:
 		-i paasta_tools/api/api_docs/swagger.json
 
 .PHONY: vscode_settings
-vscode_settings:
+vscode_settings: .paasta/bin/activate
 	.paasta/bin/python paasta_tools/contrib/ide_helper.py
+
+.PHONY: generate_etc_paasta_playground
+generate_etc_paasta_playground: .paasta/bin/activate
+	.paasta/bin/python  paasta_tools/contrib/create_etc_paasta_playground.py
+
+.PHONY: playground-api
+playground-api: .tox/py37-linux generate_etc_paasta_playground
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
