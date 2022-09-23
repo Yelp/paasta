@@ -1613,6 +1613,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/service": mock_get_service.return_value,
             "paasta.yelp.com/autoscaled": "false",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
+            "yelp.com/owner": "compute_infra_platform_experience",
         }
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
@@ -3647,7 +3648,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c177d7a"
+            == "config80007736"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3693,7 +3694,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config1404b38f"
+            == "config81e5b468"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
