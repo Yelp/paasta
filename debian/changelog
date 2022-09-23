@@ -1,3 +1,12 @@
+paasta-tools (0.147.1) xenial; urgency=medium
+
+  * 0.147.1 tagged with 'make release'
+    Commit: COMPINFRA-1495, add yelp.com/owner label to pods (#3465)  *
+    COMPINFRA-1495, add yelp.com/owner label to pods  Pods in paasta
+    namespace do not have the yelp.com/owner label, this PR adds those.
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Fri, 23 Sep 2022 04:17:36 -0700
+
 paasta-tools (0.147.0) xenial; urgency=medium
 
   * 0.147.0 tagged with 'make release'
