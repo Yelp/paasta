@@ -1,3 +1,20 @@
+paasta-tools (0.147.2) xenial; urgency=medium
+
+  * 0.147.2 tagged with 'make release'
+    Commit: Add support for Tron cluster overrides (#3225)  This PR adds
+    support for running Tronjobs on a different cluster than the
+    Tron/soaconfigs cluster would otherwise suggest.  This is most
+    useful for Tron masters that house sensitive jobs that we used to
+    lock down on separate compute clusters as we didn"t have the access
+    controls that we have these days (with k8s and OPA).  In these
+    cases, maintaining the names of the yelpsoa-configs files makes it
+    almost trivial to enforce (with pre-commit and other automation)
+    that these sensitive jobs always set a `pool` attribute such that
+    they don"t "leak" onto our default pools.  Co-authored-by: Jon Lee
+    <jonlee@yelp.com>
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 27 Sep 2022 07:19:38 -0700
+
 paasta-tools (0.147.1) xenial; urgency=medium
 
   * 0.147.1 tagged with 'make release'
