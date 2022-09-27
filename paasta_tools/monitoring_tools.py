@@ -308,7 +308,11 @@ def list_teams():
 
 
 def send_replication_event(
-    instance_config, status, output, description, dry_run=False,
+    instance_config,
+    status,
+    output,
+    description,
+    dry_run=False,
 ):
     """Send an event to sensu via pysensu_yelp with the given information.
 
@@ -443,7 +447,10 @@ def check_replication_for_instance(
     log.debug(f"Got replication info for {instance_config.job_id}: {replication_infos}")
     if yelp_meteorite is not None:
         emit_replication_metrics(
-            replication_infos, instance_config, expected_count, dry_run=dry_run,
+            replication_infos,
+            instance_config,
+            expected_count,
+            dry_run=dry_run,
         )
 
     service_is_under_replicated = False

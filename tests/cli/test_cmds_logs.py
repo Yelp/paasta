@@ -29,7 +29,7 @@ from paasta_tools.utils import format_log_line
 
 
 try:  # pragma: no cover (yelpy)
-    from scribereader.scribereader import StreamTailerSetupError
+    import scribereader  # noqa: F401
 
     scribereader_available = True
 except ImportError:  # pragma: no cover (yelpy)
@@ -118,7 +118,12 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line,
+        levels[0],
+        ANY_CLUSTER,
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -139,7 +144,12 @@ def test_paasta_log_line_passes_filter_true_when_default_instance():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        levels[0], ANY_CLUSTER, service, instance, components[0], line,
+        levels[0],
+        ANY_CLUSTER,
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -160,7 +170,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     components = ["build", "deploy"]
     line = "fake_line"
     formatted_line = format_log_line(
-        "BOGUS_LEVEL", clusters[0], service, instance, components[0], line,
+        "BOGUS_LEVEL",
+        clusters[0],
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -183,7 +198,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], clusters[0], service, instance, "monitoring", line,
+        levels[0],
+        clusters[0],
+        service,
+        instance,
+        "monitoring",
+        line,
     )
 
     assert (
@@ -206,7 +226,12 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
+        levels[0],
+        "BOGUS_CLUSTER",
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
@@ -230,12 +255,23 @@ def test_paasta_log_line_passes_filter_false_when_wrong_instance():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(
-        levels[0], "BOGUS_CLUSTER", service, instance, components[0], line,
+        levels[0],
+        "BOGUS_CLUSTER",
+        service,
+        instance,
+        components[0],
+        line,
     )
 
     assert (
         logs.paasta_log_line_passes_filter(
-            formatted_line, levels, service, components, clusters, instances, pods,
+            formatted_line,
+            levels,
+            service,
+            components,
+            clusters,
+            instances,
+            pods,
         )
         is False
     )
@@ -434,183 +470,6 @@ def test_parse_marathon_log_line_ok():
     assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(
         expected
     )
-
-
-@pytest.mark.skipif(
-    not scribereader_available, reason="scribereader not available"
-)  # pragma: no cover (yelpy)
-def test_scribe_tail_log_everything():
-    env = "fake_env"
-    stream_name = "fake_stream"
-    service = "fake_service"
-    levels = ["fake_level1", "fake_level2"]
-    components = ["build", "deploy"]
-    clusters = ["fake_cluster1", "fake_cluster2"]
-    instance = "fake_instance"
-    queue = Queue()
-    filter_fn = mock.Mock(return_value=True)
-
-    tailer = iter(
-        [
-            format_log_line(
-                levels[0],
-                clusters,
-                instance,
-                "build",
-                "level: first. component: build.",
-            ),
-            format_log_line(
-                levels[1],
-                clusters,
-                instance,
-                "deploy",
-                "level: second. component: deploy.",
-            ),
-        ]
-    )
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ) as mock_scribereader:
-        mock_scribereader.get_env_scribe_host.return_value = {
-            "host": "fake_host",
-            "port": "fake_port",
-        }
-        mock_scribereader.get_stream_tailer.return_value = tailer
-        logs.scribe_tail(
-            env, stream_name, service, levels, components, clusters, queue, filter_fn
-        )
-        assert mock_scribereader.get_env_scribe_host.call_count == 1
-        mock_scribereader.get_stream_tailer.assert_called_once_with(
-            stream_name, "fake_host", "fake_port"
-        )
-        assert queue.qsize() == 2
-        # Sadly, fetching with a timeout seems to be needed with
-        # multiprocessing.Queue (this was not the case with Queue.Queue). It
-        # failed 8/10 times with a get_nowait() vs 0/10 times with a 0.1s
-        # timeout.
-        first_line = queue.get(block=True, timeout=0.1)
-        assert "level: first. component: build." in first_line
-        second_line = queue.get(block=True, queue=0.1)
-        assert "level: second. component: deploy." in second_line
-
-
-@pytest.mark.skipif(
-    not scribereader_available, reason="scribereader not available"
-)  # pragma: no cover (yelpy)
-def test_scribe_tail_log_nothing():
-    env = "fake_env"
-    stream_name = "fake_stream"
-    service = "fake_service"
-    levels = ["fake_level1", "fake_level2"]
-    components = ["build", "deploy"]
-    clusters = ["fake_cluster1", "fake_cluster2"]
-    instance = "fake_instance"
-    queue = Queue()
-    filter_fn = mock.Mock(return_value=False)
-
-    tailer = iter(
-        [
-            format_log_line(
-                levels[0],
-                clusters,
-                instance,
-                "build",
-                "level: first. component: build.",
-            ),
-            format_log_line(
-                levels[1],
-                clusters,
-                instance,
-                "deploy",
-                "level: second. component: deploy.",
-            ),
-        ]
-    )
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ) as mock_scribereader:
-        mock_scribereader.get_env_scribe_host.return_value = {
-            "host": "fake_host",
-            "port": "fake_port",
-        }
-        mock_scribereader.get_stream_tailer.return_value = tailer
-        logs.scribe_tail(
-            env, stream_name, service, levels, components, clusters, queue, filter_fn
-        )
-        assert queue.qsize() == 0
-
-
-@pytest.mark.skipif(
-    not scribereader_available, reason="scribereader not available"
-)  # pragma: no cover (yelpy)
-def test_scribe_tail_ctrl_c():
-    env = "fake_env"
-    stream_name = "fake_stream"
-    service = "fake_service"
-    levels = ["fake_level1", "fake_level2"]
-    components = ["build", "deploy"]
-    clusters = ["fake_cluster1", "fake_cluster2"]
-    queue = Queue()
-    filter_fn = mock.Mock(return_value=True)
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ) as mock_scribereader:
-        # There's no reason this method is the one that raises the
-        # KeyboardInterrupt. This just happens to be the first convenient place
-        # to simulate the user pressing Ctrl-C.
-        mock_scribereader.get_env_scribe_host.side_effect = FakeKeyboardInterrupt
-        with reraise_keyboardinterrupt():
-            logs.scribe_tail(
-                env,
-                stream_name,
-                service,
-                levels,
-                components,
-                clusters,
-                queue,
-                filter_fn,
-            )
-        # If we made it here, KeyboardInterrupt was not raised and this test
-        # was successful.
-
-
-@pytest.mark.skipif(
-    not scribereader_available, reason="scribereader not available"
-)  # pragma: no cover (yelpy)
-def test_scribe_tail_handles_StreamTailerSetupError():
-    env = "fake_env"
-    stream_name = "fake_stream"
-    service = "fake_service"
-    levels = ["fake_level1"]
-    components = ["build"]
-    clusters = ["fake_cluster1"]
-    queue = Queue()
-    filter_fn = mock.Mock(return_value=True)
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
-    ) as mock_scribereader, mock.patch(
-        "paasta_tools.cli.cmds.logs.log", autospec=True
-    ) as mock_log:
-        mock_scribereader.get_stream_tailer.side_effect = StreamTailerSetupError(
-            "bla", "unused1", "unused2"
-        )
-        with raises(StreamTailerSetupError):
-            logs.scribe_tail(
-                env,
-                stream_name,
-                service,
-                levels,
-                components,
-                clusters,
-                queue,
-                filter_fn,
-            )
-
-        mock_log.error.assert_any_call(
-            "Failed to setup stream tailing for %s in fake_env" % stream_name
-        )
 
 
 def test_prettify_timestamp():

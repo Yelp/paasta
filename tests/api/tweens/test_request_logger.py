@@ -30,9 +30,13 @@ def mock_clog():
 @pytest.fixture(autouse=True)
 def mock_settings():
     with mock.patch(
-        "paasta_tools.api.settings.cluster", "a_cluster", autospec=False,
+        "paasta_tools.api.settings.cluster",
+        "a_cluster",
+        autospec=False,
     ), mock.patch(
-        "paasta_tools.api.settings.hostname", "a_hostname", autospec=False,
+        "paasta_tools.api.settings.hostname",
+        "a_hostname",
+        autospec=False,
     ):
         yield
 
@@ -54,7 +58,8 @@ def mock_registry():
 def mock_factory(mock_handler, mock_registry):
     mock_registry.settings = {"request_log_name": "request_logs"}
     yield request_logger.request_logger_tween_factory(
-        mock_handler, mock_registry,
+        mock_handler,
+        mock_registry,
     )
 
 
@@ -91,7 +96,9 @@ def test_request_logger_tween_factory_log(mock_clog, mock_factory):
 
 @mock.patch.object(request_logger, "datetime", autospec=True)
 @mock.patch(
-    "traceback.format_exc", mock.Mock(return_value="an_exc_body"), autospec=False,
+    "traceback.format_exc",
+    mock.Mock(return_value="an_exc_body"),
+    autospec=False,
 )
 @pytest.mark.parametrize(
     "status_code,exc,expected_lvl,extra_expected_response",
@@ -117,7 +124,10 @@ def test_request_logger_tween_factory_call(
     extra_expected_response,
 ):
     req = Request.blank("/path/to/something")
-    mock_handler.return_value = Response(body="a_body", status=status_code,)
+    mock_handler.return_value = Response(
+        body="a_body",
+        status=status_code,
+    )
     if exc is not None:
         mock_handler.side_effect = exc
     mock_factory._log = mock.Mock()

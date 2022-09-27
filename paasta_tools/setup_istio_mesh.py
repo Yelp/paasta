@@ -55,10 +55,17 @@ ANNOTATIONS = {paasta_prefixed("managed_by"): "setup_istio_mesh"}
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Creates Kubernetes services.")
     parser.add_argument(
-        "-v", "--verbose", action="store_true", dest="verbose", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
     )
     parser.add_argument(
-        "--dry-run", action="store_true", dest="dry_run", default=False,
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        default=False,
     )
     parser.add_argument(
         "-l",
@@ -176,7 +183,10 @@ def setup_paasta_routing(kube_client: KubeClient, namespaces: Mapping) -> Iterat
     virtual_service = dict(
         apiVersion="networking.istio.io/v1alpha3",
         kind="VirtualService",
-        metadata=dict(name="paasta-routing", namespace=PAASTA_NAMESPACE,),
+        metadata=dict(
+            name="paasta-routing",
+            namespace=PAASTA_NAMESPACE,
+        ),
         spec=dict(
             hosts=["paasta-routing", "169.254.255.254"],
             http=x_yelp_svc_routes + port_routes,
@@ -289,7 +299,8 @@ def process_kube_services(
     if should_setup_unified:
         log.info(f"Creating {UNIFIED_K8S_SVC_NAME} because it does not exist yet.")
         yield from setup_paasta_routing(
-            kube_client=kube_client, namespaces=namespaces,
+            kube_client=kube_client,
+            namespaces=namespaces,
         )
 
     yield from setup_paasta_namespace_services(
@@ -308,7 +319,9 @@ def process_kube_services(
 
 
 def setup_istio_mesh(
-    kube_client: KubeClient, rate_limit: int = 0, soa_dir: str = DEFAULT_SOA_DIR,
+    kube_client: KubeClient,
+    rate_limit: int = 0,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
     delay = 0 if rate_limit == 0 else 1.0 / float(rate_limit)
     took = delay

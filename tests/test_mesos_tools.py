@@ -295,7 +295,9 @@ def test_is_mesos_leader_substring(mock_get_mesos_leader):
 
 
 @mock.patch("paasta_tools.mesos_tools.KazooClient", autospec=True)
-def test_get_number_of_mesos_masters(mock_kazoo,):
+def test_get_number_of_mesos_masters(
+    mock_kazoo,
+):
     host = "1.1.1.1"
     path = "fake_path"
 
@@ -503,7 +505,9 @@ def test_zip_tasks_verbose_output(test_case):
         ["a_task", None, None, 10, utils.TimeoutError],
     ],
 )
-async def test_format_stdstreams_tail_for_task(test_case,):
+async def test_format_stdstreams_tail_for_task(
+    test_case,
+):
     def gen_mesos_cli_fobj(file_path, file_lines):
         """mesos.cli.cluster.files (0.1.5),
         returns a list of mesos.cli.mesos_file.File

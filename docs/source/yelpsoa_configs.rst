@@ -407,8 +407,16 @@ instance MAY have:
     is ``cmd``.
 
   * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long
-    after the container has started before liveness or readiness probes are
-    initiated. Defaults to 60 seconds.
+    after the container has started before liveness probe is initiated.
+    Defaults to 60 seconds. Readiness probes will always start after 10 seconds.
+    The application should able to receive traffic as soon as the readiness probe
+    is successful. Keep this in mind for any expensive "warm-up" requests.
+
+    A failing readiness probe will not restart the instance, it will however be
+    removed from the mesh and not receive any new traffic.
+
+    To add an additional delay after the pod has started and before probes should
+    start, see ``min_task_uptime``.
 
   * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
     healthchecks. Defaults to 10 seconds.
@@ -439,6 +447,14 @@ instance MAY have:
     accessed externally. This option is implied when registered to smartstack or
     when specifying a ``prometheus_port``. Defaults to ``false``
 
+  * ``weight``: Load balancer/service mesh weight to assign to pods belonging to this instance.
+    Pods should receive traffic proportional to their weight, i.e. a pod with
+    weight 20 should receive 2x as much traffic as a pod with weight 10.
+    Defaults to 10.
+    Must be an integer.
+    This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
+
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier
@@ -455,9 +471,9 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 ``marathon-[clustername].yaml``
 -------------------------------
 
-e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
+e.g. ``marathon-pnw-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
-lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
+lives (``pnw-prod``), but not always (``mesosstage``). It MUST be all
 lowercase. (non alphanumeric lowercase characters are ignored)
 
 **Note:** All values in this file except the following will cause PaaSTA to
@@ -950,8 +966,8 @@ Routing and Reliability
    in milliseconds, defaults to 200.
  * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
    in milliseconds, defaults to 1000.
- * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
-   in milliseconds, defaults to 1000.
+ * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
+    Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
    specific endpoints. This is useful for when there is a long running endpoint
    that requires a large timeout value but you would like to keep the default
@@ -960,10 +976,16 @@ Routing and Reliability
    Endpoints use prefix-matching by default; for example ``/specials/bulk/v1``
    will match both ``/specials/bulk/v1/foo`` and ``/specials/bulk/v1/bar``.
 
+   Endpoints can also use regex matching, provided that the regex string begins
+   with a caret ``^`` and backslashes within the string are properly escaped.
+   For example, ``^/specials/[^/]+/v2/\\d`` will match the endpoints
+   ``/specials/bulk/v2/1`` and ``^/specials/milk/v2/2``.
+
    Example::
 
      endpoint_timeouts:
          "/specials/bulk/v1": 15000
+         "^/specials/[^/]+/v2/\\d": 11000
 
 Fault Injection
 ```````````````

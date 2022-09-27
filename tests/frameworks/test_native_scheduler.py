@@ -62,6 +62,7 @@ class TestNativeScheduler:
                     },
                     branch_dict={
                         "docker_image": "busybox",
+                        "image_version": None,
                         "desired_state": "start",
                         "force_bounce": str(force_bounce),
                     },
@@ -198,6 +199,7 @@ class TestNativeScheduler:
                 },
                 branch_dict={
                     "docker_image": "busybox",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": "0",
                 },
@@ -253,6 +255,7 @@ class TestNativeScheduler:
             },
             branch_dict={
                 "docker_image": "busybox",
+                "image_version": None,
                 "desired_state": "start",
                 "force_bounce": "0",
             },
@@ -305,6 +308,7 @@ class TestNativeServiceConfig:
             },
             branch_dict={
                 "docker_image": "busybox",
+                "image_version": None,
                 "desired_state": "start",
                 "force_bounce": "0",
             },
@@ -442,6 +446,7 @@ class TestNativeServiceConfig:
             },
             branch_dict={
                 "docker_image": "busybox",
+                "image_version": None,
                 "desired_state": "start",
                 "force_bounce": "0",
             },

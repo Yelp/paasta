@@ -45,9 +45,9 @@ def test_get_service_info():
         mock_scl_read_service_configuration.return_value = (
             mock_read_service_configuration.return_value
         )
-        mock_read_extra_service_information.return_value = mock_read_service_configuration.return_value[
-            "smartstack"
-        ]
+        mock_read_extra_service_information.return_value = (
+            mock_read_service_configuration.return_value["smartstack"]
+        )
 
         mock_get_actual_deployments.return_value = ["clusterA.main", "clusterB.main"]
         mock_get_smartstack_endpoints.return_value = [

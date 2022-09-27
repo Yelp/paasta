@@ -1,0 +1,160 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "autorollback config schema",
+    "type": "object",
+    "additionalProperties": false,
+    "$defs": {
+        "PrometheusCondition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A PromQL query - should return a single datapoint."
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "False if this condition should be used to rollback, True if violations should just be logged",
+                    "default": false
+                },
+                "upper_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value returned by the query is > this value, the condition is considered to be failing (ignored if null)"
+                },
+                "lower_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value returned by the query is < this value, the condition is considered to be failing (ignored if null)"
+                }
+            },
+            "required": [
+                "query"
+            ]
+        },
+        "SignalfxCondition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A Signalflow query - should return a single datapoint."
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "False if this condition should be used to rollback, True if violations should just be logged",
+                    "default": false
+                },
+                "upper_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value returned by the query is > this value, the condition is considered to be failing (ignored if null)"
+                },
+                "lower_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value returned by the query is < this value, the condition is considered to be failing (ignored if null)"
+                }
+            },
+            "required": [
+                "query"
+            ]
+        },
+        "SplunkCondition": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "A Splunk query - expected to return a single datapoint or multiple results."
+                },
+                "query_type": {
+                    "type": "string",
+                    "description": "If `number`, the value from the datapoint returned by `query` will be compared against upper/lower bounds - otherwise, the number of results will.",
+                    "enum": [
+                        "number",
+                        "results"
+                    ],
+                    "default": "number"
+                },
+                "dry_run": {
+                    "type": "boolean",
+                    "description": "False if this condition should be used to rollback, True if violations should just be logged",
+                    "default": false
+                },
+                "upper_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value (or number of results) returned by the query is > this value, the condition is considered to be failing (ignored if null)"
+                },
+                "lower_bound": {
+                    "type": [
+                        "number",
+                        "null"
+                    ],
+                    "description": "If the value (or number of results) returned by the query is < this value, the condition is considered to be failing (ignored if null)"
+                }
+            },
+            "required": [
+                "query"
+            ]
+        }
+    },
+    "properties": {
+        "conditions": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "signalfx": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/SignalfxCondition"
+                    },
+                    "description": "All the SignalFx queries used to detemine whether a rollback should happen during a service deployment"
+                },
+                "prometheus": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/PrometheusCondition"
+                    },
+                    "description": "All the Prometheus queries used to detemine whether a rollback should happen during a service deployment"
+                },
+                "splunk": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/SplunkCondition"
+                    },
+                    "description": "All the Splunk queries used to detemine whether a rollback should happen during a service deployment"
+                }
+            }
+        },
+        "enable_slo_rollback": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether or not to use the legacy SLO-based autorollback system."
+        },
+        "allowed_failing_queries": {
+            "type": "integer",
+            "default": 0,
+            "description": "How many queries are allowed to be failing before a rollback is initiated."
+        },
+        "rollback_window_s": {
+            "type": "integer",
+            "description": "How long to run queries for (in seconds)"
+        },
+        "check_interval_s": {
+            "type": "integer",
+            "description": "How often to run each query (in seconds)"
+        }
+    }
+}

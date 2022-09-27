@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import asyncio
 import datetime
 
 import asynctest
@@ -245,6 +246,7 @@ def test_marathon_job_status(
         "running_instance_count": 2,
         "autoscaling_info": expected_autoscaling_info,
         "active_shas": [("abc", "123")],
+        "active_versions": [("abc", None, "123")],
     }
 
     assert mock_marathon_app_status.call_count == 1
@@ -1061,15 +1063,20 @@ def test_tron_instance_status(
 
 def test_kubernetes_instance_status_bounce_method():
     with asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True,
+        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
+        autospec=True,
     ) as mock_get_kubernetes_app_by_name, asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True,
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -1098,13 +1105,17 @@ def test_kubernetes_instance_status_bounce_method():
 
 def test_kubernetes_instance_status_evicted_nodes():
     with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status", autospec=True,
+        "paasta_tools.instance.kubernetes.job_status",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_active_shas_for_service", autospec=True,
+        "paasta_tools.kubernetes_tools.get_active_versions_for_service",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
+        autospec=True,
     ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance", autospec=True,
+        "paasta_tools.kubernetes_tools.pods_for_service_instance",
+        autospec=True,
     ) as mock_pods_for_service_instance, asynctest.patch(
         "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
         autospec=True,
@@ -1168,7 +1179,8 @@ def test_get_marathon_dashboard_links():
 @mock.patch("paasta_tools.instance.kubernetes.kubernetes_mesh_status", autospec=True)
 @mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
 def test_instance_mesh_status(
-    mock_validate_service_instance, mock_kubernetes_mesh_status,
+    mock_validate_service_instance,
+    mock_kubernetes_mesh_status,
 ):
     mock_validate_service_instance.return_value = "flink"
     mock_kubernetes_mesh_status.return_value = {
@@ -1264,14 +1276,20 @@ class TestBounceStatus:
         return request
 
     def test_success(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "kubernetes"
         response = instance.bounce_status(mock_request)
         assert response == mock_pik_bounce_status.return_value
 
     def test_not_found(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
         with pytest.raises(ApiFailure) as excinfo:
@@ -1279,8 +1297,28 @@ class TestBounceStatus:
         assert excinfo.value.err == 404
 
     def test_not_kubernetes(
-        self, mock_pik_bounce_status, mock_validate_service_instance, mock_request,
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
     ):
         mock_validate_service_instance.return_value = "not_kubernetes"
         response = instance.bounce_status(mock_request)
         assert response.status_code == 204
+
+    def test_timeout(
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
+        mock_settings,
+    ):
+        mock_pik_bounce_status.side_effect = [asyncio.TimeoutError]
+        mock_validate_service_instance.return_value = "kubernetes"
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 599
+        assert (
+            excinfo.value.msg
+            == "Temporary issue fetching bounce status. Please try again."
+        )

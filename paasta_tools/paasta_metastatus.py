@@ -171,8 +171,10 @@ def utilization_table_by_grouping(
     table_rows = []
 
     for grouping_values, resource_info_dict in resource_info_dict_grouped.items():
-        resource_utilizations = metastatus_lib.resource_utillizations_from_resource_info(
-            total=resource_info_dict["total"], free=resource_info_dict["free"]
+        resource_utilizations = (
+            metastatus_lib.resource_utillizations_from_resource_info(
+                total=resource_info_dict["total"], free=resource_info_dict["free"]
+            )
         )
         healthcheck_utilization_pairs = [
             metastatus_lib.healthcheck_result_resource_utilization_pair_for_resource_utilization(
@@ -229,8 +231,10 @@ def utilization_table_by_grouping_from_kube(
 ) -> Tuple[Sequence[MutableSequence[str]], bool]:
     grouping_function = metastatus_lib.key_func_for_attribute_multi_kube(groupings)
 
-    resource_info_dict_grouped = metastatus_lib.get_resource_utilization_by_grouping_kube(
-        grouping_function, kube_client
+    resource_info_dict_grouped = (
+        metastatus_lib.get_resource_utilization_by_grouping_kube(
+            grouping_function, kube_client
+        )
     )
 
     return utilization_table_by_grouping(
@@ -306,7 +310,9 @@ def get_service_instance_stats(
         return None
 
 
-def _run_kube_checks(kube_client: KubeClient,) -> Sequence[HealthCheckResult]:
+def _run_kube_checks(
+    kube_client: KubeClient,
+) -> Sequence[HealthCheckResult]:
     kube_status = metastatus_lib.get_kube_status(kube_client)
     kube_metrics_status = metastatus_lib.get_kube_resource_utilization_health(
         kube_client=kube_client

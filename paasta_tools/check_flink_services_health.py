@@ -37,16 +37,16 @@ from paasta_tools.utils import is_under_replicated
 log = logging.getLogger(__name__)
 
 
-def container_lifetime(pod: V1Pod,) -> datetime.timedelta:
-    """Return a time duration for how long the pod is alive
-    """
+def container_lifetime(
+    pod: V1Pod,
+) -> datetime.timedelta:
+    """Return a time duration for how long the pod is alive"""
     st = pod.status.start_time
     return datetime.datetime.now(st.tzinfo) - st
 
 
 def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) -> int:
-    """Return count of healthy Flink containers with given type
-    """
+    """Return count of healthy Flink containers with given type"""
     return len(
         [
             pod
@@ -59,7 +59,9 @@ def healthy_flink_containers_cnt(si_pods: Sequence[V1Pod], container_type: str) 
 
 
 def check_under_registered_taskmanagers(
-    instance_config: FlinkDeploymentConfig, expected_count: int, cr_name: str,
+    instance_config: FlinkDeploymentConfig,
+    expected_count: int,
+    cr_name: str,
 ) -> Tuple[bool, str, str]:
     """Check if not enough taskmanagers have been registered to the jobmanager and
     returns both the result of the check in the form of a boolean and a human-readable

@@ -10,7 +10,6 @@ Subpackages
    paasta_tools.autoscaling
    paasta_tools.cli
    paasta_tools.contrib
-   paasta_tools.deployd
    paasta_tools.frameworks
    paasta_tools.instance
    paasta_tools.kubernetes
@@ -46,7 +45,6 @@ Submodules
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
    paasta_tools.cleanup_maintenance
-   paasta_tools.cleanup_marathon_jobs
    paasta_tools.cleanup_tron_namespaces
    paasta_tools.clusterman
    paasta_tools.config_utils
@@ -65,7 +63,6 @@ Submodules
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
    paasta_tools.get_mesos_leader
-   paasta_tools.graceful_app_drain
    paasta_tools.hacheck
    paasta_tools.iptables
    paasta_tools.kafkacluster_tools
@@ -99,8 +96,8 @@ Submodules
    paasta_tools.setup_istio_mesh
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
+   paasta_tools.setup_kubernetes_internal_crd
    paasta_tools.setup_kubernetes_job
-   paasta_tools.setup_marathon_job
    paasta_tools.setup_prometheus_adapter_config
    paasta_tools.setup_tron_namespace
    paasta_tools.slack
@@ -109,6 +106,7 @@ Submodules
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils
+   paasta_tools.vitess_tools
 
 Module contents
 ---------------

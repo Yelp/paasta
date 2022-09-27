@@ -526,8 +526,7 @@ def general_update(soa_dir, synapse_service_dir):
 
 
 def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
-    """Update iptables to include rules for a new (not yet running) MAC address
-    """
+    """Update iptables to include rules for a new (not yet running) MAC address"""
     ensure_shared_chains()  # probably already set, but just to be safe
     service_group = ServiceGroup(service, instance)
     service_group.update_rules(soa_dir, synapse_service_dir)
@@ -536,8 +535,7 @@ def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):
 
 @contextmanager
 def firewall_flock(flock_path=DEFAULT_FIREWALL_FLOCK_PATH):
-    """ Grab an exclusive flock to avoid concurrent iptables updates
-    """
+    """Grab an exclusive flock to avoid concurrent iptables updates"""
     with io.FileIO(flock_path, "w") as f:
         with timed_flock(f, seconds=DEFAULT_FIREWALL_FLOCK_TIMEOUT_SECS):
             yield

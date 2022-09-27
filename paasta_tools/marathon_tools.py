@@ -20,6 +20,7 @@ import copy
 import datetime
 import json
 import logging
+import multiprocessing
 import os
 import socket
 from collections import defaultdict
@@ -185,7 +186,9 @@ class MarathonClients:
         return dedupe_clients(self.current + self.previous)  # type: ignore
 
 
-def dedupe_clients(all_clients: Iterable[MarathonClient],) -> Sequence[MarathonClient]:
+def dedupe_clients(
+    all_clients: Iterable[MarathonClient],
+) -> Sequence[MarathonClient]:
     """Return a subset of the clients with no servers in common. The assumption here is that if there's any overlap in
     servers, then two clients are talking about the same cluster."""
     all_seen_servers: Set[str] = set()
@@ -360,7 +363,11 @@ def load_marathon_service_config_no_cache(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "marathon", cluster, soa_dir=soa_dir,
+        service,
+        instance,
+        "marathon",
+        cluster,
+        soa_dir=soa_dir,
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -886,12 +893,14 @@ class MarathonServiceConfig(LongRunningServiceConfig):
     def set_autoscaled_instances(self, instance_count: int) -> None:
         """Set the number of instances in the same way that the autoscaler does."""
         set_instances_for_marathon_service(
-            service=self.service, instance=self.instance, instance_count=instance_count,
+            service=self.service,
+            instance=self.instance,
+            instance_count=instance_count,
         )
 
 
 class MarathonDeployStatus:
-    """ An enum to represent Marathon app deploy status.
+    """An enum to represent Marathon app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
 
@@ -1167,7 +1176,7 @@ def get_puppet_services_that_run_here() -> Dict[str, List[str]]:
 
 def get_puppet_services_running_here_for_nerve(
     soa_dir: str,
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+) -> List[Tuple[str, ServiceNamespaceConfig]]:
     puppet_services = []
     for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
         for namespace in namespaces:
@@ -1188,6 +1197,12 @@ def get_classic_service_information_for_nerve(
 def _namespaced_get_classic_service_information_for_nerve(
     name: str, namespace: str, soa_dir: str
 ) -> Tuple[str, ServiceNamespaceConfig]:
+    try:
+        # This max(cpu_count, 10) emulates the previous behavior of configure_nerve.
+        cpus = max(multiprocessing.cpu_count(), 10)
+    except NotImplementedError:
+        cpus = 10
+
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, "port")
     # If the namespace defines a port, prefer that, otherwise use the
@@ -1196,6 +1211,9 @@ def _namespaced_get_classic_service_information_for_nerve(
         "port", None
     ) or service_configuration_lib.read_port(port_file)
     nerve_name = compose_job_id(name, namespace)
+
+    nerve_dict["weight"] = cpus
+
     return (nerve_name, nerve_dict)
 
 
@@ -1218,7 +1236,9 @@ def get_classic_services_running_here_for_nerve(
     return classic_services
 
 
-def list_all_marathon_app_ids(client: MarathonClient,) -> Sequence[str]:
+def list_all_marathon_app_ids(
+    client: MarathonClient,
+) -> Sequence[str]:
     """List all marathon app_ids, regardless of state
 
     The raw marathon API returns app ids in their URL form, with leading '/'s

@@ -87,7 +87,10 @@ def are_services_up_in_pod(
 
 
 def are_namespaces_up_in_eds(
-    envoy_eds_path: str, namespaces: Collection[str], pod_ip: str, pod_port: int,
+    envoy_eds_path: str,
+    namespaces: Collection[str],
+    pod_ip: str,
+    pod_port: int,
 ) -> bool:
     """Returns whether a Pod is registered on Envoy through the EDS
     :param envoy_eds_path: path where EDS yaml files are stored
@@ -271,7 +274,8 @@ def get_multiple_backends(
 
 
 def match_backends_and_pods(
-    backends: Iterable[EnvoyBackend], pods: Iterable[V1Pod],
+    backends: Iterable[EnvoyBackend],
+    pods: Iterable[V1Pod],
 ) -> List[Tuple[Optional[EnvoyBackend], Optional[V1Pod]]]:
     """Returns tuples of matching (backend, pod) pairs, as matched by IP. Each backend will be listed exactly
     once. If a backend does not match with a pod, (backend, None) will be included.
@@ -372,7 +376,9 @@ def build_envoy_location_dict(
 
 
 def get_replication_for_all_services(
-    envoy_host: str, envoy_admin_port: int, envoy_admin_endpoint_format: str,
+    envoy_host: str,
+    envoy_admin_port: int,
+    envoy_admin_endpoint_format: str,
 ) -> Dict[str, int]:
     """Returns the replication level for all services known to this Envoy
 

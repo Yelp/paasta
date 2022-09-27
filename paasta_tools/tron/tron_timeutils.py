@@ -22,10 +22,9 @@ def to_timestamp(time_val):
 
 
 def delta_total_seconds(td):
-    """Equivalent to timedelta.total_seconds() available in Python 2.7.
-    """
+    """Equivalent to timedelta.total_seconds() available in Python 2.7."""
     microseconds, seconds, days = td.microseconds, td.seconds, td.days
-    return (microseconds + (seconds + days * 24 * 3600) * 10 ** 6) / 10 ** 6
+    return (microseconds + (seconds + days * 24 * 3600) * 10**6) / 10**6
 
 
 def macro_timedelta(start_date, years=0, months=0, days=0, hours=0):

@@ -42,7 +42,7 @@ Example Adhoc YAML Definitions
 Example adhoc definition for a batch we run periodically that need external
 files on the host::
 
-    $ cat adhoc-norcal-prod.yaml
+    $ cat adhoc-pnw-prod.yaml
     backfill_batch:
       deploy_group: prod.non_canary
       cpus: 1

@@ -637,7 +637,9 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         )
 
 
-def test_configure_and_run_docker_container_respects_docker_sha(system_paasta_config,):
+def test_configure_and_run_docker_container_respects_docker_sha(
+    system_paasta_config,
+):
     with mock.patch(
         "paasta_tools.cli.cmds.local_run.sys.stdin", autospec=True
     ) as mock_stdin, mock.patch(
@@ -1808,7 +1810,9 @@ def test_format_command_for_tron(mock_datetime, mock_parse_time_variables):
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_marathon(mock_getfqdn,):
+def test_get_local_run_environment_vars_marathon(
+    mock_getfqdn,
+):
     mock_instance_config = mock.MagicMock(spec_set=MarathonServiceConfig)
     mock_instance_config.get_mem.return_value = 123
     mock_instance_config.get_disk.return_value = 123
@@ -1831,7 +1835,9 @@ def test_get_local_run_environment_vars_marathon(mock_getfqdn,):
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_other(mock_getfqdn,):
+def test_get_local_run_environment_vars_other(
+    mock_getfqdn,
+):
     mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
     mock_instance_config.get_mem.return_value = 123
     mock_instance_config.get_disk.return_value = 123

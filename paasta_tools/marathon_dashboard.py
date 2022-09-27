@@ -91,7 +91,7 @@ def create_marathon_dashboard(
     dashboard_links = system_paasta_config.get_dashboard_links()
     marathon_links = dashboard_links.get(cluster, {}).get("Marathon RO")
 
-    # e.g. 'http://10.64.97.75:5052': 'http://marathon-norcal-prod.yelpcorp.com'
+    # e.g. 'http://10.64.97.75:5052': 'http://marathon-pnw-prod.yelpcorp.com'
     shard_url_to_marathon_link_dict: Dict[str, str] = {}
     if isinstance(marathon_links, list):
         # Sanity check and log error if necessary
@@ -125,8 +125,10 @@ def create_marathon_dashboard(
             cluster, MarathonServiceConfig
         ):
             if marathon_service_config.get_instance() in instance_set:
-                client: MarathonClient = marathon_clients.get_current_client_for_service(
-                    job_config=marathon_service_config
+                client: MarathonClient = (
+                    marathon_clients.get_current_client_for_service(
+                        job_config=marathon_service_config
+                    )
                 )
                 ip_url: str = client.servers[0]
                 # Convert to a marathon link if possible else default to the originalIP address

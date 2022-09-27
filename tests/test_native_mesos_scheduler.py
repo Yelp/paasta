@@ -140,8 +140,10 @@ def test_get_paasta_native_services_running_here_for_nerve():
         mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = (
             mock_registrations_side_effect
         )
-        actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
-            cluster, soa_dir
+        actual = (
+            native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
+                cluster, soa_dir
+            )
         )
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -217,8 +219,10 @@ def test_get_paasta_native_services_running_here_for_nerve_multiple_namespaces()
         mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = (
             mock_registrations_side_effect
         )
-        actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
-            cluster, soa_dir
+        actual = (
+            native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
+                cluster, soa_dir
+            )
         )
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -278,8 +282,10 @@ def test_get_paasta_native_services_running_here_for_nerve_when_not_in_smartstac
         mock_load_paasta_native_job_config.return_value.get_registrations.side_effect = (
             mock_registrations_side_effect
         )
-        actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
-            cluster, soa_dir
+        actual = (
+            native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
+                cluster, soa_dir
+            )
         )
         assert expected == actual
         pnsrh_patch.assert_called_once_with(hostname=None)
@@ -316,8 +322,10 @@ def test_get_paasta_native_services_running_here_for_nerve_when_get_cluster_rais
         load_system_paasta_config_patch.return_value = mock.Mock(
             side_effect=native_mesos_scheduler.PaastaNotConfiguredError
         )
-        actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
-            cluster, soa_dir
+        actual = (
+            native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
+                cluster, soa_dir
+            )
         )
         assert actual == []
 
@@ -335,8 +343,10 @@ def test_get_paasta_native_services_running_here_for_nerve_when_paasta_not_confi
         load_system_paasta_config_patch.return_value = mock.Mock(
             side_effect=native_mesos_scheduler.PaastaNotConfiguredError
         )
-        actual = native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
-            cluster, soa_dir
+        actual = (
+            native_mesos_scheduler.get_paasta_native_services_running_here_for_nerve(
+                cluster, soa_dir
+            )
         )
         assert actual == []
 

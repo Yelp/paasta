@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
-import copy
 import hashlib
 import itertools
 import json
@@ -21,8 +20,10 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from inspect import currentframe
 from pathlib import Path
 from typing import Any
+from typing import Collection
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -43,6 +44,7 @@ from kubernetes import config as kube_config
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
+from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -51,6 +53,7 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1ControllerRevision
+from kubernetes.client import V1CustomResourceDefinitionList
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1DeploymentSpec
@@ -85,6 +88,8 @@ from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
+from kubernetes.client import V1RoleBinding
+from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
 from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
@@ -93,6 +98,7 @@ from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
+from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
@@ -108,7 +114,9 @@ from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.models import V2beta2HorizontalPodAutoscalerStatus
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_soa_metadata
 
+from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
@@ -130,6 +138,7 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeployBlacklist
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_config_hash
@@ -151,7 +160,6 @@ log = logging.getLogger(__name__)
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
-CONFIG_HASH_BLACKLIST = {"replicas"}
 KUBE_DEPLOY_STATEGY_MAP = {
     "crossover": "RollingUpdate",
     "downthenup": "Recreate",
@@ -210,8 +218,9 @@ class KubeDeployment(NamedTuple):
     service: str
     instance: str
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
-    replicas: int
+    replicas: Optional[int]
 
 
 class KubeCustomResource(NamedTuple):
@@ -236,6 +245,7 @@ class KubernetesServiceRegistration(NamedTuple):
     port: int
     pod_ip: str
     registrations: Sequence[str]
+    weight: int
 
 
 class CustomResourceDefinition(NamedTuple):
@@ -264,14 +274,21 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
 
 KubeContainerResourceRequest = TypedDict(
     "KubeContainerResourceRequest",
-    {"cpu": float, "memory": str, "ephemeral-storage": str,},
+    {
+        "cpu": float,
+        "memory": str,
+        "ephemeral-storage": str,
+    },
     total=False,
 )
 
 
 SidecarResourceRequirements = TypedDict(
     "SidecarResourceRequirements",
-    {"requests": KubeContainerResourceRequest, "limits": KubeContainerResourceRequest,},
+    {
+        "requests": KubeContainerResourceRequest,
+        "limits": KubeContainerResourceRequest,
+    },
     total=False,
 )
 
@@ -292,16 +309,24 @@ KubePodAnnotations = TypedDict(
 KubePodLabels = TypedDict(
     "KubePodLabels",
     {
+        # NOTE: we can't use the paasta_prefixed() helper here
+        # since mypy expects TypedDict keys to be string literals
         "paasta.yelp.com/deploy_group": str,
         "paasta.yelp.com/git_sha": str,
+        "paasta.yelp.com/image_version": str,
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
+        "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/service": str,
+        "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/pool": str,
+        "paasta.yelp.com/weight": str,
+        "yelp.com/owner": str,
     },
     total=False,
 )
@@ -321,6 +346,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     routable_ip: bool
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
+    boto_keys: List[str]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -407,12 +433,12 @@ def load_kubernetes_service_config(
 
 
 def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
-    """ Returns `name` unchanged if it's length does not exceed the `limit`.
-        Otherwise, returns truncated `name` with it's hash of size `suffix`
-        appended.
+    """Returns `name` unchanged if it's length does not exceed the `limit`.
+    Otherwise, returns truncated `name` with it's hash of size `suffix`
+    appended.
 
-        base32 encoding is chosen as it satisfies the common requirement in
-        various k8s names to be alphanumeric.
+    base32 encoding is chosen as it satisfies the common requirement in
+    various k8s names to be alphanumeric.
     """
     if len(name) > limit:
         digest = hashlib.md5(name.encode()).digest()
@@ -430,7 +456,7 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self) -> None:
+    def __init__(self, component: Optional[str] = None) -> None:
         kube_config.load_kube_config(
             config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
             context=os.environ.get("KUBECONTEXT"),
@@ -441,15 +467,27 @@ class KubeClient:
             ),
             fset=_set_disrupted_pods,
         )
-
-        self.deployments = kube_client.AppsV1Api()
-        self.core = kube_client.CoreV1Api()
-        self.policy = kube_client.PolicyV1beta1Api()
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api()
-        self.custom = kube_client.CustomObjectsApi()
-        self.autoscaling = kube_client.AutoscalingV2beta2Api()
+        if not component:
+            # If we don't get an explicit component set via constructor,
+            # try to find it by looking back in the stack, and getting `__file__` from
+            # the context calling this constructor
+            # Normally, `__module__` would make more sense, but since we have a lot of
+            # single scripts we directly call, that would be set to `__main__` most of the time.
+            current = currentframe()
+            parent = current.f_back
+            component = parent.f_globals.get("__file__", "unknown")
 
         self.api_client = kube_client.ApiClient()
+        self.api_client.user_agent = f"paasta/{component}/v{__version__}"
+
+        self.deployments = kube_client.AppsV1Api(self.api_client)
+        self.core = kube_client.CoreV1Api(self.api_client)
+        self.policy = kube_client.PolicyV1beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
+        self.custom = kube_client.CustomObjectsApi(self.api_client)
+        self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
+        self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
+
         self.request = self.api_client.request
         # This function is used by the k8s client to serialize OpenAPI objects
         # into JSON before posting to the api. The JSON output can be used
@@ -516,9 +554,9 @@ def raw_selectors_to_requirements(
 
 
 def registration_label(namespace: str) -> str:
-    """ Returns namespace prefixed with registrations.{paasta_prefix}/, with
-        name part of label key truncated to 63 characters with hash as suffix
-        if needed.
+    """Returns namespace prefixed with registrations.{paasta_prefix}/, with
+    name part of label key truncated to 63 characters with hash as suffix
+    if needed.
     """
     limited_namespace = limit_size_with_hash(namespace, limit=63, suffix=4)
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
@@ -588,7 +626,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     # TODO: move the default scaling policy to system paasta configs
     def get_autoscaling_scaling_policy(
-        self, max_replicas: int, autoscaling_params: AutoscalingParamsDict,
+        self,
+        max_replicas: int,
+        autoscaling_params: AutoscalingParamsDict,
     ) -> Dict:
         """Returns the k8s HPA scaling policy in raw JSON. Requires k8s v1.18
         to work.
@@ -676,7 +716,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                                 api_version="apps/v1", kind="Deployment", name=name
                             ),
                             target=V2beta2MetricTarget(
-                                type="Value", value=int(target * 100),
+                                type="Value",
+                                value=int(target * 100),
                             ),
                         ),
                     )
@@ -698,35 +739,44 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in ("http", "uwsgi"):
-            # this is kinda ugly, but we're going to get rid of http as a metrics provider soon
-            # which should make this look less silly.
-            use_prometheus = autoscaling_params.get(
-                "use_prometheus", DEFAULT_USE_PROMETHEUS_UWSGI
-            )
-            if metrics_provider == "uwsgi" and use_prometheus:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=prometheus_hpa_metric_name
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1", kind="Deployment", name=name
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                # we average the number of instances needed to handle the current (or
-                                # averaged) load instead of the load itself as this leads to more
-                                # stable behavior. we return the percentage by which we want to
-                                # scale, so the target in the HPA should always be 1.
-                                # PAASTA-16756 for details
-                                value=1,
-                            ),
+        elif metrics_provider in {"uwsgi", "piscina"}:
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
                         ),
-                    )
+                        target=V2beta2MetricTarget(
+                            type="Value",
+                            # we average the number of instances needed to handle the current (or
+                            # averaged) load instead of the load itself as this leads to more
+                            # stable behavior. we return the percentage by which we want to
+                            # scale, so the target in the HPA should always be 1.
+                            # PAASTA-16756 for details
+                            value=1,
+                        ),
+                    ),
                 )
+            )
+        elif metrics_provider in {"arbitrary_promql"}:
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
+                        ),
+                        target=V2beta2MetricTarget(
+                            # Use the setpoint specified by the user.
+                            type="Value",
+                            value=target,
+                        ),
+                    ),
+                )
+            )
         else:
             log.error(
                 f"Unknown metrics_provider specified: {metrics_provider} for\
@@ -755,7 +805,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # we need to monkey-patch scaling policies until the library is updated
         # v1.18.
         scaling_policy = self.get_autoscaling_scaling_policy(
-            max_replicas, autoscaling_params,
+            max_replicas,
+            autoscaling_params,
         )
         if scaling_policy:
             hpa = kube_client.jsonify(hpa)  # this is a hack, see KubeClient class
@@ -827,6 +878,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=253
         )
 
+    def get_boto_secret_volume_name(self, service_name: str) -> str:
+        return self.get_sanitised_volume_name(
+            f"secret-boto-key-{service_name}", length_limit=63
+        )
+
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get("mode", "RO") == "RO"
 
@@ -850,7 +906,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         hacheck_sidecar_volumes: Sequence[DockerVolume],
     ) -> Sequence[V1Container]:
         hacheck_container = self.get_hacheck_sidecar_container(
-            system_paasta_config, service_namespace_config, hacheck_sidecar_volumes,
+            system_paasta_config,
+            service_namespace_config,
+            hacheck_sidecar_volumes,
         )
         uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
             system_paasta_config
@@ -862,6 +920,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if uwsgi_exporter_container:
             sidecars.append(uwsgi_exporter_container)
         return sidecars
+
+    def get_readiness_check_prefix(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+        initial_delay: float,
+        period_seconds: float,
+    ) -> List[str]:
+        return [
+            x.format(initial_delay=initial_delay, period_seconds=period_seconds)
+            for x in system_paasta_config.get_readiness_check_prefix_template()
+        ]
 
     def get_hacheck_sidecar_container(
         self,
@@ -877,17 +946,33 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_enable_nerve_readiness_check(system_paasta_config)
             or self.get_enable_envoy_readiness_check(system_paasta_config)
         ):
+            initial_delay = self.get_healthcheck_grace_period_seconds()
+            # COMPINFRA-989, this used to be hardcoded to always be 10 seconds
+            # and to not cause rolling updates on everything at once this is a config option for now
+            if not system_paasta_config.get_hacheck_match_initial_delay():
+                initial_delay = 10
+            period_seconds = 10
             readiness_probe = V1Probe(
                 _exec=V1ExecAction(
-                    command=self.get_readiness_check_script(system_paasta_config)
+                    command=self.get_readiness_check_prefix(
+                        system_paasta_config=system_paasta_config,
+                        initial_delay=initial_delay,
+                        period_seconds=period_seconds,
+                    )
+                    + self.get_readiness_check_script(system_paasta_config)
                     + [str(self.get_container_port())]
                     + self.get_registrations()
                 ),
-                initial_delay_seconds=10,
-                period_seconds=10,
+                initial_delay_seconds=initial_delay,
+                period_seconds=period_seconds,
             )
         else:
             readiness_probe = None
+
+        hacheck_registrations_env = V1EnvVar(
+            name="MESH_REGISTRATIONS",
+            value=" ".join(self.get_registrations()),
+        )
 
         if service_namespace_config.is_in_smartstack():
             return V1Container(
@@ -905,7 +990,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
                 resources=self.get_sidecar_resource_requirements("hacheck"),
                 name=HACHECK_POD_NAME,
-                env=self.get_kubernetes_environment(),
+                env=self.get_kubernetes_environment() + [hacheck_registrations_env],
                 ports=[V1ContainerPort(container_port=6666)],
                 readiness_probe=readiness_probe,
                 volume_mounts=self.get_volume_mounts(
@@ -918,7 +1003,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return None
 
     def get_uwsgi_exporter_sidecar_container(
-        self, system_paasta_config: SystemPaastaConfig,
+        self,
+        system_paasta_config: SystemPaastaConfig,
     ) -> Optional[V1Container]:
 
         if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
@@ -951,7 +1037,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return None
 
     def should_run_uwsgi_exporter_sidecar(
-        self, system_paasta_config: SystemPaastaConfig,
+        self,
+        system_paasta_config: SystemPaastaConfig,
     ) -> bool:
         if self.is_autoscaling_enabled():
             autoscaling_params = self.get_autoscaling_params()
@@ -963,6 +1050,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ):
                     return True
         return False
+
+    def should_setup_piscina_prometheus_scraping(
+        self,
+    ) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            return autoscaling_params["metrics_provider"] == "piscina"
+        return False
+
+    def get_env(
+        self, system_paasta_config: Optional["SystemPaastaConfig"] = None
+    ) -> Dict[str, str]:
+        env = super().get_env(system_paasta_config=system_paasta_config)
+        # see CLIENTOBS-64 and PAASTA-17558
+        # this is deliberately set here to make sure it is only available for
+        # k8s long-running services. putting this in `InstanceConfig.get_env` will
+        # make it available for all workloads, which will cause big bounces and
+        # continuous reconfiguring every time soa-configs is updated unless the
+        # env var is deliberately excluded from config hashing for those workloads
+        # as well.
+        env["PAASTA_SOA_CONFIGS_SHA"] = read_soa_metadata(soa_dir=self.soa_dir).get(
+            "git_sha", ""
+        )
+        return env
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
         secret_env_vars = {}
@@ -1087,7 +1198,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         }
         limits.update(config.get("limits", {}))
 
-        return V1ResourceRequirements(limits=limits, requests=requests,)
+        return V1ResourceRequirements(
+            limits=limits,
+            requests=requests,
+        )
 
     def get_liveness_probe(
         self, service_namespace_config: ServiceNamespaceConfig
@@ -1266,7 +1380,42 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        boto_volume = self.get_boto_volume()
+        if boto_volume:
+            pod_volumes.append(boto_volume)
         return pod_volumes
+
+    def get_boto_volume(self) -> Optional[V1Volume]:
+        required_boto_keys = self.config_dict.get("boto_keys", [])
+        service_name = self.get_sanitised_deployment_name()
+        if not required_boto_keys:
+            return None
+        items = []
+        for boto_key in required_boto_keys:
+            for filetype in ["sh", "yaml", "cfg", "json"]:
+                this_key = boto_key + "." + filetype
+                secret_name = this_key.replace(".", "-").replace("_", "--")
+                item = V1KeyToPath(
+                    key=secret_name,
+                    mode=mode_to_int("0444"),
+                    path=this_key,
+                )
+                items.append(item)
+        # Check that boto keys actually exist as secrets
+        secret_hash = self.get_boto_secret_hash()
+        if not secret_hash:
+            log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
+            return None
+        secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
+        volume = V1Volume(
+            name=self.get_boto_secret_volume_name(service_name),
+            secret=V1SecretVolumeSource(
+                secret_name=secret_name,
+                default_mode=mode_to_int("0444"),
+                items=items,
+            ),
+        )
+        return volume
 
     def get_volume_mounts(
         self,
@@ -1275,7 +1424,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
     ) -> Sequence[V1VolumeMount]:
-        return (
+        volume_mounts = (
             [
                 V1VolumeMount(
                     mount_path=docker_volume["containerPath"],
@@ -1308,6 +1457,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
                 for volume in secret_volumes
             ]
+        )
+        if self.config_dict.get("boto_keys", []):
+            secret_hash = self.get_boto_secret_hash()
+            service_name = self.get_sanitised_deployment_name()
+            if secret_hash:
+                mount = V1VolumeMount(
+                    mount_path="/etc/boto_cfg",
+                    name=self.get_boto_secret_volume_name(service_name),
+                    read_only=True,
+                )
+                for existing_mount in volume_mounts:
+                    if existing_mount.mount_path == "/etc/boto_cfg":
+                        volume_mounts.remove(existing_mount)
+                        break
+                volume_mounts.append(mount)
+        return volume_mounts
+
+    def get_boto_secret_hash(self) -> str:
+        kube_client = KubeClient()
+        deployment_name = self.get_sanitised_deployment_name()
+        service_name = self.get_sanitised_service_name()
+        secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
+        return get_kubernetes_secret_signature(
+            kube_client=kube_client, secret=secret_name, service=service_name
         )
 
     def get_sanitised_service_name(self) -> str:
@@ -1344,10 +1517,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
     def get_min_instances(self) -> Optional[int]:
-        return self.config_dict.get("min_instances", 1,)
+        return self.config_dict.get(
+            "min_instances",
+            1,
+        )
 
     def get_max_instances(self) -> Optional[int]:
-        return self.config_dict.get("max_instances", None,)
+        return self.config_dict.get(
+            "max_instances",
+            None,
+        )
 
     def set_autoscaled_instances(
         self, instance_count: int, kube_client: KubeClient
@@ -1358,7 +1537,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_desired_instances(self) -> int:
-        """ For now if we have an EBS instance it means we can only have 1 instance
+        """For now if we have an EBS instance it means we can only have 1 instance
         since we can't attach to multiple instances. In the future we might support
         statefulsets which are clever enough to manage EBS for you"""
         instances = super().get_desired_instances()
@@ -1409,6 +1588,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                paasta_prefixed("autoscaled"): str(
+                    self.is_autoscaling_enabled()
+                ).lower(),
             },
         )
 
@@ -1500,6 +1682,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "paasta.yelp.com/prometheus_shard"
                 ] = prometheus_shard
 
+            image_version = self.get_image_version()
+            if image_version is not None:
+                complete_config.metadata.labels[
+                    "paasta.yelp.com/image_version"
+                ] = image_version
+
             # DO NOT ADD LABELS AFTER THIS LINE
             config_hash = get_config_hash(
                 self.sanitize_for_config_hash(complete_config),
@@ -1565,7 +1753,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
-        if metrics_provider in {"http", "uwsgi"}:
+        # TODO: see if we can remove this as we're no longer using sfx data to scale
+        if metrics_provider == "uwsgi":
             annotations["autoscaling"] = metrics_provider
 
         pod_spec_kwargs = {}
@@ -1607,6 +1796,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "termination_grace_period_seconds"
             ] = termination_grace_period
 
+        fs_group = self.get_fs_group()
+
         if self.get_iam_role_provider() == "aws":
             annotations["iam.amazonaws.com/role"] = ""
             iam_role = self.get_iam_role()
@@ -1614,20 +1805,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 pod_spec_kwargs[
                     "service_account_name"
                 ] = create_or_find_service_account_name(iam_role)
-                # PAASTA-16919: remove everything related to fs_group when
-                # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
-                # will be fixed.
-                fs_group = self.get_fs_group()
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
-                    # running inside the container.  Seems like most of such
+                    # running inside the container. Seems like most of such
                     # programs run as `nobody`, let's use that as a default.
+                    #
+                    # PAASTA-16919: This should be removed when
+                    # https://github.com/aws/amazon-eks-pod-identity-webhook/issues/8
+                    # is fixed.
                     fs_group = 65534
-                pod_spec_kwargs["security_context"] = V1PodSecurityContext(
-                    fs_group=fs_group
-                )
         else:
             annotations["iam.amazonaws.com/role"] = self.get_iam_role()
+
+        if fs_group is not None:
+            pod_spec_kwargs["security_context"] = V1PodSecurityContext(
+                fs_group=fs_group
+            )
 
         # prometheus_path is used to override the default scrape path in Prometheus
         prometheus_path = self.get_prometheus_path()
@@ -1644,16 +1837,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "yelp.com/paasta_service": self.get_service(),
             "yelp.com/paasta_instance": self.get_instance(),
             "yelp.com/paasta_git_sha": git_sha,
+            # NOTE: we can't use the paasta_prefixed() helper here
+            # since mypy expects TypedDict keys to be string literals
             "paasta.yelp.com/service": self.get_service(),
             "paasta.yelp.com/instance": self.get_instance(),
             "paasta.yelp.com/git_sha": git_sha,
+            "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
+            "paasta.yelp.com/pool": self.get_pool(),
+            "yelp.com/owner": "compute_infra_platform_experience",
         }
+        if service_namespace_config.is_in_smartstack():
+            labels["paasta.yelp.com/weight"] = str(self.get_weight())
 
         # Allow the Prometheus Operator's Pod Service Monitor for specified
         # shard to find this pod
         prometheus_shard = self.get_prometheus_shard()
         if prometheus_shard:
             labels["paasta.yelp.com/prometheus_shard"] = prometheus_shard
+
+        image_version = self.get_image_version()
+        if image_version is not None:
+            labels["paasta.yelp.com/image_version"] = image_version
 
         if system_paasta_config.get_kubernetes_add_registration_labels():
             # Allow Kubernetes Services to easily find
@@ -1679,8 +1883,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
+        elif self.should_setup_piscina_prometheus_scraping():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+
         return V1PodTemplateSpec(
-            metadata=V1ObjectMeta(labels=labels, annotations=annotations,),
+            metadata=V1ObjectMeta(
+                labels=labels,
+                annotations=annotations,
+            ),
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
@@ -1704,7 +1915,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         only selectors. To see affinities, use `kubectl get pod -o json` instead.
         """
         requirements = allowlist_denylist_to_requirements(
-            allowlist=self.get_deploy_whitelist(), denylist=self.get_deploy_blacklist(),
+            allowlist=self.get_deploy_whitelist(),
+            denylist=self.get_deploy_blacklist(),
         )
         requirements.extend(
             raw_selectors_to_requirements(
@@ -1716,7 +1928,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
         term = V1NodeSelectorTerm(
             match_expressions=[
-                V1NodeSelectorRequirement(key=key, operator=op, values=vs,)
+                V1NodeSelectorRequirement(
+                    key=key,
+                    operator=op,
+                    values=vs,
+                )
                 for key, op, vs in requirements
             ]
         )
@@ -1777,23 +1993,29 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """Removes some data from config to make it suitable for
         calculation of config hash.
 
-        :param config: complete_config hash to sanitize
-        :returns: sanitized copy of complete_config hash
+        :param config: complete_config hash to sanitise
+        :returns: sanitised copy of complete_config hash
         """
-        ahash = {
-            key: copy.deepcopy(value)
-            for key, value in config.to_dict().items()
-            if key not in CONFIG_HASH_BLACKLIST
-        }
-        spec = ahash["spec"]
-        ahash["spec"] = {
-            key: copy.deepcopy(value)
-            for key, value in spec.items()
-            if key not in CONFIG_HASH_BLACKLIST
-        }
+        ahash = config.to_dict()  # deep convert to dict
         ahash["paasta_secrets"] = get_kubernetes_secret_hashes(
             service=self.get_service(), environment_variables=self.get_env()
         )
+
+        # remove data we dont want used to hash configs
+        # replica count
+        if ahash["spec"] is not None:
+            del ahash["spec"]["replicas"]
+        # soa-configs SHA
+        try:
+            for container in ahash["spec"]["template"]["spec"]["containers"]:
+                container["env"] = [
+                    e
+                    for e in container["env"]
+                    if e.get("name", "") != "PAASTA_SOA_CONFIGS_SHA"
+                ]
+        except TypeError:  # any of the values can be None
+            pass
+
         return ahash
 
     def get_termination_grace_period(self) -> Optional[int]:
@@ -1853,13 +2075,17 @@ def get_all_kubernetes_services_running_here() -> List[Tuple[str, str, int]]:
     return services
 
 
-def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistration]:
+def get_kubernetes_services_running_here(
+    exclude_terminating: bool = False,
+) -> Sequence[KubernetesServiceRegistration]:
     services = []
     pods = get_k8s_pods()
     for pod in pods["items"]:
-        if pod["status"]["phase"] != "Running" or "smartstack_registrations" not in pod[
-            "metadata"
-        ].get("annotations", {}):
+        if (
+            pod["status"]["phase"] != "Running"
+            or "smartstack_registrations" not in pod["metadata"].get("annotations", {})
+            or (exclude_terminating and pod["metadata"].get("deletionTimestamp"))
+        ):
             continue
         try:
             port = None
@@ -1867,6 +2093,12 @@ def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistra
                 if container["name"] != HACHECK_POD_NAME:
                     port = container["ports"][0]["containerPort"]
                     break
+
+            try:
+                weight = int(pod["metadata"]["labels"]["paasta.yelp.com/weight"])
+            except (KeyError, ValueError):
+                weight = 10
+
             services.append(
                 KubernetesServiceRegistration(
                     name=pod["metadata"]["labels"]["paasta.yelp.com/service"],
@@ -1876,6 +2108,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistra
                     registrations=json.loads(
                         pod["metadata"]["annotations"]["smartstack_registrations"]
                     ),
+                    weight=weight,
                 )
             )
         except KeyError as e:
@@ -1887,7 +2120,7 @@ def get_kubernetes_services_running_here() -> Sequence[KubernetesServiceRegistra
 
 def get_kubernetes_services_running_here_for_nerve(
     cluster: Optional[str], soa_dir: str
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+) -> List[Tuple[str, ServiceNamespaceConfig]]:
     try:
         system_paasta_config = load_system_paasta_config()
         if not cluster:
@@ -1898,10 +2131,16 @@ def get_kubernetes_services_running_here_for_nerve(
         # these custom exceptions and return [].
         if not system_paasta_config.get_register_k8s_pods():
             return []
+        exclude_terminating = (
+            not system_paasta_config.get_nerve_register_k8s_terminating()
+        )
+
     except PaastaNotConfiguredError:
         log.warning("No PaaSTA config so skipping registering k8s pods in nerve")
         return []
-    kubernetes_services = get_kubernetes_services_running_here()
+    kubernetes_services = get_kubernetes_services_running_here(
+        exclude_terminating=exclude_terminating
+    )
     nerve_list = []
     for kubernetes_service in kubernetes_services:
         try:
@@ -1928,6 +2167,7 @@ def get_kubernetes_services_running_here_for_nerve(
                     nerve_dict["extra_healthcheck_headers"] = {
                         "X-Nerve-Check-IP": kubernetes_service.pod_ip
                     }
+                nerve_dict["weight"] = kubernetes_service.weight
                 nerve_list.append((registration, nerve_dict))
         except (KeyError):
             continue  # SOA configs got deleted for this app, it'll get cleaned up
@@ -1944,7 +2184,10 @@ def force_delete_pods(
 ) -> None:
     # Note that KubeClient.deployments.delete_namespaced_deployment must be called prior to this method.
     pods_to_delete = a_sync.block(
-        pods_for_service_instance, paasta_service, instance, kube_client,
+        pods_for_service_instance,
+        paasta_service,
+        instance,
+        kube_client,
     )
     delete_options = V1DeleteOptions()
     for pod in pods_to_delete:
@@ -1983,8 +2226,14 @@ def list_deployments(
             service=item.metadata.labels["paasta.yelp.com/service"],
             instance=item.metadata.labels["paasta.yelp.com/instance"],
             git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
+            image_version=item.metadata.labels.get(
+                "paasta.yelp.com/image_version", None
+            ),
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas,
+            replicas=item.spec.replicas
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
+            else None,
         )
         for item in deployments.items + stateful_sets.items
     ]
@@ -2082,7 +2331,8 @@ def format_pod_event_messages(
 
 
 def format_tail_lines_for_kubernetes_pod(
-    pod_containers: Sequence, pod_name: str,
+    pod_containers: Sequence,
+    pod_name: str,
 ) -> List[str]:
     errors: List[str] = []
     lines: List[str] = []
@@ -2231,11 +2481,14 @@ def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
 
 
 def pod_disruption_budget_for_service_instance(
-    service: str, instance: str, max_unavailable: Union[str, int],
+    service: str,
+    instance: str,
+    max_unavailable: Union[str, int],
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(
-            name=get_kubernetes_app_name(service, instance), namespace="paasta",
+            name=get_kubernetes_app_name(service, instance),
+            namespace="paasta",
         ),
         spec=V1beta1PodDisruptionBudgetSpec(
             max_unavailable=max_unavailable,
@@ -2349,7 +2602,7 @@ async def controller_revisions_for_service_instance(
     return response.items
 
 
-@async_timeout()
+@async_timeout(15)
 async def pods_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[V1Pod]:
@@ -2391,7 +2644,9 @@ def filter_pods_by_service_instance(
     ]
 
 
-def _is_it_ready(it: Union[V1Pod, V1Node],) -> bool:
+def _is_it_ready(
+    it: Union[V1Pod, V1Node],
+) -> bool:
     ready_conditions = [
         cond.status == "True"
         for cond in it.status.conditions or []
@@ -2434,7 +2689,9 @@ class PodStatus(Enum):
 _POD_STATUS_NAME_TO_STATUS = {s.name.upper(): s for s in PodStatus}
 
 
-def get_pod_status(pod: V1Pod,) -> PodStatus:
+def get_pod_status(
+    pod: V1Pod,
+) -> PodStatus:
     # TODO: we probably also need to deduce extended statuses here, like
     # `CrashLoopBackOff`, `ContainerCreating` timeout, and etc.
     return _POD_STATUS_NAME_TO_STATUS[pod.status.phase.upper()]
@@ -2464,9 +2721,9 @@ def parse_container_resources(resources: Mapping[str, str]) -> KubeContainerReso
     return KubeContainerResources(cpus=cpus, mem=mem_mb, disk=disk_mb)
 
 
-def get_active_shas_for_service(
+def get_active_versions_for_service(
     obj_list: Sequence[Union[V1Pod, V1ReplicaSet, V1Deployment, V1StatefulSet]],
-) -> Set[Tuple[str, str]]:
+) -> Set[Tuple[DeploymentVersion, str]]:
     ret = set()
 
     for obj in obj_list:
@@ -2478,13 +2735,22 @@ def get_active_shas_for_service(
         if git_sha and git_sha.startswith("git"):
             git_sha = git_sha[len("git") :]
 
+        image_version = obj.metadata.labels.get("paasta.yelp.com/image_version")
+
         # Suppress entries where we have no clue what's running.
         if git_sha or config_sha:
-            ret.add((git_sha, config_sha))
+            ret.add(
+                (
+                    DeploymentVersion(sha=git_sha, image_version=image_version),
+                    config_sha,
+                )
+            )
     return ret
 
 
-def get_all_nodes(kube_client: KubeClient,) -> Sequence[V1Node]:
+def get_all_nodes(
+    kube_client: KubeClient,
+) -> Sequence[V1Node]:
     return kube_client.core.list_node().items
 
 
@@ -2517,7 +2783,9 @@ def filter_nodes_by_blacklist(
     ]
 
 
-def paasta_prefixed(attribute: str,) -> str:
+def paasta_prefixed(
+    attribute: str,
+) -> str:
     # discovery attributes are exempt for now
     if attribute in DISCOVERY_ATTRIBUTES:
         return YELP_ATTRIBUTE_PREFIX + attribute
@@ -2598,7 +2866,8 @@ def patch_deployment(
 
 def delete_deployment(kube_client: KubeClient, deployment_name: str) -> None:
     return kube_client.deployments.delete_namespaced_deployment(
-        name=deployment_name, namespace="paasta",
+        name=deployment_name,
+        namespace="paasta",
     )
 
 
@@ -2663,7 +2932,9 @@ async def get_events_for_object(
 
 @async_timeout()
 async def get_hpa(
-    kube_client: KubeClient, name: str, namespace: str,
+    kube_client: KubeClient,
+    name: str,
+    namespace: str,
 ) -> V2beta2HorizontalPodAutoscaler:
     async_get_hpa = a_sync.to_async(
         kube_client.autoscaling.read_namespaced_horizontal_pod_autoscaler
@@ -2678,7 +2949,8 @@ async def get_hpa(
 
 
 def get_kubernetes_app_deploy_status(
-    app: Union[V1Deployment, V1StatefulSet], desired_instances: int,
+    app: Union[V1Deployment, V1StatefulSet],
+    desired_instances: int,
 ) -> Tuple[int, str]:
     if app.status.ready_replicas is None:
         if desired_instances == 0:
@@ -2704,7 +2976,7 @@ def get_kubernetes_app_deploy_status(
 
 
 class KubernetesDeployStatus:
-    """ An enum to represent Kubernetes app deploy status.
+    """An enum to represent Kubernetes app deploy status.
     Changing name of the keys will affect both the paasta CLI and API.
     """
 
@@ -2754,6 +3026,30 @@ def create_secret(
     )
 
 
+def create_plaintext_dict_secret(
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.create_namespaced_secret(
+        namespace=namespace,
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
+        ),
+    )
+
+
 def update_secret(
     kube_client: KubeClient,
     secret: str,
@@ -2783,8 +3079,36 @@ def update_secret(
     )
 
 
+def update_plaintext_dict_secret(
+    kube_client: KubeClient,
+    secret_name: str,
+    secret_data: dict,
+    service: str,
+    namespace: str = "paasta",
+) -> None:
+    service = sanitise_kubernetes_name(service)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    kube_client.core.replace_namespaced_secret(
+        name=sanitised_secret,
+        namespace=namespace,
+        body=V1Secret(
+            metadata=V1ObjectMeta(
+                name=sanitised_secret,
+                labels={
+                    "yelp.com/paasta_service": service,
+                    "paasta.yelp.com/service": service,
+                },
+            ),
+            data=secret_data,
+        ),
+    )
+
+
 def get_kubernetes_secret_signature(
-    kube_client: KubeClient, secret: str, service: str, namespace: str = "paasta",
+    kube_client: KubeClient,
+    secret: str,
+    service: str,
+    namespace: str = "paasta",
 ) -> Optional[str]:
     service = sanitise_kubernetes_name(service)
     secret = sanitise_kubernetes_name(secret)
@@ -2852,7 +3176,9 @@ def create_kubernetes_secret_signature(
     )
 
 
-def sanitise_kubernetes_name(service: str,) -> str:
+def sanitise_kubernetes_name(
+    service: str,
+) -> str:
     name = service.replace("_", "--")
     if name.startswith("--"):
         name = name.replace("--", "underscore-", 1)
@@ -2950,21 +3276,60 @@ def to_node_label(label: str) -> str:
 
 
 def get_all_service_accounts(
-    kube_client: KubeClient, namespace: str,
+    kube_client: KubeClient,
+    namespace: str,
 ) -> Sequence[V1ServiceAccount]:
     return kube_client.core.list_namespaced_service_account(namespace=namespace).items
+
+
+def get_all_role_bindings(
+    kube_client: KubeClient,
+    namespace: str,
+) -> Sequence[V1RoleBinding]:
+    return kube_client.rbac.list_namespaced_role_binding(namespace=namespace).items
 
 
 _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
 def create_or_find_service_account_name(
-    iam_role: str, namespace: str = "paasta"
+    iam_role: str,
+    namespace: str = "paasta",
+    k8s_role: Optional[str] = None,
+    dry_run: bool = False,
 ) -> str:
+    # the service account is expected to always be prefixed with paasta- as using the actual namespace
+    # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
+    # the actual name
+    if iam_role:  # this is either an empty string or a real role
+        # it's possible for an IAM role to be used for multiple purposes. Some usages may require a
+        # Kubernetes Role attached to the Service Account (e.g., Spark drivers may access S3 but also
+        # need to manage Spark executor Pods), while "normal" services/batches need a Service Account
+        # with only an IAM role attached.
+        # to support these two usecases, we'll suffix the name of a Service Account with the
+        # Kubernetes Role name to disambiguate between the two.
+        if k8s_role:
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}--{k8s_role}"
+        else:
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
+    # until Core ML migrates Spark to use Pod Identity, we need to support starting Spark drivers with a Service Account
+    # that only has k8s access
+    elif not iam_role and k8s_role:
+        sa_name = f"paasta--{k8s_role}"
+    # we should never get here in normal usage, but just in case we make a mistake in the future :)
+    else:
+        raise ValueError(
+            "Expected at least one of iam_role or k8s_role to be passed in!"
+        )
+
+    # if someone is dry-running paasta_setup_tron_namespace or some other tool that
+    # calls this function, we probably don't want to mutate k8s state :)
+    if dry_run:
+        return sa_name
+
     kube_client = KubeClient()
-    sa_name = "paasta--" + _RE_NORMALIZE_IAM_ROLE.sub("-", iam_role)
     if not any(
-        sa.metadata.name == sa_name
+        sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
     ):
         sa = V1ServiceAccount(
@@ -2976,6 +3341,41 @@ def create_or_find_service_account_name(
             ),
         )
         kube_client.core.create_namespaced_service_account(namespace=namespace, body=sa)
+
+    # we're expecting that any Role dynamically associated with a Service Account already exists.
+    # at Yelp, this means that we have a version-controlled resource for the Role in Puppet.
+    # and since the Role already exists, we just need to associate it with the Service Account through
+    # a Role Binding
+    if k8s_role:
+        # that said, we still check that there's a RoleBinding every time this function is called so that
+        # we can self-heal if we somehow create a Service Account and then fail to create a Role Binding
+        # due to a transient issue
+        if not any(
+            rb.metadata and rb.metadata.name == sa_name
+            for rb in get_all_role_bindings(kube_client, namespace)
+        ):
+            role_binding = V1RoleBinding(
+                metadata=V1ObjectMeta(
+                    name=sa_name,
+                    namespace=namespace,
+                ),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=sa_name,
+                    ),
+                ],
+            )
+            kube_client.rbac.create_namespaced_role_binding(
+                namespace=namespace, body=role_binding
+            )
+
     return sa_name
 
 
@@ -2986,3 +3386,49 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
                 raise ValueError(f"Invalid mode: {mode}")
             mode = int(mode[1:], 8)
     return mode
+
+
+def update_crds(
+    kube_client: KubeClient,
+    desired_crds: Collection[V1beta1CustomResourceDefinition],
+    existing_crds: V1CustomResourceDefinitionList,
+) -> bool:
+    success = True
+    for desired_crd in desired_crds:
+        existing_crd = None
+        for crd in existing_crds.items:
+            if crd.metadata.name == desired_crd.metadata["name"]:
+                existing_crd = crd
+                break
+
+        try:
+            if existing_crd:
+                desired_crd.metadata[
+                    "resourceVersion"
+                ] = existing_crd.metadata.resource_version
+                kube_client.apiextensions.replace_custom_resource_definition(
+                    name=desired_crd.metadata["name"], body=desired_crd
+                )
+            else:
+                try:
+                    kube_client.apiextensions.create_custom_resource_definition(
+                        body=desired_crd
+                    )
+                except ValueError as err:
+                    # TODO: kubernetes server will sometimes reply with conditions:null,
+                    # figure out how to deal with this correctly, for more details:
+                    # https://github.com/kubernetes/kubernetes/pull/64996
+                    if "`conditions`, must not be `None`" in str(err):
+                        pass
+                    else:
+                        raise err
+            log.info(f"deployed internal crd {desired_crd.metadata['name']}")
+        except ApiException as exc:
+            log.error(
+                f"error deploying crd {desired_crd.metadata['name']}, "
+                f"status: {exc.status}, reason: {exc.reason}"
+            )
+            log.debug(exc.body)
+            success = False
+
+    return success

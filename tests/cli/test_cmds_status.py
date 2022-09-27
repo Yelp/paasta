@@ -39,6 +39,7 @@ from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
 from paasta_tools.cli.cmds.status import format_marathon_task_table
+from paasta_tools.cli.cmds.status import get_flink_job_name
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
@@ -49,6 +50,7 @@ from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
+from paasta_tools.cli.cmds.status import print_cassandra_status
 from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
@@ -158,6 +160,7 @@ def test_report_status_calls_report_invalid_whitelist_values(
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
         system_paasta_config=system_paasta_config,
+        lock=MagicMock(),
     )
     mock_report_invalid_whitelist_values.assert_called_once_with(
         [], ["instance1", "instance2"], "instance"
@@ -216,7 +219,9 @@ def test_status_pending_pipeline_build_message(
 
 
 @patch("paasta_tools.cli.cmds.status.load_deployments_json", autospec=True)
-def test_get_actual_deployments(mock_get_deployments,):
+def test_get_actual_deployments(
+    mock_get_deployments,
+):
     mock_get_deployments.return_value = utils.DeploymentsJsonV1(
         {
             "fake_service:paasta-b_cluster.b_instance": {
@@ -322,6 +327,7 @@ def test_status_calls_sergeants(
         cluster=cluster,
         instance_whitelist={"fi": mock_instance_config.__class__},
         system_paasta_config=system_paasta_config,
+        lock=mock.ANY,
         verbose=False,
         new=False,
     )
@@ -874,6 +880,7 @@ def test_status_with_registration(
             "instance2": mock_inst_2.__class__,
         },
         system_paasta_config=system_paasta_config,
+        lock=mock.ANY,
         verbose=args.verbose,
         new=False,
     )
@@ -892,7 +899,9 @@ def mock_marathon_status(include_envoy=True, include_smartstack=True):
         bounce_method="crossover",
         app_statuses=[],
         mesos=paastamodels.MarathonMesosStatus(
-            running_task_count=2, running_tasks=[], non_running_tasks=[],
+            running_task_count=2,
+            running_tasks=[],
+            non_running_tasks=[],
         ),
     )
     if include_smartstack:
@@ -936,6 +945,591 @@ def mock_kubernetes_status():
             locations=[],
         ),
         evicted_count=1,
+    )
+
+
+@pytest.fixture
+def mock_cassandra_status() -> Mapping[str, Any]:
+    startTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=3)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+    return defaultdict(
+        metadata=dict(
+            name="kafka--k8s-local-main",
+            namespace="paasta-kafkaclusters",
+            annotations={"paasta.yelp.com/desired_state": "testing"},
+        ),
+        status=dict(
+            leaseID=3084822305308040700,
+            nodes=[
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.210.204",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1cdevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "28.19 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": None,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "c4977a17-6695-4632-b0ba-505a9f3f9d0b",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.200.181",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1cdevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "29.68 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "6da1fd1f-474e-4877-b63e-64283975cdf4",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.130.60",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Available",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "OperationMode",
+                            "value": "NORMAL",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Joined",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Datacenter",
+                            "value": "norcal-devc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Rack",
+                            "value": "uswest1adevc",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Load",
+                            "value": "22.07 MiB",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Tokens",
+                            "value": 256,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Starting",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Initialized",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Drained",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 1,
+                            "name": "Draining",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "LocalHostID",
+                            "value": "5d914aad-27a8-4bd6-93cf-8ead8b9e4cf5",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Schema",
+                            "value": "5c3089e7-013b-30bb-8911-ed03837075d3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RemovalStatus",
+                            "value": "No token removals in process.",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "DrainProgress",
+                            "value": "Drained 0/0 ColumnFamilies",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "RPCServerRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NativeTransportRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "GossipRunning",
+                            "value": True,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "IncBackupEnabled",
+                            "value": False,
+                            "type": "bool",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "Version",
+                            "value": "3.11.3",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ClusterName",
+                            "value": "activity-feed",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintsInProgress",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "ReadRepairAttempted",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "NumberOfTables",
+                            "value": 48,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "TotalHints",
+                            "value": 0,
+                            "type": "int",
+                        },
+                        {
+                            "verbosity": 2,
+                            "name": "HintedHandoffEnabled",
+                            "value": True,
+                            "type": "bool",
+                        },
+                    ],
+                },
+                {
+                    "properties": [
+                        {
+                            "verbosity": 0,
+                            "name": "IP",
+                            "value": "10.93.180.201",
+                            "type": "string",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "StartTime",
+                            "value": startTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "InspectedAt",
+                            "value": inspectTime,
+                            "type": "time",
+                        },
+                        {
+                            "verbosity": 0,
+                            "name": "Error",
+                            "value": "oops",
+                            "type": "error",
+                        },
+                    ],
+                },
+            ],
+            state="Running",
+        ),
     )
 
 
@@ -1063,13 +1657,12 @@ def test_paasta_status_on_api_endpoint_marathon(
     mock_api = mock_get_paasta_oapi_client.return_value
     mock_api.service.status_instance.return_value = fake_status_obj
 
-    output = []
     paasta_status_on_api_endpoint(
         cluster="fake_cluster",
         service="fake_service",
         instance="fake_instance",
-        output=output,
         system_paasta_config=system_paasta_config,
+        lock=MagicMock(),
         verbose=0,
     )
 
@@ -1088,8 +1681,8 @@ def test_paasta_status_exception(system_paasta_config):
             cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
-            output=[],
             system_paasta_config=system_paasta_config,
+            lock=MagicMock(),
             verbose=False,
         )
 
@@ -1173,10 +1766,12 @@ class TestPrintMarathonStatus:
         include_smartstack,
         include_envoy,
     ):
-        mock_marathon_app_status_human.side_effect = lambda desired_app_id, app_status: [
-            f"{app_status.deploy_status} status 1",
-            f"{app_status.deploy_status} status 2",
-        ]
+        mock_marathon_app_status_human.side_effect = (
+            lambda desired_app_id, app_status: [
+                f"{app_status.deploy_status} status 1",
+                f"{app_status.deploy_status} status 2",
+            ]
+        )
         mock_marathon_mesos_status_human.return_value = [
             "mesos status 1",
             "mesos status 2",
@@ -1291,10 +1886,12 @@ class TestPrintKubernetesStatusV2:
         assert return_code == 0
 
     @mock.patch(
-        "paasta_tools.cli.cmds.status.get_instance_state", autospec=True,
+        "paasta_tools.cli.cmds.status.get_instance_state",
+        autospec=True,
     )
     @mock.patch(
-        "paasta_tools.cli.cmds.status.get_versions_table", autospec=True,
+        "paasta_tools.cli.cmds.status.get_versions_table",
+        autospec=True,
     )
     def test_output(
         self,
@@ -1388,7 +1985,9 @@ class TestGetVersionsTable:
             restart_count=0,
             healthcheck_grace_period=0,
             tail_lines=paastamodels.TaskTailLines(
-                stdout=["stdout 1", "stdout 2"], stderr=[], error_message="",
+                stdout=["stdout 1", "stdout 2"],
+                stderr=[],
+                error_message="",
             ),
         )
         return container
@@ -1405,7 +2004,9 @@ class TestGetVersionsTable:
             restart_count=100,
             healthcheck_grace_period=0,
             tail_lines=paastamodels.TaskTailLines(
-                stdout=["stdout 1", "stdout 2"], stderr=[], error_message="",
+                stdout=["stdout 1", "stdout 2"],
+                stderr=[],
+                error_message="",
             ),
         )
         return container
@@ -1643,6 +2244,15 @@ class TestGetVersionsTable:
             assert any(["1 Warning" in row for row in versions_table])
             assert any(["Healthchecks are failing" in row for row in versions_table])
 
+    def test_evicted_pods_unhealthy(self, mock_replicasets):
+        mock_replicasets[1].pods[1].phase = ""
+        mock_replicasets[1].pods[1].scheduled = False
+        mock_replicasets[1].pods[1].host = ""
+        versions_table = get_versions_table(
+            mock_replicasets, "service", "instance", "cluster", verbose=1
+        )
+        assert any(["1 Not Running" in row for row in versions_table])
+
 
 class TestPrintKubernetesStatus:
     def test_error(self, mock_kubernetes_status):
@@ -1764,6 +2374,114 @@ class TestPrintKubernetesStatus:
         assert expected_output == output
 
 
+class TestPrintCassandraStatus:
+    def test_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=0,
+        )
+        assert return_value == 0
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
+            f"            ",
+            f"            IP             StartTime   InspectedAt  Error",
+            f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
+            f"            ",
+        ]
+        assert expected_output == output
+
+    def test_verbose1_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=1,
+        )
+        assert return_value == 0
+
+        nodes = mock_cassandra_status["status"]["nodes"]
+        startTimes = list(
+            map(
+                lambda node: next(
+                    prop["value"]
+                    for prop in node["properties"]
+                    if prop["name"] == "StartTime"
+                ),
+                nodes,
+            )
+        )
+        inspectTimes = list(
+            map(
+                lambda node: next(
+                    prop["value"]
+                    for prop in node["properties"]
+                    if prop["name"] == "InspectedAt"
+                ),
+                nodes,
+            )
+        )
+
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
+            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     {startTimes[0]}                  {inspectTimes[0]}  No        Yes          No       No",
+            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTimes[1]}  {inspectTimes[1]}  No        Yes          No       No",
+            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTimes[2]}  {inspectTimes[2]}  No        Yes          No       No",
+            f"            ",
+            f"            IP             StartTime             InspectedAt           Error",
+            f"            10.93.180.201  {startTimes[3]}  {inspectTimes[3]}  {PaastaColors.red('oops')}",
+            f"            ",
+        ]
+        assert expected_output == output
+
+    def test_verbose2_output(self, mock_cassandra_status):
+        output = []
+        return_value = print_cassandra_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            cassandra_status=mock_cassandra_status,
+            verbose=2,
+        )
+        assert return_value == 0
+
+        nodes = mock_cassandra_status["status"]["nodes"]
+        expected_output = [
+            f"    Cassandra cluster:",
+            f"        State: {PaastaColors.green('Running')}",
+            f"        Nodes:",
+        ]
+        for node in nodes:
+            expected_output.append(f"            Node:")
+            for prop in node.get("properties"):
+                typ = prop.get("type")
+                value = prop.get("value")
+                if typ == "bool":
+                    value = "Yes" if value else "No"
+                if typ == "error":
+                    value = PaastaColors.red(value)
+                expected_output.append(f"                {prop['name']}: {value}")
+        assert expected_output == output
+
+
 class TestPrintKafkaStatus:
     def test_error(self, mock_kafka_status):
         mock_kafka_status["status"] = None
@@ -1793,7 +2511,9 @@ class TestPrintKafkaStatus:
 
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output(
-        self, mock_naturaltime, mock_kafka_status,
+        self,
+        mock_naturaltime,
+        mock_kafka_status,
     ):
         mock_naturaltime.return_value = "one day ago"
         output = []
@@ -1825,11 +2545,24 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    def test_error(self, mock_flink_status):
+    new_api_version = "0.141.0"
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_flink_status["status"] = None
         output = []
         return_value = print_flink_status(
-            cluster="fake_Cluster",
+            cluster="fake_cluster",
             service="fake_service",
             instance="fake_instance",
             output=output,
@@ -1840,7 +2573,167 @@ class TestPrintFlinkStatus:
         assert return_value == 1
         assert output == [PaastaColors.red("    Flink cluster is not available yet")]
 
-    def test_successful_return_value(self, mock_flink_status):
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_client(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_get_paasta_oapi_client.return_value = None
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert (
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+            in output
+        )
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_config(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_overview(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_jobs(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
+        mock_api.default.show_version.return_value = self.new_api_version
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        assert return_value == 1
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_error_no_flink_job_details(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.default.show_version.return_value = self.new_api_version
+
+        # Errors while requesing job details
+        mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
+        output = []
+        return_value = print_flink_status(
+            cluster="fake_cluster",
+            service="fake_service",
+            instance="fake_instance",
+            output=output,
+            flink=mock_flink_status,
+            verbose=1,
+        )
+
+        # should blow up the whole request
+        assert return_value == 1
+
+        # and output that an error has occurred
+        assert PaastaColors.red(f"Exception when talking to the API:") in output
+
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
+    def test_successful_return_value(
+        self,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
+
         return_value = print_flink_status(
             cluster="fake_cluster",
             service="fake_service",
@@ -1851,10 +2744,24 @@ class TestPrintFlinkStatus:
         )
         assert return_value == 0
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_0_verbose(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -1868,22 +2775,37 @@ class TestPrintFlinkStatus:
 
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_0(status, metadata) + [
+        expected_output = _get_base_status_verbose_0(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
             f"    1 taskmanagers, 3/4 slots available",
             f"    Jobs:",
             f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(int(status['jobs'][0]['start-time']) // 1000))} ({mock_naturaltime.return_value})",
+            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {str(datetime.datetime.fromtimestamp(job_details_obj.start_time // 1000))} ({mock_naturaltime.return_value})",
         ]
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_jobmanager(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
+
         output = []
         mock_flink_status["status"]["state"] = "Stoppingjobmanager"
         print_flink_status(
@@ -1895,8 +2817,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
         ]
@@ -1906,10 +2828,24 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
     def test_output_stopping_taskmanagers(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_naturaltime,
+        mock_get_paasta_oapi_client,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
@@ -1925,8 +2861,8 @@ class TestPrintFlinkStatus:
             verbose=1,
         )
         status = mock_flink_status["status"]
-        metadata = mock_flink_status["metadata"]
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = [
+            f"    Config SHA: 00000",
             f"    State: {PaastaColors.yellow(status['state'].title())}",
             f"    Pods: 1 running, 0 evicted, 0 other",
         ]
@@ -1936,10 +2872,24 @@ class TestPrintFlinkStatus:
         )
         assert expected_output == output
 
+    @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
+    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_output_1_verbose(
-        self, mock_naturaltime, mock_flink_status,
+        self,
+        mock_get_paasta_oapi_client,
+        mock_naturaltime,
+        mock_load_system_paasta_config,
+        mock_flink_status,
+        system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value = system_paasta_config
+        mock_api = mock_get_paasta_oapi_client.return_value
+        mock_api.service.get_flink_cluster_config.return_value = config_obj
+        mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+        mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
+        mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
+        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -1954,35 +2904,71 @@ class TestPrintFlinkStatus:
         status = mock_flink_status["status"]
         metadata = mock_flink_status["metadata"]
         job_start_time = str(
-            datetime.datetime.fromtimestamp(
-                int(status["jobs"][0]["start-time"]) // 1000
-            )
+            datetime.datetime.fromtimestamp(int(job_details_obj.start_time) // 1000)
         )
-        expected_output = _get_base_status_verbose_1(status, metadata) + [
+        expected_output = _get_base_status_verbose_1(metadata) + [
             f"    State: {PaastaColors.green(status['state'].title())}",
             f"    Pods: 3 running, 0 evicted, 0 other",
             f"    Jobs: 1 running, 0 finished, 0 failed, 0 cancelled",
             f"    1 taskmanagers, 3/4 slots available",
             f"    Jobs:",
             f"      Job Name       State       Started",
-            f"      {status['jobs'][0]['name']} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
+            f"      {get_flink_job_name(job_details_obj)} {PaastaColors.green('Running')} {job_start_time} ({mock_naturaltime.return_value})",
         ]
         append_pod_status(status["pod_status"], expected_output)
         assert expected_output == output
 
 
-def _get_base_status_verbose_0(status, metadata):
+overview_obj = paastamodels.FlinkClusterOverview(
+    taskmanagers=1,
+    slots_total=4,
+    slots_available=3,
+    jobs_running=1,
+    jobs_finished=0,
+    jobs_cancelled=0,
+    jobs_failed=0,
+)
+
+config_obj = paastamodels.FlinkConfig(
+    flink_version="1.13.5", flink_revision="0ff28a7 @ 2021-12-14T23:26:04+01:00"
+)
+
+job_details_obj = paastamodels.FlinkJobDetails(
+    jid="4210f0646f5c9ce1db0b3e5ae4372b82",
+    name="beam_happyhour.main.beam_happyhour",
+    state="RUNNING",
+    start_time=float(1655053223341),
+)
+
+jobs_obj = paastamodels.FlinkJobs(
+    jobs=[
+        paastamodels.FlinkJob(id="4210f0646f5c9ce1db0b3e5ae4372b82", status="RUNNING")
+    ]
+)
+
+
+def _prepare_paasta_api_client_for_flink(mock_get_paasta_oapi_client):
+    mock_api = mock_get_paasta_oapi_client.return_value
+    mock_api.get_flink_config_from_paasta_api_client.return_value = config_obj
+    mock_api.service.get_flink_cluster_overview.return_value = overview_obj
+    mock_api.service.get_flink_jobs_from_paasta_api_client.return_value = jobs_obj
+    mock_api.service.get_flink_job_details_from_paasta_api_client.return_value = (
+        job_details_obj
+    )
+
+
+def _get_base_status_verbose_0(metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']}",
+        f"    Flink version: {config_obj.flink_version}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
 
-def _get_base_status_verbose_1(status, metadata):
+def _get_base_status_verbose_1(metadata):
     return [
         f"    Config SHA: 00000",
-        f"    Flink version: {status['config']['flink-version']} {status['config']['flink-revision']}",
+        f"    Flink version: {config_obj.flink_version} {config_obj.flink_revision}",
         f"    URL: {metadata['annotations']['flink.yelp.com/dashboard_url']}/",
     ]
 
@@ -2264,7 +3250,10 @@ def test_marathon_mesos_status_human(
         running_tasks=running_tasks,
         non_running_tasks=non_running_tasks,
     )
-    output = marathon_mesos_status_human(mesos_status, expected_instance_count=2,)
+    output = marathon_mesos_status_human(
+        mesos_status,
+        expected_instance_count=2,
+    )
 
     assert output == [
         mock_marathon_mesos_status_summary.return_value,

@@ -142,12 +142,15 @@ def get_kubernetes_resource_request_limit(
     }
 
 
-def get_pod_pool(kube_client: KubeClient, pod: V1Pod,) -> str:
+def get_pod_pool(
+    kube_client: KubeClient,
+    pod: V1Pod,
+) -> str:
     node = kubernetes_tools.get_pod_node(kube_client, pod, cache_nodes=True)
     pool = "default"
     if node:
         if node.metadata.labels:
-            pool = node.metadata.labels.get("yelp.com/pool", "default")
+            pool = node.metadata.labels.get("paasta.yelp.com/pool", "default")
     return pool
 
 

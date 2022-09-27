@@ -15,6 +15,7 @@ import abc
 import collections
 import csv
 import logging
+import random
 import socket
 from typing import Any
 from typing import cast
@@ -612,6 +613,9 @@ class BaseReplicationChecker(ReplicationChecker):
             if host.pool == pool:
                 return host.hostname
         return hosts[0].hostname
+
+    def get_hostname_in_pool(self, hosts: Sequence[DiscoveredHost], pool: str) -> str:
+        return random.choice(self.get_hostnames_in_pool(hosts, pool))
 
     def get_hostnames_in_pool(
         self, hosts: Sequence[DiscoveredHost], pool: str

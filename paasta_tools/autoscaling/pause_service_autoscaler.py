@@ -57,7 +57,7 @@ def update_service_autoscale_pause_time(cluster, mins):
         print("Could not connect to zookeeper server")
         return 2
 
-    print(f"Service autoscaler is paused for {mins}")
+    print(f"Service autoscaler is paused for {mins} minutes")
     return 0
 
 

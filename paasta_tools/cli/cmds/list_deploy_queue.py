@@ -29,7 +29,9 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 
 
-def add_subparser(subparsers,) -> None:
+def add_subparser(
+    subparsers,
+) -> None:
     list_deploy_queue_parser = subparsers.add_parser(
         "list-deploy-queue",
         help="Display the deploy queue for a PaaSTA cluster",

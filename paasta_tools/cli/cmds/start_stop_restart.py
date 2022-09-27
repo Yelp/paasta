@@ -24,6 +24,8 @@ import choice
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.api.client import get_paasta_oapi_client
+from paasta_tools.cli.cmds.mark_for_deployment import can_user_deploy_service
+from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
@@ -39,7 +41,7 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
         ("start", "start or restart", "Start or restart", paasta_start),
-        ("restart", "start or restart", "Start or restart", paasta_start),
+        ("restart", "start or restart", "Start or restart", paasta_restart),
         ("stop", "stop", "Stop", paasta_stop),
     ]:
         status_parser = subparsers.add_parser(
@@ -83,7 +85,7 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
 
     def mutate_refs(refs):
         deploy_group = service_config.get_deploy_group()
-        (_, head_sha) = get_latest_deployment_tag(refs, deploy_group)
+        (_, head_sha, _) = get_latest_deployment_tag(refs, deploy_group)
         refs[
             format_tag(service_config.get_branch(), force_bounce, desired_state)
         ] = head_sha
@@ -216,6 +218,15 @@ def paasta_start_or_stop(args, desired_state):
             print("exiting")
             return 1
 
+    if not all(
+        [
+            can_user_deploy_service(get_deploy_info(service, soa_dir), service)
+            for service in affected_services
+        ]
+    ):
+        print(PaastaColors.red("Exiting due to missing deploy permissions"))
+        return 1
+
     invalid_deploy_groups = []
     marathon_message_printed = False
     affected_flinks = []
@@ -254,7 +265,9 @@ def paasta_start_or_stop(args, desired_state):
                     return 1
 
                 deploy_group = service_config.get_deploy_group()
-                (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+                (deploy_tag, _, _) = get_latest_deployment_tag(
+                    remote_refs, deploy_group
+                )
 
                 if deploy_tag not in remote_refs:
                     invalid_deploy_groups.append(deploy_group)
@@ -318,5 +331,69 @@ def paasta_start(args):
     return paasta_start_or_stop(args, "start")
 
 
+def paasta_restart(args):
+    pargs = apply_args_filters(args)
+    soa_dir = args.soa_dir
+
+    affected_flinks = []
+    affected_non_flinks = []
+    for cluster, service_instances in pargs.items():
+        for service, instances in service_instances.items():
+            for instance in instances.keys():
+                service_config = get_instance_config(
+                    service=service,
+                    cluster=cluster,
+                    instance=instance,
+                    soa_dir=soa_dir,
+                    load_deployments=False,
+                )
+                if isinstance(service_config, FlinkDeploymentConfig):
+                    affected_flinks.append(service_config)
+                else:
+                    affected_non_flinks.append(service_config)
+
+    if affected_flinks:
+        flinks_info = ", ".join([f"{f.service}.{f.instance}" for f in affected_flinks])
+        print(
+            f"WARN: paasta restart is currently unsupported for Flink instances ({flinks_info})."
+        )
+        print("To restart, please run:", end="\n\n")
+        for flink in affected_flinks:
+            print(
+                f"paasta stop -s {flink.service} -i {flink.instance} -c {flink.cluster}"
+            )
+            print(
+                f"paasta start -s {flink.service} -i {flink.instance} -c {flink.cluster}",
+                end="\n\n",
+            )
+
+        if not affected_non_flinks:
+            return 1
+
+        non_flinks_info = ", ".join(
+            [f"{f.service}.{f.instance}" for f in affected_non_flinks]
+        )
+        proceed = choice.Binary(
+            f"Would you like to restart the other instances ({non_flinks_info}) anyway?",
+            False,
+        ).ask()
+
+        if not proceed:
+            return 1
+
+    return paasta_start(args)
+
+
+PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE = PaastaColors.red(
+    "paasta stop requires explicit specification of cluster, service, and instance."
+)
+
+
 def paasta_stop(args):
+    if not args.clusters:
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
+    elif not args.service_instance and not (args.service and args.instances):
+        print(PAASTA_STOP_UNDERSPECIFIED_ARGS_MESSAGE)
+        return 1
     return paasta_start_or_stop(args, "stop")

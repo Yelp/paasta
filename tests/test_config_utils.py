@@ -30,7 +30,9 @@ def updater(tmpdir):
 
 def test_write_auto_config_data_service_dne(tmpdir):
     with mock.patch(
-        "paasta_tools.config_utils.open", new=mock.mock_open(), autospec=None,
+        "paasta_tools.config_utils.open",
+        new=mock.mock_open(),
+        autospec=None,
     ) as mock_open:
         result = config_utils.write_auto_config_data(
             service="something",
@@ -122,7 +124,10 @@ def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
 
     tmpdir.mkdir(service)
     filepath = config_utils.write_auto_config_data(
-        service=service, extra_info=conf_file, data=data, soa_dir=tmpdir,
+        service=service,
+        extra_info=conf_file,
+        data=data,
+        soa_dir=tmpdir,
     )
     assert (
         config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
@@ -159,7 +164,11 @@ def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
     remote = "git_remote"
     working_dir = tmpdir.mkdir("testing")
     updater = config_utils.AutoConfigUpdater(
-        "test_source", remote, branch=branch, working_dir=working_dir, do_clone=False,
+        "test_source",
+        remote,
+        branch=branch,
+        working_dir=working_dir,
+        do_clone=False,
     )
     initial_wd = os.getcwd()
 
@@ -205,6 +214,38 @@ def test_auto_config_updater_read_write(updater):
     updater.write_configs("baz", conf_file, data)
     assert updater.get_existing_configs("baz", conf_file) == {}
     assert len(updater.files_changed) == 1
+
+
+def test_auto_config_updater_read_write_with_comments(updater):
+    service = "foo"
+    conf_file = "something"
+    data = {"key": "g_minor", "bar": "foo"}
+
+    with open(f"{updater.working_dir}/{service}/{conf_file}.yaml", "x") as f:
+        f.write(
+            """# top comment
+key: c_minor # inline comment
+"""
+        )
+
+    existing_data = updater.get_existing_configs(service, conf_file)
+    assert existing_data == {"key": "c_minor"}
+
+    # Update existing config and add another key
+    existing_data["key"] = "g_minor"
+    existing_data["bar"] = "foo"
+
+    updater.write_configs(service, conf_file, existing_data)
+    assert updater.get_existing_configs(service, conf_file) == data
+    assert len(updater.files_changed) == 1
+    with open(f"{updater.working_dir}/{service}/{conf_file}.yaml", "r") as f:
+        assert (
+            f.read()
+            == """# top comment
+key: g_minor # inline comment
+bar: foo
+"""
+        )
 
 
 @mock.patch("paasta_tools.config_utils._push_to_remote", autospec=True)

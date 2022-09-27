@@ -174,7 +174,7 @@ class ZKTaskStore(TaskStore):
         return params
 
     def _get_task(self, task_id: str) -> Tuple[MesosTaskParameters, ZnodeStat]:
-        """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns """
+        """Like get_task, but also returns the ZnodeStat that self.zk_client.get() returns"""
         try:
             data, stat = self.zk_client.get("/%s" % task_id)
             return MesosTaskParameters.deserialize(data), stat

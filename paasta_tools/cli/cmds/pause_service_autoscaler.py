@@ -39,7 +39,7 @@ def add_subparser(subparsers):
         "-c",
         "--cluster",
         dest="cluster",
-        help="which cluster to pause autoscaling in. ie. norcal-prod",
+        help="which cluster to pause autoscaling in. ie. pnw-prod",
     )
     status_parser.add_argument(
         "-d",
@@ -79,7 +79,7 @@ def add_subparser(subparsers):
 
 def paasta_pause_service_autoscaler(args):
     """With a given cluster and duration, pauses the paasta service autoscaler
-       in that cluster for duration minutes"""
+    in that cluster for duration minutes"""
     if args.duration > MAX_PAUSE_DURATION:
         if not args.force:
             print(

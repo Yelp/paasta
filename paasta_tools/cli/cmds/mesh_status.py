@@ -71,7 +71,10 @@ def add_subparser(subparsers) -> None:
 
 
 def paasta_mesh_status_on_api_endpoint(
-    cluster: str, service: str, instance: str, system_paasta_config: SystemPaastaConfig,
+    cluster: str,
+    service: str,
+    instance: str,
+    system_paasta_config: SystemPaastaConfig,
 ) -> Tuple[int, List[str]]:
     client = get_paasta_oapi_client(cluster, system_paasta_config)
     if not client:
@@ -80,7 +83,9 @@ def paasta_mesh_status_on_api_endpoint(
 
     try:
         mesh_status = client.service.mesh_instance(
-            service=service, instance=instance, include_smartstack=False,
+            service=service,
+            instance=instance,
+            include_smartstack=False,
         )
     except client.api_error as exc:
         # 405 (method not allowed) is returned for instances that are not configured

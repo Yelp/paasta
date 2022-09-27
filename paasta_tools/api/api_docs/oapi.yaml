@@ -149,6 +149,99 @@ components:
           description: Registration name of the service in Smartstack
           type: string
       type: object
+    FlinkConfig:
+      properties:
+        flink-version:
+          type: string
+        flink-revision:
+          type: string
+      type: object
+    FlinkClusterOverview:
+      properties:
+        taskmanagers:
+          description: Number of taskmanagers in the cluster
+          type: integer
+          format: int32
+        slots-total:
+          description: Total task slots in the cluster
+          type: integer
+          format: int32
+        slots-available:
+          description: Available task slots
+          type: integer
+          format: int32
+        jobs-running:
+          description: Number of flink jobs in running state
+          type: integer
+          format: int32
+        jobs-finished:
+          description: Number of flink jobs in finished state
+          type: integer
+          format: int32
+        jobs-cancelled:
+          description: Number of flink jobs in cancelled state
+          type: integer
+          format: int32
+        jobs-failed:
+          description: Number of flink jobs in failed state
+          type: integer
+          format: int32
+      type: object
+    FlinkJob:
+      properties:
+        id:
+          type: string
+          description: ID of the flink job
+        status:
+          enum:
+            - INITIALIZING
+            - CREATED
+            - RUNNING
+            - FAILING
+            - FAILED
+            - CANCELLING
+            - CANCELED
+            - FINISHED
+            - RESTARTING
+            - SUSPENDED
+            - RECONCILING
+          type: string
+      type: object
+    FlinkJobDetails:
+      properties:
+        jid:
+          type: string
+          description: ID of the flink job
+        name:
+          type: string
+          description: name of the flink job
+        state:
+          description: state of the flink job
+          enum:
+            - INITIALIZING
+            - CREATED
+            - RUNNING
+            - FAILING
+            - FAILED
+            - CANCELLING
+            - CANCELED
+            - FINISHED
+            - RESTARTING
+            - SUSPENDED
+            - RECONCILING
+          type: string
+        start-time:
+          description: timestamp of job start time
+          format: float
+          type: number
+      type: object
+    FlinkJobs:
+      properties:
+        jobs:
+          items:
+            $ref: '#/components/schemas/FlinkJob'
+          description: Flink jobs
+          type: array
     FloatAndError:
       properties:
         error_message:
@@ -174,6 +267,14 @@ components:
         active_shas:
           type: array
           description: List of git/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
           items:
             type: array
             items:
@@ -232,6 +333,12 @@ components:
     InstanceSpecKafkaCluster:
       description: Kafka instance spec
       type: object
+    InstanceMetadataCassandraCluster:
+      description: Cassandra instance metadata
+      type: object
+    InstanceSpecCassandraCluster:
+      description: Cassandra instance spec
+      type: object
     InstanceStatus:
       properties:
         adhoc:
@@ -251,6 +358,14 @@ components:
         instance:
           description: Instance name
           type: string
+        cassandracluster:
+          description: Nullable CassandraCluster instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceMetadataCassandraCluster'
+            status:
+              $ref: '#/components/schemas/InstanceStatusCassandraCluster'
+          type: object
         kafkacluster:
           description: Nullable KafkaCluster instance status and metadata
           properties:
@@ -286,6 +401,9 @@ components:
     InstanceStatusFlinkStatus:
       description: Flink instance status
       type: object
+    InstanceStatusCassandraCluster:
+      description: Cassandra instance status
+      type: object
     InstanceStatusKafkaCluster:
       description: Kafka instance status
       type: object
@@ -301,6 +419,16 @@ components:
               nullable: true
             minItems: 2
             maxItems: 2
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -462,6 +590,16 @@ components:
               nullable: true
             minItems: 2
             maxItems: 2
+        active_versions:
+          type: array
+          description: List of git SHA/image_version/config SHAs running.
+          items:
+            type: array
+            items:
+              type: string
+              nullable: true
+            minItems: 3
+            maxItems: 3
         app_count:
           description: The number of different running versions of the same service
             (0 for stopped, 1 for running and 1+ for bouncing)
@@ -814,6 +952,11 @@ components:
         git_sha:
           description: Git SHA of service code for this version of the instance
           type: string
+        image_version:
+          description: Additional metadata identifying the image used for this
+            version of the instance
+          type: string
+          nullable: true
         config_sha:
           description: SHA of configuration for this instance
           type: string
@@ -1147,6 +1290,140 @@ paths:
                 $ref: '#/components/schemas/DeployQueue'
           description: Contents of deploy queue
       summary: Get deploy queue contents
+  /flink/{service}/{instance}/config:
+    get:
+      operationId: get_flink_cluster_config
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkConfig'
+          description: Get config of a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get config of a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/jobs:
+    get:
+      operationId: list_flink_cluster_jobs
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkJobs'
+          description: Get list of flink jobs in a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get list of flink jobs in a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/jobs/{job_id}:
+    get:
+      operationId: get_flink_cluster_job_details
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      - description: Job id
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkJobDetails'
+          description: Get details of a flink job in a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get details of a flink job in a flink cluster
+      tags:
+      - service
+  /flink/{service}/{instance}/overview:
+    get:
+      operationId: get_flink_cluster_overview
+      parameters:
+      - description: Service name
+        in: path
+        name: service
+        required: true
+        schema:
+          type: string
+      - description: Instance name
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlinkClusterOverview'
+          description: Get overview of a flink cluster
+        "404":
+          description: Flink cluster not found
+        "500":
+          description: Instance failure
+        "599":
+          description: Temporary issue fetching instance
+      summary: Get overview of a flink cluster
+      tags:
+      - service
   /marathon_dashboard:
     get:
       operationId: marathon_dashboard
@@ -1460,6 +1737,8 @@ paths:
           description: Deployment key not found
         "500":
           description: Instance failure
+        "599":
+          description: Temporary issue fetching instance status
       summary: Get bounce status of service_name.instance_name
       tags:
       - service

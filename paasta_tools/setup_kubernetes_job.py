@@ -36,6 +36,7 @@ from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InvalidJobNameError
@@ -64,10 +65,17 @@ def parse_args() -> argparse.Namespace:
         help="define a different soa config directory",
     )
     parser.add_argument(
-        "-c", "--cluster", dest="cluster", help="paasta cluster",
+        "-c",
+        "--cluster",
+        dest="cluster",
+        help="paasta cluster",
     )
     parser.add_argument(
-        "-v", "--verbose", action="store_true", dest="verbose", default=False,
+        "-v",
+        "--verbose",
+        action="store_true",
+        dest="verbose",
+        default=False,
     )
     parser.add_argument(
         "-l",
@@ -92,6 +100,8 @@ def main() -> None:
         logging.getLogger("kazoo").setLevel(logging.WARN)
         logging.basicConfig(level=logging.INFO)
 
+    deploy_metrics = metrics_lib.get_metrics_interface("paasta")
+
     # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
 
@@ -102,6 +112,7 @@ def main() -> None:
         soa_dir=soa_dir,
         cluster=args.cluster or load_system_paasta_config().get_cluster(),
         rate_limit=args.rate_limit,
+        metrics_interface=deploy_metrics,
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -123,6 +134,7 @@ def setup_kube_deployments(
     cluster: str,
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
+    metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
 ) -> bool:
     if service_instances:
         existing_kube_deployments = set(list_all_deployments(kube_client))
@@ -149,6 +161,11 @@ def setup_kube_deployments(
     api_updates = 0
     for _, app in applications:
         if app:
+            app_dimensions = {
+                "paasta_service": app.kube_deployment.service,
+                "paasta_instance": app.kube_deployment.instance,
+                "paasta_cluster": cluster,
+            }
             try:
                 if (
                     app.kube_deployment.service,
@@ -156,10 +173,20 @@ def setup_kube_deployments(
                 ) not in existing_apps:
                     log.info(f"Creating {app} because it does not exist yet.")
                     app.create(kube_client)
+                    app_dimensions["deploy_event"] = "create"
+                    metrics_interface.emit_event(
+                        name="deploy",
+                        dimensions=app_dimensions,
+                    )
                     api_updates += 1
                 elif app.kube_deployment not in existing_kube_deployments:
                     log.info(f"Updating {app} because configs have changed.")
                     app.update(kube_client)
+                    app_dimensions["deploy_event"] = "update"
+                    metrics_interface.emit_event(
+                        name="deploy",
+                        dimensions=app_dimensions,
+                    )
                     api_updates += 1
                 else:
                     log.info(f"{app} is up-to-date!")
@@ -180,11 +207,18 @@ def setup_kube_deployments(
 
 
 def create_application_object(
-    kube_client: KubeClient, service: str, instance: str, cluster: str, soa_dir: str,
+    kube_client: KubeClient,
+    service: str,
+    instance: str,
+    cluster: str,
+    soa_dir: str,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         service_instance_config = load_kubernetes_service_config_no_cache(
-            service, instance, cluster, soa_dir=soa_dir,
+            service,
+            instance,
+            cluster,
+            soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
         log.debug(

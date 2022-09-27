@@ -72,7 +72,7 @@ def parse_args():
 def paasta_cluster_boost(
     action: str, pool: str, boost: float, duration: int, override: bool
 ) -> bool:
-    """ Set, Get or clear a boost on a paasta cluster for a given pool in a given region
+    """Set, Get or clear a boost on a paasta cluster for a given pool in a given region
     :returns: None
     """
     system_config = load_system_paasta_config()

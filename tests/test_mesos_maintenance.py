@@ -93,7 +93,9 @@ def test_parse_datetime():
 
 
 @mock.patch("paasta_tools.mesos_maintenance.now", autospec=True)
-def test_datetime_seconds_from_now(mock_now,):
+def test_datetime_seconds_from_now(
+    mock_now,
+):
     mock_now.return_value = datetime.datetime(
         2016, 4, 16, 0, 23, 25, 157145, tzinfo=tz.tzutc()
     )
@@ -112,7 +114,9 @@ def test_datetime_to_nanoseconds():
 
 
 @mock.patch("paasta_tools.mesos_maintenance.gethostbyname", autospec=True)
-def test_build_maintenance_payload(mock_gethostbyname,):
+def test_build_maintenance_payload(
+    mock_gethostbyname,
+):
     ip = "169.254.121.212"
     mock_gethostbyname.return_value = ip
     hostname = "fqdn1.example.org"
@@ -124,7 +128,9 @@ def test_build_maintenance_payload(mock_gethostbyname,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.gethostbyname", autospec=True)
-def test_get_machine_ids_one_host(mock_gethostbyname,):
+def test_get_machine_ids_one_host(
+    mock_gethostbyname,
+):
     ip = "169.254.121.212"
     mock_gethostbyname.return_value = ip
     hostname = "fqdn1.example.org"
@@ -134,7 +140,9 @@ def test_get_machine_ids_one_host(mock_gethostbyname,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.gethostbyname", autospec=True)
-def test_get_machine_ids_multiple_hosts(mock_gethostbyname,):
+def test_get_machine_ids_multiple_hosts(
+    mock_gethostbyname,
+):
     ip1 = "169.254.121.212"
     ip2 = "169.254.121.213"
     ip3 = "169.254.121.214"
@@ -228,7 +236,9 @@ def test_build_maintenance_schedule_payload_no_schedule_undrain(
 
 
 @mock.patch("paasta_tools.mesos_maintenance.load_credentials", autospec=True)
-def test_build_reservation_payload(mock_load_credentials,):
+def test_build_reservation_payload(
+    mock_load_credentials,
+):
     fake_username = "username"
     mock_load_credentials.return_value = mock.MagicMock(
         principal=fake_username, secret="password"
@@ -396,7 +406,9 @@ def test_build_maintenance_schedule_payload_schedule_undrain(
 
 
 @mock.patch("paasta_tools.mesos_maintenance.open", create=True, autospec=None)
-def test_load_credentials(mock_open,):
+def test_load_credentials(
+    mock_open,
+):
     principal = "username"
     secret = "password"
     credentials = {"principal": principal, "secret": secret}
@@ -415,13 +427,17 @@ def test_load_credentials(mock_open,):
     side_effect=IOError,
     autospec=None,
 )
-def test_load_credentials_missing_file(mock_open,):
+def test_load_credentials_missing_file(
+    mock_open,
+):
     with pytest.raises(IOError):
         assert load_credentials()
 
 
 @mock.patch("paasta_tools.mesos_maintenance.open", create=True, autospec=None)
-def test_load_credentials_keyerror(mock_open,):
+def test_load_credentials_keyerror(
+    mock_open,
+):
     credentials = {}
 
     mock_open.side_effect = mock.mock_open(read_data=json.dumps(credentials))
@@ -431,7 +447,9 @@ def test_load_credentials_keyerror(mock_open,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.operator_api", autospec=True)
-def test_get_maintenance_status(mock_operator_api,):
+def test_get_maintenance_status(
+    mock_operator_api,
+):
     get_maintenance_status()
     assert mock_operator_api.call_count == 1
     assert mock_operator_api.return_value.call_count == 1
@@ -441,7 +459,9 @@ def test_get_maintenance_status(mock_operator_api,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.operator_api", autospec=True)
-def test_get_maintenance_schedule(mock_operator_api,):
+def test_get_maintenance_schedule(
+    mock_operator_api,
+):
     get_maintenance_schedule()
     assert mock_operator_api.call_count == 1
     assert mock_operator_api.return_value.call_count == 1
@@ -604,25 +624,33 @@ def test_up(mock_build_maintenance_payload, mock_operator_api):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_maintenance_status", autospec=True)
-def test_raw_status(mock_get_maintenance_status,):
+def test_raw_status(
+    mock_get_maintenance_status,
+):
     raw_status()
     assert mock_get_maintenance_status.call_count == 1
 
 
 @mock.patch("paasta_tools.mesos_maintenance.raw_status", autospec=True)
-def test_status(mock_raw_status,):
+def test_status(
+    mock_raw_status,
+):
     status()
     assert mock_raw_status.call_count == 1
 
 
 @mock.patch("paasta_tools.mesos_maintenance.raw_status", autospec=True)
-def test_friendly_status(mock_raw_status,):
+def test_friendly_status(
+    mock_raw_status,
+):
     friendly_status()
     assert mock_raw_status.call_count == 1
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_maintenance_schedule", autospec=True)
-def test_schedule(mock_get_maintenance_schedule,):
+def test_schedule(
+    mock_get_maintenance_schedule,
+):
     schedule()
     assert mock_get_maintenance_schedule.call_count == 1
 
@@ -688,7 +716,9 @@ def test_get_hosts_with_state_down(
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_hosts_with_state", autospec=True)
-def test_get_draining_hosts(mock_get_hosts_with_state,):
+def test_get_draining_hosts(
+    mock_get_hosts_with_state,
+):
     get_draining_hosts()
     assert mock_get_hosts_with_state.call_count == 1
     expected_args = mock.call(state="draining_machines", system_paasta_config=None)
@@ -696,7 +726,9 @@ def test_get_draining_hosts(mock_get_hosts_with_state,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_hosts_with_state", autospec=True)
-def test_get_down_hosts(mock_get_hosts_with_state,):
+def test_get_down_hosts(
+    mock_get_hosts_with_state,
+):
     get_down_hosts()
     assert mock_get_hosts_with_state.call_count == 1
     expected_args = mock.call(state="down_machines")
@@ -704,7 +736,9 @@ def test_get_down_hosts(mock_get_hosts_with_state,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_draining_hosts", autospec=True)
-def test_is_host_draining(mock_get_draining_hosts,):
+def test_is_host_draining(
+    mock_get_draining_hosts,
+):
     mock_get_draining_hosts.return_value = [
         "fake-host1.fakesite.something",
         "fake-host2.fakesite.something",
@@ -714,7 +748,9 @@ def test_is_host_draining(mock_get_draining_hosts,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_down_hosts", autospec=True)
-def test_is_host_down(mock_get_down_hosts,):
+def test_is_host_down(
+    mock_get_down_hosts,
+):
     mock_get_down_hosts.return_value = [
         "fake-host1.fakesite.something",
         "fake-host2.fakesite.something",
@@ -915,7 +951,9 @@ def test_get_hosts_past_maintenance_end_grace(
 @mock.patch(
     "paasta_tools.mesos_maintenance.get_hosts_past_maintenance_start", autospec=True
 )
-def test_is_host_past_maintenance_start(mock_get_hosts_past_maintenance_start,):
+def test_is_host_past_maintenance_start(
+    mock_get_hosts_past_maintenance_start,
+):
     mock_get_hosts_past_maintenance_start.return_value = ["fake_host"]
     assert is_host_past_maintenance_start("fake_host")
     assert not is_host_past_maintenance_start("fake_host2")
@@ -924,7 +962,9 @@ def test_is_host_past_maintenance_start(mock_get_hosts_past_maintenance_start,):
 @mock.patch(
     "paasta_tools.mesos_maintenance.get_hosts_past_maintenance_end", autospec=True
 )
-def test_is_host_past_maintenance_end(mock_get_hosts_past_maintenance_end,):
+def test_is_host_past_maintenance_end(
+    mock_get_hosts_past_maintenance_end,
+):
     mock_get_hosts_past_maintenance_end.return_value = ["fake_host"]
     assert is_host_past_maintenance_end("fake_host")
     assert not is_host_past_maintenance_end("fake_host2")
@@ -947,7 +987,9 @@ def test_hostnames_to_components_pipe():
 
 
 @mock.patch("paasta_tools.mesos_maintenance.gethostbyname", autospec=True)
-def test_hostnames_to_components_resolve(mock_gethostbyname,):
+def test_hostnames_to_components_resolve(
+    mock_gethostbyname,
+):
     hostname = "fake-host"
     ip = "127.0.0.1"
     mock_gethostbyname.return_value = ip
@@ -957,7 +999,9 @@ def test_hostnames_to_components_resolve(mock_gethostbyname,):
 
 
 @mock.patch("paasta_tools.mesos_maintenance.gethostbyname", autospec=True)
-def test_hostnames_to_components_resolve_failure(mock_gethostbyname,):
+def test_hostnames_to_components_resolve_failure(
+    mock_gethostbyname,
+):
     mock_gethostbyname.side_effect = ["10.1.1.1", gaierror]
     expected = [Hostname(host="host1", ip="10.1.1.1")]
     actual = hostnames_to_components(["host1", "host2"], resolve=True)
@@ -987,7 +1031,9 @@ def test_get_hosts_forgotten_draining(
 @mock.patch(
     "paasta_tools.mesos_maintenance.get_hosts_forgotten_draining", autospec=True
 )
-def test_are_hosts_forgotten_draining(mock_get_hosts_forgotten_draining,):
+def test_are_hosts_forgotten_draining(
+    mock_get_hosts_forgotten_draining,
+):
     mock_get_hosts_forgotten_draining.return_value = ["fake-host"]
     assert are_hosts_forgotten_draining()
 
@@ -1008,7 +1054,9 @@ def test_get_hosts_forgotten_down(
 
 
 @mock.patch("paasta_tools.mesos_maintenance.get_hosts_forgotten_down", autospec=True)
-def test_are_hosts_forgotten_down(mock_get_hosts_forgotten_down,):
+def test_are_hosts_forgotten_down(
+    mock_get_hosts_forgotten_down,
+):
     mock_get_hosts_forgotten_down.return_value = ["fake-host"]
     assert are_hosts_forgotten_down()
 

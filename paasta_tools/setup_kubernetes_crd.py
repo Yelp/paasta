@@ -28,10 +28,10 @@ from typing import Sequence
 
 import service_configuration_lib
 from kubernetes.client import V1beta1CustomResourceDefinition
-from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.kubernetes_tools import update_crds
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -104,7 +104,7 @@ def setup_kube_crd(
         label_selector=paasta_prefixed("service")
     )
 
-    success = True
+    desired_crds = []
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f"crd-{cluster}", soa_dir=soa_dir
@@ -124,44 +124,13 @@ def setup_kube_crd(
             metadata=metadata,
             spec=crd_config.get("spec"),
         )
+        desired_crds.append(desired_crd)
 
-        existing_crd = None
-        for crd in existing_crds.items:
-            if crd.metadata.name == desired_crd.metadata["name"]:
-                existing_crd = crd
-                break
-
-        try:
-            if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
-                kube_client.apiextensions.replace_custom_resource_definition(
-                    name=desired_crd.metadata["name"], body=desired_crd
-                )
-            else:
-                try:
-                    kube_client.apiextensions.create_custom_resource_definition(
-                        body=desired_crd
-                    )
-                except ValueError as err:
-                    # TODO: kubernetes server will sometimes reply with conditions:null,
-                    # figure out how to deal with this correctly, for more details:
-                    # https://github.com/kubernetes/kubernetes/pull/64996
-                    if "`conditions`, must not be `None`" in str(err):
-                        pass
-                    else:
-                        raise err
-            log.info(f"deployed {desired_crd.metadata['name']} for {cluster}:{service}")
-        except ApiException as exc:
-            log.error(
-                f"error deploying crd for {cluster}:{service}, "
-                f"status: {exc.status}, reason: {exc.reason}"
-            )
-            log.debug(exc.body)
-            success = False
-
-    return success
+    return update_crds(
+        kube_client=kube_client,
+        desired_crds=desired_crds,
+        existing_crds=existing_crds,
+    )
 
 
 if __name__ == "__main__":

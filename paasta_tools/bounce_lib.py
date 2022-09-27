@@ -140,7 +140,8 @@ def bounce_lock_zookeeper(
     if system_paasta_config is None:
         system_paasta_config = load_system_paasta_config()
     zk = KazooClient(
-        hosts=system_paasta_config.get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
+        hosts=system_paasta_config.get_zk_hosts(),
+        timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
     )
     zk.start()
     lock = zk.Lock(f"{ZK_LOCK_PATH}/{name}")

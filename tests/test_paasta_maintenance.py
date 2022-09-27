@@ -39,7 +39,9 @@ def test_is_safe_to_kill(mock_get_hosts_past_maintenance_start, mock_is_host_dra
 
 
 @mock.patch("paasta_tools.paasta_maintenance.is_hostname_local", autospec=True)
-def test_is_safe_to_drain_rejects_non_localhosts(mock_is_hostname_local,):
+def test_is_safe_to_drain_rejects_non_localhosts(
+    mock_is_hostname_local,
+):
     mock_is_hostname_local.return_value = False
     assert paasta_maintenance.is_safe_to_drain("non-localhost") is False
 
@@ -167,7 +169,9 @@ def test_synapse_replication_is_low_understands_underreplicated_services(
 
 
 @mock.patch("paasta_tools.paasta_maintenance.gethostbyname", autospec=True)
-def test_is_healthy_in_harproxy_healthy_path(mock_gethostbyname,):
+def test_is_healthy_in_harproxy_healthy_path(
+    mock_gethostbyname,
+):
     mock_gethostbyname.return_value = "192.0.2.1"
     local_port = 42
     backends = [
@@ -182,7 +186,9 @@ def test_is_healthy_in_harproxy_healthy_path(mock_gethostbyname,):
 
 
 @mock.patch("paasta_tools.paasta_maintenance.gethostbyname", autospec=True)
-def test_is_healthy_in_haproxy_unhealthy_path(mock_gethostbyname,):
+def test_is_healthy_in_haproxy_unhealthy_path(
+    mock_gethostbyname,
+):
     mock_gethostbyname.return_value = "192.0.2.1"
     local_port = 42
     backends = [
@@ -197,7 +203,9 @@ def test_is_healthy_in_haproxy_unhealthy_path(mock_gethostbyname,):
 
 
 @mock.patch("paasta_tools.paasta_maintenance.gethostbyname", autospec=True)
-def test_is_healthy_in_haproxy_missing_backend_entirely(mock_gethostbyname,):
+def test_is_healthy_in_haproxy_missing_backend_entirely(
+    mock_gethostbyname,
+):
     mock_gethostbyname.return_value = "192.0.2.1"
     local_port = 42
     backends = [

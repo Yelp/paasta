@@ -72,7 +72,10 @@ class MesosEventSubscriber:
     async def subscribe(self):
         # This connection should live ~forever, so disable some timeouts.
         timeout = aiohttp.ClientTimeout(
-            total=None, sock_read=None, connect=30, sock_connect=30,
+            total=None,
+            sock_read=None,
+            connect=30,
+            sock_connect=30,
         )
         async with aiohttp.ClientSession(timeout=timeout) as session:
             payload = '{"type":"SUBSCRIBE"}'

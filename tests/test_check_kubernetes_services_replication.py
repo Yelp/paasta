@@ -48,7 +48,8 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
         autospec=True,
         return_value=666,
     ), mock.patch(
-        "paasta_tools.monitoring_tools.check_replication_for_instance", autospec=True,
+        "paasta_tools.monitoring_tools.check_replication_for_instance",
+        autospec=True,
     ) as mock_check_replication_for_service:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
@@ -74,7 +75,8 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         autospec=True,
         return_value=666,
     ), mock.patch(
-        "paasta_tools.monitoring_tools.check_replication_for_instance", autospec=True,
+        "paasta_tools.monitoring_tools.check_replication_for_instance",
+        autospec=True,
     ) as mock_check_replication_for_service, mock.patch(
         "paasta_tools.check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance",
         autospec=True,
@@ -138,7 +140,10 @@ def test_check_healthy_kubernetes_tasks_for_service_instance():
         mock_pod_2 = mock.Mock()
         mock_filter_pods_by_service_instance.return_value = [mock_pod_1, mock_pod_2]
         check_kubernetes_services_replication.check_healthy_kubernetes_tasks_for_service_instance(
-            mock_instance_config, 5, mock_pods, dry_run=True,
+            mock_instance_config,
+            5,
+            mock_pods,
+            dry_run=True,
         )
         mock_filter_pods_by_service_instance.assert_called_with(
             pod_list=mock_pods,

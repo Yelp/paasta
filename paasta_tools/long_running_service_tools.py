@@ -30,6 +30,7 @@ DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
+DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 # we set a different default moving average window so that we can reuse our existing PromQL
 # without having to write a different query for existing users that want to autoscale on
 # instantaneous CPU
@@ -48,13 +49,12 @@ class AutoscalingParamsDict(TypedDict, total=False):
     uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
     good_enough_window: List[float]
+    prometheus_adapter_config: Optional[dict]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     drain_method: str
-    iam_role: str
-    iam_role_provider: str
     fs_group: int
     container_port: int
     drain_method_params: Dict
@@ -75,6 +75,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_start_deadline: float
     bounce_margin_factor: float
     should_ping_for_unhealthy_pods: bool
+    weight: int
 
 
 # Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
@@ -232,12 +233,6 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_replication_crit_percentage(self) -> int:
         return self.config_dict.get("replication_threshold", 50)
 
-    def get_iam_role(self) -> str:
-        return self.config_dict.get("iam_role", "")
-
-    def get_iam_role_provider(self) -> str:
-        return self.config_dict.get("iam_role_provider", "kiam")
-
     def get_fs_group(self) -> Optional[int]:
         return self.config_dict.get("fs_group")
 
@@ -328,7 +323,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'.
-                  """
+        """
         if self.get_desired_state() == "start":
             return self.get_instances()
         else:
@@ -354,7 +349,10 @@ class LongRunningServiceConfig(InstanceConfig):
             defaults=default_params,
         )
 
-    def validate(self, params: Optional[List[str]] = None,) -> List[str]:
+    def validate(
+        self,
+        params: Optional[List[str]] = None,
+    ) -> List[str]:
         error_messages = super().validate(params=params)
         invalid_registrations = self.get_invalid_registrations()
         if invalid_registrations:
@@ -372,6 +370,9 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_should_ping_for_unhealthy_pods(self, default: bool) -> bool:
         return self.config_dict.get("should_ping_for_unhealthy_pods", default)
+
+    def get_weight(self) -> int:
+        return self.config_dict.get("weight", 10)
 
 
 class InvalidHealthcheckMode(Exception):
@@ -425,7 +426,6 @@ def load_service_namespace_config(
     - updown_timeout_s: updown_service timeout in seconds
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
-    - timeout_client_ms: proxy server client timeout in milliseconds
     - retries: the number of retries on a proxy backend
     - mode: the mode the service is run in (http or tcp)
     - routes: a list of tuples of (source, destination)
@@ -435,6 +435,7 @@ def load_service_namespace_config(
       e.g. [('region:dc6-prod', 'region:useast1-prod')]
     - extra_healthcheck_headers: a dict of HTTP headers that must
       be supplied when health checking. E.g. { 'Host': 'example.com' }
+    - lb_policy: Envoy load balancer policies. E.g. "ROUND_ROBIN"
 
     :param service: The service name
     :param namespace: The namespace to read
@@ -443,7 +444,10 @@ def load_service_namespace_config(
     """
 
     smartstack_config = service_configuration_lib.read_extra_service_information(
-        service_name=service, extra_info="smartstack", soa_dir=soa_dir, deepcopy=False,
+        service_name=service,
+        extra_info="smartstack",
+        soa_dir=soa_dir,
+        deepcopy=False,
     )
 
     namespace_config_from_file = smartstack_config.get(namespace, {})
@@ -464,12 +468,12 @@ def load_service_namespace_config(
         "proxy_port",
         "timeout_connect_ms",
         "timeout_server_ms",
-        "timeout_client_ms",
         "retries",
         "mode",
         "discover",
         "advertise",
         "extra_healthcheck_headers",
+        "lb_policy",
     }
 
     for key, value in namespace_config_from_file.items():

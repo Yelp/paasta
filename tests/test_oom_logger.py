@@ -207,7 +207,8 @@ def test_capture_oom_events_from_stdin_kubernetes_qos(
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
-    mock_sys_stdin, sys_stdin_kubernetes_structured_burstable_qos,
+    mock_sys_stdin,
+    sys_stdin_kubernetes_structured_burstable_qos,
 ):
     mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_structured_burstable_qos
     test_output = []

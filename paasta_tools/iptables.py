@@ -173,8 +173,7 @@ def _rule_sort_key(rule_tuple):
 
 
 def reorder_chain(chain_name):
-    """Ensure that any REJECT rules are last, and any LOG rules are second-to-last
-    """
+    """Ensure that any REJECT rules are last, and any LOG rules are second-to-last"""
 
     table = iptc.Table(iptc.Table.FILTER)
     with iptables_txn(table):

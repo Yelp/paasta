@@ -107,7 +107,11 @@ def parse_args():
         default=False,
     )
     parser.add_argument(
-        "-v", "--verbose", help="Debug mode.", action="store_true", dest="verbose",
+        "-v",
+        "--verbose",
+        help="Debug mode.",
+        action="store_true",
+        dest="verbose",
     )
 
     return parser.parse_args()
@@ -132,7 +136,7 @@ def cwd(path):
 
 
 def get_report_from_splunk(creds, app, filename, criteria_filter):
-    """ Expect a table containing at least the following fields:
+    """Expect a table containing at least the following fields:
     criteria (<service> [marathon|kubernetes]-<cluster_name> <instance>)
     service_owner (Optional)
     project (Required to create tickets)

@@ -32,6 +32,7 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
 
 def lazy_import():
     from paasta_tools.paastaapi.model.instance_status_adhoc import InstanceStatusAdhoc
+    from paasta_tools.paastaapi.model.instance_status_cassandracluster import InstanceStatusCassandracluster
     from paasta_tools.paastaapi.model.instance_status_flink import InstanceStatusFlink
     from paasta_tools.paastaapi.model.instance_status_kafkacluster import InstanceStatusKafkacluster
     from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStatusKubernetes
@@ -39,6 +40,7 @@ def lazy_import():
     from paasta_tools.paastaapi.model.instance_status_marathon import InstanceStatusMarathon
     from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
     globals()['InstanceStatusAdhoc'] = InstanceStatusAdhoc
+    globals()['InstanceStatusCassandracluster'] = InstanceStatusCassandracluster
     globals()['InstanceStatusFlink'] = InstanceStatusFlink
     globals()['InstanceStatusKafkacluster'] = InstanceStatusKafkacluster
     globals()['InstanceStatusKubernetes'] = InstanceStatusKubernetes
@@ -97,6 +99,7 @@ class InstanceStatus(ModelNormal):
             'flink': (InstanceStatusFlink,),  # noqa: E501
             'git_sha': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
+            'cassandracluster': (InstanceStatusCassandracluster,),  # noqa: E501
             'kafkacluster': (InstanceStatusKafkacluster,),  # noqa: E501
             'kubernetes': (InstanceStatusKubernetes,),  # noqa: E501
             'kubernetes_v2': (InstanceStatusKubernetesV2,),  # noqa: E501
@@ -115,6 +118,7 @@ class InstanceStatus(ModelNormal):
         'flink': 'flink',  # noqa: E501
         'git_sha': 'git_sha',  # noqa: E501
         'instance': 'instance',  # noqa: E501
+        'cassandracluster': 'cassandracluster',  # noqa: E501
         'kafkacluster': 'kafkacluster',  # noqa: E501
         'kubernetes': 'kubernetes',  # noqa: E501
         'kubernetes_v2': 'kubernetes_v2',  # noqa: E501
@@ -173,6 +177,7 @@ class InstanceStatus(ModelNormal):
             flink (InstanceStatusFlink): [optional]  # noqa: E501
             git_sha (str): Git sha of a service. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
+            cassandracluster (InstanceStatusCassandracluster): [optional]  # noqa: E501
             kafkacluster (InstanceStatusKafkacluster): [optional]  # noqa: E501
             kubernetes (InstanceStatusKubernetes): [optional]  # noqa: E501
             kubernetes_v2 (InstanceStatusKubernetesV2): [optional]  # noqa: E501

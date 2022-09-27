@@ -93,6 +93,7 @@ class TestAdhocScheduler:
                 },
                 branch_dict={
                     "docker_image": "busybox",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
@@ -184,6 +185,7 @@ class TestAdhocScheduler:
                 },
                 branch_dict={
                     "docker_image": "busybox",
+                    "image_version": None,
                     "desired_state": "start",
                     "force_bounce": None,
                 },
