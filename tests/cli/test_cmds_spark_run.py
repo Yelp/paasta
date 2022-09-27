@@ -1257,14 +1257,14 @@ def test_paasta_spark_run_pyspark(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
-        spark_args="spark.cores.max=100 spark.executor.cores=10",
+        spark_args="spark.cores.max=70 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         timeout_job_runtime="1m",
         disable_temporary_credentials_provider=True,
         enable_dra=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_get_spark_conf.return_value = {"spark.executor.instances": "10"}
+    mock_get_spark_conf.return_value = {"spark.executor.instances": "7"}
 
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
@@ -1290,7 +1290,7 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10",
+        "spark.cores.max=70 spark.executor.cores=10",
         "unique-run",
         mock_should_enable_compact_bin_packing.return_value,
         False,
@@ -1310,7 +1310,7 @@ def test_paasta_spark_run_pyspark(
         auto_set_temporary_credentials_provider=False,
     )
     mock_get_dra_configs.assert_called_once_with(
-        {"spark.executor.instances": "10", "spark.dynamicAllocation.enabled": "true"}
+        {"spark.executor.instances": "7", "spark.dynamicAllocation.enabled": "true"}
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
