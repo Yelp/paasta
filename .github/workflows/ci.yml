@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*.*
   pull_request:
   release:
 
@@ -56,3 +58,29 @@ jobs:
       - run: sudo apt-get update
       - run: sudo apt-get install -yq devscripts
       - run: make itest_${{ matrix.dist }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: deb-${{ matrix.dist }}
+          path: dist/paasta-tools_*.deb
+  cut_release:
+    runs-on: ubuntu-22.04
+    needs: build_debs
+    steps:
+      - uses: actions/checkout@v2
+      - run: mkdir -p dist/
+      - uses: actions/download-artifact@v3
+        with:
+          name: deb-bionic
+          path: dist/
+      - uses: actions/download-artifact@v3
+        with:
+          name: deb-jammy
+          path: dist/
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          generate_release_notes: true
+          files: |
+            dist/paasta-tools_*.deb
+          fail_on_unmatched_files: true

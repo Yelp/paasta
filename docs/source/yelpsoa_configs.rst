@@ -447,6 +447,14 @@ instance MAY have:
     accessed externally. This option is implied when registered to smartstack or
     when specifying a ``prometheus_port``. Defaults to ``false``
 
+  * ``weight``: Load balancer/service mesh weight to assign to pods belonging to this instance.
+    Pods should receive traffic proportional to their weight, i.e. a pod with
+    weight 20 should receive 2x as much traffic as a pod with weight 10.
+    Defaults to 10.
+    Must be an integer.
+    This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
+
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier
@@ -957,8 +965,6 @@ Routing and Reliability
    <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20connect>`_
    in milliseconds, defaults to 200.
  * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
-   in milliseconds, defaults to 1000.
- * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
  * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
     Defaults to `"ROUND_ROBIN"`.

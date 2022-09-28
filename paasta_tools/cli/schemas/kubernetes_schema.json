@@ -571,9 +571,6 @@
                     "maximum": 1000000,
                     "exclusiveMinimum": false
                 },
-                "net": {
-                    "type": "string"
-                },
                 "container_port": {
                     "type": "number"
                 },
@@ -778,6 +775,10 @@
                 },
                 "is_istio_sidecar_injection_enabled": {
                     "type": "boolean"
+                },
+                "weight": {
+                    "type": "integer",
+                    "minimum": 1
                 }
             }
         }
