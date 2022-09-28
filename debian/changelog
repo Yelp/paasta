@@ -1,3 +1,11 @@
+paasta-tools (0.147.3) xenial; urgency=medium
+
+  * 0.147.3 tagged with 'make release'
+    Commit: Merge pull request #3443 from Yelp/u/sids/PAASTA-17210
+    removed mesos_cpu from kubernetes_schema.json and other references
+
+ -- Siddharth Shettigar <sids@yelp.com>  Wed, 28 Sep 2022 16:38:44 -0700
+
 paasta-tools (0.147.2) xenial; urgency=medium
 
   * 0.147.2 tagged with 'make release'
