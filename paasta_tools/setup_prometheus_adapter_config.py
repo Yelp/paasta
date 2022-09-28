@@ -69,7 +69,7 @@ DEFAULT_SCRAPE_PERIOD_S = 10
 DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
 
-CPU_METRICS_PROVIDERS = "cpu"
+CPU_METRICS_PROVIDER = "cpu"
 
 
 class PrometheusAdapterResourceConfig(TypedDict, total=False):
@@ -396,7 +396,7 @@ def should_create_cpu_scaling_rule(
     Determines whether we should configure the prometheus adapter for a given service.
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
-    if autoscaling_config["metrics_provider"] in CPU_METRICS_PROVIDERS:
+    if autoscaling_config["metrics_provider"] == CPU_METRICS_PROVIDER:
         if not autoscaling_config.get("use_prometheus", DEFAULT_USE_PROMETHEUS_CPU):
             return False, "requested cpu autoscaling, but not using Prometheus"
 
