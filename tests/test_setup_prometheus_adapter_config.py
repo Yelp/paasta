@@ -23,6 +23,15 @@ from paasta_tools.setup_prometheus_adapter_config import (
     [
         (
             {
+                "metrics_provider": "cpu",
+                "decision_policy": "bespoke",
+                "moving_average_window_seconds": 123,
+                "setpoint": 0.653,
+            },
+            False,
+        ),
+        (
+            {
                 "metrics_provider": "uwsgi",
                 "moving_average_window_seconds": 124,
                 "setpoint": 0.425,
