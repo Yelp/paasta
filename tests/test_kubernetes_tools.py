@@ -1905,10 +1905,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
@@ -1967,10 +1964,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
         # with cpu
