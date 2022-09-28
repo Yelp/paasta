@@ -377,23 +377,6 @@ def add_subparser(subparsers):
     )
 
     aws_group.add_argument(
-        "--disable-aws-credential-env-variables",
-        help="Do not put AWS credentials into environment variables.  Credentials "
-        "will still be read and set in the Spark configuration.  In Spark v3.2 "
-        "you want to set this argument.",
-        action="store_true",
-        default=False,
-    )
-
-    aws_group.add_argument(
-        "--disable-temporary-credentials-provider",
-        help="Disable explicit setting of TemporaryCredentialsProvider if a session token "
-        "is found in the AWS credentials.  In Spark v3.2 you want to set this argument ",
-        action="store_true",
-        default=False,
-    )
-
-    aws_group.add_argument(
         "--aws-region",
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
@@ -560,13 +543,12 @@ def get_spark_env(
     """Create the env config dict to configure on the docker container"""
 
     spark_env = {}
-    if not args.disable_aws_credential_env_variables:
-        access_key, secret_key, session_token = aws_creds
-        if access_key:
-            spark_env["AWS_ACCESS_KEY_ID"] = access_key
-            spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
-            if session_token is not None:
-                spark_env["AWS_SESSION_TOKEN"] = session_token
+    access_key, secret_key, session_token = aws_creds
+    if access_key:
+        spark_env["AWS_ACCESS_KEY_ID"] = access_key
+        spark_env["AWS_SECRET_ACCESS_KEY"] = secret_key
+        if session_token is not None:
+            spark_env["AWS_SESSION_TOKEN"] = session_token
 
     spark_env["AWS_DEFAULT_REGION"] = args.aws_region
     spark_env["PAASTA_LAUNCHED_BY"] = get_possible_launched_by_user_variable_from_env()
@@ -1106,9 +1088,6 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
-    auto_set_temporary_credentials_provider = (
-        args.disable_temporary_credentials_provider is False
-    )
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1121,7 +1100,7 @@ def paasta_spark_run(args):
         extra_volumes=volumes,
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
-        auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
+        aws_region=args.aws_region,
     )
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
