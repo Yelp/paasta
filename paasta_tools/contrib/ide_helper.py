@@ -18,7 +18,19 @@ def merge_vscode_settings(file: str, setting_dict: Dict[str, Any]) -> None:
         settings = {}
 
     # update settings with the default configurations we want each file to have
-    settings.update(setting_dict)
+    for key, value in setting_dict.items():
+        if key in settings:
+            if value not in settings[key]:
+                for i, dict_entry in enumerate(setting_dict[key]):
+                    if dict_entry not in settings[key]:
+                        if isinstance(settings[key], list):
+                            settings[key].append(dict_entry)
+                        else:
+                            temp_list = [settings[key]]
+                            temp_list.append(dict_entry)
+                            settings[key] = temp_list
+        else:
+            settings[key] = value
 
     with open(json_path, mode="w") as settings_file:
         json.dump(settings, settings_file, indent=2)
@@ -100,6 +112,26 @@ def install_vscode_support() -> None:
                 ],
             },
             {
+                "name": "paasta playground",
+                "cwd": "${workspaceFolder}",
+                "python": "${workspaceFolder}/.tox/py37-linux/bin/python",
+                "type": "python",
+                "request": "launch",
+                "module": "paasta_tools.cli.cli",
+                "justMyCode": False,
+                "env": {"PAASTA_SYSTEM_CONFIG_DIR": "./etc_paasta_playground/"},
+                "args": [
+                    "status",
+                    "--service",
+                    "compute-infra-test-service",
+                    "--clusters",
+                    "kind-${env:USER}-k8s-test",
+                    "-d",
+                    "./soa_config_playground/",
+                ],
+                "preLaunchTask": "Run API Playground",
+            },
+            {
                 "name": "paasta status playground",
                 "cwd": "${workspaceFolder}",
                 "python": "${workspaceFolder}/.tox/py37-linux/bin/python",
@@ -113,9 +145,9 @@ def install_vscode_support() -> None:
                     "--service",
                     "compute-infra-test-service",
                     "--clusters",
-                    "kind-emanelsabban-k8s-test",
+                    "kind-${env:USER}-k8s-test",
                     "-d",
-                    "./k8s_itests/deployments/paasta/fake_soa_config",
+                    "./soa_config_playground/",
                 ],
             },
             {
@@ -174,14 +206,14 @@ def install_vscode_support() -> None:
                 "env": {
                     "KUBECONFIG": "./k8s_itests/kubeconfig",
                     "PAASTA_SYSTEM_CONFIG_DIR": "./etc_paasta_playground/",
-                    "PAASTA_TEST_CLUSTER": "kind-emanelsabban-k8s-test",
+                    "PAASTA_TEST_CLUSTER": "kind-${env:USER}-k8s-test",
                     "PYDEVD_USE_CYTHON": "NO",
                     "PYTHONUNBUFFERED": "1",
-                    "PAASTA_API_SOA_DIR": "./k8s_itests/deployments/paasta/fake_soa_config",
+                    "PAASTA_API_SOA_DIR": "./soa_config_playground/",
                 },
             },
             {
-                "name": "Run setup k8s job",
+                "name": "Run setup k8s job in playground",
                 "cwd": "${workspaceFolder}",
                 "python": "${workspaceFolder}/.tox/py37-linux/bin/python",
                 "type": "python",
@@ -190,21 +222,21 @@ def install_vscode_support() -> None:
                 "justMyCode": False,
                 "args": [
                     "-d",
-                    "./k8s_itests/deployments/paasta/fake_soa_config",
+                    "./soa_config_playground",
                     "-c",
-                    "kind-emanelsabban-k8s-test",
+                    "kind-${env:USER}-k8s-test",
                     "compute-infra-test-service.autoscaling",
                 ],
                 "env": {
                     "KUBECONFIG": "./k8s_itests/kubeconfig",
                     "PAASTA_SYSTEM_CONFIG_DIR": "./etc_paasta_playground/",
-                    "PAASTA_TEST_CLUSTER": "kind-emanelsabban-k8s-test",
+                    "PAASTA_TEST_CLUSTER": "kind-${env:USER}-k8s-test",
                     "PYDEVD_USE_CYTHON": "NO",
                     "PYTHONUNBUFFERED": "1",
                 },
             },
             {
-                "name": "Generate deployments.json",
+                "name": "Generate deployments.json in playground",
                 "cwd": "${workspaceFolder}",
                 "python": "${workspaceFolder}/.tox/py37-linux/bin/python",
                 "type": "python",
@@ -213,7 +245,7 @@ def install_vscode_support() -> None:
                 "justMyCode": False,
                 "args": [
                     "-d",
-                    "./k8s_itests/deployments/paasta/fake_soa_config",
+                    "./soa_config_playground",
                     "-s",
                     "compute-infra-test-service",
                     "-v",
@@ -227,6 +259,7 @@ def install_vscode_support() -> None:
         ],
     }
     merge_vscode_settings("launch.json", paasta_schema_settings)
+
     recommended_extensions = {
         "recommendations": [
             "redhat.vscode-yaml",
@@ -236,6 +269,40 @@ def install_vscode_support() -> None:
         ]
     }
     merge_vscode_settings("extensions.json", recommended_extensions)
+
+    playground_task = {
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "Run API Playground",
+                "type": "shell",
+                "isBackground": True,
+                "command": "make playground-api",
+                "presentation": {
+                    "reveal": "always",
+                    "panel": "new",
+                },
+                "problemMatcher": [
+                    {
+                        "pattern": [
+                            {
+                                "regexp": ".",
+                                "file": 1,
+                                "location": 2,
+                                "message": 3,
+                            }
+                        ],
+                        "background": {
+                            "activeOnStart": True,
+                            "beginsPattern": ".",
+                            "endsPattern": "^(.*?)\\[INFO\\]",
+                        },
+                    }
+                ],
+            }
+        ],
+    }
+    merge_vscode_settings("tasks.json", playground_task)
     print("VS Code IDE Helpers installed")
 
 

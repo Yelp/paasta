@@ -122,13 +122,19 @@ swagger-validate:
 		-i paasta_tools/api/api_docs/swagger.json
 
 .PHONY: vscode_settings
-vscode_settings: .paasta/bin/activate
+vscode_settings: .paasta/bin/activate .tox/py37-linux
 	.paasta/bin/python paasta_tools/contrib/ide_helper.py
 
-.PHONY: generate_etc_paasta_playground
-generate_etc_paasta_playground: .paasta/bin/activate
-	.paasta/bin/python  paasta_tools/contrib/create_etc_paasta_playground.py
+.PHONY: generate_paasta_playground
+generate_paasta_playground: .paasta/bin/activate .tox/py37-linux
+	.tox/py37-linux/bin/python  paasta_tools/contrib/create_paasta_playground.py
+	PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/ .tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -s compute-infra-test-service -v
 
 .PHONY: playground-api
-playground-api: .tox/py37-linux generate_etc_paasta_playground
+playground-api: .tox/py37-linux generate_paasta_playground
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
+
+.PHONY: clean-playground
+clean-playground:
+		rm -rf ./etc_paasta_playground
+		rm -rf ./soa_config_playground
