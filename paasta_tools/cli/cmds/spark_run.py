@@ -18,6 +18,7 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_dra_configs
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -68,6 +69,9 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
+
+# Mass enable DRA configs
+EXECUTOR_RANGES = {(0, 8)}
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -200,7 +204,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-i",
         "--instance",
-        help=("Start a docker run for a particular instance of the service."),
+        help="Start a docker run for a particular instance of the service.",
         default="adhoc",
     ).completer = lazy_choices_completer(list_instances)
 
@@ -219,7 +223,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "-c",
         "--cluster",
-        help=("The name of the cluster you wish to run Spark on."),
+        help="The name of the cluster you wish to run Spark on.",
         default=default_spark_cluster,
     )
 
@@ -807,14 +811,16 @@ def configure_and_run_docker_container(
     )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
-    webui_url_msg = f"\nSpark monitoring URL {webui_url}\n"
+    webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
 
     docker_cmd = get_docker_cmd(args, instance_config, spark_conf_str)
     if "history-server" in docker_cmd:
-        print(f"\nSpark history server URL {webui_url}\n")
+        print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         signalfx_url = get_signalfx_url(spark_conf)
-        signalfx_url_msg = f"\nSignalfx dashboard: {signalfx_url}\n"
+        signalfx_url_msg = (
+            PaastaColors.green(f"\nSignalfx dashboard: ") + f"{signalfx_url}\n"
+        )
         print(webui_url_msg)
         print(signalfx_url_msg)
         log.info(webui_url_msg)
@@ -998,6 +1004,24 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
+def _mass_enable_dra(spark_conf):
+    num_executors = int(spark_conf["spark.executor.instances"])
+    for lower_bound, upper_bound in EXECUTOR_RANGES:
+        if lower_bound <= num_executors <= upper_bound:
+            log.warn(
+                PaastaColors.yellow(
+                    "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
+                    "More info: y/spark-dra. If your job is performing worse because "
+                    "of DRA, consider disabling DRA. To disable, please provide "
+                    "spark.dynamicAllocation.enabled=false in --spark-args\n"
+                )
+            )
+            spark_conf["spark.dynamicAllocation.enabled"] = "true"
+            spark_conf = get_dra_configs(spark_conf)
+            break
+    return spark_conf
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1123,6 +1147,17 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         auto_set_temporary_credentials_provider=auto_set_temporary_credentials_provider,
     )
+
+    # Mass enable Spark DRA. This is to enable Dynamic Resource Allocation in Spark through executor ranges.
+    # If the number of executor instances of a Spark job lie in the specified range, dynamicAllocation configs
+    # will be added. More info: y/spark-dra
+    # TODO: To be removed when DRA is enabled by default
+    if (
+        args.cluster_manager == CLUSTER_MANAGER_K8S
+        and "spark.dynamicAllocation.enabled" not in spark_conf
+    ):
+        spark_conf = _mass_enable_dra(spark_conf)
+
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
     if "spark.sql.adaptive.enabled" not in spark_conf:
