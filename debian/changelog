@@ -1,3 +1,17 @@
+paasta-tools (0.147.4) xenial; urgency=medium
+
+  * 0.147.4 tagged with 'make release'
+    Commit: MLCOMPUTE-36 | Enable DRA in paasta spark-run through
+    executor ranges (#3408)  * MLCOMPUTE-36 | mass enable DRA using
+    executor ranges  * MLCOMPUTE-36 | improved logging  * MLCOMPUTE-36 |
+    use get_dra_configs method to update dra configs  * MLCOMPUTE-36 |
+    reduce mass DRA rollout executor range to <=16  * MLCOMPUTE-36 |
+    reduce mass DRA rollout executor range to <=8  * MLCOMPUTE-36 | test
+    fixes  Co-authored-by: Sameer Sharma <sameersharma@c02gm03pmd6w.lan>
+    Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 29 Sep 2022 05:26:59 -0700
+
 paasta-tools (0.147.3) xenial; urgency=medium
 
   * 0.147.3 tagged with 'make release'
