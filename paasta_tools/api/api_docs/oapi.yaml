@@ -355,6 +355,9 @@ components:
         git_sha:
           description: Git sha of a service
           type: string
+        version:
+          description: Deployment Version of a service
+          type: string
         instance:
           description: Instance name
           type: string
