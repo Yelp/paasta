@@ -911,7 +911,7 @@ def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
 
 
 def get_deployment_version(
-    actual_deployments: Mapping[str, str], cluster: str, instance: str
+    actual_deployments: Mapping[str, DeploymentVersion], cluster: str, instance: str
 ) -> Optional[DeploymentVersion]:
     key = ".".join((cluster, instance))
     return actual_deployments[key] if key in actual_deployments else None
