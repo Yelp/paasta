@@ -82,7 +82,7 @@ def parse_args():
     return args
 
 
-def render_values(src, dst, values):
+def render_values(src: str, dst: str, values: str) -> None:
     if values is not None:
         values = os.path.abspath(values)
     # Validate src and values. Dst needs to be a directory. src can be either a valid folder of directory. values need to be valid file if provided.

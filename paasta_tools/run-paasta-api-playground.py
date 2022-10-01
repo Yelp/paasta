@@ -13,9 +13,8 @@ def main():
         "Please set environment variable PAASTA_TEST_CLUSTER to the cluster you want to use."
     )
     print("-------------------------------------------------------")
-    cluster = os.environ.get(
-        "PAASTA_TEST_CLUSTER", "kind-{USER}-k8s-test".format(**os.environ)
-    )
+    user = os.environ["USER"]
+    cluster = os.environ.get("PAASTA_TEST_CLUSTER", f"kind-{user}-k8s-test")
     config_path = "etc_paasta_playground"
 
     # find unused ports

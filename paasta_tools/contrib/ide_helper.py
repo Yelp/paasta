@@ -18,22 +18,26 @@ def merge_vscode_settings(file: str, setting_dict: Dict[str, Any]) -> None:
         settings = {}
 
     # update settings with the default configurations we want each file to have
-    for key, value in setting_dict.items():
-        if key in settings:
-            if value not in settings[key]:
-                for i, dict_entry in enumerate(setting_dict[key]):
-                    if dict_entry not in settings[key]:
-                        if isinstance(settings[key], list):
-                            settings[key].append(dict_entry)
-                        else:
-                            temp_list = [settings[key]]
-                            temp_list.append(dict_entry)
-                            settings[key] = temp_list
-        else:
-            settings[key] = value
+    merge_dicts(setting_dict, settings)
 
     with open(json_path, mode="w") as settings_file:
         json.dump(settings, settings_file, indent=2)
+
+
+def merge_dicts(merge_from: Dict[str, Any], merge_to: Dict[str, Any]) -> None:
+    for key, value in merge_from.items():
+        if key in merge_to:
+            if value not in merge_to[key]:
+                for dict_entry in merge_from[key]:
+                    if dict_entry not in merge_to[key]:
+                        if isinstance(merge_to[key], list):
+                            merge_to[key].append(dict_entry)
+                        else:
+                            temp_list = [merge_to[key]]
+                            temp_list.append(dict_entry)
+                            merge_to[key] = temp_list
+        else:
+            merge_to[key] = value
 
 
 def install_vscode_support() -> None:

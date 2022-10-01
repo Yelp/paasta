@@ -5,10 +5,9 @@ from render_template import render_values
 
 
 def main():
-    cluster = os.environ.get(
-        "PAASTA_TEST_CLUSTER", "kind-{USER}-k8s-test".format(**os.environ)
-    )
+
     config_path = "etc_paasta_playground"
+    values_path = "./k8s_itests/deployments/paasta/values.yaml"
 
     # create an etc_paasta_playground directory if it doesn't exist
     # and copy fake_etc_paasta content into etc_paasta_playground directory
@@ -16,14 +15,10 @@ def main():
         os.mkdir("etc_paasta_playground")
 
     render_values(
-        "./k8s_itests/deployments/paasta/fake_etc_paasta", "etc_paasta_playground", None
+        src="./k8s_itests/deployments/paasta/fake_etc_paasta",
+        dst=config_path,
+        values=values_path,
     )
-
-    # Generate Cluster name
-    clusters_names = {"clusters": [cluster], "cluster": cluster}
-    clusters_path = os.path.join(config_path, "clusters.json")
-    with open(clusters_path, "w") as f:
-        json.dump(clusters_names, f)
 
     # Add in volumes.json
     hacheck_sidecar_volumes = {"volumes": [], "hacheck_sidecar_volumes": []}
@@ -35,22 +30,12 @@ def main():
     # and copy fake_soa_config content into soa_config_playground directory
     if not os.path.isdir("soa_config_playground"):
         os.mkdir("soa_config_playground")
-    render_values(
-        "./k8s_itests/deployments/paasta/fake_soa_config", "soa_config_playground", None
-    )
 
-    # Code below will rename kubernetes-<%cluster%>.yaml with your cluster name
-    # if the cluster is not already renamed
-    src_path = os.path.join(
-        "soa_config_playground/compute-infra-test-service",
-        "kubernetes-<%cluster%>.yaml",
+    render_values(
+        src="./k8s_itests/deployments/paasta/fake_soa_config",
+        dst="soa_config_playground",
+        values=values_path,
     )
-    if os.path.exists(src_path):
-        dst_path = os.path.join(
-            "soa_config_playground/compute-infra-test-service",
-            f"kubernetes-{cluster}.yaml",
-        )
-        os.rename(src_path, dst_path)
 
 
 if __name__ == "__main__":
