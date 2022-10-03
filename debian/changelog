@@ -1,3 +1,13 @@
+paasta-tools (0.148.0) xenial; urgency=medium
+
+  * 0.148.0 tagged with 'make release'
+    Commit: Adhoc spark runs use environment credentials provider.
+    (#3471)  * Adhoc spark runs use environment credentials provider.  *
+    Remove logging final command for spark-run so we don"t log
+    credentials.
+
+ -- Jason Sleight <jsleight@yelp.com>  Mon, 03 Oct 2022 10:37:18 -0700
+
 paasta-tools (0.147.4) xenial; urgency=medium
 
   * 0.147.4 tagged with 'make release'
