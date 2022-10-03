@@ -215,7 +215,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
-                disable_aws_credential_env_variables=False,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -230,7 +229,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
-                disable_aws_credential_env_variables=False,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -244,7 +242,6 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
-                disable_aws_credential_env_variables=False,
             ),
             {},
         ),
@@ -282,28 +279,6 @@ def test_get_spark_env(
         **expected_aws,
     }
     assert spark_run.get_spark_env(args, spark_conf_str, aws, "1234") == expected_output
-
-
-def test_disable_aws_credential_env_variables(
-    mock_get_possible_launced_by_user_variable_from_env,
-):
-    args = argparse.Namespace(
-        cmd="spark-submit job.py",
-        aws_region="test-region",
-        disable_aws_credential_env_variables=True,
-    )
-    aws = ("access-key", "secret-key", "token")
-    expected_output = {
-        "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
-        "PAASTA_INSTANCE_TYPE": "spark",
-        "SPARK_USER": "root",
-        "SPARK_OPTS": mock.sentinel.spark_opts,
-        "AWS_DEFAULT_REGION": "test-region",
-    }
-    assert (
-        spark_run.get_spark_env(args, mock.sentinel.spark_opts, aws, "1234")
-        == expected_output
-    )
 
 
 @pytest.mark.parametrize(
@@ -542,7 +517,6 @@ class TestConfigureAndRunDockerContainer:
         args.nvidia = False
         args.enable_compact_bin_packing = False
         args.cluster_manager = cluster_manager
-        args.disable_aws_credential_env_variables = False
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         with mock.patch.object(
@@ -653,7 +627,6 @@ class TestConfigureAndRunDockerContainer:
         args.mrjob = False
         args.nvidia = False
         args.enable_compact_bin_packing = False
-        args.disable_aws_credential_env_variables = False
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
@@ -766,7 +739,6 @@ class TestConfigureAndRunDockerContainer:
         args.nvidia = False
         args.enable_compact_bin_packing = False
         args.cluster_manager = cluster_manager
-        args.disable_aws_credential_env_variables = False
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         with mock.patch.object(
@@ -1064,8 +1036,8 @@ def test_paasta_spark_run_bash(
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
-        disable_temporary_credentials_provider=True,
         enable_dra=False,
+        aws_region="test-region",
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1103,7 +1075,7 @@ def test_paasta_spark_run_bash(
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
-        auto_set_temporary_credentials_provider=False,
+        aws_region="test-region",
     )
     mock_spark_conf = mock_get_spark_conf.return_value
     mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
@@ -1161,8 +1133,8 @@ def test_paasta_spark_run(
         spark_args="spark.cores.max=100 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         timeout_job_runtime="1m",
-        disable_temporary_credentials_provider=True,
         enable_dra=True,
+        aws_region="test-region",
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     spark_run.paasta_spark_run(args)
@@ -1200,7 +1172,7 @@ def test_paasta_spark_run(
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
-        auto_set_temporary_credentials_provider=False,
+        aws_region="test-region",
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1260,8 +1232,8 @@ def test_paasta_spark_run_pyspark(
         spark_args="spark.cores.max=70 spark.executor.cores=10",
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         timeout_job_runtime="1m",
-        disable_temporary_credentials_provider=True,
         enable_dra=False,
+        aws_region="test-region",
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_get_spark_conf.return_value = {"spark.executor.instances": "7"}
@@ -1307,7 +1279,7 @@ def test_paasta_spark_run_pyspark(
         extra_volumes=mock_get_instance_config.return_value.get_volumes.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
-        auto_set_temporary_credentials_provider=False,
+        aws_region="test-region",
     )
     mock_get_dra_configs.assert_called_once_with(
         {"spark.executor.instances": "7", "spark.dynamicAllocation.enabled": "true"}
