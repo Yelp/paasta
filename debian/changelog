@@ -1,3 +1,17 @@
+paasta-tools (0.148.1) xenial; urgency=medium
+
+  * 0.148.1 tagged with 'make release'
+    Commit: [FLINK-4123] Remove the fallback for the paasta client
+    (#3440)  * [FLINK-4123] Remove the fallback for the paasta client  -
+    The paasta client fallback handled the case where a paasta client
+    was trying to consume an old paasta api (ie, without exposing the
+    new endpoints the client was expecting). This case, produced 404s
+    that canceled the request and ultimately broke some Sensu checks too
+    - This fallback is not required anymore as all environments are
+    running a paasta api version >= 0.141.0
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Thu, 06 Oct 2022 02:13:50 -0700
+
 paasta-tools (0.148.0) xenial; urgency=medium
 
   * 0.148.0 tagged with 'make release'
