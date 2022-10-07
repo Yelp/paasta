@@ -141,9 +141,9 @@ How to Select A Bounce Method
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A service author can select a bounce method by setting ``bounce_method`` in
-the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
+the kubernetes configuration file. (e.g. ``kubernetes-pnw-prod.yaml``) This setting
 is set per-instance. If not set, it will default to the ``crossover`` method.
-See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>`_ file.
+See the docs on the `kubernetes config <yelpsoa_configs.html#kubernetes-clustername-yaml>`_ file.
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
@@ -158,16 +158,16 @@ Valid options are:
 Understanding How ``bounce_margin_factor`` Affects Bouncing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``bounce_margin_factor`` setting in marathon yaml files controls how aggressive the bounce is in the face of failures.
+The ``bounce_margin_factor`` setting in kubernetes yaml files controls how aggressive the bounce is in the face of failures.
 It only applies to the ``crossover`` bounce method.
 
-With the default setting (1.0) the ``crossover`` bounce will begin by draining and killing old copies of the code once new copies are health to replace them.
-For example, if ``instances: 10`` and ``bounce_margin_factor: 1.0`` (default), PaaSTA will not begin draining a single copy of the old 10 until at least one new copy of the service is healthy.
+With the default setting (0.80) the ``crossover`` bounce will begin by draining and killing old copies of the code once new copies are healthy to replace them.
+For example, if ``instances: 10`` and ``bounce_margin_factor: 0.80`` (default), PaaSTA will make sure that at least 8 of the copies of a service are healthy/running before draining any additional copies.
 If 10 new copies of the service are up, then it will being draining the old 10 copies right away.
 If only one new copy of the service comes up, then the bounce will only drain one old copy as it gets replaced.
 
 The ``bounce_margin_factor`` adjusts how aggressive this procedure is.
-With the example of ``instances: 10`` and a ``bounce_margin_factor: 0.5`` (50%), then PaaSTA will preemptively being to drain and kill 5 copies of the old service to make room for the next 10 copies.
+With the example of ``instances: 10`` and a ``bounce_margin_factor: 0.8`` (80%), then PaaSTA will preemptively being to drain and kill 8 copies of the old service to make room for the next 10 copies.
 The setting effectively gives PaaSTA permission to allow the service to dip below the set level of replication for bounce purposes.
 
 The setting is most effective in situations where there are resource constraints.

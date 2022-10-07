@@ -336,7 +336,7 @@ instance MAY have:
 
   * ``bounce_margin_factor``: proportionally increase the number of old instances
     to be drained when the crossover bounce method is used.
-    0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
+    0 < bounce_margin_factor <= 1. Defaults to 0.8.
     This allows bounces to proceed in the face of a percentage of failures.
     It doesn’t affect any other bounce method but crossover.
     See `the bounce docs <bouncing.html>`_ for a more detailed description.
