@@ -780,6 +780,11 @@
                     "type": "integer",
                     "minimum": 1
                 }
+            },
+            "dependentRequired": {
+                "min_instances": [
+                    "max_instances"
+                ]
             }
         }
     }

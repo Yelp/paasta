@@ -314,6 +314,9 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_max_instances(self) -> Optional[int]:
         return self.config_dict.get("max_instances", None)
 
+    def get_instances_from_config(self) -> Optional[int]:
+        return self.config_dict.get("instances", None)
+
     def get_desired_instances(self) -> int:
         """Get the number of instances specified in zookeeper or the service's marathon configuration.
         If the number of instances in zookeeper is less than min_instances, returns min_instances.

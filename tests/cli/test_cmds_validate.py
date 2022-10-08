@@ -192,6 +192,40 @@ def test_validate_min_max_instances_success(
     )
 
 
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_min_max_instances_missing(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+    capsys,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="fake_type"),
+        get_min_instances=mock.Mock(return_value=None),
+        get_max_instances=mock.Mock(return_value=5),
+        get_instances_from_config=mock.Mock(return_value=None),
+    )
+
+    assert validate_min_max_instances("fake-service-path") is False
+    output, _ = capsys.readouterr()
+    assert (
+        "Instance fake_instance1 on cluster fake_cluster does not have min_instances and max_instances set."
+        in output
+    )
+    assert (
+        "Please set a value for both min_instances and max_instances in the sysgit/soaconfigs repo for Instance fake_instance1 on cluster fake_cluster."
+        in output
+    )
+
+
 @patch("paasta_tools.cli.cmds.validate.os.path.isdir", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.glob", autospec=True)
 def test_get_service_path_cwd(mock_glob, mock_isdir):

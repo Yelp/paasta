@@ -643,7 +643,7 @@ def validate_autoscaling_configs(service_path):
     return returncode
 
 
-def validate_min_max_instances(service_path):
+def validate_min_max_instances(service_path) -> bool:
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
@@ -661,6 +661,18 @@ def validate_min_max_instances(service_path):
             if instance_config.get_instance_type() != "tron":
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
+                instances = instance_config.get_instances_from_config()
+                if instances is None and (
+                    min_instances is None or max_instances is None
+                ):
+                    returncode = False
+                    print(
+                        failure(
+                            f"Instance {instance} on cluster {cluster} does not have min_instances and max_instances set."
+                            + f"Please set a value for both min_instances and max_instances in the sysgit/soaconfigs repo for Instance {instance} on cluster {cluster}.",
+                            "",
+                        )
+                    )
                 if min_instances is not None and max_instances is not None:
                     if max_instances < min_instances:
                         returncode = False
