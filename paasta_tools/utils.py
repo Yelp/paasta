@@ -1984,6 +1984,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
     tron_use_suffixed_log_streams: bool
@@ -2711,6 +2712,19 @@ class SystemPaastaConfig:
             "readiness_check_prefix_template",
             ["flock", "-n", "/readiness_check_lock", "timeout", "120"],
         )
+
+    def get_tron_k8s_cluster_overrides(self) -> Dict[str, str]:
+        """
+        Return a mapping of a tron cluster -> compute cluster. Returns an empty dict if there are no overrides set.
+
+        This exists as we have certain Tron masters that are named differently from the compute cluster that should
+        actually be used (e.g., we might have tron-XYZ-test-prod, but instead of scheduling on XYZ-test-prod, we'd
+        like to schedule jobs on test-prod).
+
+        To control this, we have an optional config item that we'll puppet onto Tron masters that need this type of
+        tron master -> compute cluster override which this function will read.
+        """
+        return self.config_dict.get("tron_k8s_cluster_overrides", {})
 
 
 def _run(

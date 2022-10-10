@@ -1602,19 +1602,25 @@ class TestKubernetesDeploymentConfig:
             termination_grace_period_seconds=termination_grace_period,
         )
         pod_spec_kwargs.update(spec_affinity)
+
+        expected_labels = {
+            "paasta.yelp.com/pool": "default",
+            "yelp.com/paasta_git_sha": "aaaa123",
+            "yelp.com/paasta_instance": mock_get_instance.return_value,
+            "yelp.com/paasta_service": mock_get_service.return_value,
+            "paasta.yelp.com/git_sha": "aaaa123",
+            "paasta.yelp.com/instance": mock_get_instance.return_value,
+            "paasta.yelp.com/service": mock_get_service.return_value,
+            "paasta.yelp.com/autoscaled": "false",
+            "registrations.paasta.yelp.com/kurupt.fm": "true",
+            "yelp.com/owner": "compute_infra_platform_experience",
+        }
+        if in_smtstk:
+            expected_labels["paasta.yelp.com/weight"] = "10"
+
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
-                labels={
-                    "paasta.yelp.com/pool": "default",
-                    "yelp.com/paasta_git_sha": "aaaa123",
-                    "yelp.com/paasta_instance": mock_get_instance.return_value,
-                    "yelp.com/paasta_service": mock_get_service.return_value,
-                    "paasta.yelp.com/git_sha": "aaaa123",
-                    "paasta.yelp.com/instance": mock_get_instance.return_value,
-                    "paasta.yelp.com/service": mock_get_service.return_value,
-                    "paasta.yelp.com/autoscaled": "false",
-                    "registrations.paasta.yelp.com/kurupt.fm": "true",
-                },
+                labels=expected_labels,
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',
                     "paasta.yelp.com/routable_ip": routable_ip,
@@ -1899,10 +1905,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
@@ -1961,10 +1964,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
         # with cpu
@@ -2441,6 +2441,7 @@ def test_get_kubernetes_services_running_here():
                 port=8888,
                 pod_ip="10.1.1.3",
                 registrations=[],
+                weight=10,
             )
         ]
 
@@ -2481,6 +2482,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="unkurupt",
@@ -2488,6 +2490,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="kurupt",
@@ -2495,6 +2498,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=[],
+                weight=10,
             ),
         ]
 
@@ -2519,6 +2523,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "hacheck_ip": "10.1.1.1",
                     "service_ip": "10.1.1.1",
                     "port": 8888,
+                    "weight": 10,
                 },
             )
         ]
@@ -2537,6 +2542,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "service_ip": "10.1.1.1",
                     "port": 8888,
                     "extra_healthcheck_headers": {"X-Nerve-Check-IP": "10.1.1.1"},
+                    "weight": 10,
                 },
             )
         ]
@@ -3636,7 +3642,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c177d7a"
+            == "config80007736"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3682,7 +3688,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configf46d563a"
+            == "config81e5b468"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

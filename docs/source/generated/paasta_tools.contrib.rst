@@ -13,6 +13,7 @@ Submodules
    paasta_tools.contrib.emit_allocated_cpu_metrics
    paasta_tools.contrib.get_running_task_allocation
    paasta_tools.contrib.graceful_container_drain
+   paasta_tools.contrib.ide_helper
    paasta_tools.contrib.is_pod_healthy_in_proxy
    paasta_tools.contrib.is_pod_healthy_in_smartstack
    paasta_tools.contrib.kill_bad_containers

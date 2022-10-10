@@ -120,3 +120,7 @@ swagger-validate:
 		yelp/openapi-generator-cli:20201026 \
 		validate \
 		-i paasta_tools/api/api_docs/swagger.json
+
+.PHONY: vscode_settings
+vscode_settings:
+	.paasta/bin/python paasta_tools/contrib/ide_helper.py

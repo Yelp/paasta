@@ -26,6 +26,13 @@ host_ip = os.environ["PAASTA_POD_IP"]
 port = sys.argv[1]
 services = sys.argv[2:]
 
+###############################################################
+#
+# This file is used in the hacheck sidecar, make sure to update `check_smartstack_up.sh`
+# when changing this file
+#
+###############################################################
+
 if are_services_up_on_ip_port(
     synapse_host=synapse_host,
     synapse_port=synapse_port,
