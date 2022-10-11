@@ -1899,7 +1899,8 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/autoscaled": autoscaled_label,
-                    "paasta.yelp.com/owner": "compute_infra_platform_experience",
+                    "paasta.yelp.com/pool": "default",
+                    "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
             )
