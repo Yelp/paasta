@@ -13,7 +13,8 @@ def main():
         "Please set environment variable PAASTA_TEST_CLUSTER to the cluster you want to use."
     )
     print("-------------------------------------------------------")
-    cluster = os.environ.get("PAASTA_TEST_CLUSTER", "kind-emanelsabban-k8s-test")
+    user = os.environ["USER"]
+    cluster = os.environ.get("PAASTA_TEST_CLUSTER", f"kind-{user}-k8s-test")
     config_path = "etc_paasta_playground"
 
     # find unused ports
@@ -21,8 +22,7 @@ def main():
 
     # Generate api endpoints
     api_endpoints = {"api_endpoints": {cluster: f"http://localhost:{port}"}}
-    api_endpoints_path = os.path.join(os.getcwd(), config_path, "api_endpoints.json")
-    os.chmod(api_endpoints_path, 0o777)
+    api_endpoints_path = os.path.join(config_path, "api_endpoints.json")
     with open(api_endpoints_path, "w") as f:
         json.dump(api_endpoints, f)
 
@@ -34,11 +34,11 @@ def main():
         "-m",
         "paasta_tools.api.api",
         *[
-            "-D",
-            "-c",
+            "--debug",
+            "--cluster",
             cluster,
-            "-d",
-            "./k8s_itests/deployments/paasta/fake_soa_config",
+            "--soa-dir",
+            "./soa_config_playground",
             str(port),
         ],
     )

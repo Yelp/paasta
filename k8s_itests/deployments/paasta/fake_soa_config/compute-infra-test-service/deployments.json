@@ -1,6 +1,6 @@
 {
     "v1": {
-        "compute-infra-test-service:paasta-kind-emanelsabban-k8s-test.autoscaling": {
+        "compute-infra-test-service:paasta-<%cluster%>.autoscaling": {
             "docker_image": "services-compute-infra-test-service:paasta-0ae13cf29612fb38bbf1ad40652cdf93abfe41df",
             "desired_state": "start",
             "force_bounce": null
@@ -15,7 +15,7 @@
             }
         },
         "controls": {
-            "compute-infra-test-service:kind-emanelsabban-k8s-test.autoscaling": {
+            "compute-infra-test-service:<%cluster%>.autoscaling": {
                 "desired_state": "start",
                 "force_bounce": null
             }

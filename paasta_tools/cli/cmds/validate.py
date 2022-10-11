@@ -601,7 +601,7 @@ def validate_autoscaling_configs(service_path):
                     service in skip_cpu_override_validation_list
                 )
                 if (
-                    autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}
+                    autoscaling_params["metrics_provider"] == "cpu"
                     # to enable kew autoscaling we just set a decision policy of "bespoke", but
                     # the metrics_provider is (confusingly) left as "cpu"
                     and autoscaling_params.get("decision_policy") != "bespoke"

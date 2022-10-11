@@ -18,8 +18,6 @@ FROM ${DOCKER_REGISTRY}ubuntu:bionic
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
-
 # Need Python 3.7
 RUN apt-get update > /dev/null && \
     apt-get install -y --no-install-recommends curl software-properties-common && \
