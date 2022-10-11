@@ -1,3 +1,11 @@
+paasta-tools (0.148.2) xenial; urgency=medium
+
+  * 0.148.2 tagged with 'make release'
+    Commit: CLUSTERMAN-710, bump version for service_lib_config to
+    2.12.2 (#3476)
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Tue, 11 Oct 2022 06:20:47 -0700
+
 paasta-tools (0.148.1) xenial; urgency=medium
 
   * 0.148.1 tagged with 'make release'
