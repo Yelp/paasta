@@ -1,4 +1,5 @@
 import functools
+from base64 import b64encode
 from typing import Any
 from typing import Dict
 from typing import Sequence
@@ -94,6 +95,7 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
+from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
@@ -4028,3 +4030,65 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         assert mock_client.rbac.create_namespaced_role_binding.called is True
+
+
+def test_get_kubernetes_secret():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.subprocess.run", autospec=True
+    ) as mock_subprocess, mock.patch(
+        "paasta_tools.kubernetes_tools.os.environ.copy", autospec=True
+    ) as mock_env:
+
+        service_name = "example_service"
+        secret_name = "example_secret"
+        cluster = ["messosstage"]
+        mock_env.return_value = {}
+        proc_args = [
+            "kubectl",
+            "get",
+            "secrets",
+            "--cluster=messosstage",
+            "-n=paasta",
+            "paasta-secret-example--service-example--secret",
+            "--template={{.data.example_secret}}",
+        ]
+        env = {"KUBECONFIG": "/etc/kubernetes/paasta.conf"}
+
+        # No kubectl errors
+        mock_out = mock.Mock()
+        mock_out.configure_mock(
+            **{
+                "stdout": b64encode("something".encode()),
+                "returncode": 0,
+            }
+        )
+        mock_subprocess.return_value = mock_out
+
+        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        mock_subprocess.assert_called_with(
+            proc_args,
+            env=env,
+            stderr=-1,
+            stdout=-1,
+        )
+        assert ret == "something"
+
+        # kubectl errors
+        mock_out = mock.Mock()
+        mock_out.configure_mock(
+            **{
+                "stdout": "",
+                "returncode": 1,
+                "stderr": 'error: cluster `"wrong place" does not exist'.encode(),
+            }
+        )
+        mock_subprocess.return_value = mock_out
+
+        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        mock_subprocess.assert_called_with(
+            proc_args,
+            env=env,
+            stderr=-1,
+            stdout=-1,
+        )
+        assert ret == "Could not get secret.\n"

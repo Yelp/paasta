@@ -76,6 +76,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -3089,6 +3090,13 @@ def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) ->
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
+
+
+def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
+    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
+    if "secrets_for_owner_team" in service_yaml_contents:
+        return service_yaml_contents["secrets_for_owner_team"]
+    return False
 
 
 def get_pipeline_deploy_group_configs(

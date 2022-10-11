@@ -18,6 +18,7 @@ import logging
 import math
 import os
 import re
+import subprocess
 from datetime import datetime
 from enum import Enum
 from inspect import currentframe
@@ -158,6 +159,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
+DEFAULT_KUBECTL_CONFIG_PATH = "/etc/kubernetes/paasta.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 KUBE_DEPLOY_STATEGY_MAP = {
@@ -3432,3 +3434,44 @@ def update_crds(
             success = False
 
     return success
+
+
+def get_kubernetes_secret_name(service_name, secret_name, namespace="paasta"):
+    service = sanitise_kubernetes_name(service_name)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    name = f"{namespace}-secret-{service}-{sanitised_secret}"
+    return name
+
+
+def get_kubernetes_secret(secret_name, service_name, cluster):
+    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
+    template_name = f"{{.data.{secret_name}}}"
+
+    env = os.environ.copy()
+    env["KUBECONFIG"] = DEFAULT_KUBECTL_CONFIG_PATH
+
+    proc = subprocess.run(
+        [
+            "kubectl",
+            "get",
+            "secrets",
+            f"--cluster={cluster[0]}",
+            f"-n=paasta",
+            f"{k8s_secret_name}",
+            f"--template={{{template_name}}}",
+        ],
+        stderr=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        env=env,
+    )
+
+    # Error running kubectl
+    if proc.returncode != 0:
+        process_errors = proc.stderr.decode("utf-8").strip()
+        if process_errors:
+            print(process_errors)
+        return "Could not get secret.\n"
+
+    secret = base64.b64decode(proc.stdout).decode("utf-8")
+
+    return secret
