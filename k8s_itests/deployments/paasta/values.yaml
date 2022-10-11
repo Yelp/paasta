@@ -1,1 +1,1 @@
-cluster: $(USER)-k8s-test
+cluster: kind-$(USER)-k8s-test
