@@ -222,29 +222,24 @@ def paasta_secret(args):
         service = args.service
 
     # Check if "decrypt" and "secrets_for_teams" first to avoid vault auth
-    if args.action == "decrypt":
-        secrets_for_teams_only = is_secrets_for_teams_enabled(
-            service, args.yelpsoa_config_root
+    if args.action == "decrypt" and is_secrets_for_teams_enabled(
+        service, args.yelpsoa_config_root
+    ):
+        clusters = (
+            args.clusters.split(",")
+            if args.clusters
+            else list_clusters(service=service, soa_dir=os.getcwd())
         )
-        if secrets_for_teams_only:
-            clusters = (
-                args.clusters.split(",")
-                if args.clusters
-                else list_clusters(service=service, soa_dir=os.getcwd())
-            )
 
-            if len(clusters) > 1 or not clusters:
-                print(
-                    "Can only decrypt for one specified cluster at a time!\nFor example,"
-                    " try '-c norcal-devc' to decrypt the secret for this service in norcal-devc."
-                )
-                sys.exit(1)
-
+        if len(clusters) > 1 or not clusters:
             print(
-                get_kubernetes_secret(args.secret_name, service, clusters),
-                end="",
+                "Can only decrypt for one specified cluster at a time!\nFor example,"
+                " try '-c norcal-devc' to decrypt the secret for this service in norcal-devc."
             )
-            return
+            sys.exit(1)
+
+        print(get_kubernetes_secret(args.secret_name, service, clusters[0]))
+        return
 
     secret_provider = _get_secret_provider_for_service(
         service, cluster_names=args.clusters

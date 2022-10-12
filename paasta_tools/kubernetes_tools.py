@@ -3455,7 +3455,7 @@ def get_kubernetes_secret(secret_name, service_name, cluster):
             "kubectl",
             "get",
             "secrets",
-            f"--cluster={cluster[0]}",
+            f"--cluster={cluster}",
             f"-n=paasta",
             f"{k8s_secret_name}",
             f"--template={{{template_name}}}",

@@ -3094,9 +3094,7 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
 
 def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
     service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
-    if "secrets_for_owner_team" in service_yaml_contents:
-        return service_yaml_contents["secrets_for_owner_team"]
-    return False
+    return service_yaml_contents.get("secrets_for_owner_team", False)
 
 
 def get_pipeline_deploy_group_configs(
