@@ -661,7 +661,6 @@ def validate_min_max_instances(service_path: str) -> bool:
                 soa_dir=soa_dir,
             )
             instance_config = cast(LongRunningServiceConfig, instance_config)
-            print(instance_config)
             if instance_config.get_instance_type() == "kubernetes":
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
