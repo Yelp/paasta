@@ -3444,6 +3444,12 @@ def get_kubernetes_secret_name(service_name, secret_name, namespace="paasta"):
 
 
 def get_kubernetes_secret(secret_name, service_name, cluster):
+    # sanitise input before cmd run
+    sanitise_exp = r"[^a-zA-Z0-9-_]"
+    secret_name = re.sub(sanitise_exp, "", secret_name)
+    service_name = re.sub(sanitise_exp, "", service_name)
+    cluster = re.sub(sanitise_exp, "", cluster)
+
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
     template_name = f"{{.data.{secret_name}}}"
 
@@ -3468,9 +3474,7 @@ def get_kubernetes_secret(secret_name, service_name, cluster):
     # Error running kubectl
     if proc.returncode != 0:
         process_errors = proc.stderr.decode("utf-8").strip()
-        if process_errors:
-            print(process_errors)
-        return "Could not get secret.\n"
+        raise Exception(f"Error getting secret: {process_errors}")
 
     secret = base64.b64decode(proc.stdout).decode("utf-8")
 

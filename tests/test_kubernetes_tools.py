@@ -4041,7 +4041,7 @@ def test_get_kubernetes_secret():
 
         service_name = "example_service"
         secret_name = "example_secret"
-        cluster = ["messosstage"]
+        cluster = "messosstage"
         mock_env.return_value = {}
         proc_args = [
             "kubectl",
@@ -4084,11 +4084,17 @@ def test_get_kubernetes_secret():
         )
         mock_subprocess.return_value = mock_out
 
-        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        with pytest.raises(Exception) as e_info:
+            ret = get_kubernetes_secret(secret_name, service_name, cluster)
+
+        assert (
+            str(e_info.value)
+            == f'Error getting secret: error: cluster `"wrong place" does not exist'
+        )
+
         mock_subprocess.assert_called_with(
             proc_args,
             env=env,
             stderr=-1,
             stdout=-1,
         )
-        assert ret == "Could not get secret.\n"

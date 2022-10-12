@@ -227,7 +227,7 @@ def test_paasta_secret():
         secret.paasta_secret(mock_args)
         mock_is_secrets_for_teams_enabled.assert_called_with("middleearth", "something")
         mock_get_kubernetes_secret.assert_called_with(
-            "theonering", "middleearth", ["mesosstage"]
+            "theonering", "middleearth", "mesosstage"
         )
 
         mock_args = mock.Mock(
