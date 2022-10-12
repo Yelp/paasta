@@ -1,3 +1,12 @@
+paasta-tools (0.149.0) xenial; urgency=medium
+
+  * 0.149.0 tagged with 'make release'
+    Commit: COMPINFRA-1605, add labels to k8s workloads (#3479)  *
+    COMPINFRA-1605, add "yelp.com/owner" and "paasta.yelp.com/pool"
+    labels to k8s resources
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Wed, 12 Oct 2022 06:29:07 -0700
+
 paasta-tools (0.148.2) xenial; urgency=medium
 
   * 0.148.2 tagged with 'make release'
