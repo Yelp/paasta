@@ -1588,6 +1588,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                "paasta.yelp.com/pool": self.get_pool(),
+                "yelp.com/owner": "compute_infra_platform_experience",
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
