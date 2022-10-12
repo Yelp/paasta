@@ -326,6 +326,7 @@ KubePodLabels = TypedDict(
         "sidecar.istio.io/inject": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
+        "yelp.com/owner": str,
     },
     total=False,
 )
@@ -698,8 +699,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = (
             f"{self.namespace_external_metric_name(metrics_provider)}-prom"
         )
-        # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
-        if metrics_provider in ("mesos_cpu", "cpu"):
+
+        if metrics_provider == "cpu":
             use_prometheus = autoscaling_params.get(
                 "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
             )
@@ -1587,6 +1588,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                "paasta.yelp.com/pool": self.get_pool(),
+                "yelp.com/owner": "compute_infra_platform_experience",
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
@@ -1843,6 +1846,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
+            "yelp.com/owner": "compute_infra_platform_experience",
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())

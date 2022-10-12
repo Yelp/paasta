@@ -1613,6 +1613,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/service": mock_get_service.return_value,
             "paasta.yelp.com/autoscaled": "false",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
+            "yelp.com/owner": "compute_infra_platform_experience",
         }
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
@@ -1898,16 +1899,15 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/autoscaled": autoscaled_label,
+                    "paasta.yelp.com/pool": "default",
+                    "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
             )
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
@@ -1966,10 +1966,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
         # with cpu
@@ -3647,7 +3644,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config2c177d7a"
+            == "config52071d00"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3693,7 +3690,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config1404b38f"
+            == "configb47c4ff7"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

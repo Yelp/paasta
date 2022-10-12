@@ -44,9 +44,9 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     )
     parser.add_argument(
         "--max-age",
-        help="max age in seconds",
+        help="max age in seconds (default %(default)s)",
         type=int,
-        default=3600,  # TODO: Get from paasta system config
+        default=2592000,  # TODO: Get from paasta system config
     )
     arg_service = parser.add_argument(
         "-s",
@@ -55,6 +55,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         required=True,
     )
     arg_service.completer = lazy_choices_completer(list_services)  # type: ignore
+    parser.add_argument(
+        "-c",
+        "--commit",
+        help="Commit to be used with generated image version",
+        required=True,
+    )
     parser.add_argument(
         "-y",
         "--soa-dir",
@@ -99,14 +105,15 @@ def should_generate_new_image_version(old: str, new: str, max_age: int) -> bool:
     return True
 
 
-def get_latest_image_version(deployments: DeploymentsJsonV2Dict) -> str:
+def get_latest_image_version(deployments: DeploymentsJsonV2Dict, commit: str) -> str:
     image_version = None
     # Image versions start with sortable timestamp
+    # We only care about deployments for this sha; otherwise we will generate a new image_version
     sorted_image_versions = sorted(
         [
             deployment.get("image_version")
             for deployment in deployments["deployments"].values()
-            if deployment.get("image_version")
+            if deployment.get("image_version") and deployment.get("git_sha") == commit
         ],
         reverse=True,
     )
@@ -143,7 +150,9 @@ def paasta_get_image_version(args: argparse.Namespace) -> int:
 
     # get latest image_version of any deploy group from deployments.json
     deployments = load_v2_deployments_json(service, soa_dir)
-    latest_image_version = get_latest_image_version(deployments.config_dict)
+    latest_image_version = get_latest_image_version(
+        deployments.config_dict, commit=args.commit
+    )
 
     if should_generate_new_image_version(
         old=latest_image_version, new=new_image_version, max_age=args.max_age

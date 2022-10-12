@@ -80,6 +80,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/v')
         with:
+          generate_release_notes: true
           files: |
             dist/paasta-tools_*.deb
           fail_on_unmatched_files: true
