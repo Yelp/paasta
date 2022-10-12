@@ -238,10 +238,7 @@ def paasta_secret(args):
             )
             sys.exit(1)
 
-        try:
-            print(get_kubernetes_secret(args.secret_name, service, clusters[0]))
-        except Exception as e:
-            print(e)
+        print(get_kubernetes_secret(args.secret_name, service, clusters[0]))
         return
 
     secret_provider = _get_secret_provider_for_service(

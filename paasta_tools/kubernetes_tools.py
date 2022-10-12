@@ -3436,20 +3436,16 @@ def update_crds(
     return success
 
 
-def get_kubernetes_secret_name(service_name, secret_name, namespace="paasta"):
+def get_kubernetes_secret_name(
+    service_name: str, secret_name: str, namespace: str = "paasta"
+) -> str:
     service = sanitise_kubernetes_name(service_name)
     sanitised_secret = sanitise_kubernetes_name(secret_name)
     name = f"{namespace}-secret-{service}-{sanitised_secret}"
     return name
 
 
-def get_kubernetes_secret(secret_name, service_name, cluster):
-    # sanitise input before cmd run
-    sanitise_exp = r"[^a-zA-Z0-9-_]"
-    secret_name = re.sub(sanitise_exp, "", secret_name)
-    service_name = re.sub(sanitise_exp, "", service_name)
-    cluster = re.sub(sanitise_exp, "", cluster)
-
+def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
     template_name = f"{{.data.{secret_name}}}"
 
