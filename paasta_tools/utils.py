@@ -4047,6 +4047,31 @@ def load_all_configs(
     return config_dicts
 
 
+def load_all_flink_configs(
+    cluster: str, soa_dir: str
+) -> Mapping[str, Mapping[str, Any]]:
+    config_dicts = {}
+    for service in os.listdir(soa_dir):
+        user_config = service_configuration_lib.read_extra_service_information(
+            service,
+            f"flink-{cluster}",
+            soa_dir=soa_dir,
+            deepcopy=False,
+        )
+        auto_config = service_configuration_lib.read_extra_service_information(
+            service,
+            f"{AUTO_SOACONFIG_SUBDIR}/flink-{cluster}",
+            soa_dir=soa_dir,
+            deepcopy=False,
+        )
+        config_dicts[service] = deep_merge_dictionaries(
+            overrides=user_config,
+            defaults=auto_config,
+        )
+
+    return config_dicts
+
+
 def ldap_user_search(
     cn: str,
     search_base: str,
