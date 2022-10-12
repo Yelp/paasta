@@ -23,6 +23,7 @@ from functools import partial
 from glob import glob
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -49,6 +50,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -643,7 +645,7 @@ def validate_autoscaling_configs(service_path):
     return returncode
 
 
-def validate_min_max_instances(service_path) -> bool:
+def validate_min_max_instances(service_path: str) -> bool:
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
 
@@ -658,21 +660,11 @@ def validate_min_max_instances(service_path) -> bool:
                 load_deployments=False,
                 soa_dir=soa_dir,
             )
-            if instance_config.get_instance_type() != "tron":
+            instance_config = cast(LongRunningServiceConfig, instance_config)
+            print(instance_config)
+            if instance_config.get_instance_type() == "kubernetes":
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
-                instances = instance_config.get_instances_from_config()
-                if instances is None and (
-                    min_instances is None or max_instances is None
-                ):
-                    returncode = False
-                    print(
-                        failure(
-                            f"Instance {instance} on cluster {cluster} does not have min_instances and max_instances set."
-                            + f"Please set a value for both min_instances and max_instances in the sysgit/soaconfigs repo for Instance {instance} on cluster {cluster}.",
-                            "",
-                        )
-                    )
                 if min_instances is not None and max_instances is not None:
                     if max_instances < min_instances:
                         returncode = False
