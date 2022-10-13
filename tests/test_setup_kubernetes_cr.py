@@ -188,6 +188,23 @@ def test_load_all_flink_configs():
         autospec=True,
     ) as mock_read_info, mock.patch("os.listdir", autospec=True) as mock_oslist:
         mock_oslist.return_value = ["kurupt", "mc"]
+        mock_read_info.side_effect = [
+            {
+                "foo": {"mem": 2},
+                "bar": {"cpus": 3},
+            },
+            {
+                "foo": {"cpus": 2},
+                "bar": {"cpus": 5},
+            },
+            {
+                "bar": {"cpus": 3},
+            },
+            {
+                "foo": {"cpus": 2},
+                "bar": {"cpus": 5},
+            },
+        ]
         ret = setup_kubernetes_cr.load_all_flink_configs(
             cluster="westeros-prod", soa_dir="/nail/soa"
         )
@@ -195,16 +212,7 @@ def test_load_all_flink_configs():
         mock_read_info.assert_has_calls(
             [
                 mock.call(
-                    "mc", "flink-westeros-prod", soa_dir="/nail/soa", deepcopy=False
-                ),
-                mock.call(
                     "kurupt", "flink-westeros-prod", soa_dir="/nail/soa", deepcopy=False
-                ),
-                mock.call(
-                    "mc",
-                    "autotuned_defaults/flink-westeros-prod",
-                    soa_dir="/nail/soa",
-                    deepcopy=False,
                 ),
                 mock.call(
                     "kurupt",
@@ -212,11 +220,24 @@ def test_load_all_flink_configs():
                     soa_dir="/nail/soa",
                     deepcopy=False,
                 ),
+                mock.call(
+                    "mc", "flink-westeros-prod", soa_dir="/nail/soa", deepcopy=False
+                ),
+                mock.call(
+                    "mc",
+                    "autotuned_defaults/flink-westeros-prod",
+                    soa_dir="/nail/soa",
+                    deepcopy=False,
+                ),
             ],
             any_order=True,
         )
+
         assert "kurupt" in ret.keys()
         assert "mc" in ret.keys()
+
+        assert ret["kurupt"] == {"foo": {"cpus": 2, "mem": 2}, "bar": {"cpus": 3}}
+        assert ret["mc"] == {"foo": {"cpus": 2}, "bar": {"cpus": 3}}
 
 
 def test_setup_custom_resources():
