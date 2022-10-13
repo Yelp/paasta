@@ -3,6 +3,7 @@
 yproperties() // Sets releng approved global properties (SCM polling, build log rotation, etc)
 
 env.PAASTA_ENV = 'YELP'
+env.FORCE_KUBERNETES_YNODE = 'true'
 
 CHANNELS = ['paasta']
 GIT_SERVER = 'git@github.com'
@@ -13,7 +14,7 @@ commit = ''
 
 ircMsgResult(CHANNELS) {
     ystage('Test') {
-        ynode {
+        ynode('bionic-super-heavy') {
             ensureCleanWorkspace {
                 commit = clone(
                     PACKAGE_NAME,

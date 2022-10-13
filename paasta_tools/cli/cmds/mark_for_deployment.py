@@ -46,8 +46,9 @@ import progressbar
 from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
-from sticht.slo import SLOSlackDeploymentProcess
-from sticht.slo import SLOWatcher
+from sticht.rollbacks.base import RollbackSlackDeploymentProcess
+from sticht.rollbacks.slo import SLOWatcher
+from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
 from paasta_tools.api import client
@@ -568,7 +569,7 @@ class Progress:
         return ", ".join(things)
 
 
-class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
+class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     rollback_states = ["start_rollback", "rolling_back", "rolled_back"]
     rollforward_states = ["start_deploy", "deploying", "deployed"]
     default_slack_channel = DEFAULT_SLACK_CHANNEL
@@ -645,6 +646,10 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
         self.slo_watchers: List[SLOWatcher] = []
 
         self.start_slo_watcher_threads(self.service, self.soa_dir)
+
+        # TODO: Enable once Rollback Conditions are available
+        # self.start_metric_watcher_threads(self.service, self.soa_dir)
+
         # Initialize Slack threads and send the first message
         super().__init__()
         self.print_who_is_running_this()
@@ -681,7 +686,6 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             )
         # If there's no production deploy group, or the production deploy group
         # has never been deployed to, just use the old SHA from this deploy group.
-        # TODO: do we need to get author information from image_version-only bumps?
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
@@ -740,7 +744,7 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             self.trigger("mfd_failed")
         else:
             self.update_slack_thread(
-                f"Marked `{self.commit[:8]}` for {self.deploy_group}."
+                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}."
                 + (
                     "\n" + self.get_authors()
                     if self.deploy_group_is_set_to_notify("notify_after_mark")
@@ -1203,16 +1207,16 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
 
     def send_manual_rollback_instructions(self) -> None:
         if self.deployment_version != self.old_deployment_version:
+            extra_rollback_args = ""
+            if self.old_deployment_version.image_version:
+                extra_rollback_args = (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
             message = (
                 "If you need to roll back manually, run: "
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                f"--commit {self.old_git_sha}`"
+                f"--commit {self.old_git_sha}{extra_rollback_args}`"
             )
-            if self.old_deployment_version.image_version:
-                message += (
-                    f" --image-version {self.old_deployment_version.image_version}"
-                )
-
             self.update_slack_thread(message)
             print(message)
 
@@ -1227,29 +1231,51 @@ class MarkForDeploymentProcess(SLOSlackDeploymentProcess):
             .get("signalfx_api_key", None)
         )
 
+    def get_splunk_api_token(self) -> SplunkAuth:
+        auth_token = os.environ["SPLUNK_MFD_TOKEN"]
+        auth_data = (
+            load_system_paasta_config()
+            .get_monitoring_config()
+            .get("splunk_mfd_authentication")
+        )
+
+        return SplunkAuth(
+            host=auth_data["host"],
+            port=auth_data["port"],
+            username=auth_data["username"],
+            password=auth_token,
+        )
+
     def get_button_text(self, button: str, is_active: bool) -> str:
-        # TODO: Update button text for image_version
-        #  Will require thought on shortening
+        # Button text max length 75 characters
+        # Current button templates allow version max length of 36
+        version_short_str = self.deployment_version.short_sha_repr()
+        if len(version_short_str) > 36:
+            # we'll have to depend on subsequent slack messages to show full version
+            version_short_str = "new version"
         active_button_texts = {
-            "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
+            "forward": f"Rolling Forward to {version_short_str} :zombocom:"
         }
         inactive_button_texts = {
-            "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
-            "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
+            "forward": f"Continue Forward to {version_short_str} :arrow_forward:",
+            "complete": f"Complete deploy to {version_short_str} :white_check_mark:",
             "snooze": f"Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
 
-        # TODO: Update to check image_version also
-        if self.old_git_sha is not None:
+        if self.old_deployment_version is not None:
+            old_version_short_str = self.old_deployment_version.short_sha_repr()
+            # Current button templates allow old version max length 43
+            if len(old_version_short_str) > 43:
+                old_version_short_str = "old version"
             active_button_texts.update(
-                {"rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:"}
+                {"rollback": f"Rolling Back to {old_version_short_str} :zombocom:"}
             )
             inactive_button_texts.update(
                 {
-                    "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
-                    "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
+                    "rollback": f"Roll Back to {old_version_short_str} :arrow_backward:",
+                    "abandon": f"Abandon deploy, staying on {old_version_short_str} :x:",
                 }
             )
 
