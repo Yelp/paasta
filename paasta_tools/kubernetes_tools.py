@@ -18,7 +18,6 @@ import logging
 import math
 import os
 import re
-import subprocess
 from datetime import datetime
 from enum import Enum
 from inspect import currentframe
@@ -3446,32 +3445,13 @@ def get_kubernetes_secret_name(
 
 
 def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
+    os.environ["KUBECONFIG"] = DEFAULT_KUBECTL_CONFIG_PATH
+    os.environ["KUBECONTEXT"] = cluster
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
-    template_name = f"{{.data.{secret_name}}}"
 
-    env = os.environ.copy()
-    env["KUBECONFIG"] = DEFAULT_KUBECTL_CONFIG_PATH
-
-    proc = subprocess.run(
-        [
-            "kubectl",
-            "get",
-            "secrets",
-            f"--cluster={cluster}",
-            f"-n=paasta",
-            f"{k8s_secret_name}",
-            f"--template={{{template_name}}}",
-        ],
-        stderr=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        env=env,
-    )
-
-    # Error running kubectl
-    if proc.returncode != 0:
-        process_errors = proc.stderr.decode("utf-8").strip()
-        raise Exception(f"Error getting secret: {process_errors}")
-
-    secret = base64.b64decode(proc.stdout).decode("utf-8")
-
+    kube_client = KubeClient()
+    secret_data = kube_client.core.read_namespaced_secret(
+        name=k8s_secret_name, namespace="paasta"
+    ).data[secret_name]
+    secret = base64.b64decode(secret_data).decode("utf-8")
     return secret

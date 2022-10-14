@@ -46,6 +46,7 @@ from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
@@ -4034,67 +4035,29 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
 
 def test_get_kubernetes_secret():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.subprocess.run", autospec=True
-    ) as mock_subprocess, mock.patch(
-        "paasta_tools.kubernetes_tools.os.environ.copy", autospec=True
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=True,
+    ) as mock_kube_client, mock.patch(
+        "paasta_tools.kubernetes_tools.os.environ", autospec=True
     ) as mock_env:
 
         service_name = "example_service"
         secret_name = "example_secret"
         cluster = "messosstage"
         mock_env.return_value = {}
-        proc_args = [
-            "kubectl",
-            "get",
-            "secrets",
-            "--cluster=messosstage",
-            "-n=paasta",
-            "paasta-secret-example--service-example--secret",
-            "--template={{.data.example_secret}}",
-        ]
-        env = {"KUBECONFIG": "/etc/kubernetes/paasta.conf"}
 
-        # No kubectl errors
-        mock_out = mock.Mock()
-        mock_out.configure_mock(
-            **{
-                "stdout": b64encode("something".encode()),
-                "returncode": 0,
-            }
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.read_namespaced_secret.return_value = mock.Mock(spec=V1Secret)
+        mock_client.core.read_namespaced_secret.return_value = V1Secret(
+            data={"example_secret": b64encode("something".encode())},
+            metadata=V1ObjectMeta(name="example_secret"),
         )
-        mock_subprocess.return_value = mock_out
+        mock_kube_client.return_value = mock_client
 
         ret = get_kubernetes_secret(secret_name, service_name, cluster)
-        mock_subprocess.assert_called_with(
-            proc_args,
-            env=env,
-            stderr=-1,
-            stdout=-1,
+        mock_client.core.read_namespaced_secret.assert_called_with(
+            name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
         assert ret == "something"
-
-        # kubectl errors
-        mock_out = mock.Mock()
-        mock_out.configure_mock(
-            **{
-                "stdout": "",
-                "returncode": 1,
-                "stderr": 'error: cluster `"wrong place" does not exist'.encode(),
-            }
-        )
-        mock_subprocess.return_value = mock_out
-
-        with pytest.raises(Exception) as e_info:
-            ret = get_kubernetes_secret(secret_name, service_name, cluster)
-
-        assert (
-            str(e_info.value)
-            == f'Error getting secret: error: cluster `"wrong place" does not exist'
-        )
-
-        mock_subprocess.assert_called_with(
-            proc_args,
-            env=env,
-            stderr=-1,
-            stdout=-1,
-        )
