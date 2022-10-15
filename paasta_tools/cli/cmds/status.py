@@ -306,10 +306,10 @@ def paasta_status_on_api_endpoint(
         return 1
 
     if status.version and status.version != "":
-        output.append("    Version:    %s (desired)" % status.version)
+        output.append(f"    Version:    {status.version} (desired)")
     # TODO: Remove this when all clusters are returning status.version
     elif status.git_sha != "":
-        output.append("    Git sha:    %s (desired)" % status.git_sha)
+        output.append(f"    Git sha:    {status.git_sha} (desired)")
     instance_types = find_instance_types(status)
     if not instance_types:
         output.append(
