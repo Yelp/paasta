@@ -242,9 +242,7 @@ def test_lazy_choices_completer():
     assert completer(prefix="") == ["1", "2", "3"]
 
 
-@mock.patch(
-    "paasta_tools.cli.utils.LONG_RUNNING_INSTANCE_TYPE_HANDLERS", dict(), autospec=None
-)
+@mock.patch("paasta_tools.cli.utils.INSTANCE_TYPE_HANDLERS", dict(), autospec=None)
 @mock.patch("paasta_tools.cli.utils.validate_service_instance", autospec=True)
 def test_get_instance_config_by_instance_type(
     mock_validate_service_instance,
@@ -253,9 +251,9 @@ def test_get_instance_config_by_instance_type(
     mock_validate_service_instance.return_value = instance_type
     mock_load_config = mock.MagicMock()
     mock_load_config.return_value = "fake_service_config"
-    utils.LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
-        instance_type
-    ] = utils.InstanceTypeHandler(None, mock_load_config)
+    utils.INSTANCE_TYPE_HANDLERS[instance_type] = utils.InstanceTypeHandler(
+        None, mock_load_config
+    )
     actual = utils.get_instance_config(
         service="fake_service",
         instance="fake_instance",
