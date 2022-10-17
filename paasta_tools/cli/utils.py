@@ -819,15 +819,15 @@ def get_instance_config(
     soa_dir: str = DEFAULT_SOA_DIR,
     load_deployments: bool = False,
     instance_type: Optional[str] = None,
-) -> InstanceConfig:
-    """Returns the InstanceConfig object for whatever type of instance
+) -> LongRunningServiceConfig:
+    """Returns the LongRunningServiceConfig object for whatever type of instance
     it is. (marathon)"""
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
         )
 
-    instance_config_loader = INSTANCE_TYPE_HANDLERS[instance_type].loader
+    instance_config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
     if instance_config_loader is None:
         raise NotImplementedError(
             "instance is %s of type %s which is not supported by paasta"
