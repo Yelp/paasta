@@ -47,8 +47,8 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
-from paasta_tools.utils import load_all_flink_configs
 from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger(__name__)
 
@@ -168,20 +168,16 @@ def setup_all_custom_resources(
             continue
 
         # by convention, entries where key begins with _ are used as templates
-        raw_config_dicts = {}
-        if crd.kube_kind.singular == "flink":
-            raw_config_dicts = load_all_flink_configs(cluster=cluster, soa_dir=soa_dir)
-        else:
-            raw_config_dicts = load_all_configs(
-                cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
-            )
-        config_dicts = {}
-        for svc, raw_sdict in raw_config_dicts.items():
-            sdict = {inst: idict for inst, idict in raw_sdict.items() if inst[0] != "_"}
-            if sdict:
-                config_dicts[svc] = sdict
-        if not config_dicts:
-            continue
+        config_dicts = load_all_configs(
+            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
+        )
+        # config_dicts = {}
+        # for svc, raw_sdict in raw_config_dicts.items():
+        #     sdict = {inst: idict for inst, idict in raw_sdict.items() if inst[0] != "_"}
+        #     if sdict:
+        #         config_dicts[svc] = sdict
+        # if not config_dicts:
+        #     continue
 
         ensure_namespace(
             kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"

@@ -1025,6 +1025,55 @@ def test_load_service_instance_configs(
     )
 
 
+@mock.patch(
+    "paasta_tools.utils.load_service_instance_auto_configs",
+    autospec=True,
+)
+@mock.patch(
+    "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+    autospec=True,
+)
+def test_flink_load_service_instance_configs(
+    mock_read_extra_service_information, mock_load_auto_configs
+):
+    mock_read_extra_service_information.return_value = {
+        "foo": {
+            "taskmanager": {"cpus": 1},
+            "jobmanager": {"mem": 2},
+            "supervisor": {"cpus": 2},
+        },
+    }
+    mock_load_auto_configs.return_value = {
+        "foo": {"taskmanager": {"mem": 2}},
+    }
+    expected = {
+        "foo": {
+            "taskmanager": {"cpus": 1, "mem": 2},
+            "jobmanager": {"mem": 2},
+            "supervisor": {"cpus": 2},
+        }
+    }
+    result = utils.load_service_instance_configs(
+        service="fake_service",
+        instance_type="flink",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+    assert result == expected
+    mock_read_extra_service_information.assert_called_with(
+        "fake_service",
+        "flink-fake",
+        soa_dir="fake_dir",
+        deepcopy=False,
+    )
+    mock_load_auto_configs.assert_called_with(
+        service="fake_service",
+        instance_type="flink",
+        cluster="fake",
+        soa_dir="fake_dir",
+    )
+
+
 def test_load_service_instance_config_underscore():
     with pytest.raises(utils.InvalidJobNameError):
         utils.load_service_instance_config(
