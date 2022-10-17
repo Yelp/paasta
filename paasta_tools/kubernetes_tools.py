@@ -158,7 +158,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
-DEFAULT_KUBECTL_CONFIG_PATH = "/etc/kubernetes/paasta.conf"
+KUBE_CONFIG_USER_PATH = "/etc/kubernetes/paasta.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 KUBE_DEPLOY_STATEGY_MAP = {
@@ -3457,7 +3457,7 @@ def get_kubernetes_secret_name(
 def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
-    kube_client = KubeClient(config_file=DEFAULT_KUBECTL_CONFIG_PATH, context=cluster)
+    kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=cluster)
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace="paasta"
     ).data[secret_name]
