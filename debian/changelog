@@ -1,3 +1,11 @@
+paasta-tools (0.149.2) xenial; urgency=medium
+
+  * 0.149.2 tagged with 'make release'
+    Commit: Merge pull request #3477 from Yelp/u/iiliescu/SECNESS-987
+    Secrets for teams feature in paasta secret cli
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Tue, 18 Oct 2022 04:47:22 -0700
+
 paasta-tools (0.149.1) xenial; urgency=medium
 
   * 0.149.1 tagged with 'make release'
