@@ -648,7 +648,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
         # TODO: Enable once Rollback Conditions are available
-        # self.start_metric_watcher_threads(self.service, self.soa_dir)
+        self.start_metric_watcher_threads(self.service, self.soa_dir)
 
         # Initialize Slack threads and send the first message
         super().__init__()
@@ -910,18 +910,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "rollback_slo_failure",
             }
             yield {
-                "source": self.rollforward_states,
-                "dest": "start_rollback",
-                "trigger": "rollback_metric_failure",
-                "before": self.log_metric_rollback,
-            }
-            # TODO COMPINFRA-1140 - Is this transition necessary? Internal transition with no before/after/prepare does...nothing?
-            yield {
-                "source": self.rollback_states,
-                "dest": None,
-                "trigger": "rollback_metric_failure",
-            }
-            yield {
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
@@ -968,11 +956,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": "*",
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "disable_auto_rollbacks_button_clicked",
-                "conditions": [
-                    self.any_slo_failing,
-                    self.any_metric_failing,
-                    self.auto_rollbacks_enabled,
-                ],
+                "conditions": [self.any_slo_failing, self.auto_rollbacks_enabled],
                 "before": self.disable_auto_rollbacks,
             }
         yield {
@@ -981,35 +965,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "trigger": "slos_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
-            "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_slo_failure"
-            ),
+            "before": self.start_auto_rollback_countdown,
         }
         yield {
             "source": "*",
             "dest": None,
             "trigger": "slos_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_slo_failure"
-            ),
-        }
-        yield {
-            "source": "*",
-            "dest": None,
-            "trigger": "metrics_started_failing",
-            "conditions": [self.auto_rollbacks_enabled],
-            "unless": [self.already_rolling_back],
-            "before": functools.partial(
-                self.start_auto_rollback_countdown, "rollback_metric_failure"
-            ),
-        }
-        yield {
-            "source": "*",
-            "dest": None,
-            "trigger": "metrics_stopped_failing",
-            "before": functools.partial(
-                self.cancel_auto_rollback_countdown, "rollback_metric_failure"
-            ),
+            "before": self.cancel_auto_rollback_countdown,
         }
         yield {
             "source": "*",
@@ -1231,6 +1193,10 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.ping_authors(
                 "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
+        elif self.any_metric_failing() and self.auto_rollbacks_enabled():
+            self.ping_authors(
+                "Because a rollback condition is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+            )
         else:
             if self.get_auto_certify_delay() > 0:
                 self.start_timer(
@@ -1319,13 +1285,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
+    def start_auto_rollback_countdown(self, extra_text: str = "") -> None:
         cancel_button_text = self.get_button_text(
-            button="disable_auto_rollbacks",
-            is_active=False,
+            "disable_auto_rollbacks", is_active=False
         )
         super().start_auto_rollback_countdown(
-            trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
+            extra_text=f'Click "{cancel_button_text}" to cancel this!'
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
@@ -1348,12 +1313,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     def log_slo_rollback(self) -> None:
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
-        )
-        self._log_rollback(rollback_details)
-
-    def log_metric_rollback(self) -> None:
-        rollback_details = self.__build_rollback_audit_details(
-            RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
