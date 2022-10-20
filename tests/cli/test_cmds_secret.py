@@ -17,6 +17,7 @@ import mock
 from pytest import raises
 
 from paasta_tools.cli.cmds import secret
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 
 
 def test_add_subparser():
@@ -147,7 +148,9 @@ def test_paasta_secret():
         "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
     ) as mock_is_secrets_for_teams_enabled, mock.patch(
         "paasta_tools.cli.cmds.secret.get_kubernetes_secret", autospec=True
-    ) as mock_get_kubernetes_secret:
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
+    ) as mock_kube_client:
         mock_secret_provider = mock.Mock(secret_dir="/nail/blah")
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -223,11 +226,18 @@ def test_paasta_secret():
             yelpsoa_config_root="something",
             shared=False,
         )
+        kube_client = mock.Mock()
         mock_is_secrets_for_teams_enabled.return_value = True
+        mock_kube_client.return_value = kube_client
+
         secret.paasta_secret(mock_args)
+
         mock_is_secrets_for_teams_enabled.assert_called_with("middleearth", "something")
+        mock_kube_client.assert_called_with(
+            config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
+        )
         mock_get_kubernetes_secret.assert_called_with(
-            "theonering", "middleearth", "mesosstage"
+            kube_client, "theonering", "middleearth"
         )
 
         mock_args = mock.Mock(

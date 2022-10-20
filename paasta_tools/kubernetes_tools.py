@@ -3456,10 +3456,11 @@ def get_kubernetes_secret_name(
     return name
 
 
-def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
+def get_kubernetes_secret(
+    kube_client: KubeClient, secret_name: str, service_name: str
+) -> str:
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
-    kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=cluster)
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace="paasta"
     ).data[secret_name]
@@ -3468,13 +3469,15 @@ def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> 
 
 
 def get_kubernetes_secret_env_variables(
-    environment: Dict[str, str], service_name: str, cluster: str
+    kube_client: KubeClient,
+    environment: Dict[str, str],
+    service_name: str,
 ) -> Dict[str, str]:
     decrypted_secrets = {}
     for k, v in environment.items():
         if is_secret_ref(v):
             secret_name = get_secret_name_from_ref(v)
             decrypted_secrets[k] = get_kubernetes_secret(
-                secret_name, service_name, cluster
+                kube_client, secret_name, service_name
             )
     return decrypted_secrets

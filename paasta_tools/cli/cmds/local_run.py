@@ -38,6 +38,8 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
@@ -694,8 +696,11 @@ def run_docker_container(
         # if secrets_for_owner_team enabled in yelpsoa for service
         if is_secrets_for_teams_enabled(service, soa_dir):
             try:
+                kube_client = KubeClient(
+                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                )
                 secret_environment = get_kubernetes_secret_env_variables(
-                    environment, service, instance_config.cluster
+                    kube_client, environment, service
                 )
             except Exception as e:
                 print(
