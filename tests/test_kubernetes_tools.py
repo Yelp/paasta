@@ -97,6 +97,7 @@ from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
@@ -4057,3 +4058,43 @@ def test_get_kubernetes_secret():
             name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
         assert ret == "something"
+
+
+def test_get_kubernetes_secret_env_variables():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.is_secret_ref",
+        autospec=True,
+    ) as mock_is_secret_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
+    ) as mock_get_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret:
+
+        mock_environment = {
+            "MY": "aaa",
+            "SECRET_NAME1": "SECRET(SECRET_NAME1)",
+            "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+        }
+        mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+
+        ret = get_kubernetes_secret_env_variables(
+            environment=mock_environment,
+            service_name="universe",
+            cluster="mesosstage",
+        )
+        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+
+        assert mock_get_kubernetes_secret.call_args_list == [
+            mock.call(
+                "SECRET_NAME1",
+                "universe",
+                "mesosstage",
+            ),
+            mock.call(
+                "SECRET_NAME2",
+                "universe",
+                "mesosstage",
+            ),
+        ]

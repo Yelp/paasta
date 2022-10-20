@@ -3465,3 +3465,16 @@ def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> 
     ).data[secret_name]
     secret = base64.b64decode(secret_data).decode("utf-8")
     return secret
+
+
+def get_kubernetes_secret_env_variables(
+    environment: Dict[str, str], service_name: str, cluster: str
+) -> Dict[str, str]:
+    decrypted_secrets = {}
+    for k, v in environment.items():
+        if is_secret_ref(v):
+            secret_name = get_secret_name_from_ref(v)
+            decrypted_secrets[k] = get_kubernetes_secret(
+                secret_name, service_name, cluster
+            )
+    return decrypted_secrets
