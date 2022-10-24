@@ -1,3 +1,12 @@
+paasta-tools (0.150.0) xenial; urgency=medium
+
+  * 0.150.0 tagged with 'make release'
+    Commit: Merge pull request #3478 from
+    Yelp/u/emanelsabban/paasta_playground_documentation  Added
+    documentation to readthedocs for paasta playground - PAASTA-17768
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 24 Oct 2022 10:57:41 -0700
+
 paasta-tools (0.149.3) xenial; urgency=medium
 
   * 0.149.3 tagged with 'make release'
