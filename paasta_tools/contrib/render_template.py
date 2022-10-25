@@ -43,7 +43,7 @@ def render(src, dst, values={}, exclude={}):
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
             try:
-                os.mkdir(new_dst)
+                os.makedirs(new_dst, exist_ok=True)
             except OSError as e:
                 if e.errno != os.errno.EEXIST:
                     raise
@@ -82,11 +82,7 @@ def parse_args():
     return args
 
 
-def main():
-    args = parse_args()
-    src = os.path.abspath(args.src)
-    dst = os.path.abspath(args.dst)
-    values = args.values
+def render_values(src: str, dst: str, values: str) -> None:
     if values is not None:
         values = os.path.abspath(values)
     # Validate src and values. Dst needs to be a directory. src can be either a valid folder of directory. values need to be valid file if provided.
@@ -113,6 +109,15 @@ def main():
             v,
         )
     render(src, dst, config_dict, {values})
+
+
+def main():
+    args = parse_args()
+    src = os.path.abspath(args.src)
+    dst = os.path.abspath(args.dst)
+    values = args.values
+
+    render_values(src, dst, values)
 
 
 if __name__ == "__main__":

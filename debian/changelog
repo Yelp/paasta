@@ -1,3 +1,65 @@
+paasta-tools (0.150.1) xenial; urgency=medium
+
+  * 0.150.1 tagged with 'make release'
+    Commit: Merge pull request #3484 from
+    Yelp/u/emanelsabban/added_playground_documentation_toindex  Added
+    paasta playground documentation to index list
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 24 Oct 2022 13:43:34 -0700
+
+paasta-tools (0.150.0) xenial; urgency=medium
+
+  * 0.150.0 tagged with 'make release'
+    Commit: Merge pull request #3478 from
+    Yelp/u/emanelsabban/paasta_playground_documentation  Added
+    documentation to readthedocs for paasta playground - PAASTA-17768
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 24 Oct 2022 10:57:41 -0700
+
+paasta-tools (0.149.3) xenial; urgency=medium
+
+  * 0.149.3 tagged with 'make release'
+    Commit: Merge pull request #3483 from Yelp/MLCOMPUTE-
+    216_dra_mass_rollout_16_exec  MLCOMPUTE-216 | increase Spark DRA
+    mass rollout executor range to 16
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 21 Oct 2022 06:54:25 -0700
+
+paasta-tools (0.149.2) xenial; urgency=medium
+
+  * 0.149.2 tagged with 'make release'
+    Commit: Merge pull request #3477 from Yelp/u/iiliescu/SECNESS-987
+    Secrets for teams feature in paasta secret cli
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Tue, 18 Oct 2022 04:47:22 -0700
+
+paasta-tools (0.149.1) xenial; urgency=medium
+
+  * 0.149.1 tagged with 'make release'
+    Commit: COMPINFRA-1050, COMPINFRA-1043: fix paasta status output to
+    show full version if provided (#3473)  * Update
+    get_actual_deployments to no longer depend on deploymentjsonv1 and
+    add deployment version to paasta status output
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 17 Oct 2022 11:02:56 -0700
+
+paasta-tools (0.149.0) xenial; urgency=medium
+
+  * 0.149.0 tagged with 'make release'
+    Commit: COMPINFRA-1605, add labels to k8s workloads (#3479)  *
+    COMPINFRA-1605, add "yelp.com/owner" and "paasta.yelp.com/pool"
+    labels to k8s resources
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Wed, 12 Oct 2022 06:29:07 -0700
+
+paasta-tools (0.148.2) xenial; urgency=medium
+
+  * 0.148.2 tagged with 'make release'
+    Commit: CLUSTERMAN-710, bump version for service_lib_config to
+    2.12.2 (#3476)
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Tue, 11 Oct 2022 06:20:47 -0700
+
 paasta-tools (0.148.1) xenial; urgency=medium
 
   * 0.148.1 tagged with 'make release'

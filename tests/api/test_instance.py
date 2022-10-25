@@ -38,6 +38,7 @@ from paasta_tools.mesos.slave import MesosSlave
 from paasta_tools.mesos.task import Task
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SystemPaastaConfig
@@ -87,11 +88,12 @@ def test_instance_status_marathon(
 ):
     settings.cluster = "fake_cluster"
 
+    mock_deployment_version = DeploymentVersion("GIT_SHA", None)
     mock_get_actual_deployments.return_value = {
-        "fake_cluster.fake_instance": "GIT_SHA",
-        "fake_cluster.fake_instance2": "GIT_SHA",
-        "fake_cluster2.fake_instance": "GIT_SHA",
-        "fake_cluster2.fake_instance2": "GIT_SHA",
+        "fake_cluster.fake_instance": mock_deployment_version,
+        "fake_cluster.fake_instance2": mock_deployment_version,
+        "fake_cluster2.fake_instance": mock_deployment_version,
+        "fake_cluster2.fake_instance2": mock_deployment_version,
     }
     mock_validate_service_instance.return_value = "marathon"
 
@@ -853,11 +855,12 @@ def test_instances_status_adhoc(
     mock_adhoc_instance_status,
 ):
     settings.cluster = "fake_cluster"
+    mock_deployment_version = DeploymentVersion("GIT_SHA", "20220101T000000")
     mock_get_actual_deployments.return_value = {
-        "fake_cluster.fake_instance": "GIT_SHA",
-        "fake_cluster.fake_instance2": "GIT_SHA",
-        "fake_cluster2.fake_instance": "GIT_SHA",
-        "fake_cluster2.fake_instance2": "GIT_SHA",
+        "fake_cluster.fake_instance": mock_deployment_version,
+        "fake_cluster.fake_instance2": mock_deployment_version,
+        "fake_cluster2.fake_instance": mock_deployment_version,
+        "fake_cluster2.fake_instance2": mock_deployment_version,
     }
     mock_validate_service_instance.return_value = "adhoc"
     mock_adhoc_instance_status.return_value = {}
@@ -871,6 +874,7 @@ def test_instances_status_adhoc(
         "service": "fake_service",
         "instance": "fake_instance",
         "git_sha": "GIT_SHA",
+        "version": mock_deployment_version.short_sha_repr(),
         "adhoc": {},
     }
 

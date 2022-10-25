@@ -76,6 +76,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -3105,6 +3106,11 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
     return service_configuration.get("deploy", {}).get("pipeline", [])
 
 
+def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
+    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
+    return service_yaml_contents.get("secrets_for_owner_team", False)
+
+
 def get_pipeline_deploy_group_configs(
     service: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> List[Dict]:
@@ -3633,8 +3639,8 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     url. This function takes that url as input and outputs the sha.
     """
     if ":paasta-" in docker_url:
-        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
-        git_sha = regex_match.group("git_sha")
+        deployment_version = get_deployment_version_from_dockerurl(docker_url)
+        git_sha = deployment_version.sha if deployment_version else ""
     # Fall back to the old behavior if the docker_url does not follow the
     # expected pattern
     else:
@@ -3649,11 +3655,23 @@ def get_image_version_from_dockerurl(docker_url: str) -> Optional[str]:
     """We can optionally encode additional metadata about the docker image *in*
     the docker url. This function takes that url as input and outputs the sha.
     """
+    deployment_version = get_deployment_version_from_dockerurl(docker_url)
+    return deployment_version.image_version if deployment_version else None
+
+
+def get_deployment_version_from_dockerurl(docker_url: str) -> DeploymentVersion:
     regex_match = re.match(
-        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)-(?P<image_version>.+)", docker_url
+        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)(-(?P<image_version>.+))?", docker_url
     )
 
-    return regex_match.group("image_version") if regex_match is not None else None
+    return (
+        DeploymentVersion(
+            sha=regex_match.group("git_sha"),
+            image_version=regex_match.group("image_version"),
+        )
+        if regex_match is not None
+        else None
+    )
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:
