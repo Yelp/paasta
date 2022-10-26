@@ -14,7 +14,7 @@ PaaSTA playground allows the developer to run and debug PaaSTA locally on an eph
 * starting the PaaSTA API (the backend that the PaaSTA CLI talks to)
 * configuring the PaaSTA CLI (the interface to interacting with PaaSTA)
 
-PaaSTA playground Use cases
+PaaSTA playground use cases
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 There are mainly two use cases for PaaSTA playground:
 
@@ -25,9 +25,9 @@ Create a Kind Cluster - K8s Cluster
 -----------------------------------
 
 Before running or debugging PaaSTA playground, you will need to create a Kubernetes cluster using ``kind``. You can do so by running the Make target
-``make create_cluster`` from the ``paasta/k8s_itests`` directory.
+``make k8s_fake_cluster``.
 
-To delete the cluster, run ``make clean`` from the ``paasta/k8s_itests`` directory.
+To delete the cluster, run ``make k8s_clean``.
 
 .. _debugging-paasta:
 
