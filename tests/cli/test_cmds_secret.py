@@ -143,7 +143,11 @@ def test_paasta_secret():
         "paasta_tools.cli.cmds.secret.get_plaintext_input", autospec=True
     ) as mock_get_plaintext_input, mock.patch(
         "paasta_tools.cli.cmds.secret._log_audit", autospec=True
-    ) as mock_log_audit:
+    ) as mock_log_audit, mock.patch(
+        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
+    ) as mock_is_secrets_for_teams_enabled, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret:
         mock_secret_provider = mock.Mock(secret_dir="/nail/blah")
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -201,12 +205,29 @@ def test_paasta_secret():
             clusters="mesosstage",
             shared=False,
         )
+        mock_is_secrets_for_teams_enabled.return_value = False
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
             "middleearth", cluster_names="mesosstage"
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
+        )
+
+        # decrypt with secrets_for_teams enabled
+        mock_args = mock.Mock(
+            action="decrypt",
+            secret_name="theonering",
+            service="middleearth",
+            clusters="mesosstage",
+            yelpsoa_config_root="something",
+            shared=False,
+        )
+        mock_is_secrets_for_teams_enabled.return_value = True
+        secret.paasta_secret(mock_args)
+        mock_is_secrets_for_teams_enabled.assert_called_with("middleearth", "something")
+        mock_get_kubernetes_secret.assert_called_with(
+            "theonering", "middleearth", "mesosstage"
         )
 
         mock_args = mock.Mock(

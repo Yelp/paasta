@@ -72,6 +72,7 @@ from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
 from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.models import InstanceStatusKubernetesV2
@@ -81,13 +82,14 @@ from paasta_tools.paastaapi.models import KubernetesVersion
 from paasta_tools.tron_tools import TronActionConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import format_table
+from paasta_tools.utils import get_deployment_version_from_dockerurl
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
-from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
@@ -102,6 +104,16 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
+]
+
+# Tron instances are not included in deployments, so skip these InstanceConfigs
+DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
+    FlinkDeploymentConfig,
+    CassandraClusterDeploymentConfig,
+    KafkaClusterDeploymentConfig,
+    KubernetesDeploymentConfig,
+    AdhocJobConfig,
+    MarathonServiceConfig,
 ]
 
 InstanceStatusWriter = Callable[
@@ -234,35 +246,27 @@ def get_planned_deployments(service: str, soa_dir: str) -> Iterable[str]:
             yield f"{cluster}.{instance}"
 
 
-def list_deployed_clusters(
-    pipeline: Sequence[str], actual_deployments: Sequence[str]
-) -> Sequence[str]:
-    """Returns a list of clusters that a service is deployed to given
-    an input deploy pipeline and the actual deployments"""
-    deployed_clusters: List[str] = []
-    for namespace in pipeline:
-        cluster, instance = namespace.split(".")
-        if namespace in actual_deployments:
-            if cluster not in deployed_clusters:
-                deployed_clusters.append(cluster)
-    return deployed_clusters
-
-
-def get_actual_deployments(service: str, soa_dir: str) -> Mapping[str, str]:
-    deployments_json = load_deployments_json(service, soa_dir)
-    if not deployments_json:
+def get_actual_deployments(
+    service: str, soa_dir: str
+) -> Mapping[str, DeploymentVersion]:
+    """Given a service, return a dict of instances->DeploymentVersions"""
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    clusters = list_clusters(service=service, soa_dir=soa_dir)
+    actual_deployments = {}
+    for cluster in clusters:
+        for instance_type in DEPLOYMENT_INSTANCE_CONFIG:
+            for instance_config in config_loader.instance_configs(
+                cluster=cluster, instance_type_class=instance_type
+            ):
+                namespace = f"{cluster}.{instance_config.instance}"
+                actual_deployments[namespace] = get_deployment_version_from_dockerurl(
+                    instance_config.get_docker_image()
+                )
+    if not actual_deployments:
         print(
-            "Warning: it looks like %s has not been deployed anywhere yet!" % service,
+            f"Warning: it looks like {service} has not been deployed anywhere yet!",
             file=sys.stderr,
         )
-    # Create a dictionary of actual $service Jenkins deployments
-    actual_deployments = {}
-    for key, branch_dict in deployments_json.config_dict.items():
-        service, namespace = key.split(":")
-        if service == service:
-            value = branch_dict["docker_image"]
-            sha = value[value.rfind("-") + 1 :]
-            actual_deployments[namespace.replace("paasta-", "", 1)] = sha
     return actual_deployments
 
 
@@ -301,9 +305,11 @@ def paasta_status_on_api_endpoint(
         output.append(str(e))
         return 1
 
-    if status.git_sha != "":
-        output.append("    Git sha:    %s (desired)" % status.git_sha)
-
+    if status.version and status.version != "":
+        output.append(f"    Version:    {status.version} (desired)")
+    # TODO: Remove this when all clusters are returning status.version
+    elif status.git_sha != "":
+        output.append(f"    Git sha:    {status.git_sha} (desired)")
     instance_types = find_instance_types(status)
     if not instance_types:
         output.append(
@@ -2115,7 +2121,7 @@ def report_status_for_cluster(
     service: str,
     cluster: str,
     deploy_pipeline: Sequence[str],
-    actual_deployments: Mapping[str, str],
+    actual_deployments: Mapping[str, DeploymentVersion],
     instance_whitelist: Mapping[str, Type[InstanceConfig]],
     system_paasta_config: SystemPaastaConfig,
     lock: Lock,
@@ -2371,7 +2377,7 @@ def paasta_status(args) -> int:
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
             all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
-            actual_deployments: Mapping[str, str]
+            actual_deployments: Mapping[str, DeploymentVersion]
             if all_flink:
                 actual_deployments = {}
             else:

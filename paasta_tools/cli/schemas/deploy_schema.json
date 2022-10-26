@@ -151,6 +151,9 @@
         },
         "slack_notify": {
             "type": "boolean"
+        },
+        "allow_no_verify_deploy": {
+            "type": "boolean"
         }
     },
     "required": [

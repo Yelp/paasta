@@ -47,9 +47,7 @@ from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
-from sticht.rollbacks.slo import get_relevant_slo_files
 from sticht.rollbacks.slo import SLOWatcher
-from sticht.rollbacks.soaconfigs import get_rollback_files_from_soaconfigs
 from sticht.rollbacks.types import MetricWatcher
 from sticht.rollbacks.types import SplunkAuth
 
@@ -652,16 +650,9 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         # Initialize Slack threads and send the first message
         super().__init__()
-        """
-        SLOs and Metric Watcher Threads cannot be run at the same time. For the time being,
-        SLOs precede Metric Watcher Threads. If there are no SLOs, but Metric Watchers are present,
-        Autorollbacks will run Metric Watcher Threads.
-        """
-        if (
-            get_rollback_files_from_soaconfigs(soa_dir, service=service)
-            and len(get_relevant_slo_files(service, soa_dir)) < 1
-        ):
-            self.start_metric_watcher_threads(self.service, self.soa_dir)
+
+        # TODO: Enable once Rollback Conditions are available
+        # self.start_metric_watcher_threads(self.service, self.soa_dir)
 
         self.print_who_is_running_this()
 
@@ -1239,7 +1230,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
-        print(f"self.auto_rollbacks_enabled: {self.auto_rollbacks_enabled()}")
 
         if self.any_slo_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
