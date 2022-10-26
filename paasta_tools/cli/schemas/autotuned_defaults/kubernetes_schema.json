@@ -83,6 +83,14 @@
                         }
                     }
                 }
+            },
+            "dependencies": {
+                "min_instances": [
+                    "max_instances"
+                ],
+                "max_instances": [
+                    "min_instances"
+                ]
             }
         }
     }

@@ -49,8 +49,8 @@ from paasta_tools.cli.utils import info_message
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -662,8 +662,8 @@ def validate_min_max_instances(service_path: str) -> bool:
             )
             # TODO: Remove this cast. This will require updating utils.LONG_RUNNING_INSTANCE_TYPE_HANDLERS to handle tron and adhoc type
             # and change get_instance_config to return an object of type LongRunningServiceConfig
-            instance_config = cast(LongRunningServiceConfig, instance_config)
             if instance_config.get_instance_type() == "kubernetes":
+                instance_config = cast(KubernetesDeploymentConfig, instance_config)
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
                 if min_instances is not None and max_instances is not None:
