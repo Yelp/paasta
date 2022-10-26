@@ -103,7 +103,7 @@ k8s_itests: .paasta/bin/activate
 k8s_fake_cluster: .paasta/bin/activate
 	make -C k8s_itests fake_cluster
 
-.PHONY: k8s_clean-hooks
+.PHONY: k8s_clean
 k8s_clean: .paasta/bin/activate
 	make -C k8s_itests clean
 
