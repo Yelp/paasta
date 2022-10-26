@@ -47,7 +47,10 @@ from service_configuration_lib import read_deploy
 from slackclient import SlackClient
 from sticht import state_machine
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
+from sticht.rollbacks.slo import get_relevant_slo_files
 from sticht.rollbacks.slo import SLOWatcher
+from sticht.rollbacks.soaconfigs import get_rollback_files_from_soaconfigs
+from sticht.rollbacks.types import MetricWatcher
 from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
@@ -644,14 +647,22 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.progress = Progress()
         self.last_action = None
         self.slo_watchers: List[SLOWatcher] = []
-
+        self.metric_watchers: List[MetricWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
-
-        # TODO: Enable once Rollback Conditions are available
-        self.start_metric_watcher_threads(self.service, self.soa_dir)
 
         # Initialize Slack threads and send the first message
         super().__init__()
+        """
+        SLOs and Metric Watcher Threads cannot be run at the same time. For the time being,
+        SLOs precede Metric Watcher Threads. If there are no SLOs, but Metric Watchers are present,
+        Autorollbacks will run Metric Watcher Threads.
+        """
+        if (
+            get_rollback_files_from_soaconfigs(soa_dir, service=service)
+            and len(get_relevant_slo_files(service, soa_dir)) < 1
+        ):
+            self.start_metric_watcher_threads(self.service, self.soa_dir)
+
         self.print_who_is_running_this()
 
     def get_progress(self, summary: bool = False) -> str:
@@ -686,6 +697,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             )
         # If there's no production deploy group, or the production deploy group
         # has never been deployed to, just use the old SHA from this deploy group.
+        # TODO: do we need to get author information from image_version-only bumps?
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
@@ -744,7 +756,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             self.trigger("mfd_failed")
         else:
             self.update_slack_thread(
-                f"Marked `{self.deployment_version.short_sha_repr()}` for {self.deploy_group}."
+                f"Marked `{self.commit[:8]}` for {self.deploy_group}."
                 + (
                     "\n" + self.get_authors()
                     if self.deploy_group_is_set_to_notify("notify_after_mark")
@@ -910,6 +922,18 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "rollback_slo_failure",
             }
             yield {
+                "source": self.rollforward_states,
+                "dest": "start_rollback",
+                "trigger": "rollback_metric_failure",
+                "before": self.log_metric_rollback,
+            }
+            # TODO COMPINFRA-1140 - Is this transition necessary? Internal transition with no before/after/prepare does...nothing?
+            yield {
+                "source": self.rollback_states,
+                "dest": None,
+                "trigger": "rollback_metric_failure",
+            }
+            yield {
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
@@ -956,7 +980,11 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": "*",
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "disable_auto_rollbacks_button_clicked",
-                "conditions": [self.any_slo_failing, self.auto_rollbacks_enabled],
+                "conditions": [
+                    self.any_slo_failing,
+                    self.any_metric_failing,
+                    self.auto_rollbacks_enabled,
+                ],
                 "before": self.disable_auto_rollbacks,
             }
         yield {
@@ -965,13 +993,35 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "trigger": "slos_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
-            "before": self.start_auto_rollback_countdown,
+            "before": functools.partial(
+                self.start_auto_rollback_countdown, "rollback_slo_failure"
+            ),
         }
         yield {
             "source": "*",
             "dest": None,
             "trigger": "slos_stopped_failing",
-            "before": self.cancel_auto_rollback_countdown,
+            "before": functools.partial(
+                self.cancel_auto_rollback_countdown, "rollback_slo_failure"
+            ),
+        }
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "metrics_started_failing",
+            "conditions": [self.auto_rollbacks_enabled],
+            "unless": [self.already_rolling_back],
+            "before": functools.partial(
+                self.start_auto_rollback_countdown, "rollback_metric_failure"
+            ),
+        }
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "metrics_stopped_failing",
+            "before": functools.partial(
+                self.cancel_auto_rollback_countdown, "rollback_metric_failure"
+            ),
         }
         yield {
             "source": "*",
@@ -1189,13 +1239,15 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
+        print(f"self.auto_rollbacks_enabled: {self.auto_rollbacks_enabled()}")
+
         if self.any_slo_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
                 "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         elif self.any_metric_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
-                "Because a rollback condition is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+                "Because a metric is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1211,16 +1263,16 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
     def send_manual_rollback_instructions(self) -> None:
         if self.deployment_version != self.old_deployment_version:
-            extra_rollback_args = ""
-            if self.old_deployment_version.image_version:
-                extra_rollback_args = (
-                    f" --image-version {self.old_deployment_version.image_version}"
-                )
             message = (
                 "If you need to roll back manually, run: "
                 f"`paasta rollback --service {self.service} --deploy-group {self.deploy_group} "
-                f"--commit {self.old_git_sha}{extra_rollback_args}`"
+                f"--commit {self.old_git_sha}`"
             )
+            if self.old_deployment_version.image_version:
+                message += (
+                    f" --image-version {self.old_deployment_version.image_version}"
+                )
+
             self.update_slack_thread(message)
             print(message)
 
@@ -1251,46 +1303,40 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         )
 
     def get_button_text(self, button: str, is_active: bool) -> str:
-        # Button text max length 75 characters
-        # Current button templates allow version max length of 36
-        version_short_str = self.deployment_version.short_sha_repr()
-        if len(version_short_str) > 36:
-            # we'll have to depend on subsequent slack messages to show full version
-            version_short_str = "new version"
+        # TODO: Update button text for image_version
+        #  Will require thought on shortening
         active_button_texts = {
-            "forward": f"Rolling Forward to {version_short_str} :zombocom:"
+            "forward": f"Rolling Forward to {self.commit[:8]} :zombocom:"
         }
         inactive_button_texts = {
-            "forward": f"Continue Forward to {version_short_str} :arrow_forward:",
-            "complete": f"Complete deploy to {version_short_str} :white_check_mark:",
+            "forward": f"Continue Forward to {self.commit[:8]} :arrow_forward:",
+            "complete": f"Complete deploy to {self.commit[:8]} :white_check_mark:",
             "snooze": f"Reset countdown",
             "enable_auto_rollbacks": "Enable auto rollbacks :eyes:",
             "disable_auto_rollbacks": "Disable auto rollbacks :close_eyes_monkey:",
         }
 
-        if self.old_deployment_version is not None:
-            old_version_short_str = self.old_deployment_version.short_sha_repr()
-            # Current button templates allow old version max length 43
-            if len(old_version_short_str) > 43:
-                old_version_short_str = "old version"
+        # TODO: Update to check image_version also
+        if self.old_git_sha is not None:
             active_button_texts.update(
-                {"rollback": f"Rolling Back to {old_version_short_str} :zombocom:"}
+                {"rollback": f"Rolling Back to {self.old_git_sha[:8]} :zombocom:"}
             )
             inactive_button_texts.update(
                 {
-                    "rollback": f"Roll Back to {old_version_short_str} :arrow_backward:",
-                    "abandon": f"Abandon deploy, staying on {old_version_short_str} :x:",
+                    "rollback": f"Roll Back to {self.old_git_sha[:8]} :arrow_backward:",
+                    "abandon": f"Abandon deploy, staying on {self.old_git_sha[:8]} :x:",
                 }
             )
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, extra_text: str = "") -> None:
+    def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
         cancel_button_text = self.get_button_text(
-            "disable_auto_rollbacks", is_active=False
+            button="disable_auto_rollbacks",
+            is_active=False,
         )
         super().start_auto_rollback_countdown(
-            extra_text=f'Click "{cancel_button_text}" to cancel this!'
+            trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
@@ -1313,6 +1359,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     def log_slo_rollback(self) -> None:
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
+        )
+        self._log_rollback(rollback_details)
+
+    def log_metric_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
