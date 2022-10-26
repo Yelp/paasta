@@ -86,6 +86,7 @@ clean:
 	-find . -name '__pycache__' -delete
 	-rm -rf .tox
 	-rm -rf .paasta
+	-make -C k8s_itests clean
 
 .PHONY: help
 help:
@@ -97,6 +98,14 @@ install-hooks:
 
 k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
+
+.PHONY: k8s_fake_cluster
+k8s_fake_cluster: .paasta/bin/activate
+	make -C k8s_itests fake_cluster
+
+.PHONY: k8s_clean
+k8s_clean: .paasta/bin/activate
+	make -C k8s_itests clean
 
 # image source: openapitools/openapi-generator-cli:latest
 # java command:
