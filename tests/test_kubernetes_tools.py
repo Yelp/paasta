@@ -1,4 +1,5 @@
 import functools
+from base64 import b64encode
 from typing import Any
 from typing import Dict
 from typing import Sequence
@@ -45,6 +46,7 @@ from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
 from kubernetes.client import V1RollingUpdateDeployment
+from kubernetes.client import V1Secret
 from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
@@ -94,6 +96,7 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
+from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
@@ -128,6 +131,7 @@ from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
 from paasta_tools.utils import CAPS_DROP
@@ -487,7 +491,7 @@ class TestKubernetesDeploymentConfig:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_environment",
             autospec=True,
-            return_value={},
+            return_value=[],
         ), mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sanitised_volume_name",
             autospec=True,
@@ -542,7 +546,9 @@ class TestKubernetesDeploymentConfig:
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
@@ -579,13 +585,16 @@ class TestKubernetesDeploymentConfig:
                     return_value="some-docker-image"
                 ),
                 get_hacheck_match_initial_delay=mock.Mock(return_value=False),
+                get_readiness_check_prefix_template=mock.Mock(return_value=[]),
             )
             ret = self.deployment.get_sidecar_containers(
                 mock_system_config, mock_service_namespace, hacheck_sidecar_volumes
             )
             expected = [
                 V1Container(
-                    env={},
+                    env=[
+                        V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
+                    ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
@@ -1596,18 +1605,25 @@ class TestKubernetesDeploymentConfig:
             termination_grace_period_seconds=termination_grace_period,
         )
         pod_spec_kwargs.update(spec_affinity)
+
+        expected_labels = {
+            "paasta.yelp.com/pool": "default",
+            "yelp.com/paasta_git_sha": "aaaa123",
+            "yelp.com/paasta_instance": mock_get_instance.return_value,
+            "yelp.com/paasta_service": mock_get_service.return_value,
+            "paasta.yelp.com/git_sha": "aaaa123",
+            "paasta.yelp.com/instance": mock_get_instance.return_value,
+            "paasta.yelp.com/service": mock_get_service.return_value,
+            "paasta.yelp.com/autoscaled": "false",
+            "registrations.paasta.yelp.com/kurupt.fm": "true",
+            "yelp.com/owner": "compute_infra_platform_experience",
+        }
+        if in_smtstk:
+            expected_labels["paasta.yelp.com/weight"] = "10"
+
         assert ret == V1PodTemplateSpec(
             metadata=V1ObjectMeta(
-                labels={
-                    "yelp.com/paasta_git_sha": "aaaa123",
-                    "yelp.com/paasta_instance": mock_get_instance.return_value,
-                    "yelp.com/paasta_service": mock_get_service.return_value,
-                    "paasta.yelp.com/git_sha": "aaaa123",
-                    "paasta.yelp.com/instance": mock_get_instance.return_value,
-                    "paasta.yelp.com/service": mock_get_service.return_value,
-                    "paasta.yelp.com/autoscaled": "false",
-                    "registrations.paasta.yelp.com/kurupt.fm": "true",
-                },
+                labels=expected_labels,
                 annotations={
                     "smartstack_registrations": '["kurupt.fm"]',
                     "paasta.yelp.com/routable_ip": routable_ip,
@@ -1886,16 +1902,15 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/instance": mock_get_instance.return_value,
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/autoscaled": autoscaled_label,
+                    "paasta.yelp.com/pool": "default",
+                    "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
             )
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
@@ -1954,10 +1969,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        (
-            "mesos_cpu",
-            "cpu",
-        ),
+        ("cpu",),
     )
     def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
         # with cpu
@@ -2434,6 +2446,7 @@ def test_get_kubernetes_services_running_here():
                 port=8888,
                 pod_ip="10.1.1.3",
                 registrations=[],
+                weight=10,
             )
         ]
 
@@ -2474,6 +2487,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["kurupt.fm"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="unkurupt",
@@ -2481,6 +2495,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=["unkurupt.garage"],
+                weight=10,
             ),
             KubernetesServiceRegistration(
                 name="kurupt",
@@ -2488,6 +2503,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                 port=8888,
                 pod_ip="10.1.1.1",
                 registrations=[],
+                weight=10,
             ),
         ]
 
@@ -2512,6 +2528,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "hacheck_ip": "10.1.1.1",
                     "service_ip": "10.1.1.1",
                     "port": 8888,
+                    "weight": 10,
                 },
             )
         ]
@@ -2530,6 +2547,7 @@ def test_get_kubernetes_services_running_here_for_nerve():
                     "service_ip": "10.1.1.1",
                     "port": 8888,
                     "extra_healthcheck_headers": {"X-Nerve-Check-IP": "10.1.1.1"},
+                    "weight": 10,
                 },
             )
         ]
@@ -3620,13 +3638,63 @@ def test_warning_big_bounce():
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
         new=mock_load_system_paasta_config,
         autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        return_value=ServiceNamespaceConfig(),
+        autospec=True,
     ):
         assert (
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "confige0334534"
+            == "config52071d00"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
+
+
+def test_warning_big_bounce_routable_pod():
+    job_config = kubernetes_tools.KubernetesDeploymentConfig(
+        service="service",
+        instance="instance",
+        cluster="cluster",
+        config_dict={
+            "registrations": ["service.instance"],
+        },
+        branch_dict={
+            "docker_image": "abcdef",
+            "git_sha": "deadbeef",
+            "image_version": None,
+            "force_bounce": None,
+            "desired_state": "start",
+        },
+    )
+
+    with mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        return_value=SystemPaastaConfig(
+            {
+                "volumes": [],
+                "hacheck_sidecar_volumes": [],
+                "expected_slave_attributes": [{"region": "blah"}],
+                "docker_registry": "docker-registry.local",
+            },
+            "/fake/dir/",
+        ),
+        autospec=True,
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        new=mock_load_system_paasta_config,
+        autospec=False,
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.load_service_namespace_config",
+        return_value=ServiceNamespaceConfig({"proxy_port": 1}),
+        autospec=True,
+    ):
+        assert (
+            job_config.format_kubernetes_app().spec.template.metadata.labels[
+                "paasta.yelp.com/config_sha"
+            ]
+            == "configb47c4ff7"
+        ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
 @pytest.mark.parametrize(
@@ -3730,7 +3798,7 @@ def test_running_task_allocation_get_kubernetes_metadata():
 
 def test_running_task_allocation_get_pod_pool():
     mock_node = mock.MagicMock()
-    mock_node.metadata.labels = {"yelp.com/pool": "foo"}
+    mock_node.metadata.labels = {"paasta.yelp.com/pool": "foo"}
     with mock.patch(
         "paasta_tools.kubernetes_tools.get_pod_node",
         autospec=True,
@@ -3959,3 +4027,33 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         assert mock_client.rbac.create_namespaced_role_binding.called is True
+
+
+def test_get_kubernetes_secret():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=True,
+    ) as mock_kube_client, mock.patch(
+        "paasta_tools.kubernetes_tools.os.environ", autospec=True
+    ) as mock_env:
+
+        service_name = "example_service"
+        secret_name = "example_secret"
+        cluster = "messosstage"
+        mock_env.return_value = {}
+
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.read_namespaced_secret.return_value = mock.Mock(spec=V1Secret)
+        mock_client.core.read_namespaced_secret.return_value = V1Secret(
+            data={"example_secret": b64encode("something".encode())},
+            metadata=V1ObjectMeta(name="example_secret"),
+        )
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        mock_client.core.read_namespaced_secret.assert_called_with(
+            name="paasta-secret-example--service-example--secret", namespace="paasta"
+        )
+        assert ret == "something"

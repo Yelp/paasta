@@ -767,12 +767,13 @@ def test_check_docker_image_false(mock_build_docker_image_name):
         assert utils.check_docker_image("test_service", "tag2") is False
 
 
+@pytest.mark.parametrize(("fake_image_version",), ((None,), ("extrastuff",)))
 @mock.patch("paasta_tools.utils.build_docker_image_name", autospec=True)
-def test_check_docker_image_true(mock_build_docker_image_name):
+def test_check_docker_image_true(mock_build_docker_image_name, fake_image_version):
     fake_app = "fake_app"
     fake_commit = "fake_commit"
     mock_build_docker_image_name.return_value = "fake-registry/services-foo"
-    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+    docker_tag = utils.build_docker_tag(fake_app, fake_commit, fake_image_version)
     with mock.patch(
         "paasta_tools.utils.get_docker_client", autospec=True
     ) as mock_docker:
@@ -787,7 +788,9 @@ def test_check_docker_image_true(mock_build_docker_image_name):
                 "Size": 0,
             }
         ]
-        assert utils.check_docker_image(fake_app, fake_commit) is True
+        assert (
+            utils.check_docker_image(fake_app, fake_commit, fake_image_version) is True
+        )
 
 
 def test_remove_ansi_escape_sequences():
@@ -2661,3 +2664,28 @@ def test_filter_templates_from_config():
         "instance0": "bar",
         "instance1": "baz",
     }
+
+
+def test_is_secrets_for_teams_enabled():
+    with mock.patch(
+        "paasta_tools.utils.read_extra_service_information", autospec=True
+    ) as mock_read_extra_service_information:
+        service = "example_secrets_for_teams"
+
+        # if enabled
+        mock_read_extra_service_information.return_value = {
+            "description": "something",
+            "secrets_for_owner_team": True,
+        }
+        assert utils.is_secrets_for_teams_enabled(service)
+
+        # if specifically not enabled
+        mock_read_extra_service_information.return_value = {
+            "description": "something",
+            "secrets_for_owner_team": False,
+        }
+        assert not utils.is_secrets_for_teams_enabled(service)
+
+        # if not present
+        mock_read_extra_service_information.return_value = {"description": "something"}
+        assert not utils.is_secrets_for_teams_enabled(service)

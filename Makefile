@@ -67,7 +67,6 @@ dev-api: .tox/py37-linux
 
 itest: test .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e general_itests
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e paasta_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -87,6 +86,7 @@ clean:
 	-find . -name '__pycache__' -delete
 	-rm -rf .tox
 	-rm -rf .paasta
+	-make -C k8s_itests clean
 
 .PHONY: help
 help:
@@ -98,6 +98,14 @@ install-hooks:
 
 k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
+
+.PHONY: k8s_fake_cluster
+k8s_fake_cluster: .paasta/bin/activate
+	make -C k8s_itests fake_cluster
+
+.PHONY: k8s_clean
+k8s_clean: .paasta/bin/activate
+	make -C k8s_itests clean
 
 # image source: openapitools/openapi-generator-cli:latest
 # java command:
@@ -115,3 +123,27 @@ openapi-codegen:
 		-p pythonAttrNoneIfUnset=true
 	mv temp-openapi-client/paasta_tools/paastaapi paasta_tools/paastaapi
 	rm -rf temp-openapi-client
+
+swagger-validate:
+	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
+		yelp/openapi-generator-cli:20201026 \
+		validate \
+		-i paasta_tools/api/api_docs/swagger.json
+
+.PHONY: vscode_settings
+vscode_settings: .paasta/bin/activate .tox/py37-linux
+	.paasta/bin/python paasta_tools/contrib/ide_helper.py
+
+.PHONY: generate_paasta_playground
+generate_paasta_playground: .paasta/bin/activate .tox/py37-linux
+	.tox/py37-linux/bin/python  paasta_tools/contrib/create_paasta_playground.py
+	PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/ .tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -s compute-infra-test-service -v
+
+.PHONY: playground-api
+playground-api: .tox/py37-linux generate_paasta_playground
+	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
+
+.PHONY: clean-playground
+clean-playground:
+		rm -rf ./etc_paasta_playground
+		rm -rf ./soa_config_playground

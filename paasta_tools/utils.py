@@ -76,6 +76,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -90,6 +91,7 @@ PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get(
     "PAASTA_SYSTEM_CONFIG_DIR", "/etc/paasta/"
 )
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+DEFAULT_VAULT_TOKEN_FILE = "/root/.vault_token"
 AUTO_SOACONFIG_SUBDIR = "autotuned_defaults"
 DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
@@ -1958,6 +1960,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     previous_marathon_servers: List[MarathonConfigDict]
+    readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
     register_marathon_services: bool
     register_native_services: bool
@@ -1982,6 +1985,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
     tron_use_suffixed_log_streams: bool
@@ -1990,6 +1994,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_ui_port: int
     spark_driver_port: int
     spark_blockmanager_port: int
+    skip_cpu_burst_validation: List[str]
 
 
 def load_system_paasta_config(
@@ -2680,11 +2685,44 @@ class SystemPaastaConfig:
     def get_skip_cpu_override_validation_services(self) -> List[str]:
         return self.config_dict.get("skip_cpu_override_validation", [])
 
+    def get_skip_cpu_burst_validation_services(self) -> List[str]:
+        return self.config_dict.get("skip_cpu_burst_validation", [])
+
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
+
+    def get_readiness_check_prefix_template(self) -> List[str]:
+        """A prefix that will be added to the beginning of the readiness check command. Meant for e.g. `flock` and
+        `timeout`."""
+        # We use flock+timeout here to work around issues discovered in PAASTA-17673:
+        # In k8s 1.18, probe timeout wasn't respected at all.
+        # When we upgraded to k8s 1.20, the timeout started being partially respected - k8s would stop waiting for a
+        # response, but wouldn't kill the command within the container (with the dockershim CRI).
+        # Flock prevents multiple readiness probes from running at once, using lots of CPU.
+        # The generous timeout allows for a slow readiness probe, but ensures that a truly-stuck readiness probe command
+        # will eventually be killed so another process can retry.
+        # Once we move off dockershim, we'll likely need to increase the readiness probe timeout, but we can then remove
+        # this wrapper.
+        return self.config_dict.get(
+            "readiness_check_prefix_template",
+            ["flock", "-n", "/readiness_check_lock", "timeout", "120"],
+        )
+
+    def get_tron_k8s_cluster_overrides(self) -> Dict[str, str]:
+        """
+        Return a mapping of a tron cluster -> compute cluster. Returns an empty dict if there are no overrides set.
+
+        This exists as we have certain Tron masters that are named differently from the compute cluster that should
+        actually be used (e.g., we might have tron-XYZ-test-prod, but instead of scheduling on XYZ-test-prod, we'd
+        like to schedule jobs on test-prod).
+
+        To control this, we have an optional config item that we'll puppet onto Tron masters that need this type of
+        tron master -> compute cluster override which this function will read.
+        """
+        return self.config_dict.get("tron_k8s_cluster_overrides", {})
 
 
 def _run(
@@ -2902,7 +2940,11 @@ def build_docker_tag(
     return tag
 
 
-def check_docker_image(service: str, tag: str) -> bool:
+def check_docker_image(
+    service: str,
+    commit: str,
+    image_version: Optional[str] = None,
+) -> bool:
     """Checks whether the given image for :service: with :tag: exists.
 
     :raises: ValueError if more than one docker image with :tag: found.
@@ -2910,7 +2952,7 @@ def check_docker_image(service: str, tag: str) -> bool:
     """
     docker_client = get_docker_client()
     image_name = build_docker_image_name(service)
-    docker_tag = build_docker_tag(service, tag)
+    docker_tag = build_docker_tag(service, commit, image_version)
     images = docker_client.images(name=image_name)
     # image['RepoTags'] may be None
     # Fixed upstream but only in docker-py 2.
@@ -3064,9 +3106,14 @@ def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Di
     return service_configuration.get("deploy", {}).get("pipeline", [])
 
 
-def get_pipeline_deploy_groups(
+def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
+    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
+    return service_yaml_contents.get("secrets_for_owner_team", False)
+
+
+def get_pipeline_deploy_group_configs(
     service: str, soa_dir: str = DEFAULT_SOA_DIR
-) -> List[str]:
+) -> List[Dict]:
     pipeline_steps = []
     for step in get_pipeline_config(service, soa_dir):
         # added support for parallel steps in a deploy.yaml
@@ -3075,11 +3122,17 @@ def get_pipeline_deploy_groups(
         if step.get("parallel"):
             for parallel_step in step.get("parallel"):
                 if parallel_step.get("step"):
-                    pipeline_steps.append(parallel_step["step"])
+                    pipeline_steps.append(parallel_step)
         else:
-            pipeline_steps.append(step["step"])
+            pipeline_steps.append(step)
+    return [step for step in pipeline_steps if is_deploy_step(step["step"])]
 
-    return [step for step in pipeline_steps if is_deploy_step(step)]
+
+def get_pipeline_deploy_groups(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> List[str]:
+    deploy_group_configs = get_pipeline_deploy_group_configs(service, soa_dir)
+    return [step["step"] for step in deploy_group_configs]
 
 
 def get_service_instance_list_no_cache(
@@ -3318,6 +3371,9 @@ class DeploymentVersion(NamedTuple):
             if self.image_version
             else short_sha
         )
+
+    def json(self) -> str:
+        return json.dumps(self._asdict())
 
 
 DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
@@ -3583,8 +3639,8 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     url. This function takes that url as input and outputs the sha.
     """
     if ":paasta-" in docker_url:
-        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
-        git_sha = regex_match.group("git_sha")
+        deployment_version = get_deployment_version_from_dockerurl(docker_url)
+        git_sha = deployment_version.sha if deployment_version else ""
     # Fall back to the old behavior if the docker_url does not follow the
     # expected pattern
     else:
@@ -3599,11 +3655,23 @@ def get_image_version_from_dockerurl(docker_url: str) -> Optional[str]:
     """We can optionally encode additional metadata about the docker image *in*
     the docker url. This function takes that url as input and outputs the sha.
     """
+    deployment_version = get_deployment_version_from_dockerurl(docker_url)
+    return deployment_version.image_version if deployment_version else None
+
+
+def get_deployment_version_from_dockerurl(docker_url: str) -> DeploymentVersion:
     regex_match = re.match(
-        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)-(?P<image_version>.+)", docker_url
+        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)(-(?P<image_version>.+))?", docker_url
     )
 
-    return regex_match.group("image_version") if regex_match is not None else None
+    return (
+        DeploymentVersion(
+            sha=regex_match.group("git_sha"),
+            image_version=regex_match.group("image_version"),
+        )
+        if regex_match is not None
+        else None
+    )
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:

@@ -43,6 +43,7 @@ from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DEFAULT_VAULT_TOKEN_FILE
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
@@ -82,6 +83,13 @@ def parse_args() -> argparse.Namespace:
         help="Overwrite destination namespace for secrets",
     )
     parser.add_argument(
+        "-t",
+        "--vault-token-file",
+        dest="vault_token_file",
+        default=DEFAULT_VAULT_TOKEN_FILE,
+        help="Define a different vault token file location",
+    )
+    parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
     args = parser.parse_args()
@@ -116,6 +124,7 @@ def main() -> None:
         secret_provider_name=secret_provider_name,
         vault_cluster_config=vault_cluster_config,
         soa_dir=args.soa_dir,
+        vault_token_file=args.vault_token_file,
         overwrite_namespace=args.namespace,
     ) else sys.exit(1)
 
@@ -156,6 +165,7 @@ def sync_all_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
@@ -172,6 +182,7 @@ def sync_all_secrets(
                     vault_cluster_config=vault_cluster_config,
                     soa_dir=soa_dir,
                     namespace=namespace,
+                    vault_token_file=vault_token_file,
                 )
             )
             results.append(
@@ -196,6 +207,7 @@ def sync_secrets(
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
     namespace: str,
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -203,7 +215,7 @@ def sync_secrets(
         # TODO: make vault-tools support k8s auth method so we don't have to
         # mount a token in.
         "vault_auth_method": "token",
-        "vault_token_file": "/root/.vault_token",
+        "vault_token_file": vault_token_file,
     }
     secret_provider = get_secret_provider(
         secret_provider_name=secret_provider_name,

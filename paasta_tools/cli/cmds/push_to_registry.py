@@ -75,7 +75,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         type=str,
         required=False,
         default=None,
-        help="Extra version metadata to use when naming the remote image",
+        help=(
+            "Extra version metadata to use when naming the remote image."
+            " When set, both versioned and non-versioned Docker tags are"
+            " pushed to the registry. The image with a versioned tag is"
+            " expected to have been build locally."
+        ),
     )
     list_parser.add_argument(
         "-d",
@@ -110,18 +115,16 @@ def build_command(
     return cmd
 
 
-def paasta_push_to_registry(args: argparse.Namespace) -> int:
+def paasta_push_to_registry_impl(
+    args: argparse.Namespace, service: str, image_version: Optional[str]
+) -> int:
     """Upload a docker image to a registry"""
-    service = args.service
-    if service and service.startswith("services-"):
-        service = service.split("services-", 1)[1]
-    validate_service_name(service, args.soa_dir)
-    image_identifier = build_image_identifier(args.commit, None, args.image_version)
+    image_identifier = build_image_identifier(args.commit, None, image_version)
 
     if not args.force:
         try:
             if is_docker_image_already_in_registry(
-                service, args.soa_dir, args.commit, args.image_version
+                service, args.soa_dir, args.commit, image_version
             ):
                 print(
                     "The docker image is already in the PaaSTA docker registry. "
@@ -137,7 +140,7 @@ def paasta_push_to_registry(args: argparse.Namespace) -> int:
             )
             return 1
 
-    cmd = build_command(service, args.commit, args.image_version)
+    cmd = build_command(service, args.commit, image_version)
     loglines = []
     returncode, output = _run(
         cmd,
@@ -163,6 +166,57 @@ def paasta_push_to_registry(args: argparse.Namespace) -> int:
         )
     for logline in loglines:
         _log(service=service, line=logline, component="build", level="event")
+    return returncode
+
+
+def paasta_push_to_registry(args: argparse.Namespace) -> int:
+    """Upload a docker images to a registry"""
+    service = args.service
+    if service and service.startswith("services-"):
+        service = service.split("services-", 1)[1]
+    validate_service_name(service, args.soa_dir)
+
+    returncode = 0
+    image_versions = [None]
+    if args.image_version:
+        # re-tag with legacy convention as well
+        returncode = retag_versioned_image(service, args.commit, args.image_version)
+        if returncode != 0:
+            _log(
+                service=service,
+                line=f"ERROR: failed re-tagging image. See output at {get_jenkins_build_output_url()}",
+                component="build",
+                level="event",
+            )
+            return returncode
+        image_versions.append(args.image_version)
+
+    for image_version in image_versions:
+        returncode = paasta_push_to_registry_impl(args, service, image_version)
+        if returncode != 0:
+            break
+
+    return returncode
+
+
+def retag_versioned_image(service: str, commit: str, image_version: str) -> int:
+    """Create new local tag without additional version information
+
+    :param str service: service name
+    :param str commit: commit sha
+    :param str image_version: additional image version metadata
+    :return: docker command return code
+    """
+    unversioned_tag = build_docker_tag(service, commit, None)
+    image_version_tag = build_docker_tag(service, commit, image_version)
+    returncode, _ = _run(
+        ["docker", "tag", image_version_tag, unversioned_tag],
+        timeout=30,
+        log=True,
+        component="build",
+        service=service,
+        loglevel="debug",
+    )
     return returncode
 
 
