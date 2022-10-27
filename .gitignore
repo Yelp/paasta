@@ -9,6 +9,7 @@ dist/
 !*.pyi
 .*.sw?
 .idea
+.fleet
 .vscode
 .create_cluster
 .tmp
