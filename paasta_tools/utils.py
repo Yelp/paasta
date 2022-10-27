@@ -76,6 +76,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
+from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 import paasta_tools.cli.fsm
@@ -1984,6 +1985,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     volumes: List[DockerVolume]
     zookeeper: str
     tron_use_k8s: bool
+    tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
     tron_use_suffixed_log_streams: bool
@@ -2709,6 +2711,19 @@ class SystemPaastaConfig:
             ["flock", "-n", "/readiness_check_lock", "timeout", "120"],
         )
 
+    def get_tron_k8s_cluster_overrides(self) -> Dict[str, str]:
+        """
+        Return a mapping of a tron cluster -> compute cluster. Returns an empty dict if there are no overrides set.
+
+        This exists as we have certain Tron masters that are named differently from the compute cluster that should
+        actually be used (e.g., we might have tron-XYZ-test-prod, but instead of scheduling on XYZ-test-prod, we'd
+        like to schedule jobs on test-prod).
+
+        To control this, we have an optional config item that we'll puppet onto Tron masters that need this type of
+        tron master -> compute cluster override which this function will read.
+        """
+        return self.config_dict.get("tron_k8s_cluster_overrides", {})
+
 
 def _run(
     command: Union[str, List[str]],
@@ -3089,6 +3104,11 @@ def get_production_deploy_group(service: str, soa_dir: str = DEFAULT_SOA_DIR) ->
 def get_pipeline_config(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[Dict]:
     service_configuration = read_service_configuration(service, soa_dir)
     return service_configuration.get("deploy", {}).get("pipeline", [])
+
+
+def is_secrets_for_teams_enabled(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> bool:
+    service_yaml_contents = read_extra_service_information(service, "service", soa_dir)
+    return service_yaml_contents.get("secrets_for_owner_team", False)
 
 
 def get_pipeline_deploy_group_configs(
@@ -3619,8 +3639,8 @@ def get_git_sha_from_dockerurl(docker_url: str, long: bool = False) -> str:
     url. This function takes that url as input and outputs the sha.
     """
     if ":paasta-" in docker_url:
-        regex_match = re.match(r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)", docker_url)
-        git_sha = regex_match.group("git_sha")
+        deployment_version = get_deployment_version_from_dockerurl(docker_url)
+        git_sha = deployment_version.sha if deployment_version else ""
     # Fall back to the old behavior if the docker_url does not follow the
     # expected pattern
     else:
@@ -3635,11 +3655,23 @@ def get_image_version_from_dockerurl(docker_url: str) -> Optional[str]:
     """We can optionally encode additional metadata about the docker image *in*
     the docker url. This function takes that url as input and outputs the sha.
     """
+    deployment_version = get_deployment_version_from_dockerurl(docker_url)
+    return deployment_version.image_version if deployment_version else None
+
+
+def get_deployment_version_from_dockerurl(docker_url: str) -> DeploymentVersion:
     regex_match = re.match(
-        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)-(?P<image_version>.+)", docker_url
+        r".*:paasta-(?P<git_sha>[A-Za-z0-9]+)(-(?P<image_version>.+))?", docker_url
     )
 
-    return regex_match.group("image_version") if regex_match is not None else None
+    return (
+        DeploymentVersion(
+            sha=regex_match.group("git_sha"),
+            image_version=regex_match.group("image_version"),
+        )
+        if regex_match is not None
+        else None
+    )
 
 
 def get_code_sha_from_dockerurl(docker_url: str) -> str:

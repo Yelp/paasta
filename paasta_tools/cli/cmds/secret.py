@@ -17,14 +17,17 @@ import os
 import re
 import sys
 
+from service_configuration_lib import DEFAULT_SOA_DIR
+
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import _log_audit
+from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
-
 
 SECRET_NAME_REGEX = r"([A-Za-z0-9_-]*)"
 
@@ -67,6 +70,13 @@ def add_subparser(subparsers):
         "services yaml files and should "
         "be unique per service.",
     )
+    secret_parser.add_argument(
+        "-y",
+        "--yelpsoa-config-root",
+        dest="yelpsoa_config_root",
+        help="A directory from which yelpsoa-configs should be read from",
+        default=DEFAULT_SOA_DIR,
+    )
 
     # Must choose valid service or act on a shared secret
     service_group = secret_parser.add_mutually_exclusive_group(required=True)
@@ -78,7 +88,6 @@ def add_subparser(subparsers):
         help="Act on a secret that can be shared by all services",
         action="store_true",
     )
-
     secret_parser.add_argument(
         "-c",
         "--clusters",
@@ -211,9 +220,31 @@ def paasta_secret(args):
             sys.exit(1)
     else:
         service = args.service
+
+    # Check if "decrypt" and "secrets_for_teams" first to avoid vault auth
+    if args.action == "decrypt" and is_secrets_for_teams_enabled(
+        service, args.yelpsoa_config_root
+    ):
+        clusters = (
+            args.clusters.split(",")
+            if args.clusters
+            else list_clusters(service=service, soa_dir=os.getcwd())
+        )
+
+        if len(clusters) > 1 or not clusters:
+            print(
+                "Can only decrypt for one specified cluster at a time!\nFor example,"
+                " try '-c norcal-devc' to decrypt the secret for this service in norcal-devc."
+            )
+            sys.exit(1)
+
+        print(get_kubernetes_secret(args.secret_name, service, clusters[0]))
+        return
+
     secret_provider = _get_secret_provider_for_service(
         service, cluster_names=args.clusters
     )
+
     if args.action in ["add", "update"]:
         plaintext = get_plaintext_input(args)
         if not plaintext:
@@ -253,4 +284,5 @@ def decrypt_secret(secret_provider, secret_name):
             " to decrypt the secret for this service in norcal-devc."
         )
         sys.exit(1)
+
     return secret_provider.decrypt_secret(secret_name)

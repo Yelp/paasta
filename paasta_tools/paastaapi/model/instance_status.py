@@ -98,6 +98,7 @@ class InstanceStatus(ModelNormal):
             'adhoc': (InstanceStatusAdhoc,),  # noqa: E501
             'flink': (InstanceStatusFlink,),  # noqa: E501
             'git_sha': (str,),  # noqa: E501
+            'version': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
             'cassandracluster': (InstanceStatusCassandracluster,),  # noqa: E501
             'kafkacluster': (InstanceStatusKafkacluster,),  # noqa: E501
@@ -117,6 +118,7 @@ class InstanceStatus(ModelNormal):
         'adhoc': 'adhoc',  # noqa: E501
         'flink': 'flink',  # noqa: E501
         'git_sha': 'git_sha',  # noqa: E501
+        'version': 'version',  # noqa: E501
         'instance': 'instance',  # noqa: E501
         'cassandracluster': 'cassandracluster',  # noqa: E501
         'kafkacluster': 'kafkacluster',  # noqa: E501
@@ -176,6 +178,7 @@ class InstanceStatus(ModelNormal):
             adhoc (InstanceStatusAdhoc): [optional]  # noqa: E501
             flink (InstanceStatusFlink): [optional]  # noqa: E501
             git_sha (str): Git sha of a service. [optional]  # noqa: E501
+            version (str): Deployment Version of a service. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
             cassandracluster (InstanceStatusCassandracluster): [optional]  # noqa: E501
             kafkacluster (InstanceStatusKafkacluster): [optional]  # noqa: E501

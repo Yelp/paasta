@@ -2664,3 +2664,28 @@ def test_filter_templates_from_config():
         "instance0": "bar",
         "instance1": "baz",
     }
+
+
+def test_is_secrets_for_teams_enabled():
+    with mock.patch(
+        "paasta_tools.utils.read_extra_service_information", autospec=True
+    ) as mock_read_extra_service_information:
+        service = "example_secrets_for_teams"
+
+        # if enabled
+        mock_read_extra_service_information.return_value = {
+            "description": "something",
+            "secrets_for_owner_team": True,
+        }
+        assert utils.is_secrets_for_teams_enabled(service)
+
+        # if specifically not enabled
+        mock_read_extra_service_information.return_value = {
+            "description": "something",
+            "secrets_for_owner_team": False,
+        }
+        assert not utils.is_secrets_for_teams_enabled(service)
+
+        # if not present
+        mock_read_extra_service_information.return_value = {"description": "something"}
+        assert not utils.is_secrets_for_teams_enabled(service)

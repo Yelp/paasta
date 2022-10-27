@@ -158,6 +158,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
+KUBE_CONFIG_USER_PATH = "/etc/kubernetes/paasta.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 KUBE_DEPLOY_STATEGY_MAP = {
@@ -326,6 +327,7 @@ KubePodLabels = TypedDict(
         "sidecar.istio.io/inject": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
+        "yelp.com/owner": str,
     },
     total=False,
 )
@@ -455,11 +457,21 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self, component: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        component: Optional[str] = None,
+        config_file: Optional[str] = None,
+        context: Optional[str] = None,
+    ) -> None:
+        if not config_file:
+            config_file = os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH)
+        if not context:
+            context = os.environ.get("KUBECONTEXT")
         kube_config.load_kube_config(
-            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
-            context=os.environ.get("KUBECONTEXT"),
+            config_file=config_file,
+            context=context,
         )
+
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
@@ -698,8 +710,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         prometheus_hpa_metric_name = (
             f"{self.namespace_external_metric_name(metrics_provider)}-prom"
         )
-        # TODO: we should remove mesos_cpu as an option once we've cleaned up our configs
-        if metrics_provider in ("mesos_cpu", "cpu"):
+
+        if metrics_provider == "cpu":
             use_prometheus = autoscaling_params.get(
                 "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
             )
@@ -1587,6 +1599,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                "paasta.yelp.com/pool": self.get_pool(),
+                "yelp.com/owner": "compute_infra_platform_experience",
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
@@ -1843,6 +1857,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
+            "yelp.com/owner": "compute_infra_platform_experience",
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
@@ -3430,3 +3445,23 @@ def update_crds(
             success = False
 
     return success
+
+
+def get_kubernetes_secret_name(
+    service_name: str, secret_name: str, namespace: str = "paasta"
+) -> str:
+    service = sanitise_kubernetes_name(service_name)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    name = f"{namespace}-secret-{service}-{sanitised_secret}"
+    return name
+
+
+def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
+    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
+
+    kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=cluster)
+    secret_data = kube_client.core.read_namespaced_secret(
+        name=k8s_secret_name, namespace="paasta"
+    ).data[secret_name]
+    secret = base64.b64decode(secret_data).decode("utf-8")
+    return secret

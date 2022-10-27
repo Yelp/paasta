@@ -61,19 +61,30 @@ from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.paastaapi import ApiException
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import remove_ansi_escape_sequences
 from tests.conftest import Struct
 
 
 def make_fake_instance_conf(
-    cluster, service, instance, deploy_group=None, team=None, registrations=()
+    cluster,
+    service,
+    instance,
+    deploy_group=None,
+    team=None,
+    registrations=(),
+    docker_url="",
 ):
     conf = MagicMock()
+    conf.cluster = cluster
+    conf.service = service
+    conf.instance = instance
     conf.get_cluster.return_value = cluster
     conf.get_service.return_value = service
     conf.get_instance.return_value = instance
     conf.get_deploy_group.return_value = deploy_group
     conf.get_team.return_value = team
+    conf.get_docker_image.return_value = docker_url
     conf.get_registrations.return_value = registrations if registrations else []
     if registrations is None:
         del (
@@ -218,27 +229,49 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch("paasta_tools.cli.cmds.status.load_deployments_json", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_get_actual_deployments(
-    mock_get_deployments,
+    mock_list_clusters,
 ):
-    mock_get_deployments.return_value = utils.DeploymentsJsonV1(
-        {
-            "fake_service:paasta-b_cluster.b_instance": {
-                "docker_image": "this_is_a_sha"
-            },
-            "fake_service:paasta-a_cluster.a_instance": {
-                "docker_image": "this_is_a_sha"
-            },
-        }
-    )
-    expected = {
-        "a_cluster.a_instance": "this_is_a_sha",
-        "b_cluster.b_instance": "this_is_a_sha",
-    }
+    mock_list_clusters.return_value = ["a_cluster", "b_cluster"]
 
-    actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
-    assert expected == actual
+    # This will actually return the same 2 instance_configs for every instance type, but sufficient for our tests
+    fake_instance_configs = [
+        make_fake_instance_conf(
+            "a_cluster",
+            "fake_service",
+            "a_instance",
+            deploy_group="deploy_group_a",
+            docker_url="http://docker.registry/fake_service:paasta-somesha123",
+        ),
+        make_fake_instance_conf(
+            "b_cluster",
+            "fake_service",
+            "b_instance",
+            deploy_group="deploy_group_b",
+            docker_url="http://docker.registry/fake_service:paasta-somesha123-20220101T000000",
+        ),
+    ]
+
+    def mock_instance_config_side_effect(*args, **kwargs):
+        # self, cluster, instance_type_class):
+        print(f"{args} {kwargs}")
+
+        return [e for e in fake_instance_configs if e.cluster == kwargs["cluster"]]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.PaastaServiceConfigLoader.instance_configs",
+        autospec=True,
+    ) as mock_instance_configs:
+        mock_instance_configs.side_effect = mock_instance_config_side_effect
+
+        expected = {
+            "a_cluster.a_instance": DeploymentVersion("somesha123", None),
+            "b_cluster.b_instance": DeploymentVersion("somesha123", "20220101T000000"),
+        }
+
+        actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
+        assert expected == actual
 
 
 @patch("paasta_tools.cli.cmds.status.read_deploy", autospec=True)
@@ -1533,150 +1566,6 @@ def mock_cassandra_status() -> Mapping[str, Any]:
     )
 
 
-# TODO: delete this after properties list is deployed on all clusters (see DREIMP-7953)
-@pytest.fixture
-def mock_cassandra_status_deprecated() -> Mapping[str, Any]:
-    startTime = (datetime.datetime.now() - datetime.timedelta(days=6)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-    inspectTime = (datetime.datetime.now() - datetime.timedelta(days=3)).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-    return defaultdict(
-        metadata=dict(
-            name="kafka--k8s-local-main",
-            namespace="paasta-kafkaclusters",
-            annotations={"paasta.yelp.com/desired_state": "testing"},
-        ),
-        status=dict(
-            leaseID=3084822305308040700,
-            nodes=[
-                {
-                    "details": {
-                        "available": True,
-                        "clusterName": "activity-feed",
-                        "datacenter": "norcal-devc",
-                        "drainProgress": "Drained 0/0 ColumnFamilies",
-                        "drained": False,
-                        "draining": False,
-                        "gossipRunning": True,
-                        "hintedHandoffEnabled": True,
-                        "hintsInProgress": 0,
-                        "incrementalBackupsEnabled": False,
-                        "initialized": True,
-                        "joined": True,
-                        "loadString": "28.19 MiB",
-                        "localHostId": "c4977a17-6695-4632-b0ba-505a9f3f9d0b",
-                        "loggingLevels": {
-                            "ROOT": "INFO",
-                            "com.thinkaurelius.thrift": "ERROR",
-                            "org.apache.cassandra": "DEBUG",
-                        },
-                        "nativeTransportRunning": True,
-                        "numberOfTables": 48,
-                        "operationMode": "NORMAL",
-                        "rack": "uswest1cdevc",
-                        "readRepairAttempted": 0,
-                        "releaseVersion": "3.11.3",
-                        "removalStatus": "No token removals in process.",
-                        "rpcServerRunning": True,
-                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
-                        "starting": False,
-                        "tokenRangesCount": 256,
-                        "totalHints": 0,
-                    },
-                    "startTime": startTime,
-                    "inspectTime": inspectTime,
-                    "ip": "10.93.210.204",
-                },
-                {
-                    "details": {
-                        "available": True,
-                        "clusterName": "activity-feed",
-                        "datacenter": "norcal-devc",
-                        "drainProgress": "Drained 0/0 ColumnFamilies",
-                        "drained": False,
-                        "draining": False,
-                        "gossipRunning": True,
-                        "hintedHandoffEnabled": True,
-                        "hintsInProgress": 0,
-                        "incrementalBackupsEnabled": False,
-                        "initialized": True,
-                        "joined": True,
-                        "loadString": "29.68 MiB",
-                        "localHostId": "6da1fd1f-474e-4877-b63e-64283975cdf4",
-                        "loggingLevels": {
-                            "ROOT": "INFO",
-                            "com.thinkaurelius.thrift": "ERROR",
-                            "org.apache.cassandra": "DEBUG",
-                        },
-                        "nativeTransportRunning": True,
-                        "numberOfTables": 48,
-                        "operationMode": "NORMAL",
-                        "rack": "uswest1cdevc",
-                        "readRepairAttempted": 0,
-                        "releaseVersion": "3.11.3",
-                        "removalStatus": "No token removals in process.",
-                        "rpcServerRunning": True,
-                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
-                        "starting": False,
-                        "tokenRangesCount": 256,
-                        "totalHints": 0,
-                    },
-                    "startTime": startTime,
-                    "inspectTime": inspectTime,
-                    "ip": "10.93.200.181",
-                },
-                {
-                    "details": {
-                        "available": True,
-                        "clusterName": "activity-feed",
-                        "datacenter": "norcal-devc",
-                        "drainProgress": "Drained 0/0 ColumnFamilies",
-                        "drained": False,
-                        "draining": False,
-                        "gossipRunning": True,
-                        "hintedHandoffEnabled": True,
-                        "hintsInProgress": 0,
-                        "incrementalBackupsEnabled": False,
-                        "initialized": True,
-                        "joined": True,
-                        "loadString": "22.07 MiB",
-                        "localHostId": "5d914aad-27a8-4bd6-93cf-8ead8b9e4cf5",
-                        "loggingLevels": {
-                            "ROOT": "INFO",
-                            "com.thinkaurelius.thrift": "ERROR",
-                            "org.apache.cassandra": "DEBUG",
-                        },
-                        "nativeTransportRunning": True,
-                        "numberOfTables": 48,
-                        "operationMode": "NORMAL",
-                        "rack": "uswest1adevc",
-                        "readRepairAttempted": 0,
-                        "releaseVersion": "3.11.3",
-                        "removalStatus": "No token removals in process.",
-                        "rpcServerRunning": True,
-                        "schemaVersion": "5c3089e7-013b-30bb-8911-ed03837075d3",
-                        "starting": False,
-                        "tokenRangesCount": 256,
-                        "totalHints": 0,
-                    },
-                    "startTime": startTime,
-                    "inspectTime": inspectTime,
-                    "ip": "10.93.130.60",
-                },
-                {
-                    "startTime": startTime,
-                    "inspectTime": inspectTime,
-                    "ip": "10.93.180.201",
-                    "error": "oops",
-                },
-            ],
-            state="Running",
-        ),
-    )
-
-
 @pytest.fixture
 def mock_kafka_status() -> Mapping[str, Any]:
     return defaultdict(
@@ -2518,248 +2407,6 @@ class TestPrintKubernetesStatus:
         assert expected_output == output
 
 
-# TODO: delete this after properties list is deployed on all clusters (see DREIMP-7953)
-class TestPrintCassandraStatusDeprecated:
-    def test_error(self, mock_cassandra_status_deprecated):
-        mock_cassandra_status_deprecated["status"] = None
-        output = []
-        return_value = print_cassandra_status(
-            cluster="fake_Cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=1,
-        )
-
-        assert return_value == 1
-        assert output == [
-            "    " + PaastaColors.red("Cassandra cluster is not available yet")
-        ]
-
-    def test_sucess_no_nodes(self, mock_cassandra_status_deprecated):
-        mock_cassandra_status_deprecated["status"]["nodes"] = None
-        output = []
-        return_value = print_cassandra_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=1,
-        )
-        assert return_value == 0
-
-        expected_output = [
-            f"    Cassandra cluster:",
-            f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes: {PaastaColors.red('No node status available')}",
-        ]
-        assert expected_output == output
-
-    def test_successful_return_value(self, mock_cassandra_status_deprecated):
-        return_value = print_cassandra_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=[],
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=1,
-        )
-        assert return_value == 0
-
-    def test_output(self, mock_cassandra_status_deprecated):
-        # delete startTime for one of the nodes to make sure that the status
-        # works even before startTime is available.
-        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
-        output = []
-        return_value = print_cassandra_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=0,
-        )
-        assert return_value == 0
-
-        expected_output = [
-            f"    Cassandra cluster:",
-            f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime   InspectedAt",
-            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None        3 days ago",
-            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     6 days ago  3 days ago",
-            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     6 days ago  3 days ago",
-            f"            ",
-            f"            IP             StartTime   InspectedAt  Error",
-            f"            10.93.180.201  6 days ago  3 days ago   {PaastaColors.red('oops')}",
-            f"            ",
-        ]
-        assert expected_output == output
-
-    def test_verbose1_output(self, mock_cassandra_status_deprecated):
-        # delete startTime for one of the nodes to make sure that the status
-        # works even before startTime is available.
-        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
-        output = []
-        return_value = print_cassandra_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=1,
-        )
-        assert return_value == 0
-
-        nodes = mock_cassandra_status_deprecated["status"]["nodes"]
-        startTime1 = nodes[1]["startTime"]
-        startTime2 = nodes[2]["startTime"]
-        startTime3 = nodes[3]["startTime"]
-
-        inspectTime0 = nodes[0]["inspectTime"]
-        inspectTime1 = nodes[1]["inspectTime"]
-        inspectTime2 = nodes[2]["inspectTime"]
-        inspectTime3 = nodes[3]["inspectTime"]
-
-        expected_output = [
-            f"    Cassandra cluster:",
-            f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
-            f"            IP             Available  OperationMode  Joined  Datacenter   Rack          Load       Tokens  StartTime             InspectedAt           Starting  Initialized  Drained  Draining",
-            f"            10.93.210.204  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  28.19 MiB  256     None                  {inspectTime0}  No        Yes          No       No",
-            f"            10.93.200.181  Yes        NORMAL         Yes     norcal-devc  uswest1cdevc  29.68 MiB  256     {startTime1}  {inspectTime1}  No        Yes          No       No",
-            f"            10.93.130.60   Yes        NORMAL         Yes     norcal-devc  uswest1adevc  22.07 MiB  256     {startTime2}  {inspectTime2}  No        Yes          No       No",
-            f"            ",
-            f"            IP             StartTime             InspectedAt           Error",
-            f"            10.93.180.201  {startTime3}  {inspectTime3}  {PaastaColors.red('oops')}",
-            f"            ",
-        ]
-        assert expected_output == output
-
-    def test_verbose2_output(self, mock_cassandra_status_deprecated):
-        # delete startTime for one of the nodes to make sure that the status
-        # works even before startTime is available.
-        del mock_cassandra_status_deprecated["status"]["nodes"][0]["startTime"]
-        output = []
-        return_value = print_cassandra_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            cassandra_status=mock_cassandra_status_deprecated,
-            verbose=2,
-        )
-        assert return_value == 0
-
-        nodes = mock_cassandra_status_deprecated["status"]["nodes"]
-        expected_output = [
-            f"    Cassandra cluster:",
-            f"        State: {PaastaColors.green('Running')}",
-            f"        Nodes:",
-            f"            Node:",
-            f"                IP: {nodes[0]['ip']}",
-            f"                Available: {'Yes' if nodes[0]['details']['available'] else 'No'}",
-            f"                OperationMode: {nodes[0]['details']['operationMode']}",
-            f"                Joined: {'Yes' if nodes[0]['details']['joined'] else 'No'}",
-            f"                Datacenter: {nodes[0]['details']['datacenter']}",
-            f"                Rack: {nodes[0]['details']['rack']}",
-            f"                Load: {nodes[0]['details']['loadString']}",
-            f"                Tokens: {nodes[0]['details']['tokenRangesCount']}",
-            f"                StartTime: {nodes[0].get('startTime', 'None')}",
-            f"                InspectedAt: {nodes[0]['inspectTime']}",
-            f"                Starting: {'Yes' if nodes[0]['details']['starting'] else 'No'}",
-            f"                Initialized: {'Yes' if nodes[0]['details']['initialized'] else 'No'}",
-            f"                Drained: {'Yes' if nodes[0]['details']['drained'] else 'No'}",
-            f"                Draining: {'Yes' if nodes[0]['details']['draining'] else 'No'}",
-            f"                LocalHostID: {nodes[0]['details']['localHostId']}",
-            f"                Schema: {nodes[0]['details']['schemaVersion']}",
-            f"                RemovalStatus: {nodes[0]['details']['removalStatus']}",
-            f"                DrainProgress: {nodes[0]['details']['drainProgress']}",
-            f"                RPCServerRunning: {'Yes' if nodes[0]['details']['rpcServerRunning'] else 'No'}",
-            f"                NativeTransportRunning: {'Yes' if nodes[0]['details']['nativeTransportRunning'] else 'No'}",
-            f"                GossipRunning: {'Yes' if nodes[0]['details']['gossipRunning'] else 'No'}",
-            f"                IncBackupEnabled: {'Yes' if nodes[0]['details']['incrementalBackupsEnabled'] else 'No'}",
-            f"                Version: {nodes[0]['details']['releaseVersion']}",
-            f"                ClusterName: {nodes[0]['details']['clusterName']}",
-            f"                HintsInProgress: {nodes[0]['details']['hintsInProgress']}",
-            f"                ReadRepairAttempted: {nodes[0]['details']['readRepairAttempted']}",
-            f"                NumberOfTables: {nodes[0]['details']['numberOfTables']}",
-            f"                TotalHints: {nodes[0]['details']['totalHints']}",
-            f"                HintedHandoffEnabled: {'Yes' if nodes[0]['details']['hintedHandoffEnabled'] else 'No'}",
-            f"                LoggingLevels: {nodes[0]['details']['loggingLevels']}",
-            f"            Node:",
-            f"                IP: {nodes[1]['ip']}",
-            f"                Available: {'Yes' if nodes[1]['details']['available'] else 'No'}",
-            f"                OperationMode: {nodes[1]['details']['operationMode']}",
-            f"                Joined: {'Yes' if nodes[1]['details']['joined'] else 'No'}",
-            f"                Datacenter: {nodes[1]['details']['datacenter']}",
-            f"                Rack: {nodes[1]['details']['rack']}",
-            f"                Load: {nodes[1]['details']['loadString']}",
-            f"                Tokens: {nodes[1]['details']['tokenRangesCount']}",
-            f"                StartTime: {nodes[1].get('startTime', 'None')}",
-            f"                InspectedAt: {nodes[1]['inspectTime']}",
-            f"                Starting: {'Yes' if nodes[1]['details']['starting'] else 'No'}",
-            f"                Initialized: {'Yes' if nodes[1]['details']['initialized'] else 'No'}",
-            f"                Drained: {'Yes' if nodes[1]['details']['drained'] else 'No'}",
-            f"                Draining: {'Yes' if nodes[1]['details']['draining'] else 'No'}",
-            f"                LocalHostID: {nodes[1]['details']['localHostId']}",
-            f"                Schema: {nodes[1]['details']['schemaVersion']}",
-            f"                RemovalStatus: {nodes[1]['details']['removalStatus']}",
-            f"                DrainProgress: {nodes[1]['details']['drainProgress']}",
-            f"                RPCServerRunning: {'Yes' if nodes[1]['details']['rpcServerRunning'] else 'No'}",
-            f"                NativeTransportRunning: {'Yes' if nodes[1]['details']['nativeTransportRunning'] else 'No'}",
-            f"                GossipRunning: {'Yes' if nodes[1]['details']['gossipRunning'] else 'No'}",
-            f"                IncBackupEnabled: {'Yes' if nodes[1]['details']['incrementalBackupsEnabled'] else 'No'}",
-            f"                Version: {nodes[1]['details']['releaseVersion']}",
-            f"                ClusterName: {nodes[1]['details']['clusterName']}",
-            f"                HintsInProgress: {nodes[1]['details']['hintsInProgress']}",
-            f"                ReadRepairAttempted: {nodes[1]['details']['readRepairAttempted']}",
-            f"                NumberOfTables: {nodes[1]['details']['numberOfTables']}",
-            f"                TotalHints: {nodes[1]['details']['totalHints']}",
-            f"                HintedHandoffEnabled: {'Yes' if nodes[1]['details']['hintedHandoffEnabled'] else 'No'}",
-            f"                LoggingLevels: {nodes[1]['details']['loggingLevels']}",
-            f"            Node:",
-            f"                IP: {nodes[2]['ip']}",
-            f"                Available: {'Yes' if nodes[2]['details']['available'] else 'No'}",
-            f"                OperationMode: {nodes[2]['details']['operationMode']}",
-            f"                Joined: {'Yes' if nodes[2]['details']['joined'] else 'No'}",
-            f"                Datacenter: {nodes[2]['details']['datacenter']}",
-            f"                Rack: {nodes[2]['details']['rack']}",
-            f"                Load: {nodes[2]['details']['loadString']}",
-            f"                Tokens: {nodes[2]['details']['tokenRangesCount']}",
-            f"                StartTime: {nodes[2].get('startTime', 'None')}",
-            f"                InspectedAt: {nodes[2]['inspectTime']}",
-            f"                Starting: {'Yes' if nodes[2]['details']['starting'] else 'No'}",
-            f"                Initialized: {'Yes' if nodes[2]['details']['initialized'] else 'No'}",
-            f"                Drained: {'Yes' if nodes[2]['details']['drained'] else 'No'}",
-            f"                Draining: {'Yes' if nodes[2]['details']['draining'] else 'No'}",
-            f"                LocalHostID: {nodes[2]['details']['localHostId']}",
-            f"                Schema: {nodes[2]['details']['schemaVersion']}",
-            f"                RemovalStatus: {nodes[2]['details']['removalStatus']}",
-            f"                DrainProgress: {nodes[2]['details']['drainProgress']}",
-            f"                RPCServerRunning: {'Yes' if nodes[2]['details']['rpcServerRunning'] else 'No'}",
-            f"                NativeTransportRunning: {'Yes' if nodes[2]['details']['nativeTransportRunning'] else 'No'}",
-            f"                GossipRunning: {'Yes' if nodes[2]['details']['gossipRunning'] else 'No'}",
-            f"                IncBackupEnabled: {'Yes' if nodes[2]['details']['incrementalBackupsEnabled'] else 'No'}",
-            f"                Version: {nodes[2]['details']['releaseVersion']}",
-            f"                ClusterName: {nodes[2]['details']['clusterName']}",
-            f"                HintsInProgress: {nodes[2]['details']['hintsInProgress']}",
-            f"                ReadRepairAttempted: {nodes[2]['details']['readRepairAttempted']}",
-            f"                NumberOfTables: {nodes[2]['details']['numberOfTables']}",
-            f"                TotalHints: {nodes[2]['details']['totalHints']}",
-            f"                HintedHandoffEnabled: {'Yes' if nodes[2]['details']['hintedHandoffEnabled'] else 'No'}",
-            f"                LoggingLevels: {nodes[2]['details']['loggingLevels']}",
-            f"            Node:",
-            f"                IP: {nodes[3]['ip']}",
-            f"                StartTime: {nodes[3].get('startTime', 'None')}",
-            f"                InspectedAt: {nodes[3]['inspectTime']}",
-            f"                Error: {PaastaColors.red('oops')}",
-        ]
-        assert expected_output == output
-
-
 class TestPrintCassandraStatus:
     def test_output(self, mock_cassandra_status):
         output = []
@@ -2931,20 +2578,14 @@ class TestPrintKafkaStatus:
 
 
 class TestPrintFlinkStatus:
-    new_api_version = "0.141.0"
-
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
-    @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
     def test_error_no_flink(
         self,
-        mock_get_paasta_oapi_client,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
         mock_load_system_paasta_config.return_value = system_paasta_config
-        mock_api = mock_get_paasta_oapi_client.return_value
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_flink_status["status"] = None
         output = []
         return_value = print_flink_status(
@@ -3000,7 +2641,6 @@ class TestPrintFlinkStatus:
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3027,7 +2667,6 @@ class TestPrintFlinkStatus:
         mock_api = mock_get_paasta_oapi_client.return_value
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3055,7 +2694,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.side_effect = Exception("BOOM")
-        mock_api.default.show_version.return_value = self.new_api_version
         output = []
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3083,7 +2721,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_config.return_value = config_obj
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
-        mock_api.default.show_version.return_value = self.new_api_version
 
         # Errors while requesing job details
         mock_api.service.get_flink_cluster_job_details.side_effect = Exception("BOOM")
@@ -3118,7 +2755,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
 
         return_value = print_flink_status(
             cluster="fake_cluster",
@@ -3147,7 +2783,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(
@@ -3189,7 +2824,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
 
         output = []
@@ -3231,7 +2865,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         mock_flink_status["status"]["state"] = "Stoppingtaskmanagers"
@@ -3275,7 +2908,6 @@ class TestPrintFlinkStatus:
         mock_api.service.get_flink_cluster_overview.return_value = overview_obj
         mock_api.service.list_flink_cluster_jobs.return_value = jobs_obj
         mock_api.service.get_flink_cluster_job_details.return_value = job_details_obj
-        mock_api.default.show_version.return_value = self.new_api_version
         mock_naturaltime.return_value = "one day ago"
         output = []
         print_flink_status(

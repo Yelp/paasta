@@ -1,3 +1,158 @@
+paasta-tools (0.150.1) xenial; urgency=medium
+
+  * 0.150.1 tagged with 'make release'
+    Commit: Merge pull request #3484 from
+    Yelp/u/emanelsabban/added_playground_documentation_toindex  Added
+    paasta playground documentation to index list
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 24 Oct 2022 13:43:34 -0700
+
+paasta-tools (0.150.0) xenial; urgency=medium
+
+  * 0.150.0 tagged with 'make release'
+    Commit: Merge pull request #3478 from
+    Yelp/u/emanelsabban/paasta_playground_documentation  Added
+    documentation to readthedocs for paasta playground - PAASTA-17768
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 24 Oct 2022 10:57:41 -0700
+
+paasta-tools (0.149.3) xenial; urgency=medium
+
+  * 0.149.3 tagged with 'make release'
+    Commit: Merge pull request #3483 from Yelp/MLCOMPUTE-
+    216_dra_mass_rollout_16_exec  MLCOMPUTE-216 | increase Spark DRA
+    mass rollout executor range to 16
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 21 Oct 2022 06:54:25 -0700
+
+paasta-tools (0.149.2) xenial; urgency=medium
+
+  * 0.149.2 tagged with 'make release'
+    Commit: Merge pull request #3477 from Yelp/u/iiliescu/SECNESS-987
+    Secrets for teams feature in paasta secret cli
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Tue, 18 Oct 2022 04:47:22 -0700
+
+paasta-tools (0.149.1) xenial; urgency=medium
+
+  * 0.149.1 tagged with 'make release'
+    Commit: COMPINFRA-1050, COMPINFRA-1043: fix paasta status output to
+    show full version if provided (#3473)  * Update
+    get_actual_deployments to no longer depend on deploymentjsonv1 and
+    add deployment version to paasta status output
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 17 Oct 2022 11:02:56 -0700
+
+paasta-tools (0.149.0) xenial; urgency=medium
+
+  * 0.149.0 tagged with 'make release'
+    Commit: COMPINFRA-1605, add labels to k8s workloads (#3479)  *
+    COMPINFRA-1605, add "yelp.com/owner" and "paasta.yelp.com/pool"
+    labels to k8s resources
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Wed, 12 Oct 2022 06:29:07 -0700
+
+paasta-tools (0.148.2) xenial; urgency=medium
+
+  * 0.148.2 tagged with 'make release'
+    Commit: CLUSTERMAN-710, bump version for service_lib_config to
+    2.12.2 (#3476)
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Tue, 11 Oct 2022 06:20:47 -0700
+
+paasta-tools (0.148.1) xenial; urgency=medium
+
+  * 0.148.1 tagged with 'make release'
+    Commit: [FLINK-4123] Remove the fallback for the paasta client
+    (#3440)  * [FLINK-4123] Remove the fallback for the paasta client  -
+    The paasta client fallback handled the case where a paasta client
+    was trying to consume an old paasta api (ie, without exposing the
+    new endpoints the client was expecting). This case, produced 404s
+    that canceled the request and ultimately broke some Sensu checks too
+    - This fallback is not required anymore as all environments are
+    running a paasta api version >= 0.141.0
+
+ -- Marcos Salgueiro Balsa <mbalsa@yelp.com>  Thu, 06 Oct 2022 02:13:50 -0700
+
+paasta-tools (0.148.0) xenial; urgency=medium
+
+  * 0.148.0 tagged with 'make release'
+    Commit: Adhoc spark runs use environment credentials provider.
+    (#3471)  * Adhoc spark runs use environment credentials provider.  *
+    Remove logging final command for spark-run so we don"t log
+    credentials.
+
+ -- Jason Sleight <jsleight@yelp.com>  Mon, 03 Oct 2022 10:37:18 -0700
+
+paasta-tools (0.147.4) xenial; urgency=medium
+
+  * 0.147.4 tagged with 'make release'
+    Commit: MLCOMPUTE-36 | Enable DRA in paasta spark-run through
+    executor ranges (#3408)  * MLCOMPUTE-36 | mass enable DRA using
+    executor ranges  * MLCOMPUTE-36 | improved logging  * MLCOMPUTE-36 |
+    use get_dra_configs method to update dra configs  * MLCOMPUTE-36 |
+    reduce mass DRA rollout executor range to <=16  * MLCOMPUTE-36 |
+    reduce mass DRA rollout executor range to <=8  * MLCOMPUTE-36 | test
+    fixes  Co-authored-by: Sameer Sharma <sameersharma@c02gm03pmd6w.lan>
+    Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 29 Sep 2022 05:26:59 -0700
+
+paasta-tools (0.147.3) xenial; urgency=medium
+
+  * 0.147.3 tagged with 'make release'
+    Commit: Merge pull request #3443 from Yelp/u/sids/PAASTA-17210
+    removed mesos_cpu from kubernetes_schema.json and other references
+
+ -- Siddharth Shettigar <sids@yelp.com>  Wed, 28 Sep 2022 16:38:44 -0700
+
+paasta-tools (0.147.2) xenial; urgency=medium
+
+  * 0.147.2 tagged with 'make release'
+    Commit: Add support for Tron cluster overrides (#3225)  This PR adds
+    support for running Tronjobs on a different cluster than the
+    Tron/soaconfigs cluster would otherwise suggest.  This is most
+    useful for Tron masters that house sensitive jobs that we used to
+    lock down on separate compute clusters as we didn"t have the access
+    controls that we have these days (with k8s and OPA).  In these
+    cases, maintaining the names of the yelpsoa-configs files makes it
+    almost trivial to enforce (with pre-commit and other automation)
+    that these sensitive jobs always set a `pool` attribute such that
+    they don"t "leak" onto our default pools.  Co-authored-by: Jon Lee
+    <jonlee@yelp.com>
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 27 Sep 2022 07:19:38 -0700
+
+paasta-tools (0.147.1) xenial; urgency=medium
+
+  * 0.147.1 tagged with 'make release'
+    Commit: COMPINFRA-1495, add yelp.com/owner label to pods (#3465)  *
+    COMPINFRA-1495, add yelp.com/owner label to pods  Pods in paasta
+    namespace do not have the yelp.com/owner label, this PR adds those.
+
+ -- Akshay Sharma <akshaysha@yelp.com>  Fri, 23 Sep 2022 04:17:36 -0700
+
+paasta-tools (0.147.0) xenial; urgency=medium
+
+  * 0.147.0 tagged with 'make release'
+    Commit: Delete support for using host network in k8s (#3463)  This
+    was never plumbed through for k8s and we don"t seem to actually need
+    it, so let"s prevent folks from adding a misleading config option
+    that will actually noop  NB: we could support this, but it"s pretty
+    insecure so until someone has a good reason to need this - we can
+    punt on that.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 19 Sep 2022 09:41:00 -0700
+
+paasta-tools (0.146.2) xenial; urgency=medium
+
+  * 0.146.2 tagged with 'make release'
+    Commit: Merge pull request #3457 from Yelp/u/jfong/COMPINFRA-1040-
+    update-buttons  Update last few references to sha-only versions in
+    mark-for-deployment
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 09 Sep 2022 10:31:57 -0700
+
 paasta-tools (0.146.1) xenial; urgency=medium
 
   * 0.146.1 tagged with 'make release'
