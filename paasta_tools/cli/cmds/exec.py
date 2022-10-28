@@ -135,6 +135,6 @@ def paasta_exec(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    cmd = f"kubectl --kubeconfig /etc/kubernetes/paasta.conf --context {cluster} -i -t -n paasta exec {pod_name} -- sh -c 'clear; (bash || ash || sh)'"
+    cmd = f"kubectl --kubeconfig /etc/kubernetes/paasta.conf --context {cluster} -i -t -n {namespace} exec {pod_name} -- sh -c 'clear; (bash || ash || sh)'"
     subprocess.check_call(shlex.split(cmd))
     return 0
