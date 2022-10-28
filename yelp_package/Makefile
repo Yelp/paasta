@@ -54,7 +54,7 @@ go_entrypoint:
 	rm -rf gopath && \
 	mkdir -p gopath && \
 	cd gopath && \
-	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip && \
+	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip -O v$(PTG_VERSION).zip && \
 	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) && \
 	unzip v$(PTG_VERSION).zip && \
 	cd paasta-tools-go-$(PTG_VERSION) && \
