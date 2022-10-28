@@ -19,6 +19,9 @@ import shlex
 import subprocess
 import sys
 
+from kubernetes import client
+from kubernetes import config
+
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -79,12 +82,29 @@ def completer_clusters(prefix, parsed_args, **kwargs):
         return list_clusters()
 
 
+def authenticate_and_load_api_object(cluster):
+    config.load_kube_config(config_file="/etc/kubernetes/paasta.conf", context=cluster)
+    return client.CoreV1Api()
+
+
+def get_pods_for_instance(k8s_v1, service, instance, namespace):
+    return k8s_v1.list_namespaced_pod(
+        namespace,
+        watch=False,
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        field_selector="status.phase==Running",
+    )
+
+
 def paasta_exec(args: argparse.Namespace) -> int:
     """Execs into a running Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     soa_dir = args.soa_dir
 
     service = figure_out_service_name(args, soa_dir)
+    namespace = (
+        "paasta"  # keeping this here since we want to shard the paasta namespace
+    )
 
     if (
         args.cluster is None
@@ -99,45 +119,22 @@ def paasta_exec(args: argparse.Namespace) -> int:
     cluster = args.cluster
     if verify_instances(args.instance, service, [cluster]):
         return 1
-
     instance = args.instance
-    pods = (
-        subprocess.run(
-            [
-                f"kubectl-{cluster}",
-                "get",
-                "po",
-                "-n",
-                "paasta",
-                "-l",
-                f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
-                "--field-selector=status.phase==Running",
-                "--no-headers",
-                "-o",
-                "custom-columns=:.metadata.name",
-                "|",
-                "shuf",
-            ],
-            stdout=subprocess.PIPE,
-        )
-        .stdout.decode("utf-8")
-        .strip()
-        .split("\n")
+    k8s_v1 = authenticate_and_load_api_object(cluster)
+    pods = get_pods_for_instance(k8s_v1, service, instance, namespace)
+    pod_name = (
+        args.pod
+        if args.pod
+        else None
+        if not pods.items
+        else random.choice(pods.items).metadata.name
     )
-    if args.pod is None:
-        pod = random.choice(pods)
-    else:
-        pod = args.pods
-        if pod not in pods:
-            pod = ""
-    if not pod:
+    if not pod_name or pod_name not in [pod.metadata.name for pod in pods.items]:
         print(
             PaastaColors.red("We can't find a running pod for your service."),
             file=sys.stderr,
         )
         return 1
-
-    cmd = f"kubectl-{cluster} -i -t -n paasta exec {pod} -- sh -c '\"clear; (bash || ash || sh)\"'"
+    cmd = f"kubectl --kubeconfig /etc/kubernetes/paasta.conf --context {cluster} -i -t -n paasta exec {pod_name} -- sh -c 'clear; (bash || ash || sh)'"
     subprocess.check_call(shlex.split(cmd))
-
     return 0
