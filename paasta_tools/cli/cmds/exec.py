@@ -59,8 +59,8 @@ def add_subparser(subparsers) -> None:
         help="The instance to exec into.",
         type=str,
     ).completer = completer_clusters
-    pod_help = "The pod to exec into. Defaults to a random running pod for the service."
-    exec_parser.add_argument("-p", "--pod", help=pod_help)
+    pod_help = 
+    exec_parser.add_argument("-p", "--pod", help="The pod to exec into. Defaults to a random running pod for the service.")
 
     exec_parser.add_argument(
         "-d",
