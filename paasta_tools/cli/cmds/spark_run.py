@@ -71,7 +71,7 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 # Mass enable DRA configs
-EXECUTOR_RANGES = {(0, 16)}
+EXECUTOR_RANGES = {(0, 64)}
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
