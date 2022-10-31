@@ -721,7 +721,7 @@ def run_docker_container(
                     secret_provider_kwargs=secret_provider_kwargs,
                 )
             except Exception as e:
-                print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
+                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
                 print(
                     "If you don't need the secrets for local-run, you can add --skip-secrets"
                 )
