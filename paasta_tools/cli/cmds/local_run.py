@@ -37,6 +37,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
@@ -46,6 +49,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
+from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -689,21 +693,39 @@ def run_docker_container(
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
     if not skip_secrets:
-        try:
-            secret_environment = decrypt_secret_environment_variables(
-                secret_provider_name=secret_provider_name,
-                environment=environment,
-                soa_dir=soa_dir,
-                service_name=service,
-                cluster_name=instance_config.cluster,
-                secret_provider_kwargs=secret_provider_kwargs,
-            )
-        except Exception as e:
-            print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
-            print(
-                "If you don't need the secrets for local-run, you can add --skip-secrets"
-            )
-            sys.exit(1)
+        # if secrets_for_owner_team enabled in yelpsoa for service
+        if is_secrets_for_teams_enabled(service, soa_dir):
+            try:
+                kube_client = KubeClient(
+                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                )
+                secret_environment = get_kubernetes_secret_env_variables(
+                    kube_client, environment, service
+                )
+            except Exception as e:
+                print(
+                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
+                )
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        else:
+            try:
+                secret_environment = decrypt_secret_environment_variables(
+                    secret_provider_name=secret_provider_name,
+                    environment=environment,
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+            except Exception as e:
+                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
         environment.update(secret_environment)
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
