@@ -1,3 +1,11 @@
+paasta-tools (0.150.3) xenial; urgency=medium
+
+  * 0.150.3 tagged with 'make release'
+    Commit: Merge pull request #3482 from Yelp/u/iiliescu/SECNESS-1125
+    Secrets for teams opt-in feature in paasta local-run cmd
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Mon, 31 Oct 2022 04:19:54 -0700
+
 paasta-tools (0.150.2) xenial; urgency=medium
 
   * 0.150.2 tagged with 'make release'
