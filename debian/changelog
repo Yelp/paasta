@@ -1,3 +1,12 @@
+paasta-tools (0.150.4) xenial; urgency=medium
+
+  * 0.150.4 tagged with 'make release'
+    Commit: Merge pull request #3492 from Yelp/MLCOMPUTE-
+    216_dra_mass_rollout_32_exec  MLCOMPUTE-216 | increase Spark DRA
+    mass rollout range to 64 executors
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 31 Oct 2022 09:22:30 -0700
+
 paasta-tools (0.150.3) xenial; urgency=medium
 
   * 0.150.3 tagged with 'make release'
