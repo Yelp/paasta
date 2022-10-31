@@ -16,6 +16,7 @@ import os
 
 import mock
 import pytest
+import yaml
 from mock import patch
 
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
@@ -194,28 +195,30 @@ def test_validate_min_max_instances_success(
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_validate_schema_min_max_instances_absent(mock_get_file_contents, capsys):
-    kubernetes_content = """
-invalid-max-only:
-  cpus: 0.1
-  max_instances: 3
-  mem: 250
-  disk: 512
-  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
-"""
-    mock_get_file_contents.return_value = kubernetes_content
+    kubernetes_content = {
+        "invalid-max-only": {
+            "cpus": 0.1,
+            "max_instances": 3,
+            "mem": 250,
+            "disk": 512,
+            "cmd": "virtualenv_run/bin/python adindexer/adindex_worker.py",
+        }
+    }
+    mock_get_file_contents.return_value = yaml.dump(kubernetes_content)
     assert not validate_schema("kubernetes_service_config.yaml", "kubernetes")
     output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
 
-    kubernetes_content = """
-invalid-min-only:
-  cpus: 0.1
-  min_instances: 2
-  mem: 250
-  disk: 512
-  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
-"""
-    mock_get_file_contents.return_value = kubernetes_content
+    kubernetes_content = {
+        "invalid-min-only": {
+            "cpus": 0.1,
+            "min_instances": 3,
+            "mem": 250,
+            "disk": 512,
+            "cmd": "virtualenv_run/bin/python adindexer/adindex_worker.py",
+        }
+    }
+    mock_get_file_contents.return_value = yaml.dump(kubernetes_content)
     assert not validate_schema("kubernetes_service_config.yaml", "kubernetes")
     output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
@@ -223,16 +226,17 @@ invalid-min-only:
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_validate_schema_min_max_instances_present(mock_get_file_contents, capsys):
-    kubernetes_content = """
-valid-min-max:
-  cpus: 0.1
-  min_instances: 2
-  max_instances: 3
-  mem: 250
-  disk: 512
-  cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
-"""
-    mock_get_file_contents.return_value = kubernetes_content
+    kubernetes_content = {
+        "valid-min-max": {
+            "cpus": 0.1,
+            "min_instances": 2,
+            "max_instances": 3,
+            "mem": 250,
+            "disk": 512,
+            "cmd": "virtualenv_run/bin/python adindexer/adindex_worker.py",
+        }
+    }
+    mock_get_file_contents.return_value = yaml.dump(kubernetes_content)
     assert validate_schema("kubernetes_service_config.yaml", "kubernetes")
     output, _ = capsys.readouterr()
     assert SCHEMA_VALID in output
