@@ -158,6 +158,7 @@ from paasta_tools.utils import VolumeWithMode
 log = logging.getLogger(__name__)
 
 KUBE_CONFIG_PATH = "/etc/kubernetes/admin.conf"
+KUBE_CONFIG_USER_PATH = "/etc/kubernetes/paasta.conf"
 YELP_ATTRIBUTE_PREFIX = "yelp.com/"
 PAASTA_ATTRIBUTE_PREFIX = "paasta.yelp.com/"
 KUBE_DEPLOY_STATEGY_MAP = {
@@ -456,11 +457,21 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
-    def __init__(self, component: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        component: Optional[str] = None,
+        config_file: Optional[str] = None,
+        context: Optional[str] = None,
+    ) -> None:
+        if not config_file:
+            config_file = os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH)
+        if not context:
+            context = os.environ.get("KUBECONTEXT")
         kube_config.load_kube_config(
-            config_file=os.environ.get("KUBECONFIG", KUBE_CONFIG_PATH),
-            context=os.environ.get("KUBECONTEXT"),
+            config_file=config_file,
+            context=context,
         )
+
         models.V1beta1PodDisruptionBudgetStatus.disrupted_pods = property(
             fget=lambda *args, **kwargs: models.V1beta1PodDisruptionBudgetStatus.disrupted_pods(
                 *args, **kwargs
@@ -1588,6 +1599,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                "paasta.yelp.com/pool": self.get_pool(),
+                "yelp.com/owner": "compute_infra_platform_experience",
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
@@ -3432,3 +3445,39 @@ def update_crds(
             success = False
 
     return success
+
+
+def get_kubernetes_secret_name(
+    service_name: str, secret_name: str, namespace: str = "paasta"
+) -> str:
+    service = sanitise_kubernetes_name(service_name)
+    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    name = f"{namespace}-secret-{service}-{sanitised_secret}"
+    return name
+
+
+def get_kubernetes_secret(
+    kube_client: KubeClient, secret_name: str, service_name: str
+) -> str:
+    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
+
+    secret_data = kube_client.core.read_namespaced_secret(
+        name=k8s_secret_name, namespace="paasta"
+    ).data[secret_name]
+    secret = base64.b64decode(secret_data).decode("utf-8")
+    return secret
+
+
+def get_kubernetes_secret_env_variables(
+    kube_client: KubeClient,
+    environment: Dict[str, str],
+    service_name: str,
+) -> Dict[str, str]:
+    decrypted_secrets = {}
+    for k, v in environment.items():
+        if is_secret_ref(v):
+            secret_name = get_secret_name_from_ref(v)
+            decrypted_secrets[k] = get_kubernetes_secret(
+                kube_client, secret_name, service_name
+            )
+    return decrypted_secrets

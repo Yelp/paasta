@@ -3,5 +3,6 @@ autoscaling:
   mem: 100
   min_instances: 1
   max_instances: 10
+  deploy_group: prod.main
   autoscaling:
     setpoint: 0.7

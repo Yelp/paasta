@@ -61,19 +61,30 @@ from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.paastaapi import ApiException
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import remove_ansi_escape_sequences
 from tests.conftest import Struct
 
 
 def make_fake_instance_conf(
-    cluster, service, instance, deploy_group=None, team=None, registrations=()
+    cluster,
+    service,
+    instance,
+    deploy_group=None,
+    team=None,
+    registrations=(),
+    docker_url="",
 ):
     conf = MagicMock()
+    conf.cluster = cluster
+    conf.service = service
+    conf.instance = instance
     conf.get_cluster.return_value = cluster
     conf.get_service.return_value = service
     conf.get_instance.return_value = instance
     conf.get_deploy_group.return_value = deploy_group
     conf.get_team.return_value = team
+    conf.get_docker_image.return_value = docker_url
     conf.get_registrations.return_value = registrations if registrations else []
     if registrations is None:
         del (
@@ -218,27 +229,49 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch("paasta_tools.cli.cmds.status.load_deployments_json", autospec=True)
+@patch("paasta_tools.cli.cmds.status.list_clusters", autospec=True)
 def test_get_actual_deployments(
-    mock_get_deployments,
+    mock_list_clusters,
 ):
-    mock_get_deployments.return_value = utils.DeploymentsJsonV1(
-        {
-            "fake_service:paasta-b_cluster.b_instance": {
-                "docker_image": "this_is_a_sha"
-            },
-            "fake_service:paasta-a_cluster.a_instance": {
-                "docker_image": "this_is_a_sha"
-            },
-        }
-    )
-    expected = {
-        "a_cluster.a_instance": "this_is_a_sha",
-        "b_cluster.b_instance": "this_is_a_sha",
-    }
+    mock_list_clusters.return_value = ["a_cluster", "b_cluster"]
 
-    actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
-    assert expected == actual
+    # This will actually return the same 2 instance_configs for every instance type, but sufficient for our tests
+    fake_instance_configs = [
+        make_fake_instance_conf(
+            "a_cluster",
+            "fake_service",
+            "a_instance",
+            deploy_group="deploy_group_a",
+            docker_url="http://docker.registry/fake_service:paasta-somesha123",
+        ),
+        make_fake_instance_conf(
+            "b_cluster",
+            "fake_service",
+            "b_instance",
+            deploy_group="deploy_group_b",
+            docker_url="http://docker.registry/fake_service:paasta-somesha123-20220101T000000",
+        ),
+    ]
+
+    def mock_instance_config_side_effect(*args, **kwargs):
+        # self, cluster, instance_type_class):
+        print(f"{args} {kwargs}")
+
+        return [e for e in fake_instance_configs if e.cluster == kwargs["cluster"]]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.status.PaastaServiceConfigLoader.instance_configs",
+        autospec=True,
+    ) as mock_instance_configs:
+        mock_instance_configs.side_effect = mock_instance_config_side_effect
+
+        expected = {
+            "a_cluster.a_instance": DeploymentVersion("somesha123", None),
+            "b_cluster.b_instance": DeploymentVersion("somesha123", "20220101T000000"),
+        }
+
+        actual = status.get_actual_deployments("fake_service", "/fake/soa/dir")
+        assert expected == actual
 
 
 @patch("paasta_tools.cli.cmds.status.read_deploy", autospec=True)

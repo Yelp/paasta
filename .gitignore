@@ -9,6 +9,7 @@ dist/
 !*.pyi
 .*.sw?
 .idea
+.fleet
 .vscode
 .create_cluster
 .tmp
@@ -21,6 +22,9 @@ venv
 .bash_history
 .lesshst
 etc_paasta_for_development/
+etc_paasta_playground/
+soa_config_playground/
+k8s_itests/kubeconfig
 
 # Generated debian artifacts
 debian/paasta-tools/

@@ -45,13 +45,13 @@ class PaastaServiceConfigLoader:
     >>>
     >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
-    >>> for instance in sc.instances(cluster='fake_cluster', instance_type='marathon'):
+    >>> for instance in sc.instances(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
     ...     print(instance)
     ...
     main
     canary
     >>>
-    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type='marathon'):
+    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
     ...     print(instance_config.get_instance())
     ...
     main
@@ -94,7 +94,7 @@ class PaastaServiceConfigLoader:
         """Returns an iterator that yields instance names as strings.
 
         :param cluster: The cluster name
-        :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
+        :param instance_type_class: a subclass of InstanceConfig
         :returns: an iterator that yields instance names
         """
         if (cluster, instance_type_class) not in self._framework_configs:
@@ -108,9 +108,9 @@ class PaastaServiceConfigLoader:
         """Returns an iterator that yields InstanceConfig objects.
 
         :param cluster: The cluster name
-        :param instance_type: One of paasta_tools.utils.INSTANCE_TYPES
+        :param instance_type_class: a subclass of InstanceConfig
         :returns: an iterator that yields instances of MarathonServiceConfig, etc.
-        :raises NotImplementedError: when it doesn't know how to create a config for instance_type
+        :raises NotImplementedError: when it doesn't know how to create a config for instance_type_class
         """
         if (cluster, instance_type_class) not in self._framework_configs:
             self._refresh_framework_config(cluster, instance_type_class)

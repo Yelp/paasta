@@ -684,10 +684,13 @@ def instance_status(request):
             )
             raise ApiFailure(error_message, 404)
 
-        instance_status["git_sha"] = version
+        instance_status["version"] = version.short_sha_repr()
+        # Kept for backwards compatibility
+        # TODO: Remove once all clients+clusters updated to use deploymentversion
+        instance_status["git_sha"] = version.sha[:8]
     else:
+        instance_status["version"] = ""
         instance_status["git_sha"] = ""
-
     try:
         if instance_type == "marathon":
             instance_status["marathon"] = marathon_instance_status(
@@ -908,10 +911,10 @@ def get_marathon_dashboard_links(marathon_clients, system_paasta_config):
 
 
 def get_deployment_version(
-    actual_deployments: Mapping[str, str], cluster: str, instance: str
-) -> Optional[str]:
+    actual_deployments: Mapping[str, DeploymentVersion], cluster: str, instance: str
+) -> Optional[DeploymentVersion]:
     key = ".".join((cluster, instance))
-    return actual_deployments[key][:8] if key in actual_deployments else None
+    return actual_deployments[key] if key in actual_deployments else None
 
 
 @view_config(
