@@ -1489,10 +1489,43 @@ fake_job:
         ]
         soa_dir = "/my_soa_dir"
 
-        namespaces = tron_tools.get_tron_namespaces(
-            cluster=cluster_name, soa_dir=soa_dir
-        )
-        assert sorted(expected_namespaces) == sorted(namespaces)
+        with mock.patch(
+            "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
+        ) as mock_filter_templates_from_config:
+            mock_filter_templates_from_config.return_value = {
+                "test-tron-job": {"actions": {"run": {"executor": "paasta"}}},
+                "test-spark-job": {
+                    "actions": {
+                        "run": {"executor": "ssh", "command": 'spark-run test.py"'}
+                    }
+                },
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
+
+            mock_filter_templates_from_config.return_value = {
+                "test-spark-job": {
+                    "actions": {
+                        "run": {"executor": "ssh", "command": 'spark-run test.py"'}
+                    }
+                },
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert [] == sorted(namespaces)
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["spark"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
 
     @mock.patch("glob.glob", autospec=True)
     def test_list_tron_clusters(self, mock_glob):

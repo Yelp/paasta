@@ -135,7 +135,6 @@ INSTANCE_TYPES = (
     "kafkacluster",
     "monkrelays",
     "nrtsearchservice",
-    "spark",
 )
 
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
@@ -146,7 +145,6 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
-    "spark": "paasta-spark",
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
@@ -326,6 +324,9 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
+    # the values for this dict can be anything since it's whatever
+    # spark accepts
+    spark_args: Dict[str, Any]
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -3113,10 +3114,7 @@ def read_service_instance_names(
     service: str, instance_type: str, cluster: str, soa_dir: str
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
-    if instance_type == "spark":
-        conf_file = f"tron-{cluster}"
-    else:
-        conf_file = f"{instance_type}-{cluster}"
+    conf_file = f"{instance_type}-{cluster}"
     config = service_configuration_lib.read_extra_service_information(
         service,
         conf_file,
@@ -3124,17 +3122,12 @@ def read_service_instance_names(
         deepcopy=False,
     )
     config = filter_templates_from_config(config)
-    if instance_type == "tron" or instance_type == "spark":
+    if instance_type == "tron":
         for job_name, job in config.items():
-            for action, action_info in job.get("actions", {}).items():
-                instance = f"{job_name}.{action}"
-                if (
-                    action_info.get("executor", "") == "ssh"
-                    and instance_type == "spark"
-                ):
-                    instance_list.append((service, instance))
-                elif instance_type == "tron":
-                    instance_list.append((service, instance))
+            action_names = list(job.get("actions", {}).keys())
+            for name in action_names:
+                instance = f"{job_name}.{name}"
+                instance_list.append((service, instance))
     else:
         for instance in config:
             instance_list.append((service, instance))
