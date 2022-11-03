@@ -135,6 +135,7 @@ INSTANCE_TYPES = (
     "kafkacluster",
     "monkrelays",
     "nrtsearchservice",
+    "spark",
 )
 
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
@@ -145,6 +146,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
+    "spark": "paasta-spark",
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
@@ -3111,7 +3113,10 @@ def read_service_instance_names(
     service: str, instance_type: str, cluster: str, soa_dir: str
 ) -> Collection[Tuple[str, str]]:
     instance_list = []
-    conf_file = f"{instance_type}-{cluster}"
+    if instance_type == "spark":
+        conf_file = f"tron-{cluster}"
+    else:
+        conf_file = f"{instance_type}-{cluster}"
     config = service_configuration_lib.read_extra_service_information(
         service,
         conf_file,
@@ -3119,12 +3124,17 @@ def read_service_instance_names(
         deepcopy=False,
     )
     config = filter_templates_from_config(config)
-    if instance_type == "tron":
+    if instance_type == "tron" or instance_type == "spark":
         for job_name, job in config.items():
-            action_names = list(job.get("actions", {}).keys())
-            for name in action_names:
-                instance = f"{job_name}.{name}"
-                instance_list.append((service, instance))
+            for action, action_info in job.get("actions", {}).items():
+                instance = f"{job_name}.{action}"
+                if (
+                    action_info.get("executor", "") == "ssh"
+                    and instance_type == "spark"
+                ):
+                    instance_list.append((service, instance))
+                elif instance_type == "tron":
+                    instance_list.append((service, instance))
     else:
         for instance in config:
             instance_list.append((service, instance))
