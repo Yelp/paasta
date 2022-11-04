@@ -321,6 +321,51 @@ def test_parse_user_spark_args(spark_args, enable_spark_dra, expected, capsys):
             )
 
 
+@pytest.mark.parametrize(
+    "args,system_paasta_config,expected",
+    [
+        (
+            # allowed_pools key has test-cluster and test-pool
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
+                "fake_dir",
+            ),
+            True,
+        ),
+        (
+            # allowed_pools key has test-cluster but doesn't have test-pool
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                {"allowed_pools": {"test-cluster": ["fail-test-pool", "fake-pool"]}},
+                "fake_dir",
+            ),
+            False,
+        ),
+        (
+            # allowed_pools key doesn't have test-cluster
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}},
+                "fake_dir",
+            ),
+            True,
+        ),
+        (
+            # allowed_pools key is not present
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
+                "fake_dir",
+            ),
+            True,
+        ),
+    ],
+)
+def test__validate_pool(args, system_paasta_config, expected):
+    assert spark_run._validate_pool(args, system_paasta_config) == expected
+
+
 @pytest.mark.parametrize("is_mrjob", [True, False])
 def test_create_spark_config_str(is_mrjob):
     spark_opts = {

@@ -1004,6 +1004,27 @@ def _mass_enable_dra(spark_conf):
     return spark_conf
 
 
+def _validate_pool(args, system_paasta_config):
+    if args.pool:
+        valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
+        if not valid_pools:
+            log.warning(
+                PaastaColors.yellow(
+                    f"Could not fetch allowed_pools for `{args.cluster}`. Skipping pool validation.\n"
+                )
+            )
+        if valid_pools and args.pool not in valid_pools:
+            print(
+                PaastaColors.red(
+                    f"Invalid --pool value. List of valid pools for cluster `{args.cluster}`: "
+                    f"{valid_pools}"
+                ),
+                file=sys.stderr,
+            )
+            return False
+    return True
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1032,16 +1053,8 @@ def paasta_spark_run(args):
         return 1
 
     # validate pool
-    if args.pool:
-        valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
-        if valid_pools and args.pool not in valid_pools:
-            print(
-                PaastaColors.red(
-                    f"Invalid --pool value. List of valid pools: {valid_pools}"
-                ),
-                file=sys.stderr,
-            )
-            return 1
+    if not _validate_pool(args, system_paasta_config):
+        return 1
 
     # Use the default spark:client instance configs if not provided
     try:
