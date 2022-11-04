@@ -1885,6 +1885,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
+    allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
