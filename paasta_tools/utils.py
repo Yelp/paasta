@@ -1885,6 +1885,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
+    allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
@@ -2690,6 +2691,9 @@ class SystemPaastaConfig:
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
+
+    def get_cluster_pools(self) -> Dict[str, List[str]]:
+        return self.config_dict.get("allowed_pools", {})
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
