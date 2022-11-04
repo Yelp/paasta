@@ -1,3 +1,16 @@
+paasta-tools (0.150.5) xenial; urgency=medium
+
+  * 0.150.5 tagged with 'make release'
+    Commit: MLCOMPUTE-465 | add validations in paasta spark-run (#3454)
+    * MLCOMPUTE-465 | add validations for pool and cluster in paasta
+    spark-run  * MLCOMPUTE-465 | using public config for pool validation
+    * MLCOMPUTE-465 | modular code, added tests  * MLCOMPUTE-465 | add
+    allowed_pools key to SystemPaastaConfigDict  Co-authored-by: Sameer
+    Sharma <sameersharma@c02gm03pmd6w.lan> Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 04 Nov 2022 07:11:07 -0700
+
 paasta-tools (0.150.4) xenial; urgency=medium
 
   * 0.150.4 tagged with 'make release'
