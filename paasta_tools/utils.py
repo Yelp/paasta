@@ -4061,10 +4061,8 @@ def load_all_configs(
 ) -> Mapping[str, Mapping[str, Any]]:
     config_dicts = {}
     for service in os.listdir(soa_dir):
-        config_dicts[
-            service
-        ] = service_configuration_lib.read_extra_service_information(
-            service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
+        config_dicts[service] = load_service_instance_configs(
+            service, file_prefix, cluster, soa_dir
         )
     return config_dicts
 

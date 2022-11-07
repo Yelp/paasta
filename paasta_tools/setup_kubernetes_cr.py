@@ -49,6 +49,7 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 
+
 log = logging.getLogger(__name__)
 
 
@@ -167,16 +168,10 @@ def setup_all_custom_resources(
             continue
 
         # by convention, entries where key begins with _ are used as templates
-        raw_config_dicts = load_all_configs(
+        # and will be filter out here
+        config_dicts = load_all_configs(
             cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
         )
-        config_dicts = {}
-        for svc, raw_sdict in raw_config_dicts.items():
-            sdict = {inst: idict for inst, idict in raw_sdict.items() if inst[0] != "_"}
-            if sdict:
-                config_dicts[svc] = sdict
-        if not config_dicts:
-            continue
 
         ensure_namespace(
             kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"

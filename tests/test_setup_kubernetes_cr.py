@@ -119,24 +119,98 @@ def test_setup_all_custom_resources():
         )
 
 
+def test_setup_all_custom_resources_flink():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_cr.ensure_namespace", autospec=True
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_cr.load_all_configs", autospec=True
+    ) as mock_load_all, mock.patch(
+        "paasta_tools.setup_kubernetes_cr.setup_custom_resources", autospec=True
+    ) as mock_setup:
+        mock_system_config = mock.Mock(
+            get_cluster=mock.Mock(return_value="westeros-prod")
+        )
+        # if some CRs setup okay should return True
+        mock_setup.side_effect = [True, False]
+
+        mock_client = mock.Mock()
+        flink_crd = mock.Mock()
+        flink_crd.spec.names = mock.Mock(
+            singular="flink", plural="flinks", kind="flink"
+        )
+
+        mock_client.apiextensions.list_custom_resource_definition.return_value = (
+            mock.Mock(items=[flink_crd])
+        )
+
+        custom_resource_definitions = [
+            mock.Mock(
+                kube_kind=mock.Mock(plural="flinks", singular="flink", kind="Flink")
+            ),
+        ]
+
+        setup_kubernetes_cr.setup_all_custom_resources(
+            mock_client,
+            "/nail/soa",
+            mock_system_config,
+            custom_resource_definitions=custom_resource_definitions,
+        )
+
+        assert mock_load_all.called
+
+
 def test_load_all_configs():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.service_configuration_lib.read_extra_service_information",
+        "paasta_tools.utils.load_service_instance_configs",
         autospec=True,
-    ) as mock_read_info, mock.patch("os.listdir", autospec=True) as mock_oslist:
+    ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
         mock_oslist.return_value = ["kurupt", "mc"]
         ret = setup_kubernetes_cr.load_all_configs(
             cluster="westeros-prod", file_prefix="thing", soa_dir="/nail/soa"
         )
-        mock_read_info.assert_has_calls(
+        mock_load_configs.assert_has_calls(
             [
-                mock.call("mc", "thing-westeros-prod", soa_dir="/nail/soa"),
-                mock.call("kurupt", "thing-westeros-prod", soa_dir="/nail/soa"),
+                mock.call("mc", "thing", "westeros-prod", soa_dir="/nail/soa"),
+                mock.call("kurupt", "thing", "westeros-prod", soa_dir="/nail/soa"),
             ],
             any_order=True,
         )
         assert "kurupt" in ret.keys()
         assert "mc" in ret.keys()
+
+
+def test_load_all_flink_configs():
+    with mock.patch(
+        "paasta_tools.utils.load_service_instance_configs",
+        autospec=True,
+    ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
+        mock_oslist.return_value = ["kurupt", "mc"]
+        mock_load_configs.side_effect = [
+            {
+                "foo": {"mem": 2},
+                "bar": {"cpus": 3},
+            },
+            {
+                "bar": {"cpus": 3},
+            },
+        ]
+        ret = setup_kubernetes_cr.load_all_configs(
+            cluster="westeros-prod", file_prefix="flink", soa_dir="/nail/soa"
+        )
+
+        mock_load_configs.assert_has_calls(
+            [
+                mock.call("kurupt", "flink", "westeros-prod", soa_dir="/nail/soa"),
+                mock.call("mc", "flink", "westeros-prod", soa_dir="/nail/soa"),
+            ],
+            any_order=True,
+        )
+
+        assert "kurupt" in ret.keys()
+        assert "mc" in ret.keys()
+
+        assert ret["kurupt"] == {"foo": {"mem": 2}, "bar": {"cpus": 3}}
+        assert ret["mc"] == {"bar": {"cpus": 3}}
 
 
 def test_setup_custom_resources():
