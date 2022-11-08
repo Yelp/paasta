@@ -1,3 +1,12 @@
+paasta-tools (0.150.7) xenial; urgency=medium
+
+  * 0.150.7 tagged with 'make release'
+    Commit: Add instance_type flag to list_kubernetes_service_instances
+    (#3495)  * Add instance_type flag to
+    list_kubernetes_service_instances
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 08 Nov 2022 14:02:55 -0800
+
 paasta-tools (0.150.6) xenial; urgency=medium
 
   * 0.150.6 tagged with 'make release'
