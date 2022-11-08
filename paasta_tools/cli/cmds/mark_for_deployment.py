@@ -688,7 +688,6 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             )
         # If there's no production deploy group, or the production deploy group
         # has never been deployed to, just use the old SHA from this deploy group.
-        # TODO: do we need to get author information from image_version-only bumps?
         if from_sha is None:
             from_sha = self.old_git_sha
         return get_authors_to_be_notified(
