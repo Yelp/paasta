@@ -1,3 +1,14 @@
+paasta-tools (0.151.0) xenial; urgency=medium
+
+  * 0.151.0 tagged with 'make release'
+    Commit: Teach get_running_task_allocation about non-prefixed
+    namespaces (#3497)  Most of the namespaces that "belong" to PaaSTA
+    are prefixed with paasta, with the exception of tron.  This teaches
+    this script how to include additional namespaces in its output and
+    sets the default to ["tron"] to avoid having to roll anything out :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Nov 2022 11:00:37 -0800
+
 paasta-tools (0.150.8) xenial; urgency=medium
 
   * 0.150.8 tagged with 'make release'
