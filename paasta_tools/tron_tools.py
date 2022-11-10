@@ -43,7 +43,7 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -254,7 +254,18 @@ def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]
     }
 
 
+class TronActionConfigDict(InstanceConfigDict, total=False):
+    # this is kinda confusing: long-running stuff is currently using cmd
+    # ...but tron are using command - this is going to require a little
+    # maneuvering to unify
+    command: str
+    # the values for this dict can be anything since it's whatever
+    # spark accepts
+    spark_args: Dict[str, Any]
+
+
 class TronActionConfig(InstanceConfig):
+    config_dict: TronActionConfigDict
     config_filename_prefix = "tron"
 
     def __init__(
