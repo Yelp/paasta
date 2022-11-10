@@ -71,7 +71,7 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 # Mass enable DRA configs
-EXECUTOR_RANGES = {(0, 16)}
+EXECUTOR_RANGES = {(0, 64)}
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -210,6 +210,7 @@ def add_subparser(subparsers):
 
     try:
         system_paasta_config = load_system_paasta_config()
+        valid_clusters = system_paasta_config.get_clusters()
         default_spark_cluster = system_paasta_config.get_spark_run_config().get(
             "default_cluster"
         )
@@ -219,11 +220,13 @@ def add_subparser(subparsers):
     except PaastaNotConfiguredError:
         default_spark_cluster = "pnw-devc"
         default_spark_pool = "batch"
+        valid_clusters = ["spark-pnw-prod", "pnw-devc"]
 
     list_parser.add_argument(
         "-c",
         "--cluster",
         help="The name of the cluster you wish to run Spark on.",
+        choices=valid_clusters,
         default=default_spark_cluster,
     )
 
@@ -1001,6 +1004,27 @@ def _mass_enable_dra(spark_conf):
     return spark_conf
 
 
+def _validate_pool(args, system_paasta_config):
+    if args.pool:
+        valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
+        if not valid_pools:
+            log.warning(
+                PaastaColors.yellow(
+                    f"Could not fetch allowed_pools for `{args.cluster}`. Skipping pool validation.\n"
+                )
+            )
+        if valid_pools and args.pool not in valid_pools:
+            print(
+                PaastaColors.red(
+                    f"Invalid --pool value. List of valid pools for cluster `{args.cluster}`: "
+                    f"{valid_pools}"
+                ),
+                file=sys.stderr,
+            )
+            return False
+    return True
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1026,6 +1050,10 @@ def paasta_spark_run(args):
             ),
             file=sys.stderr,
         )
+        return 1
+
+    # validate pool
+    if not _validate_pool(args, system_paasta_config):
         return 1
 
     # Use the default spark:client instance configs if not provided

@@ -1,3 +1,81 @@
+paasta-tools (0.151.0) xenial; urgency=medium
+
+  * 0.151.0 tagged with 'make release'
+    Commit: Teach get_running_task_allocation about non-prefixed
+    namespaces (#3497)  Most of the namespaces that "belong" to PaaSTA
+    are prefixed with paasta, with the exception of tron.  This teaches
+    this script how to include additional namespaces in its output and
+    sets the default to ["tron"] to avoid having to roll anything out :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Nov 2022 11:00:37 -0800
+
+paasta-tools (0.150.8) xenial; urgency=medium
+
+  * 0.150.8 tagged with 'make release'
+    Commit: Fix TronActionConfig config_dict typing (#3498)  We"ve
+    started stuffing some of the stuff that"s Tron-specific in
+    InstanceConfigDict - but this is a common base TypedDict that"s used
+    by all instances
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Nov 2022 10:55:35 -0800
+
+paasta-tools (0.150.7) xenial; urgency=medium
+
+  * 0.150.7 tagged with 'make release'
+    Commit: Add instance_type flag to list_kubernetes_service_instances
+    (#3495)  * Add instance_type flag to
+    list_kubernetes_service_instances
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 08 Nov 2022 14:02:55 -0800
+
+paasta-tools (0.150.6) xenial; urgency=medium
+
+  * 0.150.6 tagged with 'make release'
+    Commit: Merge pull request #3480 from Yelp/u/asoliman/FLINK-
+    4163_reflect_autotuning_on_flink  FLINK-4163: Add custom loading for
+    flink config in setup cr
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Mon, 07 Nov 2022 07:19:53 -0800
+
+paasta-tools (0.150.5) xenial; urgency=medium
+
+  * 0.150.5 tagged with 'make release'
+    Commit: MLCOMPUTE-465 | add validations in paasta spark-run (#3454)
+    * MLCOMPUTE-465 | add validations for pool and cluster in paasta
+    spark-run  * MLCOMPUTE-465 | using public config for pool validation
+    * MLCOMPUTE-465 | modular code, added tests  * MLCOMPUTE-465 | add
+    allowed_pools key to SystemPaastaConfigDict  Co-authored-by: Sameer
+    Sharma <sameersharma@c02gm03pmd6w.lan> Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 04 Nov 2022 07:11:07 -0700
+
+paasta-tools (0.150.4) xenial; urgency=medium
+
+  * 0.150.4 tagged with 'make release'
+    Commit: Merge pull request #3492 from Yelp/MLCOMPUTE-
+    216_dra_mass_rollout_32_exec  MLCOMPUTE-216 | increase Spark DRA
+    mass rollout range to 64 executors
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 31 Oct 2022 09:22:30 -0700
+
+paasta-tools (0.150.3) xenial; urgency=medium
+
+  * 0.150.3 tagged with 'make release'
+    Commit: Merge pull request #3482 from Yelp/u/iiliescu/SECNESS-1125
+    Secrets for teams opt-in feature in paasta local-run cmd
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Mon, 31 Oct 2022 04:19:54 -0700
+
+paasta-tools (0.150.2) xenial; urgency=medium
+
+  * 0.150.2 tagged with 'make release'
+    Commit: Merge pull request #3488 from
+    Yelp/u/cuza/ignoring_jetbrains_fleet_settings  Adding .fleet to
+    .gitignore
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Mon, 31 Oct 2022 03:38:40 -0700
+
 paasta-tools (0.150.1) xenial; urgency=medium
 
   * 0.150.1 tagged with 'make release'

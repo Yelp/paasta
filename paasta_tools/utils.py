@@ -324,9 +324,6 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
-    # the values for this dict can be anything since it's whatever
-    # spark accepts
-    spark_args: Dict[str, Any]
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -1886,6 +1883,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
+    allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
@@ -2691,6 +2689,9 @@ class SystemPaastaConfig:
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
+
+    def get_cluster_pools(self) -> Dict[str, List[str]]:
+        return self.config_dict.get("allowed_pools", {})
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
@@ -4083,10 +4084,8 @@ def load_all_configs(
 ) -> Mapping[str, Mapping[str, Any]]:
     config_dicts = {}
     for service in os.listdir(soa_dir):
-        config_dicts[
-            service
-        ] = service_configuration_lib.read_extra_service_information(
-            service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
+        config_dicts[service] = load_service_instance_configs(
+            service, file_prefix, cluster, soa_dir
         )
     return config_dicts
 

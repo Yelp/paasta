@@ -97,6 +97,7 @@ from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
@@ -4035,11 +4036,12 @@ def test_get_kubernetes_secret():
         autospec=True,
     ) as mock_kube_client, mock.patch(
         "paasta_tools.kubernetes_tools.os.environ", autospec=True
-    ) as mock_env:
+    ) as mock_env, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
 
         service_name = "example_service"
         secret_name = "example_secret"
-        cluster = "messosstage"
         mock_env.return_value = {}
 
         mock_client = mock.Mock()
@@ -4052,8 +4054,52 @@ def test_get_kubernetes_secret():
         )
         mock_kube_client.return_value = mock_client
 
-        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        ret = get_kubernetes_secret(mock_client, secret_name, service_name)
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
         assert ret == "something"
+
+
+def test_get_kubernetes_secret_env_variables():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.is_secret_ref",
+        autospec=True,
+    ) as mock_is_secret_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
+    ) as mock_get_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_environment = {
+            "MY": "aaa",
+            "SECRET_NAME1": "SECRET(SECRET_NAME1)",
+            "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+        }
+        mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_env_variables(
+            kube_client=mock_client,
+            environment=mock_environment,
+            service_name="universe",
+        )
+        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+
+        assert mock_get_kubernetes_secret.call_args_list == [
+            mock.call(
+                mock_client,
+                "SECRET_NAME1",
+                "universe",
+            ),
+            mock.call(
+                mock_client,
+                "SECRET_NAME2",
+                "universe",
+            ),
+        ]

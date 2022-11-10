@@ -91,7 +91,7 @@ rsa==4.7.2
 ruamel.yaml==0.15.96
 s3transfer==0.3.3
 sensu-plugin==0.3.1
-service-configuration-lib==2.12.2
+service-configuration-lib==2.12.3
 setuptools==39.0.1
 signalfx==1.0.17
 simplejson==3.10.0
@@ -100,7 +100,7 @@ slackclient==1.2.1
 splunk-sdk==1.7.0
 sseclient-py==1.7
 # make sure you bump sticht in extra_requirements_yelp.txt as well
-sticht==1.1.15
+sticht==1.1.18
 strict-rfc3339==0.7
 swagger-spec-validator==2.1.0
 syslogmp==0.2.2

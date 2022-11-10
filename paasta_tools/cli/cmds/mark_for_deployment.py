@@ -48,6 +48,7 @@ from slackclient import SlackClient
 from sticht import state_machine
 from sticht.rollbacks.base import RollbackSlackDeploymentProcess
 from sticht.rollbacks.slo import SLOWatcher
+from sticht.rollbacks.types import MetricWatcher
 from sticht.rollbacks.types import SplunkAuth
 
 from paasta_tools import remote_git
@@ -663,7 +664,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.progress = Progress()
         self.last_action = None
         self.slo_watchers: List[SLOWatcher] = []
-
+        self.metric_watchers: List[MetricWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
         # TODO: Allow both metric and slo watcher threads to run together in the future
@@ -930,6 +931,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "trigger": "rollback_slo_failure",
             }
             yield {
+                "source": self.rollforward_states,
+                "dest": "start_rollback",
+                "trigger": "rollback_metric_failure",
+                "before": self.log_metric_rollback,
+            }
+            yield {
                 "source": self.rollback_states,
                 "dest": "start_deploy",
                 "trigger": "forward_button_clicked",
@@ -976,7 +983,11 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "source": "*",
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "disable_auto_rollbacks_button_clicked",
-                "conditions": [self.any_slo_failing, self.auto_rollbacks_enabled],
+                "conditions": [
+                    self.any_slo_failing,
+                    self.any_metric_failing,
+                    self.auto_rollbacks_enabled,
+                ],
                 "before": self.disable_auto_rollbacks,
             }
         yield {
@@ -985,13 +996,35 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "trigger": "slos_started_failing",
             "conditions": [self.auto_rollbacks_enabled],
             "unless": [self.already_rolling_back],
-            "before": self.start_auto_rollback_countdown,
+            "before": functools.partial(
+                self.start_auto_rollback_countdown, "rollback_slo_failure"
+            ),
         }
         yield {
             "source": "*",
             "dest": None,
             "trigger": "slos_stopped_failing",
-            "before": self.cancel_auto_rollback_countdown,
+            "before": functools.partial(
+                self.cancel_auto_rollback_countdown, "rollback_slo_failure"
+            ),
+        }
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "metrics_started_failing",
+            "conditions": [self.auto_rollbacks_enabled],
+            "unless": [self.already_rolling_back],
+            "before": functools.partial(
+                self.start_auto_rollback_countdown, "rollback_metric_failure"
+            ),
+        }
+        yield {
+            "source": "*",
+            "dest": None,
+            "trigger": "metrics_stopped_failing",
+            "before": functools.partial(
+                self.cancel_auto_rollback_countdown, "rollback_metric_failure"
+            ),
         }
         yield {
             "source": "*",
@@ -1001,8 +1034,8 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
             "conditions": [self.is_timer_running],
         }
 
-    def disable_auto_rollbacks(self) -> None:
-        self.cancel_auto_rollback_countdown()
+    def disable_auto_rollbacks(self, trigger: str) -> None:
+        self.cancel_auto_rollback_countdown(trigger=trigger)
         self.auto_rollback = False
         self.update_slack_status(
             f"Automatic rollback disabled for this deploy. To disable this permanently for this step, edit `deploy.yaml` and set `auto_rollback: false` for the `{self.deploy_group}` step."
@@ -1209,9 +1242,14 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         line = f"Deployment of {self.deployment_version.short_sha_repr()} for {self.deploy_group} complete"
         _log(service=self.service, component="deploy", line=line, level="event")
         self.send_manual_rollback_instructions()
+
         if self.any_slo_failing() and self.auto_rollbacks_enabled():
             self.ping_authors(
                 "Because an SLO is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
+            )
+        elif self.any_metric_failing() and self.auto_rollbacks_enabled():
+            self.ping_authors(
+                "Because a rollback-triggering metric for this service is currently failing, we will not automatically certify. Instead, we will wait indefinitely until you click one of the buttons above."
             )
         else:
             if self.get_auto_certify_delay() > 0:
@@ -1301,12 +1339,13 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
 
         return (active_button_texts if is_active else inactive_button_texts)[button]
 
-    def start_auto_rollback_countdown(self, extra_text: str = "") -> None:
+    def start_auto_rollback_countdown(self, trigger: str, extra_text: str = "") -> None:
         cancel_button_text = self.get_button_text(
-            "disable_auto_rollbacks", is_active=False
+            button="disable_auto_rollbacks",
+            is_active=False,
         )
         super().start_auto_rollback_countdown(
-            extra_text=f'Click "{cancel_button_text}" to cancel this!'
+            trigger=trigger, extra_text=f'Click "{cancel_button_text}" to cancel this!'
         )
         if self.deploy_group_is_set_to_notify("notify_after_auto_rollback"):
             self.ping_authors()
@@ -1329,6 +1368,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
     def log_slo_rollback(self) -> None:
         rollback_details = self.__build_rollback_audit_details(
             RollbackTypes.AUTOMATIC_SLO_ROLLBACK
+        )
+        self._log_rollback(rollback_details)
+
+    def log_metric_rollback(self) -> None:
+        rollback_details = self.__build_rollback_audit_details(
+            RollbackTypes.AUTOMATIC_METRIC_ROLLBACK
         )
         self._log_rollback(rollback_details)
 
