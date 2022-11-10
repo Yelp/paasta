@@ -2997,6 +2997,31 @@ def get_hostname() -> str:
     return socket.getfqdn()
 
 
+def get_files_of_type_in_dir(
+    file_type: str,
+    service: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[str]:
+    """Recursively search path if type of file exists.
+
+    :param file_type: a string of a type of a file (kubernetes, slo, etc.)
+    :param service: a string of a service
+    :param soa_dir: a string of a path to a soa_configs directory
+    :return: a list
+    """
+    # TODO: Only use INSTANCE_TYPES as input by making file_type Literal
+    service = "**" if service is None else service
+    soa_dir = DEFAULT_SOA_DIR if soa_dir is None else soa_dir
+    file_type += "-*.yaml"
+    return [
+        file_path
+        for file_path in glob.glob(
+            os.path.join(soa_dir, service, file_type),
+            recursive=True,
+        )
+    ]
+
+
 def get_soa_cluster_deploy_files(
     service: str = None, soa_dir: str = DEFAULT_SOA_DIR, instance_type: str = None
 ) -> Iterator[Tuple[str, str]]:

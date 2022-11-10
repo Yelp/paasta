@@ -81,6 +81,7 @@ from paasta_tools.utils import _log_audit
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import format_tag
+from paasta_tools.utils import get_files_of_type_in_dir
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 from paasta_tools.utils import get_username
@@ -362,6 +363,24 @@ def can_user_deploy_service(deploy_info: Dict[str, Any], service: str) -> bool:
             print(logline, file=sys.stderr)
             return False
     return True
+
+
+def can_run_metric_watcher_threads(
+    service: str,
+    soa_dir: str,
+) -> bool:
+    """
+    Cannot run slo and metric watcher threads together for now.
+    SLO Watcher Threads take precedence over metric watcher threads.
+    Metric Watcher Threads can run if there are no SLOs available.
+    """
+    slo_files = get_files_of_type_in_dir(
+        file_type="slo", service=service, soa_dir=soa_dir
+    )
+    rollback_files = get_files_of_type_in_dir(
+        file_type="rollback", service=service, soa_dir=soa_dir
+    )
+    return bool(not slo_files and rollback_files)
 
 
 def report_waiting_aborted(service: str, deploy_group: str) -> None:
@@ -648,12 +667,12 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
         self.metric_watchers: List[MetricWatcher] = []
         self.start_slo_watcher_threads(self.service, self.soa_dir)
 
+        # TODO: Allow both metric and slo watcher threads to run together in the future
+        if can_run_metric_watcher_threads(service=self.service, soa_dir=self.soa_dir):
+            self.start_metric_watcher_threads(self.service, self.soa_dir)
+
         # Initialize Slack threads and send the first message
         super().__init__()
-
-        # TODO: Enable once Rollback Conditions are available
-        # self.start_metric_watcher_threads(self.service, self.soa_dir)
-
         self.print_who_is_running_this()
 
     def get_progress(self, summary: bool = False) -> str:
