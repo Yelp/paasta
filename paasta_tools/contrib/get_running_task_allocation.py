@@ -281,7 +281,7 @@ def parse_args() -> argparse.Namespace:
         default="paasta",
     )
     parser.add_argument(
-        "--additional_namespaces",
+        "--additional-namespaces",
         help="full names of namespaces to fetch allocation info for that don't match --namespace-prefix"
         "Used only when scheduler is kubernetes",
         dest="additional_namespaces",
