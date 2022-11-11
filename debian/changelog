@@ -1,3 +1,11 @@
+paasta-tools (0.151.2) xenial; urgency=medium
+
+  * 0.151.2 tagged with 'make release'
+    Commit: Merge pull request #3499 from Yelp/u/mmb/fix-get-running-
+    task-allocation  Fix additional_namespaces arg
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 11 Nov 2022 06:11:25 -0800
+
 paasta-tools (0.151.1) xenial; urgency=medium
 
   * 0.151.1 tagged with 'make release'
