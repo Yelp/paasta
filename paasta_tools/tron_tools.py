@@ -586,6 +586,18 @@ class TronActionConfig(InstanceConfig):
             )
         return error_msgs
 
+    def get_pool(self) -> str:
+        """
+        Returns the default pool override if pool is not defined in the action configuration.
+
+        This is useful for environments like spam to allow us to default the pool to spam but allow users to
+        override this value. To control this, we have an optional config item that we'll puppet onto Tron masters
+        which this function will read.
+        """
+        return self.config_dict.get(
+            "pool", load_system_paasta_config().get_tron_default_pool_override()
+        )
+
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""

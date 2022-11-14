@@ -1994,6 +1994,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_driver_port: int
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
+    tron_default_pool_override: str
 
 
 def load_system_paasta_config(
@@ -2069,6 +2070,13 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_tron_default_pool_override(self) -> str:
+        """Get the default pool override variable defined in this host's cluster config file.
+
+        :returns: The default_pool_override specified in the paasta configuration
+        """
+        return self.config_dict.get("tron_default_pool_override", "default")
 
     def get_zk_hosts(self) -> str:
         """Get the zk_hosts defined in this hosts's cluster config file.
