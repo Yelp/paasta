@@ -987,7 +987,6 @@ def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
 
     :param job_config: TronJobConfig
     """
-
     # TODO: this use_k8s flag should be removed once we've fully migrated off of mesos
     use_k8s = job_config.get_use_k8s() and k8s_enabled
     action_dict = {

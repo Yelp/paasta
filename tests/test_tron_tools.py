@@ -3,6 +3,7 @@ import hashlib
 
 import mock
 import pytest
+import yaml
 
 from paasta_tools import tron_tools
 from paasta_tools import utils
@@ -18,6 +19,18 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
         "spark_k8s_role": "spark",
+    },
+    "/mock/system/configs",
+)
+
+MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
+    {
+        "docker_registry": "mock_registry",
+        "volumes": [],
+        "dockercfg_location": "/mock/dockercfg",
+        "spark_k8s_role": "spark",
+        "tron_default_pool_override": "big_pool",
+        "tron_use_k8s": True,
     },
     "/mock/system/configs",
 )
@@ -1257,12 +1270,6 @@ class TestTronTools:
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
         )
 
-    @mock.patch(
-        "paasta_tools.tron_tools.load_system_paasta_config", mock.Mock(), autospec=None
-    )
-    @mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", mock.Mock(), autospec=None
-    )
     def test_create_complete_config_e2e(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
         job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
@@ -1288,12 +1295,21 @@ fake_job:
             """
         )
 
-        tronfig = tron_tools.create_complete_config(
-            service="fake_service",
-            cluster="fake-cluster",
-            soa_dir=str(soa_dir),
-            k8s_enabled=True,
-        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            tronfig = tron_tools.create_complete_config(
+                service="fake_service",
+                cluster="fake-cluster",
+                soa_dir=str(soa_dir),
+                k8s_enabled=True,
+            )
 
         hasher = hashlib.md5()
         hasher.update(tronfig.encode("UTF-8"))
@@ -1303,7 +1319,54 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "0cf8f28701c88533c89b5b142fc829b0"
+        assert hasher.hexdigest() == "f740410f7ae2794f9924121c1115e15d"
+
+    def test_override_default_pool_override(self, tmpdir):
+        soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
+        job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
+        job_file.write(
+            """
+fake_job:
+    node: paasta
+    time_zone: 'US/Pacific'
+    schedule: 'cron 0 * * * *'
+    monitoring:
+        team: fake_team
+        ticket: false
+        slack_channels: ['#fake-channel']
+    deploy_group: dev
+    actions:
+        run:
+            command: '/bin/true'
+            cpus: 0.1
+            mem: 1000
+            retries: 3
+            env:
+                PAASTA_ENV_VAR: 'fake_value'
+            """
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ):
+            tronfig = tron_tools.create_complete_config(
+                service="fake_service",
+                cluster="fake-cluster",
+                soa_dir=str(soa_dir),
+                k8s_enabled=True,
+            )
+
+        assert (
+            yaml.safe_load(tronfig)["jobs"]["fake_job"]["actions"]["run"][
+                "node_selectors"
+            ]["yelp.com/pool"]
+            == MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES.get_tron_default_pool_override()
+        )
 
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
