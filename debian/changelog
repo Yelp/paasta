@@ -1,3 +1,12 @@
+paasta-tools (0.151.3) xenial; urgency=medium
+
+  * 0.151.3 tagged with 'make release'
+    Commit: Merge pull request #3501 from
+    Yelp/u/jfong/check_orphans_split  Allow us to check service mesh
+    orphans separately from collisions
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 16 Nov 2022 14:50:37 -0800
+
 paasta-tools (0.151.2) xenial; urgency=medium
 
   * 0.151.2 tagged with 'make release'
