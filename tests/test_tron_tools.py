@@ -742,7 +742,12 @@ class TestTronTools:
         )
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True):
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config", autospec=True
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+        ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "mesos"
 
@@ -791,6 +796,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1070,6 +1078,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -1160,6 +1171,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1360,7 +1374,7 @@ fake_job:
                 soa_dir=str(soa_dir),
                 k8s_enabled=True,
             )
-
+        print(yaml.safe_load(tronfig)["jobs"]["fake_job"]["actions"]["run"])
         assert (
             yaml.safe_load(tronfig)["jobs"]["fake_job"]["actions"]["run"][
                 "node_selectors"
