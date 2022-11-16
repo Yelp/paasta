@@ -100,6 +100,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
+EXECUTOR_TYPES = ["paasta", "spark"]
 
 
 class FieldSelectorConfig(TypedDict):
@@ -1187,10 +1188,8 @@ def validate_complete_config(
     return []
 
 
-def _is_valid_namespace(
-    job: {str: TronActionConfigDict}, tron_executors: List[str]
-) -> bool:
-    for _, action_info in job.get("actions", {}).items():
+def _is_valid_namespace(job: Any, tron_executors: List[str]) -> bool:
+    for action_info in job.get("actions", {}).values():
         if "paasta" in tron_executors and action_info.get("executor", "") in [
             "paasta",
             "",
@@ -1202,19 +1201,13 @@ def _is_valid_namespace(
             and "spark-run" in action_info.get("command", "")
         ):
             return True
-        elif (
-            "ssh_not_spark" in tron_executors
-            and action_info.get("executor", "") == "ssh"
-            and "spark-run" not in action_info.get("command", "")
-        ):
-            return True
     return False
 
 
 def get_tron_namespaces(
     cluster: str,
     soa_dir: str,
-    tron_executors: List[str] = ["paasta"],
+    tron_executors: List[str] = EXECUTOR_TYPES,
 ) -> List[str]:
     tron_config_file = f"tron-{cluster}.yaml"
     config_dirs = [
@@ -1233,7 +1226,7 @@ def get_tron_namespaces(
                 deepcopy=False,
             )
         )
-        for _, job in config.items():
+        for job in config.values():
             if _is_valid_namespace(job, tron_executors):
                 tron_namespaces.add(namespace)
                 break
