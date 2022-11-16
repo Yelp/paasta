@@ -28,9 +28,11 @@ MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
         "docker_registry": "mock_registry",
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
-        "spark_k8s_role": "spark",
         "tron_default_pool_override": "big_pool",
         "tron_use_k8s": True,
+        "tron_k8s_cluster_overrides": {
+            "paasta-dev-test": "paasta-dev",
+        },
     },
     "/mock/system/configs",
 )
@@ -287,11 +289,8 @@ class TestTronJobConfig:
             cluster=expected_cluster,
         )
 
-    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
-    def test_get_action_config_load_deployments_false(
-        self, mock_load_deployments, mock_load_system_paasta_config
-    ):
+    def test_get_action_config_load_deployments_false(self, mock_load_deployments):
         action_dict = {"command": "echo first"}
         job_dict = {
             "node": "batch_server",

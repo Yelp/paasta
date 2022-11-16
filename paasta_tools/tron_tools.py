@@ -19,7 +19,6 @@ import os
 import pkgutil
 import re
 import subprocess
-from functools import lru_cache
 from string import Formatter
 from typing import List
 from typing import Mapping
@@ -208,12 +207,10 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
-@lru_cache(maxsize=1)
 def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
 
 
-@lru_cache(maxsize=1)
 def _get_tron_k8s_cluster_override(cluster: str) -> Optional[str]:
     """
     Return the name of a compute cluster if there's a different compute cluster that should be used to run a Tronjob.
@@ -240,7 +237,6 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
-@lru_cache(maxsize=1)
 def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
