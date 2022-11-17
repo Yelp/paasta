@@ -1494,11 +1494,7 @@ fake_job:
         ) as mock_filter_templates_from_config:
             mock_filter_templates_from_config.return_value = {
                 "test-tron-job": {"actions": {"run": {"executor": "paasta"}}},
-                "test-spark-job": {
-                    "actions": {
-                        "run": {"executor": "ssh", "command": 'spark-run test.py"'}
-                    }
-                },
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
             }
             namespaces = tron_tools.get_tron_namespaces(
                 cluster=cluster_name,
@@ -1524,11 +1520,7 @@ fake_job:
         ) as mock_filter_templates_from_config:
 
             mock_filter_templates_from_config.return_value = {
-                "test-spark-job": {
-                    "actions": {
-                        "run": {"executor": "ssh", "command": 'spark-run test.py"'}
-                    }
-                },
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
             }
             namespaces = tron_tools.get_tron_namespaces(
                 cluster=cluster_name,
@@ -1539,7 +1531,7 @@ fake_job:
             namespaces = tron_tools.get_tron_namespaces(
                 cluster=cluster_name,
                 soa_dir=soa_dir,
-                tron_executors=["spark"],
+                tron_executors=["ssh"],
             )
             assert sorted(expected_namespaces) == sorted(namespaces)
 

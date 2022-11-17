@@ -100,7 +100,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
-EXECUTOR_TYPES = ["paasta", "spark"]
+EXECUTOR_TYPES = ["paasta", "ssh"]
 
 
 class FieldSelectorConfig(TypedDict):
@@ -1190,16 +1190,7 @@ def validate_complete_config(
 
 def _is_valid_namespace(job: Any, tron_executors: List[str]) -> bool:
     for action_info in job.get("actions", {}).values():
-        if "paasta" in tron_executors and action_info.get("executor", "") in [
-            "paasta",
-            "",
-        ]:
-            return True
-        elif (
-            "spark" in tron_executors
-            and action_info.get("executor", "") == "ssh"
-            and "spark-run" in action_info.get("command", "")
-        ):
+        if action_info.get("executor", "paasta") in tron_executors:
             return True
     return False
 
