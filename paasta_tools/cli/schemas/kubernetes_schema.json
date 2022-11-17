@@ -745,9 +745,6 @@
                 "routable_ip": {
                     "type": "boolean"
                 },
-                "namespace": {
-                    "type": "string"
-                },
                 "lifecycle": {
                     "type": "object",
                     "properties": {
