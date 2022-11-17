@@ -289,8 +289,11 @@ class TestTronJobConfig:
             cluster=expected_cluster,
         )
 
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
-    def test_get_action_config_load_deployments_false(self, mock_load_deployments):
+    def test_get_action_config_load_deployments_false(
+        self, mock_load_deployments, mock_load_system_paasta_config
+    ):
         action_dict = {"command": "echo first"}
         job_dict = {
             "node": "batch_server",
@@ -498,7 +501,10 @@ class TestTronJobConfig:
         assert len(errors) == 3
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_invalid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_invalid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -515,7 +521,10 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_valid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -532,8 +541,9 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     def test_validate_invalid_action_deploy_group(
-        self, mock_get_pipeline_deploy_groups
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
         job_dict = {
             "node": "batch_server",
@@ -555,7 +565,10 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_action_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_action_valid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -574,7 +587,10 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_monitoring(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_monitoring(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -588,7 +604,10 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_monitoring_without_team(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_monitoring_without_team(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -603,8 +622,9 @@ class TestTronJobConfig:
         assert job_config.get_monitoring()["team"] == "default_team"
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     def test_validate_monitoring_with_invalid_team(
-        self, mock_get_pipeline_deploy_groups
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
         job_dict = {
             "node": "batch_server",
