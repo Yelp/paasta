@@ -419,6 +419,16 @@ def test_SystemPaastaConfig_get_volumes():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_tron_default_pool_override():
+    fake_config = utils.SystemPaastaConfig(
+        {"tron_default_pool_override": "spam"},
+        "/some/fake/dir",
+    )
+    actual = fake_config.get_tron_default_pool_override()
+    expected = "spam"
+    assert actual == expected
+
+
 def test_SystemPaastaConfig_get_hacheck_sidecar_volumes():
     fake_config = utils.SystemPaastaConfig(
         {
