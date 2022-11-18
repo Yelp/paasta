@@ -310,6 +310,9 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, load_deployments=False, soa_dir=soa_dir
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
+        mock_load_system_paasta_config.return_value.get_tron_k8s_cluster_overrides.return_value = (
+            {}
+        )
 
         action_config = job_config._get_action_config("normal", action_dict)
 
