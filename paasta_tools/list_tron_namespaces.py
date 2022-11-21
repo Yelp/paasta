@@ -34,6 +34,14 @@ def parse_args():
         default=tron_tools.DEFAULT_SOA_DIR,
         help="Use a different soa config directory",
     )
+    parser.add_argument(
+        "-e",
+        "--executors",
+        default=tron_tools.EXECUTOR_TYPES,
+        nargs="+",
+        help="tron executor types to list namespaces for",
+        choices=tron_tools.EXECUTOR_TYPES,
+    )
     args = parser.parse_args()
     return args
 
@@ -41,7 +49,9 @@ def parse_args():
 def main():
     args = parse_args()
     namespaces = tron_tools.get_tron_namespaces(
-        cluster=args.cluster, soa_dir=args.soa_dir
+        cluster=args.cluster,
+        soa_dir=args.soa_dir,
+        tron_executors=args.executors,
     )
     print("\n".join(namespaces))
 

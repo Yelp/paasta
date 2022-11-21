@@ -1479,7 +1479,7 @@ fake_job:
 
     @mock.patch("os.walk", autospec=True)
     @mock.patch("os.listdir", autospec=True)
-    def test_get_tron_namespaces(self, mock_ls, mock_walk):
+    def test_get_tron_namespaces_paasta(self, mock_ls, mock_walk):
         cluster_name = "stage"
         expected_namespaces = ["app", "foo"]
         mock_walk.return_value = [
@@ -1489,10 +1489,51 @@ fake_job:
         ]
         soa_dir = "/my_soa_dir"
 
-        namespaces = tron_tools.get_tron_namespaces(
-            cluster=cluster_name, soa_dir=soa_dir
-        )
-        assert sorted(expected_namespaces) == sorted(namespaces)
+        with mock.patch(
+            "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
+        ) as mock_filter_templates_from_config:
+            mock_filter_templates_from_config.return_value = {
+                "test-tron-job": {"actions": {"run": {"executor": "paasta"}}},
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
+
+    @mock.patch("os.walk", autospec=True)
+    @mock.patch("os.listdir", autospec=True)
+    def test_get_tron_namespaces_spark(self, mock_ls, mock_walk):
+        cluster_name = "stage"
+        expected_namespaces = ["app", "foo"]
+        mock_walk.return_value = [
+            ("/my_soa_dir/foo", [], ["tron-stage.yaml"]),
+            ("/my_soa_dir/app", [], ["tron-stage.yaml"]),
+            ("my_soa_dir/woo", [], ["something-else.yaml"]),
+        ]
+        soa_dir = "/my_soa_dir"
+
+        with mock.patch(
+            "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
+        ) as mock_filter_templates_from_config:
+
+            mock_filter_templates_from_config.return_value = {
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert [] == sorted(namespaces)
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["ssh"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
 
     @mock.patch("glob.glob", autospec=True)
     def test_list_tron_clusters(self, mock_glob):

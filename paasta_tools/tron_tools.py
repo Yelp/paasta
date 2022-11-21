@@ -100,6 +100,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
+EXECUTOR_TYPES = ["paasta", "ssh"]
 
 
 class FieldSelectorConfig(TypedDict):
@@ -1187,7 +1188,18 @@ def validate_complete_config(
     return []
 
 
-def get_tron_namespaces(cluster, soa_dir):
+def _is_valid_namespace(job: Any, tron_executors: List[str]) -> bool:
+    for action_info in job.get("actions", {}).values():
+        if action_info.get("executor", "paasta") in tron_executors:
+            return True
+    return False
+
+
+def get_tron_namespaces(
+    cluster: str,
+    soa_dir: str,
+    tron_executors: List[str] = EXECUTOR_TYPES,
+) -> List[str]:
     tron_config_file = f"tron-{cluster}.yaml"
     config_dirs = [
         _dir[0]
@@ -1195,7 +1207,21 @@ def get_tron_namespaces(cluster, soa_dir):
         if tron_config_file in _dir[2]
     ]
     namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
-    return namespaces
+    tron_namespaces = set()
+    for namespace in namespaces:
+        config = filter_templates_from_config(
+            read_extra_service_information(
+                namespace,
+                extra_info=f"tron-{cluster}",
+                soa_dir=soa_dir,
+                deepcopy=False,
+            )
+        )
+        for job in config.values():
+            if _is_valid_namespace(job, tron_executors):
+                tron_namespaces.add(namespace)
+                break
+    return list(tron_namespaces)
 
 
 def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
