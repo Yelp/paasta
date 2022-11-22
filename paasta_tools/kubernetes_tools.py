@@ -2235,13 +2235,8 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
 def list_deployments(
     kube_client: KubeClient,
     label_selector: str = "",
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
-
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
 
     deployments = kube_client.deployments.list_namespaced_deployment(
         namespace=namespace, label_selector=label_selector
@@ -2512,12 +2507,8 @@ def pod_disruption_budget_for_service_instance(
     service: str,
     instance: str,
     max_unavailable: Union[str, int],
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> V1beta1PodDisruptionBudget:
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(
             name=get_kubernetes_app_name(service, instance),
@@ -2538,12 +2529,8 @@ def pod_disruption_budget_for_service_instance(
 def create_pod_disruption_budget(
     kube_client: KubeClient,
     pod_disruption_budget: V1beta1PodDisruptionBudget,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
     return kube_client.policy.create_namespaced_pod_disruption_budget(
         namespace=namespace, body=pod_disruption_budget
     )
@@ -2609,17 +2596,21 @@ def write_annotation_for_kubernetes_service(
 
 
 def list_all_deployments(
-    kube_client: KubeClient, service_config: KubernetesDeploymentConfig = None
+    kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[KubeDeployment]:
-    return list_deployments(kube_client=kube_client, service_config=service_config)
+    return list_deployments(kube_client=kube_client, namespace=namespace)
 
 
 def list_matching_deployments(
-    service: str, instance: str, kube_client: KubeClient
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
     return list_deployments(
         kube_client,
         f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
     )
 
 
@@ -2888,12 +2879,8 @@ def get_kubernetes_app_by_name(
 def create_deployment(
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
     return kube_client.deployments.create_namespaced_deployment(
         namespace=namespace, body=formatted_deployment
     )
@@ -2902,12 +2889,8 @@ def create_deployment(
 def update_deployment(
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
     return kube_client.deployments.replace_namespaced_deployment(
         name=formatted_deployment.metadata.name,
         namespace=namespace,
@@ -2916,13 +2899,13 @@ def update_deployment(
 
 
 def patch_deployment(
-    service_config: KubernetesDeploymentConfig,
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment.metadata.name,
-        namespace=service_config.get_namespace(),
+        namespace=namespace,
         body=formatted_deployment,
     )
 
@@ -2930,13 +2913,8 @@ def patch_deployment(
 def delete_deployment(
     kube_client: KubeClient,
     deployment_name: str,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
-
     return kube_client.deployments.delete_namespaced_deployment(
         name=deployment_name,
         namespace=namespace,
@@ -2946,21 +2924,21 @@ def delete_deployment(
 def create_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.create_namespaced_stateful_set(
-        namespace=service_config.get_namespace(), body=formatted_stateful_set
+        namespace=namespace, body=formatted_stateful_set
     )
 
 
 def update_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.replace_namespaced_stateful_set(
         name=formatted_stateful_set.metadata.name,
-        namespace=service_config.get_namespace(),
+        namespace=namespace,
         body=formatted_stateful_set,
     )
 
@@ -3523,13 +3501,9 @@ def get_kubernetes_secret(
     kube_client: KubeClient,
     secret_name: str,
     service_name: str,
-    service_config: KubernetesDeploymentConfig = None,
+    namespace: str = "paasta",
 ) -> str:
 
-    if service_config:
-        namespace = service_config.get_namespace()
-    else:
-        namespace = "paasta"
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
     secret_data = kube_client.core.read_namespaced_secret(
