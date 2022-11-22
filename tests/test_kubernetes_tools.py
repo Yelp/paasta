@@ -2816,18 +2816,12 @@ def test_max_unavailable(instances, bmf):
 
 
 def test_pod_disruption_budget_for_service_instance():
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
+    mock_namespace = "paasta"
     x = pod_disruption_budget_for_service_instance(
         service="foo_1",
         instance="bar_1",
         max_unavailable="10%",
-        service_config=mock_kube_deploy_config,
+        namespace=mock_namespace,
     )
 
     assert x.metadata.name == "foo--1-bar--1"
@@ -2842,14 +2836,8 @@ def test_pod_disruption_budget_for_service_instance():
 def test_create_pod_disruption_budget():
     mock_client = mock.Mock()
     mock_pdr = V1beta1PodDisruptionBudget()
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
-    create_pod_disruption_budget(mock_client, mock_pdr, mock_kube_deploy_config)
+    mock_namespace = "paasta"
+    create_pod_disruption_budget(mock_client, mock_pdr, mock_namespace)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
         namespace="paasta", body=mock_pdr
     )
@@ -2857,16 +2845,8 @@ def test_create_pod_disruption_budget():
 
 def test_create_deployment():
     mock_client = mock.Mock()
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
-    create_deployment(
-        mock_client, V1Deployment(api_version="some"), mock_kube_deploy_config
-    )
+    mock_namespace = "paasta"
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -2874,17 +2854,11 @@ def test_create_deployment():
 
 def test_update_deployment():
     mock_client = mock.Mock()
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
+    mock_namespace = "paasta"
     update_deployment(
         mock_client,
         V1Deployment(metadata=V1ObjectMeta(name="kurupt")),
-        mock_kube_deploy_config,
+        mock_namespace,
     )
     mock_client.deployments.replace_namespaced_deployment.assert_called_with(
         namespace="paasta",
@@ -2893,9 +2867,7 @@ def test_update_deployment():
     )
 
     mock_client = mock.Mock()
-    create_deployment(
-        mock_client, V1Deployment(api_version="some"), mock_kube_deploy_config
-    )
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -3057,16 +3029,8 @@ def test_list_custom_resources():
 
 def test_create_stateful_set():
     mock_client = mock.Mock()
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
-    create_stateful_set(
-        mock_client, V1StatefulSet(api_version="some"), mock_kube_deploy_config
-    )
+    mock_namespace = "paasta"
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -3074,17 +3038,11 @@ def test_create_stateful_set():
 
 def test_update_stateful_set():
     mock_client = mock.Mock()
-    mock_kube_deploy_config = KubernetesDeploymentConfig(
-        service="my-service",
-        instance="my-instance",
-        cluster="cluster",
-        config_dict={},
-        branch_dict=None,
-    )
+    mock_namespace = "paasta"
     update_stateful_set(
         mock_client,
         V1StatefulSet(metadata=V1ObjectMeta(name="kurupt")),
-        mock_kube_deploy_config,
+        mock_namespace,
     )
     mock_client.deployments.replace_namespaced_stateful_set.assert_called_with(
         namespace="paasta",
@@ -3093,9 +3051,7 @@ def test_update_stateful_set():
     )
 
     mock_client = mock.Mock()
-    create_stateful_set(
-        mock_client, V1StatefulSet(api_version="some"), mock_kube_deploy_config
-    )
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -4098,14 +4054,7 @@ def test_get_kubernetes_secret():
     ) as mock_env, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
-
-        mock_kube_deploy_config = KubernetesDeploymentConfig(
-            service="my-service",
-            instance="my-instance",
-            cluster="cluster",
-            config_dict={},
-            branch_dict=None,
-        )
+        mock_namespace = "paasta"
         service_name = "example_service"
         secret_name = "example_secret"
         mock_env.return_value = {}
@@ -4121,7 +4070,7 @@ def test_get_kubernetes_secret():
         mock_kube_client.return_value = mock_client
 
         ret = get_kubernetes_secret(
-            mock_client, secret_name, service_name, mock_kube_deploy_config
+            mock_client, secret_name, service_name, mock_namespace
         )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
