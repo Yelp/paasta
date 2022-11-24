@@ -230,8 +230,25 @@ class TestMemInfo:
             "MemFree:        42 kB",
         ]
         with mock.patch.object(docker_wrapper, "open", new=m):
+            memtotal = docker_wrapper.get_numa_memsize(1)
+            assert memtotal == 1000
             memtotal = docker_wrapper.get_numa_memsize(2)
             assert memtotal == 500
+
+    @pytest.mark.parametrize(
+        "input_memory_str, input_output_unit, expected_value",
+        [
+            ("2g", "m", 2048.0),
+            ("10240m", "m", 10240.0),
+            ("10240m", "g", 10.0),
+            ("256k", "m", 0.25),
+        ],
+    )
+    def test_parse_memory_string(
+        self, input_memory_str, input_output_unit, expected_value
+    ):
+        result = docker_wrapper.parse_memory_string(input_memory_str, input_output_unit)
+        assert result == expected_value
 
 
 class TestGenerateHostname:
@@ -269,23 +286,68 @@ class TestGenerateHostname:
         assert len(hostname) == 59
 
 
-@pytest.mark.parametrize(
-    "input_args,expected_args",
-    [
-        (["docker", "ps"], ["docker", "ps"]),  # do not add it for non-run commands
-        (  # add it after the first run arg
-            ["docker", "run", "run"],
-            ["docker", "run", "--hostname=myhostname", "run"],
-        ),
-        (  # ignore args before run
-            ["docker", "--host", "/fake.sock", "run", "-t"],
-            ["docker", "--host", "/fake.sock", "run", "--hostname=myhostname", "-t"],
-        ),
-    ],
-)
-def test_add_argument(input_args, expected_args):
-    args = docker_wrapper.add_argument(input_args, "--hostname=myhostname")
-    assert args == expected_args
+class TestProcessArguments:
+    @pytest.mark.parametrize(
+        "input_args,expected_args",
+        [
+            (["docker", "ps"], ["docker", "ps"]),  # do not add it for non-run commands
+            (  # add it after the first run arg
+                ["docker", "run", "run"],
+                ["docker", "run", "--hostname=myhostname", "run"],
+            ),
+            (  # ignore args before run
+                ["docker", "--host", "/fake.sock", "run", "-t"],
+                [
+                    "docker",
+                    "--host",
+                    "/fake.sock",
+                    "run",
+                    "--hostname=myhostname",
+                    "-t",
+                ],
+            ),
+        ],
+    )
+    def test_add_argument(self, input_args, expected_args):
+        args = docker_wrapper.add_argument(input_args, "--hostname=myhostname")
+        assert args == expected_args
+
+    @pytest.mark.parametrize(
+        "input_args, input_keys, input_new_value, expected_args",
+        [
+            (  # "-m 123" => "-m 456"
+                ["docker", "run", "-it", "-m", "123", "ubuntu", "/bin/bash"],
+                ["-m", "--memory"],
+                "456",
+                ["docker", "run", "-it", "-m", "456", "ubuntu", "/bin/bash"],
+            ),
+            (  # "-m123" => "-m456"
+                ["docker", "run", "-it", "-m123", "ubuntu", "/bin/bash"],
+                ["-m", "--memory"],
+                "456",
+                ["docker", "run", "-it", "-m456", "ubuntu", "/bin/bash"],
+            ),
+            (  # "--memory 123" => "--memory 456"
+                ["docker", "run", "-it", "--memory", "123", "ubuntu", "/bin/bash"],
+                ["-m", "--memory"],
+                "456",
+                ["docker", "run", "-it", "--memory", "456", "ubuntu", "/bin/bash"],
+            ),
+            (  # "--memory=123" => "--memory=456"
+                ["docker", "run", "-it", "--memory=123", "ubuntu", "/bin/bash"],
+                ["-m", "--memory"],
+                "456",
+                ["docker", "run", "-it", "--memory=456", "ubuntu", "/bin/bash"],
+            ),
+        ],
+    )
+    def test_overwrite_argument(
+        self, input_args, input_keys, input_new_value, expected_args
+    ):
+        args = docker_wrapper.overwrite_argument(
+            input_args, input_keys, input_new_value
+        )
+        assert args == expected_args
 
 
 class TestMain:
@@ -875,6 +937,58 @@ class TestMain:
             assert err.startswith(
                 "Unable to add mac address: [Errno 2] No such file or directory"
             )
+
+    @pytest.mark.parametrize(
+        "exec_cmd, node_memory_mbytes, memory_limit, capped_memory",
+        [
+            ("ubuntu", 10240, "10240m", "10240m"),  # not capped
+            ("ubuntu", 10240, "20480m", "10240m"),  # not a spark-run command
+            ("spark-submit", 10240, "20480m", f"{int(10240 * 0.9)}m"),
+            ("history-server", 10240, "10g", f"{int(10240 * 0.9)}m"),
+            ("spark-submit", 2048, "10g", f"{2048-384}m"),  # min spark overhead 284mb
+            ("spark-submit", 10240, "1g", "1g"),  # not capped
+        ],
+    )
+    def test_cap_memory(
+        self,
+        exec_cmd,
+        node_memory_mbytes,
+        memory_limit,
+        capped_memory,
+        capsys,
+        mock_execlp,
+    ):
+        argv = [
+            "docker",
+            "run",
+            "-it",
+            f"--memory={memory_limit}",
+            "ubuntu",
+            exec_cmd,
+        ]
+        with self._patch_docker_wrapper_dependencies(
+            is_numa_enabled=False,
+            node_mem=node_memory_mbytes,
+            cpu_info=["physical id    : 0", "physical id    : 0"],
+        ):
+            docker_wrapper.main(argv)
+
+        _, err = capsys.readouterr()
+        assert err == "", f"Error: {err}"
+
+        assert mock_execlp.mock_calls == [
+            mock.call(
+                "docker",
+                "docker",
+                "run",
+                f"--hostname={socket.getfqdn()}",
+                f"-e=PAASTA_HOST={socket.getfqdn()}",
+                "-it",
+                f"--memory={capped_memory}",
+                "ubuntu",
+                exec_cmd,
+            )
+        ]
 
     @mock.patch.object(
         docker_wrapper_imports,

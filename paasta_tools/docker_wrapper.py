@@ -15,11 +15,14 @@ PIN_TO_NUMA_NODE which contains the physical CPU and memory to restrict the
 container to. If the system is NUMA enabled, docker will be called with the
 arguments cpuset-cpus and cpuset-mems.
 """
+import argparse
 import logging
 import os
 import re
 import socket
 import sys
+from typing import List
+from typing import Optional
 
 
 if "PATH" not in os.environ:
@@ -166,6 +169,37 @@ def add_argument(args, argument):
     return args
 
 
+def overwrite_argument(args: List[str], keys: List[str], new_value: str) -> List[str]:
+    """Overwrite the value of a cli argument"""
+    for idx, arg in enumerate(args):
+        for key in keys:
+            if not arg.startswith(key):
+                continue
+
+            raw_val = arg[len(key) :]
+
+            # e.g. "-k 123", "--kk 123"
+            if (
+                len(raw_val) == 0
+                and idx + 1 < len(args)
+                and not args[idx + 1].startswith("-")
+            ):
+                args[idx + 1] = new_value
+                return args
+
+            # e.g. "--kk=123"
+            if key.startswith("--") and raw_val.startswith("="):
+                args[idx] = f"{key}={new_value}"
+                return args
+
+            # e.g. "-k123"
+            if re.match(r"-[A-Za-z]", key):
+                args[idx] = f"{key}{new_value}"
+                return args
+
+    raise ValueError(f"no valid argument found with key: {key}")
+
+
 def get_cpumap():
     # Return a dict containing the core numbers per physical CPU
     core = 0
@@ -208,6 +242,32 @@ def arg_collision(new_args, current_args):
     for c in current_args:
         cur_arg_keys.append(c.split("=")[0])
     return bool(set(new_args).intersection(set(cur_arg_keys)))
+
+
+def parse_memory_string(memory_str: str, output_unit: str = "g") -> float:
+    units = {
+        "b": 1,
+        "k": 1 << 10,
+        "m": 1 << 20,
+        "g": 1 << 30,
+    }
+
+    if output_unit not in units.keys():
+        raise ValueError(f"invalid unit: {output_unit}, valid values: {units.keys()}")
+
+    try:
+        match = re.match(r"([0-9]+)([a-z]*)", memory_str)
+        value = int(match[1])
+        unit = match[2]
+    except Exception as e:
+        raise ValueError(
+            f"failed to parse docker memory limit {memory_str}. Error: {e}. Example values: 1g, 200m, 20k, 5b."
+        )
+
+    unit = unit.lower()
+    if unit not in units.keys():
+        raise ValueError(f"invalid unit: {unit}")
+    return value * units[unit] / units[output_unit]
 
 
 def is_numa_enabled():
@@ -295,6 +355,43 @@ def append_cpuset_args(argv, env_args):
     return argv
 
 
+def get_spark_memory_limit(node_memory_mbytes: int) -> int:
+    # by default, spark adds an overhead of 10% of the executor memory, with a
+    # minimum of 384mb
+    memory_overhead: int = max(384, int(0.1 * node_memory_mbytes))
+    return node_memory_mbytes - memory_overhead
+
+
+def cap_memory_arg(argv: List[str]) -> List[str]:
+    memory_args = ["-m", "--memory"]
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(*memory_args)
+    args, _ = parser.parse_known_args(args=argv)
+    memory_str = args.memory
+
+    if memory_str is None:
+        return argv
+
+    try:
+        memory_mbytes = parse_memory_string(memory_str, output_unit="m")
+        node_memory_mbytes = get_numa_memsize(1)
+        # TODO: count the OS memory overhead in
+        cap_size_mbytes = node_memory_mbytes
+
+        # If it is a spark-run command, count the memory overhead in
+        if bool({"spark-submit", "history-server"}.intersection(set(argv))):
+            cap_size_mbytes = get_spark_memory_limit(node_memory_mbytes)
+
+        if cap_size_mbytes < memory_mbytes:
+            logging.warn(f"memory limit is too large, capped to {cap_size_mbytes}m")
+            argv = overwrite_argument(argv, memory_args, f"{cap_size_mbytes}m")
+        return argv
+    except Exception as e:
+        logging.error(e)
+        return argv
+
+
 def add_firewall(argv, service, instance):
     # Delayed import to improve performance when add_firewall is not used
     from paasta_tools.docker_wrapper_imports import DEFAULT_SYNAPSE_SERVICE_DIR
@@ -336,6 +433,8 @@ def main(argv=None):
 
     if env_args.get("PIN_TO_NUMA_NODE"):
         argv = append_cpuset_args(argv, env_args)
+    else:
+        argv = cap_memory_arg(argv)
 
     # Marathon sets MESOS_TASK_ID
     mesos_task_id = env_args.get("MESOS_TASK_ID")
