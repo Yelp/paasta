@@ -3502,6 +3502,7 @@ def get_kubernetes_secret(
     secret_name: str,
     service_name: str,
     namespace: str = "paasta",
+    kube_client: KubeClient, secret_name: str, service_name: str, decode:bool = True,
 ) -> str:
 
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
@@ -3509,7 +3510,11 @@ def get_kubernetes_secret(
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace=namespace
     ).data[secret_name]
-    secret = base64.b64decode(secret_data).decode("utf-8")
+    secret = base64.b64decode(secret_data)
+    # String secrets (e.g. yaml config files) need to be decoded
+    # Binary secrets (e.g. TLS Keystore or binary certificate files) cannot be decoded
+    if decode:
+        secret = secret.decode("utf-8")
     return secret
 
 
