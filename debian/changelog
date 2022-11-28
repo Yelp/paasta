@@ -1,6 +1,13 @@
 paasta-tools (0.151.5) xenial; urgency=medium
 
   * 0.151.5 tagged with 'make release'
+    Commit: Released 0.151.5 via make release
+
+ -- Manpreet Singh <manpreet@yelp.com>  Mon, 28 Nov 2022 08:35:50 -0800
+
+paasta-tools (0.151.5) xenial; urgency=medium
+
+  * 0.151.5 tagged with 'make release'
     Commit: Merge pull request #3493 from
     Yelp/d/manpreet/update_script_for_executor_secrets   Sync paasta
     spark secrets for paasta-spark namespace
