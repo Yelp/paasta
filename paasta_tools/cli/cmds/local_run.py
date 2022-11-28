@@ -38,6 +38,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
+from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
@@ -692,6 +693,7 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
+    secret_volumes = {}
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service
         if is_secrets_for_teams_enabled(service, soa_dir):
@@ -702,6 +704,49 @@ def run_docker_container(
                 secret_environment = get_kubernetes_secret_env_variables(
                     kube_client, environment, service
                 )
+
+                # The config might look one of two ways:
+                # Implicit full path consisting of the container path and the secret name:
+                #   secret_volumes:
+                #   - container_path: /nail/foo
+                #     secret_name: the_secret_1
+                #   - container_path: /nail/bar
+                #     secret_name: the_secret_2
+                #
+                # This ^ should result in two files (/nail/foo/the_secret_1, /nail/foo/the_secret_2)
+                #
+                # OR
+                #
+                # Multiple files within a folder with explicit path names
+                #   secret_volumes:
+                #   - container_path: /nail/foo
+                #     items:
+                #     - key: the_secret_1
+                #       path: bar.yaml
+                #     - key: the_secret_2
+                #       path: baz.yaml
+                #
+                # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
+                # We need to support both cases
+                for secret_volume in instance_config.get_secret_volumes():
+                    if 'items' not in secret_volume:
+                        secret_contents = get_kubernetes_secret(
+                            kube_client,
+                            secret_volume["secret_name"],
+                            service,
+                            decode=False,
+                        )
+                        secret_volumes[os.path.join(secret_volume["container_path"],secret_volume["secret_name"])] = secret_contents
+                        # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
+                        secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
+                    else:
+                        for item in secret_volume["items"]:
+                            secret_contents = get_kubernetes_secret(
+                                kube_client,
+                                item["key"],
+                                service,
+                            )
+                            secret_volumes[os.path.join(secret_volume["container_path"], item["path"])] = secret_contents
             except Exception as e:
                 print(
                     f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
@@ -753,6 +798,35 @@ def run_docker_container(
     simulate_healthcheck = (
         healthcheck_only or healthcheck
     ) and healthcheck_mode is not None
+
+    for container_mount_path, secret_content in secret_volumes.items():
+        # Create local temp file in a hidden folder in cwd
+        temp_secret_folder = os.path.join(os.getcwd(), ".secret_volumes/")
+        temp_secret_filename = os.path.join(temp_secret_folder + str(uuid.uuid4()))
+        try:
+            # Clear this out every time we run
+            shutil.rmtree(temp_secret_folder)
+        except FileNotFoundError:
+            # The folder doesn't necessarily exist
+            pass
+        os.makedirs(temp_secret_folder, exist_ok=True)
+        # write the secret contents
+        # Permissions will automatically be set to readable by "users" group
+        # TODO: Make this readable only by "nobody" user? What about other non-standard users that people sometimes use inside the container?
+        # -rw-r--r-- 1 dpopes users 3.2K Nov 28 19:16 854bdbad-30b8-4681-ae4e-854cb28075c5
+        try:
+            # First try to write the file as a string
+            # This is for text like config files
+            with open(temp_secret_filename, "w") as f:
+                f.write(secret_content)
+        except TypeError:
+            # If that fails, try to write it as bytes
+            # This is for binary files like TLS keys
+            with open(temp_secret_filename, "wb") as f:
+                f.write(secret_content)
+
+        # Append this to the list of volumes passed to docker run
+        volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
 
     docker_run_args = dict(
         memory=memory,
