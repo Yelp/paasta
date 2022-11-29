@@ -1016,6 +1016,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": "my_job.do_something",
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "compute_infra_platform_experience",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "true"},
             "cap_drop": CAPS_DROP,
@@ -1123,7 +1124,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": expected_instance_label,
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
-                "yelp.com/owner": "some_sensu_team",
+                "yelp.com/owner": "compute_infra_platform_experience",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",

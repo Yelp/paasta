@@ -915,8 +915,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
         }
 
-        if action_config.get_team() is not None:
-            result["labels"]["yelp.com/owner"] = action_config.get_team()
+        result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
 
         # create_or_find_service_account_name requires k8s credentials, and we don't
         # have those available for CI to use (nor do we check these for normal PaaSTA
