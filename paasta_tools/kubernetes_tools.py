@@ -221,6 +221,7 @@ class KubeDeployment(NamedTuple):
     git_sha: str
     image_version: Optional[str]
     config_sha: str
+    namespace: str
     replicas: Optional[int]
 
 
@@ -1592,6 +1593,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_metadata(self, git_sha: str) -> V1ObjectMeta:
         return V1ObjectMeta(
             name=self.get_sanitised_deployment_name(),
+            namespace=self.get_namespace(),
             labels={
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
@@ -2225,6 +2227,34 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
         kube_client.core.create_namespace(body=paasta_namespace)
 
 
+def list_deployments_in_all_namespaces(
+    kube_client: KubeClient, label_selector: str
+) -> Sequence[KubeDeployment]:
+    deployments = kube_client.deployments.list_deployment_for_all_namespaces(
+        label_selector=label_selector
+    )
+    stateful_sets = kube_client.deployments.list_stateful_set_for_all_namespaces(
+        label_selector=label_selector
+    )
+    return [
+        KubeDeployment(
+            service=item.metadata.labels["paasta.yelp.com/service"],
+            instance=item.metadata.labels["paasta.yelp.com/instance"],
+            git_sha=item.metadata.labels.get("paasta.yelp.com/git_sha", ""),
+            image_version=item.metadata.labels.get(
+                "paasta.yelp.com/image_version", None
+            ),
+            namespace=item.metadata.namespace,
+            config_sha=item.metadata.labels.get("paasta.yelp.com/config_sha", ""),
+            replicas=item.spec.replicas
+            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+            == "false"
+            else None,
+        )
+        for item in deployments.items + stateful_sets.items
+    ]
+
+
 def list_deployments(
     kube_client: KubeClient, label_selector: str = ""
 ) -> Sequence[KubeDeployment]:
@@ -2242,6 +2272,7 @@ def list_deployments(
             image_version=item.metadata.labels.get(
                 "paasta.yelp.com/image_version", None
             ),
+            namespace=item.metadata.namespace,
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
             replicas=item.spec.replicas
             if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
@@ -2574,8 +2605,19 @@ def write_annotation_for_kubernetes_service(
         )
 
 
-def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
-    return list_deployments(kube_client)
+def list_all_matching_deployments(
+    kube_client: KubeClient, label_selector: str = ""
+) -> Sequence[KubeDeployment]:
+    label_selectors = "paasta.yelp.com/service"
+    return list_deployments_in_all_namespaces(
+        kube_client=kube_client, label_selector=label_selectors
+    )
+
+
+def list_all_deployments(
+    kube_client: KubeClient, label_selector: str = "", namespace: str = "paasta"
+) -> Sequence[KubeDeployment]:
+    return list_deployments(kube_client=kube_client, namespace=namespace)
 
 
 def list_matching_deployments(

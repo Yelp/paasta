@@ -8,6 +8,7 @@ from pytest import raises
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.setup_kubernetes_job import create_application_object
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
@@ -32,22 +33,33 @@ def test_main():
     ) as mock_parse_args, mock.patch(
         "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
     ) as mock_kube_client, mock.patch(
+        "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
+        autospec=True,
+    ) as mock_service_instance_configs_list, mock.patch(
         "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
     ) as mock_ensure_namespace, mock.patch(
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
     ) as mock_setup_kube_deployments:
         mock_setup_kube_deployments.return_value = True
         mock_metrics_interface = mock_get_metrics_interface.return_value
+        mock_kube_deploy_config = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="cluster",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_service_instance_configs_list.return_value = [mock_kube_deploy_config]
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 0
         assert mock_ensure_namespace.called
         mock_setup_kube_deployments.assert_called_with(
             kube_client=mock_kube_client.return_value,
-            service_instances=mock_parse_args.return_value.service_instance_list,
             cluster=mock_parse_args.return_value.cluster,
             soa_dir=mock_parse_args.return_value.soa_dir,
             rate_limit=mock_parse_args.return_value.rate_limit,
+            service_instance_configs_list=mock_service_instance_configs_list.return_value,
             metrics_interface=mock_metrics_interface,
         )
         mock_setup_kube_deployments.return_value = False

@@ -34,7 +34,8 @@ from paasta_tools.kubernetes.application.controller_wrappers import (
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import list_all_matching_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import decompose_job_id
@@ -102,19 +103,45 @@ def main() -> None:
 
     deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
-    # system_paasta_config = load_system_paasta_config()
     kube_client = KubeClient()
+    service_instances_invalid = True
 
-    ensure_namespace(kube_client, namespace="paasta")
+    # validate the service_instance names
+    service_instances_with_valid_names = get_service_instances_with_valid_names(
+        service_instances=args.service_instance_list
+    )
+
+    if len(service_instances_with_valid_names) != len(args.service_instance_list):
+        service_instances_invalid = False
+
+    # returns a list of KubernetesDeploymentConfig for every service_instance
+    service_instance_configs_list = get_kubernetes_deployment_config(
+        service_instances_with_valid_names=service_instances_with_valid_names,
+        cluster=args.cluster or load_system_paasta_config().get_cluster(),
+        soa_dir=soa_dir,
+    )
+
+    for service_instance_config in service_instance_configs_list:
+        ensure_namespace(kube_client, namespace=service_instance_config.get_namespace())
+
     setup_kube_succeeded = setup_kube_deployments(
         kube_client=kube_client,
-        service_instances=args.service_instance_list,
-        soa_dir=soa_dir,
         cluster=args.cluster or load_system_paasta_config().get_cluster(),
         rate_limit=args.rate_limit,
+        soa_dir=soa_dir,
         metrics_interface=deploy_metrics,
+        service_instance_configs_list=service_instance_configs_list,
     )
-    sys.exit(0 if setup_kube_succeeded else 1)
+    sys.exit(0 if setup_kube_succeeded and service_instances_invalid else 1)
+
+
+def get_service_instances_with_valid_names(service_instances: Sequence[str]) -> list:
+    service_instances_with_valid_names = [
+        decompose_job_id(service_instance)
+        for service_instance in service_instances
+        if validate_job_name(service_instance)
+    ]
+    return service_instances_with_valid_names
 
 
 def validate_job_name(service_instance: str) -> bool:
@@ -128,34 +155,60 @@ def validate_job_name(service_instance: str) -> bool:
     return True
 
 
+def get_kubernetes_deployment_config(
+    service_instances_with_valid_names: list,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> list:
+    service_instance_configs_list = []
+    for service_instance in service_instances_with_valid_names:
+        try:
+            service_instance_config = load_kubernetes_service_config_no_cache(
+                service=service_instance[0],
+                instance=service_instance[1],
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            service_instance_configs_list.append(service_instance_config)
+        except NoDeploymentsAvailable:
+            log.debug(
+                "No deployments found for %s.%s in cluster %s. Skipping."
+                % (service_instance[0], service_instance[1], cluster)
+            )
+            return True, None
+        except NoConfigurationForServiceError:
+            error_msg = (
+                f"Could not read kubernetes configuration file for %s.%s in cluster %s"
+                % (service_instance[0], service_instance[1], cluster)
+            )
+            log.error(error_msg)
+            return False, None
+    return service_instance_configs_list
+
+
 def setup_kube_deployments(
     kube_client: KubeClient,
-    service_instances: Sequence[str],
     cluster: str,
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
     metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
+    service_instance_configs_list: list = None,
 ) -> bool:
-    if service_instances:
-        existing_kube_deployments = set(list_all_deployments(kube_client))
+
+    if service_instance_configs_list:
+        existing_kube_deployments = set(list_all_matching_deployments(kube_client))
         existing_apps = {
-            (deployment.service, deployment.instance)
+            (deployment.service, deployment.instance, deployment.namespace)
             for deployment in existing_kube_deployments
         }
-    service_instances_with_valid_names = [
-        decompose_job_id(service_instance)
-        for service_instance in service_instances
-        if validate_job_name(service_instance)
-    ]
+
     applications = [
         create_application_object(
-            kube_client=kube_client,
-            service=service_instance[0],
-            instance=service_instance[1],
-            cluster=cluster,
+            cluster=service_instance.get_cluster(),
             soa_dir=soa_dir,
+            service_instance_config=service_instance,
         )
-        for service_instance in service_instances_with_valid_names
+        for service_instance in service_instance_configs_list
     ]
 
     api_updates = 0
@@ -170,6 +223,7 @@ def setup_kube_deployments(
                 if (
                     app.kube_deployment.service,
                     app.kube_deployment.instance,
+                    app.kube_deployment.namespace,
                 ) not in existing_apps:
                     log.info(f"Creating {app} because it does not exist yet.")
                     app.create(kube_client)
@@ -200,40 +254,14 @@ def setup_kube_deployments(
                 f"Not doing any further updates as we reached the limit ({api_updates})"
             )
             break
-
-    return (False, None) not in applications and len(
-        service_instances_with_valid_names
-    ) == len(service_instances)
+    return (False, None) not in applications
 
 
 def create_application_object(
-    kube_client: KubeClient,
-    service: str,
-    instance: str,
     cluster: str,
     soa_dir: str,
+    service_instance_config: KubernetesDeploymentConfig = None,
 ) -> Tuple[bool, Optional[Application]]:
-    try:
-        service_instance_config = load_kubernetes_service_config_no_cache(
-            service,
-            instance,
-            cluster,
-            soa_dir=soa_dir,
-        )
-    except NoDeploymentsAvailable:
-        log.debug(
-            "No deployments found for %s.%s in cluster %s. Skipping."
-            % (service, instance, cluster)
-        )
-        return True, None
-    except NoConfigurationForServiceError:
-        error_msg = (
-            f"Could not read kubernetes configuration file for %s.%s in cluster %s"
-            % (service, instance, cluster)
-        )
-        log.error(error_msg)
-        return False, None
-
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
     except InvalidKubernetesConfig as e:
