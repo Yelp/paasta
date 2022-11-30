@@ -168,6 +168,7 @@ CAPS_DROP = [
 
 class RollbackTypes(Enum):
     AUTOMATIC_SLO_ROLLBACK = "automatic_slo_rollback"
+    AUTOMATIC_METRIC_ROLLBACK = "automatic_metric_rollback"
     USER_INITIATED_ROLLBACK = "user_initiated_rollback"
 
 
@@ -323,9 +324,6 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
-    # the values for this dict can be anything since it's whatever
-    # spark accepts
-    spark_args: Dict[str, Any]
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -1885,6 +1883,7 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
 
 
 class SystemPaastaConfigDict(TypedDict, total=False):
+    allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
@@ -1995,6 +1994,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_driver_port: int
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
+    tron_default_pool_override: str
 
 
 def load_system_paasta_config(
@@ -2070,6 +2070,13 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_tron_default_pool_override(self) -> str:
+        """Get the default pool override variable defined in this host's cluster config file.
+
+        :returns: The default_pool_override specified in the paasta configuration
+        """
+        return self.config_dict.get("tron_default_pool_override", "default")
 
     def get_zk_hosts(self) -> str:
         """Get the zk_hosts defined in this hosts's cluster config file.
@@ -2691,6 +2698,9 @@ class SystemPaastaConfig:
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
 
+    def get_cluster_pools(self) -> Dict[str, List[str]]:
+        return self.config_dict.get("allowed_pools", {})
+
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
 
@@ -2993,6 +3003,31 @@ def get_hostname() -> str:
     running on.
     """
     return socket.getfqdn()
+
+
+def get_files_of_type_in_dir(
+    file_type: str,
+    service: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[str]:
+    """Recursively search path if type of file exists.
+
+    :param file_type: a string of a type of a file (kubernetes, slo, etc.)
+    :param service: a string of a service
+    :param soa_dir: a string of a path to a soa_configs directory
+    :return: a list
+    """
+    # TODO: Only use INSTANCE_TYPES as input by making file_type Literal
+    service = "**" if service is None else service
+    soa_dir = DEFAULT_SOA_DIR if soa_dir is None else soa_dir
+    file_type += "-*.yaml"
+    return [
+        file_path
+        for file_path in glob.glob(
+            os.path.join(soa_dir, service, file_type),
+            recursive=True,
+        )
+    ]
 
 
 def get_soa_cluster_deploy_files(
@@ -4057,10 +4092,8 @@ def load_all_configs(
 ) -> Mapping[str, Mapping[str, Any]]:
     config_dicts = {}
     for service in os.listdir(soa_dir):
-        config_dicts[
-            service
-        ] = service_configuration_lib.read_extra_service_information(
-            service, f"{file_prefix}-{cluster}", soa_dir=soa_dir
+        config_dicts[service] = load_service_instance_configs(
+            service, file_prefix, cluster, soa_dir
         )
     return config_dicts
 

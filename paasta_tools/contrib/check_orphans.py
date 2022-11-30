@@ -35,6 +35,7 @@ class ExitCode(Enum):
     OK = 0
     ORPHANS = 1
     COLLISIONS = 2
+    UNKNOWN = 3
 
 
 def get_zk_hosts(path: str) -> List[str]:
@@ -212,43 +213,51 @@ def get_instance_data(
 
 
 def check_orphans(
-    zk_instance_data: Set[InstanceTuple], nerve_instance_data: Set[InstanceTuple]
+    zk_instance_data: Set[InstanceTuple],
+    nerve_instance_data: Set[InstanceTuple],
+    check_orphans: bool,
+    check_collisions: bool,
 ) -> ExitCode:
-    orphans = zk_instance_data - nerve_instance_data
 
-    # groupby host
-    orphans_by_host: DefaultDict[str, List[Tuple[int, str]]] = defaultdict(list)
-    for orphan in orphans:
-        orphans_by_host[orphan.host].append((orphan.port, orphan.service))
+    if check_collisions:
+        # collisions
+        instance_by_addr: DefaultDict[Tuple[str, int], Set[str]] = defaultdict(set)
+        for nerve_inst in nerve_instance_data:
+            instance_by_addr[(nerve_inst.host, nerve_inst.port)].add(nerve_inst.service)
+        collisions: List[str] = []
+        for zk_inst in zk_instance_data:
+            nerve_services = instance_by_addr[(zk_inst.host, zk_inst.port)]
+            if len(nerve_services) >= 1 and zk_inst.service not in nerve_services:
+                collisions.append(
+                    f"[{zk_inst.host}:{zk_inst.port}] {zk_inst.service} collides with {nerve_services}"
+                )
 
-    # collisions
-    instance_by_addr: DefaultDict[Tuple[str, int], Set[str]] = defaultdict(set)
-    for nerve_inst in nerve_instance_data:
-        instance_by_addr[(nerve_inst.host, nerve_inst.port)].add(nerve_inst.service)
+        if collisions:
+            logger.warning("Collisions found! Traffic is being misrouted!")
+            print("\n".join(collisions))
+            return ExitCode.COLLISIONS
+        else:
+            logger.info(
+                f"No collisions found out of {len(zk_instance_data)} service registrations seen."
+            )
+    if check_orphans:
+        orphans = zk_instance_data - nerve_instance_data
 
-    collisions: List[str] = []
-    for zk_inst in zk_instance_data:
-        nerve_services = instance_by_addr[(zk_inst.host, zk_inst.port)]
-        if len(nerve_services) >= 1 and zk_inst.service not in nerve_services:
-            collisions.append(
-                f"[{zk_inst.host}:{zk_inst.port}] {zk_inst.service} collides with {nerve_services}"
+        # groupby host
+        orphans_by_host: DefaultDict[str, List[Tuple[int, str]]] = defaultdict(list)
+        for orphan in orphans:
+            orphans_by_host[orphan.host].append((orphan.port, orphan.service))
+
+        if orphans:
+            logger.warning("{} orphans found".format(len(orphans)))
+            print(dict(orphans_by_host))
+            return ExitCode.ORPHANS
+        else:
+            logger.info(
+                f"No orphans found out of {len(zk_instance_data)} service registrations seen."
             )
 
-    if collisions:
-        logger.warning("Collisions found! Traffic is being misrouted!")
-        print("\n".join(collisions))
-        return ExitCode.COLLISIONS
-    elif orphans:
-        logger.warning("{} orphans found".format(len(orphans)))
-        print(dict(orphans_by_host))
-        return ExitCode.ORPHANS
-    else:
-        logger.info(
-            "No orphans found out of {} service registrations seen".format(
-                len(zk_instance_data)
-            )
-        )
-        return ExitCode.OK
+    return ExitCode.OK
 
 
 def main() -> ExitCode:
@@ -262,13 +271,34 @@ def main() -> ExitCode:
         type=str,
         help="Comma separated list of services to ignore",
     )
+    parser.add_argument(
+        "--no-check-collisions",
+        default=False,
+        action="store_true",
+        help="Skip checking collisions",
+    )
+    parser.add_argument(
+        "--no-check-orphans",
+        default=False,
+        action="store_true",
+        help="Skip checking orphans",
+    )
     args = parser.parse_args()
+
+    if args.no_check_collisions and args.no_check_orphans:
+        logger.error("Must check at least one of orphans or collisions.")
+        return ExitCode.UNKNOWN
 
     zk_instance_data, nerve_instance_data = get_instance_data(
         set(args.ignored_services.split(","))
     )
 
-    return check_orphans(zk_instance_data, nerve_instance_data)
+    return check_orphans(
+        zk_instance_data,
+        nerve_instance_data,
+        check_orphans=not args.no_check_orphans,
+        check_collisions=not args.no_check_collisions,
+    )
 
 
 if __name__ == "__main__":

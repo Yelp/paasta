@@ -42,7 +42,7 @@ repos:
         language_version: python3.7
         args: ['--target-version', 'py37']
         exclude: ^paasta_tools/paastaapi
--   repo: https://gitlab.com/pycqa/flake8
+-   repo: https://github.com/PyCQA/flake8
     rev: 3.7.7
     hooks:
     -   id: flake8

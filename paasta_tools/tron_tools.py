@@ -19,7 +19,6 @@ import os
 import pkgutil
 import re
 import subprocess
-from functools import lru_cache
 from string import Formatter
 from typing import List
 from typing import Mapping
@@ -43,7 +42,7 @@ except ImportError:  # pragma: no cover (no libyaml-dev / pypy)
 from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.tron.client import TronClient
 from paasta_tools.tron import tron_command_context
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DEFAULT_SOA_DIR, InstanceConfigDict
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
@@ -101,6 +100,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
+EXECUTOR_TYPES = ["paasta", "ssh"]
 
 
 class FieldSelectorConfig(TypedDict):
@@ -208,12 +208,10 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
-@lru_cache(maxsize=1)
 def _use_k8s_default() -> bool:
     return load_system_paasta_config().get_tron_use_k8s_default()
 
 
-@lru_cache(maxsize=1)
 def _get_tron_k8s_cluster_override(cluster: str) -> Optional[str]:
     """
     Return the name of a compute cluster if there's a different compute cluster that should be used to run a Tronjob.
@@ -240,7 +238,6 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
-@lru_cache(maxsize=1)
 def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
@@ -254,7 +251,18 @@ def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]
     }
 
 
+class TronActionConfigDict(InstanceConfigDict, total=False):
+    # this is kinda confusing: long-running stuff is currently using cmd
+    # ...but tron are using command - this is going to require a little
+    # maneuvering to unify
+    command: str
+    # the values for this dict can be anything since it's whatever
+    # spark accepts
+    spark_args: Dict[str, Any]
+
+
 class TronActionConfig(InstanceConfig):
+    config_dict: TronActionConfigDict
     config_filename_prefix = "tron"
 
     def __init__(
@@ -574,6 +582,18 @@ class TronActionConfig(InstanceConfig):
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
         return error_msgs
+
+    def get_pool(self) -> str:
+        """
+        Returns the default pool override if pool is not defined in the action configuration.
+
+        This is useful for environments like spam to allow us to default the pool to spam but allow users to
+        override this value. To control this, we have an optional config item that we'll puppet onto Tron masters
+        which this function will read.
+        """
+        return self.config_dict.get(
+            "pool", load_system_paasta_config().get_tron_default_pool_override()
+        )
 
 
 class TronJobConfig:
@@ -895,8 +915,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             "paasta.yelp.com/routable_ip": "true" if executor == "spark" else "false",
         }
 
-        if action_config.get_team() is not None:
-            result["labels"]["yelp.com/owner"] = action_config.get_team()
+        result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
 
         # create_or_find_service_account_name requires k8s credentials, and we don't
         # have those available for CI to use (nor do we check these for normal PaaSTA
@@ -964,7 +983,6 @@ def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
 
     :param job_config: TronJobConfig
     """
-
     # TODO: this use_k8s flag should be removed once we've fully migrated off of mesos
     use_k8s = job_config.get_use_k8s() and k8s_enabled
     action_dict = {
@@ -1169,7 +1187,18 @@ def validate_complete_config(
     return []
 
 
-def get_tron_namespaces(cluster, soa_dir):
+def _is_valid_namespace(job: Any, tron_executors: List[str]) -> bool:
+    for action_info in job.get("actions", {}).values():
+        if action_info.get("executor", "paasta") in tron_executors:
+            return True
+    return False
+
+
+def get_tron_namespaces(
+    cluster: str,
+    soa_dir: str,
+    tron_executors: List[str] = EXECUTOR_TYPES,
+) -> List[str]:
     tron_config_file = f"tron-{cluster}.yaml"
     config_dirs = [
         _dir[0]
@@ -1177,7 +1206,21 @@ def get_tron_namespaces(cluster, soa_dir):
         if tron_config_file in _dir[2]
     ]
     namespaces = [os.path.split(config_dir)[1] for config_dir in config_dirs]
-    return namespaces
+    tron_namespaces = set()
+    for namespace in namespaces:
+        config = filter_templates_from_config(
+            read_extra_service_information(
+                namespace,
+                extra_info=f"tron-{cluster}",
+                soa_dir=soa_dir,
+                deepcopy=False,
+            )
+        )
+        for job in config.values():
+            if _is_valid_namespace(job, tron_executors):
+                tron_namespaces.add(namespace)
+                break
+    return list(tron_namespaces)
 
 
 def list_tron_clusters(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> List[str]:
