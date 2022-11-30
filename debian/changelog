@@ -1,3 +1,12 @@
+paasta-tools (0.152.0) xenial; urgency=medium
+
+  * 0.152.0 tagged with 'make release'
+    Commit: Merge pull request #3494 from Yelp/u/emanelsabban/PAASTA-
+    17791  Added support for namespace parameter in soaconfigs - PAASTA-
+    17791
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 30 Nov 2022 06:36:54 -0800
+
 paasta-tools (0.151.5) xenial; urgency=medium
 
   * 0.151.5 tagged with 'make release'
