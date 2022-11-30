@@ -17,4 +17,4 @@
 # setup phase, the dependencies may not exist on disk yet.
 #
 # Don't bump version manually. See `make release` docs in ./Makefile
-__version__ = "0.151.5"
+__version__ = "0.152.0"
