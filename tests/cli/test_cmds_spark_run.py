@@ -24,12 +24,9 @@ from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_CORES_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_MEMORY_BY_SPARK
-from paasta_tools.cli.cmds.spark_run import DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB
-from paasta_tools.cli.cmds.spark_run import DEFAULT_SPARK_DRIVER_OVERHEAD_FACTOR
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
-from paasta_tools.cli.cmds.spark_run import MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
 from paasta_tools.utils import InstanceConfig
@@ -839,7 +836,12 @@ class TestConfigureAndRunDockerContainer:
         )
 
     @pytest.mark.parametrize(
-        ["cluster_manager", "spark_args_volumes", "expected_volumes"],
+        [
+            "cluster_manager",
+            "spark_args_volumes",
+            "expected_volumes",
+            "expected_capped_memory",
+        ],
         [
             (
                 spark_run.CLUSTER_MANAGER_MESOS,
@@ -847,6 +849,8 @@ class TestConfigureAndRunDockerContainer:
                     "spark.mesos.executor.docker.volumes": "/mesos/volume:/mesos/volume:rw"
                 },
                 ["/mesos/volume:/mesos/volume:rw"],
+                # See _calculate_docker_memory_limit()
+                (128 * 1024) - int(0.1 * (128 * 1024)),
             ),
             (
                 spark_run.CLUSTER_MANAGER_K8S,
@@ -859,6 +863,8 @@ class TestConfigureAndRunDockerContainer:
                     "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
                 },
                 ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+                # See _calculate_docker_memory_limit()
+                (128 * 1024) - int(0.1 * (128 * 1024)),
             ),
             (
                 spark_run.CLUSTER_MANAGER_LOCAL,
@@ -871,6 +877,8 @@ class TestConfigureAndRunDockerContainer:
                     "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/k8s/volume1",
                 },
                 ["/k8s/volume0:/k8s/volume0:ro", "/k8s/volume1:/k8s/volume1:rw"],
+                # See _calculate_docker_memory_limit()
+                (128 * 1024) - int(0.1 * (128 * 1024)),
             ),
         ],
     )
@@ -887,6 +895,7 @@ class TestConfigureAndRunDockerContainer:
         cluster_manager,
         spark_args_volumes,
         expected_volumes,
+        expected_capped_memory,
     ):
         mock_get_username.return_value = "fake_user"
         spark_conf = {
@@ -928,13 +937,6 @@ class TestConfigureAndRunDockerContainer:
             )
 
         assert retcode == 0
-        expected_capped_memory = DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB - max(
-            MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
-            int(
-                DEFAULT_SPARK_DRIVER_OVERHEAD_FACTOR
-                * DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB
-            ),
-        )
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=(
