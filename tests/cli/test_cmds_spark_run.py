@@ -1083,6 +1083,7 @@ def test_paasta_spark_run_bash(
         timeout_job_runtime="1m",
         enable_dra=False,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1124,6 +1125,7 @@ def test_paasta_spark_run_bash(
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_spark_conf = mock_get_spark_conf.return_value
     mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
@@ -1183,6 +1185,7 @@ def test_paasta_spark_run(
         timeout_job_runtime="1m",
         enable_dra=True,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1224,6 +1227,7 @@ def test_paasta_spark_run(
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1283,6 +1287,7 @@ def test_paasta_spark_run_pyspark(
         timeout_job_runtime="1m",
         enable_dra=False,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1332,6 +1337,7 @@ def test_paasta_spark_run_pyspark(
         aws_creds=mock_get_aws_credentials.return_value,
         needs_docker_cfg=False,
         aws_region="test-region",
+        force_spark_resource_configs=False,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
