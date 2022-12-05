@@ -104,24 +104,25 @@ def main() -> None:
     deploy_metrics = metrics_lib.get_metrics_interface("paasta")
 
     kube_client = KubeClient()
-    service_instances_invalid = True
+    service_instances_valid = True
 
     # validate the service_instance names
     service_instances_with_valid_names = get_service_instances_with_valid_names(
         service_instances=args.service_instance_list
     )
 
-    if len(service_instances_with_valid_names) != len(args.service_instance_list):
-        service_instances_invalid = False
-
-    # returns a list of KubernetesDeploymentConfig for every service_instance
+    # returns a list of pairs of (error?, KubernetesDeploymentConfig) for every service_instance
     service_instance_configs_list = get_kubernetes_deployment_config(
         service_instances_with_valid_names=service_instances_with_valid_names,
         cluster=args.cluster or load_system_paasta_config().get_cluster(),
         soa_dir=soa_dir,
     )
+    if ((False, None) in service_instance_configs_list) or (
+        len(service_instances_with_valid_names) != len(args.service_instance_list)
+    ):
+        service_instances_valid = False
 
-    for service_instance_config in service_instance_configs_list:
+    for _, service_instance_config in service_instance_configs_list:
         ensure_namespace(kube_client, namespace=service_instance_config.get_namespace())
 
     setup_kube_succeeded = setup_kube_deployments(
@@ -132,7 +133,7 @@ def main() -> None:
         metrics_interface=deploy_metrics,
         service_instance_configs_list=service_instance_configs_list,
     )
-    sys.exit(0 if setup_kube_succeeded and service_instances_invalid else 1)
+    sys.exit(0 if setup_kube_succeeded and service_instances_valid else 1)
 
 
 def get_service_instances_with_valid_names(service_instances: Sequence[str]) -> list:
@@ -169,7 +170,7 @@ def get_kubernetes_deployment_config(
                 cluster=cluster,
                 soa_dir=soa_dir,
             )
-            service_instance_configs_list.append(service_instance_config)
+            service_instance_configs_list.append((True, service_instance_config))
         except NoDeploymentsAvailable:
             log.debug(
                 "No deployments found for %s.%s in cluster %s. Skipping."
@@ -208,7 +209,7 @@ def setup_kube_deployments(
             soa_dir=soa_dir,
             service_instance_config=service_instance,
         )
-        for service_instance in service_instance_configs_list
+        for _, service_instance in service_instance_configs_list
     ]
 
     api_updates = 0

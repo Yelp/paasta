@@ -1907,6 +1907,7 @@ class TestKubernetesDeploymentConfig:
                     "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
+                namespace="paasta",
             )
 
     @pytest.mark.parametrize(
@@ -2634,7 +2635,8 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
         mock.Mock(
@@ -2649,7 +2651,8 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
     ]
@@ -2668,6 +2671,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="fm",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
@@ -2676,6 +2680,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="am",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
@@ -3663,7 +3668,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config52071d00"
+            == "configcf6569a4"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3709,7 +3714,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configb47c4ff7"
+            == "configbafa0ff8"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
