@@ -18,7 +18,6 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
-from service_configuration_lib.spark_config import get_dra_configs
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -985,8 +984,8 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
 
 def _enable_dra_default(args, user_spark_opts):
     if (
-            args.cluster_manager == CLUSTER_MANAGER_K8S
-            and "spark.dynamicAllocation.enabled" not in user_spark_opts
+        args.cluster_manager == CLUSTER_MANAGER_K8S
+        and "spark.dynamicAllocation.enabled" not in user_spark_opts
     ):
         log.warning(
             PaastaColors.yellow(
