@@ -76,8 +76,15 @@ def test_main_invalid_job_name():
     ) as mock_parse_args, mock.patch(
         "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
     ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.load_system_paasta_config", autospec=True
+    ), mock.patch(
         "paasta_tools.setup_kubernetes_job.create_application_object", autospec=True
     ) as mock_create_application_object:
+        mock_parse_args.return_value.cluster = "fake_cluster"
+        mock_parse_args.return_value.soa_dir = "/etc/fake"
         mock_parse_args.return_value.service_instance_list = ["kuruptf_m"]
         with raises(SystemExit) as e:
             main()
@@ -105,7 +112,7 @@ def test_get_kubernetes_deployment_config():
             cluster="fake_cluster",
             soa_dir="nail/blah",
         )
-        assert ret == (True, None)
+        assert ret == [(True, None)]
 
         mock_load_kubernetes_service_config_no_cache.side_effect = (
             NoConfigurationForServiceError
@@ -116,7 +123,7 @@ def test_get_kubernetes_deployment_config():
             cluster="fake_cluster",
             soa_dir="nail/blah",
         )
-        assert ret == (False, None)
+        assert ret == [(False, None)]
 
 
 def test_create_application_object():

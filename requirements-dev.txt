@@ -17,6 +17,7 @@ isort==4.2.5
 lazy-object-proxy==1.4.3
 mccabe==0.6.1
 mock==2.0.0
+more-itertools==9.0.0
 nodeenv==1.1.4
 packaging==20.9
 path.py==8.1
@@ -30,7 +31,7 @@ pyflakes==1.6.0
 Pygments==2.7.4
 pylint==2.6.0
 pyparsing==2.4.7
-pytest==3.3.1
+pytest==3.5.0
 pytest-asyncio==0.8.0
 requirements-tools==1.1.2
 snowballstemmer==1.2.0
