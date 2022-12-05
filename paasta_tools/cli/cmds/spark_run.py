@@ -70,9 +70,6 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
-# Mass enable DRA configs
-EXECUTOR_RANGES = {(0, 64)}
-
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 DEFAULT_RUNTIME_TIMEOUT = "12h"
@@ -986,22 +983,21 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
-def _mass_enable_dra(spark_conf):
-    num_executors = int(spark_conf["spark.executor.instances"])
-    for lower_bound, upper_bound in EXECUTOR_RANGES:
-        if lower_bound <= num_executors <= upper_bound:
-            log.warn(
-                PaastaColors.yellow(
-                    "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                    "More info: y/spark-dra. If your job is performing worse because "
-                    "of DRA, consider disabling DRA. To disable, please provide "
-                    "spark.dynamicAllocation.enabled=false in --spark-args\n"
-                )
+def _enable_dra_default(args, user_spark_opts):
+    if (
+            args.cluster_manager == CLUSTER_MANAGER_K8S
+            and "spark.dynamicAllocation.enabled" not in user_spark_opts
+    ):
+        log.warning(
+            PaastaColors.yellow(
+                "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
+                "More info: y/spark-dra. If your job is performing worse because "
+                "of DRA, consider disabling DRA. To disable, please provide "
+                "spark.dynamicAllocation.enabled=false in --spark-args\n"
             )
-            spark_conf["spark.dynamicAllocation.enabled"] = "true"
-            spark_conf = get_dra_configs(spark_conf)
-            break
-    return spark_conf
+        )
+        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
+    return user_spark_opts
 
 
 def _validate_pool(args, system_paasta_config):
@@ -1137,6 +1133,10 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
+
+    # Spark DRA is enabled by default for all batches unless disabled explicitly. More info: y/spark-dra
+    user_spark_opts = _enable_dra_default(args, user_spark_opts)
+
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1151,16 +1151,6 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
     )
-
-    # Mass enable Spark DRA. This is to enable Dynamic Resource Allocation in Spark through executor ranges.
-    # If the number of executor instances of a Spark job lie in the specified range, dynamicAllocation configs
-    # will be added. More info: y/spark-dra
-    # TODO: To be removed when DRA is enabled by default
-    if (
-        args.cluster_manager == CLUSTER_MANAGER_K8S
-        and "spark.dynamicAllocation.enabled" not in spark_conf
-    ):
-        spark_conf = _mass_enable_dra(spark_conf)
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
