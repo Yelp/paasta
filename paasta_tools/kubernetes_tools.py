@@ -3531,3 +3531,54 @@ def get_kubernetes_secret_env_variables(
                 kube_client, secret_name, service_name
             )
     return decrypted_secrets
+
+
+def get_kubernetes_secret_volumes(
+    kube_client: KubeClient,
+    secret_volumes_config: Dict[str, Any],
+    service_name: str,
+) -> Dict[str, str]:
+    secret_volumes = {}
+    # The config might look one of two ways:
+    # Implicit full path consisting of the container path and the secret name:
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     secret_name: the_secret_1
+    #   - container_path: /nail/bar
+    #     secret_name: the_secret_2
+    #
+    # This ^ should result in two files (/nail/foo/the_secret_1, /nail/foo/the_secret_2)
+    #
+    # OR
+    #
+    # Multiple files within a folder with explicit path names
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     items:
+    #     - key: the_secret_1
+    #       path: bar.yaml
+    #     - key: the_secret_2
+    #       path: baz.yaml
+    #
+    # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
+    # We need to support both cases
+    for secret_volume in secret_volumes_config:
+        if 'items' not in secret_volume:
+            secret_contents = get_kubernetes_secret(
+                kube_client,
+                secret_volume["secret_name"],
+                service_name,
+                decode=False,
+            )
+            # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
+            secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
+        else:
+            for item in secret_volume["items"]:
+                secret_contents = get_kubernetes_secret(
+                    kube_client,
+                    item["key"],
+                    service_name,
+                )
+                secret_volumes[os.path.join(secret_volume["container_path"], item["path"])] = secret_contents
+
+    return secret_volumes

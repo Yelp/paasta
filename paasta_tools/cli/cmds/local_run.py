@@ -38,6 +38,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
@@ -705,48 +706,9 @@ def run_docker_container(
                 secret_environment = get_kubernetes_secret_env_variables(
                     kube_client, environment, service
                 )
-
-                # The config might look one of two ways:
-                # Implicit full path consisting of the container path and the secret name:
-                #   secret_volumes:
-                #   - container_path: /nail/foo
-                #     secret_name: the_secret_1
-                #   - container_path: /nail/bar
-                #     secret_name: the_secret_2
-                #
-                # This ^ should result in two files (/nail/foo/the_secret_1, /nail/foo/the_secret_2)
-                #
-                # OR
-                #
-                # Multiple files within a folder with explicit path names
-                #   secret_volumes:
-                #   - container_path: /nail/foo
-                #     items:
-                #     - key: the_secret_1
-                #       path: bar.yaml
-                #     - key: the_secret_2
-                #       path: baz.yaml
-                #
-                # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
-                # We need to support both cases
-                for secret_volume in instance_config.get_secret_volumes():
-                    if 'items' not in secret_volume:
-                        secret_contents = get_kubernetes_secret(
-                            kube_client,
-                            secret_volume["secret_name"],
-                            service,
-                            decode=False,
-                        )
-                        # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
-                        secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
-                    else:
-                        for item in secret_volume["items"]:
-                            secret_contents = get_kubernetes_secret(
-                                kube_client,
-                                item["key"],
-                                service,
-                            )
-                            secret_volumes[os.path.join(secret_volume["container_path"], item["path"])] = secret_contents
+                secret_volumes = get_kubernetes_secret_volumes(
+                    kube_client, instance_config.get_secret_volumes(), service
+                )
             except Exception as e:
                 print(
                     f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
