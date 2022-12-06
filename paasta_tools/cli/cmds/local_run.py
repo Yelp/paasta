@@ -44,6 +44,7 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
+from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -736,7 +737,6 @@ def run_docker_container(
                             service,
                             decode=False,
                         )
-                        secret_volumes[os.path.join(secret_volume["container_path"],secret_volume["secret_name"])] = secret_contents
                         # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
                         secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
                     else:
@@ -760,6 +760,14 @@ def run_docker_container(
                 secret_environment = decrypt_secret_environment_variables(
                     secret_provider_name=secret_provider_name,
                     environment=environment,
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+                secret_volumes = decrypt_secret_volumes(
+                    secret_provider_name=secret_provider_name,
+                    secret_volumes_config=instance_config.get_secret_volumes(),
                     soa_dir=soa_dir,
                     service_name=service,
                     cluster_name=instance_config.cluster,
