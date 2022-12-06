@@ -986,7 +986,9 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
-            "--conf spark.sql.shuffle.partitions=8 "
+            "--conf spark.sql.shuffle.partitions=12 "
+            "--conf spark.sql.files.minPartitionNum=12 "
+            "--conf spark.default.parallelism=12 "
             "--conf spark.eventLog.enabled=true "
             "--conf spark.eventLog.dir=s3a://test "
             # actual script to run

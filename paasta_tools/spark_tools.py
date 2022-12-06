@@ -13,7 +13,7 @@ from typing import Set
 import yaml
 from mypy_extensions import TypedDict
 from service_configuration_lib.spark_config import _adjust_spark_requested_resources
-from service_configuration_lib.spark_config import _append_sql_shuffle_partitions_conf
+from service_configuration_lib.spark_config import _append_sql_partitions_conf
 from service_configuration_lib.spark_config import DEFAULT_SPARK_RUN_CONFIG
 
 from paasta_tools.utils import DockerVolume
@@ -148,13 +148,13 @@ def adjust_spark_resources(
 
 def setup_shuffle_partitions(spark_args: Dict[str, str]) -> Dict[str, str]:
     """
-    Wrapper around _append_sql_shuffle_partitions_conf from service_configuration_lib.
+    Wrapper around _append_sql_partitions_conf from service_configuration_lib.
 
     For now, this really just sets a default number of partitions based on # of cores.
     """
     # as above, this function also returns everything + mutates the passed in dictionary
     # which is not ideal
-    return _append_sql_shuffle_partitions_conf(
+    return _append_sql_partitions_conf(
         spark_opts=copy.copy(spark_args),
     )
 
