@@ -11,8 +11,10 @@ export KUBECONFIG=$(CWD)/kubeconfig
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export KIND_CONFIG=deployments/kind/cluster-devbox.yaml
+	PAASTA_K8S_ENV ?= YELP
 else
 	export KIND_CONFIG=deployments/kind/cluster.yaml
+	PAASTA_K8S_ENV ?= $(shell hostname --fqdn)
 endif
 
 .PHONY: all itest fake_cluster kind create_cluster clean
@@ -20,6 +22,9 @@ endif
 all: clean itest
 
 fake_cluster: clean create_cluster
+	if [ "$(PAASTA_K8S_ENV)" = "YELP" ]; then \
+		./scripts/set-paasta-registry-credentials.sh $(CLUSTER); \
+	fi
 
 kind:
 	./scripts/install-kind.sh
