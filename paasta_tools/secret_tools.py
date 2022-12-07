@@ -174,19 +174,12 @@ def decrypt_secret_environment_variables(
 
 def decrypt_secret_volumes(
     secret_provider_name: str,
-    secret_volumes_config: Dict[str,Any],
+    secret_volumes_config: Dict[str, Any],
     soa_dir: str,
     service_name: str,
     cluster_name: str,
     secret_provider_kwargs: Dict[str, Any],
 ) -> Dict[str, str]:
-    secret_provider = get_secret_provider(
-        secret_provider_name=secret_provider_name,
-        soa_dir=soa_dir,
-        service_name=service_name,
-        cluster_names=[cluster_name],
-        secret_provider_kwargs=secret_provider_kwargs,
-    )
     secret_volumes = {}
     # The config might look one of two ways:
     # Implicit full path consisting of the container path and the secret name:
@@ -212,7 +205,7 @@ def decrypt_secret_volumes(
     # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
     # We need to support both cases
     for secret_volume in secret_volumes_config:
-        if 'items' not in secret_volume:
+        if "items" not in secret_volume:
             secret_contents = decrypt_secret(
                 secret_provider_name=secret_provider_name,
                 soa_dir=soa_dir,
@@ -223,7 +216,11 @@ def decrypt_secret_volumes(
                 decode=False,
             )
             # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
-            secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
+            secret_volumes[
+                os.path.join(
+                    secret_volume["container_path"], secret_volume["secret_name"]
+                )
+            ] = secret_contents
         else:
             for item in secret_volume["items"]:
                 secret_contents = decrypt_secret(
@@ -235,8 +232,10 @@ def decrypt_secret_volumes(
                     secret_name=item["key"],
                     decode=False,
                 )
-            # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
-                secret_volumes[os.path.join(secret_volume["container_path"], item["path"])] = secret_contents
+                # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
+                secret_volumes[
+                    os.path.join(secret_volume["container_path"], item["path"])
+                ] = secret_contents
 
     return secret_volumes
 
@@ -248,7 +247,7 @@ def decrypt_secret(
     cluster_name: str,
     secret_provider_kwargs: Dict[str, Any],
     secret_name: str,
-    decode:bool = True,
+    decode: bool = True,
 ) -> Dict[str, str]:
     secret_provider = get_secret_provider(
         secret_provider_name=secret_provider_name,

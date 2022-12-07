@@ -39,7 +39,6 @@ from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
-from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
