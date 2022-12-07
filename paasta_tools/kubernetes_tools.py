@@ -3563,7 +3563,7 @@ def get_kubernetes_secret_volumes(
     # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
     # We need to support both cases
     for secret_volume in secret_volumes_config:
-        if 'items' not in secret_volume:
+        if "items" not in secret_volume:
             secret_contents = get_kubernetes_secret(
                 kube_client,
                 secret_volume["secret_name"],
@@ -3571,7 +3571,11 @@ def get_kubernetes_secret_volumes(
                 decode=False,
             )
             # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
-            secret_volumes[os.path.join(secret_volume["container_path"], secret_volume["secret_name"])] = secret_contents
+            secret_volumes[
+                os.path.join(
+                    secret_volume["container_path"], secret_volume["secret_name"]
+                )
+            ] = secret_contents
         else:
             for item in secret_volume["items"]:
                 secret_contents = get_kubernetes_secret(
@@ -3579,6 +3583,8 @@ def get_kubernetes_secret_volumes(
                     item["key"],
                     service_name,
                 )
-                secret_volumes[os.path.join(secret_volume["container_path"], item["path"])] = secret_contents
+                secret_volumes[
+                    os.path.join(secret_volume["container_path"], item["path"])
+                ] = secret_contents
 
     return secret_volumes
