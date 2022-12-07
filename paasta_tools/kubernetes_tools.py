@@ -3502,7 +3502,7 @@ def get_kubernetes_secret(
     secret_name: str,
     service_name: str,
     namespace: str = "paasta",
-    kube_client: KubeClient, secret_name: str, service_name: str, decode:bool = True,
+    decode: bool = True,
 ) -> str:
 
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
