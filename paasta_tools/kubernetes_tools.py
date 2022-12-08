@@ -328,6 +328,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/cluster": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
@@ -1608,6 +1609,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 "paasta.yelp.com/service": self.get_service(),
                 "paasta.yelp.com/instance": self.get_instance(),
                 "paasta.yelp.com/git_sha": git_sha,
+                "paasta.yelp.com/cluster": self.cluster,
                 "paasta.yelp.com/pool": self.get_pool(),
                 "yelp.com/owner": "compute_infra_platform_experience",
                 paasta_prefixed("autoscaled"): str(
@@ -1870,6 +1872,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
+            "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
         }
         if service_namespace_config.is_in_smartstack():
