@@ -3534,7 +3534,7 @@ def get_kubernetes_secret_env_variables(
 
 def get_kubernetes_secret_volumes(
     kube_client: KubeClient,
-    secret_volumes_config: List[Dict[str, Any]],
+    secret_volumes_config: Sequence[SecretVolume],
     service_name: str,
 ) -> Dict[str, Union[str, bytes]]:
     secret_volumes = {}

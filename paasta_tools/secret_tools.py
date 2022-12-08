@@ -18,9 +18,11 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Union
 
 from paasta_tools.secret_providers import SecretProvider
+from paasta_tools.utils import SecretVolume
 
 SECRET_REGEX = r"^(SHARED_)?SECRET\([A-Za-z0-9_-]*\)$"
 SHARED_SECRET_SERVICE = "_shared"
@@ -175,7 +177,7 @@ def decrypt_secret_environment_variables(
 
 def decrypt_secret_volumes(
     secret_provider_name: str,
-    secret_volumes_config: List[Dict[str, Any]],
+    secret_volumes_config: Sequence[SecretVolume],
     soa_dir: str,
     service_name: str,
     cluster_name: str,
