@@ -18,6 +18,7 @@ from typing import Any
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Union
 
 from paasta_tools.secret_providers import SecretProvider
 
@@ -174,12 +175,12 @@ def decrypt_secret_environment_variables(
 
 def decrypt_secret_volumes(
     secret_provider_name: str,
-    secret_volumes_config: Dict[str, Any],
+    secret_volumes_config: List[Dict[str, Any]],
     soa_dir: str,
     service_name: str,
     cluster_name: str,
     secret_provider_kwargs: Dict[str, Any],
-) -> Dict[str, str]:
+) -> Dict[str, Union[str, bytes]]:
     secret_volumes = {}
     # The config might look one of two ways:
     # Implicit full path consisting of the container path and the secret name:
@@ -248,7 +249,7 @@ def decrypt_secret(
     secret_provider_kwargs: Dict[str, Any],
     secret_name: str,
     decode: bool = True,
-) -> Dict[str, str]:
+) -> Union[str, bytes]:
     secret_provider = get_secret_provider(
         secret_provider_name=secret_provider_name,
         soa_dir=soa_dir,

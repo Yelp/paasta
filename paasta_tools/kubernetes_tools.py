@@ -3503,26 +3503,25 @@ def get_kubernetes_secret(
     service_name: str,
     namespace: str = "paasta",
     decode: bool = True,
-) -> str:
+) -> Union[str, bytes]:
 
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace=namespace
     ).data[secret_name]
-    secret = base64.b64decode(secret_data)
     # String secrets (e.g. yaml config files) need to be decoded
     # Binary secrets (e.g. TLS Keystore or binary certificate files) cannot be decoded
     if decode:
-        secret = secret.decode("utf-8")
-    return secret
+        return base64.b64decode(secret_data).decode("utf-8")
+    return base64.b64decode(secret_data)
 
 
 def get_kubernetes_secret_env_variables(
     kube_client: KubeClient,
     environment: Dict[str, str],
     service_name: str,
-) -> Dict[str, str]:
+) -> Dict[str, Union[str, bytes]]:
     decrypted_secrets = {}
     for k, v in environment.items():
         if is_secret_ref(v):
@@ -3535,9 +3534,9 @@ def get_kubernetes_secret_env_variables(
 
 def get_kubernetes_secret_volumes(
     kube_client: KubeClient,
-    secret_volumes_config: Dict[str, Any],
+    secret_volumes_config: List[Dict[str, Any]],
     service_name: str,
-) -> Dict[str, str]:
+) -> Dict[str, Union[str, bytes]]:
     secret_volumes = {}
     # The config might look one of two ways:
     # Implicit full path consisting of the container path and the secret name:
