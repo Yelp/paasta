@@ -771,7 +771,7 @@ def run_docker_container(
     for container_mount_path, secret_content in secret_volumes.items():
         # Create local temp file in a hidden folder in cwd
         temp_secret_folder = os.path.join(os.getcwd(), ".secret_volumes/")
-        temp_secret_filename = os.path.join(temp_secret_folder + str(uuid.uuid4()))
+        temp_secret_filename = os.path.join(temp_secret_folder, str(uuid.uuid4()))
         try:
             # Clear this out every time we run
             shutil.rmtree(temp_secret_folder)
