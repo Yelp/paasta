@@ -1,3 +1,12 @@
+paasta-tools (0.152.1) xenial; urgency=medium
+
+  * 0.152.1 tagged with 'make release'
+    Commit: Merge pull request #3508 from
+    Yelp/u/chi/upgrade_service_conf_lib  Bump service-configuration-lib
+    to 2.13.5 to cap spark executor resources
+
+ -- Chi Chang <chi@yelp.com>  Tue, 06 Dec 2022 06:57:57 -0800
+
 paasta-tools (0.152.0) xenial; urgency=medium
 
   * 0.152.0 tagged with 'make release'
