@@ -1246,7 +1246,6 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
-@mock.patch.object(spark_run, "get_dra_configs", autospec=True)
 @mock.patch.object(spark_run, "get_spark_conf", autospec=True)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
@@ -1254,7 +1253,6 @@ def test_paasta_spark_run_pyspark(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_get_spark_conf,
-    mock_get_dra_configs,
     mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
@@ -1335,15 +1333,12 @@ def test_paasta_spark_run_pyspark(
         needs_docker_cfg=False,
         aws_region="test-region",
     )
-    mock_get_dra_configs.assert_called_once_with(
-        {"spark.executor.instances": "7", "spark.dynamicAllocation.enabled": "true"}
-    )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
         docker_img=mock_get_docker_image.return_value,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
-        spark_conf=mock_get_dra_configs.return_value,
+        spark_conf=mock_get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="unique-run",
