@@ -1,3 +1,12 @@
+paasta-tools (0.152.2) xenial; urgency=medium
+
+  * 0.152.2 tagged with 'make release'
+    Commit: MLCOMPUTE-216 | enable DRA by default in paasta spark-run
+    (#3507)  * MLCOMPUTE-216 | enable DRA by default in paasta spark-run
+    Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 08 Dec 2022 09:49:26 -0800
+
 paasta-tools (0.152.1) xenial; urgency=medium
 
   * 0.152.1 tagged with 'make release'
