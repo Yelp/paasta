@@ -276,15 +276,6 @@ def test_decrypt_secret_volumes_multiple_files(mock_get_secret_provider):
         "/the/container/path/the_secret_filename2": "the_secret_contents2",
     }
 
-    assert mock_secret_provider.decrypt_secret_raw.call_args_list == [
-        mock.call(
-            "the_secret_name1",
-        ),
-        mock.call(
-            "the_secret_name2",
-        ),
-    ]
-
 
 @mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
 def test_decrypt_secret_volumes_single_file(mock_get_secret_provider):
@@ -309,12 +300,6 @@ def test_decrypt_secret_volumes_single_file(mock_get_secret_provider):
     assert ret == {
         "/the/container/path/the_secret_name": "the_secret_contents",
     }
-
-    assert mock_secret_provider.decrypt_secret_raw.call_args_list == [
-        mock.call(
-            "the_secret_name",
-        ),
-    ]
 
 
 @mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)

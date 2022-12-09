@@ -1962,7 +1962,11 @@ def test_missing_volumes_skipped(mock_exists):
         assert kwargs["volumes"] == []
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
 @mock.patch(
@@ -1976,7 +1980,14 @@ def test_missing_volumes_skipped(mock_exists):
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    return_value={
+        "/the/container/path/the_secret_name1": b"the_secret_content1",
+        "/the/container/path/the_secret_name2": b"the_secret_content2",
+    },
+)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
@@ -1992,7 +2003,6 @@ def test_run_docker_container_secret_volumes(
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
-    mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
@@ -2001,11 +2011,6 @@ def test_run_docker_container_secret_volumes(
     )
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
-
-    mock_decrypt_secret_volumes.return_value = {
-        "/the/container/path/the_secret_name1": b"the_secret_content1",
-        "/the/container/path/the_secret_name2": b"the_secret_content2",
-    }
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2049,7 +2054,11 @@ def test_run_docker_container_secret_volumes(
     assert 0 == return_code
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
 @mock.patch(
@@ -2064,7 +2073,12 @@ def test_run_docker_container_secret_volumes(
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes", autospec=True
+    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+    autospec=True,
+    return_value={
+        "/the/container/path/the_secret_name1": b"the_secret_content1",
+        "/the/container/path/the_secret_name2": b"the_secret_content2",
+    },
 )
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
@@ -2087,7 +2101,6 @@ def test_run_docker_container_secret_volumes_for_teams(
     mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
-    mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
@@ -2096,11 +2109,6 @@ def test_run_docker_container_secret_volumes_for_teams(
     )
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
-
-    mock_get_kubernetes_secret_volumes.return_value = {
-        "/the/container/path/the_secret_name1": b"the_secret_content1",
-        "/the/container/path/the_secret_name2": b"the_secret_content2",
-    }
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2145,7 +2153,11 @@ def test_run_docker_container_secret_volumes_for_teams(
     assert 0 == return_code
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
 @mock.patch(
@@ -2159,7 +2171,11 @@ def test_run_docker_container_secret_volumes_for_teams(
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    side_effect=Exception("Simulate failure decrypting secret volumes"),
+)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
@@ -2176,7 +2192,6 @@ def test_run_docker_container_secret_volumes_raises(
     mock_pick_random_port,
     capsys,
 ):
-    mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
@@ -2186,9 +2201,6 @@ def test_run_docker_container_secret_volumes_raises(
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
-    mock_decrypt_secret_volumes.side_effect = Exception(
-        "Simulate failure decrypting secret volumes"
-    )
     with raises(SystemExit) as sys_exit:
         run_docker_container(
             docker_client=mock_docker_client,
@@ -2213,7 +2225,11 @@ def test_run_docker_container_secret_volumes_raises(
     )
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.pick_random_port", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
 @mock.patch(
@@ -2228,7 +2244,9 @@ def test_run_docker_container_secret_volumes_raises(
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes", autospec=True
+    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+    autospec=True,
+    side_effect=Exception("Simulate failure decrypting secret volumes"),
 )
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
@@ -2252,7 +2270,6 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
     mock_pick_random_port,
     capsys,
 ):
-    mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
@@ -2262,9 +2279,6 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
-    mock_get_kubernetes_secret_volumes.side_effect = Exception(
-        "Simulate failure decrypting secret volumes"
-    )
     with raises(SystemExit) as sys_exit:
         run_docker_container(
             docker_client=mock_docker_client,
