@@ -237,7 +237,7 @@ def test_paasta_secret():
             config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
         )
         mock_get_kubernetes_secret.assert_called_with(
-            kube_client, "theonering", "middleearth"
+            kube_client, "middleearth", "theonering"
         )
 
         mock_args = mock.Mock(
