@@ -770,7 +770,6 @@ def run_docker_container(
     ) and healthcheck_mode is not None
 
     for container_mount_path, secret_content in secret_volumes.items():
-        # Create local temp file in a hidden folder in cwd
         temp_secret_folder = tempfile.TemporaryDirectory()
         temp_secret_filename = os.path.join(temp_secret_folder.name, str(uuid.uuid4()))
         # write the secret contents
