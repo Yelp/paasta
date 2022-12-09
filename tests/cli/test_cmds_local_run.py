@@ -1979,7 +1979,9 @@ def test_missing_volumes_skipped(mock_exists):
 @mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.open", new_callable=mock.mock_open(), autospec=True
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes(
@@ -2073,7 +2075,9 @@ def test_run_docker_container_secret_volumes(
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.open", new_callable=mock.mock_open(), autospec=True
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
 )
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
@@ -2172,7 +2176,9 @@ def test_run_docker_container_secret_volumes_for_teams(
 @mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.open", new_callable=mock.mock_open(), autospec=True
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes_raises(
@@ -2244,7 +2250,9 @@ def test_run_docker_container_secret_volumes_raises(
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
-    "paasta_tools.cli.cmds.local_run.open", new_callable=mock.mock_open(), autospec=True
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
 )
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
