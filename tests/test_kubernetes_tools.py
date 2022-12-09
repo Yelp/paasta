@@ -4114,10 +4114,12 @@ def test_get_kubernetes_secret_env_variables():
                 mock_client,
                 "SECRET_NAME1",
                 "universe",
+                decode=True,
             ),
             mock.call(
                 mock_client,
                 "SECRET_NAME2",
                 "universe",
+                decode=True,
             ),
         ]
