@@ -3499,8 +3499,8 @@ def get_kubernetes_secret_name(
 
 def get_kubernetes_secret(
     kube_client: KubeClient,
-    secret_name: str,
     service_name: str,
+    secret_name: str,
     namespace: str = "paasta",
     decode: bool = True,
 ) -> Union[str, bytes]:
@@ -3532,8 +3532,8 @@ def get_kubernetes_secret_env_variables(
             decrypted_secrets[k] = str(
                 get_kubernetes_secret(
                     kube_client,
-                    secret_name,
                     service_name,
+                    secret_name,
                     decode=True,
                 )
             )
@@ -3573,8 +3573,8 @@ def get_kubernetes_secret_volumes(
         if "items" not in secret_volume:
             secret_contents = get_kubernetes_secret(
                 kube_client,
-                secret_volume["secret_name"],
                 service_name,
+                secret_volume["secret_name"],
                 decode=False,
             )
             # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
@@ -3587,8 +3587,8 @@ def get_kubernetes_secret_volumes(
             for item in secret_volume["items"]:
                 secret_contents = get_kubernetes_secret(
                     kube_client,
-                    item["key"],
                     service_name,
+                    item["key"],  # secret_name
                     decode=False,
                 )
                 secret_volumes[

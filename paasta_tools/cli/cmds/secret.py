@@ -241,7 +241,7 @@ def paasta_secret(args):
             sys.exit(1)
 
         kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=clusters[0])
-        print(get_kubernetes_secret(kube_client, args.secret_name, service))
+        print(get_kubernetes_secret(kube_client, service, args.secret_name))
         return
 
     secret_provider = _get_secret_provider_for_service(

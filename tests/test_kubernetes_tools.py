@@ -4070,7 +4070,7 @@ def test_get_kubernetes_secret():
         mock_kube_client.return_value = mock_client
 
         ret = get_kubernetes_secret(
-            mock_client, secret_name, service_name, mock_namespace
+            mock_client, service_name, secret_name, mock_namespace
         )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
@@ -4112,14 +4112,14 @@ def test_get_kubernetes_secret_env_variables():
         assert mock_get_kubernetes_secret.call_args_list == [
             mock.call(
                 mock_client,
-                "SECRET_NAME1",
                 "universe",
+                "SECRET_NAME1",
                 decode=True,
             ),
             mock.call(
                 mock_client,
-                "SECRET_NAME2",
                 "universe",
+                "SECRET_NAME2",
                 decode=True,
             ),
         ]
