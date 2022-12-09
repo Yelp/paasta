@@ -3589,6 +3589,7 @@ def get_kubernetes_secret_volumes(
                     kube_client,
                     item["key"],
                     service_name,
+                    decode=False,
                 )
                 secret_volumes[
                     os.path.join(secret_volume["container_path"], item["path"])
