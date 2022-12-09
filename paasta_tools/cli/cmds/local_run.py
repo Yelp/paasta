@@ -18,6 +18,7 @@ import os
 import shutil
 import socket
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -770,15 +771,8 @@ def run_docker_container(
 
     for container_mount_path, secret_content in secret_volumes.items():
         # Create local temp file in a hidden folder in cwd
-        temp_secret_folder = os.path.join(os.getcwd(), ".secret_volumes/")
-        temp_secret_filename = os.path.join(temp_secret_folder, str(uuid.uuid4()))
-        try:
-            # Clear this out every time we run
-            shutil.rmtree(temp_secret_folder)
-        except FileNotFoundError:
-            # The folder doesn't necessarily exist
-            pass
-        os.makedirs(temp_secret_folder, exist_ok=True)
+        temp_secret_folder = tempfile.TemporaryDirectory()
+        temp_secret_filename = os.path.join(temp_secret_folder.name, str(uuid.uuid4()))
         # write the secret contents
         # Permissions will automatically be set to readable by "users" group
         # TODO: Make this readable only by "nobody" user? What about other non-standard users that people sometimes use inside the container?
