@@ -1977,17 +1977,13 @@ def test_missing_volumes_skipped(mock_exists):
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
     autospec=None,
 )
-@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes(
-    mock_os_makedirs,
     mock_open,
-    mock_shutil,
     mock_decrypt_secret_volumes,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -2010,9 +2006,6 @@ def test_run_docker_container_secret_volumes(
         "/the/container/path/the_secret_name1": b"the_secret_content1",
         "/the/container/path/the_secret_name2": b"the_secret_content2",
     }
-
-    # Coverage for when the local secret folder does not yet exist
-    mock_shutil.rmtree.side_effect = FileNotFoundError
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2045,11 +2038,11 @@ def test_run_docker_container_secret_volumes(
     _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
     assert "volumes" in the_kwargs
     assert re.match(
-        r".*\.secret_volumes/.*:/the/container/path/the_secret_name1:ro",
+        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
         the_kwargs["volumes"][0],
     ), "Did not find the expected secret file volume mount"
     assert re.match(
-        r".*\.secret_volumes/.*:/the/container/path/the_secret_name2:ro",
+        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
         the_kwargs["volumes"][1],
     ), "Did not find the expected secret file volume mount"
 
@@ -2073,7 +2066,6 @@ def test_run_docker_container_secret_volumes(
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes", autospec=True
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
@@ -2083,13 +2075,10 @@ def test_run_docker_container_secret_volumes(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
-@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes_for_teams(
-    mock_os_makedirs,
     mock_kube_client,
     mock_is_secrets_for_teams_enabled,
     mock_open,
-    mock_shutil,
     mock_get_kubernetes_secret_volumes,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -2112,9 +2101,6 @@ def test_run_docker_container_secret_volumes_for_teams(
         "/the/container/path/the_secret_name1": b"the_secret_content1",
         "/the/container/path/the_secret_name2": b"the_secret_content2",
     }
-
-    # Coverage for when the local secret folder does not yet exist
-    mock_shutil.rmtree.side_effect = FileNotFoundError
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2148,11 +2134,11 @@ def test_run_docker_container_secret_volumes_for_teams(
     _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
     assert "volumes" in the_kwargs
     assert re.match(
-        r".*\.secret_volumes/.*:/the/container/path/the_secret_name1:ro",
+        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
         the_kwargs["volumes"][0],
     ), "Did not find the expected secret file volume mount"
     assert re.match(
-        r".*\.secret_volumes/.*:/the/container/path/the_secret_name2:ro",
+        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
         the_kwargs["volumes"][1],
     ), "Did not find the expected secret file volume mount"
 
@@ -2174,17 +2160,13 @@ def test_run_docker_container_secret_volumes_for_teams(
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.decrypt_secret_volumes", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
     autospec=None,
 )
-@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes_raises(
-    mock_os_makedirs,
     mock_open,
-    mock_shutil,
     mock_decrypt_secret_volumes,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -2248,7 +2230,6 @@ def test_run_docker_container_secret_volumes_raises(
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes", autospec=True
 )
-@mock.patch("paasta_tools.cli.cmds.local_run.shutil", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.open",
     new_callable=mock.mock_open(),
@@ -2258,13 +2239,10 @@ def test_run_docker_container_secret_volumes_raises(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
-@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes_for_teams_raises(
-    mock_os_makedirs,
     mock_kube_client,
     mock_is_secrets_for_teams_enabled,
     mock_open,
-    mock_shutil,
     mock_get_kubernetes_secret_volumes,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
