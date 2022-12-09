@@ -4165,21 +4165,6 @@ def test_get_kubernetes_secret_volumes_multiple_files():
             "/the/container/path/the_secret_filename2": "secret_contents2",
         }
 
-        assert mock_get_kubernetes_secret.call_args_list == [
-            mock.call(
-                mock_client,
-                "universe",
-                "the_secret_name1",
-                decode=False,
-            ),
-            mock.call(
-                mock_client,
-                "universe",
-                "the_secret_name2",
-                decode=False,
-            ),
-        ]
-
 
 def test_get_kubernetes_secret_volumes_single_file():
     with mock.patch(
@@ -4207,12 +4192,3 @@ def test_get_kubernetes_secret_volumes_single_file():
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",
         }
-
-        assert mock_get_kubernetes_secret.call_args_list == [
-            mock.call(
-                mock_client,
-                "universe",
-                "the_secret_name",
-                decode=False,
-            ),
-        ]
