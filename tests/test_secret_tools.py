@@ -15,8 +15,10 @@ from json.decoder import JSONDecodeError
 
 import mock
 
+from paasta_tools.secret_tools import decrypt_secret
 from paasta_tools.secret_tools import decrypt_secret_environment_for_service
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
+from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.secret_tools import get_hmac_for_secret
 from paasta_tools.secret_tools import get_secret_hashes
 from paasta_tools.secret_tools import get_secret_name_from_ref
@@ -24,6 +26,7 @@ from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import SecretVolume
 
 
 def test_is_secret_ref():
@@ -240,3 +243,115 @@ def test_decrypt_secret_environment_for_service(mock_get_secret_provider):
         {"SECRET": "SECRET(123)"}
     )
     assert ret == mock_secret_provider.decrypt_environment.return_value
+
+
+@mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
+def test_decrypt_secret_volumes_multiple_files(mock_get_secret_provider):
+    mock_secret_provider = mock.Mock()
+    mock_get_secret_provider.return_value = mock_secret_provider
+
+    mock_secret_volumes_config = [
+        SecretVolume(
+            container_path="/the/container/path/",
+            items=[
+                {"key": "the_secret_name1", "path": "the_secret_filename1"},
+                {"key": "the_secret_name2", "path": "the_secret_filename2"},
+            ],
+        )
+    ]
+    mock_secret_provider.decrypt_secret_raw.side_effect = [
+        "the_secret_contents1",
+        "the_secret_contents2",
+    ]
+    ret = decrypt_secret_volumes(
+        secret_provider_name="vault",
+        secret_volumes_config=mock_secret_volumes_config,
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+    )
+    assert ret == {
+        "/the/container/path/the_secret_filename1": "the_secret_contents1",
+        "/the/container/path/the_secret_filename2": "the_secret_contents2",
+    }
+
+    assert mock_secret_provider.decrypt_secret_raw.call_args_list == [
+        mock.call(
+            "the_secret_name1",
+        ),
+        mock.call(
+            "the_secret_name2",
+        ),
+    ]
+
+
+@mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
+def test_decrypt_secret_volumes_single_file(mock_get_secret_provider):
+    mock_secret_provider = mock.Mock()
+    mock_get_secret_provider.return_value = mock_secret_provider
+
+    mock_secret_volumes_config = [
+        SecretVolume(
+            container_path="/the/container/path/",
+            secret_name="the_secret_name",
+        )
+    ]
+    mock_secret_provider.decrypt_secret_raw.side_effect = ["the_secret_contents"]
+    ret = decrypt_secret_volumes(
+        secret_provider_name="vault",
+        secret_volumes_config=mock_secret_volumes_config,
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+    )
+    assert ret == {
+        "/the/container/path/the_secret_name": "the_secret_contents",
+    }
+
+    assert mock_secret_provider.decrypt_secret_raw.call_args_list == [
+        mock.call(
+            "the_secret_name",
+        ),
+    ]
+
+
+@mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
+def test_decrypt_secret_decode_true(mock_get_secret_provider):
+    mock_secret_provider = mock.Mock()
+    mock_get_secret_provider.return_value = mock_secret_provider
+
+    ret = decrypt_secret(
+        secret_provider_name="vault",
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+        secret_name="the_secret_name",
+        decode=True,
+    )
+    assert ret
+
+    mock_secret_provider.decrypt_secret.assert_called()
+    mock_secret_provider.decrypt_secret.assert_called_with("the_secret_name")
+
+
+@mock.patch("paasta_tools.secret_tools.get_secret_provider", autospec=True)
+def test_decrypt_secret_decode_false(mock_get_secret_provider):
+    mock_secret_provider = mock.Mock()
+    mock_get_secret_provider.return_value = mock_secret_provider
+
+    ret = decrypt_secret(
+        secret_provider_name="vault",
+        soa_dir="/nail/blah",
+        service_name="universe",
+        cluster_name="mesosstage",
+        secret_provider_kwargs={"some": "config"},
+        secret_name="the_secret_name",
+        decode=False,
+    )
+    assert ret
+
+    mock_secret_provider.decrypt_secret_raw.assert_called()
+    mock_secret_provider.decrypt_secret_raw.assert_called_with("the_secret_name")
