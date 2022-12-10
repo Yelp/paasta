@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
 import re
 
 import docker
@@ -2024,6 +2025,8 @@ def test_run_docker_container_secret_volumes(
     mock_open.return_value = mock_open
     mock_open.__enter__.return_value = mock_text_io_wrapper
 
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
     return_code = run_docker_container(
         docker_client=mock_docker_client,
         service="fake_service",
@@ -2122,6 +2125,8 @@ def test_run_docker_container_secret_volumes_for_teams(
     mock_open.return_value = mock_open
     mock_open.__enter__.return_value = mock_text_io_wrapper
 
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
     mock_is_secrets_for_teams_enabled.return_value = True
     return_code = run_docker_container(
         docker_client=mock_docker_client,
