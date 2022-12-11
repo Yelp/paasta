@@ -10,6 +10,7 @@ from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.setup_kubernetes_job import create_application_object
 from paasta_tools.setup_kubernetes_job import get_kubernetes_deployment_config
+from paasta_tools.setup_kubernetes_job import get_service_instances_with_valid_names
 from paasta_tools.setup_kubernetes_job import main
 from paasta_tools.setup_kubernetes_job import parse_args
 from paasta_tools.setup_kubernetes_job import setup_kube_deployments
@@ -22,6 +23,51 @@ def test_parse_args():
         "paasta_tools.setup_kubernetes_job.argparse", autospec=True
     ) as mock_argparse:
         assert parse_args() == mock_argparse.ArgumentParser.return_value.parse_args()
+
+
+def test_main_logging():
+    with mock.patch(
+        "paasta_tools.setup_kubernetes_job.metrics_lib.get_metrics_interface",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.parse_args", autospec=True
+    ) as mock_parse_args, mock.patch(
+        "paasta_tools.setup_kubernetes_job.KubeClient", autospec=True
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
+        autospec=True,
+    ) as mock_service_instance_configs_list, mock.patch(
+        "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
+    ), mock.patch(
+        "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
+    ) as mock_setup_kube_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.logging", autospec=True
+    ) as mock_logging:
+        mock_setup_kube_deployments.return_value = True
+        mock_parse_args.return_value.verbose = True
+        mock_kube_deploy_config = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="cluster",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_service_instance_configs_list.return_value = [
+            (True, mock_kube_deploy_config)
+        ]
+        with raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+        mock_logging.basicConfig.assert_called_with(level=mock_logging.DEBUG)
+        assert not mock_logging.getLogger.called
+
+        mock_parse_args.return_value.verbose = False
+        with raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+        mock_logging.basicConfig.assert_called_with(level=mock_logging.INFO)
+        assert mock_logging.getLogger.called
+        mock_logging.getLogger.assert_called_with("kazoo")
 
 
 def test_main():
@@ -68,6 +114,15 @@ def test_main():
         with raises(SystemExit) as e:
             main()
         assert e.value.code == 1
+
+
+def test_get_service_instances_with_valid_names():
+    mock_service_instances = ["kurupt.f_m"]
+    ret = get_service_instances_with_valid_names(
+        service_instances=mock_service_instances
+    )
+
+    assert ret == [("kurupt", "f_m", None, None)]
 
 
 def test_main_invalid_job_name():
@@ -124,6 +179,36 @@ def test_get_kubernetes_deployment_config():
             soa_dir="nail/blah",
         )
         assert ret == [(False, None)]
+
+        mock_kube_deploy = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="instance",
+            cluster="fake_cluster",
+            soa_dir="nail/blah",
+            config_dict={},
+            branch_dict=None,
+        )
+        mock_load_kubernetes_service_config_no_cache.side_effect = None
+        mock_load_kubernetes_service_config_no_cache.return_value = mock_kube_deploy
+        ret = get_kubernetes_deployment_config(
+            service_instances_with_valid_names=mock_get_service_instances_with_valid_names,
+            cluster="fake_cluster",
+            soa_dir="nail/blah",
+        )
+
+        assert ret == [
+            (
+                True,
+                KubernetesDeploymentConfig(
+                    service="kurupt",
+                    instance="instance",
+                    cluster="fake_cluster",
+                    soa_dir="nail/blah",
+                    config_dict={},
+                    branch_dict=None,
+                ),
+            )
+        ]
 
 
 def test_create_application_object():
