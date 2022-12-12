@@ -1,3 +1,12 @@
+paasta-tools (0.153.0) xenial; urgency=medium
+
+  * 0.153.0 tagged with 'make release'
+    Commit: Merge pull request #3509 from Yelp/u/dpopes/PAASTA-17798-
+    secret-volumes-poc  PAASTA-17798: Support secret volumes for paasta
+    local-run
+
+ -- Daniel Popescu <dpopes@yelp.com>  Mon, 12 Dec 2022 12:34:45 -0800
+
 paasta-tools (0.152.2) xenial; urgency=medium
 
   * 0.152.2 tagged with 'make release'
