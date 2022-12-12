@@ -100,6 +100,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
@@ -4045,7 +4046,8 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
-def test_get_kubernetes_secret():
+@pytest.mark.parametrize("decode", [(True), (False)])
+def test_get_kubernetes_secret(decode):
     with mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient",
         autospec=True,
@@ -4070,12 +4072,16 @@ def test_get_kubernetes_secret():
         mock_kube_client.return_value = mock_client
 
         ret = get_kubernetes_secret(
-            mock_client, secret_name, service_name, mock_namespace
+            mock_client,
+            service_name,
+            secret_name,
+            mock_namespace,
+            decode,
         )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
-        assert ret == "something"
+        assert ret == "something" if decode else b"something"
 
 
 def test_get_kubernetes_secret_env_variables():
@@ -4112,12 +4118,77 @@ def test_get_kubernetes_secret_env_variables():
         assert mock_get_kubernetes_secret.call_args_list == [
             mock.call(
                 mock_client,
-                "SECRET_NAME1",
                 "universe",
+                "SECRET_NAME1",
+                decode=True,
             ),
             mock.call(
                 mock_client,
-                "SECRET_NAME2",
                 "universe",
+                "SECRET_NAME2",
+                decode=True,
             ),
         ]
+
+
+def test_get_kubernetes_secret_volumes_multiple_files():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                items=[
+                    {"key": "the_secret_name1", "path": "the_secret_filename1"},
+                    {"key": "the_secret_name2", "path": "the_secret_filename2"},
+                ],
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = [
+            "secret_contents1",
+            "secret_contents2",
+        ]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_filename1": "secret_contents1",
+            "/the/container/path/the_secret_filename2": "secret_contents2",
+        }
+
+
+def test_get_kubernetes_secret_volumes_single_file():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                secret_name="the_secret_name",
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = ["secret_contents"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_name": "secret_contents",
+        }
