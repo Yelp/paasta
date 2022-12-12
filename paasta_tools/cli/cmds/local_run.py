@@ -770,10 +770,9 @@ def run_docker_container(
     ) and healthcheck_mode is not None
 
     for container_mount_path, secret_content in secret_volumes.items():
-        temp_secret_folder = tempfile.TemporaryDirectory(
-            dir=os.environ.get("TMPDIR", "/nail/tmp")
-        )
-        temp_secret_filename = os.path.join(temp_secret_folder.name, str(uuid.uuid4()))
+        temp_secret_folder = tempfile.mktemp(dir=os.environ.get("TMPDIR", "/nail/tmp"))
+        os.makedirs(temp_secret_folder, exist_ok=True)
+        temp_secret_filename = os.path.join(temp_secret_folder, str(uuid.uuid4()))
         # write the secret contents
         # Permissions will automatically be set to readable by "users" group
         # TODO: Make this readable only by "nobody" user? What about other non-standard users that people sometimes use inside the container?

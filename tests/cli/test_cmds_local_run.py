@@ -1994,7 +1994,9 @@ def test_missing_volumes_skipped(mock_exists):
     new_callable=mock.mock_open(),
     autospec=None,
 )
+@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes(
+    mock_os_makedirs,
     mock_open,
     mock_decrypt_secret_volumes,
     mock_get_healthcheck_for_instance,
@@ -2092,7 +2094,9 @@ def test_run_docker_container_secret_volumes(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
+@mock.patch("os.makedirs", autospec=True)
 def test_run_docker_container_secret_volumes_for_teams(
+    mock_os_makedirs,
     mock_kube_client,
     mock_is_secrets_for_teams_enabled,
     mock_open,
