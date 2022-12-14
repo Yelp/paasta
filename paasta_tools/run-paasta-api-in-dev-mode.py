@@ -35,8 +35,8 @@ def main():
     # export config path
     os.environ["PAASTA_SYSTEM_CONFIG_DIR"] = config_path
 
-    api_single_process = os.environ["PAASTA_API_SINGLE_PROCESS"]
-    if api_single_process.lower() == "true":
+    api_single_process = os.environ.get("PAASTA_API_SINGLE_PROCESS")
+    if api_single_process is not None and api_single_process.lower() == "true":
         from paasta_tools.api.api import redirect_argv
 
         with redirect_argv(["-D", "-c", cluster, str(port)]):
