@@ -1,3 +1,12 @@
+paasta-tools (0.153.1) xenial; urgency=medium
+
+  * 0.153.1 tagged with 'make release'
+    Commit: Merge pull request #3405 from
+    Yelp/u/cuza/reusing_python_to_run_api_in_dev_mode  Reusing the same
+    python process to make IntelliJ and VSCode debuggers happier
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 14 Dec 2022 13:48:02 -0800
+
 paasta-tools (0.153.0) xenial; urgency=medium
 
   * 0.153.0 tagged with 'make release'
