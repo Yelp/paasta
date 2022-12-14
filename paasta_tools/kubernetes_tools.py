@@ -345,6 +345,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_path: str
     prometheus_port: int
     routable_ip: bool
+    namespace: str
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
@@ -1506,7 +1507,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 return (
                     KubeClient()
                     .deployments.read_namespaced_stateful_set(
-                        name=self.get_sanitised_deployment_name(), namespace="paasta"
+                        name=self.get_sanitised_deployment_name(),
+                        namespace=self.get_namespace(),
                     )
                     .spec.replicas
                 )
@@ -1514,7 +1516,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 return (
                     KubeClient()
                     .deployments.read_namespaced_deployment(
-                        name=self.get_sanitised_deployment_name(), namespace="paasta"
+                        name=self.get_sanitised_deployment_name(),
+                        namespace=self.get_namespace(),
                     )
                     .spec.replicas
                 )
@@ -1632,6 +1635,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return self.config_dict.get("bounce_health_params", {}).get(
             "check_envoy", system_paasta_config.get_enable_envoy_readiness_check()
         )
+
+    def get_namespace(self) -> str:
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", "paasta")
 
     def get_pod_management_policy(self) -> str:
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""
@@ -2226,13 +2233,16 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
 
 
 def list_deployments(
-    kube_client: KubeClient, label_selector: str = ""
+    kube_client: KubeClient,
+    label_selector: str = "",
+    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
+
     deployments = kube_client.deployments.list_namespaced_deployment(
-        namespace="paasta", label_selector=label_selector
+        namespace=namespace, label_selector=label_selector
     )
     stateful_sets = kube_client.deployments.list_namespaced_stateful_set(
-        namespace="paasta", label_selector=label_selector
+        namespace=namespace, label_selector=label_selector
     )
     return [
         KubeDeployment(
@@ -2497,11 +2507,12 @@ def pod_disruption_budget_for_service_instance(
     service: str,
     instance: str,
     max_unavailable: Union[str, int],
+    namespace: str = "paasta",
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(
             name=get_kubernetes_app_name(service, instance),
-            namespace="paasta",
+            namespace=namespace,
         ),
         spec=V1beta1PodDisruptionBudgetSpec(
             max_unavailable=max_unavailable,
@@ -2516,10 +2527,12 @@ def pod_disruption_budget_for_service_instance(
 
 
 def create_pod_disruption_budget(
-    kube_client: KubeClient, pod_disruption_budget: V1beta1PodDisruptionBudget
+    kube_client: KubeClient,
+    pod_disruption_budget: V1beta1PodDisruptionBudget,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.policy.create_namespaced_pod_disruption_budget(
-        namespace="paasta", body=pod_disruption_budget
+        namespace=namespace, body=pod_disruption_budget
     )
 
 
@@ -2533,11 +2546,15 @@ def set_instances_for_kubernetes_service(
     formatted_application.spec.replicas = instance_count
     if service_config.get_persistent_volumes():
         kube_client.deployments.patch_namespaced_stateful_set_scale(
-            name=name, namespace="paasta", body=formatted_application
+            name=name,
+            namespace=service_config.get_namespace(),
+            body=formatted_application,
         )
     else:
         kube_client.deployments.patch_namespaced_deployment_scale(
-            name=name, namespace="paasta", body=formatted_application
+            name=name,
+            namespace=service_config.get_namespace(),
+            body=formatted_application,
         )
 
 
@@ -2547,11 +2564,11 @@ def get_annotations_for_kubernetes_service(
     name = service_config.get_sanitised_deployment_name()
     if service_config.get_persistent_volumes():
         k8s_service = kube_client.deployments.read_namespaced_stateful_set(
-            name=name, namespace="paasta"
+            name=name, namespace=service_config.get_namespace()
         )
     else:
         k8s_service = kube_client.deployments.read_namespaced_deployment(
-            name=name, namespace="paasta"
+            name=name, namespace=service_config.get_namespace()
         )
     return k8s_service.metadata.annotations if k8s_service.metadata.annotations else {}
 
@@ -2566,24 +2583,34 @@ def write_annotation_for_kubernetes_service(
     formatted_application.metadata.annotations = annotation
     if service_config.get_persistent_volumes():
         kube_client.deployments.patch_namespaced_stateful_set(
-            name=name, namespace="paasta", body=formatted_application
+            name=name,
+            namespace=service_config.get_namespace(),
+            body=formatted_application,
         )
     else:
         kube_client.deployments.patch_namespaced_deployment(
-            name=name, namespace="paasta", body=formatted_application
+            name=name,
+            namespace=service_config.get_namespace(),
+            body=formatted_application,
         )
 
 
-def list_all_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
-    return list_deployments(kube_client)
+def list_all_deployments(
+    kube_client: KubeClient, namespace: str = "paasta"
+) -> Sequence[KubeDeployment]:
+    return list_deployments(kube_client=kube_client, namespace=namespace)
 
 
 def list_matching_deployments(
-    service: str, instance: str, kube_client: KubeClient
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
     return list_deployments(
         kube_client,
         f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        namespace=namespace,
     )
 
 
@@ -2850,54 +2877,68 @@ def get_kubernetes_app_by_name(
 
 
 def create_deployment(
-    kube_client: KubeClient, formatted_deployment: V1Deployment
+    kube_client: KubeClient,
+    formatted_deployment: V1Deployment,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.create_namespaced_deployment(
-        namespace="paasta", body=formatted_deployment
+        namespace=namespace, body=formatted_deployment
     )
 
 
 def update_deployment(
-    kube_client: KubeClient, formatted_deployment: V1Deployment
+    kube_client: KubeClient,
+    formatted_deployment: V1Deployment,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.replace_namespaced_deployment(
         name=formatted_deployment.metadata.name,
-        namespace="paasta",
+        namespace=namespace,
         body=formatted_deployment,
     )
 
 
 def patch_deployment(
-    kube_client: KubeClient, formatted_deployment: V1Deployment
+    kube_client: KubeClient,
+    formatted_deployment: V1Deployment,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment.metadata.name,
-        namespace="paasta",
+        namespace=namespace,
         body=formatted_deployment,
     )
 
 
-def delete_deployment(kube_client: KubeClient, deployment_name: str) -> None:
+def delete_deployment(
+    kube_client: KubeClient,
+    deployment_name: str,
+    namespace: str = "paasta",
+) -> None:
     return kube_client.deployments.delete_namespaced_deployment(
         name=deployment_name,
-        namespace="paasta",
+        namespace=namespace,
     )
 
 
 def create_stateful_set(
-    kube_client: KubeClient, formatted_stateful_set: V1StatefulSet
+    kube_client: KubeClient,
+    formatted_stateful_set: V1StatefulSet,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.create_namespaced_stateful_set(
-        namespace="paasta", body=formatted_stateful_set
+        namespace=namespace, body=formatted_stateful_set
     )
 
 
 def update_stateful_set(
-    kube_client: KubeClient, formatted_stateful_set: V1StatefulSet
+    kube_client: KubeClient,
+    formatted_stateful_set: V1StatefulSet,
+    namespace: str = "paasta",
 ) -> None:
     return kube_client.deployments.replace_namespaced_stateful_set(
         name=formatted_stateful_set.metadata.name,
-        namespace="paasta",
+        namespace=namespace,
         body=formatted_stateful_set,
     )
 
@@ -3456,12 +3497,102 @@ def get_kubernetes_secret_name(
     return name
 
 
-def get_kubernetes_secret(secret_name: str, service_name: str, cluster: str) -> str:
+def get_kubernetes_secret(
+    kube_client: KubeClient,
+    service_name: str,
+    secret_name: str,
+    namespace: str = "paasta",
+    decode: bool = True,
+) -> Union[str, bytes]:
+
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
-    kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=cluster)
     secret_data = kube_client.core.read_namespaced_secret(
-        name=k8s_secret_name, namespace="paasta"
+        name=k8s_secret_name, namespace=namespace
     ).data[secret_name]
-    secret = base64.b64decode(secret_data).decode("utf-8")
-    return secret
+    # String secrets (e.g. yaml config files) need to be decoded
+    # Binary secrets (e.g. TLS Keystore or binary certificate files) cannot be decoded
+    if decode:
+        return base64.b64decode(secret_data).decode("utf-8")
+    return base64.b64decode(secret_data)
+
+
+def get_kubernetes_secret_env_variables(
+    kube_client: KubeClient,
+    environment: Dict[str, str],
+    service_name: str,
+) -> Dict[str, str]:
+    decrypted_secrets = {}
+    for k, v in environment.items():
+        if is_secret_ref(v):
+            secret_name = get_secret_name_from_ref(v)
+
+            # decode=True because environment variables need to be strings and not binary
+            # Cast to string to make mypy / type-hints happy
+            decrypted_secrets[k] = str(
+                get_kubernetes_secret(
+                    kube_client,
+                    service_name,
+                    secret_name,
+                    decode=True,
+                )
+            )
+    return decrypted_secrets
+
+
+def get_kubernetes_secret_volumes(
+    kube_client: KubeClient,
+    secret_volumes_config: Sequence[SecretVolume],
+    service_name: str,
+) -> Dict[str, Union[str, bytes]]:
+    secret_volumes = {}
+    # The config might look one of two ways:
+    # Implicit full path consisting of the container path and the secret name:
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     secret_name: the_secret_1
+    #   - container_path: /nail/bar
+    #     secret_name: the_secret_2
+    #
+    # This ^ should result in two files (/nail/foo/the_secret_1, /nail/foo/the_secret_2)
+    #
+    # OR
+    #
+    # Multiple files within a folder with explicit path names
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     items:
+    #     - key: the_secret_1
+    #       path: bar.yaml
+    #     - key: the_secret_2
+    #       path: baz.yaml
+    #
+    # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
+    # We need to support both cases
+    for secret_volume in secret_volumes_config:
+        if "items" not in secret_volume:
+            secret_contents = get_kubernetes_secret(
+                kube_client,
+                service_name,
+                secret_volume["secret_name"],
+                decode=False,
+            )
+            # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
+            secret_volumes[
+                os.path.join(
+                    secret_volume["container_path"], secret_volume["secret_name"]
+                )
+            ] = secret_contents
+        else:
+            for item in secret_volume["items"]:
+                secret_contents = get_kubernetes_secret(
+                    kube_client,
+                    service_name,
+                    item["key"],  # secret_name
+                    decode=False,
+                )
+                secret_volumes[
+                    os.path.join(secret_volume["container_path"], item["path"])
+                ] = secret_contents
+
+    return secret_volumes

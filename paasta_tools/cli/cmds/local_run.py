@@ -18,6 +18,7 @@ import os
 import shutil
 import socket
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -37,15 +38,21 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
 from paasta_tools.generate_deployments_for_service import build_docker_image_name
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
+from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
+from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -688,22 +695,52 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
+    secret_volumes = {}
     if not skip_secrets:
-        try:
-            secret_environment = decrypt_secret_environment_variables(
-                secret_provider_name=secret_provider_name,
-                environment=environment,
-                soa_dir=soa_dir,
-                service_name=service,
-                cluster_name=instance_config.cluster,
-                secret_provider_kwargs=secret_provider_kwargs,
-            )
-        except Exception as e:
-            print(f"Failed to retrieve secrets with {e.__class__.__name__}: {e}")
-            print(
-                "If you don't need the secrets for local-run, you can add --skip-secrets"
-            )
-            sys.exit(1)
+        # if secrets_for_owner_team enabled in yelpsoa for service
+        if is_secrets_for_teams_enabled(service, soa_dir):
+            try:
+                kube_client = KubeClient(
+                    config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
+                )
+                secret_environment = get_kubernetes_secret_env_variables(
+                    kube_client, environment, service
+                )
+                secret_volumes = get_kubernetes_secret_volumes(
+                    kube_client, instance_config.get_secret_volumes(), service
+                )
+            except Exception as e:
+                print(
+                    f"Failed to retrieve kubernetes secrets with {e.__class__.__name__}: {e}"
+                )
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
+        else:
+            try:
+                secret_environment = decrypt_secret_environment_variables(
+                    secret_provider_name=secret_provider_name,
+                    environment=environment,
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+                secret_volumes = decrypt_secret_volumes(
+                    secret_provider_name=secret_provider_name,
+                    secret_volumes_config=instance_config.get_secret_volumes(),
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_name=instance_config.cluster,
+                    secret_provider_kwargs=secret_provider_kwargs,
+                )
+            except Exception as e:
+                print(f"Failed to decrypt secrets with {e.__class__.__name__}: {e}")
+                print(
+                    "If you don't need the secrets for local-run, you can add --skip-secrets"
+                )
+                sys.exit(1)
         environment.update(secret_environment)
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
@@ -731,6 +768,28 @@ def run_docker_container(
     simulate_healthcheck = (
         healthcheck_only or healthcheck
     ) and healthcheck_mode is not None
+
+    for container_mount_path, secret_content in secret_volumes.items():
+        temp_secret_folder = tempfile.mktemp(dir=os.environ.get("TMPDIR", "/nail/tmp"))
+        os.makedirs(temp_secret_folder, exist_ok=True)
+        temp_secret_filename = os.path.join(temp_secret_folder, str(uuid.uuid4()))
+        # write the secret contents
+        # Permissions will automatically be set to readable by "users" group
+        # TODO: Make this readable only by "nobody" user? What about other non-standard users that people sometimes use inside the container?
+        # -rw-r--r-- 1 dpopes users 3.2K Nov 28 19:16 854bdbad-30b8-4681-ae4e-854cb28075c5
+        try:
+            # First try to write the file as a string
+            # This is for text like config files
+            with open(temp_secret_filename, "w") as f:
+                f.write(secret_content)
+        except TypeError:
+            # If that fails, try to write it as bytes
+            # This is for binary files like TLS keys
+            with open(temp_secret_filename, "wb") as f:
+                f.write(secret_content)
+
+        # Append this to the list of volumes passed to docker run
+        volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
 
     docker_run_args = dict(
         memory=memory,

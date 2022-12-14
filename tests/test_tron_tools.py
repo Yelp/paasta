@@ -3,6 +3,7 @@ import hashlib
 
 import mock
 import pytest
+import yaml
 
 from paasta_tools import tron_tools
 from paasta_tools import utils
@@ -18,6 +19,20 @@ MOCK_SYSTEM_PAASTA_CONFIG = utils.SystemPaastaConfig(
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
         "spark_k8s_role": "spark",
+    },
+    "/mock/system/configs",
+)
+
+MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
+    {
+        "docker_registry": "mock_registry",
+        "volumes": [],
+        "dockercfg_location": "/mock/dockercfg",
+        "tron_default_pool_override": "big_pool",
+        "tron_use_k8s": True,
+        "tron_k8s_cluster_overrides": {
+            "paasta-dev-test": "paasta-dev",
+        },
     },
     "/mock/system/configs",
 )
@@ -295,6 +310,9 @@ class TestTronJobConfig:
             "my_job", job_dict, cluster, load_deployments=False, soa_dir=soa_dir
         )
         mock_load_deployments.side_effect = NoDeploymentsAvailable
+        mock_load_system_paasta_config.return_value.get_tron_k8s_cluster_overrides.return_value = (
+            {}
+        )
 
         action_config = job_config._get_action_config("normal", action_dict)
 
@@ -486,7 +504,10 @@ class TestTronJobConfig:
         assert len(errors) == 3
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_invalid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_invalid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -503,7 +524,10 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_valid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -520,8 +544,9 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     def test_validate_invalid_action_deploy_group(
-        self, mock_get_pipeline_deploy_groups
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
         job_dict = {
             "node": "batch_server",
@@ -543,7 +568,10 @@ class TestTronJobConfig:
         assert len(errors) == 1
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_action_valid_deploy_group(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_action_valid_deploy_group(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -562,7 +590,10 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_monitoring(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_monitoring(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -576,7 +607,10 @@ class TestTronJobConfig:
         assert len(errors) == 0
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
-    def test_validate_monitoring_without_team(self, mock_get_pipeline_deploy_groups):
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_monitoring_without_team(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
         job_dict = {
             "node": "batch_server",
             "schedule": "daily 12:10:00",
@@ -591,8 +625,9 @@ class TestTronJobConfig:
         assert job_config.get_monitoring()["team"] == "default_team"
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     def test_validate_monitoring_with_invalid_team(
-        self, mock_get_pipeline_deploy_groups
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
         job_dict = {
             "node": "batch_server",
@@ -729,7 +764,12 @@ class TestTronTools:
         )
         with mock.patch.object(
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
-        ), mock.patch("paasta_tools.utils.load_system_paasta_config", autospec=True):
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config", autospec=True
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+        ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "mesos"
 
@@ -778,6 +818,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -943,7 +986,9 @@ class TestTronTools:
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
-            "--conf spark.sql.shuffle.partitions=8 "
+            "--conf spark.sql.shuffle.partitions=12 "
+            "--conf spark.sql.files.minPartitionNum=12 "
+            "--conf spark.default.parallelism=12 "
             "--conf spark.eventLog.enabled=true "
             "--conf spark.eventLog.dir=s3a://test "
             # actual script to run
@@ -973,6 +1018,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": "my_job.do_something",
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "compute_infra_platform_experience",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "true"},
             "cap_drop": CAPS_DROP,
@@ -1057,6 +1103,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -1077,7 +1126,7 @@ class TestTronTools:
                 "paasta.yelp.com/instance": expected_instance_label,
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
-                "yelp.com/owner": "some_sensu_team",
+                "yelp.com/owner": "compute_infra_platform_experience",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1147,6 +1196,9 @@ class TestTronTools:
             "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1257,12 +1309,6 @@ class TestTronTools:
             complete_config, Dumper=mock.ANY, default_flow_style=mock.ANY
         )
 
-    @mock.patch(
-        "paasta_tools.tron_tools.load_system_paasta_config", mock.Mock(), autospec=None
-    )
-    @mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", mock.Mock(), autospec=None
-    )
     def test_create_complete_config_e2e(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
         job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
@@ -1288,12 +1334,21 @@ fake_job:
             """
         )
 
-        tronfig = tron_tools.create_complete_config(
-            service="fake_service",
-            cluster="fake-cluster",
-            soa_dir=str(soa_dir),
-            k8s_enabled=True,
-        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ):
+            tronfig = tron_tools.create_complete_config(
+                service="fake_service",
+                cluster="fake-cluster",
+                soa_dir=str(soa_dir),
+                k8s_enabled=True,
+            )
 
         hasher = hashlib.md5()
         hasher.update(tronfig.encode("UTF-8"))
@@ -1303,7 +1358,54 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "0cf8f28701c88533c89b5b142fc829b0"
+        assert hasher.hexdigest() == "f740410f7ae2794f9924121c1115e15d"
+
+    def test_override_default_pool_override(self, tmpdir):
+        soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
+        job_file = soa_dir.mkdir("fake_service").join("tron-fake-cluster.yaml")
+        job_file.write(
+            """
+fake_job:
+    node: paasta
+    time_zone: 'US/Pacific'
+    schedule: 'cron 0 * * * *'
+    monitoring:
+        team: fake_team
+        ticket: false
+        slack_channels: ['#fake-channel']
+    deploy_group: dev
+    actions:
+        run:
+            command: '/bin/true'
+            cpus: 0.1
+            mem: 1000
+            retries: 3
+            env:
+                PAASTA_ENV_VAR: 'fake_value'
+            """
+        )
+        with mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ), mock.patch(
+            "paasta_tools.utils.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ):
+            tronfig = tron_tools.create_complete_config(
+                service="fake_service",
+                cluster="fake-cluster",
+                soa_dir=str(soa_dir),
+                k8s_enabled=True,
+            )
+        print(yaml.safe_load(tronfig)["jobs"]["fake_job"]["actions"]["run"])
+        assert (
+            yaml.safe_load(tronfig)["jobs"]["fake_job"]["actions"]["run"][
+                "node_selectors"
+            ]["yelp.com/pool"]
+            == MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES.get_tron_default_pool_override()
+        )
 
     @mock.patch("paasta_tools.tron_tools.load_tron_service_config", autospec=True)
     @mock.patch("paasta_tools.tron_tools.format_tron_job_dict", autospec=True)
@@ -1380,7 +1482,7 @@ fake_job:
 
     @mock.patch("os.walk", autospec=True)
     @mock.patch("os.listdir", autospec=True)
-    def test_get_tron_namespaces(self, mock_ls, mock_walk):
+    def test_get_tron_namespaces_paasta(self, mock_ls, mock_walk):
         cluster_name = "stage"
         expected_namespaces = ["app", "foo"]
         mock_walk.return_value = [
@@ -1390,10 +1492,51 @@ fake_job:
         ]
         soa_dir = "/my_soa_dir"
 
-        namespaces = tron_tools.get_tron_namespaces(
-            cluster=cluster_name, soa_dir=soa_dir
-        )
-        assert sorted(expected_namespaces) == sorted(namespaces)
+        with mock.patch(
+            "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
+        ) as mock_filter_templates_from_config:
+            mock_filter_templates_from_config.return_value = {
+                "test-tron-job": {"actions": {"run": {"executor": "paasta"}}},
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
+
+    @mock.patch("os.walk", autospec=True)
+    @mock.patch("os.listdir", autospec=True)
+    def test_get_tron_namespaces_spark(self, mock_ls, mock_walk):
+        cluster_name = "stage"
+        expected_namespaces = ["app", "foo"]
+        mock_walk.return_value = [
+            ("/my_soa_dir/foo", [], ["tron-stage.yaml"]),
+            ("/my_soa_dir/app", [], ["tron-stage.yaml"]),
+            ("my_soa_dir/woo", [], ["something-else.yaml"]),
+        ]
+        soa_dir = "/my_soa_dir"
+
+        with mock.patch(
+            "paasta_tools.tron_tools.filter_templates_from_config", autospec=True
+        ) as mock_filter_templates_from_config:
+
+            mock_filter_templates_from_config.return_value = {
+                "test-spark-job": {"actions": {"run": {"executor": "ssh"}}},
+            }
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["paasta"],
+            )
+            assert [] == sorted(namespaces)
+            namespaces = tron_tools.get_tron_namespaces(
+                cluster=cluster_name,
+                soa_dir=soa_dir,
+                tron_executors=["ssh"],
+            )
+            assert sorted(expected_namespaces) == sorted(namespaces)
 
     @mock.patch("glob.glob", autospec=True)
     def test_list_tron_clusters(self, mock_glob):

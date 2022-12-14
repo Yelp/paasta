@@ -97,8 +97,10 @@ from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
@@ -2618,7 +2620,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(mock_client) == []
+    assert list_all_deployments(kube_client=mock_client) == []
 
     mock_items = [
         mock.Mock(
@@ -2815,8 +2817,12 @@ def test_max_unavailable(instances, bmf):
 
 
 def test_pod_disruption_budget_for_service_instance():
+    mock_namespace = "paasta"
     x = pod_disruption_budget_for_service_instance(
-        service="foo_1", instance="bar_1", max_unavailable="10%"
+        service="foo_1",
+        instance="bar_1",
+        max_unavailable="10%",
+        namespace=mock_namespace,
     )
 
     assert x.metadata.name == "foo--1-bar--1"
@@ -2831,7 +2837,8 @@ def test_pod_disruption_budget_for_service_instance():
 def test_create_pod_disruption_budget():
     mock_client = mock.Mock()
     mock_pdr = V1beta1PodDisruptionBudget()
-    create_pod_disruption_budget(mock_client, mock_pdr)
+    mock_namespace = "paasta"
+    create_pod_disruption_budget(mock_client, mock_pdr, mock_namespace)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
         namespace="paasta", body=mock_pdr
     )
@@ -2839,7 +2846,8 @@ def test_create_pod_disruption_budget():
 
 def test_create_deployment():
     mock_client = mock.Mock()
-    create_deployment(mock_client, V1Deployment(api_version="some"))
+    mock_namespace = "paasta"
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -2847,7 +2855,12 @@ def test_create_deployment():
 
 def test_update_deployment():
     mock_client = mock.Mock()
-    update_deployment(mock_client, V1Deployment(metadata=V1ObjectMeta(name="kurupt")))
+    mock_namespace = "paasta"
+    update_deployment(
+        mock_client,
+        V1Deployment(metadata=V1ObjectMeta(name="kurupt")),
+        mock_namespace,
+    )
     mock_client.deployments.replace_namespaced_deployment.assert_called_with(
         namespace="paasta",
         name="kurupt",
@@ -2855,7 +2868,7 @@ def test_update_deployment():
     )
 
     mock_client = mock.Mock()
-    create_deployment(mock_client, V1Deployment(api_version="some"))
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -3017,7 +3030,8 @@ def test_list_custom_resources():
 
 def test_create_stateful_set():
     mock_client = mock.Mock()
-    create_stateful_set(mock_client, V1StatefulSet(api_version="some"))
+    mock_namespace = "paasta"
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -3025,8 +3039,11 @@ def test_create_stateful_set():
 
 def test_update_stateful_set():
     mock_client = mock.Mock()
+    mock_namespace = "paasta"
     update_stateful_set(
-        mock_client, V1StatefulSet(metadata=V1ObjectMeta(name="kurupt"))
+        mock_client,
+        V1StatefulSet(metadata=V1ObjectMeta(name="kurupt")),
+        mock_namespace,
     )
     mock_client.deployments.replace_namespaced_stateful_set.assert_called_with(
         namespace="paasta",
@@ -3035,7 +3052,7 @@ def test_update_stateful_set():
     )
 
     mock_client = mock.Mock()
-    create_stateful_set(mock_client, V1StatefulSet(api_version="some"))
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -4029,17 +4046,19 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
-def test_get_kubernetes_secret():
+@pytest.mark.parametrize("decode", [(True), (False)])
+def test_get_kubernetes_secret(decode):
     with mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient",
         autospec=True,
     ) as mock_kube_client, mock.patch(
         "paasta_tools.kubernetes_tools.os.environ", autospec=True
-    ) as mock_env:
-
+    ) as mock_env, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+        mock_namespace = "paasta"
         service_name = "example_service"
         secret_name = "example_secret"
-        cluster = "messosstage"
         mock_env.return_value = {}
 
         mock_client = mock.Mock()
@@ -4052,8 +4071,124 @@ def test_get_kubernetes_secret():
         )
         mock_kube_client.return_value = mock_client
 
-        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        ret = get_kubernetes_secret(
+            mock_client,
+            service_name,
+            secret_name,
+            mock_namespace,
+            decode,
+        )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
-        assert ret == "something"
+        assert ret == "something" if decode else b"something"
+
+
+def test_get_kubernetes_secret_env_variables():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.is_secret_ref",
+        autospec=True,
+    ) as mock_is_secret_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
+    ) as mock_get_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_environment = {
+            "MY": "aaa",
+            "SECRET_NAME1": "SECRET(SECRET_NAME1)",
+            "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+        }
+
+        mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_env_variables(
+            kube_client=mock_client,
+            environment=mock_environment,
+            service_name="universe",
+        )
+        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+
+        assert mock_get_kubernetes_secret.call_args_list == [
+            mock.call(
+                mock_client,
+                "universe",
+                "SECRET_NAME1",
+                decode=True,
+            ),
+            mock.call(
+                mock_client,
+                "universe",
+                "SECRET_NAME2",
+                decode=True,
+            ),
+        ]
+
+
+def test_get_kubernetes_secret_volumes_multiple_files():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                items=[
+                    {"key": "the_secret_name1", "path": "the_secret_filename1"},
+                    {"key": "the_secret_name2", "path": "the_secret_filename2"},
+                ],
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = [
+            "secret_contents1",
+            "secret_contents2",
+        ]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_filename1": "secret_contents1",
+            "/the/container/path/the_secret_filename2": "secret_contents2",
+        }
+
+
+def test_get_kubernetes_secret_volumes_single_file():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                secret_name="the_secret_name",
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = ["secret_contents"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_name": "secret_contents",
+        }

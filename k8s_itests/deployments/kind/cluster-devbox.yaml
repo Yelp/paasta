@@ -5,4 +5,8 @@ network: k8s_kindest
 nodes:
   - role: control-plane
   - role: worker
+    labels:
+      yelp.com/pool: default
   - role: worker
+    labels:
+      yelp.com/pool: default

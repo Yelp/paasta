@@ -60,8 +60,15 @@ def parse_args():
         action="store_true",
         help=(
             "Whether or not to sanitise service instance names before displaying "
-            "them. Kubernets apps created by PaaSTA use sanitised names."
+            "them. Kubernetes apps created by PaaSTA use sanitised names."
         ),
+    )
+    parser.add_argument(
+        "-t",
+        "--instance-type",
+        dest="instance_type",
+        default="kubernetes",
+        help="Instance type to list, default %(default)s",
     )
     args = parser.parse_args()
     return args
@@ -72,7 +79,7 @@ def main():
     soa_dir = args.soa_dir
     cluster = args.cluster
     instances = get_services_for_cluster(
-        cluster=cluster, instance_type="kubernetes", soa_dir=soa_dir
+        cluster=cluster, instance_type=args.instance_type, soa_dir=soa_dir
     )
     service_instances = []
     for name, instance in instances:

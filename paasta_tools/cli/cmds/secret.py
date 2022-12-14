@@ -21,6 +21,8 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import _log_audit
@@ -238,7 +240,8 @@ def paasta_secret(args):
             )
             sys.exit(1)
 
-        print(get_kubernetes_secret(args.secret_name, service, clusters[0]))
+        kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=clusters[0])
+        print(get_kubernetes_secret(kube_client, service, args.secret_name))
         return
 
     secret_provider = _get_secret_provider_for_service(
