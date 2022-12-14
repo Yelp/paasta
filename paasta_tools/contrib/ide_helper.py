@@ -197,6 +197,7 @@ def install_vscode_support() -> None:
                     "PAASTA_TEST_CLUSTER": "norcal-devc",
                     "PYDEVD_USE_CYTHON": "NO",
                     "PYTHONUNBUFFERED": "1",
+                    "PAASTA_API_SINGLE_PROCESS": "true",
                 },
             },
             {
@@ -213,6 +214,7 @@ def install_vscode_support() -> None:
                     "PAASTA_TEST_CLUSTER": "kind-${env:USER}-k8s-test",
                     "PYDEVD_USE_CYTHON": "NO",
                     "PYTHONUNBUFFERED": "1",
+                    "PAASTA_API_SINGLE_PROCESS": "true",
                     "PAASTA_API_SOA_DIR": "./soa_config_playground/",
                 },
             },
