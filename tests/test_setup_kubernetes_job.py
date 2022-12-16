@@ -85,7 +85,9 @@ def test_main():
         "paasta_tools.setup_kubernetes_job.ensure_namespace", autospec=True
     ) as mock_ensure_namespace, mock.patch(
         "paasta_tools.setup_kubernetes_job.setup_kube_deployments", autospec=True
-    ) as mock_setup_kube_deployments:
+    ) as mock_setup_kube_deployments, mock.patch(
+        "paasta_tools.setup_kubernetes_job.log", autospec=True
+    ) as mock_log_obj:
         mock_setup_kube_deployments.return_value = True
         mock_metrics_interface = mock_get_metrics_interface.return_value
         mock_kube_deploy_config = KubernetesDeploymentConfig(
@@ -113,6 +115,14 @@ def test_main():
         mock_setup_kube_deployments.return_value = False
         with raises(SystemExit) as e:
             main()
+        assert e.value.code == 1
+
+        mock_service_instance_configs_list.return_value = [(False, None)]
+        with raises(SystemExit) as e:
+            main()
+        mock_log_obj.error.assert_called_with(
+            "Exiting because could not read kubernetes configuration file"
+        )
         assert e.value.code == 1
 
 
@@ -159,6 +169,7 @@ def test_get_kubernetes_deployment_config():
         mock_get_service_instances_with_valid_names = [
             ("kurupt", "instance", None, None)
         ]
+        # Testing NoDeploymentsAvailable exception
         mock_load_kubernetes_service_config_no_cache.side_effect = (
             NoDeploymentsAvailable
         )
@@ -169,6 +180,7 @@ def test_get_kubernetes_deployment_config():
         )
         assert ret == [(True, None)]
 
+        # Testing NoConfigurationForServiceError exception
         mock_load_kubernetes_service_config_no_cache.side_effect = (
             NoConfigurationForServiceError
         )
@@ -180,6 +192,7 @@ def test_get_kubernetes_deployment_config():
         )
         assert ret == [(False, None)]
 
+        # Testing returning a KubernetesDeploymentConfig
         mock_kube_deploy = KubernetesDeploymentConfig(
             service="kurupt",
             instance="instance",

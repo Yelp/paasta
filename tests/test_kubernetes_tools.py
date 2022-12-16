@@ -2659,8 +2659,11 @@ def test_list_all_matching_deployments(addl_labels, replicas):
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
-    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -2746,8 +2749,11 @@ def test_list_all_deployments(addl_labels, replicas):
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
-    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -3758,7 +3764,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configcf6569a4"
+            == "config52071d00"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3804,7 +3810,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configbafa0ff8"
+            == "configb47c4ff7"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

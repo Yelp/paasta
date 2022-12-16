@@ -112,36 +112,44 @@ def main() -> None:
         service_instances=args.service_instance_list
     )
 
-    # returns a list of pairs of (error?, KubernetesDeploymentConfig) for every service_instance
+    if len(service_instances_with_valid_names) != len(args.service_instance_list):
+        service_instances_valid = False
+        log.error("Exiting because invalid service instance was specified.")
+
+    # returns a list of pairs of (No error?, KubernetesDeploymentConfig) for every service_instance
     service_instance_configs_list = get_kubernetes_deployment_config(
         service_instances_with_valid_names=service_instances_with_valid_names,
         cluster=args.cluster or load_system_paasta_config().get_cluster(),
         soa_dir=soa_dir,
     )
-    if ((False, None) in service_instance_configs_list) or (
-        len(service_instances_with_valid_names) != len(args.service_instance_list)
-    ):
+
+    if (False, None) in service_instance_configs_list:
         service_instances_valid = False
+        log.error("Exiting because could not read kubernetes configuration file")
+
     if service_instance_configs_list:
         for _, service_instance_config in service_instance_configs_list:
-            ensure_namespace(
-                kube_client, namespace=service_instance_config.get_namespace()
-            )
+            if service_instance_config:
+                ensure_namespace(
+                    kube_client, namespace=service_instance_config.get_namespace()
+                )
 
         setup_kube_succeeded = setup_kube_deployments(
             kube_client=kube_client,
             cluster=args.cluster or load_system_paasta_config().get_cluster(),
+            service_instance_configs_list=service_instance_configs_list,
             rate_limit=args.rate_limit,
             soa_dir=soa_dir,
             metrics_interface=deploy_metrics,
-            service_instance_configs_list=service_instance_configs_list,
         )
     else:
         setup_kube_succeeded = False
     sys.exit(0 if setup_kube_succeeded and service_instances_valid else 1)
 
 
-def get_service_instances_with_valid_names(service_instances: Sequence[str]) -> list:
+def get_service_instances_with_valid_names(
+    service_instances: Sequence[str],
+) -> List[Tuple[str, str, str, str]]:
     service_instances_with_valid_names = [
         decompose_job_id(service_instance)
         for service_instance in service_instances
@@ -181,24 +189,24 @@ def get_kubernetes_deployment_config(
                 "No deployments found for %s.%s in cluster %s. Skipping."
                 % (service_instance[0], service_instance[1], cluster)
             )
-            return [(True, None)]
+            service_instance_configs_list.append((True, None))
         except NoConfigurationForServiceError:
             error_msg = (
                 f"Could not read kubernetes configuration file for %s.%s in cluster %s"
                 % (service_instance[0], service_instance[1], cluster)
             )
             log.error(error_msg)
-            return [(False, None)]
+            service_instance_configs_list.append((False, None))
     return service_instance_configs_list
 
 
 def setup_kube_deployments(
     kube_client: KubeClient,
     cluster: str,
+    service_instance_configs_list: List[Tuple[bool, KubernetesDeploymentConfig]],
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
     metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
-    service_instance_configs_list: list = None,
 ) -> bool:
 
     if service_instance_configs_list:

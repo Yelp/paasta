@@ -2027,6 +2027,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # replica count
         if ahash["spec"] is not None:
             del ahash["spec"]["replicas"]
+
+        if ahash["metadata"] is not None:
+            ahash["metadata"]["namespace"] = None
+
         # soa-configs SHA
         try:
             for container in ahash["spec"]["template"]["spec"]["containers"]:
@@ -2626,9 +2630,7 @@ def write_annotation_for_kubernetes_service(
         )
 
 
-def list_all_matching_deployments(
-    kube_client: KubeClient, label_selector: str = ""
-) -> Sequence[KubeDeployment]:
+def list_all_matching_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
     label_selectors = "paasta.yelp.com/service"
     return list_deployments_in_all_namespaces(
         kube_client=kube_client, label_selector=label_selectors
@@ -2636,7 +2638,7 @@ def list_all_matching_deployments(
 
 
 def list_all_deployments(
-    kube_client: KubeClient, label_selector: str = "", namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[KubeDeployment]:
     return list_deployments(kube_client=kube_client, namespace=namespace)
 
