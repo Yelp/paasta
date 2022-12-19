@@ -232,6 +232,7 @@ def setup_kube_deployments(
                 "paasta_service": app.kube_deployment.service,
                 "paasta_instance": app.kube_deployment.instance,
                 "paasta_cluster": cluster,
+                "paasta_namespace": app.kube_deployment.namespace,
             }
             try:
                 if (

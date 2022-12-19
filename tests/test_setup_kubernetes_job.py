@@ -397,6 +397,7 @@ def test_setup_kube_deployment_create_update():
                 "paasta_cluster": "fake_cluster",
                 "paasta_service": "kurupt",
                 "paasta_instance": "fm",
+                "paasta_namespace": "paasta",
                 "deploy_event": "update",
             },
         )
