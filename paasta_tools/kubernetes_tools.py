@@ -3541,18 +3541,22 @@ def get_kubernetes_secret_name(
 
 def get_kubernetes_secret(
     kube_client: KubeClient,
-    secret_name: str,
     service_name: str,
+    secret_name: str,
     namespace: str = "paasta",
-) -> str:
+    decode: bool = True,
+) -> Union[str, bytes]:
 
     k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
 
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace=namespace
     ).data[secret_name]
-    secret = base64.b64decode(secret_data).decode("utf-8")
-    return secret
+    # String secrets (e.g. yaml config files) need to be decoded
+    # Binary secrets (e.g. TLS Keystore or binary certificate files) cannot be decoded
+    if decode:
+        return base64.b64decode(secret_data).decode("utf-8")
+    return base64.b64decode(secret_data)
 
 
 def get_kubernetes_secret_env_variables(
@@ -3564,7 +3568,73 @@ def get_kubernetes_secret_env_variables(
     for k, v in environment.items():
         if is_secret_ref(v):
             secret_name = get_secret_name_from_ref(v)
-            decrypted_secrets[k] = get_kubernetes_secret(
-                kube_client, secret_name, service_name
+
+            # decode=True because environment variables need to be strings and not binary
+            # Cast to string to make mypy / type-hints happy
+            decrypted_secrets[k] = str(
+                get_kubernetes_secret(
+                    kube_client,
+                    service_name,
+                    secret_name,
+                    decode=True,
+                )
             )
     return decrypted_secrets
+
+
+def get_kubernetes_secret_volumes(
+    kube_client: KubeClient,
+    secret_volumes_config: Sequence[SecretVolume],
+    service_name: str,
+) -> Dict[str, Union[str, bytes]]:
+    secret_volumes = {}
+    # The config might look one of two ways:
+    # Implicit full path consisting of the container path and the secret name:
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     secret_name: the_secret_1
+    #   - container_path: /nail/bar
+    #     secret_name: the_secret_2
+    #
+    # This ^ should result in two files (/nail/foo/the_secret_1, /nail/foo/the_secret_2)
+    #
+    # OR
+    #
+    # Multiple files within a folder with explicit path names
+    #   secret_volumes:
+    #   - container_path: /nail/foo
+    #     items:
+    #     - key: the_secret_1
+    #       path: bar.yaml
+    #     - key: the_secret_2
+    #       path: baz.yaml
+    #
+    # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
+    # We need to support both cases
+    for secret_volume in secret_volumes_config:
+        if "items" not in secret_volume:
+            secret_contents = get_kubernetes_secret(
+                kube_client,
+                service_name,
+                secret_volume["secret_name"],
+                decode=False,
+            )
+            # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
+            secret_volumes[
+                os.path.join(
+                    secret_volume["container_path"], secret_volume["secret_name"]
+                )
+            ] = secret_contents
+        else:
+            for item in secret_volume["items"]:
+                secret_contents = get_kubernetes_secret(
+                    kube_client,
+                    service_name,
+                    item["key"],  # secret_name
+                    decode=False,
+                )
+                secret_volumes[
+                    os.path.join(secret_volume["container_path"], item["path"])
+                ] = secret_contents
+
+    return secret_volumes

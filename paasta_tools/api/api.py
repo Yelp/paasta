@@ -16,6 +16,7 @@
 Responds to paasta service and instance requests.
 """
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -272,8 +273,7 @@ def main(argv=None):
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
 
-    os.execlp(
-        os.path.join(sys.exec_prefix, "bin", "gunicorn"),
+    gunicorn_args = [
         "gunicorn",
         "-w",
         str(args.workers),
@@ -284,7 +284,23 @@ def main(argv=None):
         "--graceful-timeout",
         str(args.max_request_seconds),
         "paasta_tools.api.api:application",
-    )
+    ]
+
+    if argv:
+        with redirect_argv(gunicorn_args):
+            from gunicorn.app import wsgiapp
+
+            wsgiapp.run()
+    else:
+        os.execlp(os.path.join(sys.exec_prefix, "bin", "gunicorn"), *gunicorn_args)
+
+
+@contextlib.contextmanager
+def redirect_argv(args):
+    sys._argv = sys.argv[:]
+    sys.argv = args
+    yield
+    sys.argv = sys._argv
 
 
 if __name__ == "__main__":
