@@ -2630,7 +2630,8 @@ def write_annotation_for_kubernetes_service(
         )
 
 
-def list_all_matching_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
+def list_all_paasta_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
+    """Gets deployments in all namespaces by passing the service label selector"""
     label_selectors = "paasta.yelp.com/service"
     return list_deployments_in_all_namespaces(
         kube_client=kube_client, label_selector=label_selectors

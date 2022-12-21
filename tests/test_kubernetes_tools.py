@@ -117,7 +117,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
-from paasta_tools.kubernetes_tools import list_all_matching_deployments
+from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
@@ -2613,7 +2613,7 @@ def test_ensure_namespace():
         ({"paasta.yelp.com/autoscaled": "true"}, None),
     ),
 )
-def test_list_all_matching_deployments(addl_labels, replicas):
+def test_list_all_paasta_deployments(addl_labels, replicas):
     mock_deployments = mock.Mock(items=[])
     mock_stateful_sets = mock.Mock(items=[])
     mock_client = mock.Mock(
@@ -2625,7 +2625,7 @@ def test_list_all_matching_deployments(addl_labels, replicas):
         )
     )
 
-    assert list_all_matching_deployments(kube_client=mock_client) == []
+    assert list_all_paasta_deployments(kube_client=mock_client) == []
     mock_items = [
         mock.Mock(
             metadata=mock.Mock(
@@ -2675,7 +2675,7 @@ def test_list_all_matching_deployments(addl_labels, replicas):
             ),
         )
     )
-    assert list_all_matching_deployments(mock_client) == [
+    assert list_all_paasta_deployments(mock_client) == [
         KubeDeployment(
             service="kurupt",
             instance="fm",
