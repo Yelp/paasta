@@ -610,7 +610,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_kubernetes_namespace(self) -> str:
-        return KUBERNETES_NAMESPACE
+        return self.get_namespace()
 
     def get_cmd(self) -> Optional[List[str]]:
         cmd = super(LongRunningServiceConfig, self).get_cmd()
