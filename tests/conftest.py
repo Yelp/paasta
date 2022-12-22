@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import time
 
 import mock
@@ -8,9 +9,11 @@ from paasta_tools.utils import SystemPaastaConfig
 
 
 def time_to_feel_bad(*args, **kwarg):
-    raise Exception(
-        "This test called time.sleep() which is bad and slows down our test suite"
-    )
+    # VSCode (debugpy) and PyCharm (pydevd) debuggers should not raise this Exception 
+    if "debugpy" not in sys.modules or "_pydevd_bundle" not in sys.modules:
+        raise Exception(
+            "This test called time.sleep() which is bad and slows down our test suite"
+        )
 
 
 time.true_slow_sleep = time.sleep
