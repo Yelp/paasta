@@ -1,3 +1,12 @@
+paasta-tools (0.154.0) xenial; urgency=medium
+
+  * 0.154.0 tagged with 'make release'
+    Commit: Merge pull request #3515 from Yelp/u/emanelsabban/PAASTA-
+    17825  Ensure paasta status supports arbitrary namespaces - PAASTA-
+    17825
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 22 Dec 2022 07:05:18 -0800
+
 paasta-tools (0.153.1) xenial; urgency=medium
 
   * 0.153.1 tagged with 'make release'
