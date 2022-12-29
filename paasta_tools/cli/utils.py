@@ -1065,7 +1065,10 @@ def trigger_deploys(
 
 
 def verify_instances(
-    args_instances: str, service: str, clusters: Sequence[str]
+    args_instances: str,
+    service: str,
+    clusters: Sequence[str],
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Sequence[str]:
     """Verify that a list of instances specified by user is correct for this service.
 
@@ -1076,7 +1079,7 @@ def verify_instances(
     """
     unverified_instances = args_instances.split(",")
     service_instances: Set[str] = list_all_instances_for_service(
-        service, clusters=clusters
+        service, clusters=clusters, soa_dir=soa_dir
     )
 
     misspelled_instances: Sequence[str] = [
