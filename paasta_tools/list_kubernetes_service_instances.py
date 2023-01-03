@@ -29,6 +29,7 @@ Command line options:
 import argparse
 import random
 import sys
+from typing import Sequence
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.utils import compose_job_id
@@ -104,7 +105,7 @@ def main():
         service_instances.append(app_name)
     if args.shuffle:
         random.shuffle(service_instances)
-        
+
     if args.group_lines:
         group_lines(service_instances, args.group_lines)
     else:
