@@ -74,14 +74,14 @@ def parse_args():
     parser.add_argument(
         "--shuffle",
         action="store_true",
-        help=("Random shuffle the instances output."),
+        help=("Shuffle the instances output."),
     )
     parser.add_argument(
         "--group-lines",
         type=int,
         dest="group_lines",
         help=(
-            "Groups output into a desired number of lines with each instance element separated by spaces"
+            "Groups instances output into a desired number of lines with each instance separated by spaces"
         ),
     )
     args = parser.parse_args()
