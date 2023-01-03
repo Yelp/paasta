@@ -104,6 +104,7 @@ def main():
         service_instances.append(app_name)
     if args.shuffle:
         random.shuffle(service_instances)
+        
     if args.group_lines:
         group_lines(service_instances, args.group_lines)
     else:
