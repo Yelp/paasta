@@ -81,7 +81,7 @@ def parse_args():
         type=int,
         dest="group_lines",
         help=(
-            "Groups instances output into a desired number of lines with each instance separated by spaces"
+            "Groups instances output into a desired number of lines with each instance separated by a space"
         ),
     )
     args = parser.parse_args()
