@@ -74,7 +74,7 @@ def parse_args():
     parser.add_argument(
         "--shuffle",
         action="store_true",
-        help=("Shuffle the instances output."),
+        help="Shuffle the instances output.",
     )
     parser.add_argument(
         "--group-lines",
