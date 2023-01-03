@@ -29,7 +29,7 @@ Command line options:
 import argparse
 import random
 import sys
-from typing import Sequence
+from typing import List
 
 from paasta_tools import kubernetes_tools
 from paasta_tools.utils import compose_job_id
@@ -113,8 +113,8 @@ def main():
     sys.exit(0)
 
 
-def group_lines(service_instances: Sequence[str], num_lines: int) -> None:
-    output = [[] for _ in range(num_lines)]
+def group_lines(service_instances: List[str], num_lines: int) -> None:
+    output: List[List[str]] = [[] for _ in range(num_lines)]
     curr_index = 0
     for instance in service_instances:
         output[curr_index].append(instance)
