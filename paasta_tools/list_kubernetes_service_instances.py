@@ -112,7 +112,7 @@ def main():
     sys.exit(0)
 
 
-def group_lines(service_instances, num_lines):
+def group_lines(service_instances: Sequence[str], num_lines: int) -> None:
     output = [[] for _ in range(num_lines)]
     curr_index = 0
     for instance in service_instances:
