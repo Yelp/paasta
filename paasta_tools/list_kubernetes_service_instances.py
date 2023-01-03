@@ -27,6 +27,7 @@ Command line options:
 - -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
 """
 import argparse
+import random
 import sys
 
 from paasta_tools import kubernetes_tools
@@ -70,6 +71,19 @@ def parse_args():
         default="kubernetes",
         help="Instance type to list, default %(default)s",
     )
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help=("Random shuffle the instances output."),
+    )
+    parser.add_argument(
+        "--group-lines",
+        type=int,
+        dest="group_lines",
+        help=(
+            "Groups output into a desired number of lines with each instance element separated by spaces"
+        ),
+    )
     args = parser.parse_args()
     return args
 
@@ -88,8 +102,24 @@ def main():
         else:
             app_name = compose_job_id(name, instance)
         service_instances.append(app_name)
-    print("\n".join(service_instances))
+    if args.shuffle:
+        random.shuffle(service_instances)
+    if args.group_lines:
+        group_lines(service_instances, args.group_lines)
+    else:
+        print("\n".join(service_instances))
     sys.exit(0)
+
+
+def group_lines(service_instances, num_lines):
+    output = [[] for _ in range(num_lines)]
+    curr_index = 0
+    for instance in service_instances:
+        output[curr_index].append(instance)
+        curr_index = (curr_index + 1) % num_lines
+
+    for group in output:
+        print(" ".join(group))
 
 
 if __name__ == "__main__":
