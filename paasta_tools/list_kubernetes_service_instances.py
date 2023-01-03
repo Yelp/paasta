@@ -74,14 +74,14 @@ def parse_args():
     parser.add_argument(
         "--shuffle",
         action="store_true",
-        help=("Shuffle the instances output."),
+        help="Shuffle the instances output.",
     )
     parser.add_argument(
         "--group-lines",
         type=int,
         dest="group_lines",
         help=(
-            "Groups instances output into a desired number of lines with each instance separated by spaces"
+            "Groups instances output into a desired number of lines with each instance separated by a space"
         ),
     )
     args = parser.parse_args()
@@ -104,6 +104,7 @@ def main():
         service_instances.append(app_name)
     if args.shuffle:
         random.shuffle(service_instances)
+        
     if args.group_lines:
         group_lines(service_instances, args.group_lines)
     else:
@@ -111,7 +112,7 @@ def main():
     sys.exit(0)
 
 
-def group_lines(service_instances, num_lines):
+def group_lines(service_instances: Sequence[str], num_lines: int) -> None:
     output = [[] for _ in range(num_lines)]
     curr_index = 0
     for instance in service_instances:
