@@ -1,3 +1,12 @@
+paasta-tools (0.155.0) xenial; urgency=medium
+
+  * 0.155.0 tagged with 'make release'
+    Commit: Merge pull request #3522 from
+    Yelp/u/cuza/adding_group_lines_to_paasta  Adding group_lines.py
+    functionality to paasta
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 04 Jan 2023 06:48:59 -0800
+
 paasta-tools (0.154.0) xenial; urgency=medium
 
   * 0.154.0 tagged with 'make release'
