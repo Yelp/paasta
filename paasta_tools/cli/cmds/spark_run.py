@@ -722,21 +722,25 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     return spark_app_name
 
 
-def _memory_string_to_float(value: int, input_unit: str, output_unit: str) -> float:
+def memory_string_to_float(memory_str: int, output_unit: str) -> float:
+    # Reference: https://spark.apache.org/docs/latest/configuration.html
     units = {
         "k": 1 << 10,
         "m": 1 << 20,
         "g": 1 << 30,
         "t": 1 << 40,
     }
-    input_unit = input_unit.lower()
-    output_unit = output_unit.lower()
+    match = re.match(r"([0-9]+)([a-z])", memory_str)
+    memory_val = int(match[1])
+    input_unit = match[2]
+    output_unit = output_unit
+
     if input_unit not in units.keys():
         raise ValueError(f"invalid input unit: {input_unit}")
     if output_unit not in units.keys():
         raise ValueError(f"invalid output unit: {output_unit}")
 
-    return value * units[input_unit] / units[output_unit]
+    return memory_val * units[input_unit] / units[output_unit]
 
 
 def _calculate_spark_driver_memory_overhead_mb(spark_conf: Mapping[str, str]) -> int:
@@ -744,15 +748,20 @@ def _calculate_spark_driver_memory_overhead_mb(spark_conf: Mapping[str, str]) ->
     memory_overhead_factor = DEFAULT_SPARK_DRIVER_OVERHEAD_FACTOR
     try:
         if "spark.driver.memoryOverhead" in spark_conf:
-            return int(
-                max(
-                    MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
-                    spark_conf.get(
-                        "spark.driver.memoryOverhead",
-                        MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
-                    ),
-                )
+            memory_overhead_str = spark_conf.get(
+                "spark.driver.memoryOverhead", MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB
             )
+            if str(memory_overhead_str).isnumeric():
+                memory_overhead_mb = int(memory_overhead_str)
+            else:
+                memory_overhead_mb = int(
+                    memory_string_to_float(memory_overhead_str, "m")
+                )
+            return max(
+                MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
+                memory_overhead_mb,
+            )
+
         memory_overhead_factor = float(
             spark_conf.get("spark.driver.memoryOverheadFactor", memory_overhead_factor)
         )
@@ -785,7 +794,10 @@ def _calculate_docker_memory_limit(
         memory_unit = match[2]
 
         # Cap spark driver memory to avoid OOM errors & nodes becoming unscheduleable
-        target_memory_mb = _memory_string_to_float(memory_val, memory_unit, "m")
+        target_memory_mb = (
+            memory_string_to_float(docker_memory_limit_str, "m")
+            * DOCKER_RESOURCE_ADJUSTMENT_FACTOR
+        )
         memory_overhead_mb = _calculate_spark_driver_memory_overhead_mb(spark_conf)
         memory_upper_bound = DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB - memory_overhead_mb
         if target_memory_mb > memory_upper_bound:
