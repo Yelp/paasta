@@ -68,6 +68,9 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
+DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB = 128 * 1024
+DEFAULT_SPARK_DRIVER_OVERHEAD_FACTOR = 0.1
+MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB = 384
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -181,6 +184,14 @@ def add_subparser(subparsers):
         help=(
             "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
             "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
+        ),
+        default=None,
+    )
+    list_parser.add_argument(
+        "--docker-disk-limit",
+        help=(
+            "Set docker disk limit."
+            "Note: The default disk limit will be same as the memory limit if this argument is not provided."
         ),
         default=None,
     )
@@ -448,6 +459,7 @@ def get_docker_run_cmd(
     nvidia,
     docker_memory_limit,
     docker_cpu_limit,
+    docker_disk_limit,
 ):
     print(
         f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} core(s) respectively."
@@ -455,6 +467,7 @@ def get_docker_run_cmd(
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
     cmd.append(f"--cpus={docker_cpu_limit}")
+    cmd.append(f"--storage-opt size={docker_disk_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
 
@@ -657,6 +670,7 @@ def run_docker_container(
     nvidia,
     docker_memory_limit,
     docker_cpu_limit,
+    docker_disk_limit,
 ) -> int:
 
     docker_run_args = dict(
@@ -668,6 +682,7 @@ def run_docker_container(
         nvidia=nvidia,
         docker_memory_limit=docker_memory_limit,
         docker_cpu_limit=docker_cpu_limit,
+        docker_disk_limit=docker_disk_limit,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
     if dry_run:
@@ -707,6 +722,48 @@ def get_spark_app_name(original_docker_cmd: Union[Any, str, List[str]]) -> str:
     return spark_app_name
 
 
+def _memory_string_to_float(value: int, input_unit: str, output_unit: str) -> float:
+    units = {
+        "k": 1 << 10,
+        "m": 1 << 20,
+        "g": 1 << 30,
+        "t": 1 << 40,
+    }
+    input_unit = input_unit.lower()
+    output_unit = output_unit.lower()
+    if input_unit not in units.keys():
+        raise ValueError(f"invalid input unit: {input_unit}")
+    if output_unit not in units.keys():
+        raise ValueError(f"invalid output unit: {output_unit}")
+
+    return value * units[input_unit] / units[output_unit]
+
+
+def _calculate_spark_driver_memory_overhead_mb(spark_conf: Mapping[str, str]) -> int:
+    # Reference: https://spark.apache.org/docs/latest/configuration.html
+    memory_overhead_factor = DEFAULT_SPARK_DRIVER_OVERHEAD_FACTOR
+    try:
+        if "spark.driver.memoryOverhead" in spark_conf:
+            return int(
+                max(
+                    MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
+                    spark_conf.get(
+                        "spark.driver.memoryOverhead",
+                        MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
+                    ),
+                )
+            )
+        memory_overhead_factor = float(
+            spark_conf.get("spark.driver.memoryOverheadFactor", memory_overhead_factor)
+        )
+    except Exception as e:
+        log.exception(f"error calculating spark driver memory overhead: {e}")
+    return max(
+        MIN_SPARK_DRIVER_MEMORY_OVERHEAD_MB,
+        int(memory_overhead_factor * DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB),
+    )
+
+
 def _calculate_docker_memory_limit(
     spark_conf: Mapping[str, str], memory_limit: Optional[str]
 ) -> str:
@@ -726,7 +783,16 @@ def _calculate_docker_memory_limit(
         match = re.match(r"([0-9]+)([a-z]*)", docker_memory_limit_str)
         memory_val = int(match[1]) * adjustment_factor
         memory_unit = match[2]
-        docker_memory_limit = f"{memory_val}{memory_unit}"
+
+        # Cap spark driver memory to avoid OOM errors & nodes becoming unscheduleable
+        target_memory_mb = _memory_string_to_float(memory_val, memory_unit, "m")
+        memory_overhead_mb = _calculate_spark_driver_memory_overhead_mb(spark_conf)
+        memory_upper_bound = DEFAULT_SPARK_DRIVER_NODE_MEMORY_MB - memory_overhead_mb
+        if target_memory_mb > memory_upper_bound:
+            memory_val = memory_upper_bound
+            memory_unit = "m"
+            log.warn(f"memory limit is too large, capped to {memory_val}{memory_unit}")
+        docker_memory_limit_str = f"{memory_val}{memory_unit}"
     except Exception as e:
         # For any reason it fails, continue with default value
         print(
@@ -734,7 +800,7 @@ def _calculate_docker_memory_limit(
         )
         raise
 
-    return docker_memory_limit
+    return docker_memory_limit_str
 
 
 def _calculate_docker_cpu_limit(
@@ -769,6 +835,7 @@ def configure_and_run_docker_container(
         spark_conf,
         args.docker_cpu_limit,
     )
+    docker_disk_limit = args.docker_disk_limit or docker_memory_limit
 
     if cluster_manager == CLUSTER_MANAGER_MESOS:
         volumes = get_volumes_from_spark_mesos_configs(spark_conf)
@@ -862,6 +929,7 @@ def configure_and_run_docker_container(
         nvidia=args.nvidia,
         docker_memory_limit=docker_memory_limit,
         docker_cpu_limit=docker_cpu_limit,
+        docker_disk_limit=docker_disk_limit,
     )
 
 
