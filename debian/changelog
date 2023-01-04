@@ -1,3 +1,12 @@
+paasta-tools (0.156.0) xenial; urgency=medium
+
+  * 0.156.0 tagged with 'make release'
+    Commit: Merge pull request #3523 from Yelp/revert-3504-
+    u/chi/cap_spark_driver_memory  Revert "Cap spark driver memory and
+    disk usage"
+
+ -- Chi Chang <chi@yelp.com>  Wed, 04 Jan 2023 10:29:20 -0800
+
 paasta-tools (0.155.0) xenial; urgency=medium
 
   * 0.155.0 tagged with 'make release'
