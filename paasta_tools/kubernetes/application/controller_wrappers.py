@@ -60,7 +60,9 @@ class Application(ABC):
             == "false"
             else None
         )
-        self.kube_deployment = KubeDeployment(replicas=replicas, **attrs)
+        self.kube_deployment = KubeDeployment(
+            replicas=replicas, namespace=item.metadata.namespace, **attrs
+        )
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
@@ -111,7 +113,7 @@ class Application(ABC):
         Update related Kubernetes API objects such as HPAs and Pod Disruption Budgets
         :param kube_client:
         """
-        self.ensure_pod_disruption_budget(kube_client)
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
@@ -139,7 +141,7 @@ class Application(ABC):
             )
 
     def ensure_pod_disruption_budget(
-        self, kube_client: KubeClient
+        self, kube_client: KubeClient, namespace: str = "paasta"
     ) -> V1beta1PodDisruptionBudget:
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
@@ -154,6 +156,7 @@ class Application(ABC):
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
             max_unavailable=max_unavailable,
+            namespace=namespace,
         )
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
@@ -181,7 +184,9 @@ class Application(ABC):
         else:
             logging.info(f"creating poddisruptionbudget {pdr.metadata.name}")
             return create_pod_disruption_budget(
-                kube_client=kube_client, pod_disruption_budget=pdr
+                kube_client=kube_client,
+                pod_disruption_budget=pdr,
+                namespace=pdr.metadata.namespace,
             )
 
 
@@ -226,8 +231,12 @@ class DeploymentWrapper(Application):
         )
 
     def create(self, kube_client: KubeClient) -> None:
-        create_deployment(kube_client=kube_client, formatted_deployment=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        create_deployment(
+            kube_client=kube_client,
+            formatted_deployment=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
         self.sync_horizontal_pod_autoscaler(kube_client)
 
     def deep_delete_and_create(self, kube_client: KubeClient) -> None:
@@ -286,7 +295,11 @@ class DeploymentWrapper(Application):
                 target=self.deep_delete_and_create, args=[KubeClient()]
             ).start()
             return
-        update_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        update_deployment(
+            kube_client=kube_client,
+            formatted_deployment=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
 
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
@@ -410,11 +423,19 @@ class StatefulSetWrapper(Application):
         self.delete_pod_disruption_budget(kube_client)
 
     def create(self, kube_client: KubeClient):
-        create_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        create_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
 
     def update(self, kube_client: KubeClient):
-        update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
+        update_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
 
 
 def get_application_wrapper(
