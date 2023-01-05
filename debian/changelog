@@ -1,3 +1,17 @@
+paasta-tools (0.157.0) xenial; urgency=medium
+
+  * 0.157.0 tagged with 'make release'
+    Commit: Added support for deploying/updating services in diff
+    namespaces using SKJ - PAASTA-17775 (#3505)  * Added support for
+    deploying/updating services in diff namespaces using SKJ  * fixed
+    the mock tests  * added a unit test for
+    list_all_matching_deployments in kubernetes_tools  * added a check
+    before calling ensure namespace since app could be none  * Added
+    namespace to app_dimensions to emit namespace as well in events for
+    skj  * Addressed code review
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 05 Jan 2023 08:36:22 -0800
+
 paasta-tools (0.156.0) xenial; urgency=medium
 
   * 0.156.0 tagged with 'make release'
