@@ -117,6 +117,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
@@ -1908,6 +1909,7 @@ class TestKubernetesDeploymentConfig:
                     "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
+                namespace="paasta",
             )
 
     @pytest.mark.parametrize(
@@ -2611,6 +2613,98 @@ def test_ensure_namespace():
         ({"paasta.yelp.com/autoscaled": "true"}, None),
     ),
 )
+def test_list_all_paasta_deployments(addl_labels, replicas):
+    mock_deployments = mock.Mock(items=[])
+    mock_stateful_sets = mock.Mock(items=[])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_deployment_for_all_namespaces=mock.Mock(return_value=mock_deployments),
+            list_stateful_set_for_all_namespaces=mock.Mock(
+                return_value=mock_stateful_sets
+            ),
+        )
+    )
+
+    assert list_all_paasta_deployments(kube_client=mock_client) == []
+    mock_items = [
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_service": "kurupt",
+                    "yelp.com/paasta_instance": "fm",
+                    "yelp.com/paasta_git_sha": "a12345",
+                    "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
+                },
+                namespace="paasta",
+            )
+        ),
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_service": "kurupt",
+                    "yelp.com/paasta_instance": "am",
+                    "yelp.com/paasta_git_sha": "a12345",
+                    "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "am",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
+                },
+                namespace="test",
+            )
+        ),
+    ]
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
+    mock_deployments = mock.Mock(items=[mock_items[0]])
+    mock_stateful_sets = mock.Mock(items=[mock_items[1]])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_deployment_for_all_namespaces=mock.Mock(return_value=mock_deployments),
+            list_stateful_set_for_all_namespaces=mock.Mock(
+                return_value=mock_stateful_sets
+            ),
+        )
+    )
+    assert list_all_paasta_deployments(mock_client) == [
+        KubeDeployment(
+            service="kurupt",
+            instance="fm",
+            git_sha="a12345",
+            namespace="paasta",
+            image_version=None,
+            config_sha="b12345",
+            replicas=replicas,
+        ),
+        KubeDeployment(
+            service="kurupt",
+            instance="am",
+            git_sha="a12345",
+            namespace="test",
+            image_version=None,
+            config_sha="b12345",
+            replicas=replicas,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "addl_labels,replicas",
+    (
+        ({}, 3),
+        ({"paasta.yelp.com/autoscaled": "false"}, 3),
+        ({"paasta.yelp.com/autoscaled": "true"}, None),
+    ),
+)
 def test_list_all_deployments(addl_labels, replicas):
     mock_deployments = mock.Mock(items=[])
     mock_stateful_sets = mock.Mock(items=[])
@@ -2635,7 +2729,8 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
         mock.Mock(
@@ -2650,12 +2745,16 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
-    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -2669,6 +2768,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="fm",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
@@ -2677,6 +2777,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="am",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
