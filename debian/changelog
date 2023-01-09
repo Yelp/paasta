@@ -1,3 +1,11 @@
+paasta-tools (0.157.1) xenial; urgency=medium
+
+  * 0.157.1 tagged with 'make release'
+    Commit: Merge pull request #3524 from Yelp/u/emanelsabban/skj-fix
+    Call create_application_object only when a service instance exist
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 09 Jan 2023 13:31:01 -0800
+
 paasta-tools (0.157.0) xenial; urgency=medium
 
   * 0.157.0 tagged with 'make release'
