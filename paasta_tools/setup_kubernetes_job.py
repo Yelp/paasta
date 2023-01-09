@@ -215,13 +215,14 @@ def setup_kube_deployments(
 
     applications = [
         create_application_object(
-            cluster=service_instance.get_cluster(),
+            cluster=cluster,
             soa_dir=soa_dir,
             service_instance_config=service_instance,
         )
+        if service_instance
+        else (_, None)
         for _, service_instance in service_instance_configs_list
     ]
-
     api_updates = 0
     for _, app in applications:
         if app:
