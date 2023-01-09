@@ -1003,6 +1003,9 @@ class InstanceConfig:
             return None
         return security.get("outbound_firewall")
 
+    def get_service_account_name(self) -> Optional[str]:
+        return self.config_dict.get("service_account_name")
+
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
             return (

@@ -856,6 +856,14 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "triggered_by": action_config.get_triggered_by(),
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
+        # outside of Spark usescases, we also allow users to specify an expected-to-exist Service Account name
+        # in the Tron namespace in case an action needs specific k8s permissions (e.g., a Jolt batch may need
+        # k8s permissions to list Jolt pods in the jolt namespace to do science™ to them).
+        # if the provided Service Account does not exist, Tron should simply fail to create the Podspec and report
+        # a failure
+        # TODO: verify the above sentence
+        # NOTE: this will get overridden if an action specifies Pod Identity configs
+        "service_account_name": action_config.get_service_account_name(),
     }
 
     # while we're tranisitioning, we want to be able to cleanly fallback to Mesos
