@@ -155,8 +155,12 @@
         "allow_no_verify_deploy": {
             "type": "boolean"
         },
-        "no_verify_deploy_by_default": {
-            "type": "boolean"
+        "default_deploy_strategy": {
+            "type": "string",
+            "enum": [
+                "verify",
+                "no-verify"
+            ]
         }
     },
     "required": [
