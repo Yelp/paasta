@@ -154,6 +154,9 @@
         },
         "allow_no_verify_deploy": {
             "type": "boolean"
+        },
+        "no_verify_deploy_by_default": {
+            "type":"boolean"
         }
     },
     "required": [
