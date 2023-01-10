@@ -1381,7 +1381,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         )
         return 1
 
-    if verify_instances(args.instance, service, cluster):
+    if verify_instances(args.instance, service, cluster, soa_dir):
         return 1
 
     instance = args.instance

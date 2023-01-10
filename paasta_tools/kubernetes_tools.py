@@ -611,7 +611,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_kubernetes_namespace(self) -> str:
-        return KUBERNETES_NAMESPACE
+        return self.get_namespace()
 
     def get_cmd(self) -> Optional[List[str]]:
         cmd = super(LongRunningServiceConfig, self).get_cmd()
@@ -2630,7 +2630,8 @@ def write_annotation_for_kubernetes_service(
         )
 
 
-def list_all_matching_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
+def list_all_paasta_deployments(kube_client: KubeClient) -> Sequence[KubeDeployment]:
+    """Gets deployments in all namespaces by passing the service label selector"""
     label_selectors = "paasta.yelp.com/service"
     return list_deployments_in_all_namespaces(
         kube_client=kube_client, label_selector=label_selectors

@@ -36,7 +36,7 @@ from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import list_all_matching_deployments
+from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import decompose_job_id
@@ -112,10 +112,6 @@ def main() -> None:
         service_instances=args.service_instance_list
     )
 
-    if len(service_instances_with_valid_names) != len(args.service_instance_list):
-        service_instances_valid = False
-        log.error("Exiting because invalid service instance was specified.")
-
     # returns a list of pairs of (No error?, KubernetesDeploymentConfig) for every service_instance
     service_instance_configs_list = get_kubernetes_deployment_config(
         service_instances_with_valid_names=service_instances_with_valid_names,
@@ -123,9 +119,10 @@ def main() -> None:
         soa_dir=soa_dir,
     )
 
-    if (False, None) in service_instance_configs_list:
+    if ((False, None) in service_instance_configs_list) or (
+        len(service_instances_with_valid_names) != len(args.service_instance_list)
+    ):
         service_instances_valid = False
-        log.error("Exiting because could not read kubernetes configuration file")
 
     if service_instance_configs_list:
         for _, service_instance_config in service_instance_configs_list:
@@ -210,7 +207,7 @@ def setup_kube_deployments(
 ) -> bool:
 
     if service_instance_configs_list:
-        existing_kube_deployments = set(list_all_matching_deployments(kube_client))
+        existing_kube_deployments = set(list_all_paasta_deployments(kube_client))
         existing_apps = {
             (deployment.service, deployment.instance, deployment.namespace)
             for deployment in existing_kube_deployments
@@ -218,13 +215,14 @@ def setup_kube_deployments(
 
     applications = [
         create_application_object(
-            cluster=service_instance.get_cluster(),
+            cluster=cluster,
             soa_dir=soa_dir,
             service_instance_config=service_instance,
         )
+        if service_instance
+        else (_, None)
         for _, service_instance in service_instance_configs_list
     ]
-
     api_updates = 0
     for _, app in applications:
         if app:
@@ -232,6 +230,7 @@ def setup_kube_deployments(
                 "paasta_service": app.kube_deployment.service,
                 "paasta_instance": app.kube_deployment.instance,
                 "paasta_cluster": cluster,
+                "paasta_namespace": app.kube_deployment.namespace,
             }
             try:
                 if (
@@ -274,7 +273,7 @@ def setup_kube_deployments(
 def create_application_object(
     cluster: str,
     soa_dir: str,
-    service_instance_config: KubernetesDeploymentConfig = None,
+    service_instance_config: KubernetesDeploymentConfig,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         formatted_application = service_instance_config.format_kubernetes_app()

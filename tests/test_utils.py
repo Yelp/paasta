@@ -24,6 +24,7 @@ from typing import List
 
 import mock
 import pytest
+from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
@@ -219,17 +220,14 @@ def test_format_audit_log_line_with_details():
 
 
 try:
-    from utils import ScribeLogWriter
+    from paasta_tools.utils import ScribeLogWriter
 
     def test_ScribeLogWriter_log_raise_on_unknown_level():
         with raises(utils.NoSuchLogLevel):
             ScribeLogWriter().log("fake_service", "fake_line", "build", "BOGUS_LEVEL")
 
+    @freeze_time("2022-12-28")
     def test_ScribeLogWriter_logs_audit_messages():
-        slw = ScribeLogWriter(scribe_disable=True)
-        mock_clog = mock.Mock()
-        slw.clog = mock_clog
-
         user = "fake_user"
         host = "fake_hostname"
         action = "mark-for-deployment"
@@ -249,18 +247,19 @@ try:
             instance=instance,
         )
 
-        slw.log_audit(
-            user=user,
-            host=host,
-            action=action,
-            action_details=action_details,
-            service=service,
-            cluster=cluster,
-            instance=instance,
-        )
+        with mock.patch("paasta_tools.utils.clog", autospec=True) as mock_clog:
+            slw = ScribeLogWriter(scribe_disable=True)
+            slw.log_audit(
+                user=user,
+                host=host,
+                action=action,
+                action_details=action_details,
+                service=service,
+                cluster=cluster,
+                instance=instance,
+            )
 
-        assert mock_clog.log_line.call_count == 1
-        assert mock_clog.log_line.called_once_with(expected_log_name, expected_line)
+        mock_clog.log_line.assert_called_once_with(expected_log_name, expected_line)
 
 except ImportError:
     warnings.warn("ScribeLogWriter is unavailable")
