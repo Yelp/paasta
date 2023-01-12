@@ -41,6 +41,7 @@ class TaskAllocationInfo(NamedTuple):
     git_sha: str
     config_sha: str
     mesos_container_id: str  # Because Mesos task info does not have docker id
+    namespace: Optional[str]
 
 
 def get_container_info_from_mesos_task(
@@ -108,6 +109,7 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
                 git_sha=None,
                 config_sha=None,
                 mesos_container_id=mesos_container_id,
+                namespace=None,
             )
         )
     return info_list
@@ -247,6 +249,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                     git_sha=info.get("git_sha"),
                     config_sha=info.get("config_sha"),
                     mesos_container_id=None,
+                    namespace=namespace,
                 )
             )
 
