@@ -2734,6 +2734,15 @@ class SystemPaastaConfig:
         """
         return self.config_dict.get("tron_k8s_cluster_overrides", {})
 
+    def get_uwsgi_offset_multiplier(self) -> float:
+        """
+        Temporary configuration to allow us to slowly deprecate the usage of `offset` in uwsgi-based autoscaling
+        configurations without making a single massive change to how usage is calculated.
+
+        To be removed once PAASTA-17840 is done.
+        """
+        return self.config_dict.get("uwsgi_offset_multiplier", 1.0)
+
 
 def _run(
     command: Union[str, List[str]],
