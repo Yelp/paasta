@@ -1995,6 +1995,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
+    uwsgi_offset_multiplier: float
 
 
 def load_system_paasta_config(
