@@ -1031,6 +1031,77 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
 
+    def test_format_tron_action_dict_paasta_k8s_service_account(self):
+        action_dict = {
+            "service_account_name": "a-magic-sa",
+            "command": "echo something",
+            "service": "my_service",
+            "deploy_group": "prod",
+            "pool": "default",
+            "executor": "paasta",
+        }
+        branch_dict = {
+            "docker_image": "my_service:paasta-123abcde",
+            "git_sha": "aabbcc44",
+            "desired_state": "start",
+            "force_bounce": None,
+        }
+        action_config = tron_tools.TronActionConfig(
+            service="my_service",
+            instance="job_name.instance_name",
+            config_dict=action_dict,
+            branch_dict=branch_dict,
+            cluster="test-cluster",
+        )
+
+        with mock.patch.object(
+            action_config, "get_docker_registry", return_value="docker-registry.com:400"
+        ), mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
+            autospec=True,
+            return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.load_system_paasta_config",
+            autospec=True,
+        ):
+            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+
+        assert result == {
+            "command": "echo something",
+            "docker_image": mock.ANY,
+            "executor": "kubernetes",
+            "cpus": 1,
+            "mem": 4096,
+            "disk": 1024,
+            "cap_add": [],
+            "cap_drop": CAPS_DROP,
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": "job_name.instance_name",
+                "paasta.yelp.com/pool": "default",
+                "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "compute_infra_platform_experience",
+            },
+            "annotations": {
+                "paasta.yelp.com/routable_ip": "false",
+            },
+            "node_selectors": {"yelp.com/pool": "default"},
+            "env": mock.ANY,
+            "secret_env": {},
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
+            "extra_volumes": [],
+            "service_account_name": "a-magic-sa",
+        }
+        expected_docker = "{}/{}".format(
+            "docker-registry.com:400", branch_dict["docker_image"]
+        )
+        assert result["docker_image"] == expected_docker
+        assert result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] == "1"
+
     @pytest.mark.parametrize(
         "instance_name,expected_instance_label",
         (

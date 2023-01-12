@@ -97,6 +97,9 @@
                 "pool": {
                     "type": "string"
                 },
+                "service_account_name": {
+                    "type": "string"
+                },
                 "iam_role": {
                     "type": "string"
                 },
