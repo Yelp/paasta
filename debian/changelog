@@ -1,3 +1,17 @@
+paasta-tools (0.157.2) xenial; urgency=medium
+
+  * 0.157.2 tagged with 'make release'
+    Commit: Enable explicitly setting service_account_name in tron
+    actions (#3525)  There"s internal users that would like to configure
+    a Service Account with specific permissions for use in their
+    batches.  Right now, we can only dynamically create Service Accounts
+    - and these are generally only used for Pod Identity (or, they"re
+    mapped 1:1 with an existing Role).  This PR enables users to
+    explicitly set service_account_name in their action configs and have
+    that be plumbed all the way through to Tron
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Jan 2023 10:44:13 -0800
+
 paasta-tools (0.157.1) xenial; urgency=medium
 
   * 0.157.1 tagged with 'make release'
