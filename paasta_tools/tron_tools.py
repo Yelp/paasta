@@ -259,6 +259,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # the values for this dict can be anything since it's whatever
     # spark accepts
     spark_args: Dict[str, Any]
+    service_account_name: str
 
 
 class TronActionConfig(InstanceConfig):
@@ -594,6 +595,9 @@ class TronActionConfig(InstanceConfig):
         return self.config_dict.get(
             "pool", load_system_paasta_config().get_tron_default_pool_override()
         )
+
+    def get_service_account_name(self) -> Optional[str]:
+        return self.config_dict.get("service_account_name")
 
 
 class TronJobConfig:
