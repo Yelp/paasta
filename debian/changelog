@@ -1,3 +1,14 @@
+paasta-tools (0.157.3) xenial; urgency=medium
+
+  * 0.157.3 tagged with 'make release'
+    Commit: Enable setting a multiplier to uwsgi offset config (#3529)
+    This will allow us to slowly lower the impact of the offset
+    parameter by decreasing this value from 1.0 -> 0 rather than
+    completely removing it all at once (and potentially exposing
+    problems hidden by our overscaling)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 13 Jan 2023 09:57:55 -0800
+
 paasta-tools (0.157.2) xenial; urgency=medium
 
   * 0.157.2 tagged with 'make release'
