@@ -720,7 +720,7 @@ def assume_aws_role(
         cmd = subprocess.run(assume_role_cmd, shell=True, stdout=subprocess.PIPE)
         if cmd.returncode != 0:
             print(
-                "Error assuming pod identity role. Use --skip-pod-identity to run without pod identity role",
+                "Error assuming pod identity role. Remove --assume-pod-identity to run without pod identity role, or specify another role via --assume-role",
                 file=sys.stderr,
             )
             sys.exit(1)
