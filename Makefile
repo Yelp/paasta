@@ -144,7 +144,7 @@ playground-api: .tox/py37-linux generate_paasta_playground
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
 
 .PHONY: setup_kubernetes_job
-setup-kubernetes-job: k8s_fake_cluster generate_paasta_playground 
+setup-kubernetes-job: k8s_fake_cluster generate_paasta_playground
 	export KUBECONFIG="./k8s_itests/kubeconfig";\
 	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
