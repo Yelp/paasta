@@ -217,6 +217,7 @@ def create_instance_uwsgi_scaling_rule(
     instance: str,
     autoscaling_config: AutoscalingParamsDict,
     paasta_cluster: str,
+    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -311,6 +312,7 @@ def create_instance_piscina_scaling_rule(
     instance: str,
     autoscaling_config: AutoscalingParamsDict,
     paasta_cluster: str,
+    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -413,6 +415,7 @@ def create_instance_cpu_scaling_rule(
     instance: str,
     autoscaling_config: AutoscalingParamsDict,
     paasta_cluster: str,
+    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
@@ -432,7 +435,7 @@ def create_instance_cpu_scaling_rule(
         kube_deployment_labels{{
             deployment='{deployment_name}',
             paasta_cluster='{paasta_cluster}',
-            namespace='paasta'
+            namespace='{namespace}'
         }}
     """
 
@@ -440,7 +443,7 @@ def create_instance_cpu_scaling_rule(
         avg(
             irate(
                 container_cpu_usage_seconds_total{{
-                    namespace='paasta',
+                    namespace='{namespace}',
                     container='{sanitized_instance_name}',
                     paasta_cluster='{paasta_cluster}'
                 }}[1m]
@@ -451,12 +454,12 @@ def create_instance_cpu_scaling_rule(
     cpus_available = f"""
         sum(
             container_spec_cpu_quota{{
-                namespace='paasta',
+                namespace='{namespace}',
                 container='{sanitized_instance_name}',
                 paasta_cluster='{paasta_cluster}'
             }}
             / container_spec_cpu_period{{
-                namespace='paasta',
+                namespace='{namespace}',
                 paasta_cluster='{paasta_cluster}'
             }}
         ) by (pod, container)
@@ -476,7 +479,7 @@ def create_instance_cpu_scaling_rule(
             k8s:pod:info{{
                 created_by_name=~'{deployment_name}.*',
                 created_by_kind='ReplicaSet',
-                namespace='paasta',
+                namespace='{namespace}',
                 paasta_cluster='{paasta_cluster}',
                 phase='Running'
             }},
@@ -536,7 +539,7 @@ def create_instance_cpu_scaling_rule(
                 ''
             ),
             'namespace',
-            'paasta',
+            '{namespace}',
             '',
             ''
         )
@@ -572,6 +575,7 @@ def create_instance_arbitrary_promql_scaling_rule(
     instance: str,
     autoscaling_config: AutoscalingParamsDict,
     paasta_cluster: str,
+    namespace: str,
 ) -> PrometheusAdapterRule:
     prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
@@ -588,7 +592,7 @@ def create_instance_arbitrary_promql_scaling_rule(
             kube_deployment_labels{{
                 deployment='{deployment_name}',
                 paasta_cluster='{paasta_cluster}',
-                namespace='paasta'
+                namespace='{namespace}'
             }}
         """
         # Wrap their promql with label_replace() calls that add `deployment` / `namespace` labels which match the default `resources`.
@@ -602,7 +606,7 @@ def create_instance_arbitrary_promql_scaling_rule(
                     ''
                 ),
                 'namespace',
-                'paasta',
+                '{namespace}',
                 '',
                 ''
             )
@@ -631,6 +635,7 @@ def get_rules_for_service_instance(
     instance_name: str,
     autoscaling_config: AutoscalingParamsDict,
     paasta_cluster: str,
+    namespace: str,
 ) -> List[PrometheusAdapterRule]:
     """
     Returns a list of Prometheus Adapter rules for a given service instance. For now, this
@@ -654,6 +659,7 @@ def get_rules_for_service_instance(
                     instance=instance_name,
                     autoscaling_config=autoscaling_config,
                     paasta_cluster=paasta_cluster,
+                    namespace=namespace,
                 )
             )
         else:
@@ -702,6 +708,7 @@ def create_prometheus_adapter_config(
                     instance_name=instance_config.instance,
                     autoscaling_config=instance_config.get_autoscaling_params(),
                     paasta_cluster=paasta_cluster,
+                    namespace=instance_config.get_namespace(),
                 )
             )
 
@@ -817,7 +824,8 @@ def main() -> int:
 
     log.info("Generating adapter config from soaconfigs.")
     config = create_prometheus_adapter_config(
-        paasta_cluster=args.cluster, soa_dir=args.soa_dir
+        paasta_cluster=args.cluster,
+        soa_dir=args.soa_dir,
     )
     log.info("Generated adapter config from soaconfigs.")
     if args.dry_run:
@@ -842,8 +850,7 @@ def main() -> int:
 
     kube_client = KubeClient()
     if not args.dry_run:
-        ensure_namespace(kube_client, namespace="paasta")
-        ensure_namespace(kube_client, namespace="custom-metrics")
+        ensure_namespace(kube_client, namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE)
 
     existing_config = get_prometheus_adapter_configmap(kube_client=kube_client)
     if existing_config and existing_config != config:
