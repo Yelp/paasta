@@ -136,12 +136,19 @@ vscode_settings: .paasta/bin/activate .tox/py37-linux
 
 .PHONY: generate_paasta_playground
 generate_paasta_playground: .paasta/bin/activate .tox/py37-linux
-	.tox/py37-linux/bin/python  paasta_tools/contrib/create_paasta_playground.py
+	.tox/py37-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 	PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/ .tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -s compute-infra-test-service -v
 
 .PHONY: playground-api
 playground-api: .tox/py37-linux generate_paasta_playground
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
+
+.PHONY: setup_kubernetes_job
+setup-kubernetes-job: k8s_fake_cluster generate_paasta_playground 
+	export KUBECONFIG="./k8s_itests/kubeconfig";\
+	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py37-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: clean-playground
 clean-playground:
