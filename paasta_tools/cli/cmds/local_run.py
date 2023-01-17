@@ -472,10 +472,10 @@ def add_subparser(subparsers):
         default="",
     )
     list_parser.add_argument(
-        "--skip-pod-identity",
-        help="If pod identity is set via yelpsoa-configs, don't attempt to assume it",
+        "--assume-pod-identity",
+        help="If pod identity is set via yelpsoa-configs, attempt to assume it",
         action="store_true",
-        dest="skip_pod_identity",
+        dest="assume_pod_identity",
         required=False,
         default=False,
     )
@@ -678,6 +678,89 @@ def check_if_port_free(port):
     return True
 
 
+def assume_aws_role(
+    instance_config, service, assume_role, assume_pod_identity, aws_profile
+):
+    """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
+    pod_identity = instance_config.get_iam_role()
+    if assume_role:
+        pod_identity = assume_role
+    if assume_pod_identity and not pod_identity:
+        print(
+            "Error: --assume-pod-identity passed but no pod identity was found for this instance",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    default_profile = ""
+    if not aws_profile:
+        with open("/nail/etc/ecosystem") as ecosystem_file:
+            default_profile = ecosystem_file.read()
+    profile = aws_profile or default_profile
+    if pod_identity and assume_pod_identity:
+        print(
+            "Attempting to assume role {} using profile {}".format(
+                pod_identity, profile
+            )
+        )
+        if os.getuid() == 0:
+            assume_role_cmd = "sudo -u {} HOME=/nail/home/{} aws --profile {} sts assume-role --role-arn {} --role-session-name {}-{}"
+            assume_role_cmd = assume_role_cmd.format(
+                get_username(),
+                get_username(),
+                profile,
+                pod_identity,
+                service,
+                get_username(),
+            )
+        else:
+            assume_role_cmd = "aws --profile {} sts assume-role --role-arn {} --role-session-name {}-{}"
+            assume_role_cmd = assume_role_cmd.format(
+                profile, pod_identity, service, get_username()
+            )
+        cmd = subprocess.run(assume_role_cmd, shell=True, stdout=subprocess.PIPE)
+        if cmd.returncode != 0:
+            print(
+                "Error assuming pod identity role. Use --skip-pod-identity to run without pod identity role",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    elif aws_profile:
+        print(f"Getting credentials for profile {aws_profile}")
+        if os.getuid() == 0:
+            get_cred_process = "sudo -u {} HOME=/nail/home/{} aws configure get credential_process --profile {}"
+            get_cred_process = get_cred_process.format(
+                get_username(), get_username(), aws_profile
+            )
+        else:
+            get_cred_process = "aws configure get credential_process --profile {}"
+            get_cred_process = get_cred_process.format(aws_profile)
+        get_cred_process_cmd = subprocess.run(
+            get_cred_process, shell=True, stdout=subprocess.PIPE
+        )
+        if get_cred_process_cmd.returncode != 0:
+            print(
+                f"Error: no credential process found for profile {aws_profile}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        cred_process = get_cred_process_cmd.stdout.decode("utf-8")
+        cred_process = "sudo -u {} HOME=/nail/home/{} " + cred_process
+        cred_process = cred_process.format(get_username(), get_username())
+        cred_process_cmd = subprocess.run(
+            cred_process, shell=True, stdout=subprocess.PIPE
+        )
+        cmd_output = json.loads(cred_process_cmd.stdout)
+
+    if "Credentials" in cmd_output:
+        cmd_output = cmd_output["Credentials"]
+    creds_dict = {
+        "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
+        "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
+        "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
+    }
+    return creds_dict
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -697,7 +780,7 @@ def run_docker_container(
     framework=None,
     secret_provider_kwargs={},
     skip_secrets=False,
-    skip_pod_identity=False,
+    assume_pod_identity=False,
     assume_role="",
     aws_profile="",
 ):
@@ -770,67 +853,10 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
-    if assume_role or not skip_pod_identity or aws_profile:
-        pod_identity = instance_config.get_iam_role()
-        if assume_role:
-            pod_identity = assume_role
-        if pod_identity and not skip_pod_identity:
-            print(
-                "Attempting to assume role {} using profile {}".format(
-                    pod_identity, "prod"
-                )
-            )
-            if os.getuid() == 0:
-                assume_role_cmd = "sudo -u {} HOME=/nail/home/{} aws --profile {} sts assume-role --role-arn {} --role-session-name {}-{}"
-                assume_role_cmd = assume_role_cmd.format(
-                    get_username(),
-                    get_username(),
-                    "prod",
-                    pod_identity,
-                    service,
-                    get_username(),
-                )
-            else:
-                assume_role_cmd = "aws --profile {} sts assume-role --role-arn {} --role-session-name {}-{}"
-                assume_role_cmd = assume_role_cmd.format(
-                    "prod", pod_identity, service, get_username()
-                )
-            cmd = subprocess.run(assume_role_cmd, shell=True, stdout=subprocess.PIPE)
-            if cmd.returncode != 0:
-                print(
-                    "Error assuming pod identity role. Use --skip-pod-identity to run without pod identity role"
-                )
-                sys.exit(1)
-        elif aws_profile:
-            print(f"Getting credentials for profile {aws_profile}")
-            if os.getuid() == 0:
-                get_cred_process = "sudo -u {} HOME=/nail/home/{} aws configure get credential_process --profile {}"
-                get_cred_process = get_cred_process.format(
-                    get_username(), get_username(), aws_profile
-                )
-            else:
-                get_cred_process = "aws configure get credential_process --profile {}"
-                get_cred_process = get_cred_process.format(aws_profile)
-            get_cred_process_cmd = subprocess.run(
-                get_cred_process, shell=True, stdout=subprocess.PIPE
-            )
-            if get_cred_process_cmd.returncode != 0:
-                print(f"Error: no credential process found for profile {aws_profile}")
-                sys.exit(1)
-            cred_process = get_cred_process_cmd.stdout.decode("utf-8")
-            cred_process = "sudo -u {} HOME=/nail/home/{} " + cred_process
-            cred_process = cred_process.format(get_username(), get_username())
-            cred_process_cmd = subprocess.run(
-                cred_process, shell=True, stdout=subprocess.PIPE
-            )
-            cmd_output = json.loads(cred_process_cmd.stdout)
-        if "Credentials" in cmd_output:
-            cmd_output = cmd_output["Credentials"]
-        creds_dict = {
-            "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
-            "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
-            "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
-        }
+    if assume_role or assume_pod_identity or aws_profile:
+        creds_dict = assume_aws_role(
+            instance_config, service, assume_role, assume_pod_identity, aws_profile
+        )
         environment.update(creds_dict)
 
     local_run_environment = get_local_run_environment_vars(
@@ -1171,7 +1197,7 @@ def configure_and_run_docker_container(
         secret_provider_name=system_paasta_config.get_secret_provider_name(),
         secret_provider_kwargs=secret_provider_kwargs,
         skip_secrets=args.skip_secrets,
-        skip_pod_identity=args.skip_pod_identity,
+        assume_pod_identity=args.assume_pod_identity,
         assume_role=args.assume_role,
         aws_profile=args.aws_profile,
     )
