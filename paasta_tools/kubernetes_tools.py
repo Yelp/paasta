@@ -350,6 +350,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
+    crypto_keys: List[str]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -896,6 +897,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             f"secret-boto-key-{service_name}", length_limit=63
         )
 
+    def get_crypto_secret_volume_name(self, service_name: str) -> str:
+        return self.get_sanitised_volume_name(
+            f"secret-cryto-key-{service_name}", length_limit=63
+        )
+
     def read_only_mode(self, d: VolumeWithMode) -> bool:
         return d.get("mode", "RO") == "RO"
 
@@ -1396,6 +1402,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         boto_volume = self.get_boto_volume()
         if boto_volume:
             pod_volumes.append(boto_volume)
+
+        crypto_volume = self.get_crypto_volume()
+        if crypto_volume:
+            pod_volumes.append(crypto_volume)
+
         return pod_volumes
 
     def get_boto_volume(self) -> Optional[V1Volume]:
@@ -1424,6 +1435,38 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             name=self.get_boto_secret_volume_name(service_name),
             secret=V1SecretVolumeSource(
                 secret_name=secret_name,
+                default_mode=mode_to_int("0444"),
+                items=items,
+            ),
+        )
+        return volume
+
+    def get_crypto_volume(self) -> Optional[V1Volume]:
+        required_crypto_keys = self.config_dict.get("boto_keys", [])
+        service_name = self.get_sanitised_deployment_name()
+        if not required_crypto_keys:
+            return None
+        items = []
+        for crypto_key in required_crypto_keys:
+            for filetype in ["sh", "yaml", "cfg", "json"]:
+                this_key = crypto_key + "." + filetype
+                crypto_key_name = this_key.replace(".", "-").replace("_", "--")
+                item = V1KeyToPath(
+                    key=crypto_key_name,
+                    mode=mode_to_int("0444"),
+                    path=this_key,
+                )
+                items.append(item)
+        # Check that boto keys actually exist as secrets
+        secret_hash = self.get_boto_secret_hash()
+        if not secret_hash:
+            log.warning(f"Expected to find k8s secret {crypto_key_name} for boto_cfg")
+            return None
+        crypto_key_name = limit_size_with_hash(f"paasta-crypto-key-{service_name}")
+        volume = V1Volume(
+            name=self.get_crypto_secret_volume_name(service_name),
+            secret=V1SecretVolumeSource(
+                secret_name=crypto_key_name,
                 default_mode=mode_to_int("0444"),
                 items=items,
             ),
@@ -1485,6 +1528,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         volume_mounts.remove(existing_mount)
                         break
                 volume_mounts.append(mount)
+
+        if self.config_dict.get("crypto_keys", []):
+            secret_hash = self.get_boto_secret_hash()
+            service_name = self.get_sanitised_deployment_name()
+            if secret_hash:
+                mount = V1VolumeMount(
+                    mount_path="/etc/crypto_keys",
+                    name=self.get_boto_secret_volume_name(service_name),
+                    read_only=True,
+                )
+                for existing_mount in volume_mounts:
+                    if existing_mount.mount_path == "/etc/crypto_keys":
+                        volume_mounts.remove(existing_mount)
+                        break
+                volume_mounts.append(mount)
+
         return volume_mounts
 
     def get_boto_secret_hash(self) -> str:
