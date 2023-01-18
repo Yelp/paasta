@@ -454,6 +454,14 @@ instance MAY have:
     Must be an integer.
     This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
+  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`:
+    This currently supports two sub-keys:
+
+    * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
+      This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta.)
+
+    * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.  Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
+
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
