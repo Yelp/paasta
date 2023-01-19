@@ -454,7 +454,7 @@ instance MAY have:
     Must be an integer.
     This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
 
-  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`:
+  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
     This currently supports two sub-keys:
 
     * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
