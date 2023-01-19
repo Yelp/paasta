@@ -29,8 +29,10 @@ from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
+from paasta_tools.kubernetes_tools import get_all_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
+from paasta_tools.kubernetes_tools import get_matching_namespaces
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
@@ -40,7 +42,6 @@ from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
-from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
@@ -107,6 +108,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="dry_run",
         help="Print Sensu alert events and metrics instead of sending them",
+    )
+    parser.add_argument(
+        "--namespace-prefix",
+        help="prefix of the namespace to check services replication for"
+        "Used only when service is kubernetes",
+        dest="namespace_prefix",
+        default="paastasvc",
+    )
+    parser.add_argument(
+        "--additional-namespaces",
+        help="full names of namespaces to check services replication for that don't match --namespace-prefix"
+        "Used only when service is kubernetes",
+        dest="additional_namespaces",
+        nargs="+",
+        # we default this to paasta since we always want to run this check on paasta namespace
+        # to avoid having two cron jobs running with two different namespace-prefix
+        default=["paasta"],
     )
     options = parser.parse_args()
 
@@ -177,8 +195,8 @@ def emit_cluster_replication_metrics(
 def main(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
-    namespace: str,
-    mesos: bool = False,
+    namespace: str = None,
+    kubernetes_services: bool = False,
 ) -> None:
     args = parse_args()
     if args.verbose:
@@ -190,14 +208,24 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    if mesos:
-        tasks_or_pods, slaves = get_mesos_tasks_and_slaves(system_paasta_config)
-        replication_checker = MesosSmartstackEnvoyReplicationChecker(
-            mesos_slaves=slaves,
+    # throw an exception if kubernetes_services flag is false and namespace is not set
+    if kubernetes_services is False and namespace is None:
+        raise Exception("Please set namespace when calling the main function")
+
+    if kubernetes_services:
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
+            namespace_prefix=args.namespace_prefix,
+            additional_namespaces=args.additional_namespaces,
+        )
+        replication_checker = KubeSmartstackEnvoyReplicationChecker(
+            nodes=nodes,
             system_paasta_config=system_paasta_config,
         )
     else:
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace)
+        # Note: we will have by default namespace_prefix always set to paastasvc
+        # which means we could have namespace and namespace_prefix set at the same time
+        # what differentiate between which one we will use, will be the kubernetes_services flag
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
@@ -218,7 +246,7 @@ def main(
         emit_cluster_replication_metrics(
             pct_under_replicated,
             cluster,
-            scheduler="mesos" if mesos else "kubernetes",
+            scheduler="kubernetes",
             dry_run=args.dry_run,
         )
 
@@ -249,10 +277,24 @@ def get_mesos_tasks_and_slaves(
 
 
 def get_kubernetes_pods_and_nodes(
-    namespace: str,
+    namespace_prefix: str = None,
+    namespace: str = None,
+    additional_namespaces: List[str] = None,
 ) -> Tuple[Sequence[V1Pod], Sequence[V1Node]]:
     kube_client = KubeClient()
-    all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
+
+    all_pods: Sequence[V1Pod] = []
+    if namespace:
+        all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
+    else:
+        all_namespaces = get_all_namespaces(kube_client)
+        for matching_namespace in get_matching_namespaces(
+            all_namespaces, namespace_prefix, additional_namespaces
+        ):
+            all_pods += get_all_pods(
+                kube_client=kube_client, namespace=matching_namespace
+            )
+
     all_nodes = get_all_nodes(kube_client)
 
     return all_pods, all_nodes
