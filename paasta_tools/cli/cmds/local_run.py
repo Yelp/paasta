@@ -781,7 +781,7 @@ def assume_aws_role(
         cred_process = get_cred_process_cmd.stdout.decode("utf-8").split(" ")
         if os.getuid() == 0:
             cred_process = [
-                "sudio",
+                "sudo",
                 "-u",
                 get_username(),
                 f"HOME=/nail/home/{get_username()}",
