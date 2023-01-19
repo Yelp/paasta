@@ -17,10 +17,12 @@ import re
 
 import docker
 import mock
+from pytest import mark
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
+from paasta_tools.cli.cmds.local_run import assume_aws_role
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import format_command_for_type
@@ -386,6 +388,9 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role = ""
+    args.assume_pod_identity = False
+    args.aws_profile = ""
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -423,6 +428,9 @@ def test_configure_and_run_command_uses_cmd_from_config(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role="",
+        assume_pod_identity=False,
+        aws_profile="",
     )
 
 
@@ -454,6 +462,9 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role = ""
+    args.assume_pod_identity = False
+    args.aws_profile = ""
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -490,6 +501,9 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role="",
+        assume_pod_identity=False,
+        aws_profile="",
     )
 
 
@@ -527,6 +541,9 @@ def test_configure_and_run_pulls_image_when_asked(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role = ""
+    args.assume_pod_identity = False
+    args.aws_profile = ""
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -565,6 +582,9 @@ def test_configure_and_run_pulls_image_when_asked(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role="",
+        assume_pod_identity=False,
+        aws_profile="",
     )
 
 
@@ -598,6 +618,9 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
         args.volumes = []
+        args.assume_role = ""
+        args.assume_pod_identity = False
+        args.aws_profile = ""
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -636,6 +659,9 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             json_dict=False,
             secret_provider_kwargs=mock_secret_provider_kwargs,
             skip_secrets=False,
+            assume_role="",
+            assume_pod_identity=False,
+            aws_profile="",
         )
 
 
@@ -2310,3 +2336,62 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
         "Failed to retrieve kubernetes secrets with Exception: Simulate failure decrypting secret volumes"
         in output
     )
+
+
+@mark.parametrize(
+    "assume_role,assume_pod_identity,aws_profile,two_sp_calls",
+    [
+        ("", True, "", False),
+        ("arn:aws:fakearn", False, "", False),
+        ("", True, "myprofile", False),
+        ("", False, "myprofile", True),
+    ],
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.os.getuid", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_username", autospec=True)
+def test_assume_aws_role(
+    mock_get_username,
+    mock_getuid,
+    mock_subprocess_run,
+    assume_role,
+    assume_pod_identity,
+    aws_profile,
+    two_sp_calls,
+):
+    mock_config = mock.MagicMock()
+    role_arn = "arn:aws:iam::123456789:role/mock_role"
+    mock_config.get_iam_role.return_value = role_arn
+    mock_service = "mockservice"
+    mock_getuid.return_value = 1234
+    mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
+    if not two_sp_calls:
+        # In the simple case, we only make one subprocess call to get aws creds
+        mock_subprocess_run.return_value.returncode = 0
+        mock_subprocess_run.return_value.stdout = mock_creds_json
+    else:
+        # In the more complicated case, the first subprocess call is to get the subsequent call to run
+        call_1 = mock.MagicMock()
+        call_1.returncode = 0
+        call_1.stdout = b"aws-okta gimme-dem-keys"
+        call_2 = mock.MagicMock()
+        call_2.returncode = 0
+        call_2.stdout = mock_creds_json
+        mock_subprocess_run.side_effect = [call_1, call_2]
+
+    env = assume_aws_role(
+        mock_config, mock_service, assume_role, assume_pod_identity, aws_profile
+    )
+    if two_sp_calls:
+        assert "credential_process" in mock_subprocess_run.call_args_list[0][0][0]
+        assert "gimme-dem-keys" in mock_subprocess_run.call_args_list[1][0][0]
+    else:
+        if assume_role:
+            assert assume_role in mock_subprocess_run.call_args_list[0][0][0]
+        if aws_profile:
+            assert aws_profile in mock_subprocess_run.call_args_list[0][0][0]
+        if assume_pod_identity:
+            assert role_arn in mock_subprocess_run.call_args_list[0][0][0]
+    assert "AWS_ACCESS_KEY_ID" in env
+    assert "AWS_SECRET_ACCESS_KEY" in env
+    assert "AWS_SESSION_TOKEN" in env
