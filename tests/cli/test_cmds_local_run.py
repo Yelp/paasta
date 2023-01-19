@@ -2339,12 +2339,21 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
 
 
 @mark.parametrize(
-    "assume_role,assume_pod_identity,aws_profile,two_sp_calls",
+    "assume_role,assume_pod_identity,aws_profile,two_sp_calls,as_root",
     [
-        ("", True, "", False),
-        ("arn:aws:fakearn", False, "", False),
-        ("", True, "myprofile", False),
-        ("", False, "myprofile", True),
+        # Just use assume-pod-identity
+        ("", True, "", False, False),
+        # Just use assume-role
+        ("arn:aws:fakearn", False, "", False, False),
+        # Use assume-pod-identity with an aws-profile
+        ("", True, "myprofile", False, False),
+        # Just use aws-profile
+        ("", False, "myprofile", True, False),
+        # Same as first 4 cases but running as root
+        ("", True, "", False, True),
+        ("arn:aws:fakearn", False, "", False, True),
+        ("", True, "myprofile", False, True),
+        ("", False, "myprofile", True, True),
     ],
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
@@ -2358,12 +2367,16 @@ def test_assume_aws_role(
     assume_pod_identity,
     aws_profile,
     two_sp_calls,
+    as_root,
 ):
     mock_config = mock.MagicMock()
     role_arn = "arn:aws:iam::123456789:role/mock_role"
     mock_config.get_iam_role.return_value = role_arn
     mock_service = "mockservice"
-    mock_getuid.return_value = 1234
+    if as_root:
+        mock_getuid.return_value = 0
+    else:
+        mock_getuid.return_value = 1234
     mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
     if not two_sp_calls:
         # In the simple case, we only make one subprocess call to get aws creds
@@ -2382,9 +2395,15 @@ def test_assume_aws_role(
     env = assume_aws_role(
         mock_config, mock_service, assume_role, assume_pod_identity, aws_profile
     )
+    # Instead of checking the full syntax of each subprocess call,
+    # Check that the unique components are always included somewhere
     if two_sp_calls:
         assert "credential_process" in mock_subprocess_run.call_args_list[0][0][0]
+        assert aws_profile in mock_subprocess_run.call_args_list[0][0][0]
         assert "gimme-dem-keys" in mock_subprocess_run.call_args_list[1][0][0]
+        if as_root:
+            assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
+            assert "sudo" in mock_subprocess_run.call_args_list[1][0][0]
     else:
         if assume_role:
             assert assume_role in mock_subprocess_run.call_args_list[0][0][0]
@@ -2392,6 +2411,8 @@ def test_assume_aws_role(
             assert aws_profile in mock_subprocess_run.call_args_list[0][0][0]
         if assume_pod_identity:
             assert role_arn in mock_subprocess_run.call_args_list[0][0][0]
+        if as_root:
+            assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
     assert "AWS_ACCESS_KEY_ID" in env
     assert "AWS_SECRET_ACCESS_KEY" in env
     assert "AWS_SESSION_TOKEN" in env
