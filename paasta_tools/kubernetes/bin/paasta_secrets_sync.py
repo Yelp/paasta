@@ -326,37 +326,41 @@ def sync_crypto_secrets(
         crypto_keys.sort()
         secret_data = {}
 
-        provider = get_secret_provider(
-            secret_provider_name=secret_provider_name,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_names=[cluster],
-            secret_provider_kwargs={
-                "vault_cluster_config": vault_cluster_config,
-                "vault_auth_method": "token",
-                "vault_token_file": vault_token_file,
-            },
-        )
+        def get_vault_key():
+            provider = get_secret_provider(
+                secret_provider_name=secret_provider_name,
+                soa_dir=soa_dir,
+                service_name=service,
+                cluster_names=[cluster],
+                secret_provider_kwargs={
+                    "vault_cluster_config": vault_cluster_config,
+                    "vault_auth_method": "token",
+                    "vault_token_file": vault_token_file,
+                },
+            )
 
-        # use vault client directly
-        client = provider.clients[provider.ecosystems[0]]
+            # use vault client directly
+            client = provider.clients[provider.ecosystems[0]]
 
-        for key in crypto_keys:
             # import hvac, how to handle hvac.exceptions.VaultError ?
             # Do we mount all versions of Vault key?
             response = client.secrets.kv.read_secret_version(
                 path=key,
             )
-            crypto_key = response["data"]["data"]["key"]
-            # crypto_key_version = response["data"]["data"]["version"]
 
+            crypto_key = "placeholder-encryption-key" or response["data"]["data"]["key"]
+            # crypto_key_version = response["data"]["data"]["version"]
+            return crypto_key
+
+        for key in crypto_keys:
+            crypto_key = get_vault_key()
             for filetype in ["sh", "yaml", "json", "cfg"]:
                 sanitised_key = (
                     (key + "." + filetype).replace(".", "-").replace("_", "--")
                 )
-                secret_data[sanitised_key] = base64.b64encode(crypto_key).decode(
-                    "utf-8"
-                )
+                secret_data[sanitised_key] = base64.b64encode(
+                    crypto_key.encode("utf-8")
+                ).decode("utf-8")
 
         if not secret_data:
             continue

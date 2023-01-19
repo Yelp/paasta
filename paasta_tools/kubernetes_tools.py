@@ -1442,26 +1442,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume
 
     def get_crypto_volume(self) -> Optional[V1Volume]:
-        required_crypto_keys = self.config_dict.get("boto_keys", [])
+        required_crypto_keys = self.config_dict.get("crypto_keys", [])
         service_name = self.get_sanitised_deployment_name()
         if not required_crypto_keys:
             return None
+
         items = []
+        crypto_key_name = ""
         for crypto_key in required_crypto_keys:
             for filetype in ["sh", "yaml", "cfg", "json"]:
-                this_key = crypto_key + "." + filetype
-                crypto_key_name = this_key.replace(".", "-").replace("_", "--")
+                key_filename = crypto_key + "." + filetype
+                crypto_key_name = key_filename.replace(".", "-").replace("_", "--")
                 item = V1KeyToPath(
                     key=crypto_key_name,
                     mode=mode_to_int("0444"),
-                    path=this_key,
+                    path=key_filename,
                 )
                 items.append(item)
-        # Check that boto keys actually exist as secrets
-        secret_hash = self.get_boto_secret_hash()
+
+        # Check that crypto keys actually exist as secrets
+        secret_hash = self.get_crypto_secret_hash()
         if not secret_hash:
             log.warning(f"Expected to find k8s secret {crypto_key_name} for boto_cfg")
             return None
+
         crypto_key_name = limit_size_with_hash(f"paasta-crypto-key-{service_name}")
         volume = V1Volume(
             name=self.get_crypto_secret_volume_name(service_name),
@@ -1530,12 +1534,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 volume_mounts.append(mount)
 
         if self.config_dict.get("crypto_keys", []):
-            secret_hash = self.get_boto_secret_hash()
+            secret_hash = self.get_crypto_secret_hash()
             service_name = self.get_sanitised_deployment_name()
             if secret_hash:
                 mount = V1VolumeMount(
                     mount_path="/etc/crypto_keys",
-                    name=self.get_boto_secret_volume_name(service_name),
+                    name=self.get_crypto_secret_volume_name(service_name),
                     read_only=True,
                 )
                 for existing_mount in volume_mounts:
@@ -1551,6 +1555,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         deployment_name = self.get_sanitised_deployment_name()
         service_name = self.get_sanitised_service_name()
         secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
+        return get_kubernetes_secret_signature(
+            kube_client=kube_client, secret=secret_name, service=service_name
+        )
+
+    def get_crypto_secret_hash(self) -> str:
+        kube_client = KubeClient()
+        deployment_name = self.get_sanitised_deployment_name()
+        service_name = self.get_sanitised_service_name()
+        secret_name = limit_size_with_hash(f"paasta-crypto-key-{deployment_name}")
         return get_kubernetes_secret_signature(
             kube_client=kube_client, secret=secret_name, service=service_name
         )
