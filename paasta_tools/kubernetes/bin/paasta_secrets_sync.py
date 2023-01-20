@@ -304,6 +304,41 @@ def sync_secrets(
     return True
 
 
+def get_vault_key(
+    key: str,
+    secret_provider_name: str,
+    soa_dir: str,
+    service: str,
+    cluster: str,
+    vault_cluster_config: Mapping[str, str],
+    vault_token_file: str,
+) -> str:
+    provider = get_secret_provider(
+        secret_provider_name=secret_provider_name,
+        soa_dir=soa_dir,
+        service_name=service,
+        cluster_names=[cluster],
+        secret_provider_kwargs={
+            "vault_cluster_config": vault_cluster_config,
+            "vault_auth_method": "token",
+            "vault_token_file": vault_token_file,
+        },
+    )
+
+    # use vault client directly
+    client = provider.clients[provider.ecosystems[0]]
+
+    import hvac
+
+    try:
+        response = client.secrets.kv.read_secret_version(
+            path=key, mount_point="keystore"
+        )
+        return response.get("data", {}).get("data", {}).get("key", {})
+    except hvac.exceptions.VaultError:
+        return {}
+
+
 def sync_crypto_secrets(
     kube_client: KubeClient,
     cluster: str,
@@ -314,7 +349,7 @@ def sync_crypto_secrets(
     namespace: str,
     vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
 ) -> bool:
-    # Update boto key secrets
+    # Update crypto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
@@ -323,37 +358,22 @@ def sync_crypto_secrets(
         crypto_keys = instance_config.config_dict.get("crypto_keys", [])
         if not crypto_keys:
             continue
+
         crypto_keys.sort()
         secret_data = {}
-
-        def get_vault_key():
-            provider = get_secret_provider(
+        for key in crypto_keys:
+            crypto_key = get_vault_key(
+                key=key,
                 secret_provider_name=secret_provider_name,
                 soa_dir=soa_dir,
-                service_name=service,
-                cluster_names=[cluster],
-                secret_provider_kwargs={
-                    "vault_cluster_config": vault_cluster_config,
-                    "vault_auth_method": "token",
-                    "vault_token_file": vault_token_file,
-                },
+                service=service,
+                cluster=cluster,
+                vault_cluster_config=vault_cluster_config,
+                vault_token_file=vault_token_file,
             )
+            if not crypto_key:
+                break
 
-            # use vault client directly
-            client = provider.clients[provider.ecosystems[0]]
-
-            # import hvac, how to handle hvac.exceptions.VaultError ?
-            # Do we mount all versions of Vault key?
-            response = client.secrets.kv.read_secret_version(
-                path=key,
-            )
-
-            crypto_key = "placeholder-encryption-key" or response["data"]["data"]["key"]
-            # crypto_key_version = response["data"]["data"]["version"]
-            return crypto_key
-
-        for key in crypto_keys:
-            crypto_key = get_vault_key()
             for filetype in ["sh", "yaml", "json", "cfg"]:
                 sanitised_key = (
                     (key + "." + filetype).replace(".", "-").replace("_", "--")
