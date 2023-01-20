@@ -384,69 +384,16 @@ def sync_crypto_secrets(
 
         if not secret_data:
             continue
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
-        app_name = get_kubernetes_app_name(service, instance)
-        secret = limit_size_with_hash(f"paasta-crypto-key-{app_name}")
-        hashable_data = "".join([secret_data[key] for key in secret_data])
-        signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
-        kubernetes_signature = get_kubernetes_secret_signature(
-            kube_client=kube_client,
-            secret=secret,
+
+        update_k8s_secrets(
             service=service,
+            secret=limit_size_with_hash(
+                f"paasta-crypto-key-{get_kubernetes_app_name(service, instance)}"
+            ),
+            kube_client=kube_client,
             namespace=namespace,
         )
-        if not kubernetes_signature:
-            log.info(f"{secret} for {service} in {namespace} not found, creating")
-            try:
-                create_plaintext_dict_secret(
-                    kube_client=kube_client,
-                    secret_name=secret,
-                    secret_data=secret_data,
-                    service=service,
-                    namespace=namespace,
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    log.warning(
-                        f"Secret {secret} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
-                    )
-                    update_plaintext_dict_secret(
-                        kube_client=kube_client,
-                        secret_name=secret,
-                        secret_data=secret_data,
-                        service=service,
-                        namespace=namespace,
-                    )
-                else:
-                    raise
-            create_kubernetes_secret_signature(
-                kube_client=kube_client,
-                secret=secret,
-                service=service,
-                secret_signature=signature,
-                namespace=namespace,
-            )
-        elif signature != kubernetes_signature:
-            log.info(
-                f"{secret} for {service} in {namespace} needs updating as signature changed"
-            )
-            update_plaintext_dict_secret(
-                kube_client=kube_client,
-                secret_name=secret,
-                secret_data=secret_data,
-                service=service,
-                namespace=namespace,
-            )
-            update_kubernetes_secret_signature(
-                kube_client=kube_client,
-                secret=secret,
-                service=service,
-                secret_signature=signature,
-                namespace=namespace,
-            )
-        else:
-            log.info(f"{secret} for {service} in {namespace} up to date")
+
     return True
 
 
@@ -485,70 +432,86 @@ def sync_boto_secrets(
                     )
         if not secret_data:
             continue
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
-        app_name = get_kubernetes_app_name(service, instance)
-        secret = limit_size_with_hash(f"paasta-boto-key-{app_name}")
-        hashable_data = "".join([secret_data[key] for key in secret_data])
-        signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
-        kubernetes_signature = get_kubernetes_secret_signature(
-            kube_client=kube_client,
-            secret=secret,
+
+        update_k8s_secrets(
             service=service,
+            secret=limit_size_with_hash(
+                f"paasta-boto-key-{get_kubernetes_app_name(service, instance)}"
+            ),
+            kube_client=kube_client,
             namespace=namespace,
         )
-        if not kubernetes_signature:
-            log.info(f"{secret} for {service} in {namespace} not found, creating")
-            try:
-                create_plaintext_dict_secret(
-                    kube_client=kube_client,
-                    secret_name=secret,
-                    secret_data=secret_data,
-                    service=service,
-                    namespace=namespace,
-                )
-            except ApiException as e:
-                if e.status == 409:
-                    log.warning(
-                        f"Secret {secret} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
-                    )
-                    update_plaintext_dict_secret(
-                        kube_client=kube_client,
-                        secret_name=secret,
-                        secret_data=secret_data,
-                        service=service,
-                        namespace=namespace,
-                    )
-                else:
-                    raise
-            create_kubernetes_secret_signature(
-                kube_client=kube_client,
-                secret=secret,
-                service=service,
-                secret_signature=signature,
-                namespace=namespace,
-            )
-        elif signature != kubernetes_signature:
-            log.info(
-                f"{secret} for {service} in {namespace} needs updating as signature changed"
-            )
-            update_plaintext_dict_secret(
+    return True
+
+
+def update_k8s_secrets(
+    service: str,
+    secret: str,
+    secret_data: Mapping[str, str],
+    kube_client: KubeClient,
+    namespace: str,
+):
+    # In order to prevent slamming the k8s API, add some artificial delay here
+    time.sleep(0.3)
+    hashable_data = "".join([secret_data[key] for key in secret_data])
+    signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
+    kubernetes_signature = get_kubernetes_secret_signature(
+        kube_client=kube_client,
+        secret=secret,
+        service=service,
+        namespace=namespace,
+    )
+    if not kubernetes_signature:
+        log.info(f"{secret} for {service} in {namespace} not found, creating")
+        try:
+            create_plaintext_dict_secret(
                 kube_client=kube_client,
                 secret_name=secret,
                 secret_data=secret_data,
                 service=service,
                 namespace=namespace,
             )
-            update_kubernetes_secret_signature(
-                kube_client=kube_client,
-                secret=secret,
-                service=service,
-                secret_signature=signature,
-                namespace=namespace,
-            )
-        else:
-            log.info(f"{secret} for {service} in {namespace} up to date")
-    return True
+        except ApiException as e:
+            if e.status == 409:
+                log.warning(
+                    f"Secret {secret} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
+                )
+                update_plaintext_dict_secret(
+                    kube_client=kube_client,
+                    secret_name=secret,
+                    secret_data=secret_data,
+                    service=service,
+                    namespace=namespace,
+                )
+            else:
+                raise
+        create_kubernetes_secret_signature(
+            kube_client=kube_client,
+            secret=secret,
+            service=service,
+            secret_signature=signature,
+            namespace=namespace,
+        )
+    elif signature != kubernetes_signature:
+        log.info(
+            f"{secret} for {service} in {namespace} needs updating as signature changed"
+        )
+        update_plaintext_dict_secret(
+            kube_client=kube_client,
+            secret_name=secret,
+            secret_data=secret_data,
+            service=service,
+            namespace=namespace,
+        )
+        update_kubernetes_secret_signature(
+            kube_client=kube_client,
+            secret=secret,
+            service=service,
+            secret_signature=signature,
+            namespace=namespace,
+        )
+    else:
+        log.info(f"{secret} for {service} in {namespace} up to date")
 
 
 if __name__ == "__main__":
