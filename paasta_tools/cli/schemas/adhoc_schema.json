@@ -61,7 +61,7 @@
                         "type": "string"
                     }
                 },
-                "vault_keys": {
+                "cryto_keys": {
                     "type": "array",
                     "items": {
                         "type": "string"
