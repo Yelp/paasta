@@ -37,6 +37,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
@@ -48,6 +49,8 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -115,6 +118,7 @@ def main() -> None:
         service_list=args.service_list,
         cluster=cluster,
         soa_dir=args.soa_dir,
+        kube_client=kube_client,
     )
 
     sys.exit(0) if sync_all_secrets(
@@ -130,9 +134,7 @@ def main() -> None:
 
 
 def get_services_to_k8s_namespaces(
-    service_list: List[str],
-    cluster: str,
-    soa_dir: str,
+    service_list: List[str], cluster: str, soa_dir: str, kube_client: KubeClient
 ) -> Dict[str, Set[str]]:
     services_to_k8s_namespaces: Dict[str, Set[str]] = defaultdict(set)
     for service in service_list:
@@ -143,6 +145,11 @@ def get_services_to_k8s_namespaces(
             services_to_k8s_namespaces[service] = set(
                 INSTANCE_TYPE_TO_K8S_NAMESPACE.values()
             )
+            paasta_namespaces = kube_client.core.list_namespace(
+                label_selector="paasta.yelp.com/managed=true"
+            )
+            for namespace in paasta_namespaces.items:
+                services_to_k8s_namespaces[service].add(namespace.metadata.name)
             continue
         for instance_type in INSTANCE_TYPES:
             instances = get_service_instance_list(
@@ -152,9 +159,33 @@ def get_services_to_k8s_namespaces(
                 soa_dir=soa_dir,
             )
             if instances:
-                services_to_k8s_namespaces[service].add(
-                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
-                )
+                for instance in instances:
+                    try:
+                        service_instance_config = (
+                            load_kubernetes_service_config_no_cache(
+                                service=instance[0],
+                                instance=instance[1],
+                                cluster=cluster,
+                                soa_dir=soa_dir,
+                            )
+                        )
+                    except NoDeploymentsAvailable:
+                        log.debug(
+                            "No deployments found for %s.%s in cluster %s. Skipping."
+                            % (instance[0], instance[1], cluster)
+                        )
+                        continue
+                    except NoConfigurationForServiceError:
+                        log.error(
+                            f"Could not read kubernetes configuration file for %s.%s in cluster %s"
+                            % (instance[0], instance[1], cluster)
+                        )
+                        continue
+                    services_to_k8s_namespaces[service].add(
+                        INSTANCE_TYPE_TO_K8S_NAMESPACE.get(
+                            instance_type, service_instance_config.get_namespace()
+                        )
+                    )
     return dict(services_to_k8s_namespaces)
 
 

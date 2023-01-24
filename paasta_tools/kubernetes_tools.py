@@ -2229,7 +2229,14 @@ def get_all_namespaces(kube_client: KubeClient) -> List[str]:
 
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
-        metadata=V1ObjectMeta(name=namespace, labels={"name": namespace})
+        metadata=V1ObjectMeta(
+            name=namespace,
+            labels={
+                "name": namespace,
+                "yelp.com/owner": "compute_infra_platform_experience",
+                "paasta.yelp.com/managed": "true",
+            },
+        )
     )
     namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
