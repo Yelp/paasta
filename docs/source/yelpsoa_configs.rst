@@ -462,6 +462,11 @@ instance MAY have:
 
     * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.  Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
 
+  * ``namespace``:
+    **Currently in development, do not use.**
+    The Kubernetes namespace where Paasta will create objects related to this service.
+    Defaults to ``paasta``.
+    Currently, only ``paasta`` and namespaces starting with ``paastasvc-`` are permitted.
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
