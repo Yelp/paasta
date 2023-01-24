@@ -1,3 +1,11 @@
+paasta-tools (0.159.0) xenial; urgency=medium
+
+  * 0.159.0 tagged with 'make release'
+    Commit: Merge pull request #3537 from Yelp/u/krall/namespace_schema
+    Add the `namespace` parameter to documentation and schema
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Jan 2023 13:26:10 -0800
+
 paasta-tools (0.158.0) xenial; urgency=medium
 
   * 0.158.0 tagged with 'make release'
