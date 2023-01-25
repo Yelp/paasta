@@ -27,6 +27,7 @@ from os import execlpe
 from random import randint
 from urllib.parse import urlparse
 
+import boto3
 import requests
 from docker import errors
 from mypy_extensions import TypedDict
@@ -491,12 +492,12 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
-        "--aws-profile",
-        help="Execute service in the context of this AWS profile. If pod identity is set or --assume-role is passed, use this profile to assume-role",
-        type=str,
-        dest="aws_profile",
+        "--use-okta-role",
+        help="Call aws-okta and run the service within the context of the returned credentials",
+        dest="use_okta_role",
+        action="store_true",
         required=False,
-        default="",
+        default=False,
     )
     list_parser.add_argument(
         "--sha",
@@ -694,7 +695,7 @@ def assume_aws_role(
     service: str,
     assume_role: str,
     assume_pod_identity: bool,
-    aws_profile: str,
+    use_okta_role: bool,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
@@ -706,91 +707,54 @@ def assume_aws_role(
             file=sys.stderr,
         )
         sys.exit(1)
-    default_profile = ""
-    if not aws_profile:
-        with open("/nail/etc/ecosystem") as ecosystem_file:
-            default_profile = ecosystem_file.read()
-    profile = aws_profile or default_profile
+    with open("/nail/etc/runtimeenv") as runtimeenv_file:
+        aws_account = runtimeenv_file.read()
     if pod_identity and (assume_pod_identity or assume_role):
         print(
-            "Attempting to assume role {} using profile {}".format(
-                pod_identity, profile
+            "Calling aws-okta to assume role {} using account {}".format(
+                pod_identity, aws_account
             )
         )
-        if os.getuid() == 0:
-            assume_role_cmd = "sudo -u {} HOME=/nail/home/{} aws --profile {} sts assume-role --role-arn {} --role-session-name {}-{}"
-            assume_role_cmd = assume_role_cmd.format(
-                get_username(),
-                get_username(),
-                profile,
-                pod_identity,
-                service,
-                get_username(),
-            )
-        else:
-            assume_role_cmd = [
-                "aws",
-                "--profile",
-                profile,
-                "sts",
-                "assume-role",
-                "--role-arn",
-                pod_identity,
-                "--role-session-name",
-                f"{service}-{get_username()}",
-            ]
-        cmd = subprocess.run(assume_role_cmd, stdout=subprocess.PIPE)
-        if cmd.returncode != 0:
-            print(
-                "Error assuming pod identity role. Remove --assume-pod-identity to run without pod identity role, or specify another role via --assume-role",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        cmd_output = json.loads(cmd.stdout.decode("utf-8"))
-    elif aws_profile:
-        print(f"Getting credentials for profile {aws_profile}")
-        if os.getuid() == 0:
-            get_cred_process = [
-                "sudo",
-                "-u",
-                get_username(),
-                f"HOME=/nail/home/{get_username()}",
-                "aws",
-                "configure",
-                "get",
-                "credential_process",
-                "--profile",
-                aws_profile,
-            ]
-        else:
-            get_cred_process = [
-                "aws",
-                "configure",
-                "get",
-                "credential_process",
-                "--profile",
-                aws_profile,
-            ]
-        get_cred_process_cmd = subprocess.run(get_cred_process, stdout=subprocess.PIPE)
-        if get_cred_process_cmd.returncode != 0:
-            print(
-                f"Error: no credential process found for profile {aws_profile}",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        cred_process = get_cred_process_cmd.stdout.decode("utf-8").split(" ")
-        if os.getuid() == 0:
-            cred_process = [
-                "sudo",
-                "-u",
-                get_username(),
-                f"HOME=/nail/home/{get_username()}",
-            ] + cred_process
-        cred_process_cmd = subprocess.run(cred_process, stdout=subprocess.PIPE)
-        cmd_output = json.loads(cred_process_cmd.stdout)
+    elif use_okta_role:
+        print(f"Calling aws-okta using account {aws_account}")
     else:
-        # Nothing to do here
+        # use_okta_role, assume_pod_identity, and assume_role are all empty. This shouldn't happen
         return {}
+
+    if os.getuid() == 0:
+        aws_okta_cmd = [
+            "sudo",
+            "-u",
+            get_username(),
+            f"HOME=/nail/home/{get_username()}",
+            "aws-okta",
+            "-a",
+            aws_account,
+            "-o",
+            "json",
+        ]
+    else:
+        aws_okta_cmd = ["aws-okta", "-a", aws_account, "-o", "json"]
+    cmd = subprocess.run(aws_okta_cmd, stdout=subprocess.PIPE)
+    if cmd.returncode != 0:
+        print(
+            "Error calling aws-okta. Remove --assume-pod-identity to run without pod identity role",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    cmd_output = json.loads(cmd.stdout.decode("utf-8"))
+
+    if not use_okta_role:
+        boto_session = boto3.Session(
+            aws_access_key_id=cmd_output["AccessKeyId"],
+            aws_secret_access_key=cmd_output["SecretAccessKey"],
+            aws_session_token=cmd_output["SessionToken"],
+        )
+        sts_client = boto_session.client("sts")
+        assumed_role = sts_client.assume_role(
+            RoleArn=pod_identity, RoleSessionName=f"{get_username()}-local-run"
+        )
+        cmd_output = assumed_role["Credentials"]
 
     if "Credentials" in cmd_output:
         cmd_output = cmd_output["Credentials"]
@@ -823,7 +787,7 @@ def run_docker_container(
     skip_secrets=False,
     assume_pod_identity=False,
     assume_role="",
-    aws_profile="",
+    use_okta_role=False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -894,9 +858,9 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
-    if assume_role or assume_pod_identity or aws_profile:
+    if assume_role or assume_pod_identity or use_okta_role:
         aws_creds = assume_aws_role(
-            instance_config, service, assume_role, assume_pod_identity, aws_profile
+            instance_config, service, assume_role, assume_pod_identity, use_okta_role
         )
         environment.update(aws_creds)
 
@@ -1240,7 +1204,7 @@ def configure_and_run_docker_container(
         skip_secrets=args.skip_secrets,
         assume_pod_identity=args.assume_pod_identity,
         assume_role=args.assume_role,
-        aws_profile=args.aws_profile,
+        use_okta_role=args.use_okta_role,
     )
 
 

@@ -390,7 +390,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.volumes = []
     args.assume_role = ""
     args.assume_pod_identity = False
-    args.aws_profile = ""
+    args.use_okta_role = False
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -430,7 +430,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         skip_secrets=False,
         assume_role="",
         assume_pod_identity=False,
-        aws_profile="",
+        use_okta_role=False,
     )
 
 
@@ -464,7 +464,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.volumes = []
     args.assume_role = ""
     args.assume_pod_identity = False
-    args.aws_profile = ""
+    args.use_okta_role = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -503,7 +503,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         skip_secrets=False,
         assume_role="",
         assume_pod_identity=False,
-        aws_profile="",
+        use_okta_role=False,
     )
 
 
@@ -543,7 +543,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.volumes = []
     args.assume_role = ""
     args.assume_pod_identity = False
-    args.aws_profile = ""
+    args.use_okta_role = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -584,7 +584,7 @@ def test_configure_and_run_pulls_image_when_asked(
         skip_secrets=False,
         assume_role="",
         assume_pod_identity=False,
-        aws_profile="",
+        use_okta_role=False,
     )
 
 
@@ -620,7 +620,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.volumes = []
         args.assume_role = ""
         args.assume_pod_identity = False
-        args.aws_profile = ""
+        args.use_okta_role = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -661,7 +661,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             skip_secrets=False,
             assume_role="",
             assume_pod_identity=False,
-            aws_profile="",
+            use_okta_role=False,
         )
 
 
@@ -2339,34 +2339,33 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
 
 
 @mark.parametrize(
-    "assume_role,assume_pod_identity,aws_profile,two_sp_calls,as_root",
+    "assume_role,assume_pod_identity,use_okta_role,as_root",
     [
         # Just use assume-pod-identity
-        ("", True, "", False, False),
+        ("", True, False, False),
         # Just use assume-role
-        ("arn:aws:fakearn", False, "", False, False),
-        # Use assume-pod-identity with an aws-profile
-        ("", True, "myprofile", False, False),
-        # Just use aws-profile
-        ("", False, "myprofile", True, False),
+        ("arn:aws:fakearn", False, False, False),
+        # Just use use_okta_role
+        ("", False, True, False),
         # Same as first 4 cases but running as root
-        ("", True, "", False, True),
-        ("arn:aws:fakearn", False, "", False, True),
-        ("", True, "myprofile", False, True),
-        ("", False, "myprofile", True, True),
+        ("", True, False, True),
+        ("arn:aws:fakearn", False, False, True),
+        ("", True, False, True),
+        ("", False, True, True),
     ],
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.os.getuid", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_username", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
 def test_assume_aws_role(
+    mock_boto,
     mock_get_username,
     mock_getuid,
     mock_subprocess_run,
     assume_role,
     assume_pod_identity,
-    aws_profile,
-    two_sp_calls,
+    use_okta_role,
     as_root,
 ):
     mock_config = mock.MagicMock()
@@ -2378,41 +2377,32 @@ def test_assume_aws_role(
     else:
         mock_getuid.return_value = 1234
     mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
-    if not two_sp_calls:
-        # In the simple case, we only make one subprocess call to get aws creds
-        mock_subprocess_run.return_value.returncode = 0
-        mock_subprocess_run.return_value.stdout = mock_creds_json
-    else:
-        # In the more complicated case, the first subprocess call is to get the subsequent call to run
-        call_1 = mock.MagicMock()
-        call_1.returncode = 0
-        call_1.stdout = b"aws-okta gimme-dem-keys"
-        call_2 = mock.MagicMock()
-        call_2.returncode = 0
-        call_2.stdout = mock_creds_json
-        mock_subprocess_run.side_effect = [call_1, call_2]
-
+    mock_subprocess_run.return_value.returncode = 0
+    mock_subprocess_run.return_value.stdout = mock_creds_json
+    mock_boto_client = mock.MagicMock()
+    mock_boto.return_value.client.return_value = mock_boto_client
+    mock_boto_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "AKIAFOOBAR2",
+            "SecretAccessKey": "SECRETKEY2",
+            "SessionToken": "SESSIONTOKEN2",
+        }
+    }
     env = assume_aws_role(
-        mock_config, mock_service, assume_role, assume_pod_identity, aws_profile
+        mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
     )
-    # Instead of checking the full syntax of each subprocess call,
-    # Check that the unique components are always included somewhere
-    if two_sp_calls:
-        assert "credential_process" in mock_subprocess_run.call_args_list[0][0][0]
-        assert aws_profile in mock_subprocess_run.call_args_list[0][0][0]
-        assert "gimme-dem-keys" in mock_subprocess_run.call_args_list[1][0][0]
-        if as_root:
-            assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
-            assert "sudo" in mock_subprocess_run.call_args_list[1][0][0]
-    else:
-        if assume_role:
-            assert assume_role in mock_subprocess_run.call_args_list[0][0][0]
-        if aws_profile:
-            assert aws_profile in mock_subprocess_run.call_args_list[0][0][0]
-        if assume_pod_identity:
-            assert role_arn in mock_subprocess_run.call_args_list[0][0][0]
-        if as_root:
-            assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
+    if as_root:
+        assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
     assert "AWS_ACCESS_KEY_ID" in env
     assert "AWS_SECRET_ACCESS_KEY" in env
     assert "AWS_SESSION_TOKEN" in env
+
+    if assume_role:
+        assert (
+            mock_boto_client.assume_role.call_args_list[0][1]["RoleArn"] == assume_role
+        )
+
+    if use_okta_role:
+        assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
+    else:
+        assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR2"
