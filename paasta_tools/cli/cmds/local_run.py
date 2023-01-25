@@ -473,13 +473,13 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
-        "--assume-role",
+        "--assume-role-arn",
         help=(
             "role ARN to assume before launching the service. "
             "Example format: arn:aws:iam::01234567890:role/rolename"
         ),
         type=str,
-        dest="assume_role",
+        dest="assume_role_arn",
         required=False,
         default="",
     )
@@ -693,14 +693,14 @@ def check_if_port_free(port):
 def assume_aws_role(
     instance_config: InstanceConfig,
     service: str,
-    assume_role: str,
+    assume_role_arn: str,
     assume_pod_identity: bool,
     use_okta_role: bool,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
-    if assume_role:
-        pod_identity = assume_role
+    if assume_role_arn:
+        pod_identity = assume_role_arn
     if assume_pod_identity and not pod_identity:
         print(
             f"Error: --assume-pod-identity passed but no pod identity was found for this instance ({instance_config.instance})",
@@ -709,7 +709,7 @@ def assume_aws_role(
         sys.exit(1)
     with open("/nail/etc/runtimeenv") as runtimeenv_file:
         aws_account = runtimeenv_file.read()
-    if pod_identity and (assume_pod_identity or assume_role):
+    if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
             "Calling aws-okta to assume role {} using account {}".format(
                 pod_identity, aws_account
@@ -786,7 +786,7 @@ def run_docker_container(
     secret_provider_kwargs={},
     skip_secrets=False,
     assume_pod_identity=False,
-    assume_role="",
+    assume_role_arn="",
     use_okta_role=False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
@@ -858,9 +858,13 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
-    if assume_role or assume_pod_identity or use_okta_role:
+    if assume_role_arn or assume_pod_identity or use_okta_role:
         aws_creds = assume_aws_role(
-            instance_config, service, assume_role, assume_pod_identity, use_okta_role
+            instance_config,
+            service,
+            assume_role_arn,
+            assume_pod_identity,
+            use_okta_role,
         )
         environment.update(aws_creds)
 
@@ -1203,7 +1207,7 @@ def configure_and_run_docker_container(
         secret_provider_kwargs=secret_provider_kwargs,
         skip_secrets=args.skip_secrets,
         assume_pod_identity=args.assume_pod_identity,
-        assume_role=args.assume_role,
+        assume_role_arn=args.assume_role_arn,
         use_okta_role=args.use_okta_role,
     )
 
