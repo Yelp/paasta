@@ -388,7 +388,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
-    args.assume_role = ""
+    args.assume_role_arn = ""
     args.assume_pod_identity = False
     args.use_okta_role = False
 
@@ -428,7 +428,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
-        assume_role="",
+        assume_role_arn="",
         assume_pod_identity=False,
         use_okta_role=False,
     )
@@ -462,7 +462,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
-    args.assume_role = ""
+    args.assume_role_arn = ""
     args.assume_pod_identity = False
     args.use_okta_role = False
 
@@ -501,7 +501,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
-        assume_role="",
+        assume_role_arn="",
         assume_pod_identity=False,
         use_okta_role=False,
     )
@@ -541,7 +541,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
-    args.assume_role = ""
+    args.assume_role_arn = ""
     args.assume_pod_identity = False
     args.use_okta_role = False
 
@@ -582,7 +582,7 @@ def test_configure_and_run_pulls_image_when_asked(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
-        assume_role="",
+        assume_role_arn="",
         assume_pod_identity=False,
         use_okta_role=False,
     )
@@ -618,7 +618,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
         args.volumes = []
-        args.assume_role = ""
+        args.assume_role_arn = ""
         args.assume_pod_identity = False
         args.use_okta_role = False
 
@@ -659,7 +659,7 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             json_dict=False,
             secret_provider_kwargs=mock_secret_provider_kwargs,
             skip_secrets=False,
-            assume_role="",
+            assume_role_arn="",
             assume_pod_identity=False,
             use_okta_role=False,
         )
