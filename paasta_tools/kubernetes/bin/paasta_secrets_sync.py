@@ -26,7 +26,9 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Set
+from typing import Tuple
 
+import hvac
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -304,7 +306,7 @@ def sync_secrets(
     return True
 
 
-def get_vault_key(
+def get_vault_key_versions(
     key: str,
     secret_provider_name: str,
     soa_dir: str,
@@ -312,7 +314,7 @@ def get_vault_key(
     cluster: str,
     vault_cluster_config: Mapping[str, str],
     vault_token_file: str,
-) -> str:
+) -> List[Tuple[str, str]]:
     provider = get_secret_provider(
         secret_provider_name=secret_provider_name,
         soa_dir=soa_dir,
@@ -328,15 +330,26 @@ def get_vault_key(
     # use vault client directly
     client = provider.clients[provider.ecosystems[0]]
 
-    import hvac
-
     try:
-        response = client.secrets.kv.read_secret_version(
+        # expect yelpsoa_config, e.g.
+        # crypto_keys:
+        #    - public/foo
+        #    - private/foo
+        meta_response = client.secrets.kv.read_secret_metadata(
             path=key, mount_point="keystore"
         )
-        return response.get("data", {}).get("data", {}).get("key", {})
+
+        for key_version in meta_response["data"]["versions"].keys():
+            key_response = client.secrets.kv.read_secret_version(
+                path=key, version=key_version, mount_point="keystore"
+            )
+            yield (
+                key_response["data"]["data"]["key"],
+                key_response["data"]["metadata"]["version"],
+            )
     except hvac.exceptions.VaultError:
-        return {}
+        log.warning(f"Could not fetch key versions for {key}")
+        return []
 
 
 def sync_crypto_secrets(
@@ -355,14 +368,14 @@ def sync_crypto_secrets(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         instance = instance_config.instance
-        crypto_keys = instance_config.config_dict.get("crypto_keys", [])
+        crypto_keys = instance_config.config_dict.get("crypto_keys", ["private/foo"])
         if not crypto_keys:
             continue
 
         crypto_keys.sort()
         secret_data = {}
         for key in crypto_keys:
-            crypto_key = get_vault_key(
+            crypto_key = get_vault_key_versions(
                 key=key,
                 secret_provider_name=secret_provider_name,
                 soa_dir=soa_dir,
@@ -374,13 +387,16 @@ def sync_crypto_secrets(
             if not crypto_key:
                 break
 
-            for filetype in ["sh", "yaml", "json", "cfg"]:
-                sanitised_key = (
-                    (key + "." + filetype).replace(".", "-").replace("_", "--")
-                )
-                secret_data[sanitised_key] = base64.b64encode(
-                    crypto_key.encode("utf-8")
-                ).decode("utf-8")
+            for encryption_key, encryption_key_version in get_vault_key_versions(
+                key=key,
+                secret_provider_name=secret_provider_name,
+                soa_dir=soa_dir,
+                service=service,
+                cluster=cluster,
+                vault_cluster_config=vault_cluster_config,
+                vault_token_file=vault_token_file,
+            ):
+                secret_data[encryption_key_version] = encryption_key
 
         if not secret_data:
             continue
@@ -390,6 +406,7 @@ def sync_crypto_secrets(
             secret=limit_size_with_hash(
                 f"paasta-crypto-key-{get_kubernetes_app_name(service, instance)}"
             ),
+            secret_data=secret_data,
             kube_client=kube_client,
             namespace=namespace,
         )
@@ -438,6 +455,7 @@ def sync_boto_secrets(
             secret=limit_size_with_hash(
                 f"paasta-boto-key-{get_kubernetes_app_name(service, instance)}"
             ),
+            secret_data=secret_data,
             kube_client=kube_client,
             namespace=namespace,
         )
