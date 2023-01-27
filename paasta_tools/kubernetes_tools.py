@@ -1452,7 +1452,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             items.append(
                 V1KeyToPath(
                     key=crypto_key,
-                    path=crypto_key,
+                    path=f"{crypto_key}.json",
                     mode=mode_to_int("0444"),
                 )
             )

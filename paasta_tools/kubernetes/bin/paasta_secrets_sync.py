@@ -307,28 +307,9 @@ def sync_secrets(
 
 
 def get_vault_key_versions(
+    client: "hvac.Client",
     key: str,
-    secret_provider_name: str,
-    soa_dir: str,
-    service: str,
-    cluster: str,
-    vault_cluster_config: Mapping[str, str],
-    vault_token_file: str,
-) -> List[Tuple[str, str]]:
-    provider = get_secret_provider(
-        secret_provider_name=secret_provider_name,
-        soa_dir=soa_dir,
-        service_name=service,
-        cluster_names=[cluster],
-        secret_provider_kwargs={
-            "vault_cluster_config": vault_cluster_config,
-            "vault_auth_method": "token",
-            "vault_token_file": vault_token_file,
-        },
-    )
-
-    # use vault client directly
-    client = provider.clients[provider.ecosystems[0]]
+) -> List[Tuple[str, int]]:
 
     try:
         # expect yelpsoa_config, e.g.
@@ -343,10 +324,11 @@ def get_vault_key_versions(
             key_response = client.secrets.kv.read_secret_version(
                 path=key, version=key_version, mount_point="keystore"
             )
-            yield (
-                key_response["data"]["data"]["key"],
-                key_response["data"]["metadata"]["version"],
-            )
+            yield {
+                "keyname": key,
+                "key": key_response["data"]["data"]["key"],
+                "key_version": key_response["data"]["metadata"]["version"],
+            }
     except hvac.exceptions.VaultError:
         log.warning(f"Could not fetch key versions for {key}")
         return []
@@ -373,36 +355,38 @@ def sync_crypto_secrets(
             continue
 
         crypto_keys.sort()
+
+        provider = get_secret_provider(
+            secret_provider_name=secret_provider_name,
+            soa_dir=soa_dir,
+            service_name=service,
+            cluster_names=[cluster],
+            secret_provider_kwargs={
+                "vault_cluster_config": vault_cluster_config,
+                "vault_auth_method": "token",
+                "vault_token_file": vault_token_file,
+            },
+        )
+
+        # use vault client directly
+        client = provider.clients[provider.ecosystems[0]]
+
         secret_data = {}
         for key in crypto_keys:
-            crypto_key = get_vault_key_versions(
-                key=key,
-                secret_provider_name=secret_provider_name,
-                soa_dir=soa_dir,
-                service=service,
-                cluster=cluster,
-                vault_cluster_config=vault_cluster_config,
-                vault_token_file=vault_token_file,
-            )
-            if not crypto_key:
-                break
+            key_versions = list(get_vault_key_versions(client=client, key=key))
+            if not key_versions:
+                continue
 
-            for encryption_key, encryption_key_version in get_vault_key_versions(
-                key=key,
-                secret_provider_name=secret_provider_name,
-                soa_dir=soa_dir,
-                service=service,
-                cluster=cluster,
-                vault_cluster_config=vault_cluster_config,
-                vault_token_file=vault_token_file,
-            ):
-                secret_data[encryption_key_version] = encryption_key
+            secret_data[key] = base64.b64encode(
+                json.dumps(key_versions).encode("utf-8")
+            ).decode("utf-8")
 
         if not secret_data:
             continue
 
         update_k8s_secrets(
             service=service,
+            # `kubernetes.client.V1SecretVolumeSource` expects the secret name below
             secret=limit_size_with_hash(
                 f"paasta-crypto-key-{get_kubernetes_app_name(service, instance)}"
             ),
