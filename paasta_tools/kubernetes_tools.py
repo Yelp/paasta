@@ -1451,7 +1451,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume
 
     def get_crypto_volume(self) -> Optional[V1Volume]:
-        required_crypto_keys = self.config_dict.get("crypto_keys", ["private/foo"])
+        required_crypto_keys = self.config_dict.get("crypto_keys", [])
         service_name = self.get_sanitised_deployment_name()
         if not required_crypto_keys:
             return None
@@ -1539,7 +1539,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         break
                 volume_mounts.append(mount)
 
-        if self.config_dict.get("crypto_keys", ["private/foo"]):
+        if self.config_dict.get("crypto_keys", []):
             if self.get_crypto_secret_hash():
                 mount = V1VolumeMount(
                     mount_path="/etc/crypto_keys",

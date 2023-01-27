@@ -351,7 +351,7 @@ def sync_crypto_secrets(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         instance = instance_config.instance
-        crypto_keys = instance_config.config_dict.get("crypto_keys", ["private/foo"])
+        crypto_keys = instance_config.config_dict.get("crypto_keys", [])
         if not crypto_keys:
             continue
 
