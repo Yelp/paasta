@@ -385,6 +385,8 @@ def sync_crypto_secrets(
         if not secret_data:
             continue
 
+        # In order to prevent slamming the k8s API, add some artificial delay here
+        time.sleep(0.3)
         update_k8s_secrets(
             service=service,
             # `kubernetes.client.V1SecretVolumeSource` expects the secret name below
@@ -435,6 +437,8 @@ def sync_boto_secrets(
         if not secret_data:
             continue
 
+        # In order to prevent slamming the k8s API, add some artificial delay here
+        time.sleep(0.3)
         update_k8s_secrets(
             service=service,
             secret=limit_size_with_hash(
@@ -454,8 +458,6 @@ def update_k8s_secrets(
     kube_client: KubeClient,
     namespace: str,
 ):
-    # In order to prevent slamming the k8s API, add some artificial delay here
-    time.sleep(0.3)
     hashable_data = "".join([secret_data[key] for key in secret_data])
     signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
     kubernetes_signature = get_kubernetes_secret_signature(
