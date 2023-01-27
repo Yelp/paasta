@@ -61,7 +61,7 @@
                         "type": "string"
                     }
                 },
-                "cryto_keys": {
+                "crypto_keys": {
                     "type": "array",
                     "items": {
                         "type": "string"
