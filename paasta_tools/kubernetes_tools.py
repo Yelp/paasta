@@ -452,6 +452,15 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
         return name
 
 
+def vault_key_to_V1Secret_data_key(vault_key: str) -> str:
+    """
+    Vault path may contain `/` slashes which is invalid as secret name
+    V1Secret's data key must match regexp [a-zA-Z0-9._-]
+    Source: https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Secret.md
+    """
+    return vault_key.replace(".", "-").replace("_", "--").replace("/", ".")
+
+
 class InvalidKubernetesConfig(Exception):
     def __init__(self, exception: Exception, service: str, instance: str) -> None:
         super().__init__(
@@ -1451,7 +1460,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         for crypto_key in required_crypto_keys:
             items.append(
                 V1KeyToPath(
-                    key=crypto_key,
+                    key=vault_key_to_V1Secret_data_key(crypto_key),
                     path=f"{crypto_key}.json",
                     mode=mode_to_int("0444"),
                 )

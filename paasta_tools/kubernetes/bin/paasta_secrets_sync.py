@@ -42,6 +42,7 @@ from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
+from paasta_tools.kubernetes_tools import vault_key_to_V1Secret_data_key
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -377,7 +378,7 @@ def sync_crypto_secrets(
             if not key_versions:
                 continue
 
-            secret_data[key] = base64.b64encode(
+            secret_data[vault_key_to_V1Secret_data_key(key)] = base64.b64encode(
                 json.dumps(key_versions).encode("utf-8")
             ).decode("utf-8")
 
