@@ -908,7 +908,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_crypto_secret_volume_name(self, service_name: str) -> str:
         return self.get_sanitised_volume_name(
-            f"secret-cryto-key-{service_name}", length_limit=63
+            f"secret-crypto-key-{service_name}", length_limit=63
         )
 
     def read_only_mode(self, d: VolumeWithMode) -> bool:
