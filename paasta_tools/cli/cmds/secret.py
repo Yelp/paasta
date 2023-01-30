@@ -93,7 +93,7 @@ def add_decrypt_subparser(subparsers):
     ).completer = lazy_choices_completer(list_clusters)
 
 
-def _validate_single_cluster(arg):
+def _validate_single_cluster(arg: str) -> str:
     if len(arg.split(",")) > 1:
         raise argparse.ArgumentTypeError("can only decrypt from one cluster at a time")
     return arg
@@ -146,7 +146,6 @@ def add_run_subparser(subparsers):
         ),
     )
 
-    # see local_run.py
     secret_parser_run.add_argument(
         "--vault-auth-method",
         help="Override how we auth with vault, defaults to token if not present",
@@ -166,7 +165,7 @@ def add_run_subparser(subparsers):
     )
 
 
-def _add_and_update_args(parser):
+def _add_and_update_args(parser: argparse.ArgumentParser):
     """common args for `add` and `update`."""
     parser.add_argument(
         "-p",
@@ -217,7 +216,7 @@ def _add_and_update_args(parser):
     ).completer = lazy_choices_completer(list_clusters)
 
 
-def _add_common_args(parser, allow_shared=True):
+def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True):
     # available from any subcommand
     parser.add_argument(
         "-y",
