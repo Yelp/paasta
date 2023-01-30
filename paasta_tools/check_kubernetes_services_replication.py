@@ -132,5 +132,4 @@ if __name__ == "__main__":
     main(
         instance_type_class=kubernetes_tools.KubernetesDeploymentConfig,
         check_service_replication=check_kubernetes_pod_replication,
-        kubernetes_services=True,
     )

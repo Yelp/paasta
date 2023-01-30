@@ -130,5 +130,4 @@ if __name__ == "__main__":
         instance_type_class=marathon_tools.MarathonServiceConfig,
         check_service_replication=check_service_replication,
         namespace=None,  # not relevant for mesos
-        mesos=True,
     )
