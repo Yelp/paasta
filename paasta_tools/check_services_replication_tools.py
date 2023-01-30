@@ -16,6 +16,7 @@ import logging
 import sys
 from typing import Any
 from typing import Callable
+from typing import Container
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -114,7 +115,7 @@ def parse_args() -> argparse.Namespace:
         help="prefix of the namespace to check services replication for"
         "Used only when service is kubernetes",
         dest="namespace_prefix",
-        default="paastasvc",
+        default="paastasvc-",
     )
     parser.add_argument(
         "--additional-namespaces",
@@ -196,7 +197,6 @@ def main(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
     namespace: str = None,
-    kubernetes_services: bool = False,
 ) -> None:
     args = parse_args()
     if args.verbose:
@@ -208,24 +208,20 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    # throw an exception if kubernetes_services flag is false and namespace is not set
-    if kubernetes_services is False and namespace is None:
-        raise Exception("Please set namespace when calling the main function")
-
-    if kubernetes_services:
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
-            namespace_prefix=args.namespace_prefix,
-            additional_namespaces=args.additional_namespaces,
-        )
+    if namespace:
+        # Note: we will have by default namespace_prefix always set to paastasvc
+        # which means we could have namespace and namespace_prefix set at the same time
+        # what differentiate between which one we will use, will be this if statement
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
         )
     else:
-        # Note: we will have by default namespace_prefix always set to paastasvc
-        # which means we could have namespace and namespace_prefix set at the same time
-        # what differentiate between which one we will use, will be the kubernetes_services flag
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
+            namespace_prefix=args.namespace_prefix,
+            additional_namespaces=args.additional_namespaces,
+        )
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
@@ -277,13 +273,13 @@ def get_mesos_tasks_and_slaves(
 
 
 def get_kubernetes_pods_and_nodes(
-    namespace_prefix: str = None,
-    namespace: str = None,
-    additional_namespaces: List[str] = None,
-) -> Tuple[Sequence[V1Pod], Sequence[V1Node]]:
+    namespace_prefix: Optional[str] = None,
+    namespace: Optional[str] = None,
+    additional_namespaces: Optional[Container[str]] = None,
+) -> Tuple[List[V1Pod], List[V1Node]]:
     kube_client = KubeClient()
 
-    all_pods: Sequence[V1Pod] = []
+    all_pods: List[V1Pod] = []
     if namespace:
         all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     else:
@@ -291,8 +287,8 @@ def get_kubernetes_pods_and_nodes(
         for matching_namespace in get_matching_namespaces(
             all_namespaces, namespace_prefix, additional_namespaces
         ):
-            all_pods += get_all_pods(
-                kube_client=kube_client, namespace=matching_namespace
+            all_pods.extend(
+                get_all_pods(kube_client=kube_client, namespace=matching_namespace)
             )
 
     all_nodes = get_all_nodes(kube_client)

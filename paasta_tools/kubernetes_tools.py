@@ -24,7 +24,9 @@ from inspect import currentframe
 from pathlib import Path
 from typing import Any
 from typing import Collection
+from typing import Container
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -2228,12 +2230,15 @@ def get_all_namespaces(kube_client: KubeClient) -> List[str]:
 
 
 def get_matching_namespaces(
-    all_namespaces: List[str], namespace_prefix: str, additional_namespaces: List[str]
+    all_namespaces: Iterable[str],
+    namespace_prefix: Optional[str],
+    additional_namespaces: Container[str],
 ) -> List[str]:
     return [
         n
         for n in all_namespaces
-        if n.startswith(namespace_prefix) or n in additional_namespaces
+        if (namespace_prefix is not None and n.startswith(namespace_prefix))
+        or n in additional_namespaces
     ]
 
 
@@ -2713,14 +2718,8 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence[V1Pod]:
+def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> List[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
-
-
-def get_pods_in_all_namespaces(
-    kube_client: KubeClient, label_selector: str = "paasta.yelp.com/service"
-) -> Sequence[V1Pod]:
-    return kube_client.core.list_pod_for_all_namespaces(label_selector=label_selector)
 
 
 @time_cache(ttl=300)
@@ -2849,7 +2848,7 @@ def get_active_versions_for_service(
 
 def get_all_nodes(
     kube_client: KubeClient,
-) -> Sequence[V1Node]:
+) -> List[V1Node]:
     return kube_client.core.list_node().items
 
 
