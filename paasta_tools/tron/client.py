@@ -13,6 +13,7 @@
 import logging
 from urllib.parse import urljoin
 
+import jsondiff
 import requests
 import yaml
 
@@ -82,9 +83,15 @@ class TronClient:
         current_config = self._get("/api/config", {"name": namespace, "no_header": 1})
 
         if skip_if_unchanged:
-            if yaml.safe_load(new_config) == yaml.safe_load(current_config["config"]):
+            new_dict = yaml.safe_load(new_config)
+            old_dict = yaml.safe_load(current_config["config"])
+            if new_dict == old_dict:
                 log.debug("No change in config, skipping update.")
                 return
+            else:
+                log.debug(
+                    f"Change in config {namespace}: {jsondiff.diff(old_dict, new_dict)}"
+                )
 
         return self._post(
             "/api/config",
