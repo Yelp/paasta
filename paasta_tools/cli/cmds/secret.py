@@ -203,7 +203,7 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
         "be unique per service.",
     )
 
-    parser.add_argument(
+    parser.add_argument(  # type: ignore
         "-c",
         "--clusters",
         help="A comma-separated list of clusters to create secrets for. "
@@ -229,9 +229,9 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
     else:
-        service_group = parser
+        service_group = parser  # type: ignore
 
-    service_group.add_argument(
+    service_group.add_argument(  # type: ignore
         "-s",
         "--service",
         required=not allow_shared,
