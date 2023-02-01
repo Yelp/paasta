@@ -208,9 +208,17 @@
                     }
                 },
                 "crypto_keys": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
+                    "encrypt": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "decrypt": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
                     }
                 },
                 "extra_volumes": {
