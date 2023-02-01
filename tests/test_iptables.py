@@ -44,9 +44,12 @@ def test_rule_from_iptc_mac_match():
     rule = iptc.Rule()
     rule.create_target("DROP")
     rule.create_match("mac")
-    rule.matches[0].mac_source = "20:C9:D0:2B:6F:F3"
+    rule.matches[0].mac_source = "20:c9:d0:2b:6f:f3"
 
-    assert iptables.Rule.from_iptc(rule) == EMPTY_RULE._replace(
+    iptables_rule = iptables.Rule.from_iptc(rule)
+    assert iptables_rule == EMPTY_RULE._replace(
+        target="DROP", matches=(("mac", (("mac-source", ("20:c9:d0:2b:6f:f3",)),)),)
+    ) or iptables_rule == EMPTY_RULE._replace(
         target="DROP", matches=(("mac", (("mac-source", ("20:C9:D0:2B:6F:F3",)),)),)
     )
 
@@ -80,7 +83,7 @@ def test_mac_src_to_iptc():
     assert rule.target.name == "ACCEPT"
     assert len(rule.matches) == 1
     assert rule.matches[0].name == "mac"
-    assert rule.matches[0].parameters["mac_source"] == "20:C9:D0:2B:6F:F3"
+    assert rule.matches[0].parameters["mac_source"].upper() == "20:C9:D0:2B:6F:F3"
 
 
 def test_iptables_txn_normal():

@@ -1994,6 +1994,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
+    uwsgi_offset_multiplier: float
 
 
 def load_system_paasta_config(
@@ -2732,6 +2733,15 @@ class SystemPaastaConfig:
         tron master -> compute cluster override which this function will read.
         """
         return self.config_dict.get("tron_k8s_cluster_overrides", {})
+
+    def get_uwsgi_offset_multiplier(self) -> float:
+        """
+        Temporary configuration to allow us to slowly deprecate the usage of `offset` in uwsgi-based autoscaling
+        configurations without making a single massive change to how usage is calculated.
+
+        To be removed once PAASTA-17840 is done.
+        """
+        return self.config_dict.get("uwsgi_offset_multiplier", 1.0)
 
 
 def _run(
