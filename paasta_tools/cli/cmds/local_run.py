@@ -709,6 +709,11 @@ def assume_aws_role(
         sys.exit(1)
     with open("/nail/etc/runtimeenv") as runtimeenv_file:
         aws_account = runtimeenv_file.read()
+        # Map runtimeenv in special cases to proper aws account name
+        if aws_account == "stage":
+            aws_account = "dev"
+        elif aws_account == "corp":
+            aws_account = "corpprod"
     if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
             "Calling aws-okta to assume role {} using account {}".format(
@@ -719,8 +724,13 @@ def assume_aws_role(
         print(f"Calling aws-okta using account {aws_account}")
     else:
         # use_okta_role, assume_pod_identity, and assume_role are all empty. This shouldn't happen
-        return {}
-
+        print(
+            "Error: assume_aws_role called without required arguments", file=sys.stderr
+        )
+        sys.exit(1)
+    # local-run will sometimes run as root - make sure that we get the actual
+    # users AWS credentials instead of looking for non-existent root AWS
+    # credentials
     if os.getuid() == 0:
         aws_okta_cmd = [
             "sudo",
@@ -754,10 +764,9 @@ def assume_aws_role(
         assumed_role = sts_client.assume_role(
             RoleArn=pod_identity, RoleSessionName=f"{get_username()}-local-run"
         )
+        # The contents of "Credentials" key from assume_role is the same as from aws-okta
         cmd_output = assumed_role["Credentials"]
 
-    if "Credentials" in cmd_output:
-        cmd_output = cmd_output["Credentials"]
     creds_dict = {
         "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
         "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
