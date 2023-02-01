@@ -1997,6 +1997,102 @@ def test_missing_volumes_skipped(mock_exists):
 @mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
 @mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    return_value={},
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+@mock.patch("os.makedirs", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.assume_aws_role",
+    autospec=True,
+    return_value={"access_key": "abcdefg", "secret_key": "abcdefg"},
+)
+def test_run_docker_container_assume_aws_role(
+    mock_assume_aws_role,
+    mock_os_makedirs,
+    mock_open,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_decrypt_secret_volumes,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    # Coverage for binary file vs non-binary file
+    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+    # So we raise once, implying that the first file is binary and let the second write() succeed
+    # For the second file, we imply the file is non-binary and only need to mock success once
+    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+    # Magic to make the context manager return the mock that we actually want
+    # Otherwise it just returns a new mock_open each time
+    mock_open.return_value = mock_open
+    mock_open.__enter__.return_value = mock_text_io_wrapper
+
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service="fake_service",
+        instance="fake_instance",
+        docker_url="fake_hash",
+        volumes=[],
+        interactive=True,
+        command="fake_command",
+        healthcheck=False,
+        healthcheck_only=False,
+        user_port=None,
+        instance_config=mock_service_manifest,
+        secret_provider_name="vault",
+        assume_pod_identity=True,
+    )
+    assert 1 == mock_get_docker_run_cmd.call_count
+
+    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+    environment = the_kwargs["env"]
+    assert 3 == environment.update.call_count
+    assert {
+        "access_key": "abcdefg",
+        "secret_key": "abcdefg",
+    } == environment.update.call_args_list[1][0][0]
+    assert 0 == return_code
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
     "paasta_tools.cli.cmds.local_run._run",
     autospec=True,
     return_value=(0, "fake _run output"),
