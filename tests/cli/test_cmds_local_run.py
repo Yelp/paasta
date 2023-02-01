@@ -2339,19 +2339,23 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
 
 
 @mark.parametrize(
-    "assume_role,assume_pod_identity,use_okta_role,as_root",
+    "assume_role,assume_pod_identity,use_okta_role,as_root,config_has_iam",
     [
         # Just use assume-pod-identity
-        ("", True, False, False),
+        ("", True, False, False, True),
         # Just use assume-role
-        ("arn:aws:fakearn", False, False, False),
+        ("arn:aws:fakearn", False, False, False, True),
         # Just use use_okta_role
-        ("", False, True, False),
+        ("", False, True, False, True),
         # Same as first 4 cases but running as root
-        ("", True, False, True),
-        ("arn:aws:fakearn", False, False, True),
-        ("", True, False, True),
-        ("", False, True, True),
+        ("", True, False, True, True),
+        ("arn:aws:fakearn", False, False, True, True),
+        ("", True, False, True, True),
+        ("", False, True, True, True),
+        # Error because no pod identity set
+        ("", True, False, False, False),
+        # Error because no parameters are set
+        ("", False, False, False, False),
     ],
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
@@ -2367,10 +2371,14 @@ def test_assume_aws_role(
     assume_pod_identity,
     use_okta_role,
     as_root,
+    config_has_iam,
 ):
     mock_config = mock.MagicMock()
     role_arn = "arn:aws:iam::123456789:role/mock_role"
-    mock_config.get_iam_role.return_value = role_arn
+    if config_has_iam:
+        mock_config.get_iam_role.return_value = role_arn
+    else:
+        mock_config.get_iam_role.return_value = None
     mock_service = "mockservice"
     if as_root:
         mock_getuid.return_value = 0
@@ -2388,9 +2396,29 @@ def test_assume_aws_role(
             "SessionToken": "SESSIONTOKEN2",
         }
     }
-    env = assume_aws_role(
-        mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
-    )
+
+    expect_exit = False
+    if assume_pod_identity and not config_has_iam:
+        expect_exit = True
+    elif not assume_pod_identity and not assume_role and not use_okta_role:
+        expect_exit = True
+
+    if expect_exit:
+        with raises(SystemExit) as sys_exit:
+            env = assume_aws_role(
+                mock_config,
+                mock_service,
+                assume_role,
+                assume_pod_identity,
+                use_okta_role,
+            )
+        assert sys_exit.value.code == 1
+        return
+    else:
+        env = assume_aws_role(
+            mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
+        )
+
     if as_root:
         assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
     assert "AWS_ACCESS_KEY_ID" in env
