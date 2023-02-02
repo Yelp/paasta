@@ -2407,9 +2407,13 @@ def paasta_status(args) -> int:
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
-        for future in concurrent.futures.as_completed(tasks):  # type: ignore
-            return_code, output = future.result()
-            return_codes.append(return_code)
+        try:
+            for future in concurrent.futures.as_completed(tasks):  # type: ignore
+                return_code, output = future.result()
+                return_codes.append(return_code)
+        except KeyboardInterrupt:
+            executor._threads.clear()
+            concurrent.futures.thread._threads_queues.clear()
 
     return max(return_codes)
 
