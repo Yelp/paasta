@@ -302,6 +302,7 @@ def test_format_custom_resource():
                     "yelp.com/paasta_service": "kurupt_fm",
                     "yelp.com/paasta_instance": "radio_station",
                     "yelp.com/paasta_cluster": "mycluster",
+                    "yelp.com/owner": "stream-processing",
                     "yelp.com/paasta_config_sha": mock_get_config_hash.return_value,
                     "paasta.yelp.com/service": "kurupt_fm",
                     "paasta.yelp.com/instance": "radio_station",
