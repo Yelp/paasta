@@ -2412,8 +2412,8 @@ def paasta_status(args) -> int:
                 return_code, output = future.result()
                 return_codes.append(return_code)
         except KeyboardInterrupt:
-            executor._threads.clear()
-            concurrent.futures.thread._threads_queues.clear()
+            executor._threads.clear()  # type: ignore
+            concurrent.futures.thread._threads_queues.clear()  # type: ignore
 
     return max(return_codes)
 
