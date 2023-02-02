@@ -1,3 +1,12 @@
+paasta-tools (0.160.0) xenial; urgency=medium
+
+  * 0.160.0 tagged with 'make release'
+    Commit: Merge pull request #3541 from
+    Yelp/u/calvinli/paasta_secret_run  adds "paasta secret run"
+    subcommand
+
+ -- Calvin Li <calvinli@yelp.com>  Thu, 02 Feb 2023 14:07:52 -0800
+
 paasta-tools (0.159.0) xenial; urgency=medium
 
   * 0.159.0 tagged with 'make release'
