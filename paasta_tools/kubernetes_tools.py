@@ -24,7 +24,9 @@ from inspect import currentframe
 from pathlib import Path
 from typing import Any
 from typing import Collection
+from typing import Container
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
@@ -2227,6 +2229,19 @@ def get_all_namespaces(kube_client: KubeClient) -> List[str]:
     return [item.metadata.name for item in namespaces.items]
 
 
+def get_matching_namespaces(
+    all_namespaces: Iterable[str],
+    namespace_prefix: Optional[str],
+    additional_namespaces: Container[str],
+) -> List[str]:
+    return [
+        n
+        for n in all_namespaces
+        if (namespace_prefix is not None and n.startswith(namespace_prefix))
+        or n in additional_namespaces
+    ]
+
+
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(name=namespace, labels={"name": namespace})
@@ -2703,7 +2718,7 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> Sequence[V1Pod]:
+def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> List[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
 
@@ -2833,7 +2848,7 @@ def get_active_versions_for_service(
 
 def get_all_nodes(
     kube_client: KubeClient,
-) -> Sequence[V1Node]:
+) -> List[V1Node]:
     return kube_client.core.list_node().items
 
 
