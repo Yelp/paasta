@@ -148,15 +148,6 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
-CRDS_KIND_TO_OWNER = {
-    "cassandracluster": "database-reliability-engineering-nosql",
-    "flink": "stream-processing",
-    "kafkacluster": "kafka-operator",
-    "monkrelay": "streaming-platform",
-    "nrtsearchservice": "ranking_platform",
-    "scyllacluster": "cid",
-}
-
 CAPS_DROP = [
     "SETPCAP",
     "MKNOD",
@@ -2160,6 +2151,9 @@ class SystemPaastaConfig:
 
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
         return self.config_dict["dashboard_links"]
+
+    def get_cr_owners(self) -> Mapping[str, str]:
+        return self.config_dict["cr_owners"]
 
     def get_auto_hostname_unique_size(self) -> int:
         """
