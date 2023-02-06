@@ -290,7 +290,7 @@ def test_format_custom_resource():
         "paasta_tools.setup_kubernetes_cr.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config:
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-            {"dashboard_links": {}}, ""
+            {"dashboard_links": {}, "cr_owners": {"flink": "stream-processing"}}, ""
         )
         expected = {
             "apiVersion": "yelp.com/v1",

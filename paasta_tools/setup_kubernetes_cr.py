@@ -43,7 +43,6 @@ from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_custom_resource
-from paasta_tools.utils import CRDS_KIND_TO_OWNER
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
@@ -241,6 +240,12 @@ def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
     return None
 
 
+def get_cr_owner(kind: str) -> Optional[str]:
+    system_paasta_config = load_system_paasta_config()
+    owners = system_paasta_config.get_cr_owners()
+    return owners.get(kind.lower())
+
+
 def format_custom_resource(
     instance_config: Mapping[str, Any],
     service: str,
@@ -276,7 +281,7 @@ def format_custom_resource(
     url = get_dashboard_base_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
-    owner = CRDS_KIND_TO_OWNER.get(kind.lower())
+    owner = get_cr_owner(kind.lower())
     if owner:
         resource["metadata"]["labels"]["yelp.com/owner"] = owner
     config_hash = get_config_hash(resource)
