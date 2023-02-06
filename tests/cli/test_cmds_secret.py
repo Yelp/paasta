@@ -211,7 +211,9 @@ def test_paasta_secret():
         mock_is_secrets_for_teams_enabled.return_value = False
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            soa_dir=mock.ANY,
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
@@ -281,3 +283,41 @@ def test_decrypt_secret():
         == mock_secret_provider.decrypt_secret.return_value
     )
     mock_secret_provider.decrypt_secret.assert_called_with("theonering")
+
+
+def test_paasta_secret_run():
+    with mock.patch(
+        "paasta_tools.cli.cmds.secret.decrypt_secret_environment_variables",
+        autospec=True,
+    ) as mock_decrypt_secret_environment_variables, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_instance_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "subprocess.run",
+        autospec=True,
+    ) as mock_subprocess:
+        mock_decrypt_secret_environment_variables.return_value = {
+            "PAASTA_SECRET_TEST": "test secret value",
+        }
+        mock_args = mock.Mock(
+            action="run",
+            service="middleearth",
+            clusters="mesosstage",
+            instance="main",
+            cmd=["foo"],
+        )
+        with raises(SystemExit):
+            secret.paasta_secret(mock_args)
+
+        mock_subprocess.assert_called_once_with(
+            ["foo"],
+            shell=False,
+            check=False,
+            env=mock.ANY,
+        )
+        assert (
+            mock_subprocess.call_args[1]["env"].get("PAASTA_SECRET_TEST")
+            == "test secret value"
+        )

@@ -130,7 +130,6 @@ def check_kubernetes_pod_replication(
 
 if __name__ == "__main__":
     main(
-        kubernetes_tools.KubernetesDeploymentConfig,
-        check_kubernetes_pod_replication,
-        namespace="paasta",
+        instance_type_class=kubernetes_tools.KubernetesDeploymentConfig,
+        check_service_replication=check_kubernetes_pod_replication,
     )
