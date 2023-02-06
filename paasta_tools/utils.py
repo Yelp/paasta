@@ -148,6 +148,15 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
+CRDS_KIND_TO_OWNER = {
+    "cassandracluster": "database-reliability-engineering-nosql",
+    "flink": "stream-processing",
+    "kafkacluster": "kafka-operator",
+    "monkrelay": "streaming-platform",
+    "nrtsearchservice": "ranking_platform",
+    "scyllacluster": "cid",
+}
+
 CAPS_DROP = [
     "SETPCAP",
     "MKNOD",
