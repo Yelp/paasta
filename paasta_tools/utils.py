@@ -2152,7 +2152,7 @@ class SystemPaastaConfig:
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
         return self.config_dict["dashboard_links"]
 
-    def get_cr_owners(self) -> Mapping[str, str]:
+    def get_cr_owners(self) -> Dict[str, str]:
         return self.config_dict["cr_owners"]
 
     def get_auto_hostname_unique_size(self) -> int:
