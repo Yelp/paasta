@@ -707,13 +707,20 @@ def assume_aws_role(
             file=sys.stderr,
         )
         sys.exit(1)
-    with open("/nail/etc/runtimeenv") as runtimeenv_file:
-        aws_account = runtimeenv_file.read()
-        # Map runtimeenv in special cases to proper aws account name
-        if aws_account == "stage":
-            aws_account = "dev"
-        elif aws_account == "corp":
-            aws_account = "corpprod"
+    try:
+        with open("/nail/etc/runtimeenv") as runtimeenv_file:
+            aws_account = runtimeenv_file.read()
+            # Map runtimeenv in special cases to proper aws account name
+            if aws_account == "stage":
+                aws_account = "dev"
+            elif aws_account == "corp":
+                aws_account = "corpprod"
+    except FileNotFoundError:
+        print(
+            "Unable to determine environment for AWS account name. Using 'dev'",
+            file=sys.stderr,
+        )
+        aws_account = "dev"
     if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
             "Calling aws-okta to assume role {} using account {}".format(
