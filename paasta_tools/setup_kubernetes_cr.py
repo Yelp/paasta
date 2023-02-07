@@ -281,7 +281,7 @@ def format_custom_resource(
     url = get_dashboard_base_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
-    owner = get_cr_owner(kind.lower())
+    owner = get_cr_owner(kind)
     if owner:
         resource["metadata"]["labels"]["yelp.com/owner"] = owner
     config_hash = get_config_hash(resource)
