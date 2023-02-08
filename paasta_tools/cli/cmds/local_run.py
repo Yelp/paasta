@@ -774,7 +774,7 @@ def assume_aws_role(
         # The contents of "Credentials" key from assume_role is the same as from aws-okta
         cmd_output = assumed_role["Credentials"]
 
-    creds_dict = {
+    creds_dict: AWSSessionCreds = {
         "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
         "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
         "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
