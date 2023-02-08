@@ -48,7 +48,12 @@ from paasta_tools.utils import TimeoutError
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_dry_run(
+    mock_load_kubernetes_service_config,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -89,7 +94,12 @@ def test_dry_run(
 @mock.patch("paasta_tools.cli.cmds.local_run.paasta_cook_image", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.validate_service_instance", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_instance_config", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_dry_run_json_dict(
+    mock_load_kubernetes_service_config,
     mock_get_instance_config,
     mock_validate_service_instance,
     mock_paasta_cook_image,
@@ -1069,7 +1079,12 @@ def test_get_container_id_name_not_found():
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_non_interactive_no_healthcheck(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1124,7 +1139,12 @@ def test_run_docker_container_non_interactive_no_healthcheck(
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_interactive(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1185,7 +1205,12 @@ def test_run_docker_container_interactive(
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.run_healthcheck_on_container", autospec=True
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthcheck(
+    mock_load_kubernetes_service_config,
     mock_run_healthcheck_on_container,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -1242,7 +1267,12 @@ def test_run_docker_container_non_interactive_keyboard_interrupt_with_healthchec
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_non_interactive_run_returns_nonzero(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1302,7 +1332,12 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_with_custom_soadir_uses_healthcheck(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1367,7 +1402,12 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     autospec=True,
     return_value=("cmd", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_terminates_with_healthcheck_only_success(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1425,7 +1465,12 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     autospec=True,
     return_value=("cmd", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_terminates_with_healthcheck_only_fail(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
@@ -1488,7 +1533,12 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     autospec=True,
     return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_with_user_specified_port(
+    mock_load_kubernetes_service_config,
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_check_if_port_free,
@@ -1995,7 +2045,12 @@ def test_missing_volumes_skipped(mock_exists):
     autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_secret_volumes(
+    mock_load_kubernetes_service_config,
     mock_os_makedirs,
     mock_open,
     mock_decrypt_secret_volumes,
@@ -2095,7 +2150,12 @@ def test_run_docker_container_secret_volumes(
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
 @mock.patch("os.makedirs", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_secret_volumes_for_teams(
+    mock_load_kubernetes_service_config,
     mock_os_makedirs,
     mock_kube_client,
     mock_is_secrets_for_teams_enabled,
@@ -2190,7 +2250,12 @@ def test_run_docker_container_secret_volumes_for_teams(
     new_callable=mock.mock_open(),
     autospec=None,
 )
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_secret_volumes_raises(
+    mock_load_kubernetes_service_config,
     mock_open,
     mock_decrypt_secret_volumes,
     mock_get_healthcheck_for_instance,
@@ -2266,7 +2331,12 @@ def test_run_docker_container_secret_volumes_raises(
     "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.load_kubernetes_service_config_no_cache",
+    autospec=True,
+)
 def test_run_docker_container_secret_volumes_for_teams_raises(
+    mock_load_kubernetes_service_config,
     mock_kube_client,
     mock_is_secrets_for_teams_enabled,
     mock_open,
