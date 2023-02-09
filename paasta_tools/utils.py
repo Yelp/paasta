@@ -1996,6 +1996,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     uwsgi_offset_multiplier: float
+    add_default_prestop_hook: bool
 
 
 def load_system_paasta_config(
@@ -2071,6 +2072,9 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def should_add_default_prestop_hook(self) -> str:
+        return self.config_dict.get("add_default_prestop_hook", True)
 
     def get_tron_default_pool_override(self) -> str:
         """Get the default pool override variable defined in this host's cluster config file.
