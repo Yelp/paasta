@@ -1293,7 +1293,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
                 pre_stop=self.get_kubernetes_container_termination_action(
-                    system_paasta_config
+                    mesh_registered=service_namespace_config.is_in_smartstack(),
                 )
             ),
             name=self.get_sanitised_instance_name(),
@@ -1324,25 +1324,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return self.get_liveness_probe(service_namespace_config)
 
     def get_kubernetes_container_termination_action(
-        self, system_paasta_config: SystemPaastaConfig
+        self,
+        mesh_registered: bool,
     ) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
-        if system_paasta_config.should_add_default_prestop_hook():
-            # default pre stop hook for the container
-            if not command:
-                return V1Handler(
-                    _exec=V1ExecAction(
-                        command=[
-                            "/bin/sh",
-                            "-c",
-                            f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}",
-                        ]
-                    )
+
+        # default pre stop hook for the container if it's mesh-registered
+        # while the hacheck sidecar has its own preStop - we don't want to gracefully
+        # shut that down and rudely shutdown the thing that's actually serving requests :)
+        if mesh_registered and not command:
+            return V1Handler(
+                _exec=V1ExecAction(
+                    command=[
+                        "/bin/sh",
+                        "-c",
+                        f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}",
+                    ]
                 )
+            )
+
         if isinstance(command, str):
             command = [command]
+
         return V1Handler(_exec=V1ExecAction(command=command))
 
     def get_pod_volumes(
