@@ -37,7 +37,6 @@ Submodules
    paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
    paasta_tools.check_kubernetes_services_replication
-   paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
    paasta_tools.check_spark_jobs
