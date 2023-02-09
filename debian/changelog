@@ -1,3 +1,12 @@
+paasta-tools (0.161.0) xenial; urgency=medium
+
+  * 0.161.0 tagged with 'make release'
+    Commit: Clean up of check_marathon_services_replication (#3545)  *
+    Deletes check_marathon_services_replication since we don"t use mesos
+    anymore  * cleanup of check_marathon_services_replication
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 09 Feb 2023 07:51:23 -0800
+
 paasta-tools (0.160.0) xenial; urgency=medium
 
   * 0.160.0 tagged with 'make release'
