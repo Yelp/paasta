@@ -14,6 +14,8 @@ import logging
 from urllib.parse import urljoin
 
 import jsondiff
+import deepdiff
+import pprint
 import requests
 import yaml
 
@@ -90,9 +92,11 @@ class TronClient:
                 return
             else:
                 log.debug(
-                    f"Change in config {namespace}: {jsondiff.diff(old_dict, new_dict)}"
+                    f"Change in config {namespace}: {pprint.pprint(deepdiff.DeepDiff(old_dict, new_dict))}"
                 )
 
+        # DAR-1820: jsut return true, don't actually post to tron api
+        return True
         return self._post(
             "/api/config",
             data={
