@@ -54,7 +54,7 @@ def test_main_no_marathon_servers():
         autospec=True,
         return_value=False,
     ), patch(
-        "paasta_tools.paasta_metastatus.load_kubernetes_service_config_no_cache",
+        "paasta_tools.paasta_metastatus.load_kubernetes_service_config",
         autospec=True,
     ):
         fake_master = Mock(autospace=True)
@@ -90,7 +90,7 @@ def test_main_marathon_jsondecode_error():
     ) as get_mesos_resource_utilization_health_patch, patch(
         "paasta_tools.metrics.metastatus_lib.get_marathon_status", autospec=True
     ) as get_marathon_status_patch, patch(
-        "paasta_tools.paasta_metastatus.load_kubernetes_service_config_no_cache",
+        "paasta_tools.paasta_metastatus.load_kubernetes_service_config",
         autospec=True,
     ):
         fake_master = Mock(autospace=True)

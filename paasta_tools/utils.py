@@ -299,6 +299,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cpus: float
     disk: float
     cmd: str
+    namespace: str
     args: List[str]
     cfs_period_us: float
     cpu_burst_add: float
@@ -411,6 +412,10 @@ class InstanceConfig:
 
     def get_cluster(self) -> str:
         return self.cluster
+
+    def get_namespace(self) -> str:
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", "paasta")
 
     def get_instance(self) -> str:
         return self.instance

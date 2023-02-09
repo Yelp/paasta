@@ -32,7 +32,7 @@ from paasta_tools import __version__
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import MarathonClient
@@ -333,7 +333,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
 
     system_paasta_config = load_system_paasta_config()
-    service_config_dict = load_kubernetes_service_config_no_cache(
+    service_config_dict = load_kubernetes_service_config(
         service=args.service_name,
         instance=args.instance_name,
         cluster=system_paasta_config.get_cluster(),

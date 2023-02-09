@@ -42,7 +42,6 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
@@ -696,9 +695,6 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
-    service_config = load_kubernetes_service_config_no_cache(
-        service=service, instance=instance, cluster=instance_config.get_cluster()
-    )
     secret_volumes = {}
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service
@@ -708,13 +704,13 @@ def run_docker_container(
                     config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
                 )
                 secret_environment = get_kubernetes_secret_env_variables(
-                    kube_client, environment, service, service_config.get_namespace()
+                    kube_client, environment, service, instance_config.get_namespace()
                 )
                 secret_volumes = get_kubernetes_secret_volumes(
                     kube_client,
                     instance_config.get_secret_volumes(),
                     service,
-                    service_config.get_namespace(),
+                    instance_config.get_namespace(),
                 )
             except Exception as e:
                 print(

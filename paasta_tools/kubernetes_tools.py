@@ -346,7 +346,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_path: str
     prometheus_port: int
     routable_ip: bool
-    namespace: str
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
@@ -1496,7 +1495,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             kube_client=kube_client,
             secret=secret_name,
             service=service_name,
-            namespace=self.config_dict.get_namespace(),
+            namespace=self.get_namespace(),
         )
 
     def get_sanitised_service_name(self) -> str:

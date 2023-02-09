@@ -85,6 +85,10 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_namespace(self) -> str:
         return KUBERNETES_NAMESPACE
 
+    def get_namespace(self) -> str:
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
+
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get("replicas", 1)
 
