@@ -1898,6 +1898,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_fqdn_format: str
     clusters: Sequence[str]
     cluster: str
+    cr_owners: Dict[str, str]
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
@@ -2151,6 +2152,9 @@ class SystemPaastaConfig:
 
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
         return self.config_dict["dashboard_links"]
+
+    def get_cr_owners(self) -> Dict[str, str]:
+        return self.config_dict["cr_owners"]
 
     def get_auto_hostname_unique_size(self) -> int:
         """
