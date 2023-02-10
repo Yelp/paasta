@@ -1,3 +1,11 @@
+paasta-tools (0.162.0) xenial; urgency=medium
+
+  * 0.162.0 tagged with 'make release'
+    Commit: Merge pull request #3543 from Yelp/u/asoliman/FLINK-
+    4287_fix_missing_owner_label  FLINK-4287: Add owner label to k8s crs
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Fri, 10 Feb 2023 02:51:41 -0800
+
 paasta-tools (0.161.0) xenial; urgency=medium
 
   * 0.161.0 tagged with 'make release'
