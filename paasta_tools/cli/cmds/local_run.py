@@ -17,6 +17,7 @@ import json
 import os
 import shutil
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -26,8 +27,10 @@ from os import execlpe
 from random import randint
 from urllib.parse import urlparse
 
+import boto3
 import requests
 from docker import errors
+from mypy_extensions import TypedDict
 
 from paasta_tools.adhoc_tools import get_default_interactive_config
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -52,6 +55,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_secrets_for_teams_enabled
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -66,6 +70,12 @@ from paasta_tools.utils import timed_flock
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
+
+
+class AWSSessionCreds(TypedDict):
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
+    AWS_SESSION_TOKEN: str
 
 
 def parse_date(date_string):
@@ -463,6 +473,33 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--assume-role-arn",
+        help=(
+            "role ARN to assume before launching the service. "
+            "Example format: arn:aws:iam::01234567890:role/rolename"
+        ),
+        type=str,
+        dest="assume_role_arn",
+        required=False,
+        default="",
+    )
+    list_parser.add_argument(
+        "--assume-pod-identity",
+        help="If pod identity is set via yelpsoa-configs, attempt to assume it",
+        action="store_true",
+        dest="assume_pod_identity",
+        required=False,
+        default=False,
+    )
+    list_parser.add_argument(
+        "--use-okta-role",
+        help="Call aws-okta and run the service within the context of the returned credentials",
+        dest="use_okta_role",
+        action="store_true",
+        required=False,
+        default=False,
+    )
+    list_parser.add_argument(
         "--sha",
         help=(
             "SHA to run instead of the currently marked-for-deployment SHA. Ignored when used with --build."
@@ -653,6 +690,98 @@ def check_if_port_free(port):
     return True
 
 
+def assume_aws_role(
+    instance_config: InstanceConfig,
+    service: str,
+    assume_role_arn: str,
+    assume_pod_identity: bool,
+    use_okta_role: bool,
+) -> AWSSessionCreds:
+    """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
+    pod_identity = instance_config.get_iam_role()
+    if assume_role_arn:
+        pod_identity = assume_role_arn
+    if assume_pod_identity and not pod_identity:
+        print(
+            f"Error: --assume-pod-identity passed but no pod identity was found for this instance ({instance_config.instance})",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    try:
+        with open("/nail/etc/runtimeenv") as runtimeenv_file:
+            aws_account = runtimeenv_file.read()
+            # Map runtimeenv in special cases to proper aws account name
+            if aws_account == "stage":
+                aws_account = "dev"
+            elif aws_account == "corp":
+                aws_account = "corpprod"
+    except FileNotFoundError:
+        print(
+            "Unable to determine environment for AWS account name. Using 'dev'",
+            file=sys.stderr,
+        )
+        aws_account = "dev"
+    if pod_identity and (assume_pod_identity or assume_role_arn):
+        print(
+            "Calling aws-okta to assume role {} using account {}".format(
+                pod_identity, aws_account
+            )
+        )
+    elif use_okta_role:
+        print(f"Calling aws-okta using account {aws_account}")
+    else:
+        # use_okta_role, assume_pod_identity, and assume_role are all empty. This shouldn't happen
+        print(
+            "Error: assume_aws_role called without required arguments", file=sys.stderr
+        )
+        sys.exit(1)
+    # local-run will sometimes run as root - make sure that we get the actual
+    # users AWS credentials instead of looking for non-existent root AWS
+    # credentials
+    if os.getuid() == 0:
+        aws_okta_cmd = [
+            "sudo",
+            "-u",
+            get_username(),
+            f"HOME=/nail/home/{get_username()}",
+            "aws-okta",
+            "-a",
+            aws_account,
+            "-o",
+            "json",
+        ]
+    else:
+        aws_okta_cmd = ["aws-okta", "-a", aws_account, "-o", "json"]
+    cmd = subprocess.run(aws_okta_cmd, stdout=subprocess.PIPE)
+    if cmd.returncode != 0:
+        print(
+            "Error calling aws-okta. Remove --assume-pod-identity to run without pod identity role",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    cmd_output = json.loads(cmd.stdout.decode("utf-8"))
+
+    if not use_okta_role:
+        boto_session = boto3.Session(
+            aws_access_key_id=cmd_output["AccessKeyId"],
+            aws_secret_access_key=cmd_output["SecretAccessKey"],
+            aws_session_token=cmd_output["SessionToken"],
+        )
+        sts_client = boto_session.client("sts")
+        assumed_role = sts_client.assume_role(
+            RoleArn=pod_identity, RoleSessionName=f"{get_username()}-local-run"
+        )
+        # The contents of "Credentials" key from assume_role is the same as from aws-okta
+        cmd_output = assumed_role["Credentials"]
+
+    creds_dict: AWSSessionCreds = {
+        "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
+        "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
+        "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
+    }
+    return creds_dict
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -672,6 +801,9 @@ def run_docker_container(
     framework=None,
     secret_provider_kwargs={},
     skip_secrets=False,
+    assume_pod_identity=False,
+    assume_role_arn="",
+    use_okta_role=False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -742,6 +874,16 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
+    if assume_role_arn or assume_pod_identity or use_okta_role:
+        aws_creds = assume_aws_role(
+            instance_config,
+            service,
+            assume_role_arn,
+            assume_pod_identity,
+            use_okta_role,
+        )
+        environment.update(aws_creds)
+
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
     )
@@ -1080,6 +1222,9 @@ def configure_and_run_docker_container(
         secret_provider_name=system_paasta_config.get_secret_provider_name(),
         secret_provider_kwargs=secret_provider_kwargs,
         skip_secrets=args.skip_secrets,
+        assume_pod_identity=args.assume_pod_identity,
+        assume_role_arn=args.assume_role_arn,
+        use_okta_role=args.use_okta_role,
     )
 
 
