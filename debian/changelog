@@ -1,3 +1,10 @@
+paasta-tools (0.163.1) xenial; urgency=medium
+
+  * 0.163.1 tagged with 'make release'
+    Commit: Bump version to 0.163.0
+
+ -- Jon Lee <jonlee@yelp.com>  Wed, 15 Feb 2023 17:35:35 -0800
+
 paasta-tools (0.162.0) xenial; urgency=medium
 
   * 0.162.0 tagged with 'make release'
