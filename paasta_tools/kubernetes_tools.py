@@ -1348,7 +1348,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if isinstance(command, str):
             command = [command]
 
-        return V1Handler(_exec=V1ExecAction(command=command))
+        return V1Handler(_exec=V1ExecAction(command=command)) if command else None
 
     def get_pod_volumes(
         self,

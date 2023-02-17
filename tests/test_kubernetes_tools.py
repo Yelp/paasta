@@ -1781,24 +1781,59 @@ class TestKubernetesDeploymentConfig:
         assert self.deployment.get_pod_anti_affinity() == expected_affinity
 
     @pytest.mark.parametrize(
-        "termination_action,expected",
+        "termination_action,mesh_registered,expected",
         [
-            (None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            ("", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ([], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ("/bin/no-args", ["/bin/no-args"]),  # no args command
-            (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
+            (None, False, None),  # no termination action, not a routable service
+            (
+                None,
+                True,
+                ["/bin/sh", "-c", "sleep 30"],
+            ),  # no termination action, routable service
+            (
+                "",
+                False,
+                None,
+            ),  # empty termination action, not routable
+            (
+                "",
+                True,
+                ["/bin/sh", "-c", "sleep 30"],
+            ),  # empty termination action, routable
+            (
+                [],
+                True,
+                ["/bin/sh", "-c", "sleep 30"],
+            ),  # empty termination action, routable
+            ([], False, None),  # empty termination action, not routable
+            ("/bin/no-args", True, ["/bin/no-args"]),  # no args command, routable
+            ("/bin/no-args", False, ["/bin/no-args"]),  # no args command, not routable
+            (
+                ["/bin/bash", "cmd.sh"],
+                True,
+                ["/bin/bash", "cmd.sh"],
+            ),  # no args command, routable
+            (
+                ["/bin/bash", "cmd.sh"],
+                False,
+                ["/bin/bash", "cmd.sh"],
+            ),  # no args command, not routable
         ],
     )
     def test_kubernetes_container_termination_action(
-        self, termination_action, expected
+        self, termination_action, mesh_registered, expected
     ):
         if termination_action:
             self.deployment.config_dict["lifecycle"] = {
                 "pre_stop_command": termination_action
             }
-        handler = V1Handler(_exec=V1ExecAction(command=expected))
-        assert self.deployment.get_kubernetes_container_termination_action() == handler
+        else:
+            self.deployment.config_dict["lifecycle"] = {}
+
+        handler = V1Handler(_exec=V1ExecAction(command=expected)) if expected else None
+        assert (
+            self.deployment.get_kubernetes_container_termination_action(mesh_registered)
+            == handler
+        )
 
     @pytest.mark.parametrize(
         "whitelist,blacklist,expected",
