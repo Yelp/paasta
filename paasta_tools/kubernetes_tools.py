@@ -2252,6 +2252,37 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
         log.warning(f"Creating namespace: {namespace} as it does not exist")
         kube_client.core.create_namespace(body=paasta_namespace)
 
+    ensure_paasta_api_rolebinding(kube_client, namespace)
+
+
+def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> None:
+    rolebindings = get_all_role_bindings(kube_client, namespace=namespace)
+    rolebinding_names = [item.metadata.name for item in rolebindings]
+    if "paasta-api-server-per-namespace" not in rolebinding_names:
+        log.warning(
+            f"Creating rolebinding paasta-api-server-per-namespace as it does not exist"
+        )
+        role_binding = V1RoleBinding(
+            metadata=V1ObjectMeta(
+                name="paasta-api-server-per-namespace",
+                namespace=namespace,
+            ),
+            role_ref=V1RoleRef(
+                api_group="rbac.authorization.k8s.io",
+                kind="ClusterRole",
+                name="paasta-api-server-per-namespace",
+            ),
+            subjects=[
+                V1Subject(
+                    kind="User",
+                    name="yelp.com/paasta-api-server",
+                ),
+            ],
+        )
+        kube_client.rbac.create_namespaced_role_binding(
+            namespace=namespace, body=role_binding
+        )
+
 
 def list_deployments_in_all_namespaces(
     kube_client: KubeClient, label_selector: str
