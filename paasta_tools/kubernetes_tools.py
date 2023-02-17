@@ -1326,7 +1326,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_kubernetes_container_termination_action(
         self,
         mesh_registered: bool,
-    ) -> V1Handler:
+    ) -> Optional[V1Handler]:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
