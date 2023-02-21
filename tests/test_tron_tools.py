@@ -982,10 +982,11 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/group "
             "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
             # coreml adjustments
-            "--conf spark.executor.instances=2 "
+            "--conf spark.executor.instances=1 "
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
+            "--conf spark.task.cpus=1 "
             "--conf spark.sql.shuffle.partitions=12 "
             "--conf spark.sql.files.minPartitionNum=12 "
             "--conf spark.default.parallelism=12 "
