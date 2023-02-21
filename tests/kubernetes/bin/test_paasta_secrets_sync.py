@@ -11,7 +11,6 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import PaastaNotConfiguredError
 
 
@@ -53,8 +52,8 @@ def test_sync_all_secrets():
         autospec=True,
     ):
         services_to_k8s_namespaces = {
-            "foo": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
-            "bar": {INSTANCE_TYPE_TO_K8S_NAMESPACE["kubernetes"]},
+            "foo": {"paastasvc-foo"},
+            "bar": {"paastasvc-foo"},
         }
 
         mock_sync_secrets.side_effect = [True, True]
@@ -93,11 +92,13 @@ def test_sync_shared():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
     ):
+        kube_client = mock.Mock()
+        kube_client.core = mock.MagicMock()
         # _shared does no actual lookup, and as such works without cluster
         # we just need to ensure it returns non-empty namespaces
-        assert get_services_to_k8s_namespaces(["_shared"], "", "") != {}
+        assert get_services_to_k8s_namespaces(["_shared"], "", "", kube_client) != {}
         try:
-            assert get_services_to_k8s_namespaces(["_foo"], "", "") == {}
+            assert get_services_to_k8s_namespaces(["_foo"], "", "", kube_client) == {}
         except PaastaNotConfiguredError:
             # this check can only be done if /etc/paasta... exists and has a cluster
             # which is not the case on GHA and devboxes, hence we accept a failure
