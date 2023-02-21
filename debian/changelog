@@ -1,3 +1,11 @@
+paasta-tools (0.163.2) xenial; urgency=medium
+
+  * 0.163.2 tagged with 'make release'
+    Commit: Add force-spark-resource-configs option (#3546)  * Add force-
+    spark-resource-configs option  * Fix tron_tools tests
+
+ -- Chi Chang <chi@yelp.com>  Tue, 21 Feb 2023 07:18:00 -0800
+
 paasta-tools (0.163.1) xenial; urgency=medium
 
   * 0.163.1 tagged with 'make release'
