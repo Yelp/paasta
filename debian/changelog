@@ -1,3 +1,10 @@
+paasta-tools (0.163.3) xenial; urgency=medium
+
+  * 0.163.3 tagged with 'make release'
+    Commit: Merge branch "u/krall/rolebinding_in_new_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 21 Feb 2023 17:48:51 -0800
+
 paasta-tools (0.163.2) xenial; urgency=medium
 
   * 0.163.2 tagged with 'make release'
