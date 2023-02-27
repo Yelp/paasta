@@ -1,3 +1,10 @@
+paasta-tools (0.164.1) xenial; urgency=medium
+
+  * 0.164.1 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib to v2.14.2 (#3554)
+
+ -- Chi Chang <chi@yelp.com>  Mon, 27 Feb 2023 08:59:54 -0800
+
 paasta-tools (0.164.0) xenial; urgency=medium
 
   * 0.164.0 tagged with 'make release'
