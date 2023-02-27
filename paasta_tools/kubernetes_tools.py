@@ -348,7 +348,6 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     prometheus_path: str
     prometheus_port: int
     routable_ip: bool
-    namespace: str
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
@@ -1495,7 +1494,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         service_name = self.get_sanitised_service_name()
         secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
         return get_kubernetes_secret_signature(
-            kube_client=kube_client, secret=secret_name, service=service_name
+            kube_client=kube_client,
+            secret=secret_name,
+            service=service_name,
+            namespace=self.get_namespace(),
         )
 
     def get_sanitised_service_name(self) -> str:
@@ -1828,7 +1830,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             if iam_role:
                 pod_spec_kwargs[
                     "service_account_name"
-                ] = create_or_find_service_account_name(iam_role)
+                ] = create_or_find_service_account_name(iam_role, self.get_namespace())
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
                     # running inside the container. Seems like most of such
@@ -2022,7 +2024,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         ahash = config.to_dict()  # deep convert to dict
         ahash["paasta_secrets"] = get_kubernetes_secret_hashes(
-            service=self.get_service(), environment_variables=self.get_env()
+            service=self.get_service(),
+            environment_variables=self.get_env(),
+            namespace=self.get_namespace(),
         )
 
         # remove data we dont want used to hash configs
@@ -2062,7 +2066,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
 
 def get_kubernetes_secret_hashes(
-    environment_variables: Mapping[str, str], service: str
+    environment_variables: Mapping[str, str], service: str, namespace: str = "paasta"
 ) -> Mapping[str, str]:
     hashes = {}
     to_get_hash = []
@@ -2076,6 +2080,7 @@ def get_kubernetes_secret_hashes(
                 kube_client=kube_client,
                 secret=get_secret_name_from_ref(value),
                 service=SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
+                namespace=namespace,
             )
     return hashes
 
@@ -3594,7 +3599,7 @@ def get_kubernetes_secret(
     decode: bool = True,
 ) -> Union[str, bytes]:
 
-    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name)
+    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name, namespace)
 
     secret_data = kube_client.core.read_namespaced_secret(
         name=k8s_secret_name, namespace=namespace
@@ -3610,6 +3615,7 @@ def get_kubernetes_secret_env_variables(
     kube_client: KubeClient,
     environment: Dict[str, str],
     service_name: str,
+    namespace: str = "paasta",
 ) -> Dict[str, str]:
     decrypted_secrets = {}
     for k, v in environment.items():
@@ -3624,6 +3630,7 @@ def get_kubernetes_secret_env_variables(
                     service_name,
                     secret_name,
                     decode=True,
+                    namespace=namespace,
                 )
             )
     return decrypted_secrets
@@ -3633,6 +3640,7 @@ def get_kubernetes_secret_volumes(
     kube_client: KubeClient,
     secret_volumes_config: Sequence[SecretVolume],
     service_name: str,
+    namespace: str = "paasta",
 ) -> Dict[str, Union[str, bytes]]:
     secret_volumes = {}
     # The config might look one of two ways:
@@ -3665,6 +3673,7 @@ def get_kubernetes_secret_volumes(
                 service_name,
                 secret_volume["secret_name"],
                 decode=False,
+                namespace=namespace,
             )
             # Index by container path => the actual secret contents, to be used downstream to create local files and mount into the container
             secret_volumes[
@@ -3679,6 +3688,7 @@ def get_kubernetes_secret_volumes(
                     service_name,
                     item["key"],  # secret_name
                     decode=False,
+                    namespace=namespace,
                 )
                 secret_volumes[
                     os.path.join(secret_volume["container_path"], item["path"])

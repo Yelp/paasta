@@ -836,10 +836,13 @@ def run_docker_container(
                     config_file=KUBE_CONFIG_USER_PATH, context=instance_config.cluster
                 )
                 secret_environment = get_kubernetes_secret_env_variables(
-                    kube_client, environment, service
+                    kube_client, environment, service, instance_config.get_namespace()
                 )
                 secret_volumes = get_kubernetes_secret_volumes(
-                    kube_client, instance_config.get_secret_volumes(), service
+                    kube_client,
+                    instance_config.get_secret_volumes(),
+                    service,
+                    instance_config.get_namespace(),
                 )
             except Exception as e:
                 print(
