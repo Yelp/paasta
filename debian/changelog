@@ -1,3 +1,13 @@
+paasta-tools (0.164.0) xenial; urgency=medium
+
+  * 0.164.0 tagged with 'make release'
+    Commit: Ensure we pass ns to functions in kubernetes_tools.py -
+    PAASTA-17857 (#3548)  * passing in namespace from config dictionary
+    * This commit address changes in paasta  metastatus  * only get
+    namespace for instance types of kubernetes
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 27 Feb 2023 07:59:14 -0800
+
 paasta-tools (0.163.4) xenial; urgency=medium
 
   * 0.163.4 tagged with 'make release'
