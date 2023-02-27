@@ -3724,6 +3724,7 @@ def test_get_kubernetes_secret_hashes():
                 "SOME": "SHAREDSECRET(ref1)",
             },
             service="universe",
+            namespace="paasta",
         )
         mock_get_kubernetes_secret_signature.assert_has_calls(
             [
@@ -3731,11 +3732,13 @@ def test_get_kubernetes_secret_hashes():
                     kube_client=mock_client.return_value,
                     secret="ref",
                     service="universe",
+                    namespace="paasta",
                 ),
                 mock.call(
                     kube_client=mock_client.return_value,
                     secret="ref1",
                     service=SHARED_SECRET_SERVICE,
+                    namespace="paasta",
                 ),
             ]
         )
@@ -4257,16 +4260,10 @@ def test_get_kubernetes_secret_env_variables():
 
         assert mock_get_kubernetes_secret.call_args_list == [
             mock.call(
-                mock_client,
-                "universe",
-                "SECRET_NAME1",
-                decode=True,
+                mock_client, "universe", "SECRET_NAME1", decode=True, namespace="paasta"
             ),
             mock.call(
-                mock_client,
-                "universe",
-                "SECRET_NAME2",
-                decode=True,
+                mock_client, "universe", "SECRET_NAME2", decode=True, namespace="paasta"
             ),
         ]
 

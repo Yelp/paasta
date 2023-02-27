@@ -461,9 +461,11 @@ def assert_mesos_tasks_running(
 
 
 def assert_kube_pods_running(
-    kube_client: KubeClient,
+    kube_client: KubeClient, namespace: str = "paasta"
 ) -> HealthCheckResult:
-    statuses = [get_pod_status(pod) for pod in get_all_pods_cached(kube_client)]
+    statuses = [
+        get_pod_status(pod) for pod in get_all_pods_cached(kube_client, namespace)
+    ]
     running = statuses.count(PodStatus.RUNNING)
     pending = statuses.count(PodStatus.PENDING)
     failed = statuses.count(PodStatus.FAILED)
@@ -884,6 +886,7 @@ def get_resource_utilization_by_grouping_kube(
     kube_client: KubeClient,
     filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
+    namespace: str = "paasta",
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """Given a function used to group nodes, calculate resource utilization
     for each value of a given attribute.
@@ -906,7 +909,7 @@ def get_resource_utilization_by_grouping_kube(
 
     node_groupings = group_slaves_by_key_func(grouping_func, nodes, sort_func)
 
-    pods = get_all_pods_cached(kube_client)
+    pods = get_all_pods_cached(kube_client, namespace)
 
     pods_by_node = {}
     for node in nodes:
@@ -1042,9 +1045,9 @@ def assert_marathon_deployments(
 
 
 def assert_kube_deployments(
-    kube_client: KubeClient,
+    kube_client: KubeClient, namespace: str = "paasta"
 ) -> HealthCheckResult:
-    num_deployments = len(list_all_deployments(kube_client))
+    num_deployments = len(list_all_deployments(kube_client, namespace))
     return HealthCheckResult(
         message=f"Kubernetes deployments: {num_deployments:>3}", healthy=True
     )
@@ -1062,14 +1065,14 @@ def get_marathon_status(
 
 
 def get_kube_status(
-    kube_client: KubeClient,
+    kube_client: KubeClient, namespace: str = "paasta"
 ) -> Sequence[HealthCheckResult]:
     """Gather information about Kubernetes.
     :param kube_client: the KUbernetes client
     :return: string containing the status
     """
     return run_healthchecks_with_param(
-        kube_client, [assert_kube_deployments, assert_kube_pods_running]
+        [kube_client, namespace], [assert_kube_deployments, assert_kube_pods_running]
     )
 
 

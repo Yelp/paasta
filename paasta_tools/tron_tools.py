@@ -413,6 +413,10 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
+    def get_namespace(self) -> str:
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
+
     def get_deploy_group(self) -> Optional[str]:
         return self.config_dict.get("deploy_group", None)
 
