@@ -37,7 +37,6 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import limit_size_with_hash
-from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
@@ -49,8 +48,6 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDeploymentsAvailable
 
 log = logging.getLogger(__name__)
 
@@ -151,42 +148,28 @@ def get_services_to_k8s_namespaces(
             for namespace in paasta_namespaces.items:
                 services_to_k8s_namespaces[service].add(namespace.metadata.name)
             continue
+
         for instance_type in INSTANCE_TYPES:
-            instances = get_service_instance_list(
-                service=service,
-                instance_type=instance_type,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
-            if instances:
-                if instance_type == "kubernetes":
-                    for instance in instances:
-                        try:
-                            service_instance_config = load_kubernetes_service_config(
-                                service=instance[0],
-                                instance=instance[1],
-                                cluster=cluster,
-                                soa_dir=soa_dir,
-                            )
-                        except NoDeploymentsAvailable:
-                            log.debug(
-                                "No deployments found for %s.%s in cluster %s. Skipping."
-                                % (instance[0], instance[1], cluster)
-                            )
-                            continue
-                        except NoConfigurationForServiceError:
-                            log.error(
-                                f"Could not read kubernetes configuration file for %s.%s in cluster %s"
-                                % (instance[0], instance[1], cluster)
-                            )
-                            continue
-                        services_to_k8s_namespaces[service].add(
-                            service_instance_config.get_namespace()
-                        )
-                else:
+            if instance_type == "kubernetes":
+                config_loader = PaastaServiceConfigLoader(service, soa_dir)
+                for service_instance_config in config_loader.instance_configs(
+                    cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                ):
+                    services_to_k8s_namespaces[service].add(
+                        service_instance_config.get_namespace()
+                    )
+            else:
+                instances = get_service_instance_list(
+                    service=service,
+                    instance_type=instance_type,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+                if instances:
                     services_to_k8s_namespaces[service].add(
                         INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
                     )
+
     return dict(services_to_k8s_namespaces)
 
 
