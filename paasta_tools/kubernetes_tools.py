@@ -178,6 +178,7 @@ DISCOVERY_ATTRIBUTES = {
     "habitat",
     "pool",
     "hostname",
+    "owner",
 }
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
@@ -2233,8 +2234,8 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
             name=namespace,
             labels={
                 "name": namespace,
-                "yelp.com/owner": "compute_infra_platform_experience",
-                "paasta.yelp.com/managed": "true",
+                paasta_prefixed("owner"): "compute_infra_platform_experience",
+                paasta_prefixed("managed"): "true",
             },
         )
     )
