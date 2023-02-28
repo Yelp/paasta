@@ -214,6 +214,7 @@ def test_paasta_secret():
             "middleearth",
             cluster_names="mesosstage",
             soa_dir=mock.ANY,
+            secret_provider_extra_kwargs=mock.ANY,
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
