@@ -43,8 +43,7 @@ def parse_args():
     parser.add_argument(
         "-p",
         "--pending-minutes",
-        help="Minutes since the pod was scheduled. Terminates pods whose phase is Pending based on time since scheduled. "
-        "Including pod status Pending/ContainerCreating/Terminating.",
+        help="Minutes since the pod was scheduled. Terminates pods whose phase is Pending based on time since scheduled. Including pod status Pending/ContainerCreating/Terminating.",
         required=False,
         type=int,
     )
