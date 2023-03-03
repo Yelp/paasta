@@ -1,9 +1,12 @@
 import argparse
+import json
 import logging
 import sys
 from datetime import datetime
+from typing import Any
 from typing import Sequence
 
+import requests
 from dateutil.tz import tzutc
 from kubernetes.client import V1Pod
 
@@ -11,6 +14,8 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_pod_condition
 from paasta_tools.kubernetes_tools import is_pod_completed
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaNotConfiguredError
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +51,18 @@ def parse_args():
         help="Minutes since the pod was scheduled. Terminates pods whose phase is Pending based on time since scheduled. Including pod status Pending/ContainerCreating/Terminating.",
         required=False,
         type=int,
+    )
+    parser.add_argument(
+        "--slackme-webhook-id",
+        help="Work with --slack-channel. Slackme webhook_id for sending notification message. https://slackme.yelpcorp.com/webhook/{webhook_id}",
+        required=False,
+        type=str,
+    )
+    parser.add_argument(
+        "--slack-channel",
+        help="Work with --slackme-webhook-id. Slack channel for sending notification message.",
+        required=False,
+        type=str,
     )
     parser.add_argument(
         "--dry-run",
@@ -106,6 +123,47 @@ def terminate_pods(pods: Sequence[V1Pod], kube_client) -> tuple:
             errors.append((pod.metadata.name, e))
 
     return (successes, errors)
+
+
+def message_slack(
+    slackme_webhook_id: str, channel: str, message: str, icon_emoji: str = "broom"
+) -> None:
+    payload = {"channel": f"{channel}", "text": message, "icon_emoji": icon_emoji}
+
+    # Refer: https://yelpwiki.yelpcorp.com/display/SLACK/Slackme+-+Slack+Webhook+Generator
+    webhook_url = f"https://slackme.yelpcorp.com/webhook/{slackme_webhook_id}"
+    response = requests.post(
+        webhook_url,
+        data=json.dumps(payload),
+        headers={"Content-Type": "application/json"},
+        timeout=5,
+    )
+    if response.status_code != 200:
+        log.warning(
+            "Request to slack returned an error %s, the response is:\n%s"
+            % (response.status_code, response.text)
+        )
+
+
+def _send_result_message(
+    args: Any,
+    success_cnt: int,
+    error_cnt: int,
+    is_dry_run: bool,
+) -> None:
+    if not args.slackme_webhook_id or not args.slack_channel:
+        return
+
+    system_paasta_config = load_system_paasta_config()
+    try:
+        cluster_name = system_paasta_config.get_cluster()
+    except PaastaNotConfiguredError:
+        cluster_name = "unknown"
+
+    message = "[Dry Run]" if is_dry_run else ""
+    message += f"[Cleanup pods in cluster: {cluster_name}]\n"
+    message += f"Pod deletion succeed: {success_cnt}, failed: {error_cnt}."
+    message_slack(args.slackme_webhook_id, args.slack_channel, message)
 
 
 def main():
@@ -178,6 +236,7 @@ def main():
             "Dry run would have terminated the following pending pods:\n "
             + "\n ".join([pod.metadata.name for pod in pending_pods])
         )
+        _send_result_message(args, len(completed_pods) + len(errored_pods), 0, True)
         sys.exit(0)
 
     completed_successes, completed_errors = terminate_pods(completed_pods, kube_client)
@@ -214,6 +273,11 @@ def main():
                     f"{pod_name}: {error}" for pod_name, error in pod_names_and_errors
                 )
             )
+
+    # Send result
+    success_cnt = sum([len(pods) for pods in successes.values()])
+    error_cnt = sum([len(pods) for pods in errors.values()])
+    _send_result_message(args, success_cnt, error_cnt, False)
 
 
 if __name__ == "__main__":
