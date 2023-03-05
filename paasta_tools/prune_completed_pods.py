@@ -41,6 +41,13 @@ def parse_args():
         type=int,
     )
     parser.add_argument(
+        "-p",
+        "--pending-minutes",
+        help="Minutes since the pod was scheduled. Terminates pods whose phase is Pending based on time since scheduled. Including pod status Pending/ContainerCreating/Terminating.",
+        required=False,
+        type=int,
+    )
+    parser.add_argument(
         "--dry-run",
         dest="dry_run",
         action="store_true",
@@ -110,9 +117,11 @@ def main():
 
     allowed_uptime_minutes = args.minutes
     allowed_error_minutes = args.error_minutes
+    allowed_pending_minues = args.pending_minutes
 
     completed_pods = []
     errored_pods = []
+    pending_pods = []
 
     for pod in pods:
         if is_pod_completed(pod) and _completed_longer_than_threshold(
@@ -139,8 +148,20 @@ def main():
                 log.exception(
                     f"Unable to check {pod.metadata.name}'s schedule time. Pod status: {pod.status}.'"
                 )
+        elif (
+            # this is currently optional
+            allowed_pending_minues is not None
+            and pod.status.phase == "Pending"
+        ):
+            try:
+                if _scheduled_longer_than_threshold(pod, allowed_pending_minues):
+                    pending_pods.append(pod)
+            except AttributeError:
+                log.exception(
+                    f"Unable to check {pod.metadata.name}'s schedule time. Pod status: {pod.status}.'"
+                )
 
-    if not (completed_pods or errored_pods):
+    if not (completed_pods or errored_pods or pending_pods):
         log.debug("No pods to terminate.")
         sys.exit(0)
 
@@ -153,18 +174,25 @@ def main():
             "Dry run would have terminated the following errored pods:\n "
             + "\n ".join([pod.metadata.name for pod in errored_pods])
         )
+        log.debug(
+            "Dry run would have terminated the following pending pods:\n "
+            + "\n ".join([pod.metadata.name for pod in pending_pods])
+        )
         sys.exit(0)
 
     completed_successes, completed_errors = terminate_pods(completed_pods, kube_client)
     errored_successes, errored_errors = terminate_pods(errored_pods, kube_client)
+    pending_successes, pending_errors = terminate_pods(pending_pods, kube_client)
 
     successes = {
         "completed": completed_successes,
         "errored": errored_successes,
+        "pending": pending_successes,
     }
     errors = {
         "completed": completed_errors,
         "errored": errored_errors,
+        "pending": pending_errors,
     }
 
     for typ, pod_names in successes.items():
