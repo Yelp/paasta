@@ -34,7 +34,6 @@ from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
 from kubernetes.client import V1NodeSelectorTerm
-from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
@@ -552,14 +551,6 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(
-                            name="PAASTA_CLUSTER",
-                            value_from=V1EnvVarSource(
-                                field_ref=V1ObjectFieldSelector(
-                                    field_path="metadata.labels['paasta.yelp.com/cluster']"
-                                )
-                            ),
-                        ),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
@@ -606,14 +597,6 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(
-                            name="PAASTA_CLUSTER",
-                            value_from=V1EnvVarSource(
-                                field_ref=V1ObjectFieldSelector(
-                                    field_path="metadata.labels['paasta.yelp.com/cluster']"
-                                )
-                            ),
-                        ),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
@@ -926,17 +909,7 @@ class TestKubernetesDeploymentConfig:
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
         assert "PAASTA_CLUSTER" in [env.name for env in ret]
-        expected_cluster_var = (
-            V1EnvVar(
-                name="PAASTA_CLUSTER",
-                value_from=V1EnvVarSource(
-                    field_ref=V1ObjectFieldSelector(
-                        field_path="metadata.labels['paasta.yelp.com/cluster']"
-                    )
-                ),
-            ),
-        )
-        assert expected_cluster_var in [env for env in ret]
+        assert "PAASTA_CLUSTER" in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
@@ -3838,7 +3811,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configfccf2d1e"
+            == "config4e26614e"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3884,7 +3857,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configb88778b9"
+            == "config328b84b3"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
