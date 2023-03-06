@@ -1,3 +1,45 @@
+paasta-tools (0.159.0) xenial; urgency=medium
+
+  * 0.159.0 tagged with 'make release'
+    Commit: Merge pull request #3537 from Yelp/u/krall/namespace_schema
+    Add the `namespace` parameter to documentation and schema
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Jan 2023 13:26:10 -0800
+
+paasta-tools (0.158.0) xenial; urgency=medium
+
+  * 0.158.0 tagged with 'make release'
+    Commit: Merge pull request #3530 from Yelp/u/emanelsabban/PAASTA-
+    17777  removing hardcoded paasta ns in
+    setup_prometheus_adapter_config file - PAASTA-17777
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 19 Jan 2023 06:12:35 -0800
+
+paasta-tools (0.157.3) xenial; urgency=medium
+
+  * 0.157.3 tagged with 'make release'
+    Commit: Enable setting a multiplier to uwsgi offset config (#3529)
+    This will allow us to slowly lower the impact of the offset
+    parameter by decreasing this value from 1.0 -> 0 rather than
+    completely removing it all at once (and potentially exposing
+    problems hidden by our overscaling)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 13 Jan 2023 09:57:55 -0800
+
+paasta-tools (0.157.2) xenial; urgency=medium
+
+  * 0.157.2 tagged with 'make release'
+    Commit: Enable explicitly setting service_account_name in tron
+    actions (#3525)  There"s internal users that would like to configure
+    a Service Account with specific permissions for use in their
+    batches.  Right now, we can only dynamically create Service Accounts
+    - and these are generally only used for Pod Identity (or, they"re
+    mapped 1:1 with an existing Role).  This PR enables users to
+    explicitly set service_account_name in their action configs and have
+    that be plumbed all the way through to Tron
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Jan 2023 10:44:13 -0800
+
 paasta-tools (0.157.1) xenial; urgency=medium
 
   * 0.157.1 tagged with 'make release'
