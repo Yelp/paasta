@@ -1103,7 +1103,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             V1EnvVar(name=name, value=value)
             for name, value in self.get_env().items()
             if name
-            not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys())
+            # We drop PAASTA_CLUSTER here and get it instead via `get_kubernetes_environment()`
+            not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys()) + ["PAASTA_CLUSTER"]
         ]
         user_env += self.get_kubernetes_secret_env_vars(
             secret_env_vars=secret_env_vars,
@@ -1171,6 +1172,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name="PAASTA_HOST",
                 value_from=V1EnvVarSource(
                     field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_CLUSTER",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(field_path="metadata.labels['" + paasta_prefixed("cluster") + "']")
                 ),
             ),
         ]
