@@ -170,6 +170,7 @@ HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
+PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
     "region",
@@ -1597,18 +1598,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1ObjectMeta(
             name=self.get_sanitised_deployment_name(),
             labels={
+                "yelp.com/owner": PAASTA_WORKLOAD_OWNER,
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
-                "paasta.yelp.com/service": self.get_service(),
-                "paasta.yelp.com/instance": self.get_instance(),
-                "paasta.yelp.com/git_sha": git_sha,
-                "paasta.yelp.com/cluster": self.cluster,
-                "paasta.yelp.com/pool": self.get_pool(),
-                "yelp.com/owner": "compute_infra_platform_experience",
-                paasta_prefixed("autoscaled"): str(
-                    self.is_autoscaling_enabled()
-                ).lower(),
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+                paasta_prefixed("git_sha"): git_sha,
+                paasta_prefixed("cluster"): self.cluster,
+                paasta_prefixed("autoscaled"): str(self.is_autoscaling_enabled()).lower(),
+                paasta_prefixed("paasta.yelp.com/pool"): self.get_pool(),
             },
         )
 
