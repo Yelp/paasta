@@ -342,8 +342,9 @@ def is_service_folder(soa_dir, service_name):
 
 
 def _get_secret_provider_for_service(
-    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs={}
+    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs=None
 ):
+    secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
 
     if not is_service_folder(soa_dir, service_name):
