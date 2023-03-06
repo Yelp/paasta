@@ -1104,7 +1104,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             for name, value in self.get_env().items()
             if name
             # We drop PAASTA_CLUSTER here and get it instead via `get_kubernetes_environment()`
-            not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys()) + ["PAASTA_CLUSTER"]
+            not in list(secret_env_vars.keys())
+            + list(shared_secret_env_vars.keys())
+            + ["PAASTA_CLUSTER"]
         ]
         user_env += self.get_kubernetes_secret_env_vars(
             secret_env_vars=secret_env_vars,
@@ -1177,7 +1179,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             V1EnvVar(
                 name="PAASTA_CLUSTER",
                 value_from=V1EnvVarSource(
-                    field_ref=V1ObjectFieldSelector(field_path="metadata.labels['" + paasta_prefixed("cluster") + "']")
+                    field_ref=V1ObjectFieldSelector(
+                        field_path="metadata.labels['"
+                        + paasta_prefixed("cluster")
+                        + "']"
+                    )
                 ),
             ),
         ]
@@ -1613,7 +1619,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 paasta_prefixed("instance"): self.get_instance(),
                 paasta_prefixed("git_sha"): git_sha,
                 paasta_prefixed("cluster"): self.cluster,
-                paasta_prefixed("autoscaled"): str(self.is_autoscaling_enabled()).lower(),
+                paasta_prefixed("autoscaled"): str(
+                    self.is_autoscaling_enabled()
+                ).lower(),
                 paasta_prefixed("paasta.yelp.com/pool"): self.get_pool(),
             },
         )
