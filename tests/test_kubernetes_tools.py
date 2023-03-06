@@ -552,6 +552,9 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
+                        V1EnvVar(name="PAASTA_CLUSTER", value_from=V1EnvVarSource(
+                            field_ref=V1ObjectFieldSelector(field_path="metadata.labels['paasta.yelp.com/cluster']")
+                        )),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
@@ -598,6 +601,9 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
+                        V1EnvVar(name="PAASTA_CLUSTER", value_from=V1EnvVarSource(
+                            field_ref=V1ObjectFieldSelector(field_path="metadata.labels['paasta.yelp.com/cluster']")
+                        )),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
