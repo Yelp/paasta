@@ -11,7 +11,6 @@ from hypothesis import given
 from hypothesis.strategies import floats
 from hypothesis.strategies import integers
 from kubernetes import client as kube_client
-from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1PodDisruptionBudget
@@ -35,6 +34,7 @@ from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
 from kubernetes.client import V1NodeSelectorTerm
+from kubernetes.client import V1ObjectFieldSelector
 from kubernetes.client import V1ObjectMeta
 from kubernetes.client import V1PersistentVolumeClaim
 from kubernetes.client import V1PersistentVolumeClaimSpec
@@ -549,9 +549,14 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(name="PAASTA_CLUSTER", value_from=V1EnvVarSource(
-                            field_ref=V1ObjectFieldSelector(field_path="metadata.labels['paasta.yelp.com/cluster']")
-                        )),
+                        V1EnvVar(
+                            name="PAASTA_CLUSTER",
+                            value_from=V1EnvVarSource(
+                                field_ref=V1ObjectFieldSelector(
+                                    field_path="metadata.labels['paasta.yelp.com/cluster']"
+                                )
+                            ),
+                        ),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
@@ -598,9 +603,14 @@ class TestKubernetesDeploymentConfig:
             expected = [
                 V1Container(
                     env=[
-                        V1EnvVar(name="PAASTA_CLUSTER", value_from=V1EnvVarSource(
-                            field_ref=V1ObjectFieldSelector(field_path="metadata.labels['paasta.yelp.com/cluster']")
-                        )),
+                        V1EnvVar(
+                            name="PAASTA_CLUSTER",
+                            value_from=V1EnvVarSource(
+                                field_ref=V1ObjectFieldSelector(
+                                    field_path="metadata.labels['paasta.yelp.com/cluster']"
+                                )
+                            ),
+                        ),
                         V1EnvVar(name="MESH_REGISTRATIONS", value="universal.credit"),
                     ],
                     image="some-docker-image",
@@ -913,14 +923,16 @@ class TestKubernetesDeploymentConfig:
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
         assert "PAASTA_CLUSTER" in [env.name for env in ret]
-        expected_cluster_var = V1EnvVar(
-            name="PAASTA_CLUSTER",
-            value_from=V1EnvVarSource(
-                field_ref=V1ObjectFieldSelector(
-                    field_path="metadata.labels['paasta.yelp.com/cluster']"
-                )
+        expected_cluster_var = (
+            V1EnvVar(
+                name="PAASTA_CLUSTER",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path="metadata.labels['paasta.yelp.com/cluster']"
+                    )
+                ),
             ),
-        ),
+        )
         assert expected_cluster_var in [env for env in ret]
 
     def test_get_resource_requirements(self):
