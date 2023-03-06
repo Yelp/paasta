@@ -1,3 +1,11 @@
+paasta-tools (0.164.2) xenial; urgency=medium
+
+  * 0.164.2 tagged with 'make release'
+    Commit: Add support for pruning pending pods (#3557)  * Add support
+    for pruning pending pods  * String in single line
+
+ -- Chi Chang <chi@yelp.com>  Mon, 06 Mar 2023 06:27:25 -0800
+
 paasta-tools (0.164.1) xenial; urgency=medium
 
   * 0.164.1 tagged with 'make release'
