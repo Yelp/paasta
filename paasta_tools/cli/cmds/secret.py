@@ -71,6 +71,7 @@ def add_decrypt_subparser(subparsers):
         "decrypt", help="decrypts a single paasta secret"
     )
     _add_common_args(secret_parser_decrypt)
+    _add_vault_auth_args(secret_parser_decrypt)
 
     secret_parser_decrypt.add_argument(
         "-n",
@@ -113,6 +114,7 @@ def add_run_subparser(subparsers):
         conflict_handler="resolve",
     )
     _add_common_args(secret_parser_run, allow_shared=False)
+    _add_vault_auth_args(secret_parser_run)
 
     secret_parser_run.add_argument(
         "-i",
@@ -144,24 +146,6 @@ def add_run_subparser(subparsers):
             "The command to run with the specified PaaSTA secrets. "
             "If not given, starts an interactive bash shell."
         ),
-    )
-
-    secret_parser_run.add_argument(
-        "--vault-auth-method",
-        help="Override how we auth with vault, defaults to token if not present",
-        type=str,
-        dest="vault_auth_method",
-        required=False,
-        default="token",  # token falls back to ldap if token file is unreadable
-        choices=["token", "ldap"],
-    )
-    secret_parser_run.add_argument(
-        "--vault-token-file",
-        help="Override vault token file, defaults to %(default)s",
-        type=str,
-        dest="vault_token_file",
-        required=False,
-        default="/var/spool/.paasta_vault_token",
     )
 
 
@@ -214,6 +198,26 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
         "Defaults to all clusters in which the service runs. "
         "For example: --clusters pnw-prod,nova-prod ",
     ).completer = lazy_choices_completer(list_clusters)
+
+
+def _add_vault_auth_args(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "--vault-auth-method",
+        help="Override how we auth with vault, defaults to token if not present",
+        type=str,
+        dest="vault_auth_method",
+        required=False,
+        default="token",  # token falls back to ldap if token file is unreadable
+        choices=["token", "ldap"],
+    )
+    parser.add_argument(
+        "--vault-token-file",
+        help="Override vault token file, defaults to %(default)s",
+        type=str,
+        dest="vault_token_file",
+        required=False,
+        default="/var/spool/.paasta_vault_token",
+    )
 
 
 def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True):
@@ -337,7 +341,10 @@ def is_service_folder(soa_dir, service_name):
     return os.path.isfile(os.path.join(soa_dir, service_name, "service.yaml"))
 
 
-def _get_secret_provider_for_service(service_name, cluster_names=None, soa_dir=None):
+def _get_secret_provider_for_service(
+    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs=None
+):
+    secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
 
     if not is_service_folder(soa_dir, service_name):
@@ -350,7 +357,8 @@ def _get_secret_provider_for_service(service_name, cluster_names=None, soa_dir=N
         sys.exit(1)
     system_paasta_config = load_system_paasta_config()
     secret_provider_kwargs = {
-        "vault_cluster_config": system_paasta_config.get_vault_cluster_config()
+        "vault_cluster_config": system_paasta_config.get_vault_cluster_config(),
+        **secret_provider_extra_kwargs,
     }
     clusters = (
         cluster_names.split(",")
@@ -422,12 +430,17 @@ def paasta_secret(args):
 
         print_paasta_helper(secret_path, args.secret_name, args.shared)
     elif args.action == "decrypt":
+        secret_provider_extra_kwargs = {
+            "vault_auth_method": args.vault_auth_method,
+            "vault_token_file": args.vault_token_file,
+        }
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
             # `decrypt` does not require the current working directory
             # to be a writeable git checkout of yelpsoa-configs
             soa_dir=args.yelpsoa_config_root,
+            secret_provider_extra_kwargs=secret_provider_extra_kwargs,
         )
         print(
             decrypt_secret(
