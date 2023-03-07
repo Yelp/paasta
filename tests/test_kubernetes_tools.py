@@ -909,7 +909,6 @@ class TestKubernetesDeploymentConfig:
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
         assert "PAASTA_CLUSTER" in [env.name for env in ret]
-        assert "PAASTA_CLUSTER" in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
