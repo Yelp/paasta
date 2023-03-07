@@ -1,3 +1,12 @@
+paasta-tools (0.164.3) xenial; urgency=medium
+
+  * 0.164.3 tagged with 'make release'
+    Commit: Merge pull request #3556 from
+    Yelp/u/calvinli/token_for_paasta_secret_decrypt  allow paasta secret
+    decrypt to use token vault auth
+
+ -- Calvin Li <calvinli@yelp.com>  Tue, 07 Mar 2023 11:01:31 -0800
+
 paasta-tools (0.164.2) xenial; urgency=medium
 
   * 0.164.2 tagged with 'make release'
