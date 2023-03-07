@@ -1089,6 +1089,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         env["PAASTA_SOA_CONFIGS_SHA"] = read_soa_metadata(soa_dir=self.soa_dir).get(
             "git_sha", ""
         )
+
+        # We drop PAASTA_CLUSTER here because it will be added via `get_kubernetes_environment()`
+        env.pop("PAASTA_CLUSTER", None)
+
         return env
 
     def get_container_env(self) -> Sequence[V1EnvVar]:
@@ -1105,10 +1109,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             V1EnvVar(name=name, value=value)
             for name, value in self.get_env().items()
             if name
-            # We drop PAASTA_CLUSTER here and get it instead via `get_kubernetes_environment()`
-            not in list(secret_env_vars.keys())
-            + list(shared_secret_env_vars.keys())
-            + ["PAASTA_CLUSTER"]
+            not in list(secret_env_vars.keys()) + list(shared_secret_env_vars.keys())
         ]
         user_env += self.get_kubernetes_secret_env_vars(
             secret_env_vars=secret_env_vars,
