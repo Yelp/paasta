@@ -15,7 +15,6 @@
 import argparse
 import os
 import re
-import subprocess
 import sys
 
 from service_configuration_lib import DEFAULT_SOA_DIR
@@ -482,13 +481,8 @@ def paasta_secret(args):
             # make it clear that we're running in a sub-shell
             new_environ["PS1"] = r"(paasta secret run) \$ "
 
-        command_to_run = subprocess.run(
-            args.cmd,
-            shell=False,
-            check=False,
-            env=new_environ,
-        )
-        sys.exit(command_to_run.returncode)
+        # Note: this never returns, it replaces the current process
+        os.execvpe(args.cmd[0], args.cmd, new_environ)
     else:
         print("Unknown action")
         sys.exit(1)
