@@ -462,6 +462,28 @@
                         "type": "string"
                     }
                 },
+                "crypto_keys": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "encrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        },
+                        "decrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        }
+                    }
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
