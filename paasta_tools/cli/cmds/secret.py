@@ -481,7 +481,9 @@ def paasta_secret(args):
             # make it clear that we're running in a sub-shell
             new_environ["PS1"] = r"(paasta secret run) \$ "
 
-        # Note: this never returns, it replaces the current process
+        # This is like subprocess.run but never returns (it replaces the current process),
+        # we do this to play nicely with pgctl:
+        # https://pgctl.readthedocs.io/en/latest/user/quickstart.html#writing-playground-services
         os.execvpe(args.cmd[0], args.cmd, new_environ)
     else:
         print("Unknown action")
