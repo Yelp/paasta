@@ -1,3 +1,11 @@
+paasta-tools (0.164.5) xenial; urgency=medium
+
+  * 0.164.5 tagged with 'make release'
+    Commit: Merge pull request #3542 from nurdann/add-crypto-keys-schema
+    Add `crypto_keys` field
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 08 Mar 2023 14:40:00 -0800
+
 paasta-tools (0.164.4) xenial; urgency=medium
 
   * 0.164.4 tagged with 'make release'
