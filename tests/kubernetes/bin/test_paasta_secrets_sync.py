@@ -315,8 +315,6 @@ def test_sync_boto_secrets():
             kube_client=mock_client,
             cluster="westeros-prod",
             service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
             soa_dir="/nail/blah",
         )
         assert mock_create_secret.called
@@ -332,8 +330,6 @@ def test_sync_boto_secrets():
             kube_client=mock_client,
             cluster="westeros-prod",
             service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
             soa_dir="/nail/blah",
         )
         assert mock_update_secret.called
@@ -350,8 +346,6 @@ def test_sync_boto_secrets():
             kube_client=mock_client,
             cluster="westeros-prod",
             service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
             soa_dir="/nail/blah",
         )
         assert not mock_update_secret.called
@@ -368,8 +362,6 @@ def test_sync_boto_secrets():
             kube_client=mock_client,
             cluster="westeros-prod",
             service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
             soa_dir="/nail/blah",
         )
         assert mock_get_kubernetes_secret_signature.called

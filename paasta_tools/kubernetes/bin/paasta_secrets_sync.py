@@ -205,8 +205,6 @@ def sync_all_secrets(
                 kube_client=kube_client,
                 cluster=cluster,
                 service=service,
-                secret_provider_name=secret_provider_name,
-                vault_cluster_config=vault_cluster_config,
                 soa_dir=soa_dir,
             )
         )
@@ -311,10 +309,7 @@ def sync_boto_secrets(
     kube_client: KubeClient,
     cluster: str,
     service: str,
-    secret_provider_name: str,
-    vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    namespace: str,
 ) -> bool:
     # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
