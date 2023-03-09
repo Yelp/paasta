@@ -296,9 +296,9 @@ def test_paasta_secret_run():
     ), mock.patch(
         "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
     ), mock.patch(
-        "subprocess.run",
+        "os.execvpe",
         autospec=True,
-    ) as mock_subprocess:
+    ) as mock_exec:
         mock_decrypt_secret_environment_variables.return_value = {
             "PAASTA_SECRET_TEST": "test secret value",
         }
@@ -309,16 +309,14 @@ def test_paasta_secret_run():
             instance="main",
             cmd=["foo"],
         )
-        with raises(SystemExit):
-            secret.paasta_secret(mock_args)
 
-        mock_subprocess.assert_called_once_with(
+        secret.paasta_secret(mock_args)
+
+        mock_exec.assert_called_once_with(
+            "foo",
             ["foo"],
-            shell=False,
-            check=False,
-            env=mock.ANY,
+            mock.ANY,
         )
         assert (
-            mock_subprocess.call_args[1]["env"].get("PAASTA_SECRET_TEST")
-            == "test secret value"
+            mock_exec.call_args[0][2].get("PAASTA_SECRET_TEST") == "test secret value"
         )
