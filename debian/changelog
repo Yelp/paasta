@@ -1,3 +1,12 @@
+paasta-tools (0.164.6) xenial; urgency=medium
+
+  * 0.164.6 tagged with 'make release'
+    Commit: Merge pull request #3562 from
+    Yelp/u/calvinli/secret_run_pgctl  paasta secret run: subprocess.run -
+    > os.execvpe
+
+ -- Calvin Li <calvinli@yelp.com>  Thu, 09 Mar 2023 15:19:19 -0800
+
 paasta-tools (0.164.5) xenial; urgency=medium
 
   * 0.164.5 tagged with 'make release'
