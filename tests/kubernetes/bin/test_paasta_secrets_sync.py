@@ -318,7 +318,6 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace="paasta",
         )
         assert mock_create_secret.called
         assert not mock_update_secret.called
@@ -336,7 +335,6 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace="paasta",
         )
         assert mock_update_secret.called
         call_args = mock_update_secret.call_args_list
@@ -355,7 +353,6 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace="paasta",
         )
         assert not mock_update_secret.called
         assert not mock_create_secret.called
@@ -374,7 +371,6 @@ def test_sync_boto_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
-            namespace="paasta",
         )
         assert mock_get_kubernetes_secret_signature.called
         assert mock_create_secret.called

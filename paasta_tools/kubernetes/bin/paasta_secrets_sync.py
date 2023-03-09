@@ -200,17 +200,16 @@ def sync_all_secrets(
                     vault_token_file=vault_token_file,
                 )
             )
-            results.append(
-                sync_boto_secrets(
-                    kube_client=kube_client,
-                    cluster=cluster,
-                    service=service,
-                    secret_provider_name=secret_provider_name,
-                    vault_cluster_config=vault_cluster_config,
-                    soa_dir=soa_dir,
-                    namespace=namespace,
-                )
+        results.append(
+            sync_boto_secrets(
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                secret_provider_name=secret_provider_name,
+                vault_cluster_config=vault_cluster_config,
+                soa_dir=soa_dir,
             )
+        )
     return all(results)
 
 
@@ -346,6 +345,7 @@ def sync_boto_secrets(
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
         app_name = get_kubernetes_app_name(service, instance)
+        namespace = instance_config.get_namespace()
         secret = limit_size_with_hash(f"paasta-boto-key-{app_name}")
         hashable_data = "".join([secret_data[key] for key in secret_data])
         signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
