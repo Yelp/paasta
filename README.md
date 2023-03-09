@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Yelp/paasta.svg?branch=master)](https://travis-ci.org/Yelp/paasta)
+[![Build Status](https://github.com/Yelp/paasta/actions/workflows/ci.yml/badge.svg?query=branch%3Amaster)](https://github.com/Yelp/paasta/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/paasta/badge/?version=latest)](https://paasta.readthedocs.io/en/latest/?badge=latest)
 
 # PaaSTA - Build, Deploy, Connect, and Monitor Services

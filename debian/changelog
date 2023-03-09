@@ -1,3 +1,35 @@
+paasta-tools (0.164.5) xenial; urgency=medium
+
+  * 0.164.5 tagged with 'make release'
+    Commit: Merge pull request #3542 from nurdann/add-crypto-keys-schema
+    Add `crypto_keys` field
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 08 Mar 2023 14:40:00 -0800
+
+paasta-tools (0.164.4) xenial; urgency=medium
+
+  * 0.164.4 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib (#3561)
+
+ -- Chi Chang <chi@yelp.com>  Wed, 08 Mar 2023 09:17:34 -0800
+
+paasta-tools (0.164.3) xenial; urgency=medium
+
+  * 0.164.3 tagged with 'make release'
+    Commit: Merge pull request #3556 from
+    Yelp/u/calvinli/token_for_paasta_secret_decrypt  allow paasta secret
+    decrypt to use token vault auth
+
+ -- Calvin Li <calvinli@yelp.com>  Tue, 07 Mar 2023 11:01:31 -0800
+
+paasta-tools (0.164.2) xenial; urgency=medium
+
+  * 0.164.2 tagged with 'make release'
+    Commit: Add support for pruning pending pods (#3557)  * Add support
+    for pruning pending pods  * String in single line
+
+ -- Chi Chang <chi@yelp.com>  Mon, 06 Mar 2023 06:27:25 -0800
+
 paasta-tools (0.164.1) xenial; urgency=medium
 
   * 0.164.1 tagged with 'make release'
