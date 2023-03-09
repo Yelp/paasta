@@ -395,6 +395,14 @@ def add_subparser(subparsers):
         default=DEFAULT_AWS_REGION,
     )
 
+    aws_group.add_argument(
+        "--assume-pod-identity",
+        help="If running running in the context of a Kubernetes pod with pod identity set, "
+        "assume the role and pass the session credentials to the spark job.",
+        action="store_true",
+        default=False,
+    )
+
     jupyter_group = list_parser.add_argument_group(
         title="Jupyter kernel culling options",
         description="Idle kernels will be culled by default. Idle "
@@ -1099,6 +1107,7 @@ def paasta_spark_run(args):
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
+        assume_pod_identity=args.assume_pod_identity,
     )
     docker_image = get_docker_image(args, instance_config)
     if docker_image is None:
