@@ -185,6 +185,15 @@ def add_subparser(subparsers):
         default=None,
     )
     list_parser.add_argument(
+        "--force-spark-resource-configs",
+        help=(
+            "Skip the resource/instances recalculation. "
+            "This is strongly not recommended."
+        ),
+        action="store_true",
+        default=False,
+    )
+    list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
         default=DEFAULT_SPARK_DOCKER_REGISTRY,
@@ -1149,6 +1158,7 @@ def paasta_spark_run(args):
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
+        force_spark_resource_configs=args.force_spark_resource_configs,
     )
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues

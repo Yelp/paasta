@@ -62,9 +62,25 @@
                     }
                 },
                 "crypto_keys": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "encrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        },
+                        "decrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        }
                     }
                 },
                 "extra_volumes": {

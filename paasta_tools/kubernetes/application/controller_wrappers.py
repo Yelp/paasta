@@ -243,14 +243,15 @@ class DeploymentWrapper(Application):
         self.deep_delete(kube_client)
         timer = 0
         while (
-            self.kube_deployment in set(list_all_deployments(kube_client))
+            self.kube_deployment
+            in set(list_all_deployments(kube_client, self.soa_config.get_namespace()))
             and timer < 60
         ):
             sleep(1)
             timer += 1
 
         if timer >= 60 and self.kube_deployment in set(
-            list_all_deployments(kube_client)
+            list_all_deployments(kube_client, self.soa_config.get_namespace())
         ):
             # When deleting then immediately creating, we need to use Background
             # deletion to ensure we can create the deployment immediately
@@ -276,7 +277,9 @@ class DeploymentWrapper(Application):
                 else:
                     raise
 
-        if self.kube_deployment in set(list_all_deployments(kube_client)):
+        if self.kube_deployment in set(
+            list_all_deployments(kube_client, self.soa_config.get_namespace())
+        ):
             # deployment deletion failed, we cannot continue
             raise Exception(f"Could not delete deployment {self.item.metadata.name}")
         else:
