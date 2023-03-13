@@ -1,10 +1,13 @@
 import getpass
+import logging
 import os
 from typing import Any
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Tuple
 
 try:
     from vault_tools.client.jsonsecret import get_plaintext
@@ -28,6 +31,9 @@ except ImportError:
 
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
+
+
+log = logging.getLogger(__name__)
 
 
 class SecretProvider(BaseSecretProvider):
@@ -159,3 +165,34 @@ class SecretProvider(BaseSecretProvider):
             return data["environments"][ecosystem]["signature"]
         else:
             return None
+
+    def get_vault_key_versions(
+        self,
+        key: str,
+        mountpoint: str = "keystore",
+    ) -> Iterable[Tuple[str, int]]:
+        """
+        Retrieve Vault key's all versions based on its metadata
+        """
+        client = self.clients[self.ecosystems[0]]
+        try:
+            meta_response = client.secrets.kv.read_secret_metadata(
+                path=key, mount_point=mountpoint
+            )
+
+            for key_version in meta_response["data"]["versions"].keys():
+                key_response = client.secrets.kv.read_secret_version(
+                    path=key, version=key_version, mount_point=mountpoint
+                )
+                yield {
+                    "keyname": key,
+                    "key": key_response["data"]["data"]["key"],
+                    "key_version": key_response["data"]["metadata"]["version"],
+                }
+        except hvac.exceptions.VaultError as e:
+            log.warning(
+                f"Could not fetch key versions for {key} on {self.ecosystems[0]} because of {type(e).__name__}"
+            )
+            pass
+
+        yield from []

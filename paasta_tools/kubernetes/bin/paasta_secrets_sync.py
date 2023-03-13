@@ -26,9 +26,7 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Set
-from typing import Tuple
 
-import hvac
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
@@ -36,13 +34,13 @@ from paasta_tools.kubernetes_tools import create_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import get_vault_key_secret_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
-from paasta_tools.kubernetes_tools import vault_key_to_V1Secret_data_key
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -307,34 +305,6 @@ def sync_secrets(
     return True
 
 
-def get_vault_key_versions(
-    client: "hvac.Client",
-    key: str,
-) -> List[Tuple[str, int]]:
-
-    try:
-        # expect yelpsoa_config, e.g.
-        # crypto_keys:
-        #    - public/foo
-        #    - private/foo
-        meta_response = client.secrets.kv.read_secret_metadata(
-            path=key, mount_point="keystore"
-        )
-
-        for key_version in meta_response["data"]["versions"].keys():
-            key_response = client.secrets.kv.read_secret_version(
-                path=key, version=key_version, mount_point="keystore"
-            )
-            yield {
-                "keyname": key,
-                "key": key_response["data"]["data"]["key"],
-                "key_version": key_response["data"]["metadata"]["version"],
-            }
-    except hvac.exceptions.VaultError:
-        log.warning(f"Could not fetch key versions for {key}")
-        return []
-
-
 def sync_crypto_secrets(
     kube_client: KubeClient,
     cluster: str,
@@ -351,34 +321,41 @@ def sync_crypto_secrets(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         instance = instance_config.instance
-        crypto_keys = instance_config.config_dict.get("crypto_keys", [])
+        crypto_keys = instance_config.config_dict.get("crypto_keys", {})
         if not crypto_keys:
             continue
 
-        crypto_keys.sort()
-
-        provider = get_secret_provider(
-            secret_provider_name=secret_provider_name,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_names=[cluster],
-            secret_provider_kwargs={
-                "vault_cluster_config": vault_cluster_config,
-                "vault_auth_method": "token",
-                "vault_token_file": vault_token_file,
-            },
-        )
-
-        # use vault client directly
-        client = provider.clients[provider.ecosystems[0]]
+        vault_keys = [
+            *(
+                f"public/{encrypt_key}"
+                for encrypt_key in crypto_keys.get("encrypt", [])
+            ),
+            *(
+                f"private/{decrypt_key}"
+                for decrypt_key in crypto_keys.get("decrypt", [])
+            ),
+        ]
 
         secret_data = {}
-        for key in crypto_keys:
-            key_versions = list(get_vault_key_versions(client=client, key=key))
+        for key in vault_keys:
+            key_versions = list(
+                get_secret_provider(
+                    secret_provider_name=secret_provider_name,
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_names=[cluster],
+                    secret_provider_kwargs={
+                        "vault_cluster_config": vault_cluster_config,
+                        "vault_auth_method": "token",
+                        "vault_token_file": vault_token_file,
+                    },
+                ).get_vault_key_versions(key)
+            )
+
             if not key_versions:
                 continue
 
-            secret_data[vault_key_to_V1Secret_data_key(key)] = base64.b64encode(
+            secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
                 json.dumps(key_versions).encode("utf-8")
             ).decode("utf-8")
 
@@ -457,7 +434,7 @@ def update_k8s_secrets(
     secret_data: Mapping[str, str],
     kube_client: KubeClient,
     namespace: str,
-):
+) -> None:
     hashable_data = "".join([secret_data[key] for key in secret_data])
     signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
     kubernetes_signature = get_kubernetes_secret_signature(
