@@ -180,6 +180,7 @@ DISCOVERY_ATTRIBUTES = {
     "habitat",
     "pool",
     "hostname",
+    "owner",
 }
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
@@ -2249,7 +2250,14 @@ def get_matching_namespaces(
 
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
-        metadata=V1ObjectMeta(name=namespace, labels={"name": namespace})
+        metadata=V1ObjectMeta(
+            name=namespace,
+            labels={
+                "name": namespace,
+                paasta_prefixed("owner"): "compute_infra_platform_experience",
+                paasta_prefixed("managed"): "true",
+            },
+        )
     )
     namespaces = kube_client.core.list_namespace()
     namespace_names = [item.metadata.name for item in namespaces.items]
