@@ -1,3 +1,10 @@
+paasta-tools (0.165.2) xenial; urgency=medium
+
+  * 0.165.2 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v2.14.5 (#3567)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 16 Mar 2023 11:51:52 -0700
+
 paasta-tools (0.165.1) xenial; urgency=medium
 
   * 0.165.1 tagged with 'make release'
