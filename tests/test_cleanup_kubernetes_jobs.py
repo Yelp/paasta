@@ -123,11 +123,10 @@ def test_main(fake_deployment, fake_stateful_set, invalid_app):
     with mock.patch(
         "paasta_tools.cleanup_kubernetes_jobs.cleanup_unused_apps", autospec=True
     ) as cleanup_patch, mock.patch(
-        "paasta_tools.utils.SystemPaastaConfig.get_cluster",
-        return_value=cluster,
-        autospec=True,
-    ):
-        main(("--soa-dir", soa_dir))
+        "paasta_tools.cleanup_kubernetes_jobs.load_system_paasta_config", autospec=True
+    ) as load_config_patch:
+        load_config_patch.return_value.get_cluster.return_value = "fake_cluster"
+        main(("--soa-dir", soa_dir, "--cluster", cluster))
         cleanup_patch.assert_called_once_with(
             soa_dir, cluster, kill_threshold=0.5, force=False
         )
