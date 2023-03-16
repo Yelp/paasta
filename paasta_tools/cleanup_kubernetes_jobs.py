@@ -201,7 +201,6 @@ def cleanup_unused_apps(
 
     log.info("Loading running Kubernetes apps")
     applications_dict = list_all_applications(kube_client, APPLICATION_TYPES)
-    print("Running apps: %s" % list(applications_dict))
     log.info("Retrieving valid apps from yelpsoa_configs")
     valid_services = set(
         get_services_for_cluster(instance_type="kubernetes", soa_dir=soa_dir)
