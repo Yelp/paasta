@@ -462,6 +462,13 @@ def get_vault_key_secret_name(vault_key: str) -> str:
     return vault_key.replace("/", "-")
 
 
+def get_crypto_keys_from_config(crypto_keys_config: dict) -> List[str]:
+    return [
+        *(f"public/{key}" for key in crypto_keys_config.get("encrypt", [])),
+        *(f"private/{key}" for key in crypto_keys_config.get("decrypt", [])),
+    ]
+
+
 class InvalidKubernetesConfig(Exception):
     def __init__(self, exception: Exception, service: str, instance: str) -> None:
         super().__init__(
@@ -1452,7 +1459,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume
 
     def get_crypto_volume(self) -> Optional[V1Volume]:
-        required_crypto_keys = self.config_dict.get("crypto_keys", [])
+        required_crypto_keys = get_crypto_keys_from_config(
+            self.config_dict.get("crypto_keys", {})
+        )
         service_name = self.get_sanitised_deployment_name()
         if not required_crypto_keys:
             return None

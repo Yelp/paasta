@@ -32,6 +32,7 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import create_secret
+from paasta_tools.kubernetes_tools import get_crypto_keys_from_config
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
@@ -321,38 +322,30 @@ def sync_crypto_secrets(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         instance = instance_config.instance
-        crypto_keys = instance_config.config_dict.get("crypto_keys", {})
+        crypto_keys = get_crypto_keys_from_config(
+            instance_config.config_dict.get("crypto_keys", {})
+        )
         if not crypto_keys:
             continue
 
-        vault_keys = [
-            *(
-                f"public/{encrypt_key}"
-                for encrypt_key in crypto_keys.get("encrypt", [])
-            ),
-            *(
-                f"private/{decrypt_key}"
-                for decrypt_key in crypto_keys.get("decrypt", [])
-            ),
-        ]
-
         secret_data = {}
-        for key in vault_keys:
-            key_versions = list(
-                get_secret_provider(
-                    secret_provider_name=secret_provider_name,
-                    soa_dir=soa_dir,
-                    service_name=service,
-                    cluster_names=[cluster],
-                    secret_provider_kwargs={
-                        "vault_cluster_config": vault_cluster_config,
-                        "vault_auth_method": "token",
-                        "vault_token_file": vault_token_file,
-                    },
-                ).get_vault_key_versions(key)
-            )
-
+        provider = get_secret_provider(
+            secret_provider_name=secret_provider_name,
+            soa_dir=soa_dir,
+            service_name=service,
+            cluster_names=[cluster],
+            secret_provider_kwargs={
+                "vault_cluster_config": vault_cluster_config,
+                "vault_auth_method": "token",
+                "vault_token_file": vault_token_file,
+            },
+        )
+        for key in crypto_keys:
+            key_versions = list(provider.get_vault_key_versions(key))
             if not key_versions:
+                log.error(
+                    f"No key versions found for {key} on {get_kubernetes_app_name(service, instance)}"
+                )
                 continue
 
             secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
