@@ -140,7 +140,6 @@ INSTANCE_TYPES = (
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
     "adhoc": "paasta",
-    "kubernetes": "paasta",
     "tron": "tron",
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
@@ -299,6 +298,7 @@ class InstanceConfigDict(TypedDict, total=False):
     cpus: float
     disk: float
     cmd: str
+    namespace: str
     args: List[str]
     cfs_period_us: float
     cpu_burst_add: float
@@ -411,6 +411,10 @@ class InstanceConfig:
 
     def get_cluster(self) -> str:
         return self.cluster
+
+    def get_namespace(self) -> str:
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", "paasta")
 
     def get_instance(self) -> str:
         return self.instance
@@ -1898,6 +1902,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster_fqdn_format: str
     clusters: Sequence[str]
     cluster: str
+    cr_owners: Dict[str, str]
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
@@ -2151,6 +2156,9 @@ class SystemPaastaConfig:
 
     def get_dashboard_links(self) -> Mapping[str, Mapping[str, str]]:
         return self.config_dict["dashboard_links"]
+
+    def get_cr_owners(self) -> Dict[str, str]:
+        return self.config_dict["cr_owners"]
 
     def get_auto_hostname_unique_size(self) -> int:
         """
