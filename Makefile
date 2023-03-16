@@ -147,3 +147,16 @@ playground-api: .tox/py37-linux generate_paasta_playground
 clean-playground:
 		rm -rf ./etc_paasta_playground
 		rm -rf ./soa_config_playground
+
+
+setup-kubernetes-job-in-playground:
+	export KUBECONFIG="./k8s_itests/kubeconfig";\
+	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py37-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
+
+paasta-secrets-sync-in-playground:
+	export KUBECONFIG="./k8s_itests/kubeconfig";\
+	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -d ./soa_config_playground
