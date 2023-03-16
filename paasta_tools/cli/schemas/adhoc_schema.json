@@ -61,6 +61,14 @@
                         "type": "string"
                     }
                 },
+                "iam_role": {
+                    "type": "string"
+                },
+                "iam_role_provider": {
+                    "enum": [
+                        "aws"
+                    ]
+                },
                 "crypto_keys": {
                     "type": "object",
                     "additionalProperties": false,
