@@ -36,21 +36,27 @@ import logging
 import sys
 import traceback
 from contextlib import contextmanager
+from typing import Dict
 from typing import Generator
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 
-from paasta_tools.kubernetes.application.tools import Application  # type: ignore
-from paasta_tools.kubernetes.application.tools import (
-    list_namespaced_applications,
-)  # type: ignore
+from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
+from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
+from paasta_tools.kubernetes.application.tools import Application
+from paasta_tools.kubernetes.application.tools import list_all_applications
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
-
 
 log = logging.getLogger(__name__)
 APPLICATION_TYPES = [V1StatefulSet, V1Deployment]
@@ -60,11 +66,14 @@ class DontKillEverythingError(Exception):
     pass
 
 
+class StatefulSetsAreNotSupportedError(Exception):
+    pass
+
+
 @contextmanager
-def alert_state_change(application: Application, soa_dir: str) -> Generator:
+def alert_state_change(application: Application, cluster: str) -> Generator:
     service = application.kube_deployment.service
     instance = application.kube_deployment.instance
-    cluster = load_system_paasta_config().get_cluster()
     try:
         yield
         log_line = (
@@ -95,14 +104,95 @@ def alert_state_change(application: Application, soa_dir: str) -> Generator:
         raise
 
 
+def instance_is_not_bouncing(
+    instance_config: KubernetesDeploymentConfig,
+    applications: List[Application],
+    kube_client: KubeClient,
+) -> Optional[bool]:
+    for application in applications:
+        if isinstance(application, DeploymentWrapper):
+            existing_app = application.get_existing_app(kube_client)
+            if (
+                application.kube_deployment.namespace == instance_config.get_namespace()
+                and (
+                    instance_config.config_dict.get("instances", None)
+                    == existing_app.status.ready_replicas
+                    or instance_config.config_dict.get("min_instances", None)
+                    <= existing_app.status.ready_replicas
+                )
+            ):
+                return True
+            else:
+                return False
+
+        elif isinstance(application, StatefulSetWrapper):
+            log.critical(
+                "Paasta detected a StatefulSet that was migrated to a new namespace"
+                "StatefulSet bouncing across namespaces is not supported"
+            )
+            raise StatefulSetsAreNotSupportedError
+    return None
+
+
+def get_applications_to_kill(
+    applications_dict: Dict[Tuple[str, str], List[Application]],
+    cluster: str,
+    valid_services: Set[Tuple[str, str]],
+    kube_client: KubeClient,
+    soa_dir: str,
+) -> List[Application]:
+    """
+
+    :param applications_dict: A dictionary with (service, instance) as keys and a list of applications for each tuple
+    :param cluster: paasta cluster
+    :param valid_services: a set with the valid (service, instance) tuples for this cluster
+    :param kube_client:
+    :param soa_dir: The SOA config directory to read from
+    :return: list of applications to kill
+    """
+    log.info("Determining apps to be killed")
+
+    applications_to_kill: List[Application] = []
+    for instance_tuple, applications in applications_dict.items():
+        service = instance_tuple[0]
+        instance = instance_tuple[1]
+        instance_config = load_kubernetes_service_config(
+            cluster=cluster, service=service, instance=instance, soa_dir=soa_dir
+        )
+        if len(applications) == 1:
+            application = applications[0]
+            if (
+                (service, instance) not in valid_services
+                or application.kube_deployment.namespace
+                != instance_config.get_namespace()
+            ):
+                applications_to_kill.append(application)
+        elif len(applications) > 1:
+            not_bouncing = instance_is_not_bouncing(
+                instance_config, applications, kube_client
+            )
+            for application in applications:
+                if (service, instance) not in valid_services or (
+                    application.kube_deployment.namespace
+                    != instance_config.get_namespace()
+                    and not_bouncing
+                ):
+                    applications_to_kill.append(application)
+    return applications_to_kill
+
+
 def cleanup_unused_apps(
-    soa_dir: str, kill_threshold: float = 0.5, force: bool = False
+    soa_dir: str,
+    cluster: str,
+    kill_threshold: float = 0.5,
+    force: bool = False,
 ) -> None:
     """Clean up old or invalid jobs/apps from kubernetes. Retrieves
     both a list of apps currently in kubernetes and a list of valid
     app ids in order to determine what to kill.
 
     :param soa_dir: The SOA config directory to read from
+    :param cluster: paasta cluster to clean
     :param kill_threshold: The decimal fraction of apps we think is
         sane to kill when this job runs.
     :param force: Force the cleanup if we are above the kill_threshold"""
@@ -110,29 +200,23 @@ def cleanup_unused_apps(
     kube_client = KubeClient()
 
     log.info("Loading running Kubernetes apps")
-    applications = list_namespaced_applications(
-        kube_client, "paasta", APPLICATION_TYPES
-    )
-
+    applications_dict = list_all_applications(kube_client, APPLICATION_TYPES)
+    print("Running apps: %s" % list(applications_dict))
     log.info("Retrieving valid apps from yelpsoa_configs")
     valid_services = set(
         get_services_for_cluster(instance_type="kubernetes", soa_dir=soa_dir)
     )
 
-    log.info("Determining apps to be killed")
-    applications_to_kill = [
-        applicaton
-        for applicaton in applications
-        if (applicaton.kube_deployment.service, applicaton.kube_deployment.instance)
-        not in valid_services
-    ]
+    applications_to_kill: List[Application] = get_applications_to_kill(
+        applications_dict, cluster, valid_services, kube_client, soa_dir
+    )
 
-    log.debug("Running apps: %s" % applications)
+    log.debug("Running apps: %s" % list(applications_dict))
     log.debug("Valid apps: %s" % valid_services)
     log.debug("Terminating: %s" % applications_to_kill)
     if applications_to_kill:
         above_kill_threshold = float(len(applications_to_kill)) / float(
-            len(applications)
+            len(list(applications_dict))
         ) > float(kill_threshold)
         if above_kill_threshold and not force:
             log.critical(
@@ -143,7 +227,7 @@ def cleanup_unused_apps(
             raise DontKillEverythingError
 
     for applicaton in applications_to_kill:
-        with alert_state_change(applicaton, soa_dir):
+        with alert_state_change(applicaton, cluster):
             applicaton.deep_delete(kube_client)
 
 
@@ -156,6 +240,13 @@ def parse_args(argv):
         metavar="SOA_DIR",
         default=DEFAULT_SOA_DIR,
         help="define a different soa config directory",
+    )
+    parser.add_argument(
+        "-c",
+        "--cluster",
+        dest="cluster",
+        default=load_system_paasta_config().get_cluster(),
+        help="paasta cluster",
     )
     parser.add_argument(
         "-t",
@@ -184,13 +275,16 @@ def main(argv=None) -> None:
     soa_dir = args.soa_dir
     kill_threshold = args.kill_threshold
     force = args.force
+    cluster = args.cluster
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
     try:
-        cleanup_unused_apps(soa_dir, kill_threshold=kill_threshold, force=force)
-    except DontKillEverythingError:
+        cleanup_unused_apps(
+            soa_dir, cluster=cluster, kill_threshold=kill_threshold, force=force
+        )
+    except (DontKillEverythingError, StatefulSetsAreNotSupportedError):
         sys.exit(1)
 
 
