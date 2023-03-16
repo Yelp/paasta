@@ -17,6 +17,7 @@ from typing import Union
 
 import yaml
 from boto3.exceptions import Boto3Error
+from botocore.exceptions import ClientError
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
@@ -401,6 +402,14 @@ def add_subparser(subparsers):
         "assume the role and pass the session credentials to the spark job.",
         action="store_true",
         default=False,
+    )
+
+    aws_group.add_argument(
+        "--aws-session-duration",
+        help="Duration of session when using --assume-pod-identity. The maximum and default "
+        "value is 43200 or 12 hours. Each role has a configurable maximum which defaults to 1 hour.",
+        type=int,
+        default=43200,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -1102,13 +1111,24 @@ def paasta_spark_run(args):
         )
         return 1
 
-    aws_creds = get_aws_credentials(
-        service=args.service,
-        no_aws_credentials=args.no_aws_credentials,
-        aws_credentials_yaml=args.aws_credentials_yaml,
-        profile_name=args.aws_profile,
-        assume_pod_identity=args.assume_pod_identity,
-    )
+    try:
+        aws_creds = get_aws_credentials(
+            service=args.service,
+            no_aws_credentials=args.no_aws_credentials,
+            aws_credentials_yaml=args.aws_credentials_yaml,
+            profile_name=args.aws_profile,
+            assume_pod_identity=args.assume_pod_identity,
+            duration_seconds=args.aws_session_duration,
+        )
+    except ClientError as e:
+        if "DurationSeconds exceeds the MaxSessionDuration" in str(e):
+            print(
+                PaastaColors.red(
+                    "Try --aws-session-duration 3600 or updating your role's maximum duration"
+                ),
+                file=sys.stderr,
+            )
+        raise
     docker_image = get_docker_image(args, instance_config)
     if docker_image is None:
         return 1
