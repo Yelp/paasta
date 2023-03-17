@@ -10,14 +10,13 @@ from paasta_tools.utils import get_docker_client
 
 
 def main():
-
     config_path = "etc_paasta_playground"
     values_path = "./k8s_itests/deployments/paasta/values.yaml"
     user = os.getenv("USER")
 
     # start a local copy of zookeeper on a random port
     zookeeper_port = pick_random_port(f"{user}-paasta-zookeeper")
-    run_local_zookeeper(user, zookeeper_port)
+    ensure_running_local_zookeeper(user, zookeeper_port)
     os.environ["ZOOKEEPER_PORT"] = str(zookeeper_port)
     os.environ["HOST_IP"] = socket.gethostbyname(socket.gethostname())
 
@@ -50,7 +49,7 @@ def main():
     )
 
 
-def run_local_zookeeper(user, zookeeper_port):
+def ensure_running_local_zookeeper(user: str, zookeeper_port: int) -> None:
     client = get_docker_client()
     containers = client.containers()
     zookeeper_container = next(
@@ -62,13 +61,13 @@ def run_local_zookeeper(user, zookeeper_port):
         None,
     )
     if zookeeper_container is None:
-        create_zookeeper_container(zookeeper_port, user)
+        run_zookeeper_container(user, zookeeper_port)
     elif zookeeper_container.get("Status") != "running":
         client.remove_container(zookeeper_container, force=True)
-        create_zookeeper_container(zookeeper_port, user)
+        run_zookeeper_container(user, zookeeper_port)
 
 
-def create_zookeeper_container(port, user):
+def run_zookeeper_container(user: str, zookeeper_port: int) -> None:
     if "yelpcorp.com" in socket.getfqdn():
         subprocess.run(
             [
@@ -76,7 +75,7 @@ def create_zookeeper_container(port, user):
                 "run",
                 "-d",
                 "-p",
-                f"{port}:2181",
+                f"{zookeeper_port}:2181",
                 "-e",
                 '"ALLOW_ANONYMOUS_LOGIN=yes"',
                 "--name",
@@ -91,7 +90,7 @@ def create_zookeeper_container(port, user):
                 "run",
                 "-d",
                 "-p",
-                f"{port}:2181",
+                f"{zookeeper_port}:2181",
                 "-e",
                 '"ALLOW_ANONYMOUS_LOGIN=yes"',
                 "--name",
