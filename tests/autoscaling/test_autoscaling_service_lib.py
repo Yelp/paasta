@@ -1357,13 +1357,15 @@ def test_get_new_instance_count():
             num_healthy_instances=4,
             persist_data=False,
         )
-        assert mock_decision_policy.called_with(
+        mock_decision_policy.assert_called_with(
             error=0.1,
-            min_instances=mock_marathon_service_config.get_min_instances(),
-            max_instances=mock_marathon_service_config.get_max_instances(),
             current_instances=4,
             zookeeper_path=mock_compose_autoscaling_zookeeper_root.return_value,
+            decision_policy="mock_dp",
+            utilization=0.7,
             mock_param=2,
+            num_healthy_instances=4,
+            persist_data=False,
         )
         mock_marathon_service_config.limit_instance_count.assert_called_with(5)
         assert ret == mock_marathon_service_config.limit_instance_count.return_value

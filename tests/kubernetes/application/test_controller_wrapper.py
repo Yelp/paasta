@@ -122,7 +122,7 @@ def test_ensure_pod_disruption_budget_create(
     app.kube_deployment.instance.return_value = "fake_instance"
     Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_once_with(
-        namespace="paasta", body=mock_req_pdr
+        body=mock_req_pdr, namespace=mock_req_pdr.metadata.namespace
     )
 
 

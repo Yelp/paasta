@@ -70,6 +70,10 @@ The currently available metrics providers are:
   The uwsgi_exporter container needs to know what port your uWSGI master's stats server is on - you can configure this with the ``uwsgi_stats_port`` key in the ``autoscaling`` dictionary.
   ``uwsgi_exporter`` will translate the uWSGI stats into Prometheus format, which Prometheus will scrape.
 
+  .. note::
+
+    If you have configured your service to use a non-default stats port (8889), you need to explicity set ``uwsgi_stats_port`` in your autoscaling config with the same value to ensure that metrics are being exported.
+
   Extra parameters:
 
   :uwsgi_stats_port:

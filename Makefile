@@ -100,7 +100,7 @@ k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
 
 .PHONY: k8s_fake_cluster
-k8s_fake_cluster: .paasta/bin/activate
+k8s_fake_cluster: .tox/py37-linux
 	make -C k8s_itests fake_cluster
 
 .PHONY: k8s_clean

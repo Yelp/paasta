@@ -9,6 +9,7 @@ dist/
 !*.pyi
 .*.sw?
 .idea
+.fleet
 .vscode
 .create_cluster
 .tmp
@@ -39,8 +40,12 @@ paasta_itests/fake_etc_paasta/chronos.json
 paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/gopath
 .mypy_cache/
+.pytest_cache/
 debian/.debhelper
 example_cluster/paasta/docker_registry.json
 general_itests/fake_etc_paasta/clusters.json
 pip-wheel-metadata
 debian/debhelper-build-stamp
+
+# Coverage artifacts
+.coverage

@@ -1,3 +1,4 @@
+import mock
 import pytest
 
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
@@ -15,6 +16,12 @@ from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_i
 from paasta_tools.setup_prometheus_adapter_config import should_create_cpu_scaling_rule
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
+)
+from paasta_tools.utils import SystemPaastaConfig
+
+MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
+    {},
+    "/mock/system/configs",
 )
 
 
@@ -83,12 +90,17 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
         "use_prometheus": True,
     }
 
-    rule = create_instance_uwsgi_scaling_rule(
-        service=service_name,
-        instance=instance_name,
-        paasta_cluster=paasta_cluster,
-        autoscaling_config=autoscaling_config,
-    )
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        rule = create_instance_uwsgi_scaling_rule(
+            service=service_name,
+            instance=instance_name,
+            paasta_cluster=paasta_cluster,
+            autoscaling_config=autoscaling_config,
+        )
 
     # we test that the format of the dictionary is as expected with mypy
     # and we don't want to test the full contents of the retval since then
@@ -161,6 +173,7 @@ def test_create_instance_cpu_scaling_rule() -> None:
     service_name = "test_service"
     instance_name = "test_instance"
     paasta_cluster = "test_cluster"
+    namespace = "test_namespace"
     autoscaling_config: AutoscalingParamsDict = {
         "metrics_provider": "cpu",
         "setpoint": 0.1234567890,
@@ -173,6 +186,7 @@ def test_create_instance_cpu_scaling_rule() -> None:
         instance=instance_name,
         paasta_cluster=paasta_cluster,
         autoscaling_config=autoscaling_config,
+        namespace=namespace,
     )
 
     # our query doesn't include the setpoint as we'll just give the HPA the current CPU usage and
@@ -227,17 +241,23 @@ def test_get_rules_for_service_instance(
     autoscaling_config: AutoscalingParamsDict,
     expected_rules: int,
 ) -> None:
-    assert (
-        len(
-            get_rules_for_service_instance(
-                service_name="service",
-                instance_name="instance",
-                autoscaling_config=autoscaling_config,
-                paasta_cluster="cluster",
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        assert (
+            len(
+                get_rules_for_service_instance(
+                    service_name="service",
+                    instance_name="instance",
+                    autoscaling_config=autoscaling_config,
+                    paasta_cluster="cluster",
+                    namespace="test_namespace",
+                )
             )
+            == expected_rules
         )
-        == expected_rules
-    )
 
 
 @pytest.mark.parametrize(
@@ -263,6 +283,7 @@ def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
         instance="instance",
         autoscaling_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
         paasta_cluster="cluster",
+        namespace="paasta",
     )
 
     assert rule == {
@@ -286,6 +307,7 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
             "prometheus_adapter_config": {"metricsQuery": "foo", "seriesQuery": "bar"}
         },
         paasta_cluster="cluster",
+        namespace="test_namespace",
     )
 
     assert rule == {

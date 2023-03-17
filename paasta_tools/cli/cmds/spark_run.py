@@ -18,7 +18,6 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
-from service_configuration_lib.spark_config import get_dra_configs
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -69,9 +68,6 @@ DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
-
-# Mass enable DRA configs
-EXECUTOR_RANGES = {(0, 16)}
 
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
@@ -189,6 +185,15 @@ def add_subparser(subparsers):
         default=None,
     )
     list_parser.add_argument(
+        "--force-spark-resource-configs",
+        help=(
+            "Skip the resource/instances recalculation. "
+            "This is strongly not recommended."
+        ),
+        action="store_true",
+        default=False,
+    )
+    list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
         default=DEFAULT_SPARK_DOCKER_REGISTRY,
@@ -210,6 +215,7 @@ def add_subparser(subparsers):
 
     try:
         system_paasta_config = load_system_paasta_config()
+        valid_clusters = system_paasta_config.get_clusters()
         default_spark_cluster = system_paasta_config.get_spark_run_config().get(
             "default_cluster"
         )
@@ -219,11 +225,13 @@ def add_subparser(subparsers):
     except PaastaNotConfiguredError:
         default_spark_cluster = "pnw-devc"
         default_spark_pool = "batch"
+        valid_clusters = ["spark-pnw-prod", "pnw-devc"]
 
     list_parser.add_argument(
         "-c",
         "--cluster",
         help="The name of the cluster you wish to run Spark on.",
+        choices=valid_clusters,
         default=default_spark_cluster,
     )
 
@@ -983,22 +991,42 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
-def _mass_enable_dra(spark_conf):
-    num_executors = int(spark_conf["spark.executor.instances"])
-    for lower_bound, upper_bound in EXECUTOR_RANGES:
-        if lower_bound <= num_executors <= upper_bound:
-            log.warn(
+def _enable_dra_default(args, user_spark_opts):
+    if (
+        args.cluster_manager == CLUSTER_MANAGER_K8S
+        and "spark.dynamicAllocation.enabled" not in user_spark_opts
+    ):
+        log.warning(
+            PaastaColors.yellow(
+                "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
+                "More info: y/spark-dra. If your job is performing worse because "
+                "of DRA, consider disabling DRA. To disable, please provide "
+                "spark.dynamicAllocation.enabled=false in --spark-args\n"
+            )
+        )
+        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
+    return user_spark_opts
+
+
+def _validate_pool(args, system_paasta_config):
+    if args.pool:
+        valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
+        if not valid_pools:
+            log.warning(
                 PaastaColors.yellow(
-                    "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                    "More info: y/spark-dra. If your job is performing worse because "
-                    "of DRA, consider disabling DRA. To disable, please provide "
-                    "spark.dynamicAllocation.enabled=false in --spark-args\n"
+                    f"Could not fetch allowed_pools for `{args.cluster}`. Skipping pool validation.\n"
                 )
             )
-            spark_conf["spark.dynamicAllocation.enabled"] = "true"
-            spark_conf = get_dra_configs(spark_conf)
-            break
-    return spark_conf
+        if valid_pools and args.pool not in valid_pools:
+            print(
+                PaastaColors.red(
+                    f"Invalid --pool value. List of valid pools for cluster `{args.cluster}`: "
+                    f"{valid_pools}"
+                ),
+                file=sys.stderr,
+            )
+            return False
+    return True
 
 
 def paasta_spark_run(args):
@@ -1026,6 +1054,10 @@ def paasta_spark_run(args):
             ),
             file=sys.stderr,
         )
+        return 1
+
+    # validate pool
+    if not _validate_pool(args, system_paasta_config):
         return 1
 
     # Use the default spark:client instance configs if not provided
@@ -1109,6 +1141,10 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
+
+    # Spark DRA is enabled by default for all batches unless disabled explicitly. More info: y/spark-dra
+    user_spark_opts = _enable_dra_default(args, user_spark_opts)
+
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1122,17 +1158,8 @@ def paasta_spark_run(args):
         aws_creds=aws_creds,
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
+        force_spark_resource_configs=args.force_spark_resource_configs,
     )
-
-    # Mass enable Spark DRA. This is to enable Dynamic Resource Allocation in Spark through executor ranges.
-    # If the number of executor instances of a Spark job lie in the specified range, dynamicAllocation configs
-    # will be added. More info: y/spark-dra
-    # TODO: To be removed when DRA is enabled by default
-    if (
-        args.cluster_manager == CLUSTER_MANAGER_K8S
-        and "spark.dynamicAllocation.enabled" not in spark_conf
-    ):
-        spark_conf = _mass_enable_dra(spark_conf)
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution

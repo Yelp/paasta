@@ -87,6 +87,7 @@ from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
+from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
@@ -97,8 +98,10 @@ from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
@@ -115,6 +118,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
 from paasta_tools.kubernetes_tools import list_all_deployments
+from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
@@ -1906,6 +1910,7 @@ class TestKubernetesDeploymentConfig:
                     "yelp.com/owner": "compute_infra_platform_experience",
                 },
                 name="kurupt-fm",
+                namespace="paasta",
             )
 
     @pytest.mark.parametrize(
@@ -2573,32 +2578,162 @@ def test_KubeClient():
         assert client.core == mock_kube_client.CoreV1Api()
 
 
-def test_ensure_namespace():
-    mock_metadata = mock.Mock()
-    type(mock_metadata).name = "paasta"
-    mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
-    mock_client = mock.Mock(
-        core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces))
-    )
-    ensure_namespace(mock_client, namespace="paasta")
-    assert not mock_client.core.create_namespace.called
+def test_ensure_namespace_doesnt_create_if_namespace_exists():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ):
+        mock_metadata = mock.Mock()
+        type(mock_metadata).name = "paasta"
+        mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
+        mock_client = mock.Mock(
+            core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)),
+        )
+        ensure_namespace(mock_client, namespace="paasta")
+        assert not mock_client.core.create_namespace.called
 
-    mock_metadata = mock.Mock()
-    type(mock_metadata).name = "kube-system"
-    mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
-    mock_client = mock.Mock(
-        core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces))
-    )
-    ensure_namespace(mock_client, namespace="paasta")
-    assert mock_client.core.create_namespace.called
 
-    mock_client.core.create_namespace.reset_mock()
-    mock_namespaces = mock.Mock(items=[])
+def test_ensure_namespace_kube_system():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ):
+        mock_metadata = mock.Mock()
+        type(mock_metadata).name = "kube-system"
+        mock_namespaces = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
+        mock_client = mock.Mock(
+            core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)),
+        )
+        ensure_namespace(mock_client, namespace="paasta")
+        assert mock_client.core.create_namespace.called
+
+
+def test_ensure_namespace_creates_namespace_if_doesnt_exist():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ):
+        mock_namespaces = mock.Mock(items=[])
+        mock_client = mock.Mock(
+            core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces)),
+        )
+        ensure_namespace(mock_client, namespace="paasta")
+        assert mock_client.core.create_namespace.called
+
+
+def test_ensure_paasta_api_rolebinding_creates_if_not_exist():
+    mock_rolebindings = mock.Mock(items=[])
     mock_client = mock.Mock(
-        core=mock.Mock(list_namespace=mock.Mock(return_value=mock_namespaces))
+        rbac=mock.Mock(
+            list_namespaced_role_binding=mock.Mock(return_value=mock_rolebindings)
+        ),
     )
-    ensure_namespace(mock_client, namespace="paasta")
-    assert mock_client.core.create_namespace.called
+
+    ensure_paasta_api_rolebinding(mock_client, namespace="paastasvc-cool-service-name")
+    assert mock_client.rbac.create_namespaced_role_binding.called
+
+
+def test_ensure_paasta_api_rolebinding_doesnt_create_if_exists():
+    mock_metadata = mock.Mock()
+    type(mock_metadata).name = "paasta-api-server-per-namespace"
+    mock_rolebindings = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
+    mock_client = mock.Mock(
+        rbac=mock.Mock(
+            list_namespaced_role_binding=mock.Mock(return_value=mock_rolebindings)
+        ),
+    )
+
+    ensure_paasta_api_rolebinding(mock_client, namespace="paastasvc-cool-service-name")
+    assert not mock_client.rbac.create_namespaced_role_binding.called
+
+
+@pytest.mark.parametrize(
+    "addl_labels,replicas",
+    (
+        ({}, 3),
+        ({"paasta.yelp.com/autoscaled": "false"}, 3),
+        ({"paasta.yelp.com/autoscaled": "true"}, None),
+    ),
+)
+def test_list_all_paasta_deployments(addl_labels, replicas):
+    mock_deployments = mock.Mock(items=[])
+    mock_stateful_sets = mock.Mock(items=[])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_deployment_for_all_namespaces=mock.Mock(return_value=mock_deployments),
+            list_stateful_set_for_all_namespaces=mock.Mock(
+                return_value=mock_stateful_sets
+            ),
+        )
+    )
+
+    assert list_all_paasta_deployments(kube_client=mock_client) == []
+    mock_items = [
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_service": "kurupt",
+                    "yelp.com/paasta_instance": "fm",
+                    "yelp.com/paasta_git_sha": "a12345",
+                    "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "fm",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
+                },
+                namespace="paasta",
+            )
+        ),
+        mock.Mock(
+            metadata=mock.Mock(
+                labels={
+                    "yelp.com/paasta_service": "kurupt",
+                    "yelp.com/paasta_instance": "am",
+                    "yelp.com/paasta_git_sha": "a12345",
+                    "yelp.com/paasta_config_sha": "b12345",
+                    "paasta.yelp.com/service": "kurupt",
+                    "paasta.yelp.com/instance": "am",
+                    "paasta.yelp.com/git_sha": "a12345",
+                    "paasta.yelp.com/config_sha": "b12345",
+                    **addl_labels,
+                },
+                namespace="test",
+            )
+        ),
+    ]
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
+    mock_deployments = mock.Mock(items=[mock_items[0]])
+    mock_stateful_sets = mock.Mock(items=[mock_items[1]])
+    mock_client = mock.Mock(
+        deployments=mock.Mock(
+            list_deployment_for_all_namespaces=mock.Mock(return_value=mock_deployments),
+            list_stateful_set_for_all_namespaces=mock.Mock(
+                return_value=mock_stateful_sets
+            ),
+        )
+    )
+    assert list_all_paasta_deployments(mock_client) == [
+        KubeDeployment(
+            service="kurupt",
+            instance="fm",
+            git_sha="a12345",
+            namespace="paasta",
+            image_version=None,
+            config_sha="b12345",
+            replicas=replicas,
+        ),
+        KubeDeployment(
+            service="kurupt",
+            instance="am",
+            git_sha="a12345",
+            namespace="test",
+            image_version=None,
+            config_sha="b12345",
+            replicas=replicas,
+        ),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -2618,7 +2753,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(mock_client) == []
+    assert list_all_deployments(kube_client=mock_client) == []
 
     mock_items = [
         mock.Mock(
@@ -2633,7 +2768,8 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
         mock.Mock(
@@ -2648,12 +2784,16 @@ def test_list_all_deployments(addl_labels, replicas):
                     "paasta.yelp.com/git_sha": "a12345",
                     "paasta.yelp.com/config_sha": "b12345",
                     **addl_labels,
-                }
+                },
+                namespace="paasta",
             )
         ),
     ]
-    type(mock_items[0]).spec = mock.Mock(**{"replicas": 3})
-    type(mock_items[1]).spec = mock.Mock(**{"replicas": 3})
+
+    # Setting the number of replicas this way since spec
+    # is a reserved argument for Mocks
+    type(mock_items[0]).spec = mock.Mock(**{"replicas": replicas})
+    type(mock_items[1]).spec = mock.Mock(**{"replicas": replicas})
     mock_deployments = mock.Mock(items=[mock_items[0]])
     mock_stateful_sets = mock.Mock(items=[mock_items[1]])
     mock_client = mock.Mock(
@@ -2667,6 +2807,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="fm",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
@@ -2675,6 +2816,7 @@ def test_list_all_deployments(addl_labels, replicas):
             service="kurupt",
             instance="am",
             git_sha="a12345",
+            namespace="paasta",
             image_version=None,
             config_sha="b12345",
             replicas=replicas,
@@ -2815,8 +2957,12 @@ def test_max_unavailable(instances, bmf):
 
 
 def test_pod_disruption_budget_for_service_instance():
+    mock_namespace = "paasta"
     x = pod_disruption_budget_for_service_instance(
-        service="foo_1", instance="bar_1", max_unavailable="10%"
+        service="foo_1",
+        instance="bar_1",
+        max_unavailable="10%",
+        namespace=mock_namespace,
     )
 
     assert x.metadata.name == "foo--1-bar--1"
@@ -2831,7 +2977,8 @@ def test_pod_disruption_budget_for_service_instance():
 def test_create_pod_disruption_budget():
     mock_client = mock.Mock()
     mock_pdr = V1beta1PodDisruptionBudget()
-    create_pod_disruption_budget(mock_client, mock_pdr)
+    mock_namespace = "paasta"
+    create_pod_disruption_budget(mock_client, mock_pdr, mock_namespace)
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_with(
         namespace="paasta", body=mock_pdr
     )
@@ -2839,7 +2986,8 @@ def test_create_pod_disruption_budget():
 
 def test_create_deployment():
     mock_client = mock.Mock()
-    create_deployment(mock_client, V1Deployment(api_version="some"))
+    mock_namespace = "paasta"
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -2847,7 +2995,12 @@ def test_create_deployment():
 
 def test_update_deployment():
     mock_client = mock.Mock()
-    update_deployment(mock_client, V1Deployment(metadata=V1ObjectMeta(name="kurupt")))
+    mock_namespace = "paasta"
+    update_deployment(
+        mock_client,
+        V1Deployment(metadata=V1ObjectMeta(name="kurupt")),
+        mock_namespace,
+    )
     mock_client.deployments.replace_namespaced_deployment.assert_called_with(
         namespace="paasta",
         name="kurupt",
@@ -2855,7 +3008,7 @@ def test_update_deployment():
     )
 
     mock_client = mock.Mock()
-    create_deployment(mock_client, V1Deployment(api_version="some"))
+    create_deployment(mock_client, V1Deployment(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_deployment.assert_called_with(
         namespace="paasta", body=V1Deployment(api_version="some")
     )
@@ -3017,7 +3170,8 @@ def test_list_custom_resources():
 
 def test_create_stateful_set():
     mock_client = mock.Mock()
-    create_stateful_set(mock_client, V1StatefulSet(api_version="some"))
+    mock_namespace = "paasta"
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -3025,8 +3179,11 @@ def test_create_stateful_set():
 
 def test_update_stateful_set():
     mock_client = mock.Mock()
+    mock_namespace = "paasta"
     update_stateful_set(
-        mock_client, V1StatefulSet(metadata=V1ObjectMeta(name="kurupt"))
+        mock_client,
+        V1StatefulSet(metadata=V1ObjectMeta(name="kurupt")),
+        mock_namespace,
     )
     mock_client.deployments.replace_namespaced_stateful_set.assert_called_with(
         namespace="paasta",
@@ -3035,7 +3192,7 @@ def test_update_stateful_set():
     )
 
     mock_client = mock.Mock()
-    create_stateful_set(mock_client, V1StatefulSet(api_version="some"))
+    create_stateful_set(mock_client, V1StatefulSet(api_version="some"), mock_namespace)
     mock_client.deployments.create_namespaced_stateful_set.assert_called_with(
         namespace="paasta", body=V1StatefulSet(api_version="some")
     )
@@ -3567,6 +3724,7 @@ def test_get_kubernetes_secret_hashes():
                 "SOME": "SHAREDSECRET(ref1)",
             },
             service="universe",
+            namespace="paasta",
         )
         mock_get_kubernetes_secret_signature.assert_has_calls(
             [
@@ -3574,11 +3732,13 @@ def test_get_kubernetes_secret_hashes():
                     kube_client=mock_client.return_value,
                     secret="ref",
                     service="universe",
+                    namespace="paasta",
                 ),
                 mock.call(
                     kube_client=mock_client.return_value,
                     secret="ref1",
                     service=SHARED_SECRET_SERVICE,
+                    namespace="paasta",
                 ),
             ]
         )
@@ -4029,17 +4189,19 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
-def test_get_kubernetes_secret():
+@pytest.mark.parametrize("decode", [(True), (False)])
+def test_get_kubernetes_secret(decode):
     with mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient",
         autospec=True,
     ) as mock_kube_client, mock.patch(
         "paasta_tools.kubernetes_tools.os.environ", autospec=True
-    ) as mock_env:
-
+    ) as mock_env, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+        mock_namespace = "paasta"
         service_name = "example_service"
         secret_name = "example_secret"
-        cluster = "messosstage"
         mock_env.return_value = {}
 
         mock_client = mock.Mock()
@@ -4052,8 +4214,118 @@ def test_get_kubernetes_secret():
         )
         mock_kube_client.return_value = mock_client
 
-        ret = get_kubernetes_secret(secret_name, service_name, cluster)
+        ret = get_kubernetes_secret(
+            mock_client,
+            service_name,
+            secret_name,
+            mock_namespace,
+            decode,
+        )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
         )
-        assert ret == "something"
+        assert ret == "something" if decode else b"something"
+
+
+def test_get_kubernetes_secret_env_variables():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.is_secret_ref",
+        autospec=True,
+    ) as mock_is_secret_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
+    ) as mock_get_ref, mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_environment = {
+            "MY": "aaa",
+            "SECRET_NAME1": "SECRET(SECRET_NAME1)",
+            "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+        }
+
+        mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_env_variables(
+            kube_client=mock_client,
+            environment=mock_environment,
+            service_name="universe",
+        )
+        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+
+        assert mock_get_kubernetes_secret.call_args_list == [
+            mock.call(
+                mock_client, "universe", "SECRET_NAME1", decode=True, namespace="paasta"
+            ),
+            mock.call(
+                mock_client, "universe", "SECRET_NAME2", decode=True, namespace="paasta"
+            ),
+        ]
+
+
+def test_get_kubernetes_secret_volumes_multiple_files():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                items=[
+                    {"key": "the_secret_name1", "path": "the_secret_filename1"},
+                    {"key": "the_secret_name2", "path": "the_secret_filename2"},
+                ],
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = [
+            "secret_contents1",
+            "secret_contents2",
+        ]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_filename1": "secret_contents1",
+            "/the/container/path/the_secret_filename2": "secret_contents2",
+        }
+
+
+def test_get_kubernetes_secret_volumes_single_file():
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+    ) as mock_get_kubernetes_secret, mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient", autospec=True
+    ) as mock_kube_client:
+
+        mock_secret_volumes_config = [
+            SecretVolume(
+                container_path="/the/container/path/",
+                secret_name="the_secret_name",
+            )
+        ]
+
+        mock_get_kubernetes_secret.side_effect = ["secret_contents"]
+        mock_client = mock.Mock()
+        mock_kube_client.return_value = mock_client
+
+        ret = get_kubernetes_secret_volumes(
+            kube_client=mock_client,
+            secret_volumes_config=mock_secret_volumes_config,
+            service_name="universe",
+        )
+        assert ret == {
+            "/the/container/path/the_secret_name": "secret_contents",
+        }

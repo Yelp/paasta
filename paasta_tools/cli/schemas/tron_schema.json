@@ -97,6 +97,9 @@
                 "pool": {
                     "type": "string"
                 },
+                "service_account_name": {
+                    "type": "string"
+                },
                 "iam_role": {
                     "type": "string"
                 },
@@ -202,6 +205,28 @@
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "crypto_keys": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "encrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        },
+                        "decrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        }
                     }
                 },
                 "extra_volumes": {

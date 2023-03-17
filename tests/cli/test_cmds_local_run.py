@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
+import os
+import re
 
 import docker
 import mock
+from pytest import mark
 from pytest import raises
 
 from paasta_tools.adhoc_tools import AdhocJobConfig
 from paasta_tools.cli.cli import main
+from paasta_tools.cli.cmds.local_run import assume_aws_role
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import format_command_for_type
@@ -384,6 +388,9 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role_arn = ""
+    args.assume_pod_identity = False
+    args.use_okta_role = False
 
     mock_secret_provider_kwargs = {
         "vault_cluster_config": {},
@@ -421,6 +428,9 @@ def test_configure_and_run_command_uses_cmd_from_config(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role_arn="",
+        assume_pod_identity=False,
+        use_okta_role=False,
     )
 
 
@@ -452,6 +462,9 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role_arn = ""
+    args.assume_pod_identity = False
+    args.use_okta_role = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -488,6 +501,9 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role_arn="",
+        assume_pod_identity=False,
+        use_okta_role=False,
     )
 
 
@@ -525,6 +541,9 @@ def test_configure_and_run_pulls_image_when_asked(
     args.vault_token_file = "/blah/token"
     args.skip_secrets = False
     args.volumes = []
+    args.assume_role_arn = ""
+    args.assume_pod_identity = False
+    args.use_okta_role = False
 
     return_code = configure_and_run_docker_container(
         docker_client=mock_docker_client,
@@ -563,6 +582,9 @@ def test_configure_and_run_pulls_image_when_asked(
         json_dict=False,
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
+        assume_role_arn="",
+        assume_pod_identity=False,
+        use_okta_role=False,
     )
 
 
@@ -596,6 +618,9 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
         args.vault_token_file = "/blah/token"
         args.skip_secrets = False
         args.volumes = []
+        args.assume_role_arn = ""
+        args.assume_pod_identity = False
+        args.use_okta_role = False
 
         mock_config = mock.create_autospec(AdhocJobConfig)
         mock_get_default_interactive_config.return_value = mock_config
@@ -634,6 +659,9 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             json_dict=False,
             secret_provider_kwargs=mock_secret_provider_kwargs,
             skip_secrets=False,
+            assume_role_arn="",
+            assume_pod_identity=False,
+            use_okta_role=False,
         )
 
 
@@ -1959,3 +1987,546 @@ def test_missing_volumes_skipped(mock_exists):
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs["volumes"] == []
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    return_value={},
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+@mock.patch("os.makedirs", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.assume_aws_role",
+    autospec=True,
+    return_value={"access_key": "abcdefg", "secret_key": "abcdefg"},
+)
+def test_run_docker_container_assume_aws_role(
+    mock_assume_aws_role,
+    mock_os_makedirs,
+    mock_open,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_decrypt_secret_volumes,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    # Coverage for binary file vs non-binary file
+    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+    # So we raise once, implying that the first file is binary and let the second write() succeed
+    # For the second file, we imply the file is non-binary and only need to mock success once
+    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+    # Magic to make the context manager return the mock that we actually want
+    # Otherwise it just returns a new mock_open each time
+    mock_open.return_value = mock_open
+    mock_open.__enter__.return_value = mock_text_io_wrapper
+
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service="fake_service",
+        instance="fake_instance",
+        docker_url="fake_hash",
+        volumes=[],
+        interactive=True,
+        command="fake_command",
+        healthcheck=False,
+        healthcheck_only=False,
+        user_port=None,
+        instance_config=mock_service_manifest,
+        secret_provider_name="vault",
+        assume_pod_identity=True,
+    )
+    assert 1 == mock_get_docker_run_cmd.call_count
+
+    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+    environment = the_kwargs["env"]
+    assert 3 == environment.update.call_count
+    assert {
+        "access_key": "abcdefg",
+        "secret_key": "abcdefg",
+    } == environment.update.call_args_list[1][0][0]
+    assert 0 == return_code
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    return_value={
+        "/the/container/path/the_secret_name1": b"the_secret_content1",
+        "/the/container/path/the_secret_name2": b"the_secret_content2",
+    },
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+@mock.patch("os.makedirs", autospec=True)
+def test_run_docker_container_secret_volumes(
+    mock_os_makedirs,
+    mock_open,
+    mock_decrypt_secret_volumes,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    # Coverage for binary file vs non-binary file
+    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+    # So we raise once, implying that the first file is binary and let the second write() succeed
+    # For the second file, we imply the file is non-binary and only need to mock success once
+    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+    # Magic to make the context manager return the mock that we actually want
+    # Otherwise it just returns a new mock_open each time
+    mock_open.return_value = mock_open
+    mock_open.__enter__.return_value = mock_text_io_wrapper
+
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service="fake_service",
+        instance="fake_instance",
+        docker_url="fake_hash",
+        volumes=[],
+        interactive=True,
+        command="fake_command",
+        healthcheck=False,
+        healthcheck_only=False,
+        user_port=None,
+        instance_config=mock_service_manifest,
+        secret_provider_name="vault",
+    )
+    assert 1 == mock_get_docker_run_cmd.call_count
+
+    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+    assert "volumes" in the_kwargs
+    assert re.match(
+        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
+        the_kwargs["volumes"][0],
+    ), "Did not find the expected secret file volume mount"
+    assert re.match(
+        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
+        the_kwargs["volumes"][1],
+    ), "Did not find the expected secret file volume mount"
+
+    assert 0 == return_code
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+    autospec=True,
+    return_value={
+        "/the/container/path/the_secret_name1": b"the_secret_content1",
+        "/the/container/path/the_secret_name2": b"the_secret_content2",
+    },
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
+@mock.patch("os.makedirs", autospec=True)
+def test_run_docker_container_secret_volumes_for_teams(
+    mock_os_makedirs,
+    mock_kube_client,
+    mock_is_secrets_for_teams_enabled,
+    mock_open,
+    mock_get_kubernetes_secret_volumes,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    # Coverage for binary file vs non-binary file
+    mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
+    # Each file will try to be written up to twice (first non-binary then binary if non-binary fails)
+    # So we raise once, implying that the first file is binary and let the second write() succeed
+    # For the second file, we imply the file is non-binary and only need to mock success once
+    mock_text_io_wrapper.write.side_effect = [TypeError, mock.DEFAULT, mock.DEFAULT]
+
+    # Magic to make the context manager return the mock that we actually want
+    # Otherwise it just returns a new mock_open each time
+    mock_open.return_value = mock_open
+    mock_open.__enter__.return_value = mock_text_io_wrapper
+
+    # For tests that run on github actions, explicitly set this to /tmp which definitely exists
+    os.environ["TMPDIR"] = "/tmp/"
+    mock_is_secrets_for_teams_enabled.return_value = True
+    return_code = run_docker_container(
+        docker_client=mock_docker_client,
+        service="fake_service",
+        instance="fake_instance",
+        docker_url="fake_hash",
+        volumes=[],
+        interactive=True,
+        command="fake_command",
+        healthcheck=False,
+        healthcheck_only=False,
+        user_port=None,
+        instance_config=mock_service_manifest,
+        secret_provider_name="vault",
+    )
+    assert 1 == mock_get_docker_run_cmd.call_count
+
+    _, the_kwargs = mock_get_docker_run_cmd.call_args_list[0]
+    assert "volumes" in the_kwargs
+    assert re.match(
+        r"^/[^:]*:/the/container/path/the_secret_name1:ro",
+        the_kwargs["volumes"][0],
+    ), "Did not find the expected secret file volume mount"
+    assert re.match(
+        r"^/[^:]*:/the/container/path/the_secret_name2:ro",
+        the_kwargs["volumes"][1],
+    ), "Did not find the expected secret file volume mount"
+
+    assert 0 == return_code
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.decrypt_secret_volumes",
+    autospec=True,
+    side_effect=Exception("Simulate failure decrypting secret volumes"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+def test_run_docker_container_secret_volumes_raises(
+    mock_open,
+    mock_decrypt_secret_volumes,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+    capsys,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    with raises(SystemExit) as sys_exit:
+        run_docker_container(
+            docker_client=mock_docker_client,
+            service="fake_service",
+            instance="fake_instance",
+            docker_url="fake_hash",
+            volumes=[],
+            interactive=True,
+            command="fake_command",
+            healthcheck=False,
+            healthcheck_only=False,
+            user_port=None,
+            instance_config=mock_service_manifest,
+            secret_provider_name="vault",
+        )
+    assert 0 == mock_get_docker_run_cmd.call_count
+    assert 1 == sys_exit.value.code
+    output, _ = capsys.readouterr()
+    assert (
+        "Failed to decrypt secrets with Exception: Simulate failure decrypting secret volumes"
+        in output
+    )
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.pick_random_port",
+    autospec=True,
+    return_value=666,
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_docker_run_cmd", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.execlpe", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run._run",
+    autospec=True,
+    return_value=(0, "fake _run output"),
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_container_id", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance",
+    autospec=True,
+    return_value=("fake_healthcheck_mode", "fake_healthcheck_uri"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.get_kubernetes_secret_volumes",
+    autospec=True,
+    side_effect=Exception("Simulate failure decrypting secret volumes"),
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.open",
+    new_callable=mock.mock_open(),
+    autospec=None,
+)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.is_secrets_for_teams_enabled", autospec=True
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.KubeClient", autospec=True)
+def test_run_docker_container_secret_volumes_for_teams_raises(
+    mock_kube_client,
+    mock_is_secrets_for_teams_enabled,
+    mock_open,
+    mock_get_kubernetes_secret_volumes,
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlpe,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+    capsys,
+):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(
+        spec_set=docker.Client.remove_container
+    )
+    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest.cluster = "fake_cluster"
+
+    with raises(SystemExit) as sys_exit:
+        run_docker_container(
+            docker_client=mock_docker_client,
+            service="fake_service",
+            instance="fake_instance",
+            docker_url="fake_hash",
+            volumes=[],
+            interactive=True,
+            command="fake_command",
+            healthcheck=False,
+            healthcheck_only=False,
+            user_port=None,
+            instance_config=mock_service_manifest,
+            secret_provider_name="vault",
+        )
+    assert 0 == mock_get_docker_run_cmd.call_count
+    assert 1 == sys_exit.value.code
+    output, _ = capsys.readouterr()
+    assert (
+        "Failed to retrieve kubernetes secrets with Exception: Simulate failure decrypting secret volumes"
+        in output
+    )
+
+
+@mark.parametrize(
+    "assume_role,assume_pod_identity,use_okta_role,as_root,config_has_iam",
+    [
+        # Just use assume-pod-identity
+        ("", True, False, False, True),
+        # Just use assume-role
+        ("arn:aws:fakearn", False, False, False, True),
+        # Just use use_okta_role
+        ("", False, True, False, True),
+        # Same as first 4 cases but running as root
+        ("", True, False, True, True),
+        ("arn:aws:fakearn", False, False, True, True),
+        ("", True, False, True, True),
+        ("", False, True, True, True),
+        # Error because no pod identity set
+        ("", True, False, False, False),
+        # Error because no parameters are set
+        ("", False, False, False, False),
+    ],
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.os.getuid", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.get_username", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
+def test_assume_aws_role(
+    mock_boto,
+    mock_get_username,
+    mock_getuid,
+    mock_subprocess_run,
+    assume_role,
+    assume_pod_identity,
+    use_okta_role,
+    as_root,
+    config_has_iam,
+):
+    mock_config = mock.MagicMock()
+    role_arn = "arn:aws:iam::123456789:role/mock_role"
+    if config_has_iam:
+        mock_config.get_iam_role.return_value = role_arn
+    else:
+        mock_config.get_iam_role.return_value = None
+    mock_service = "mockservice"
+    if as_root:
+        mock_getuid.return_value = 0
+    else:
+        mock_getuid.return_value = 1234
+    mock_creds_json = b'{"AccessKeyId": "AKIAFOOBAR", "SecretAccessKey": "SECRETKEY", "SessionToken": "SESSIONTOKEN"}'
+    mock_subprocess_run.return_value.returncode = 0
+    mock_subprocess_run.return_value.stdout = mock_creds_json
+    mock_boto_client = mock.MagicMock()
+    mock_boto.return_value.client.return_value = mock_boto_client
+    mock_boto_client.assume_role.return_value = {
+        "Credentials": {
+            "AccessKeyId": "AKIAFOOBAR2",
+            "SecretAccessKey": "SECRETKEY2",
+            "SessionToken": "SESSIONTOKEN2",
+        }
+    }
+
+    expect_exit = False
+    if assume_pod_identity and not config_has_iam:
+        expect_exit = True
+    elif not assume_pod_identity and not assume_role and not use_okta_role:
+        expect_exit = True
+
+    if expect_exit:
+        with raises(SystemExit) as sys_exit:
+            env = assume_aws_role(
+                mock_config,
+                mock_service,
+                assume_role,
+                assume_pod_identity,
+                use_okta_role,
+            )
+        assert sys_exit.value.code == 1
+        return
+    else:
+        env = assume_aws_role(
+            mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
+        )
+
+    if as_root:
+        assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
+    assert "AWS_ACCESS_KEY_ID" in env
+    assert "AWS_SECRET_ACCESS_KEY" in env
+    assert "AWS_SESSION_TOKEN" in env
+
+    if assume_role:
+        assert (
+            mock_boto_client.assume_role.call_args_list[0][1]["RoleArn"] == assume_role
+        )
+
+    if use_okta_role:
+        assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
+    else:
+        assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR2"

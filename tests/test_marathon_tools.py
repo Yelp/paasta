@@ -1668,7 +1668,7 @@ class TestMarathonTools:
             )
             args, kwargs = client_patch.call_args
             assert "User-Agent" in kwargs["session"].headers
-            assert "py.test" in kwargs["session"].headers["User-Agent"]
+            assert "test" in kwargs["session"].headers["User-Agent"]
 
     def test_list_all_marathon_app_ids(self):
         fakeapp1 = mock.Mock(id="/fake_app1")
@@ -1748,7 +1748,7 @@ class TestMarathonTools:
     def test_add_leading_slash(self):
         fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}, {}]))
         marathon_tools.app_has_tasks(fake_client, "fake_app", 4)
-        assert fake_client.list_tasks.called_with("/fake_app")
+        fake_client.list_tasks.assert_called_with(app_id="/fake_app")
 
     def test_get_config_hash(self):
         test_input = {"foo": "bar"}

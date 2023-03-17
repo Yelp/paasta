@@ -4,6 +4,7 @@ import time
 from typing import Any
 from typing import Dict
 from typing import Iterable
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -40,6 +41,7 @@ class TaskAllocationInfo(NamedTuple):
     git_sha: str
     config_sha: str
     mesos_container_id: str  # Because Mesos task info does not have docker id
+    namespace: Optional[str]
 
 
 def get_container_info_from_mesos_task(
@@ -107,6 +109,7 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
                 git_sha=None,
                 config_sha=None,
                 mesos_container_id=mesos_container_id,
+                namespace=None,
             )
         )
     return info_list
@@ -246,6 +249,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                     git_sha=info.get("git_sha"),
                     config_sha=info.get("config_sha"),
                     mesos_container_id=None,
+                    namespace=namespace,
                 )
             )
 
@@ -279,7 +283,27 @@ def parse_args() -> argparse.Namespace:
         dest="namespace_prefix",
         default="paasta",
     )
+    parser.add_argument(
+        "--additional-namespaces",
+        help="full names of namespaces to fetch allocation info for that don't match --namespace-prefix"
+        "Used only when scheduler is kubernetes",
+        dest="additional_namespaces",
+        nargs="+",
+        # we default this to tron since this is really the only non-paasta-prefix namespaced that is part of paasta
+        # and we'd like to not run two cronjobs to get this information :p
+        default=["tron"],
+    )
     return parser.parse_args()
+
+
+def get_matching_namespaces(
+    namespaces: List[str], namespace_prefix: str, additional_namespaces: List[str]
+) -> List[str]:
+    return [
+        n
+        for n in namespaces
+        if n.startswith(namespace_prefix) or n in additional_namespaces
+    ]
 
 
 def main(args: argparse.Namespace) -> None:
@@ -289,10 +313,9 @@ def main(args: argparse.Namespace) -> None:
     else:
         client = KubeClient()
         all_namespaces = kubernetes_tools.get_all_namespaces(client)
-        matching_namespaces = [
-            n for n in all_namespaces if n.startswith(args.namespace_prefix)
-        ]
-        for matching_namespace in matching_namespaces:
+        for matching_namespace in get_matching_namespaces(
+            all_namespaces, args.namespace_prefix, args.additional_namespaces
+        ):
             display_task_allocation_info(cluster, args.scheduler, matching_namespace)
 
 

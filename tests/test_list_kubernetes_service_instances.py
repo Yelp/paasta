@@ -21,14 +21,29 @@ def test_parse_args():
 )
 @mock.patch("builtins.print", autospec=True)
 @pytest.mark.parametrize(
-    "sanitise,expected",
+    "instance_type,sanitise,expected,shuffle,group_lines",
     [
-        (False, "service_1.instance1\nservice_2.instance1"),
-        (True, "service--1-instance1\nservice--2-instance1"),
+        ("kubernetes", False, "service_1.instance1\nservice_2.instance1", False, None),
+        ("kubernetes", True, "service--1-instance1\nservice--2-instance1", False, None),
+        ("flink", True, "service--1-instance1\nservice--2-instance1", False, None),
     ],
 )
-def test_main(mock_print, mock_get_services, mock_parse_args, sanitise, expected):
-    mock_parse_args.return_value = mock.Mock(sanitise=sanitise)
+def test_main(
+    mock_print,
+    mock_get_services,
+    mock_parse_args,
+    instance_type,
+    sanitise,
+    expected,
+    shuffle,
+    group_lines,
+):
+    mock_parse_args.return_value = mock.Mock(
+        instance_type=instance_type,
+        sanitise=sanitise,
+        shuffle=shuffle,
+        group_lines=group_lines,
+    )
 
     with pytest.raises(SystemExit) as e:
         main()
@@ -37,7 +52,7 @@ def test_main(mock_print, mock_get_services, mock_parse_args, sanitise, expected
     assert mock_get_services.call_args_list == [
         mock.call(
             cluster=mock_parse_args.return_value.cluster,
-            instance_type="kubernetes",
+            instance_type=instance_type,
             soa_dir=mock_parse_args.return_value.soa_dir,
         )
     ]

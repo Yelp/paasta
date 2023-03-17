@@ -1,3 +1,416 @@
+paasta-tools (0.165.2) xenial; urgency=medium
+
+  * 0.165.2 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v2.14.5 (#3567)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 16 Mar 2023 11:51:52 -0700
+
+paasta-tools (0.165.1) xenial; urgency=medium
+
+  * 0.165.1 tagged with 'make release'
+    Commit: Add iam_role and provider to adhoc schema (#3564)  #3532
+    added a feature that allows local-run to use the iam_role setting of
+    a service to assume the role locally. This means that iam_role now
+    has a use case for being configured in adhoc service instances, as
+    that is where local-run will read from by default. This allows you
+    to set those.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Mar 2023 08:52:39 -0700
+
+paasta-tools (0.165.0) xenial; urgency=medium
+
+  * 0.165.0 tagged with 'make release'
+    Commit: Merge pull request #3552 from
+    Yelp/u/cuza/paasta_secret_sync_multiple_namespaces
+    paasta_secret_sync for multiple namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 14 Mar 2023 13:49:59 -0700
+
+paasta-tools (0.164.7) xenial; urgency=medium
+
+  * 0.164.7 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib to 2.14.4 (#3565)
+
+ -- Chi Chang <chi@yelp.com>  Tue, 14 Mar 2023 09:04:43 -0700
+
+paasta-tools (0.164.6) xenial; urgency=medium
+
+  * 0.164.6 tagged with 'make release'
+    Commit: Merge pull request #3562 from
+    Yelp/u/calvinli/secret_run_pgctl  paasta secret run: subprocess.run -
+    > os.execvpe
+
+ -- Calvin Li <calvinli@yelp.com>  Thu, 09 Mar 2023 15:19:19 -0800
+
+paasta-tools (0.164.5) xenial; urgency=medium
+
+  * 0.164.5 tagged with 'make release'
+    Commit: Merge pull request #3542 from nurdann/add-crypto-keys-schema
+    Add `crypto_keys` field
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 08 Mar 2023 14:40:00 -0800
+
+paasta-tools (0.164.4) xenial; urgency=medium
+
+  * 0.164.4 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib (#3561)
+
+ -- Chi Chang <chi@yelp.com>  Wed, 08 Mar 2023 09:17:34 -0800
+
+paasta-tools (0.164.3) xenial; urgency=medium
+
+  * 0.164.3 tagged with 'make release'
+    Commit: Merge pull request #3556 from
+    Yelp/u/calvinli/token_for_paasta_secret_decrypt  allow paasta secret
+    decrypt to use token vault auth
+
+ -- Calvin Li <calvinli@yelp.com>  Tue, 07 Mar 2023 11:01:31 -0800
+
+paasta-tools (0.164.2) xenial; urgency=medium
+
+  * 0.164.2 tagged with 'make release'
+    Commit: Add support for pruning pending pods (#3557)  * Add support
+    for pruning pending pods  * String in single line
+
+ -- Chi Chang <chi@yelp.com>  Mon, 06 Mar 2023 06:27:25 -0800
+
+paasta-tools (0.164.1) xenial; urgency=medium
+
+  * 0.164.1 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib to v2.14.2 (#3554)
+
+ -- Chi Chang <chi@yelp.com>  Mon, 27 Feb 2023 08:59:54 -0800
+
+paasta-tools (0.164.0) xenial; urgency=medium
+
+  * 0.164.0 tagged with 'make release'
+    Commit: Ensure we pass ns to functions in kubernetes_tools.py -
+    PAASTA-17857 (#3548)  * passing in namespace from config dictionary
+    * This commit address changes in paasta  metastatus  * only get
+    namespace for instance types of kubernetes
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 27 Feb 2023 07:59:14 -0800
+
+paasta-tools (0.163.4) xenial; urgency=medium
+
+  * 0.163.4 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib to 2.14.1 (#3553)
+
+ -- Chi Chang <chi@yelp.com>  Wed, 22 Feb 2023 09:16:50 -0800
+
+paasta-tools (0.163.3) xenial; urgency=medium
+
+  * 0.163.3 tagged with 'make release'
+    Commit: Merge branch "u/krall/rolebinding_in_new_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Tue, 21 Feb 2023 17:48:51 -0800
+
+paasta-tools (0.163.2) xenial; urgency=medium
+
+  * 0.163.2 tagged with 'make release'
+    Commit: Add force-spark-resource-configs option (#3546)  * Add force-
+    spark-resource-configs option  * Fix tron_tools tests
+
+ -- Chi Chang <chi@yelp.com>  Tue, 21 Feb 2023 07:18:00 -0800
+
+paasta-tools (0.163.1) xenial; urgency=medium
+
+  * 0.163.1 tagged with 'make release'
+    Commit: Bump version to 0.163.0
+
+ -- Jon Lee <jonlee@yelp.com>  Wed, 15 Feb 2023 17:35:35 -0800
+
+paasta-tools (0.162.0) xenial; urgency=medium
+
+  * 0.162.0 tagged with 'make release'
+    Commit: Merge pull request #3543 from Yelp/u/asoliman/FLINK-
+    4287_fix_missing_owner_label  FLINK-4287: Add owner label to k8s crs
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Fri, 10 Feb 2023 02:51:41 -0800
+
+paasta-tools (0.161.0) xenial; urgency=medium
+
+  * 0.161.0 tagged with 'make release'
+    Commit: Clean up of check_marathon_services_replication (#3545)  *
+    Deletes check_marathon_services_replication since we don"t use mesos
+    anymore  * cleanup of check_marathon_services_replication
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 09 Feb 2023 07:51:23 -0800
+
+paasta-tools (0.160.0) xenial; urgency=medium
+
+  * 0.160.0 tagged with 'make release'
+    Commit: Merge pull request #3541 from
+    Yelp/u/calvinli/paasta_secret_run  adds "paasta secret run"
+    subcommand
+
+ -- Calvin Li <calvinli@yelp.com>  Thu, 02 Feb 2023 14:07:52 -0800
+
+paasta-tools (0.159.0) xenial; urgency=medium
+
+  * 0.159.0 tagged with 'make release'
+    Commit: Merge pull request #3537 from Yelp/u/krall/namespace_schema
+    Add the `namespace` parameter to documentation and schema
+
+ -- Evan Krall <krall@yelp.com>  Tue, 24 Jan 2023 13:26:10 -0800
+
+paasta-tools (0.158.0) xenial; urgency=medium
+
+  * 0.158.0 tagged with 'make release'
+    Commit: Merge pull request #3530 from Yelp/u/emanelsabban/PAASTA-
+    17777  removing hardcoded paasta ns in
+    setup_prometheus_adapter_config file - PAASTA-17777
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 19 Jan 2023 06:12:35 -0800
+
+paasta-tools (0.157.3) xenial; urgency=medium
+
+  * 0.157.3 tagged with 'make release'
+    Commit: Enable setting a multiplier to uwsgi offset config (#3529)
+    This will allow us to slowly lower the impact of the offset
+    parameter by decreasing this value from 1.0 -> 0 rather than
+    completely removing it all at once (and potentially exposing
+    problems hidden by our overscaling)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 13 Jan 2023 09:57:55 -0800
+
+paasta-tools (0.157.2) xenial; urgency=medium
+
+  * 0.157.2 tagged with 'make release'
+    Commit: Enable explicitly setting service_account_name in tron
+    actions (#3525)  There"s internal users that would like to configure
+    a Service Account with specific permissions for use in their
+    batches.  Right now, we can only dynamically create Service Accounts
+    - and these are generally only used for Pod Identity (or, they"re
+    mapped 1:1 with an existing Role).  This PR enables users to
+    explicitly set service_account_name in their action configs and have
+    that be plumbed all the way through to Tron
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Jan 2023 10:44:13 -0800
+
+paasta-tools (0.157.1) xenial; urgency=medium
+
+  * 0.157.1 tagged with 'make release'
+    Commit: Merge pull request #3524 from Yelp/u/emanelsabban/skj-fix
+    Call create_application_object only when a service instance exist
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 09 Jan 2023 13:31:01 -0800
+
+paasta-tools (0.157.0) xenial; urgency=medium
+
+  * 0.157.0 tagged with 'make release'
+    Commit: Added support for deploying/updating services in diff
+    namespaces using SKJ - PAASTA-17775 (#3505)  * Added support for
+    deploying/updating services in diff namespaces using SKJ  * fixed
+    the mock tests  * added a unit test for
+    list_all_matching_deployments in kubernetes_tools  * added a check
+    before calling ensure namespace since app could be none  * Added
+    namespace to app_dimensions to emit namespace as well in events for
+    skj  * Addressed code review
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 05 Jan 2023 08:36:22 -0800
+
+paasta-tools (0.156.0) xenial; urgency=medium
+
+  * 0.156.0 tagged with 'make release'
+    Commit: Merge pull request #3523 from Yelp/revert-3504-
+    u/chi/cap_spark_driver_memory  Revert "Cap spark driver memory and
+    disk usage"
+
+ -- Chi Chang <chi@yelp.com>  Wed, 04 Jan 2023 10:29:20 -0800
+
+paasta-tools (0.155.0) xenial; urgency=medium
+
+  * 0.155.0 tagged with 'make release'
+    Commit: Merge pull request #3522 from
+    Yelp/u/cuza/adding_group_lines_to_paasta  Adding group_lines.py
+    functionality to paasta
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 04 Jan 2023 06:48:59 -0800
+
+paasta-tools (0.154.0) xenial; urgency=medium
+
+  * 0.154.0 tagged with 'make release'
+    Commit: Merge pull request #3515 from Yelp/u/emanelsabban/PAASTA-
+    17825  Ensure paasta status supports arbitrary namespaces - PAASTA-
+    17825
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 22 Dec 2022 07:05:18 -0800
+
+paasta-tools (0.153.1) xenial; urgency=medium
+
+  * 0.153.1 tagged with 'make release'
+    Commit: Merge pull request #3405 from
+    Yelp/u/cuza/reusing_python_to_run_api_in_dev_mode  Reusing the same
+    python process to make IntelliJ and VSCode debuggers happier
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 14 Dec 2022 13:48:02 -0800
+
+paasta-tools (0.153.0) xenial; urgency=medium
+
+  * 0.153.0 tagged with 'make release'
+    Commit: Merge pull request #3509 from Yelp/u/dpopes/PAASTA-17798-
+    secret-volumes-poc  PAASTA-17798: Support secret volumes for paasta
+    local-run
+
+ -- Daniel Popescu <dpopes@yelp.com>  Mon, 12 Dec 2022 12:34:45 -0800
+
+paasta-tools (0.152.2) xenial; urgency=medium
+
+  * 0.152.2 tagged with 'make release'
+    Commit: MLCOMPUTE-216 | enable DRA by default in paasta spark-run
+    (#3507)  * MLCOMPUTE-216 | enable DRA by default in paasta spark-run
+    Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 08 Dec 2022 09:49:26 -0800
+
+paasta-tools (0.152.1) xenial; urgency=medium
+
+  * 0.152.1 tagged with 'make release'
+    Commit: Merge pull request #3508 from
+    Yelp/u/chi/upgrade_service_conf_lib  Bump service-configuration-lib
+    to 2.13.5 to cap spark executor resources
+
+ -- Chi Chang <chi@yelp.com>  Tue, 06 Dec 2022 06:57:57 -0800
+
+paasta-tools (0.152.0) xenial; urgency=medium
+
+  * 0.152.0 tagged with 'make release'
+    Commit: Merge pull request #3494 from Yelp/u/emanelsabban/PAASTA-
+    17791  Added support for namespace parameter in soaconfigs - PAASTA-
+    17791
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Wed, 30 Nov 2022 06:36:54 -0800
+
+paasta-tools (0.151.5) xenial; urgency=medium
+
+  * 0.151.5 tagged with 'make release'
+    Commit: Released 0.151.5 via make release
+
+ -- Manpreet Singh <manpreet@yelp.com>  Mon, 28 Nov 2022 08:35:50 -0800
+
+paasta-tools (0.151.5) xenial; urgency=medium
+
+  * 0.151.5 tagged with 'make release'
+    Commit: Merge pull request #3493 from
+    Yelp/d/manpreet/update_script_for_executor_secrets   Sync paasta
+    spark secrets for paasta-spark namespace
+
+ -- Manpreet Singh <manpreet@yelp.com>  Mon, 21 Nov 2022 12:44:12 -0800
+
+paasta-tools (0.151.4) xenial; urgency=medium
+
+  * 0.151.4 tagged with 'make release'
+    Commit: TRON-1818: Updates paasta tools to allow tron pool override
+    (#3500)  * Adds pool override Co-authored-by: Luis Perez
+    <luisp@yelp.com>
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 18 Nov 2022 12:20:12 -0800
+
+paasta-tools (0.151.3) xenial; urgency=medium
+
+  * 0.151.3 tagged with 'make release'
+    Commit: Merge pull request #3501 from
+    Yelp/u/jfong/check_orphans_split  Allow us to check service mesh
+    orphans separately from collisions
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 16 Nov 2022 14:50:37 -0800
+
+paasta-tools (0.151.2) xenial; urgency=medium
+
+  * 0.151.2 tagged with 'make release'
+    Commit: Merge pull request #3499 from Yelp/u/mmb/fix-get-running-
+    task-allocation  Fix additional_namespaces arg
+
+ -- Matthew Mead-Briggs <mmb@yelp.com>  Fri, 11 Nov 2022 06:11:25 -0800
+
+paasta-tools (0.151.1) xenial; urgency=medium
+
+  * 0.151.1 tagged with 'make release'
+    Commit: Merge pull request #3491 from Yelp/u/lancelei/separate-slo-
+    metric-watcher-threads-run  SLO Watcher Threads take precendence
+    over Metric Watcher Threads
+
+ -- Lancelei Herradura <lancelei@yelp.com>  Thu, 10 Nov 2022 15:39:28 -0800
+
+paasta-tools (0.151.0) xenial; urgency=medium
+
+  * 0.151.0 tagged with 'make release'
+    Commit: Teach get_running_task_allocation about non-prefixed
+    namespaces (#3497)  Most of the namespaces that "belong" to PaaSTA
+    are prefixed with paasta, with the exception of tron.  This teaches
+    this script how to include additional namespaces in its output and
+    sets the default to ["tron"] to avoid having to roll anything out :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Nov 2022 11:00:37 -0800
+
+paasta-tools (0.150.8) xenial; urgency=medium
+
+  * 0.150.8 tagged with 'make release'
+    Commit: Fix TronActionConfig config_dict typing (#3498)  We"ve
+    started stuffing some of the stuff that"s Tron-specific in
+    InstanceConfigDict - but this is a common base TypedDict that"s used
+    by all instances
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Nov 2022 10:55:35 -0800
+
+paasta-tools (0.150.7) xenial; urgency=medium
+
+  * 0.150.7 tagged with 'make release'
+    Commit: Add instance_type flag to list_kubernetes_service_instances
+    (#3495)  * Add instance_type flag to
+    list_kubernetes_service_instances
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 08 Nov 2022 14:02:55 -0800
+
+paasta-tools (0.150.6) xenial; urgency=medium
+
+  * 0.150.6 tagged with 'make release'
+    Commit: Merge pull request #3480 from Yelp/u/asoliman/FLINK-
+    4163_reflect_autotuning_on_flink  FLINK-4163: Add custom loading for
+    flink config in setup cr
+
+ -- Ahmed Soliman <asoliman@yelp.com>  Mon, 07 Nov 2022 07:19:53 -0800
+
+paasta-tools (0.150.5) xenial; urgency=medium
+
+  * 0.150.5 tagged with 'make release'
+    Commit: MLCOMPUTE-465 | add validations in paasta spark-run (#3454)
+    * MLCOMPUTE-465 | add validations for pool and cluster in paasta
+    spark-run  * MLCOMPUTE-465 | using public config for pool validation
+    * MLCOMPUTE-465 | modular code, added tests  * MLCOMPUTE-465 | add
+    allowed_pools key to SystemPaastaConfigDict  Co-authored-by: Sameer
+    Sharma <sameersharma@c02gm03pmd6w.lan> Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 04 Nov 2022 07:11:07 -0700
+
+paasta-tools (0.150.4) xenial; urgency=medium
+
+  * 0.150.4 tagged with 'make release'
+    Commit: Merge pull request #3492 from Yelp/MLCOMPUTE-
+    216_dra_mass_rollout_32_exec  MLCOMPUTE-216 | increase Spark DRA
+    mass rollout range to 64 executors
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 31 Oct 2022 09:22:30 -0700
+
+paasta-tools (0.150.3) xenial; urgency=medium
+
+  * 0.150.3 tagged with 'make release'
+    Commit: Merge pull request #3482 from Yelp/u/iiliescu/SECNESS-1125
+    Secrets for teams opt-in feature in paasta local-run cmd
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Mon, 31 Oct 2022 04:19:54 -0700
+
+paasta-tools (0.150.2) xenial; urgency=medium
+
+  * 0.150.2 tagged with 'make release'
+    Commit: Merge pull request #3488 from
+    Yelp/u/cuza/ignoring_jetbrains_fleet_settings  Adding .fleet to
+    .gitignore
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Mon, 31 Oct 2022 03:38:40 -0700
+
 paasta-tools (0.150.1) xenial; urgency=medium
 
   * 0.150.1 tagged with 'make release'
