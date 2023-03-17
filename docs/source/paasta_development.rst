@@ -61,7 +61,7 @@ Debugging PaaSTA playground components (in VS Code)
 
 Steps below outline running PaaSTA playground components with a debugger attached:
 
-1. Run ``make generate_deployments_for_service`` to run the Make targets that generates the ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` files.
+1. Run ``make generate_deployments_for_service`` to run the Make targets that generate the ``etc_paasta_playground`` and ``soa_config_playground`` directories and the ``deployments.json`` file.
 2. [This step can be ran one time] From the ``Run and Debug`` tab in VS Code, press on ``Run setup k8s job in playground`` to deploy ``compute-infra-test-service`` service in the cluster, if it's not deployed.
 
    .. sourcecode:: shell
