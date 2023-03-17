@@ -68,9 +68,14 @@ def run_local_zookeeper(user, zookeeper_port):
 
 
 def create_zookeeper_container(port, user):
-    os.system(
-        f'docker run -d -p {port}:2181 -e "ALLOW_ANONYMOUS_LOGIN=yes" --name {user}-paasta-zookeeper zookeeper:3.5'
-    )
+    if "yelpcorp.com" in socket.getfqdn():
+        os.system(
+            f'docker run -d -p {port}:2181 -e "ALLOW_ANONYMOUS_LOGIN=yes" --name {user}-paasta-zookeeper docker-dev.yelpcorp.com/zookeeper-testing'
+        )
+    else:
+        os.system(
+            f'docker run -d -p {port}:2181 -e "ALLOW_ANONYMOUS_LOGIN=yes" --name {user}-paasta-zookeeper zookeeper:3.5'
+        )
 
 
 if __name__ == "__main__":

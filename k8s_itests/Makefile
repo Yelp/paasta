@@ -17,30 +17,26 @@ else
 	PAASTA_K8S_ENV ?= $(shell hostname --fqdn)
 endif
 
-.PHONY: all itest fake_cluster kind create_cluster clean
+.PHONY: all itest clean
 
 all: clean itest
 
-fake_cluster: create_cluster
-ifeq (,$(wildcard ./.fake_cluster))
+.fake_cluster: .create_cluster
 	if [ "$(PAASTA_K8S_ENV)" = "YELP" ]; then \
 		./scripts/set-paasta-registry-credentials.sh $(CLUSTER); \
 	fi
 	touch .fake_cluster
-endif
 
 kind:
 ifeq (,$(wildcard ./kind))
 	./scripts/install-kind.sh
-endif
 
-create_cluster: kind
-ifeq (,$(wildcard ./.create_cluster))
+.create_cluster: kind
 	./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
 	touch .create_cluster
 endif
 
-itest: create_cluster
+itest: .create_cluster
 	../.paasta/bin/tox -e k8s_itests
 
 clean:
