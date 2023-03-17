@@ -173,6 +173,7 @@ def test_create_instance_cpu_scaling_rule() -> None:
     service_name = "test_service"
     instance_name = "test_instance"
     paasta_cluster = "test_cluster"
+    namespace = "test_namespace"
     autoscaling_config: AutoscalingParamsDict = {
         "metrics_provider": "cpu",
         "setpoint": 0.1234567890,
@@ -185,6 +186,7 @@ def test_create_instance_cpu_scaling_rule() -> None:
         instance=instance_name,
         paasta_cluster=paasta_cluster,
         autoscaling_config=autoscaling_config,
+        namespace=namespace,
     )
 
     # our query doesn't include the setpoint as we'll just give the HPA the current CPU usage and
@@ -251,6 +253,7 @@ def test_get_rules_for_service_instance(
                     instance_name="instance",
                     autoscaling_config=autoscaling_config,
                     paasta_cluster="cluster",
+                    namespace="test_namespace",
                 )
             )
             == expected_rules
@@ -280,6 +283,7 @@ def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
         instance="instance",
         autoscaling_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
         paasta_cluster="cluster",
+        namespace="paasta",
     )
 
     assert rule == {
@@ -303,6 +307,7 @@ def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
             "prometheus_adapter_config": {"metricsQuery": "foo", "seriesQuery": "bar"}
         },
         paasta_cluster="cluster",
+        namespace="test_namespace",
     )
 
     assert rule == {
