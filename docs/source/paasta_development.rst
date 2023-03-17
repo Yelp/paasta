@@ -61,7 +61,7 @@ Debugging PaaSTA playground components (in VS Code)
 
 Steps below outline running PaaSTA playground components with a debugger attached:
 
-1. Run ``make generate_paasta_playground`` to run the Make target that generates the ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` file.
+1. Run ``make generate_deployments_for_service`` to run the Make targets that generates the ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` files.
 2. [This step can be ran one time] From the ``Run and Debug`` tab in VS Code, press on ``Run setup k8s job in playground`` to deploy ``compute-infra-test-service`` service in the cluster, if it's not deployed.
 
    .. sourcecode:: shell
@@ -103,8 +103,7 @@ Running PaaSTA playground
 
 There are two ways you can run PaaSTA playground:
 
-If you didn't run ``setup_kubernetes_job`` to deploy ``compute-infra-test-service`` service. Please follow step 2 in section :ref:`Debugging PaaSTA playground components <debugging-paasta-playground>`
-before proceeding with the steps below.
+If you didn't run ``setup_kubernetes_job`` to deploy ``compute-infra-test-service`` service you can simply run it using ``make setup-kubernetes-job``.
 
 1. Using ``launch.json`` file
 
@@ -113,6 +112,6 @@ before proceeding with the steps below.
 
 2. Using make targets
 
-   1. Run ``make generate_paasta_playground`` to run the Make target that generates the  ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` file.
+   1. Run ``make setup_kubernetes_job`` to run the Make target that generates the  ``etc_paasta_playground`` and ``soa_config_playground`` directories and ``deployments.json`` file and deploys workloads to the cluster.
    2. Run ``make playground-api`` to run the Make target that runs PaaSTA API.
    3. Wait until workers are booted in API output then from the ``Run and Debug`` tab in VS Code, press on ``paasta status playground`` to run the PaaSTA ClI client to connect to the API.

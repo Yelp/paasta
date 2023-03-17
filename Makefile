@@ -137,7 +137,8 @@ vscode_settings: .paasta/bin/activate .tox/py37-linux
 etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py37-linux
 	.tox/py37-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
-generate_deployments_for_service: .tox/py37-linux | soa_config_playground
+.PHONY: generate_deployments_for_service
+generate_deployments_for_service: | soa_config_playground .tox/py37-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
