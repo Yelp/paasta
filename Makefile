@@ -138,8 +138,8 @@ etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py37-linu
 	.tox/py37-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
 generate_deployments_for_service: .tox/py37-linux | soa_config_playground
-	export KUBECONFIG="./k8s_itests/kubeconfig";\
-	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
 	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground | cut -f1 -d"." | uniq | shuf | xargs -n 1 --no-run-if-empty \
 	.tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
@@ -150,15 +150,15 @@ playground-api: .tox/py37-linux | soa_config_playground
 
 .PHONY: setup-kubernetes-job
 setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
-	export KUBECONFIG="./k8s_itests/kubeconfig";\
-	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
 	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py37-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: paasta-secrets-sync
 paasta-secrets-sync: setup-kubernetes-job
-	export KUBECONFIG="./k8s_itests/kubeconfig";\
-	export PAASTA_SYSTEM_CONFIG_DIR="./etc_paasta_playground/";\
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
 	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -d ./soa_config_playground
 

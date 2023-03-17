@@ -1,6 +1,7 @@
 import json
 import os
 import socket
+import subprocess
 
 from render_template import render_values
 
@@ -69,12 +70,34 @@ def run_local_zookeeper(user, zookeeper_port):
 
 def create_zookeeper_container(port, user):
     if "yelpcorp.com" in socket.getfqdn():
-        os.system(
-            f'docker run -d -p {port}:2181 -e "ALLOW_ANONYMOUS_LOGIN=yes" --name {user}-paasta-zookeeper docker-dev.yelpcorp.com/zookeeper-testing'
+        subprocess.run(
+            [
+                "docker",
+                "run",
+                "-d",
+                "-p",
+                f"{port}:2181",
+                "-e",
+                '"ALLOW_ANONYMOUS_LOGIN=yes"',
+                "--name",
+                f"{user}-paasta-zookeeper",
+                "docker-dev.yelpcorp.com/zookeeper-testing",
+            ]
         )
     else:
-        os.system(
-            f'docker run -d -p {port}:2181 -e "ALLOW_ANONYMOUS_LOGIN=yes" --name {user}-paasta-zookeeper zookeeper:3.5'
+        subprocess.run(
+            [
+                "docker",
+                "run",
+                "-d",
+                "-p",
+                f"{port}:2181",
+                "-e",
+                '"ALLOW_ANONYMOUS_LOGIN=yes"',
+                "--name",
+                f"{user}-paasta-zookeeper",
+                "zookeeper:3.5",
+            ]
         )
 
 
