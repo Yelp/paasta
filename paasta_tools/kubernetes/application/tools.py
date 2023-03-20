@@ -79,7 +79,7 @@ def list_all_applications(
     :param kube_client:
 
     :param application_types:  types of applications
-    :return: A dictionary with (service, instance) as keys and a list of applications for each tuple
+    :return: A mapping from (service, instance) to application
     """
     apps: Dict[Tuple[str, str], List[Application]] = {}
     for application_type in application_types:
