@@ -4243,11 +4243,12 @@ def test_get_kubernetes_secret_env_variables():
             "MY": "aaa",
             "SECRET_NAME1": "SECRET(SECRET_NAME1)",
             "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+            "SHARED_SECRET1": "SHARED_SECRET(SHARED_SECRET1)",
         }
 
         mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
-        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
-        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2", "SHARED_SECRET1"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc", "shared"]
         mock_client = mock.Mock()
         mock_kube_client.return_value = mock_client
 
@@ -4256,7 +4257,11 @@ def test_get_kubernetes_secret_env_variables():
             environment=mock_environment,
             service_name="universe",
         )
-        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+        assert ret == {
+            "SECRET_NAME1": "123",
+            "SECRET_NAME2": "abc",
+            "SHARED_SECRET1": "shared",
+        }
 
         assert mock_get_kubernetes_secret.call_args_list == [
             mock.call(
@@ -4264,6 +4269,13 @@ def test_get_kubernetes_secret_env_variables():
             ),
             mock.call(
                 mock_client, "universe", "SECRET_NAME2", decode=True, namespace="paasta"
+            ),
+            mock.call(
+                mock_client,
+                SHARED_SECRET_SERVICE,
+                "SHARED_SECRET1",
+                decode=True,
+                namespace="paasta",
             ),
         ]
 
