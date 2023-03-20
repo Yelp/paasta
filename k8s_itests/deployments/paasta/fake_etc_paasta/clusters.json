@@ -2,5 +2,6 @@
     "clusters": [
         "<%cluster%>"
     ],
-    "cluster": "<%cluster%>"
+    "cluster": "<%cluster%>",
+    "zookeeper": "zk://$(HOST_IP):$(ZOOKEEPER_PORT)"
 }
