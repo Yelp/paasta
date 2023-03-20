@@ -12,6 +12,7 @@ dist/
 .fleet
 .vscode
 .create_cluster
+.fake_cluster
 .tmp
 kind
 .kube
