@@ -3635,7 +3635,7 @@ def get_kubernetes_secret_env_variables(
             decrypted_secrets[k] = str(
                 get_kubernetes_secret(
                     kube_client,
-                    service_name,
+                    SHARED_SECRET_SERVICE if is_shared_secret(v) else service_name,
                     secret_name,
                     decode=True,
                     namespace=namespace,
