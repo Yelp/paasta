@@ -1462,33 +1462,34 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         required_crypto_keys = get_crypto_keys_from_config(
             self.config_dict.get("crypto_keys", {})
         )
-        service_name = self.get_sanitised_deployment_name()
         if not required_crypto_keys:
             return None
 
-        items = []
-        for crypto_key in required_crypto_keys:
-            items.append(
-                V1KeyToPath(
-                    key=get_vault_key_secret_name(crypto_key),
-                    path=f"{crypto_key}.json",
-                    mode=mode_to_int("0444"),
-                )
-            )
-
-        # Check that crypto keys actually exist as secrets
         if not self.get_crypto_secret_hash():
             log.warning(
-                f"Expected to find k8s secret {self.get_crypto_secret_name()} for crypto_keys"
+                f"Expected to find secret signature {self.get_crypto_secret_name()} for crypto_keys"
             )
             return None
 
         volume = V1Volume(
-            name=self.get_crypto_secret_volume_name(service_name),
+            name=self.get_crypto_secret_volume_name(
+                self.get_sanitised_deployment_name()
+            ),
             secret=V1SecretVolumeSource(
                 secret_name=self.get_crypto_secret_name(),
                 default_mode=mode_to_int("0444"),
-                items=items,
+                items=[
+                    V1KeyToPath(
+                        # key should exist in data section of k8s secret
+                        key=get_vault_key_secret_name(crypto_key),
+                        # path is equivalent to Vault key directory structure
+                        # e.g. private/foo will create /etc/crypto_keys/private/foo.json
+                        path=f"{crypto_key}.json",
+                        mode=mode_to_int("0444"),
+                    )
+                    for crypto_key in required_crypto_keys
+                ],
+                optional=True,
             ),
         )
         return volume
