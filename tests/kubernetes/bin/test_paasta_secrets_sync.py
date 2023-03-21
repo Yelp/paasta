@@ -473,7 +473,7 @@ def test_sync_crypto_secrets():
         mock_get_kubernetes_secret_signature.return_value = expected_signature
         mock_update_secret.reset_mock()
         mock_create_secret.reset_mock()
-        assert sync_boto_secrets(
+        assert sync_crypto_secrets(
             kube_client=mock_client,
             cluster="westeros-prod",
             service="universe",

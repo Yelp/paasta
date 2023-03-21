@@ -95,6 +95,7 @@ from paasta_tools.kubernetes_tools import get_active_versions_for_service
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
+from paasta_tools.kubernetes_tools import get_crypto_keys_from_config
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
@@ -1313,6 +1314,37 @@ class TestKubernetesDeploymentConfig:
                 assert any(
                     [item.path == f"{key}.yaml" for item in volumes.secret.items]
                 )
+        else:
+            assert volumes is None
+
+    @pytest.mark.parametrize(
+        "config_dict",
+        [
+            {"crypto_keys": {"encrypt": ["mad"], "decrypt": ["max"]}},
+            {"crypto_keys": {"decrypt": ["furiosa"]}},
+            {},
+        ],
+    )
+    def test_get_crypto_volume(self, config_dict):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        with mock.patch.object(
+            deployment, "get_crypto_secret_hash", return_value="hash"
+        ):
+            volumes = deployment.get_crypto_volume()
+        if config_dict:
+            (volumes.secret.secret_name == "paasta-crypto-key-my-service-my-instance")
+
+            assert len(volumes.secret.items) == len(config_dict["crypto_keys"])
+            assert set(get_crypto_keys_from_config(config_dict["crypto_keys"])) == {
+                item.path.rstrip(".json") for item in volumes.secret.items
+            }
         else:
             assert volumes is None
 

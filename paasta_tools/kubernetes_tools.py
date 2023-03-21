@@ -1472,7 +1472,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        volume = V1Volume(
+        return V1Volume(
             name=self.get_crypto_secret_volume_name(
                 self.get_sanitised_deployment_name()
             ),
@@ -1493,7 +1493,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 optional=True,
             ),
         )
-        return volume
 
     def get_volume_mounts(
         self,
