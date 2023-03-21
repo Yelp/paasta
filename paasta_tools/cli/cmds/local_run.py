@@ -500,6 +500,12 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--role-duration",
+        help="Number of seconds for session duration if using assume-role-arn or assume-pod-identity",
+        type=int,
+        default=3600,
+    )
+    list_parser.add_argument(
         "--sha",
         help=(
             "SHA to run instead of the currently marked-for-deployment SHA. Ignored when used with --build."
@@ -696,6 +702,7 @@ def assume_aws_role(
     assume_role_arn: str,
     assume_pod_identity: bool,
     use_okta_role: bool,
+    duration_seconds: int,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
@@ -769,7 +776,9 @@ def assume_aws_role(
         )
         sts_client = boto_session.client("sts")
         assumed_role = sts_client.assume_role(
-            RoleArn=pod_identity, RoleSessionName=f"{get_username()}-local-run"
+            RoleArn=pod_identity,
+            RoleSessionName=f"{get_username()}-local-run",
+            DurationSeconds=duration_seconds,
         )
         # The contents of "Credentials" key from assume_role is the same as from aws-okta
         cmd_output = assumed_role["Credentials"]
@@ -778,6 +787,7 @@ def assume_aws_role(
         "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
         "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
         "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
+        "AWS_SECURITY_TOKEN": cmd_output["SessionToken"],
     }
     return creds_dict
 
@@ -804,6 +814,7 @@ def run_docker_container(
     assume_pod_identity=False,
     assume_role_arn="",
     use_okta_role=False,
+    duration_seconds=3600,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -884,6 +895,7 @@ def run_docker_container(
             assume_role_arn,
             assume_pod_identity,
             use_okta_role,
+            duration_seconds,
         )
         environment.update(aws_creds)
 

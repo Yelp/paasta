@@ -2507,12 +2507,18 @@ def test_assume_aws_role(
                 assume_role,
                 assume_pod_identity,
                 use_okta_role,
+                3200,
             )
         assert sys_exit.value.code == 1
         return
     else:
         env = assume_aws_role(
-            mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
+            mock_config,
+            mock_service,
+            assume_role,
+            assume_pod_identity,
+            use_okta_role,
+            3200,
         )
 
     if as_root:
