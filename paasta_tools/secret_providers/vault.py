@@ -7,7 +7,6 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
-from typing import Tuple
 
 try:
     from vault_tools.client.jsonsecret import get_plaintext
@@ -170,7 +169,7 @@ class SecretProvider(BaseSecretProvider):
         self,
         key: str,
         mountpoint: str = "keystore",
-    ) -> Iterable[Tuple[str, int]]:
+    ) -> Iterable[Dict[str, Any]]:
         """
         Retrieve Vault key's all versions based on its metadata
         """

@@ -463,7 +463,7 @@ def get_vault_key_secret_name(vault_key: str) -> str:
     return vault_key.replace("/", "-")
 
 
-def get_crypto_keys_from_config(crypto_keys_config: dict) -> List[str]:
+def get_crypto_keys_from_config(crypto_keys_config: Dict[str, Any]) -> List[str]:
     return [
         *(f"public/{key}" for key in crypto_keys_config.get("encrypt", [])),
         *(f"private/{key}" for key in crypto_keys_config.get("decrypt", [])),
@@ -3275,7 +3275,7 @@ def create_secret(
 def create_plaintext_dict_secret(
     kube_client: KubeClient,
     secret_name: str,
-    secret_data: dict,
+    secret_data: Mapping[str, str],
     service: str,
     namespace: str = "paasta",
 ) -> None:
@@ -3328,7 +3328,7 @@ def update_secret(
 def update_plaintext_dict_secret(
     kube_client: KubeClient,
     secret_name: str,
-    secret_data: dict,
+    secret_data: Mapping[str, str],
     service: str,
     namespace: str = "paasta",
 ) -> None:
