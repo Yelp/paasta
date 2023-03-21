@@ -39,7 +39,6 @@ from contextlib import contextmanager
 from typing import Dict
 from typing import Generator
 from typing import List
-from typing import Optional
 from typing import Set
 from typing import Tuple
 
@@ -107,23 +106,22 @@ def alert_state_change(application: Application, cluster: str) -> Generator:
 def instance_is_not_bouncing(
     instance_config: KubernetesDeploymentConfig,
     applications: List[Application],
-    kube_client: KubeClient,
-) -> Optional[bool]:
+) -> bool:
+    """
+
+    :param instance_config: a KubernetesDeploymentConfig with the configuration of the instance
+    :param applications: a list of all deployments or stateful sets on the cluster that match the service
+     and instance of provided instance_config
+    """
     for application in applications:
         if isinstance(application, DeploymentWrapper):
-            existing_app = application.get_existing_app(kube_client)
-            if (
-                application.kube_deployment.namespace == instance_config.get_namespace()
-                and (
-                    instance_config.config_dict.get("instances", None)
-                    == existing_app.status.ready_replicas
-                    or instance_config.config_dict.get("min_instances", None)
-                    <= existing_app.status.ready_replicas
-                )
+            existing_app = application.item
+            if existing_app.metadata.namespace == instance_config.get_namespace() and (
+                instance_config.config_dict.get("instances", None)
+                == existing_app.status.ready_replicas
+                or instance_config.get_instances() <= existing_app.status.ready_replicas
             ):
                 return True
-            else:
-                return False
 
         elif isinstance(application, StatefulSetWrapper):
             log.critical(
@@ -131,14 +129,13 @@ def instance_is_not_bouncing(
                 "StatefulSet bouncing across namespaces is not supported"
             )
             raise StatefulSetsAreNotSupportedError
-    return None
+    return False
 
 
 def get_applications_to_kill(
     applications_dict: Dict[Tuple[str, str], List[Application]],
     cluster: str,
     valid_services: Set[Tuple[str, str]],
-    kube_client: KubeClient,
     soa_dir: str,
 ) -> List[Application]:
     """
@@ -146,31 +143,22 @@ def get_applications_to_kill(
     :param applications_dict: A dictionary with (service, instance) as keys and a list of applications for each tuple
     :param cluster: paasta cluster
     :param valid_services: a set with the valid (service, instance) tuples for this cluster
-    :param kube_client:
     :param soa_dir: The SOA config directory to read from
     :return: list of applications to kill
     """
     log.info("Determining apps to be killed")
 
     applications_to_kill: List[Application] = []
-    for instance_tuple, applications in applications_dict.items():
-        service = instance_tuple[0]
-        instance = instance_tuple[1]
+    for (service, instance), applications in applications_dict.items():
         instance_config = load_kubernetes_service_config(
             cluster=cluster, service=service, instance=instance, soa_dir=soa_dir
         )
-        if len(applications) == 1:
-            application = applications[0]
-            if (
-                (service, instance) not in valid_services
-                or application.kube_deployment.namespace
-                != instance_config.get_namespace()
-            ):
-                applications_to_kill.append(application)
-        elif len(applications) > 1:
-            not_bouncing = instance_is_not_bouncing(
-                instance_config, applications, kube_client
-            )
+        if len(applications) >= 1:
+            try:
+                not_bouncing = instance_is_not_bouncing(instance_config, applications)
+            except StatefulSetsAreNotSupportedError:
+                # TODO: sensu alert or page here
+                continue
             for application in applications:
                 if (service, instance) not in valid_services or (
                     application.kube_deployment.namespace
@@ -207,7 +195,7 @@ def cleanup_unused_apps(
     )
 
     applications_to_kill: List[Application] = get_applications_to_kill(
-        applications_dict, cluster, valid_services, kube_client, soa_dir
+        applications_dict, cluster, valid_services, soa_dir
     )
 
     log.debug("Running apps: %s" % list(applications_dict))
@@ -283,7 +271,7 @@ def main(argv=None) -> None:
         cleanup_unused_apps(
             soa_dir, cluster=cluster, kill_threshold=kill_threshold, force=force
         )
-    except (DontKillEverythingError, StatefulSetsAreNotSupportedError):
+    except (DontKillEverythingError):
         sys.exit(1)
 
 
