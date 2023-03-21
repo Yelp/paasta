@@ -117,6 +117,7 @@ def main() -> None:
         service_list=args.service_list,
         cluster=cluster,
         soa_dir=args.soa_dir,
+        kube_client=kube_client,
     )
 
     sys.exit(0) if sync_all_secrets(
@@ -132,9 +133,7 @@ def main() -> None:
 
 
 def get_services_to_k8s_namespaces(
-    service_list: List[str],
-    cluster: str,
-    soa_dir: str,
+    service_list: List[str], cluster: str, soa_dir: str, kube_client: KubeClient
 ) -> Dict[str, Set[str]]:
     services_to_k8s_namespaces: Dict[str, Set[str]] = defaultdict(set)
     for service in service_list:
@@ -145,18 +144,34 @@ def get_services_to_k8s_namespaces(
             services_to_k8s_namespaces[service] = set(
                 INSTANCE_TYPE_TO_K8S_NAMESPACE.values()
             )
-            continue
-        for instance_type in INSTANCE_TYPES:
-            instances = get_service_instance_list(
-                service=service,
-                instance_type=instance_type,
-                cluster=cluster,
-                soa_dir=soa_dir,
+            paasta_namespaces = kube_client.core.list_namespace(
+                label_selector="paasta.yelp.com/managed=true"
             )
-            if instances:
-                services_to_k8s_namespaces[service].add(
-                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+            for namespace in paasta_namespaces.items:
+                services_to_k8s_namespaces[service].add(namespace.metadata.name)
+            continue
+
+        for instance_type in INSTANCE_TYPES:
+            if instance_type == "kubernetes":
+                config_loader = PaastaServiceConfigLoader(service, soa_dir)
+                for service_instance_config in config_loader.instance_configs(
+                    cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                ):
+                    services_to_k8s_namespaces[service].add(
+                        service_instance_config.get_namespace()
+                    )
+            else:
+                instances = get_service_instance_list(
+                    service=service,
+                    instance_type=instance_type,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
                 )
+                if instances:
+                    services_to_k8s_namespaces[service].add(
+                        INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                    )
+
     return dict(services_to_k8s_namespaces)
 
 
@@ -187,28 +202,25 @@ def sync_all_secrets(
                     vault_token_file=vault_token_file,
                 )
             )
-            results.append(
-                sync_boto_secrets(
-                    kube_client=kube_client,
-                    cluster=cluster,
-                    service=service,
-                    secret_provider_name=secret_provider_name,
-                    vault_cluster_config=vault_cluster_config,
-                    soa_dir=soa_dir,
-                    namespace=namespace,
-                )
+        results.append(
+            sync_boto_secrets(
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                soa_dir=soa_dir,
             )
-            results.append(
-                sync_crypto_secrets(
-                    kube_client=kube_client,
-                    cluster=cluster,
-                    service=service,
-                    secret_provider_name=secret_provider_name,
-                    vault_cluster_config=vault_cluster_config,
-                    soa_dir=soa_dir,
-                    namespace=namespace,
-                )
+        )
+        results.append(
+            sync_crypto_secrets(
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                secret_provider_name=secret_provider_name,
+                vault_cluster_config=vault_cluster_config,
+                soa_dir=soa_dir,
+                namespace=namespace,
             )
+        )
     return all(results)
 
 
@@ -375,10 +387,7 @@ def sync_boto_secrets(
     kube_client: KubeClient,
     cluster: str,
     service: str,
-    secret_provider_name: str,
-    vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    namespace: str,
 ) -> bool:
     # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
@@ -416,7 +425,7 @@ def sync_boto_secrets(
             ),
             secret_data=secret_data,
             kube_client=kube_client,
-            namespace=namespace,
+            namespace=instance_config.get_namespace(),
         )
     return True
 

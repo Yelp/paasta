@@ -140,7 +140,6 @@ INSTANCE_TYPES = (
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
     "adhoc": "paasta",
-    "kubernetes": "paasta",
     "tron": "tron",
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",

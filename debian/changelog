@@ -1,3 +1,38 @@
+paasta-tools (0.165.2) xenial; urgency=medium
+
+  * 0.165.2 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v2.14.5 (#3567)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 16 Mar 2023 11:51:52 -0700
+
+paasta-tools (0.165.1) xenial; urgency=medium
+
+  * 0.165.1 tagged with 'make release'
+    Commit: Add iam_role and provider to adhoc schema (#3564)  #3532
+    added a feature that allows local-run to use the iam_role setting of
+    a service to assume the role locally. This means that iam_role now
+    has a use case for being configured in adhoc service instances, as
+    that is where local-run will read from by default. This allows you
+    to set those.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Mar 2023 08:52:39 -0700
+
+paasta-tools (0.165.0) xenial; urgency=medium
+
+  * 0.165.0 tagged with 'make release'
+    Commit: Merge pull request #3552 from
+    Yelp/u/cuza/paasta_secret_sync_multiple_namespaces
+    paasta_secret_sync for multiple namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 14 Mar 2023 13:49:59 -0700
+
+paasta-tools (0.164.7) xenial; urgency=medium
+
+  * 0.164.7 tagged with 'make release'
+    Commit: Upgrade service-configuration-lib to 2.14.4 (#3565)
+
+ -- Chi Chang <chi@yelp.com>  Tue, 14 Mar 2023 09:04:43 -0700
+
 paasta-tools (0.164.6) xenial; urgency=medium
 
   * 0.164.6 tagged with 'make release'
