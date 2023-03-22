@@ -1240,7 +1240,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if mode == "http" or mode == "https":
             path = self.get_healthcheck_uri(service_namespace_config)
             probe.http_get = V1HTTPGetAction(
-                path=path, port=self.get_container_port(), scheme=mode.upper()
+                path=path,
+                port=self.get_healthcheck_port(service_namespace_config),
+                scheme=mode.upper(),
             )
         elif mode == "tcp":
             probe.tcp_socket = V1TCPSocketAction(port=self.get_container_port())
