@@ -142,7 +142,7 @@ generate_deployments_for_service: | soa_config_playground .tox/py37-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground | cut -f1 -d"." | uniq | shuf | xargs -n 1 --no-run-if-empty \
+	.tox/py37-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
 	.tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
 
 .PHONY: playground-api
@@ -161,7 +161,7 @@ paasta-secrets-sync: setup-kubernetes-job
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -d ./soa_config_playground
+	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground
 
 .PHONY: clean-playground
 clean-playground:
