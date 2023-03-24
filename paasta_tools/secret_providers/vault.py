@@ -8,6 +8,8 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 
+from mypy_extensions import TypedDict
+
 try:
     from vault_tools.client.jsonsecret import get_plaintext
     from vault_tools.paasta_secret import get_vault_client
@@ -33,6 +35,12 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 
 
 log = logging.getLogger(__name__)
+
+
+class CryptoKey(TypedDict):
+    keyname: str
+    key: str
+    key_version: str
 
 
 class SecretProvider(BaseSecretProvider):
@@ -169,9 +177,9 @@ class SecretProvider(BaseSecretProvider):
         self,
         key: str,
         mountpoint: str = "keystore",
-    ) -> Iterable[Dict[str, Any]]:
+    ) -> Iterable[CryptoKey]:
         """
-        Retrieve Vault key's all versions based on its metadata
+        Retrieve all versions of Vault key based on its metadata
         """
         client = self.clients[self.ecosystems[0]]
         try:
@@ -188,9 +196,9 @@ class SecretProvider(BaseSecretProvider):
                     "key": key_response["data"]["data"]["key"],
                     "key_version": key_response["data"]["metadata"]["version"],
                 }
-        except hvac.exceptions.VaultError as e:
+        except hvac.exceptions.VaultError:
             log.warning(
-                f"Could not fetch key versions for {key} on {self.ecosystems[0]} because of {type(e).__name__}"
+                f"Could not fetch key versions for {key} on {self.ecosystems[0]}"
             )
             pass
 

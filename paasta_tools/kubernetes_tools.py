@@ -337,6 +337,11 @@ KubePodLabels = TypedDict(
 )
 
 
+class CryptoKeyConfig(TypedDict):
+    encrypt: List[str]
+    decrypt: List[str]
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
@@ -352,7 +357,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
-    crypto_keys: List[str]
+    crypto_keys: CryptoKeyConfig
 
 
 def load_kubernetes_service_config_no_cache(
