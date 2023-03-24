@@ -218,7 +218,7 @@ def sync_all_secrets(
                 secret_provider_name=secret_provider_name,
                 vault_cluster_config=vault_cluster_config,
                 soa_dir=soa_dir,
-                namespace=namespace,
+                vault_token_file=vault_token_file,
             )
         )
     return all(results)
@@ -325,8 +325,7 @@ def sync_crypto_secrets(
     secret_provider_name: str,
     vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    namespace: str,
-    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
+    vault_token_file: str,
 ) -> bool:
     # Update crypto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
@@ -371,13 +370,13 @@ def sync_crypto_secrets(
         time.sleep(0.3)
         update_k8s_secrets(
             service=service,
-            # `kubernetes.client.V1SecretVolumeSource` expects the secret name below
+            # `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match `secret` below
             secret=limit_size_with_hash(
                 f"paasta-crypto-key-{get_kubernetes_app_name(service, instance)}"
             ),
             secret_data=secret_data,
             kube_client=kube_client,
-            namespace=namespace,
+            namespace=instance_config.get_namespace(),
         )
 
     return True

@@ -1,0 +1,10 @@
+{
+    "log_writer": {
+        "driver": "monk",
+        "options": {
+            "monk_host": "169.254.255.254",
+            "monk_port": 1473,
+            "monk_disable": true
+        }
+    }
+}
