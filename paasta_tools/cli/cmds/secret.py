@@ -228,6 +228,7 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
+    parser.add_argument("-t", "--vault_token_file", help="Vault token file")
 
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
@@ -341,7 +342,10 @@ def is_service_folder(soa_dir, service_name):
 
 
 def _get_secret_provider_for_service(
-    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs=None
+    service_name,
+    cluster_names=None,
+    soa_dir=None,
+    secret_provider_extra_kwargs=None,
 ):
     secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
@@ -411,6 +415,11 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
+            soa_dir=args.yelpsoa_config_root,
+            secret_provider_extra_kwargs={
+                "vault_token_file": args.vault_token_file,
+                "vault_auth_method": "token",
+            },
         )
         secret_provider.write_secret(
             action=args.action,
