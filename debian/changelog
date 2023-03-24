@@ -1,3 +1,12 @@
+paasta-tools (0.165.3) xenial; urgency=medium
+
+  * 0.165.3 tagged with 'make release'
+    Commit: Merge pull request #3572 from Yelp/MLCOMPUTE-
+    537_cost_warnings  MLCOMPUTE-537 | remove DRA enable logic, bump up
+    version
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 24 Mar 2023 09:46:32 -0700
+
 paasta-tools (0.165.2) xenial; urgency=medium
 
   * 0.165.2 tagged with 'make release'
