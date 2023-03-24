@@ -23,7 +23,6 @@ import time
 from collections import defaultdict
 from typing import Dict
 from typing import List
-from typing import Mapping
 from typing import Optional
 from typing import Set
 
@@ -32,7 +31,6 @@ from kubernetes.client.rest import ApiException
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import create_secret
-from paasta_tools.kubernetes_tools import get_crypto_keys_from_config
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
@@ -178,9 +176,9 @@ def get_services_to_k8s_namespaces(
 def sync_all_secrets(
     kube_client: KubeClient,
     cluster: str,
-    services_to_k8s_namespaces: Mapping[str, Set],
+    services_to_k8s_namespaces: Dict[str, Set],
     secret_provider_name: str,
-    vault_cluster_config: Mapping[str, str],
+    vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
     overwrite_namespace: Optional[str] = None,
@@ -229,7 +227,7 @@ def sync_secrets(
     cluster: str,
     service: str,
     secret_provider_name: str,
-    vault_cluster_config: Mapping[str, str],
+    vault_cluster_config: Dict[str, str],
     soa_dir: str,
     namespace: str,
     vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
@@ -323,19 +321,25 @@ def sync_crypto_secrets(
     cluster: str,
     service: str,
     secret_provider_name: str,
-    vault_cluster_config: Mapping[str, str],
+    vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
 ) -> bool:
+    """
+    For each key-name in `crypto_key`,
+    1. Fetch all versions of the key-name from Vault superregion mapped from cluster, e.g. `kubestage` maps to `devc` Vault server.
+    2. Create K8s secret from JSON blob containing all key versions.
+    3. Create signatures as K8s configmap based on JSON blob hash.
+
+    So each instance of a service get the same key, thereby reducing requests to Vault API
+    """
     # Update crypto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         instance = instance_config.instance
-        crypto_keys = get_crypto_keys_from_config(
-            instance_config.config_dict.get("crypto_keys", {})
-        )
+        crypto_keys = instance_config.get_crypto_keys_from_config()
         if not crypto_keys:
             continue
 
@@ -368,7 +372,7 @@ def sync_crypto_secrets(
 
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
-        update_k8s_secrets(
+        update_k8s_secret(
             service=service,
             # `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match `secret` below
             secret=limit_size_with_hash(
@@ -417,7 +421,7 @@ def sync_boto_secrets(
 
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
-        update_k8s_secrets(
+        update_k8s_secret(
             service=service,
             secret=limit_size_with_hash(
                 f"paasta-boto-key-{get_kubernetes_app_name(service, instance)}"
@@ -429,10 +433,10 @@ def sync_boto_secrets(
     return True
 
 
-def update_k8s_secrets(
+def update_k8s_secret(
     service: str,
     secret: str,
-    secret_data: Mapping[str, str],
+    secret_data: Dict[str, str],
     kube_client: KubeClient,
     namespace: str,
 ) -> None:

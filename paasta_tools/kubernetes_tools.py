@@ -463,13 +463,6 @@ def get_vault_key_secret_name(vault_key: str) -> str:
     return vault_key.replace("/", "-")
 
 
-def get_crypto_keys_from_config(crypto_keys_config: Dict[str, Any]) -> List[str]:
-    return [
-        *(f"public/{key}" for key in crypto_keys_config.get("encrypt", [])),
-        *(f"private/{key}" for key in crypto_keys_config.get("decrypt", [])),
-    ]
-
-
 class InvalidKubernetesConfig(Exception):
     def __init__(self, exception: Exception, service: str, instance: str) -> None:
         super().__init__(
@@ -1459,10 +1452,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return volume
 
+    def get_crypto_keys_from_config(self) -> List[str]:
+        crypto_keys = self.config_dict.get("crypto_keys", {})
+        return [
+            *(f"public/{key}" for key in crypto_keys.get("encrypt", [])),
+            *(f"private/{key}" for key in crypto_keys.get("decrypt", [])),
+        ]
+
     def get_crypto_volume(self) -> Optional[V1Volume]:
-        required_crypto_keys = get_crypto_keys_from_config(
-            self.config_dict.get("crypto_keys", {})
-        )
+        required_crypto_keys = self.get_crypto_keys_from_config()
         if not required_crypto_keys:
             return None
 
@@ -1567,7 +1565,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return volume_mounts
 
-    def get_boto_secret_hash(self) -> str:
+    def get_boto_secret_hash(self) -> Optional[str]:
         kube_client = KubeClient()
         deployment_name = self.get_sanitised_deployment_name()
         service_name = self.get_sanitised_service_name()
@@ -1579,7 +1577,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             namespace=self.get_namespace(),
         )
 
-    def get_crypto_secret_hash(self) -> str:
+    def get_crypto_secret_hash(self) -> Optional[str]:
         return get_kubernetes_secret_signature(
             kube_client=KubeClient(),
             secret=self.get_crypto_secret_name(),
