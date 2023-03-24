@@ -991,23 +991,6 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
-def _enable_dra_default(args, user_spark_opts):
-    if (
-        args.cluster_manager == CLUSTER_MANAGER_K8S
-        and "spark.dynamicAllocation.enabled" not in user_spark_opts
-    ):
-        log.warning(
-            PaastaColors.yellow(
-                "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                "More info: y/spark-dra. If your job is performing worse because "
-                "of DRA, consider disabling DRA. To disable, please provide "
-                "spark.dynamicAllocation.enabled=false in --spark-args\n"
-            )
-        )
-        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
-    return user_spark_opts
-
-
 def _validate_pool(args, system_paasta_config):
     if args.pool:
         valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
@@ -1141,9 +1124,6 @@ def paasta_spark_run(args):
             user_spark_opts[key] = value
 
     paasta_instance = get_smart_paasta_instance_name(args)
-
-    # Spark DRA is enabled by default for all batches unless disabled explicitly. More info: y/spark-dra
-    user_spark_opts = _enable_dra_default(args, user_spark_opts)
 
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
