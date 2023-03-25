@@ -166,7 +166,7 @@ def get_applications_to_kill(
                         "page": True,
                         "alert_after": 0,
                         "tip": f"Revert {service}.{instance} in soa-configs to not include the namespace key.",
-                        "runbook": "y/rb-migrating-service-to-new-kubernetes-namespace",
+                        "runbook": "y/rb-paasta-namespace",
                         "ticket": True,
                     }
                     send_event(
