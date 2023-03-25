@@ -404,7 +404,7 @@ def test_cleanup_unused_apps_dont_kill_statefulsets(
     ), mock.patch(
         "paasta_tools.cleanup_kubernetes_jobs.list_all_applications",
         return_value={
-            ("service", "instance-1"): [
+            ("service", "instance-2"): [
                 StatefulSetWrapper(fake_stateful_set),
                 StatefulSetWrapper(fake_stateful_set),
             ]
@@ -412,7 +412,7 @@ def test_cleanup_unused_apps_dont_kill_statefulsets(
         autospec=True,
     ), mock.patch(
         "paasta_tools.cleanup_kubernetes_jobs.get_services_for_cluster",
-        return_value={},
+        return_value={("service", "instance-2")},
         autospec=True,
     ), mock.patch(
         "paasta_tools.cleanup_kubernetes_jobs.alert_state_change", autospec=True

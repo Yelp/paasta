@@ -44,6 +44,7 @@ from typing import Tuple
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
+from pysensu_yelp import Status
 
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
@@ -52,6 +53,7 @@ from paasta_tools.kubernetes.application.tools import list_all_applications
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
+from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -117,9 +119,7 @@ def instance_is_not_bouncing(
         if isinstance(application, DeploymentWrapper):
             existing_app = application.item
             if existing_app.metadata.namespace == instance_config.get_namespace() and (
-                instance_config.config_dict.get("instances", None)
-                == existing_app.status.ready_replicas
-                or instance_config.get_instances() <= existing_app.status.ready_replicas
+                instance_config.get_instances() <= existing_app.status.ready_replicas
             ):
                 return True
 
@@ -150,22 +150,41 @@ def get_applications_to_kill(
 
     applications_to_kill: List[Application] = []
     for (service, instance), applications in applications_dict.items():
-        instance_config = load_kubernetes_service_config(
-            cluster=cluster, service=service, instance=instance, soa_dir=soa_dir
-        )
         if len(applications) >= 1:
-            try:
-                not_bouncing = instance_is_not_bouncing(instance_config, applications)
-            except StatefulSetsAreNotSupportedError:
-                # TODO: sensu alert or page here
-                continue
-            for application in applications:
-                if (service, instance) not in valid_services or (
-                    application.kube_deployment.namespace
-                    != instance_config.get_namespace()
-                    and not_bouncing
-                ):
-                    applications_to_kill.append(application)
+            if (service, instance) not in valid_services:
+                applications_to_kill.extend(applications)
+            else:
+                instance_config = load_kubernetes_service_config(
+                    cluster=cluster, service=service, instance=instance, soa_dir=soa_dir
+                )
+                try:
+                    not_bouncing = instance_is_not_bouncing(
+                        instance_config, applications
+                    )
+                except StatefulSetsAreNotSupportedError:
+                    overrides = {
+                        "page": True,
+                        "alert_after": 0,
+                        "tip": f"Revert {service}.{instance} in soa-configs to not include the namespace key.",
+                        "runbook": "y/rb-migrating-service-to-new-kubernetes-namespace",
+                        "ticket": True,
+                    }
+                    send_event(
+                        service=service,
+                        check_name=f"statefulset_bouce_{service}.{instance}",
+                        overrides=overrides,
+                        status=Status.CRITICAL,  # type: ignore
+                        output=f"Unsupported bounce: {service}.{instance}. PaaSTA managed StatefulSets do not support custom namespace",
+                        soa_dir=soa_dir,
+                    )
+                else:
+                    for application in applications:
+                        if (
+                            application.kube_deployment.namespace
+                            != instance_config.get_namespace()
+                            and not_bouncing
+                        ):
+                            applications_to_kill.append(application)
     return applications_to_kill
 
 
@@ -203,7 +222,7 @@ def cleanup_unused_apps(
     log.debug("Terminating: %s" % applications_to_kill)
     if applications_to_kill:
         above_kill_threshold = float(len(applications_to_kill)) / float(
-            len(list(applications_dict))
+            len(applications_dict)
         ) > float(kill_threshold)
         if above_kill_threshold and not force:
             log.critical(

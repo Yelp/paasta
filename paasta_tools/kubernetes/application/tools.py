@@ -86,5 +86,5 @@ def list_all_applications(
         if application_type == V1Deployment:
             apps = {**apps, **list_paasta_managed_deployments(kube_client)}
         elif application_type == V1StatefulSet:
-            apps = {**apps, **list_paasta_managed_stateful_sets(kube_client)}
+            apps.update(list_paasta_managed_stateful_sets(kube_client))
     return apps
