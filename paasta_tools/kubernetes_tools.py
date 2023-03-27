@@ -128,7 +128,6 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -3249,49 +3248,19 @@ def is_kubernetes_available() -> bool:
 
 def create_secret(
     kube_client: KubeClient,
-    secret: str,
     service: str,
-    secret_provider: BaseSecretProvider,
-    namespace: str = "paasta",
-) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret)
-    kube_client.core.create_namespaced_secret(
-        namespace=namespace,
-        body=V1Secret(
-            metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{sanitised_secret}",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
-            ),
-            data={
-                secret: base64.b64encode(
-                    secret_provider.decrypt_secret_raw(secret)
-                ).decode("utf-8")
-            },
-        ),
-    )
-
-
-def create_plaintext_dict_secret(
-    kube_client: KubeClient,
     secret_name: str,
-    secret_data: Mapping[str, str],
-    service: str,
-    namespace: str = "paasta",
+    secret_data: Dict[str, str],
+    namespace: str,
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret_name)
     kube_client.core.create_namespaced_secret(
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=sanitised_secret,
+                name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitise_kubernetes_name(service),
+                    "paasta.yelp.com/service": sanitise_kubernetes_name(service),
                 },
             ),
             data=secret_data,
@@ -3301,51 +3270,20 @@ def create_plaintext_dict_secret(
 
 def update_secret(
     kube_client: KubeClient,
-    secret: str,
     service: str,
-    secret_provider: BaseSecretProvider,
-    namespace: str = "paasta",
-) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret)
-    kube_client.core.replace_namespaced_secret(
-        name=f"{namespace}-secret-{service}-{sanitised_secret}",
-        namespace=namespace,
-        body=V1Secret(
-            metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{sanitised_secret}",
-                labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
-                },
-            ),
-            data={
-                secret: base64.b64encode(
-                    secret_provider.decrypt_secret_raw(secret)
-                ).decode("utf-8")
-            },
-        ),
-    )
-
-
-def update_plaintext_dict_secret(
-    kube_client: KubeClient,
     secret_name: str,
-    secret_data: Mapping[str, str],
-    service: str,
-    namespace: str = "paasta",
+    secret_data: Dict[str, str],
+    namespace: str,
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret_name)
     kube_client.core.replace_namespaced_secret(
-        name=sanitised_secret,
+        name=secret_name,
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=sanitised_secret,
+                name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitise_kubernetes_name(service),
+                    "paasta.yelp.com/service": sanitise_kubernetes_name(service),
                 },
             ),
             data=secret_data,

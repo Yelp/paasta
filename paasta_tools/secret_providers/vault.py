@@ -139,18 +139,7 @@ class SecretProvider(BaseSecretProvider):
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:
-        client = self.clients[self.ecosystems[0]]
-        secret_path = os.path.join(self.secret_dir, f"{secret_name}.json")
-        return get_plaintext(
-            client=client,
-            path=secret_path,
-            env=self.ecosystems[0],
-            cache_enabled=False,
-            cache_key=None,
-            cache_dir=None,
-            context=self.service_name,
-            rescue_failures=False,
-        ).decode("utf-8")
+        return self.decrypt_secret_raw(secret_name).decode("utf-8")
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
         client = self.clients[self.ecosystems[0]]
