@@ -1140,6 +1140,11 @@ def paasta_spark_run(args):
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
     )
+    # TODO: Remove this after MLCOMPUTE-699 is complete
+    if "spark.kubernetes.decommission.script" not in spark_conf:
+        spark_conf[
+            "spark.kubernetes.decommission.script"
+        ] = "/opt/spark/kubernetes/dockerfiles/spark/decom.sh"
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
