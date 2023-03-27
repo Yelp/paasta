@@ -1,6 +1,9 @@
 import logging
 from typing import Any
+from typing import Dict
+from typing import List
 from typing import Sequence
+from typing import Tuple
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
@@ -31,45 +34,57 @@ def is_valid_application(deployment: V1Deployment):
     return is_valid
 
 
-def list_namespaced_deployments(
-    kube_client: KubeClient, namespace: str, **kwargs
-) -> Sequence[DeploymentWrapper]:
-    return [
-        DeploymentWrapper(deployment)
-        for deployment in kube_client.deployments.list_namespaced_deployment(
-            namespace, **kwargs
-        ).items
-        if is_valid_application(deployment)
-    ]
+def list_paasta_managed_deployments(
+    kube_client: KubeClient, **kwargs
+) -> Dict[Tuple[str, str], List[Application]]:
+    deployments: Dict[Tuple[str, str], List[Application]] = {}
+    for deployment in kube_client.deployments.list_deployment_for_all_namespaces(
+        label_selector=paasta_prefixed("managed"), **kwargs
+    ).items:
+        if is_valid_application(deployment):
+            application = DeploymentWrapper(deployment)
+            service = application.kube_deployment.service
+            instance = application.kube_deployment.instance
+            if deployments.get((service, instance), None):
+                deployments[(service, instance)].append(application)
+            else:
+                deployments[(service, instance)] = [application]
+    return deployments
 
 
-def list_namespaced_stateful_sets(
-    kube_client: KubeClient, namespace: str, **kwargs
-) -> Sequence[StatefulSetWrapper]:
-    return [
-        StatefulSetWrapper(deployment)
-        for deployment in kube_client.deployments.list_namespaced_stateful_set(
-            namespace, **kwargs
-        ).items
-        if is_valid_application(deployment)
-    ]
+def list_paasta_managed_stateful_sets(
+    kube_client: KubeClient, **kwargs
+) -> Dict[Tuple[str, str], List[Application]]:
+    deployments: Dict[Tuple[str, str], List[Application]] = {}
+    for deployment in kube_client.deployments.list_stateful_set_for_all_namespaces(
+        label_selector=paasta_prefixed("managed"), **kwargs
+    ).items:
+        if is_valid_application(deployment):
+            application = StatefulSetWrapper(deployment)
+            service = application.kube_deployment.service
+            instance = application.kube_deployment.instance
+            if deployments.get((service, instance), None):
+                deployments[(service, instance)].append(application)
+            else:
+                deployments[(service, instance)] = [application]
+    return deployments
 
 
-def list_namespaced_applications(
-    kube_client: KubeClient, namespace: str, application_types: Sequence[Any]
-) -> Sequence[Application]:
+def list_all_applications(
+    kube_client: KubeClient, application_types: Sequence[Any]
+) -> Dict[Tuple[str, str], List[Application]]:
     """
-    List all applications in the namespace of the types from application_types.
+    List all applications in the cluster of the types from application_types.
     Only applications with complete set of labels are included (See is_valid_application()).
     :param kube_client:
-    :param namespace:
+
     :param application_types:  types of applications
-    :return:
+    :return: A mapping from (service, instance) to application
     """
-    apps = []  # type: ignore
+    apps: Dict[Tuple[str, str], List[Application]] = {}
     for application_type in application_types:
         if application_type == V1Deployment:
-            apps.extend(list_namespaced_deployments(kube_client, namespace))
+            apps = {**apps, **list_paasta_managed_deployments(kube_client)}
         elif application_type == V1StatefulSet:
-            apps.extend(list_namespaced_stateful_sets(kube_client, namespace))
+            apps.update(list_paasta_managed_stateful_sets(kube_client))
     return apps

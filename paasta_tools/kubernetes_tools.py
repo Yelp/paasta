@@ -332,6 +332,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
+        "paasta.yelp.com/managed": str,
     },
     total=False,
 )
@@ -1614,6 +1615,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
+                paasta_prefixed("managed"): "true",
             },
         )
 
@@ -1872,6 +1874,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
             "yelp.com/owner": "compute_infra_platform_experience",
+            "paasta.yelp.com/managed": "true",
         }
         if service_namespace_config.is_in_smartstack():
             labels["paasta.yelp.com/weight"] = str(self.get_weight())
