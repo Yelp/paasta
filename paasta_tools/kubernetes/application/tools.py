@@ -39,7 +39,7 @@ def list_paasta_managed_deployments(
 ) -> Dict[Tuple[str, str], List[Application]]:
     deployments: Dict[Tuple[str, str], List[Application]] = {}
     for deployment in kube_client.deployments.list_deployment_for_all_namespaces(
-        label_selector="paasta.yelp.com/managed", **kwargs
+        label_selector=paasta_prefixed("managed"), **kwargs
     ).items:
         if is_valid_application(deployment):
             application = DeploymentWrapper(deployment)
@@ -57,7 +57,7 @@ def list_paasta_managed_stateful_sets(
 ) -> Dict[Tuple[str, str], List[Application]]:
     deployments: Dict[Tuple[str, str], List[Application]] = {}
     for deployment in kube_client.deployments.list_stateful_set_for_all_namespaces(
-        label_selector="paasta.yelp.com/managed", **kwargs
+        label_selector=paasta_prefixed("managed"), **kwargs
     ).items:
         if is_valid_application(deployment):
             application = StatefulSetWrapper(deployment)
