@@ -172,3 +172,4 @@ paasta-secrets-sync: setup-kubernetes-job .vault-token
 clean-playground:
 		rm -rf ./etc_paasta_playground
 		rm -rf ./soa_config_playground
+		rm .vault-token
