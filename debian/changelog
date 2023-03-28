@@ -1,3 +1,12 @@
+paasta-tools (0.166.1) xenial; urgency=medium
+
+  * 0.166.1 tagged with 'make release'
+    Commit: Merge pull request #3574 from
+    Yelp/u/cuza/checking_namespaces_for_statefulsets  Checking
+    statefulsets namespaces before raising
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 28 Mar 2023 07:27:51 -0700
+
 paasta-tools (0.166.0) xenial; urgency=medium
 
   * 0.166.0 tagged with 'make release'
