@@ -124,11 +124,12 @@ def instance_is_not_bouncing(
                 return True
 
         elif isinstance(application, StatefulSetWrapper):
-            log.critical(
-                "Paasta detected a StatefulSet that was migrated to a new namespace"
-                "StatefulSet bouncing across namespaces is not supported"
-            )
-            raise StatefulSetsAreNotSupportedError
+            if application.item.metadata.namespace != instance_config.get_namespace():
+                log.critical(
+                    "Paasta detected a StatefulSet that was migrated to a new namespace"
+                    "StatefulSet bouncing across namespaces is not supported"
+                )
+                raise StatefulSetsAreNotSupportedError
     return False
 
 
@@ -171,7 +172,7 @@ def get_applications_to_kill(
                     }
                     send_event(
                         service=service,
-                        check_name=f"statefulset_bouce_{service}.{instance}",
+                        check_name=f"statefulset_bounce_{service}.{instance}",
                         overrides=overrides,
                         status=Status.CRITICAL,  # type: ignore
                         output=f"Unsupported bounce: {service}.{instance}. PaaSTA managed StatefulSets do not support custom namespace",
