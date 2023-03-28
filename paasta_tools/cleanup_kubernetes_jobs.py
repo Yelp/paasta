@@ -123,13 +123,15 @@ def instance_is_not_bouncing(
             ):
                 return True
 
-        elif isinstance(application, StatefulSetWrapper):
-            if application.item.metadata.namespace != instance_config.get_namespace():
-                log.critical(
-                    "Paasta detected a StatefulSet that was migrated to a new namespace"
-                    "StatefulSet bouncing across namespaces is not supported"
-                )
-                raise StatefulSetsAreNotSupportedError
+        elif (
+            isinstance(application, StatefulSetWrapper)
+            and application.item.metadata.namespace != instance_config.get_namespace()
+        ):
+            log.critical(
+                "Paasta detected a StatefulSet that was migrated to a new namespace"
+                "StatefulSet bouncing across namespaces is not supported"
+            )
+            raise StatefulSetsAreNotSupportedError
     return False
 
 
