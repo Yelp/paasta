@@ -1,3 +1,12 @@
+paasta-tools (0.166.2) xenial; urgency=medium
+
+  * 0.166.2 tagged with 'make release'
+    Commit: Merge pull request #3573 from
+    Yelp/d/manpreet/set_kubenetes_decommission_config  Set correct value
+    of spark.kubernetes.decommission.script
+
+ -- Manpreet Singh <manpreet@yelp.com>  Tue, 28 Mar 2023 08:37:05 -0700
+
 paasta-tools (0.166.1) xenial; urgency=medium
 
   * 0.166.1 tagged with 'make release'
