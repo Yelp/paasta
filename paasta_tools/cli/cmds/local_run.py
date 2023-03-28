@@ -76,6 +76,7 @@ class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_SESSION_TOKEN: str
+    AWS_SECURITY_TOKEN: str
 
 
 def parse_date(date_string):
