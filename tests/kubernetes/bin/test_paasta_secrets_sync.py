@@ -107,7 +107,7 @@ def test_sync_shared():
 
 
 @pytest.fixture
-def secrets_sync_patches():
+def paasta_secrets_patches():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
@@ -152,7 +152,7 @@ namespaces = [
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_empty_soa_dir(secrets_sync_patches, namespace):
+def test_sync_secrets_empty_soa_dir(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -161,7 +161,7 @@ def test_sync_secrets_empty_soa_dir(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_scandir.return_value.__enter__.return_value = []
 
@@ -177,7 +177,7 @@ def test_sync_secrets_empty_soa_dir(secrets_sync_patches, namespace):
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_soa_no_json_files(secrets_sync_patches, namespace):
+def test_sync_secrets_soa_no_json_files(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -186,7 +186,7 @@ def test_sync_secrets_soa_no_json_files(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_scandir.return_value.__enter__.return_value = [
         mock.Mock(path="some_non_json_file")
@@ -204,7 +204,7 @@ def test_sync_secrets_soa_no_json_files(secrets_sync_patches, namespace):
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_signatures_match(secrets_sync_patches, namespace):
+def test_sync_secrets_signatures_match(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -213,7 +213,7 @@ def test_sync_secrets_signatures_match(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_get_secret_provider.return_value = mock.Mock(
         get_secret_signature_from_data=mock.Mock(return_value="123abc"),
@@ -243,7 +243,7 @@ def test_sync_secrets_signatures_match(secrets_sync_patches, namespace):
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_signature_changed(secrets_sync_patches, namespace):
+def test_sync_secrets_signature_changed(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -252,7 +252,7 @@ def test_sync_secrets_signature_changed(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
     mock_get_secret_provider.return_value = mock.Mock(
         get_secret_signature_from_data=mock.Mock(return_value="123abc"),
         decrypt_secret_raw=mock.Mock(return_value=b""),
@@ -284,7 +284,7 @@ def test_sync_secrets_signature_changed(secrets_sync_patches, namespace):
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_not_exist(secrets_sync_patches, namespace):
+def test_sync_secrets_not_exist(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -293,7 +293,7 @@ def test_sync_secrets_not_exist(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_get_secret_provider.return_value = mock.Mock(
         get_secret_signature_from_data=mock.Mock(return_value="abc"),
@@ -327,7 +327,7 @@ def test_sync_secrets_not_exist(secrets_sync_patches, namespace):
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_secret_exists_but_not_signature(secrets_sync_patches, namespace):
+def test_sync_secrets_exists_but_no_signature(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -336,7 +336,7 @@ def test_sync_secrets_secret_exists_but_not_signature(secrets_sync_patches, name
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_get_secret_provider.return_value = mock.Mock(
         get_secret_signature_from_data=mock.Mock(return_value="abc"),
@@ -361,13 +361,13 @@ def test_sync_secrets_secret_exists_but_not_signature(secrets_sync_patches, name
     )
     assert mock_get_kubernetes_secret_signature.called
     assert mock_create_secret.called
-    assert mock_update_secret.called
+    assert mock_update_secret.called  # previously did not update
     assert mock_create_kubernetes_secret_signature.called
     assert not mock_update_kubernetes_secret_signature.called
 
 
 @pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_secret_api_exception(secrets_sync_patches, namespace):
+def test_sync_secrets_secret_api_exception(paasta_secrets_patches, namespace):
     (
         mock_get_secret_provider,
         mock_scandir,
@@ -376,7 +376,7 @@ def test_sync_secrets_secret_api_exception(secrets_sync_patches, namespace):
         mock_create_kubernetes_secret_signature,
         mock_update_secret,
         mock_update_kubernetes_secret_signature,
-    ) = secrets_sync_patches
+    ) = paasta_secrets_patches
 
     mock_get_secret_provider.return_value = mock.Mock(
         get_secret_signature_from_data=mock.Mock(return_value="abc"),
@@ -402,22 +402,24 @@ def test_sync_secrets_secret_api_exception(secrets_sync_patches, namespace):
         )
 
 
-def test_sync_boto_secrets():
+@pytest.fixture
+def boto_keys_patches():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.open",
         create=True,
         autospec=None,
+        return_value=mock.MagicMock(),
     ) as mock_open, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
         autospec=True,
     ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_plaintext_dict_secret",
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
         autospec=True,
     ) as mock_create_secret, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_kubernetes_secret_signature",
         autospec=True,
     ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_plaintext_dict_secret",
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
         autospec=True,
     ) as mock_update_secret, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_kubernetes_secret_signature",
@@ -429,95 +431,182 @@ def test_sync_boto_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
         autospec=True,
     ):
-
-        mock_client = mock.Mock()
-        config_dict = {"boto_keys": ["scribereader"]}
-        deployment = KubernetesDeploymentConfig(
-            service="my-service",
-            instance="my-instance",
-            cluster="mega-cluster",
-            config_dict=config_dict,
-            branch_dict=None,
-            soa_dir="/nail/blah",
+        yield (
+            mock_open,
+            mock_open.return_value.__enter__.return_value,
+            mock_get_kubernetes_secret_signature,
+            mock_create_secret,
+            mock_create_kubernetes_secret_signature,
+            mock_update_secret,
+            mock_update_kubernetes_secret_signature,
+            mock_config_loader,
+            mock_config_loader.return_value.instance_configs,
         )
-        mock_loader = mock.MagicMock()
-        mock_loader.instance_configs.return_value = [deployment]
-        mock_config_loader.return_value = mock_loader
-        mock_open.return_value = mock.MagicMock()
-        mock_handle = mock_open.return_value.__enter__.return_value
-
-        expected_secret_data = {
-            "scribereader-sh": "ZmlsZTE=",
-            "scribereader-yaml": "ZmlsZTI=",
-            "scribereader-json": "ZmlsZTM=",
-            "scribereader-cfg": "ZmlsZTQ=",
-        }
-        expected_signature = "4c3da4da5d97294f69527dc92c2b930ce127522c"
-
-        # New secret
-        mock_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
-        mock_get_kubernetes_secret_signature.return_value = None
-        assert sync_boto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            soa_dir="/nail/blah",
-        )
-        assert mock_create_secret.called
-        assert not mock_update_secret.called
-        call_args = mock_create_secret.call_args_list
-        assert call_args[0][1]["secret_data"] == expected_secret_data
-        assert mock_create_kubernetes_secret_signature.called
-
-        # Update secret
-        mock_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
-        mock_get_kubernetes_secret_signature.return_value = "1235abc"
-        assert sync_boto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            soa_dir="/nail/blah",
-        )
-        assert mock_update_secret.called
-        call_args = mock_update_secret.call_args_list
-        assert call_args[0][1]["secret_data"] == expected_secret_data
-        assert mock_update_kubernetes_secret_signature.called
-
-        # No changes needed
-        mock_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
-        mock_get_kubernetes_secret_signature.return_value = expected_signature
-        mock_update_secret.reset_mock()
-        mock_create_secret.reset_mock()
-        assert sync_boto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            soa_dir="/nail/blah",
-        )
-        assert not mock_update_secret.called
-        assert not mock_create_secret.called
-
-        # No signature, but secret exists
-        mock_update_secret.reset_mock()
-        mock_create_secret.reset_mock()
-        mock_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
-        mock_get_kubernetes_secret_signature.return_value = None
-        mock_create_secret.side_effect = ApiException(409)
-        mock_update_kubernetes_secret_signature.reset_mock()
-        assert sync_boto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            soa_dir="/nail/blah",
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        assert mock_create_secret.called
-        assert mock_update_secret.called
-        assert mock_create_kubernetes_secret_signature.called
-        assert not mock_update_kubernetes_secret_signature.called
 
 
-def test_sync_crypto_secrets():
+def test_sync_boto_secrets_create(boto_keys_patches):
+    (
+        mock_open,
+        mock_open_handle,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = boto_keys_patches
+
+    config_dict = {"boto_keys": ["scribereader"]}
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_config_loader_instances.return_value = [deployment]
+
+    expected_secret_data = {
+        "scribereader-sh": "ZmlsZTE=",
+        "scribereader-yaml": "ZmlsZTI=",
+        "scribereader-json": "ZmlsZTM=",
+        "scribereader-cfg": "ZmlsZTQ=",
+    }
+
+    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_get_kubernetes_secret_signature.return_value = None
+    assert sync_boto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        soa_dir="/nail/blah",
+    )
+    assert mock_create_secret.called
+    assert not mock_update_secret.called
+    call_args = mock_create_secret.call_args_list
+    assert call_args[0][1]["secret_data"] == expected_secret_data
+    assert mock_create_kubernetes_secret_signature.called
+
+
+def test_sync_boto_secrets_update(boto_keys_patches):
+    (
+        mock_open,
+        mock_open_handle,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = boto_keys_patches
+
+    config_dict = {"boto_keys": ["scribereader"]}
+    expected_secret_data = {
+        "scribereader-sh": "ZmlsZTE=",
+        "scribereader-yaml": "ZmlsZTI=",
+        "scribereader-json": "ZmlsZTM=",
+        "scribereader-cfg": "ZmlsZTQ=",
+    }
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_config_loader_instances.return_value = [deployment]
+
+    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_get_kubernetes_secret_signature.return_value = "1235abc"
+    assert sync_boto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        soa_dir="/nail/blah",
+    )
+    assert mock_update_secret.called
+    call_args = mock_update_secret.call_args_list
+    assert call_args[0][1]["secret_data"] == expected_secret_data
+    assert mock_update_kubernetes_secret_signature.called
+
+
+def test_sync_boto_secrets_noop(boto_keys_patches):
+    (
+        mock_open,
+        mock_open_handle,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = boto_keys_patches
+
+    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_get_kubernetes_secret_signature.return_value = (
+        "4c3da4da5d97294f69527dc92c2b930ce127522c"
+    )
+
+    assert sync_boto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        soa_dir="/nail/blah",
+    )
+    assert not mock_update_secret.called
+    assert not mock_create_secret.called
+
+
+def test_sync_boto_secrets_exists_but_no_signature(boto_keys_patches):
+    (
+        mock_open,
+        mock_open_handle,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = boto_keys_patches
+
+    config_dict = {"boto_keys": ["scribereader"]}
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_config_loader_instances.return_value = [deployment]
+
+    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_get_kubernetes_secret_signature.return_value = None
+    mock_create_secret.side_effect = ApiException(409)
+
+    assert sync_boto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        soa_dir="/nail/blah",
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    assert mock_create_secret.called
+    assert mock_update_secret.called
+    assert mock_create_kubernetes_secret_signature.called
+    assert not mock_update_kubernetes_secret_signature.called
+
+
+@pytest.fixture
+def crypto_keys_patches():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
@@ -525,13 +614,13 @@ def test_sync_crypto_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_kubernetes_secret_signature",
         autospec=True,
     ) as mock_get_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_plaintext_dict_secret",
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
         autospec=True,
     ) as mock_create_secret, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_kubernetes_secret_signature",
         autospec=True,
     ) as mock_create_kubernetes_secret_signature, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_plaintext_dict_secret",
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
         autospec=True,
     ) as mock_update_secret, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_kubernetes_secret_signature",
@@ -543,98 +632,217 @@ def test_sync_crypto_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
         autospec=True,
     ):
-
-        mock_client = mock.Mock()
-        config_dict = {"crypto_keys": {"decrypt": ["fake-key"]}}
-        deployment = KubernetesDeploymentConfig(
-            service="my-service",
-            instance="my-instance",
-            cluster="mega-cluster",
-            config_dict=config_dict,
-            branch_dict=None,
-            soa_dir="/nail/blah",
-        )
-        mock_loader = mock.MagicMock()
-        mock_loader.instance_configs.return_value = [deployment]
-        mock_config_loader.return_value = mock_loader
-
-        provider.return_value.get_vault_key_versions.return_value = ()
-
-        expected_secret_data = {
-            "private-fake-key": "WyJwcml2YXRlL3sna2V5bmFtZSc6ICdwcml2YXRlL2Zha2Uta2V5JywgJ2tleV92ZXJzaW9uJzogMSwgJ2tleSc6ICczOHVyYXc4dXInfSJd"
-        }
-        expected_signature = "d91f18374a06485567aca82cba46c1270e95a4e3"
-
-        # create secret
-        mock_get_kubernetes_secret_signature.return_value = None
-        assert sync_crypto_secrets(
-            kube_client=mock_client,
-            cluster="pentos-devc",
-            service="u2",
-            secret_provider_name="faulty",
-            vault_cluster_config={},
-            soa_dir="/blah/blah",
-            namespace="paasta",
+        yield (
+            provider,
+            mock_get_kubernetes_secret_signature,
+            mock_create_secret,
+            mock_create_kubernetes_secret_signature,
+            mock_update_secret,
+            mock_update_kubernetes_secret_signature,
+            mock_config_loader,
+            mock_config_loader.return_value.instance_configs,
         )
 
-        assert mock_create_secret.called
-        assert not mock_update_secret.called
-        call_args = mock_create_secret.call_args_list
-        assert call_args[0][1]["secret_data"] == expected_secret_data
-        assert mock_create_kubernetes_secret_signature.called
 
-        # Update secret
-        mock_get_kubernetes_secret_signature.return_value = (
-            expected_signature + "modify-signature"
-        )
-        assert sync_crypto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="faulty",
-            vault_cluster_config={},
-            soa_dir="/blah/blah",
-            namespace="paasta",
-        )
-        assert mock_update_secret.called
-        call_args = mock_update_secret.call_args_list
-        assert call_args[0][1]["secret_data"] == expected_secret_data
-        assert mock_update_kubernetes_secret_signature.called
+@pytest.fixture()
+def vault_key_versions():
+    return [
+        {
+            "key": "foo",
+            "keyname": "fake-key",
+            "key_version": 1,
+        },
+        {
+            "key": "foo",
+            "keyname": "fake-key",
+            "key_version": 2,
+        },
+    ]
 
-        # No changes needed
-        mock_get_kubernetes_secret_signature.return_value = expected_signature
-        mock_update_secret.reset_mock()
-        mock_create_secret.reset_mock()
-        assert sync_crypto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace="paasta",
-        )
-        assert not mock_update_secret.called
-        assert not mock_create_secret.called
 
-        # No signature, but secret exists
-        mock_update_secret.reset_mock()
-        mock_create_secret.reset_mock()
+@pytest.fixture()
+def vault_key_versions_as_k8s_secret():
+    return (
+        "W3sia2V5IjogImZvbyIsICJrZXluYW1lIjogImZha2Uta2V5Iiwg"
+        "ImtleV92ZXJzaW9uIjogMX0sIHsia2V5IjogImZvbyIsICJ"
+        "rZXluYW1lIjogImZha2Uta2V5IiwgImtleV92ZXJzaW9uIjogMn1d"
+    )
 
-        mock_get_kubernetes_secret_signature.return_value = None
-        mock_create_secret.side_effect = ApiException(409)
-        mock_update_kubernetes_secret_signature.reset_mock()
-        assert sync_crypto_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace="paasta",
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        assert mock_create_secret.called
-        assert mock_update_secret.called
-        assert mock_create_kubernetes_secret_signature.called
-        assert not mock_update_kubernetes_secret_signature.called
+
+def test_sync_crypto_secrets_create(
+    crypto_keys_patches, vault_key_versions, vault_key_versions_as_k8s_secret
+):
+    (
+        provider,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = crypto_keys_patches
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict={"crypto_keys": {"decrypt": ["fake-key"]}},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader_instances.return_value = [deployment]
+
+    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+
+    mock_get_kubernetes_secret_signature.return_value = None
+    assert sync_crypto_secrets(
+        kube_client=mock.Mock(),
+        cluster="pentos-devc",
+        service="u2",
+        secret_provider_name="faulty",
+        vault_cluster_config={},
+        soa_dir="/blah/blah",
+        vault_token_file="/.vault-token",
+    )
+
+    assert mock_create_secret.called
+    assert not mock_update_secret.called
+    call_args = mock_create_secret.call_args_list
+    assert call_args[0][1]["secret_data"] == {
+        "private-fake-key": vault_key_versions_as_k8s_secret
+    }
+    assert mock_create_kubernetes_secret_signature.called
+
+
+def test_sync_crypto_secrets_update(
+    crypto_keys_patches, vault_key_versions, vault_key_versions_as_k8s_secret
+):
+    (
+        provider,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = crypto_keys_patches
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict={"crypto_keys": {"encrypt": ["fake-key"]}},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader_instances.return_value = [deployment]
+    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+
+    mock_get_kubernetes_secret_signature.return_value = "dummy-signature"
+    assert sync_crypto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="faulty",
+        vault_cluster_config={},
+        soa_dir="/blah/blah",
+        vault_token_file="/.vault-token",
+    )
+    assert mock_update_secret.called
+    call_args = mock_update_secret.call_args_list
+    assert call_args[0][1]["secret_data"] == {
+        "public-fake-key": vault_key_versions_as_k8s_secret
+    }
+    assert mock_update_kubernetes_secret_signature.called
+
+
+def test_sync_crypto_secrets_noop(
+    crypto_keys_patches, vault_key_versions, vault_key_versions_as_k8s_secret
+):
+    (
+        provider,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = crypto_keys_patches
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict={"crypto_keys": {"encrypt": ["fake-key"]}},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader_instances.return_value = [deployment]
+    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+
+    mock_get_kubernetes_secret_signature.return_value = (
+        "23506cb95ac0158616ebc9dc3c748b082d1b80d4"
+    )
+
+    assert sync_crypto_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        vault_token_file="/.vault-token",
+    )
+    assert not mock_update_secret.called
+    assert not mock_create_secret.called
+
+
+def test_sync_crypto_secrets_exist_but_no_signature(
+    crypto_keys_patches, vault_key_versions, vault_key_versions_as_k8s_secret
+):
+    (
+        provider,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+    ) = crypto_keys_patches
+
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict={"crypto_keys": {"encrypt": ["fake-key"]}},
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+
+    mock_config_loader_instances.return_value = [deployment]
+    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+
+    mock_get_kubernetes_secret_signature.return_value = None
+    mock_create_secret.side_effect = ApiException(409)
+
+    assert sync_crypto_secrets(
+        kube_client=mock.Mock,
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        vault_token_file="/.vault-token",
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    assert mock_create_secret.called
+    assert mock_update_secret.called
+    assert mock_create_kubernetes_secret_signature.called
+    assert not mock_update_kubernetes_secret_signature.called
