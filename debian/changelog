@@ -1,3 +1,11 @@
+paasta-tools (0.166.3) xenial; urgency=medium
+
+  * 0.166.3 tagged with 'make release'
+    Commit: If existing_app has status.replicas=None, treat it as 0
+    replicas.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 29 Mar 2023 14:08:26 -0700
+
 paasta-tools (0.166.2) xenial; urgency=medium
 
   * 0.166.2 tagged with 'make release'
