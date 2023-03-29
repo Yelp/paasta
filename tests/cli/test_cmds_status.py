@@ -2012,7 +2012,7 @@ class TestGetVersionsTable:
         assert "aabbccdd (new)" in versions_table[0]
         assert "2021-03-03" in versions_table[0]
         assert PaastaColors.green("1 Healthy") in versions_table[1]
-        assert PaastaColors.red("1 Not Running") in versions_table[1]
+        assert PaastaColors.red("1 Evicted") in versions_table[1]
 
         assert "ff112233 (old)" in versions_table[7]
         assert "2021-03-01" in versions_table[7]
@@ -2053,10 +2053,7 @@ class TestGetVersionsTable:
             ["curl http://1.2.3.5:8888/healthcheck" in row for row in versions_table]
         )
         assert any(
-            [
-                "1 Not Running" in remove_ansi_escape_sequences(row)
-                for row in versions_table
-            ]
+            ["1 Evicted" in remove_ansi_escape_sequences(row) for row in versions_table]
         )
 
     def test_restart_tip(self, mock_replicasets, mock_bad_container):
@@ -2190,7 +2187,7 @@ class TestGetVersionsTable:
         versions_table = get_versions_table(
             mock_replicasets, "service", "instance", "cluster", verbose=1
         )
-        assert any(["1 Not Running" in row for row in versions_table])
+        assert any(["1 Evicted" in row for row in versions_table])
 
 
 class TestPrintKubernetesStatus:
