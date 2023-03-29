@@ -148,7 +148,8 @@ def paasta_secrets_patches():
 
 namespaces = [
     "paasta",
-]  # "tron"]
+    "tron",
+]
 
 
 @pytest.mark.parametrize("namespace", namespaces)
