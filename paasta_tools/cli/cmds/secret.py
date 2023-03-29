@@ -418,7 +418,7 @@ def paasta_secret(args):
             soa_dir=args.yelpsoa_config_root,
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
-                "vault_auth_method": "token",
+                "vault_auth_method": args.vault_auth_method,
             },
         )
         secret_provider.write_secret(
