@@ -292,7 +292,6 @@ def sync_crypto_secrets(
 
     So each instance of a service get the same key, thereby reducing requests to Vault API
     """
-    # Update crypto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
@@ -352,7 +351,6 @@ def sync_boto_secrets(
     service: str,
     soa_dir: str,
 ) -> bool:
-    # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
