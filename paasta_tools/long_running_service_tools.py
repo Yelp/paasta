@@ -380,7 +380,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return error_messages
 
     def get_bounce_margin_factor(self) -> float:
-        return self.config_dict.get("bounce_margin_factor", 1.0)
+        return self.config_dict.get("bounce_margin_factor", 0.95)
 
     def get_should_ping_for_unhealthy_pods(self, default: bool) -> bool:
         return self.config_dict.get("should_ping_for_unhealthy_pods", default)

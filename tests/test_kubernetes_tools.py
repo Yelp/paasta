@@ -2666,6 +2666,13 @@ class TestKubernetesDeploymentConfig:
     def test_get_bounce_margin_factor(self):
         assert isinstance(self.deployment.get_bounce_margin_factor(), float)
 
+    def test_get_bounce_margin_factor_specific_value(self):
+        self.deployment.config_dict["bounce_margin_factor"] = 0.345
+        assert self.deployment.get_bounce_margin_factor() == 0.345
+
+    def test_get_bounce_margin_factor_default(self):
+        assert self.deployment.get_bounce_margin_factor() == 0.95
+
     def test_get_volume_claim_templates(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_persistent_volumes",
@@ -4237,7 +4244,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config5abf6b07"
+            == "configb6d6cb34"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4283,7 +4290,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config8ee1bd70"
+            == "config01683331"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
