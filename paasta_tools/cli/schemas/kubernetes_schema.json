@@ -105,13 +105,13 @@
                 "mem": {
                     "type": "number",
                     "minimum": 32,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": false,
                     "default": 1024
                 },
                 "disk": {
                     "type": "number",
                     "minimum": 0,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": false,
                     "default": 1024
                 },
                 "gpus": {
