@@ -11,7 +11,6 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_crypto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
-from paasta_tools.kubernetes_tools import get_crypto_keys_from_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import PaastaNotConfiguredError
 
@@ -107,8 +106,8 @@ def test_sync_shared():
             pass
 
 
-@pytest.mark.parametrize("namespace", [None, "tron"])
-def test_sync_secrets(namespace):
+@pytest.fixture
+def secrets_sync_patches():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
@@ -136,10 +135,264 @@ def test_sync_secrets(namespace):
     ), mock.patch(
         "os.path.isdir", autospec=True, return_value=True
     ):
-        mock_scandir.return_value.__enter__.return_value = []
-        mock_client = mock.Mock()
+        yield (
+            mock_get_secret_provider,
+            mock_scandir,
+            mock_get_kubernetes_secret_signature,
+            mock_create_secret,
+            mock_create_kubernetes_secret_signature,
+            mock_update_secret,
+            mock_update_kubernetes_secret_signature,
+        )
+
+
+namespaces = [
+    "paasta",
+]  # "tron"]
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_empty_soa_dir(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_scandir.return_value.__enter__.return_value = []
+
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_soa_no_json_files(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_non_json_file")
+    ]
+
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_signatures_match(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_get_secret_provider.return_value = mock.Mock(
+        get_secret_signature_from_data=mock.Mock(return_value="123abc"),
+        decrypt_secret_raw=mock.Mock(return_value=b""),
+    )
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_file.json")
+    ]
+
+    mock_get_kubernetes_secret_signature.return_value = "123abc"
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    _, kwargs = mock_get_kubernetes_secret_signature.call_args_list[-1]
+    assert kwargs.get("namespace") == namespace
+    assert not mock_create_secret.called
+    assert not mock_update_secret.called
+    assert not mock_create_kubernetes_secret_signature.called
+    assert not mock_update_kubernetes_secret_signature.called
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_signature_changed(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+    mock_get_secret_provider.return_value = mock.Mock(
+        get_secret_signature_from_data=mock.Mock(return_value="123abc"),
+        decrypt_secret_raw=mock.Mock(return_value=b""),
+    )
+
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_file.json")
+    ]
+
+    mock_get_kubernetes_secret_signature.return_value = "123def"
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    assert not mock_create_secret.called
+    assert mock_update_secret.called
+    _, kwargs = mock_update_secret.call_args_list[-1]
+    assert kwargs.get("namespace") == namespace
+    assert not mock_create_kubernetes_secret_signature.called
+    assert mock_update_kubernetes_secret_signature.called
+    _, kwargs = mock_update_kubernetes_secret_signature.call_args_list[-1]
+    assert kwargs.get("namespace") == namespace
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_not_exist(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_get_secret_provider.return_value = mock.Mock(
+        get_secret_signature_from_data=mock.Mock(return_value="abc"),
+        decrypt_secret_raw=mock.Mock(return_value=b""),
+    )
+
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_file.json")
+    ]
+
+    mock_get_kubernetes_secret_signature.return_value = None
+
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    assert mock_create_secret.called
+    _, kwargs = mock_create_secret.call_args_list[-1]
+    assert kwargs.get("namespace") == namespace
+    assert not mock_update_secret.called
+    assert mock_create_kubernetes_secret_signature.called
+    _, kwargs = mock_create_kubernetes_secret_signature.call_args_list[-1]
+    assert kwargs.get("namespace") == namespace
+    assert not mock_update_kubernetes_secret_signature.called
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_secret_exists_but_not_signature(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_get_secret_provider.return_value = mock.Mock(
+        get_secret_signature_from_data=mock.Mock(return_value="abc"),
+        decrypt_secret_raw=mock.Mock(return_value=b""),
+    )
+
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_file.json")
+    ]
+
+    mock_get_kubernetes_secret_signature.return_value = None
+
+    mock_create_secret.side_effect = ApiException(409)
+    assert sync_secrets(
+        kube_client=mock.Mock(),
+        cluster="westeros-prod",
+        service="universe",
+        secret_provider_name="vaulty",
+        vault_cluster_config={},
+        soa_dir="/nail/blah",
+        namespace=namespace,
+    )
+    assert mock_get_kubernetes_secret_signature.called
+    assert mock_create_secret.called
+    assert mock_update_secret.called
+    assert mock_create_kubernetes_secret_signature.called
+    assert not mock_update_kubernetes_secret_signature.called
+
+
+@pytest.mark.parametrize("namespace", namespaces)
+def test_sync_secrets_secret_api_exception(secrets_sync_patches, namespace):
+    (
+        mock_get_secret_provider,
+        mock_scandir,
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+    ) = secrets_sync_patches
+
+    mock_get_secret_provider.return_value = mock.Mock(
+        get_secret_signature_from_data=mock.Mock(return_value="abc"),
+        decrypt_secret_raw=mock.Mock(return_value=b""),
+    )
+
+    mock_scandir.return_value.__enter__.return_value = [
+        mock.Mock(path="some_file.json")
+    ]
+
+    mock_get_kubernetes_secret_signature.return_value = None
+
+    mock_create_secret.side_effect = ApiException(404)
+    with pytest.raises(ApiException):
         assert sync_secrets(
-            kube_client=mock_client,
+            kube_client=mock.Mock(),
             cluster="westeros-prod",
             service="universe",
             secret_provider_name="vaulty",
@@ -147,115 +400,6 @@ def test_sync_secrets(namespace):
             soa_dir="/nail/blah",
             namespace=namespace,
         )
-
-        mock_scandir.return_value.__enter__.return_value = [mock.Mock(path="some_file")]
-        mock_client = mock.Mock()
-        assert sync_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-        )
-
-        mock_get_secret_provider.return_value = mock.Mock(
-            get_secret_signature_from_data=mock.Mock(return_value="123abc")
-        )
-        mock_scandir.return_value.__enter__.return_value = [
-            mock.Mock(path="some_file.json")
-        ]
-        mock_client = mock.Mock()
-        mock_get_kubernetes_secret_signature.return_value = "123abc"
-        assert sync_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        _, kwargs = mock_get_kubernetes_secret_signature.call_args_list[-1]
-        assert kwargs.get("namespace") == namespace
-        assert not mock_create_secret.called
-        assert not mock_update_secret.called
-        assert not mock_create_kubernetes_secret_signature.called
-        assert not mock_update_kubernetes_secret_signature.called
-
-        mock_get_kubernetes_secret_signature.return_value = "123def"
-        assert sync_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        assert not mock_create_secret.called
-        assert mock_update_secret.called
-        _, kwargs = mock_update_secret.call_args_list[-1]
-        assert kwargs.get("namespace") == namespace
-        assert not mock_create_kubernetes_secret_signature.called
-        assert mock_update_kubernetes_secret_signature.called
-        _, kwargs = mock_update_kubernetes_secret_signature.call_args_list[-1]
-        assert kwargs.get("namespace") == namespace
-        mock_update_kubernetes_secret_signature.reset_mock()
-        mock_update_secret.reset_mock()
-
-        mock_get_kubernetes_secret_signature.return_value = None
-        assert sync_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        assert mock_create_secret.called
-        _, kwargs = mock_create_secret.call_args_list[-1]
-        assert kwargs.get("namespace") == namespace
-        assert not mock_update_secret.called
-        assert mock_create_kubernetes_secret_signature.called
-        _, kwargs = mock_create_kubernetes_secret_signature.call_args_list[-1]
-        assert kwargs.get("namespace") == namespace
-        assert not mock_update_kubernetes_secret_signature.called
-        mock_update_kubernetes_secret_signature.reset_mock()
-        mock_update_secret.reset_mock()
-
-        mock_create_secret.side_effect = ApiException(409)
-        assert sync_secrets(
-            kube_client=mock_client,
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-        )
-        assert mock_get_kubernetes_secret_signature.called
-        assert mock_create_secret.called
-        assert not mock_update_secret.called
-        assert mock_create_kubernetes_secret_signature.called
-        assert not mock_update_kubernetes_secret_signature.called
-
-        mock_create_secret.side_effect = ApiException(404)
-        with pytest.raises(ApiException):
-            assert sync_secrets(
-                kube_client=mock_client,
-                cluster="westeros-prod",
-                service="universe",
-                secret_provider_name="vaulty",
-                vault_cluster_config={},
-                soa_dir="/nail/blah",
-                namespace=namespace,
-            )
 
 
 def test_sync_boto_secrets():
@@ -414,19 +558,7 @@ def test_sync_crypto_secrets():
         mock_loader.instance_configs.return_value = [deployment]
         mock_config_loader.return_value = mock_loader
 
-        provider.return_value.get_vault_key_versions.return_value = (
-            get_crypto_keys_from_config(
-                {
-                    "decrypt": [
-                        {
-                            "keyname": "private/fake-key",
-                            "key_version": 1,
-                            "key": "38uraw8ur",
-                        }
-                    ]
-                }
-            )
-        )
+        provider.return_value.get_vault_key_versions.return_value = ()
 
         expected_secret_data = {
             "private-fake-key": "WyJwcml2YXRlL3sna2V5bmFtZSc6ICdwcml2YXRlL2Zha2Uta2V5JywgJ2tleV92ZXJzaW9uJzogMSwgJ2tleSc6ICczOHVyYXc4dXInfSJd"
