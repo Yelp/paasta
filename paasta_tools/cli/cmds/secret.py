@@ -70,7 +70,6 @@ def add_decrypt_subparser(subparsers):
         "decrypt", help="decrypts a single paasta secret"
     )
     _add_common_args(secret_parser_decrypt)
-    _add_vault_auth_args(secret_parser_decrypt)
 
     secret_parser_decrypt.add_argument(
         "-n",
@@ -113,7 +112,6 @@ def add_run_subparser(subparsers):
         conflict_handler="resolve",
     )
     _add_common_args(secret_parser_run, allow_shared=False)
-    _add_vault_auth_args(secret_parser_run)
 
     secret_parser_run.add_argument(
         "-i",
@@ -228,7 +226,8 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
-    parser.add_argument("-t", "--vault_token_file", help="Vault token file")
+
+    _add_vault_auth_args(parser)
 
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
