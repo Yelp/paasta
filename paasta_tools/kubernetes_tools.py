@@ -1471,7 +1471,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if not self.get_crypto_secret_hash():
             log.warning(
-                f"Expected to find secret signature {self.get_crypto_secret_name()} for crypto_keys"
+                f"Expected to find secret signature {self.get_crypto_k8s_secret_name()} for crypto_keys"
             )
             return None
 
