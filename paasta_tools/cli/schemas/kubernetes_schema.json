@@ -111,7 +111,7 @@
                 "disk": {
                     "type": "number",
                     "minimum": 0,
-                    "exclusiveMinimum": false,
+                    "exclusiveMinimum": true,
                     "default": 1024
                 },
                 "gpus": {
