@@ -38,9 +38,9 @@ log = logging.getLogger(__name__)
 
 
 class CryptoKey(TypedDict):
-    keyname: str
-    key: str
+    key_name: str
     key_version: str
+    key: str
 
 
 class SecretProvider(BaseSecretProvider):
@@ -181,9 +181,9 @@ class SecretProvider(BaseSecretProvider):
                     path=key, version=key_version, mount_point=mountpoint
                 )
                 yield {
-                    "keyname": key,
-                    "key": key_response["data"]["data"]["key"],
+                    "key_name": key,
                     "key_version": key_response["data"]["metadata"]["version"],
+                    "key": key_response["data"]["data"]["key"],
                 }
         except hvac.exceptions.VaultError:
             log.warning(

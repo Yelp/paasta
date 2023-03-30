@@ -2,6 +2,7 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import get_dict_signature
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
     get_services_to_k8s_namespaces,
 )
@@ -650,12 +651,12 @@ def vault_key_versions():
     return [
         {
             "key": "foo",
-            "keyname": "fake-key",
+            "key_name": "fake-key",
             "key_version": 1,
         },
         {
             "key": "foo",
-            "keyname": "fake-key",
+            "key_name": "fake-key",
             "key_version": 2,
         },
     ]
@@ -664,9 +665,10 @@ def vault_key_versions():
 @pytest.fixture()
 def vault_key_versions_as_k8s_secret():
     return (
-        "W3sia2V5IjogImZvbyIsICJrZXluYW1lIjogImZha2Uta2V5Iiwg"
-        "ImtleV92ZXJzaW9uIjogMX0sIHsia2V5IjogImZvbyIsICJ"
-        "rZXluYW1lIjogImZha2Uta2V5IiwgImtleV92ZXJzaW9uIjogMn1d"
+        "W3sia2V5IjogImZvbyIsICJrZXlfbmFtZSI6ICJ"
+        "mYWtlLWtleSIsICJrZXlfdmVyc2lvbiI6IDF9LC"
+        "B7ImtleSI6ICJmb28iLCAia2V5X25hbWUiOiAiZ"
+        "mFrZS1rZXkiLCAia2V5X3ZlcnNpb24iOiAyfV0="
     )
 
 
@@ -788,7 +790,7 @@ def test_sync_crypto_secrets_noop(
     provider.return_value.get_vault_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = (
-        "23506cb95ac0158616ebc9dc3c748b082d1b80d4"
+        "3d7d92287eb7c6a381d59bcc7c2d467e6ad9346f"
     )
 
     assert sync_crypto_secrets(
@@ -799,6 +801,9 @@ def test_sync_crypto_secrets_noop(
         vault_cluster_config={},
         soa_dir="/nail/blah",
         vault_token_file="/.vault-token",
+    )
+    assert mock_get_kubernetes_secret_signature.return_value == get_dict_signature(
+        {"public-fake-key": vault_key_versions_as_k8s_secret}
     )
     assert not mock_update_secret.called
     assert not mock_create_secret.called

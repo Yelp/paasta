@@ -16,6 +16,9 @@ import argparse
 import os
 import re
 import sys
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
@@ -25,6 +28,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.secret_providers.vault import SecretProvider
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -341,11 +345,11 @@ def is_service_folder(soa_dir, service_name):
 
 
 def _get_secret_provider_for_service(
-    service_name,
-    cluster_names=None,
-    soa_dir=None,
-    secret_provider_extra_kwargs=None,
-):
+    service_name: str,
+    cluster_names: Optional[str] = None,
+    soa_dir: Optional[str] = None,
+    secret_provider_extra_kwargs: Optional[Dict[str, Any]] = None,
+) -> SecretProvider:
     secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
 
