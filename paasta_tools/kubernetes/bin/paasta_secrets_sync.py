@@ -30,12 +30,10 @@ from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_secret
-from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
@@ -296,11 +294,9 @@ def sync_crypto_secrets(
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
-        instance = instance_config.instance
         crypto_keys = instance_config.get_crypto_keys_from_config()
         if not crypto_keys:
             continue
-
         secret_data = {}
         provider = get_secret_provider(
             secret_provider_name=secret_provider_name,
@@ -317,7 +313,7 @@ def sync_crypto_secrets(
             key_versions = list(provider.get_vault_key_versions(key))
             if not key_versions:
                 log.error(
-                    f"No key versions found for {key} on {get_kubernetes_app_name(service, instance)}"
+                    f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"
                 )
                 continue
 
@@ -333,9 +329,7 @@ def sync_crypto_secrets(
         update_k8s_secret(
             service=service,
             # `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match `secret` below
-            secret_name=limit_size_with_hash(
-                f"{instance_config.get_namespace()}-crypto-key-{get_kubernetes_app_name(service, instance)}"
-            ),
+            secret_name=instance_config.get_crypto_k8s_secret_name(),
             secret_data=secret_data,
             secret_signature=get_dict_signature(secret_data),
             kube_client=kube_client,
@@ -355,7 +349,6 @@ def sync_boto_secrets(
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
-        instance = instance_config.instance
         boto_keys = instance_config.config_dict.get("boto_keys", [])
         if not boto_keys:
             continue
@@ -382,9 +375,7 @@ def sync_boto_secrets(
         time.sleep(0.3)
         update_k8s_secret(
             service=service,
-            secret_name=limit_size_with_hash(
-                f"{instance_config.get_namespace()}-boto-key-{get_kubernetes_app_name(service, instance)}"
-            ),
+            secret_name=instance_config.get_boto_k8s_secret_name(),
             secret_data=secret_data,
             secret_signature=get_dict_signature(secret_data),
             kube_client=kube_client,

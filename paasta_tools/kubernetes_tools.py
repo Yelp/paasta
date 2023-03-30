@@ -461,7 +461,8 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
 def get_vault_key_secret_name(vault_key: str) -> str:
     """
     Vault path may contain `/` slashes which is invalid as secret name
-    V1Secret's data key must match regexp [a-zA-Z0-9._-]
+    V1Secret's data key must match regexp [a-zA-Z0-9._-],
+    which is enforced with schema https://github.com/Yelp/paasta/blob/master/paasta_tools/cli/schemas/adhoc_schema.json#L80
     Source: https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Secret.md
     """
     return vault_key.replace("/", "-")
@@ -1440,16 +1441,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     path=this_key,
                 )
                 items.append(item)
-        # Check that boto keys actually exist as secrets
+        # Assume k8s secret exists if its configmap signature exists
         secret_hash = self.get_boto_secret_hash()
         if not secret_hash:
             log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
             return None
-        secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
+
         volume = V1Volume(
             name=self.get_boto_secret_volume_name(service_name),
             secret=V1SecretVolumeSource(
-                secret_name=secret_name,
+                secret_name=self.get_boto_k8s_secret_name(),
                 default_mode=mode_to_int("0444"),
                 items=items,
             ),
@@ -1479,7 +1480,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 self.get_sanitised_deployment_name()
             ),
             secret=V1SecretVolumeSource(
-                secret_name=self.get_crypto_secret_name(),
+                secret_name=self.get_crypto_k8s_secret_name(),
                 default_mode=mode_to_int("0444"),
                 items=[
                     V1KeyToPath(
@@ -1569,28 +1570,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return volume_mounts
 
+    def get_k8s_secret_name(self, name: str) -> str:
+        return limit_size_with_hash(
+            f"{self.get_namespace()}-{name}-{self.get_sanitised_deployment_name()}"
+        )
+
+    def get_boto_k8s_secret_name(self) -> str:
+        return self.get_k8s_secret_name("boto-key")
+
+    def get_crypto_k8s_secret_name(self) -> str:
+        return self.get_k8s_secret_name("crypto-key")
+
     def get_boto_secret_hash(self) -> Optional[str]:
-        kube_client = KubeClient()
-        deployment_name = self.get_sanitised_deployment_name()
-        service_name = self.get_sanitised_service_name()
-        secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
         return get_kubernetes_secret_signature(
-            kube_client=kube_client,
-            secret=secret_name,
-            service=service_name,
+            kube_client=KubeClient(),
+            secret=self.get_boto_k8s_secret_name(),
+            service=self.get_sanitised_service_name(),
             namespace=self.get_namespace(),
         )
 
     def get_crypto_secret_hash(self) -> Optional[str]:
         return get_kubernetes_secret_signature(
             kube_client=KubeClient(),
-            secret=self.get_crypto_secret_name(),
+            secret=self.get_crypto_k8s_secret_name(),
             service=self.get_sanitised_service_name(),
-        )
-
-    def get_crypto_secret_name(self) -> str:
-        return limit_size_with_hash(
-            f"paasta-crypto-key-{self.get_sanitised_deployment_name()}"
         )
 
     def get_sanitised_service_name(self) -> str:
