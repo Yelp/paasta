@@ -66,6 +66,7 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            vault_token_file="./vault-token",
         )
 
         mock_sync_secrets.side_effect = [True, False]
@@ -76,6 +77,7 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            vault_token_file="./vault-token",
         )
 
         mock_sync_secrets.side_effect = None
@@ -86,6 +88,7 @@ def test_sync_all_secrets():
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
+            vault_token_file="./vault-token",
         )
 
 
@@ -175,6 +178,7 @@ def test_sync_secrets_empty_soa_dir(paasta_secrets_patches, namespace):
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
 
 
@@ -202,6 +206,7 @@ def test_sync_secrets_soa_no_json_files(paasta_secrets_patches, namespace):
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
 
 
@@ -234,6 +239,7 @@ def test_sync_secrets_signatures_match(paasta_secrets_patches, namespace):
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
     assert mock_get_kubernetes_secret_signature.called
     _, kwargs = mock_get_kubernetes_secret_signature.call_args_list[-1]
@@ -273,6 +279,7 @@ def test_sync_secrets_signature_changed(paasta_secrets_patches, namespace):
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
     assert mock_get_kubernetes_secret_signature.called
     assert not mock_create_secret.called
@@ -316,6 +323,7 @@ def test_sync_secrets_not_exist(paasta_secrets_patches, namespace):
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
     assert mock_get_kubernetes_secret_signature.called
     assert mock_create_secret.called
@@ -360,6 +368,7 @@ def test_sync_secrets_exists_but_no_signature(paasta_secrets_patches, namespace)
         vault_cluster_config={},
         soa_dir="/nail/blah",
         namespace=namespace,
+        vault_token_file="./vault-token",
     )
     assert mock_get_kubernetes_secret_signature.called
     assert mock_create_secret.called
@@ -401,6 +410,7 @@ def test_sync_secrets_secret_api_exception(paasta_secrets_patches, namespace):
             vault_cluster_config={},
             soa_dir="/nail/blah",
             namespace=namespace,
+            vault_token_file="./vault-token",
         )
 
 
