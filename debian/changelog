@@ -1,3 +1,46 @@
+paasta-tools (0.166.3) xenial; urgency=medium
+
+  * 0.166.3 tagged with 'make release'
+    Commit: If existing_app has status.replicas=None, treat it as 0
+    replicas.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 29 Mar 2023 14:08:26 -0700
+
+paasta-tools (0.166.2) xenial; urgency=medium
+
+  * 0.166.2 tagged with 'make release'
+    Commit: Merge pull request #3573 from
+    Yelp/d/manpreet/set_kubenetes_decommission_config  Set correct value
+    of spark.kubernetes.decommission.script
+
+ -- Manpreet Singh <manpreet@yelp.com>  Tue, 28 Mar 2023 08:37:05 -0700
+
+paasta-tools (0.166.1) xenial; urgency=medium
+
+  * 0.166.1 tagged with 'make release'
+    Commit: Merge pull request #3574 from
+    Yelp/u/cuza/checking_namespaces_for_statefulsets  Checking
+    statefulsets namespaces before raising
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 28 Mar 2023 07:27:51 -0700
+
+paasta-tools (0.166.0) xenial; urgency=medium
+
+  * 0.166.0 tagged with 'make release'
+    Commit: Merge pull request #3566 from Yelp/u/cuza/cleanup_k8s_job
+    Adding support for multiple namespaces in cleanup_k8s_jobs
+
+ -- Dave Cuza <dcuza@yelp.com>  Mon, 27 Mar 2023 17:15:03 -0700
+
+paasta-tools (0.165.3) xenial; urgency=medium
+
+  * 0.165.3 tagged with 'make release'
+    Commit: Merge pull request #3572 from Yelp/MLCOMPUTE-
+    537_cost_warnings  MLCOMPUTE-537 | remove DRA enable logic, bump up
+    version
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Fri, 24 Mar 2023 09:46:32 -0700
+
 paasta-tools (0.165.2) xenial; urgency=medium
 
   * 0.165.2 tagged with 'make release'

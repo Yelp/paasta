@@ -76,6 +76,7 @@ class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_SESSION_TOKEN: str
+    AWS_SECURITY_TOKEN: str
 
 
 def parse_date(date_string):
@@ -778,6 +779,7 @@ def assume_aws_role(
         "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
         "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
         "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
+        "AWS_SECURITY_TOKEN": cmd_output["SessionToken"],
     }
     return creds_dict
 
