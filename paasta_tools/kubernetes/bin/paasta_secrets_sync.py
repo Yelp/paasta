@@ -177,7 +177,7 @@ def sync_all_secrets(
     secret_provider_name: str,
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
-    vault_token_file: str,
+    vault_token_file: Optional[str] = None,
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
@@ -227,7 +227,7 @@ def sync_secrets(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     namespace: str,
-    vault_token_file: str,
+    vault_token_file: Optional[str] = None,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -280,7 +280,7 @@ def sync_crypto_secrets(
     secret_provider_name: str,
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
-    vault_token_file: str,
+    vault_token_file: Optional[str] = None,
 ) -> bool:
     """
     For each key-name in `crypto_key`,

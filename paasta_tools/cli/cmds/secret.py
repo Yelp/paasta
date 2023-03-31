@@ -28,7 +28,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.secret_providers.vault import SecretProvider
+from paasta_tools.secret_providers import SecretProvider
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE

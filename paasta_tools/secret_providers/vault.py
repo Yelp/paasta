@@ -164,7 +164,7 @@ class SecretProvider(BaseSecretProvider):
 
     def get_vault_key_versions(
         self,
-        key: str,
+        key_name: str,
         mountpoint: str = "keystore",
     ) -> Iterable[CryptoKey]:
         """
@@ -173,21 +173,21 @@ class SecretProvider(BaseSecretProvider):
         client = self.clients[self.ecosystems[0]]
         try:
             meta_response = client.secrets.kv.read_secret_metadata(
-                path=key, mount_point=mountpoint
+                path=key_name, mount_point=mountpoint
             )
 
             for key_version in meta_response["data"]["versions"].keys():
                 key_response = client.secrets.kv.read_secret_version(
-                    path=key, version=key_version, mount_point=mountpoint
+                    path=key_name, version=key_version, mount_point=mountpoint
                 )
                 yield {
-                    "key_name": key,
+                    "key_name": key_name,
                     "key_version": key_response["data"]["metadata"]["version"],
                     "key": key_response["data"]["data"]["key"],
                 }
         except hvac.exceptions.VaultError:
             log.warning(
-                f"Could not fetch key versions for {key} on {self.ecosystems[0]}"
+                f"Could not fetch key versions for {key_name} on {self.ecosystems[0]}"
             )
             pass
 

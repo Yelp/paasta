@@ -1,6 +1,7 @@
 import os
 from typing import Any
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -49,4 +50,11 @@ class BaseSecretProvider:
 
 
 class SecretProvider(BaseSecretProvider):
-    pass
+    # from .vault import CryptoKey # cannnot import of cyclical dependency
+    def get_vault_key_versions(
+        self, key_name: str, mount_point: str = "keystore"
+    ) -> Iterable[dict]:
+        """
+        Dummy attribute to satisfy `mypy` because the class is imported dynamically via __import__
+        """
+        raise NotImplementedError
