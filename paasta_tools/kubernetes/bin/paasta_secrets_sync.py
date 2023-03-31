@@ -310,7 +310,7 @@ def sync_crypto_secrets(
             },
         )
         for key in crypto_keys:
-            key_versions = list(provider.get_vault_key_versions(key))
+            key_versions = list(provider.get_key_versions(key))
             if not key_versions:
                 log.error(
                     f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"

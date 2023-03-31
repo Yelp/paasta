@@ -162,7 +162,7 @@ class SecretProvider(BaseSecretProvider):
         else:
             return None
 
-    def get_vault_key_versions(
+    def get_key_versions(
         self,
         key_name: str,
         mountpoint: str = "keystore",

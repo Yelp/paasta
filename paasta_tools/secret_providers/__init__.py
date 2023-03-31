@@ -51,7 +51,7 @@ class BaseSecretProvider:
 
 class SecretProvider(BaseSecretProvider):
     # from .vault import CryptoKey # cannnot import of cyclical dependency
-    def get_vault_key_versions(
+    def get_key_versions(
         self, key_name: str, mount_point: str = "keystore"
     ) -> Iterable[dict]:
         """

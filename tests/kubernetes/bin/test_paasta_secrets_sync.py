@@ -707,7 +707,7 @@ def test_sync_crypto_secrets_create(
 
     mock_config_loader_instances.return_value = [deployment]
 
-    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+    provider.return_value.get_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = None
     assert sync_crypto_secrets(
@@ -753,7 +753,7 @@ def test_sync_crypto_secrets_update(
     )
 
     mock_config_loader_instances.return_value = [deployment]
-    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+    provider.return_value.get_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = "dummy-signature"
     assert sync_crypto_secrets(
@@ -797,7 +797,7 @@ def test_sync_crypto_secrets_noop(
     )
 
     mock_config_loader_instances.return_value = [deployment]
-    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+    provider.return_value.get_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = (
         "3d7d92287eb7c6a381d59bcc7c2d467e6ad9346f"
@@ -843,7 +843,7 @@ def test_sync_crypto_secrets_exist_but_no_signature(
     )
 
     mock_config_loader_instances.return_value = [deployment]
-    provider.return_value.get_vault_key_versions.return_value = vault_key_versions
+    provider.return_value.get_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = None
     mock_create_secret.side_effect = ApiException(409)
