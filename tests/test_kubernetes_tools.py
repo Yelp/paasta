@@ -1025,6 +1025,7 @@ class TestKubernetesDeploymentConfig:
             ]
             service_namespace_config = mock.Mock()
             service_namespace_config.get_healthcheck_mode.return_value = "http"
+            service_namespace_config.get_healthcheck_port.return_value = 8888
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
             assert (
                 self.deployment.get_kubernetes_containers(
@@ -1049,6 +1050,7 @@ class TestKubernetesDeploymentConfig:
 
         service_namespace_config = mock.Mock()
         service_namespace_config.get_healthcheck_mode.return_value = "http"
+        service_namespace_config.get_healthcheck_port.return_value = 8888
         service_namespace_config.get_healthcheck_uri.return_value = "/status"
 
         assert (
@@ -1072,6 +1074,7 @@ class TestKubernetesDeploymentConfig:
 
         service_namespace_config = mock.Mock()
         service_namespace_config.get_healthcheck_mode.return_value = "http"
+        service_namespace_config.get_healthcheck_port.return_value = 8888
         service_namespace_config.get_healthcheck_uri.return_value = "/status"
 
         self.deployment.config_dict["healthcheck_max_consecutive_failures"] = 1
