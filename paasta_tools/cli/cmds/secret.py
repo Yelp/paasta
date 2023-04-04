@@ -467,6 +467,7 @@ def paasta_secret(args):
                 service=args.service,
                 instance=args.instance,
                 cluster=args.clusters,
+                soa_dir=args.yelpsoa_config_root,
             ).get_env(),
             soa_dir=args.yelpsoa_config_root,
             service_name=args.service,
