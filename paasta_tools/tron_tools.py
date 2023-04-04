@@ -728,6 +728,14 @@ class TronJobConfig:
                     f'Docker image unavailable for {action_service}.{self.get_name()}.{action_dict.get("name")}'
                     " is it deployed yet?"
                 )
+
+                if self.soa_dir != DEFAULT_SOA_DIR:
+                    log.warning(
+                        f"Error: No deployments.json found in {self.soa_dir}/{action_service}. "
+                        "You can generate this by running: "
+                        f"generate_deployments_for_service -d {self.soa_dir} -s {action_service}"
+                    )
+
                 branch_dict = None
         else:
             branch_dict = None
