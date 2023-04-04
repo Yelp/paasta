@@ -65,6 +65,7 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     healthcheck_mode: str
     healthcheck_timeout_seconds: float
     healthcheck_uri: str
+    healthcheck_port: int
     instances: int
     max_instances: int
     min_instances: int
