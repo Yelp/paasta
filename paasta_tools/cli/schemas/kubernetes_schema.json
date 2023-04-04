@@ -649,6 +649,10 @@
                     "type": "string",
                     "default": "/status"
                 },
+                "healthcheck_port": {
+                    "type": "integer",
+                    "default": 8888
+                },
                 "cpu_burst_add": {
                     "type": "number",
                     "minimum": 0.0,
