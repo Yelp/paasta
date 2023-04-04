@@ -23,12 +23,12 @@
                 "disk": {
                     "type": "number",
                     "minimum": 128,
-                    "exclusiveMinimum": true
+                    "exclusiveMinimum": false
                 },
                 "mem": {
                     "type": "number",
                     "minimum": 32,
-                    "exclusiveMinimum": true
+                    "exclusiveMinimum": false
                 },
                 "min_instances": {
                     "type": "integer",
