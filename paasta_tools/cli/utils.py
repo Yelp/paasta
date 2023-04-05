@@ -64,6 +64,10 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
+from paasta_tools.utils import INSTANCE_TYPES
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 log = logging.getLogger(__name__)
 
@@ -841,6 +845,35 @@ def get_instance_config(
         load_deployments=load_deployments,
         soa_dir=soa_dir,
     )
+
+
+def get_namespace_for_secret(service:str, cluster:str, secret_name: str, soa_dir: str = DEFAULT_SOA_DIR):
+    secret_to_k8s_namespace = set()
+
+    for instance_type in INSTANCE_TYPES:
+        if instance_type == "kubernetes":
+                config_loader = PaastaServiceConfigLoader(service, soa_dir)
+                for service_instance_config in config_loader.instance_configs(
+                    cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                ):
+                    secret_to_k8s_namespace.add(
+                        service_instance_config.get_namespace()
+                    )
+        else:
+            instances = get_service_instance_list(
+                        service=service,
+                        instance_type=instance_type,
+                        cluster=cluster,
+                        soa_dir=soa_dir,
+                    )
+
+            for serv, instance in instances:
+                config = get_instance_config(serv, instance, cluster, soa_dir)
+                if secret_name in config.get_secret_env():
+                    secret_to_k8s_namespace.add(INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type])
+
+    return secret_to_k8s_namespace
+
 
 
 def extract_tags(paasta_tag: str) -> Mapping[str, str]:
