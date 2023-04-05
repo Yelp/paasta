@@ -7,7 +7,7 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 
-from mypy_extensions import TypedDict
+from paasta_tools.secret_providers import CryptoKey
 
 try:
     from vault_tools.client.jsonsecret import get_plaintext
@@ -34,12 +34,6 @@ from paasta_tools.secret_tools import get_secret_name_from_ref
 
 
 log = logging.getLogger(__name__)
-
-
-class CryptoKey(TypedDict):
-    key_name: str
-    key_version: str
-    key: str
 
 
 class SecretProvider(BaseSecretProvider):
