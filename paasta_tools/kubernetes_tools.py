@@ -1451,7 +1451,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         volume = V1Volume(
             name=self.get_boto_secret_volume_name(service_name),
             secret=V1SecretVolumeSource(
-                secret_name=self.get_boto_k8s_secret_name(),
+                secret_name=self.get_boto_secret_name(),
                 default_mode=mode_to_int("0444"),
                 items=items,
             ),
@@ -1472,7 +1472,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if not self.get_crypto_secret_hash():
             log.warning(
-                f"Expected to find secret signature {self.get_crypto_k8s_secret_name()} for crypto_keys"
+                f"Expected to find secret signature {self.get_crypto_secret_name()} for crypto_keys"
             )
             return None
 
@@ -1481,7 +1481,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 self.get_sanitised_deployment_name()
             ),
             secret=V1SecretVolumeSource(
-                secret_name=self.get_crypto_k8s_secret_name(),
+                secret_name=self.get_crypto_secret_name(),
                 default_mode=mode_to_int("0444"),
                 items=[
                     V1KeyToPath(
@@ -1571,21 +1571,21 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return volume_mounts
 
-    def get_k8s_secret_name(self, name: str) -> str:
+    def get_secret_name(self, name: str) -> str:
         return limit_size_with_hash(
             f"{self.get_namespace()}-{name}-{self.get_sanitised_deployment_name()}"
         )
 
-    def get_boto_k8s_secret_name(self) -> str:
-        return self.get_k8s_secret_name("boto-key")
+    def get_boto_secret_name(self) -> str:
+        return self.get_secret_name("boto-key")
 
-    def get_crypto_k8s_secret_name(self) -> str:
-        return self.get_k8s_secret_name("crypto-key")
+    def get_crypto_secret_name(self) -> str:
+        return self.get_secret_name("crypto-key")
 
     def get_boto_secret_hash(self) -> Optional[str]:
         return get_kubernetes_secret_signature(
             kube_client=KubeClient(),
-            secret=self.get_boto_k8s_secret_name(),
+            secret=self.get_boto_secret_name(),
             service=self.get_sanitised_service_name(),
             namespace=self.get_namespace(),
         )
@@ -1593,7 +1593,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_crypto_secret_hash(self) -> Optional[str]:
         return get_kubernetes_secret_signature(
             kube_client=KubeClient(),
-            secret=self.get_crypto_k8s_secret_name(),
+            secret=self.get_crypto_secret_name(),
             service=self.get_sanitised_service_name(),
         )
 
