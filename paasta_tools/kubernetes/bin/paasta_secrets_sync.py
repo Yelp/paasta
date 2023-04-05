@@ -21,12 +21,15 @@ import os
 import sys
 import time
 from collections import defaultdict
+from functools import partial
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
 
 from kubernetes.client.rest import ApiException
+from typing_extensions import Literal
 
 from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_secret
@@ -89,6 +92,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
+    parser.add_argument(
+        "--secret-type",
+        choices=["all", "paasta-secret", "boto-key", "crypto-key"],
+        default="all",
+        type=str,
+        help="Define which type of secret to add/update. Default is 'all'",
+    )
     args = parser.parse_args()
     return args
 
@@ -124,6 +134,7 @@ def main() -> None:
         soa_dir=args.soa_dir,
         vault_token_file=args.vault_token_file,
         overwrite_namespace=args.namespace,
+        secret_type=args.secret_type,
     ) else sys.exit(1)
 
 
@@ -178,15 +189,20 @@ def sync_all_secrets(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
+    secret_type: Literal["all", "paasta-secret", "crypto-key", "boto-key"] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
+
     for service, namespaces in services_to_k8s_namespaces.items():
+        sync_service_secrets: Dict[str, List[Callable]] = defaultdict(list)
+
         if overwrite_namespace:
             namespaces = {overwrite_namespace}
         for namespace in namespaces:
-            results.append(
-                sync_secrets(
+            sync_service_secrets["paasta-secret"].append(
+                partial(
+                    sync_secrets,
                     kube_client=kube_client,
                     cluster=cluster,
                     service=service,
@@ -197,16 +213,18 @@ def sync_all_secrets(
                     vault_token_file=vault_token_file,
                 )
             )
-        results.append(
-            sync_boto_secrets(
+        sync_service_secrets["boto-key"].append(
+            partial(
+                sync_boto_secrets,
                 kube_client=kube_client,
                 cluster=cluster,
                 service=service,
                 soa_dir=soa_dir,
             )
         )
-        results.append(
-            sync_crypto_secrets(
+        sync_service_secrets["crypto-key"].append(
+            partial(
+                sync_crypto_secrets,
                 kube_client=kube_client,
                 cluster=cluster,
                 service=service,
@@ -216,6 +234,16 @@ def sync_all_secrets(
                 vault_token_file=vault_token_file,
             )
         )
+
+        if secret_type == "all":
+            results.append(
+                all(sync() for sync in sync_service_secrets["paasta-secret"])
+            )
+            results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
+            results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
+        else:
+            results.append(all(sync() for sync in sync_service_secrets[secret_type]))
+
     return all(results)
 
 
