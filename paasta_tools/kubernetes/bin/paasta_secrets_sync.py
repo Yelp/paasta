@@ -328,7 +328,8 @@ def sync_crypto_secrets(
         time.sleep(0.3)
         update_k8s_secret(
             service=service,
-            # `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match `secret` below
+            # the secret name here must match the secret name given in the secret volume config,
+            # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
             secret_name=instance_config.get_crypto_secret_name(),
             secret_data=secret_data,
             secret_signature=get_dict_signature(secret_data),
