@@ -332,7 +332,7 @@ def sync_crypto_secrets(
             # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
             secret_name=instance_config.get_crypto_secret_name(),
             secret_data=secret_data,
-            secret_signature=get_dict_signature(secret_data),
+            secret_signature=_get_dict_signature(secret_data),
             kube_client=kube_client,
             namespace=instance_config.get_namespace(),
         )
@@ -378,14 +378,14 @@ def sync_boto_secrets(
             service=service,
             secret_name=instance_config.get_boto_secret_name(),
             secret_data=secret_data,
-            secret_signature=get_dict_signature(secret_data),
+            secret_signature=_get_dict_signature(secret_data),
             kube_client=kube_client,
             namespace=instance_config.get_namespace(),
         )
     return True
 
 
-def get_dict_signature(data: Dict[str, str]) -> str:
+def _get_dict_signature(data: Dict[str, str]) -> str:
     return hashlib.sha1("".join(data.values()).encode("utf-8")).hexdigest()
 
 
