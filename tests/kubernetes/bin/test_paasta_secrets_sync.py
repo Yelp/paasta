@@ -2,7 +2,7 @@ import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import get_dict_signature
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import _get_dict_signature
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
     get_services_to_k8s_namespaces,
 )
@@ -812,7 +812,7 @@ def test_sync_crypto_secrets_noop(
         soa_dir="/nail/blah",
         vault_token_file="/.vault-token",
     )
-    assert mock_get_kubernetes_secret_signature.return_value == get_dict_signature(
+    assert mock_get_kubernetes_secret_signature.return_value == _get_dict_signature(
         {"public-fake-key": vault_key_versions_as_k8s_secret}
     )
     assert not mock_update_secret.called
