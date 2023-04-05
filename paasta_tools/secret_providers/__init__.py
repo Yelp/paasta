@@ -56,9 +56,7 @@ class CryptoKey(TypedDict):
 
 
 class SecretProvider(BaseSecretProvider):
-    def get_key_versions(
-        self, key_name: str, mount_point: str = "keystore"
-    ) -> List[CryptoKey]:
+    def get_key_versions(self, key_name: str) -> List[CryptoKey]:
         """
         Dummy attribute to satisfy `mypy` because the class is imported dynamically via __import__
         """

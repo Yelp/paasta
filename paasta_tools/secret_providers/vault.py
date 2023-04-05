@@ -158,7 +158,6 @@ class SecretProvider(BaseSecretProvider):
     def get_key_versions(
         self,
         key_name: str,
-        mountpoint: str = "keystore",
     ) -> List[CryptoKey]:
         """
         Retrieve all versions of Vault key based on its metadata
@@ -167,12 +166,12 @@ class SecretProvider(BaseSecretProvider):
         crypto_keys: List[CryptoKey] = []
         try:
             meta_response = client.secrets.kv.read_secret_metadata(
-                path=key_name, mount_point=mountpoint
+                path=key_name, mount_point="keystore"
             )
 
             for key_version in meta_response["data"]["versions"].keys():
                 key_response = client.secrets.kv.read_secret_version(
-                    path=key_name, version=key_version, mount_point=mountpoint
+                    path=key_name, version=key_version, mount_point="keystore"
                 )
                 crypto_keys.append(
                     {
