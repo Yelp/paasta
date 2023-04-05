@@ -3,7 +3,6 @@ import logging
 import os
 from typing import Any
 from typing import Dict
-from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -166,11 +165,12 @@ class SecretProvider(BaseSecretProvider):
         self,
         key_name: str,
         mountpoint: str = "keystore",
-    ) -> Iterable[CryptoKey]:
+    ) -> List[CryptoKey]:
         """
         Retrieve all versions of Vault key based on its metadata
         """
         client = self.clients[self.ecosystems[0]]
+        crypto_keys: List[CryptoKey] = []
         try:
             meta_response = client.secrets.kv.read_secret_metadata(
                 path=key_name, mount_point=mountpoint
@@ -180,15 +180,17 @@ class SecretProvider(BaseSecretProvider):
                 key_response = client.secrets.kv.read_secret_version(
                     path=key_name, version=key_version, mount_point=mountpoint
                 )
-                yield {
-                    "key_name": key_name,
-                    "key_version": key_response["data"]["metadata"]["version"],
-                    "key": key_response["data"]["data"]["key"],
-                }
+                crypto_keys.append(
+                    {
+                        "key_name": key_name,
+                        "key_version": key_response["data"]["metadata"]["version"],
+                        "key": key_response["data"]["data"]["key"],
+                    }
+                )
         except hvac.exceptions.VaultError:
             log.warning(
                 f"Could not fetch key versions for {key_name} on {self.ecosystems[0]}"
             )
             pass
 
-        yield from []
+        return crypto_keys
