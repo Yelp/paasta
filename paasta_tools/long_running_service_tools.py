@@ -116,7 +116,7 @@ class ServiceNamespaceConfig(dict):
     def get_healthcheck_uri(self) -> str:
         return self.get("healthcheck_uri", "/status")
 
-    def get_healthcheck_port(self) -> str:
+    def get_healthcheck_port(self) -> int:
         return self.get("healthcheck_port", DEFAULT_CONTAINER_PORT)
 
     def get_discover(self) -> str:
@@ -253,7 +253,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_healthcheck_port(
         self, service_namespace_config: ServiceNamespaceConfig
-    ) -> str:
+    ) -> int:
         return self.config_dict.get(
             "healthcheck_port", service_namespace_config.get_healthcheck_port()
         )
