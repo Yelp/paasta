@@ -414,7 +414,9 @@ def sync_boto_secrets(
 
 
 def _get_dict_signature(data: Dict[str, str]) -> str:
-    return hashlib.sha1("".join(data.values()).encode("utf-8")).hexdigest()
+    return hashlib.sha1(
+        "|".join(f"{key}f:{value}" for key, value in data.items()).encode("utf-8")
+    ).hexdigest()
 
 
 def update_k8s_secret(
