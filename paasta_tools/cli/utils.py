@@ -869,7 +869,7 @@ def get_namespace_for_secret(
 
             for serv, instance in instances:
                 config = get_instance_config(serv, instance, cluster, soa_dir)
-                if secret_name in config.get_secret_env():
+                if secret_name in config.get_env():
                     secret_to_k8s_namespace.add(
                         INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
                     )
