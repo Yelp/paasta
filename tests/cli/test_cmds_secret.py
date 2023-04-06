@@ -150,7 +150,9 @@ def test_paasta_secret():
         "paasta_tools.cli.cmds.secret.get_kubernetes_secret", autospec=True
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
-    ) as mock_kube_client:
+    ) as mock_kube_client, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_namespace_for_secret", autospec=True
+    ) as mock_get_namespace_for_secret:
         mock_secret_provider = mock.Mock(secret_dir="/nail/blah")
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -231,6 +233,7 @@ def test_paasta_secret():
         )
         kube_client = mock.Mock()
         mock_is_secrets_for_teams_enabled.return_value = True
+        mock_get_namespace_for_secret.return_value = {"paasta"}
         mock_kube_client.return_value = kube_client
 
         secret.paasta_secret(mock_args)
@@ -239,6 +242,13 @@ def test_paasta_secret():
         mock_kube_client.assert_called_with(
             config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
         )
+        mock_get_kubernetes_secret.assert_called_with(
+            kube_client, "middleearth", "theonering", "paasta"
+        )
+
+        # empty namespace list
+        mock_get_namespace_for_secret.return_value = set()
+        secret.paasta_secret(mock_args)
         mock_get_kubernetes_secret.assert_called_with(
             kube_client, "middleearth", "theonering"
         )
