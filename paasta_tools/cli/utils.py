@@ -849,7 +849,7 @@ def get_instance_config(
 
 def get_namespace_for_secret(
     service: str, cluster: str, secret_name: str, soa_dir: str = DEFAULT_SOA_DIR
-):
+) -> Set:
     secret_to_k8s_namespace = set()
 
     for instance_type in INSTANCE_TYPES:
