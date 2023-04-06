@@ -1084,6 +1084,8 @@ def test_paasta_spark_run_bash(
         enable_dra=False,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1186,6 +1188,8 @@ def test_paasta_spark_run(
         enable_dra=True,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1288,6 +1292,8 @@ def test_paasta_spark_run_pyspark(
         enable_dra=False,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        assume_aws_role=None,
+        aws_role_duration=3600,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
