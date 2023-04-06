@@ -800,7 +800,7 @@ def test_sync_crypto_secrets_noop(
     provider.return_value.get_key_versions.return_value = vault_key_versions
 
     mock_get_kubernetes_secret_signature.return_value = (
-        "65716be0a15e5ea9799e1712678b5771372ac790"
+        "c8ec57c05617ec23d93fea883817140c249408fe"
     )
 
     assert sync_crypto_secrets(
