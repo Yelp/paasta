@@ -74,6 +74,7 @@ EXTRA_METHODS = {"is_autoscaling_enabled"}
 
 EXPAND_DICTS = {
     "get_autoscaling_params": "autoscaling",
+    "get_monitoring": "monitoring",
 }
 
 
