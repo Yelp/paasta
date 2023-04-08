@@ -256,6 +256,14 @@ class TestKubernetesStatusV2:
         ) as mock_get_pod_event_messages:
             yield mock_get_pod_event_messages
 
+    @pytest.fixture
+    def mock_find_all_relevant_namespaces(self):
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.find_all_relevant_namespaces",
+            autospec=True,
+        ) as mock_find_all_relevant_namespaces:
+            yield mock_find_all_relevant_namespaces
+
     def test_replicaset(
         self,
         mock_replicasets_for_service_instance,
@@ -265,7 +273,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -375,7 +385,9 @@ class TestKubernetesStatusV2:
         mock_pods_for_service_instance,
         mock_mesh_status,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
@@ -433,7 +445,9 @@ class TestKubernetesStatusV2:
         mock_pods_for_service_instance,
         mock_mesh_status,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
@@ -493,7 +507,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -545,7 +561,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )

@@ -2719,6 +2719,17 @@ def list_matching_deployments(
     )
 
 
+def list_matching_deployments_in_all_namespaces(
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+) -> Sequence[KubeDeployment]:
+    return list_deployments_in_all_namespaces(
+        kube_client,
+        f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+    )
+
+
 @async_timeout()
 async def replicasets_for_service_instance(
     service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"

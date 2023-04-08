@@ -528,6 +528,45 @@ def bounce_status(
     return status
 
 
+async def get_pods_for_service_instance_multiple_namespaces(
+    service: str,
+    instance: str,
+    kube_client: kubernetes_tools.KubeClient,
+    namespaces: Iterable[str],
+) -> Sequence[V1Pod]:
+    ret: List[V1Pod] = []
+
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.pods_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        ret.extend(await coro)
+
+    return ret
+
+
+def find_all_relevant_namespaces(
+    service,
+    instance,
+    kube_client,
+    job_config,
+) -> Set[str]:
+    return {job_config.get_kubernetes_namespace()} | {
+        deployment.namespace
+        for deployment in kubernetes_tools.list_deployments_in_all_namespaces(
+            kube_client=kube_client,
+            label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        )
+    }
+
+
 @a_sync.to_blocking
 async def kubernetes_status_v2(
     service: str,
@@ -551,6 +590,10 @@ async def kubernetes_status_v2(
     if kube_client is None:
         return status
 
+    relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
+        service, instance, kube_client, job_config
+    )
+
     tasks: List["asyncio.Future[Dict[str, Any]]"] = []
 
     if (
@@ -568,11 +611,11 @@ async def kubernetes_status_v2(
         autoscaling_task = None
 
     pods_task = asyncio.create_task(
-        kubernetes_tools.pods_for_service_instance(
+        get_pods_for_service_instance_multiple_namespaces(
             service=service,
             instance=instance,
             kube_client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
+            namespaces=relevant_namespaces,
         )
     )
     tasks.append(pods_task)
@@ -617,7 +660,7 @@ async def kubernetes_status_v2(
                 kube_client=kube_client,
                 service=service,
                 instance=instance,
-                namespace=job_config.get_kubernetes_namespace(),
+                namespaces=relevant_namespaces,
                 pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,
             )
         )
@@ -636,7 +679,7 @@ async def kubernetes_status_v2(
                 kube_client=kube_client,
                 service=service,
                 instance=instance,
-                namespace=job_config.get_kubernetes_namespace(),
+                namespaces=relevant_namespaces,
                 pod_status_by_replicaset_task=pod_status_by_replicaset_task,
             )
         )
@@ -707,15 +750,24 @@ async def get_versions_for_replicasets(
     kube_client: kubernetes_tools.KubeClient,
     service: str,
     instance: str,
-    namespace: str,
+    namespaces: Iterable[str],
     pod_status_by_replicaset_task: "asyncio.Future[Mapping[str, Sequence[asyncio.Future[Dict[str, Any]]]]]",
 ) -> List[KubernetesVersionDict]:
-    replicaset_list = await kubernetes_tools.replicasets_for_service_instance(
-        service=service,
-        instance=instance,
-        kube_client=kube_client,
-        namespace=namespace,
-    )
+
+    replicaset_list: List[V1ReplicaSet] = []
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.replicasets_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        replicaset_list.extend(await coro)
+
     # For the purpose of active_versions/app_count, don't count replicasets that
     # are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
@@ -973,17 +1025,23 @@ async def get_versions_for_controller_revisions(
     kube_client: kubernetes_tools.KubeClient,
     service: str,
     instance: str,
-    namespace: str,
+    namespaces: Iterable[str],
     pod_status_by_sha_and_readiness_task: "asyncio.Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[asyncio.Future[Mapping[str, Any]]]]]]",
 ) -> List[KubernetesVersionDict]:
-    controller_revision_list = (
-        await kubernetes_tools.controller_revisions_for_service_instance(
-            service=service,
-            instance=instance,
-            kube_client=kube_client,
-            namespace=namespace,
-        )
-    )
+    controller_revision_list: List[V1ControllerRevision] = []
+
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.controller_revisions_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        controller_revision_list.extend(await coro)
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
     for cr in controller_revision_list:
