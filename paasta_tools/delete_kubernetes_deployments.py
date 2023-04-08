@@ -34,7 +34,7 @@ from paasta_tools.utils import SPACER
 log = logging.getLogger(__name__)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(args=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Deletes list of deployments.")
     parser.add_argument(
         "service_instance_list",
@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
         help="The list of service instances to delete",
         metavar=f"SERVICE{SPACER}INSTANCE",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(args=args)
     return args
 
 
@@ -61,8 +61,8 @@ def get_deployment_names_from_list(service_instance_list):
     return app_names
 
 
-def main() -> None:
-    args = parse_args()
+def main(args=None) -> None:
+    args = parse_args(args=args)
     service_instance_list = args.service_instance_list
     deployment_names = get_deployment_names_from_list(service_instance_list)
 
