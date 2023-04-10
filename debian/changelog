@@ -1,3 +1,15 @@
+paasta-tools (0.167.0) xenial; urgency=medium
+
+  * 0.167.0 tagged with 'make release'
+    Commit: Allow setting
+    PreferredDuringSchedulingIgnoredDuringExecution anti-affinity terms
+    with anti_affinity_preferred key. (#3378)  We want to have more
+    control on where (which PaaSTA worker nodes) certain services end up
+    being scheduled. e.g., we want to be able to say "service X and
+    service Y should preferably be scheduled on different nodes."
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 10 Apr 2023 13:18:51 -0700
+
 paasta-tools (0.166.4) xenial; urgency=medium
 
   * 0.166.4 tagged with 'make release'
