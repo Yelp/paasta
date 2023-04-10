@@ -1128,15 +1128,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> Sequence[V1EnvVar]:
         ret = []
         for k, v in secret_env_vars.items():
-            service = self.get_sanitised_service_name()
             secret = get_secret_name_from_ref(v)
-            sanitised_secret = sanitise_kubernetes_name(secret)
             ret.append(
                 V1EnvVar(
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=f"paasta-secret-{service}-{sanitised_secret}",
+                            name=get_kubernetes_secret_name(
+                                self.service, secret, self.get_kubernetes_namespace()
+                            ),
                             key=secret,
                             optional=False,
                         )
@@ -1144,15 +1144,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         for k, v in shared_secret_env_vars.items():
-            service = sanitise_kubernetes_name(SHARED_SECRET_SERVICE)
             secret = get_secret_name_from_ref(v)
-            sanitised_secret = sanitise_kubernetes_name(secret)
             ret.append(
                 V1EnvVar(
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=f"paasta-secret-{service}-{sanitised_secret}",
+                            name=get_kubernetes_secret_name(
+                                SHARED_SECRET_SERVICE,
+                                secret,
+                                self.get_kubernetes_namespace(),
+                            ),
                             key=secret,
                             optional=False,
                         )
@@ -1381,8 +1383,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
             )
         for secret_volume in secret_volumes:
-            service = self.get_sanitised_service_name()
-            sanitised_secret = sanitise_kubernetes_name(secret_volume["secret_name"])
             if "items" in secret_volume:
                 items = [
                     V1KeyToPath(
@@ -1398,7 +1398,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V1Volume(
                     name=self.get_secret_volume_name(secret_volume),
                     secret=V1SecretVolumeSource(
-                        secret_name=f"paasta-secret-{service}-{sanitised_secret}",
+                        secret_name=get_kubernetes_secret_name(
+                            self.service,
+                            secret_volume["secret_name"],
+                            self.get_kubernetes_namespace(),
+                        ),
                         default_mode=mode_to_int(secret_volume.get("default_mode")),
                         items=items,
                     ),
@@ -3210,16 +3214,15 @@ def create_secret(
     secret_provider: BaseSecretProvider,
     namespace: str = "paasta",
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret)
+    sanitized_service = sanitise_kubernetes_name(service)
     kube_client.core.create_namespaced_secret(
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{sanitised_secret}",
+                name=get_kubernetes_secret_name(service, secret, namespace),
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitized_service,
+                    "paasta.yelp.com/service": sanitized_service,
                 },
             ),
             data={
@@ -3262,17 +3265,17 @@ def update_secret(
     secret_provider: BaseSecretProvider,
     namespace: str = "paasta",
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret)
+    sanitized_service = sanitise_kubernetes_name(service)
+    secret_name = get_kubernetes_secret_name(service, secret, namespace)
     kube_client.core.replace_namespaced_secret(
-        name=f"{namespace}-secret-{service}-{sanitised_secret}",
+        name=secret_name,
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{sanitised_secret}",
+                name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitized_service,
+                    "paasta.yelp.com/service": sanitized_service,
                 },
             ),
             data={
@@ -3291,7 +3294,7 @@ def update_plaintext_dict_secret(
     service: str,
     namespace: str = "paasta",
 ) -> None:
-    service = sanitise_kubernetes_name(service)
+    sanitized_service = sanitise_kubernetes_name(service)
     sanitised_secret = sanitise_kubernetes_name(secret_name)
     kube_client.core.replace_namespaced_secret(
         name=sanitised_secret,
@@ -3300,8 +3303,8 @@ def update_plaintext_dict_secret(
             metadata=V1ObjectMeta(
                 name=sanitised_secret,
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitized_service,
+                    "paasta.yelp.com/service": sanitized_service,
                 },
             ),
             data=secret_data,
@@ -3315,11 +3318,10 @@ def get_kubernetes_secret_signature(
     service: str,
     namespace: str = "paasta",
 ) -> Optional[str]:
-    service = sanitise_kubernetes_name(service)
-    secret = sanitise_kubernetes_name(secret)
+    secret_name = get_kubernetes_secret_name(service, secret, namespace)
     try:
         signature = kube_client.core.read_namespaced_config_map(
-            name=f"{namespace}-secret-{service}-{secret}-signature", namespace=namespace
+            name=f"{secret_name}-signature", namespace=namespace
         )
     except ApiException as e:
         if e.status == 404:
@@ -3339,17 +3341,17 @@ def update_kubernetes_secret_signature(
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    secret = sanitise_kubernetes_name(secret)
+    secret_name = get_kubernetes_secret_name(service, secret, namespace)
+    sanitized_service = sanitise_kubernetes_name(service)
     kube_client.core.replace_namespaced_config_map(
-        name=f"{namespace}-secret-{service}-{secret}-signature",
+        name=f"{secret_name}-signature",
         namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{secret}-signature",
+                name=f"{secret_name}-signature",
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitized_service,
+                    "paasta.yelp.com/service": sanitized_service,
                 },
             ),
             data={"signature": secret_signature},
@@ -3364,16 +3366,16 @@ def create_kubernetes_secret_signature(
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    secret = sanitise_kubernetes_name(secret)
+    secret_name = get_kubernetes_secret_name(service, secret, namespace)
+    sanitized_service = sanitise_kubernetes_name(service)
     kube_client.core.create_namespaced_config_map(
         namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"{namespace}-secret-{service}-{secret}-signature",
+                name=f"{secret_name}-signature",
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitized_service,
+                    "paasta.yelp.com/service": sanitized_service,
                 },
             ),
             data={"signature": secret_signature},
