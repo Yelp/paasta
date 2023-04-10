@@ -287,6 +287,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={
@@ -326,6 +327,7 @@ class TestKubernetesStatusV2:
                     "git_sha": "aaa000",
                     "image_version": None,
                     "config_sha": "config000",
+                    "namespace": "paasta",
                     "pods": [
                         {
                             "name": "pod_1",
@@ -398,6 +400,7 @@ class TestKubernetesStatusV2:
             Struct(
                 metadata=Struct(
                     name="controller_revision_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 4, 1),
                     labels={
                         "paasta.yelp.com/git_sha": "aaa000",
@@ -435,6 +438,7 @@ class TestKubernetesStatusV2:
             "image_version": None,
             "config_sha": "config000",
             "pods": [mock.ANY],
+            "namespace": "paasta",
         }
 
     def test_statefulset_with_image_version(
@@ -458,6 +462,7 @@ class TestKubernetesStatusV2:
             Struct(
                 metadata=Struct(
                     name="controller_revision_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 4, 1),
                     labels={
                         "paasta.yelp.com/git_sha": "aaa000",
@@ -496,6 +501,7 @@ class TestKubernetesStatusV2:
             "image_version": "extrastuff",
             "config_sha": "config000",
             "pods": [mock.ANY],
+            "namespace": "paasta",
         }
 
     def test_event_timeout(
@@ -521,6 +527,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={

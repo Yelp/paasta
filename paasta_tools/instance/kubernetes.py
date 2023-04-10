@@ -82,6 +82,7 @@ class KubernetesVersionDict(TypedDict, total=False):
     image_version: Optional[str]
     config_sha: str
     pods: Sequence[Mapping[str, Any]]
+    namespace: str
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -803,6 +804,7 @@ async def get_replicaset_status(
         ),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": await asyncio.gather(*pod_status_tasks) if pod_status_tasks else [],
+        "namespace": replicaset.metadata.namespace,
     }
 
 
@@ -1085,6 +1087,7 @@ async def get_version_for_controller_revision(
         "image_version": cr.metadata.labels.get("paasta.yelp.com/image_version", None),
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": [task.result() for task in all_pod_status_tasks],
+        "namespace": cr.metadata.namespace,
     }
 
 
