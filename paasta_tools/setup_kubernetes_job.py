@@ -46,6 +46,7 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -244,7 +245,9 @@ def setup_kube_deployments(
         for deployment in existing_kube_deployments
     }
 
-    existing_deployment_versions: Dict[Tuple[str, str, str], List[str]] = {}
+    existing_deployment_versions: Dict[
+        Tuple[str, str, str], List[DeploymentVersion]
+    ] = {}
     for deployment in existing_kube_deployments:
         existing_deployment_versions.setdefault(
             (deployment.service, deployment.instance, deployment.namespace), []

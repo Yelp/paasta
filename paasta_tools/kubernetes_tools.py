@@ -249,7 +249,7 @@ class KubeDeployment(NamedTuple):
     replicas: Optional[int]
 
     @property
-    def deployment_version(self):
+    def deployment_version(self) -> DeploymentVersion:
         return DeploymentVersion(self.git_sha, self.image_version)
 
 
