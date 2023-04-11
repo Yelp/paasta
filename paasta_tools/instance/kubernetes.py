@@ -106,7 +106,7 @@ def set_cr_desired_state(
     instance: str,
     instance_type: str,
     desired_state: str,
-):
+) -> None:
     try:
         kubernetes_tools.set_cr_desired_state(
             kube_client=kube_client,
@@ -181,7 +181,7 @@ async def pod_info(
     pod: V1Pod,
     client: kubernetes_tools.KubeClient,
     num_tail_lines: int,
-):
+) -> Dict[str, Any]:
     container_statuses = pod.status.container_statuses or []
     try:
         pod_event_messages = await get_pod_event_messages(client, pod)
@@ -461,7 +461,7 @@ def bounce_status(
     service: str,
     instance: str,
     settings: Any,
-):
+) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
     job_config = kubernetes_tools.load_kubernetes_service_config(
         service=service,
@@ -554,10 +554,10 @@ async def get_pods_for_service_instance_multiple_namespaces(
 
 
 def find_all_relevant_namespaces(
-    service,
-    instance,
-    kube_client,
-    job_config,
+    service: str,
+    instance: str,
+    kube_client: kubernetes_tools.KubeClient,
+    job_config: LongRunningServiceConfig,
 ) -> Set[str]:
     return {job_config.get_kubernetes_namespace()} | {
         deployment.namespace
@@ -577,7 +577,7 @@ async def kubernetes_status_v2(
     include_envoy: bool,
     instance_type: str,
     settings: Any,
-):
+) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
     config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
     job_config = config_loader(
@@ -938,7 +938,7 @@ async def get_pod_containers(
 
                     last_timestamp = this_state["started_at"].timestamp()
 
-        async def get_tail_lines():
+        async def get_tail_lines() -> MutableMapping[str, Any]:
             try:
                 return await get_tail_lines_for_kubernetes_container(
                     client,
@@ -951,8 +951,7 @@ async def get_pod_containers(
                 return {"error_message": f"Could not fetch logs for {cs.name}"}
 
         # get previous log lines as well if this container restarted recently
-        async def get_previous_tail_lines():
-            nonlocal previous_tail_lines
+        async def get_previous_tail_lines() -> MutableMapping[str, Any]:
             if state == "running" and kubernetes_tools.recent_container_restart(
                 cs.restart_count, last_state, last_timestamp
             ):
