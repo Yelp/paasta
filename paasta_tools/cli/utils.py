@@ -886,18 +886,12 @@ def select_k8s_secret_namespace(namespaces: Set[str]) -> Optional[str]:
     if namespaces_count == 1:
         return namespaces.pop()
 
-    prioritized_k8s_namespaces = [
-        "paasta",
-        "tron",
-        "paasta-flinks",
-        "paasta-cassandraclusters",
-        "paasta-kafkaclusters",
-        "paasta-nrtsearchservices",
-    ]
-
-    for k8s_namespace in prioritized_k8s_namespaces:
-        if k8s_namespace in namespaces:
-            return k8s_namespace
+    # prioritise paasta, tron namespaces when found
+    for namespace in namespaces:
+        if namespace.startswith("paasta"):
+            return namespace
+        if namespace == "tron":
+            return namespace
 
     # only experimental k8s namespaces
     return namespaces.pop()

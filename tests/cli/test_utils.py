@@ -557,8 +557,12 @@ def test_select_k8s_secret_namespace():
     namespaces = {"random_experiment", "paasta"}
     assert select_k8s_secret_namespace(namespaces) == "paasta"
 
-    namespaces = {"tron", "paasta-flinks", "paasta-nrtsearchservices"}
-    assert select_k8s_secret_namespace(namespaces) == "tron"
+    namespaces = {"paasta-flinks", "paastasvc-something"}
+    assert select_k8s_secret_namespace(namespaces).startswith("paasta")
+
+    namespaces = {"paasta-flinks", "tron", "something"}
+    namespace = select_k8s_secret_namespace(namespaces)
+    assert namespace == "paasta-flinks" or namespace == "tron"
 
     namespaces = {"a", "b"}
     assert select_k8s_secret_namespace(namespaces) in {"a", "b"}
