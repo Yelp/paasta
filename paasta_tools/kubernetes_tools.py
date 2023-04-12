@@ -2348,7 +2348,7 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
 
 def list_deployments_in_all_namespaces(
     kube_client: KubeClient, label_selector: str
-) -> Sequence[KubeDeployment]:
+) -> List[KubeDeployment]:
     deployments = kube_client.deployments.list_deployment_for_all_namespaces(
         label_selector=label_selector
     )
@@ -2762,6 +2762,17 @@ def list_matching_deployments(
         kube_client,
         f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
+    )
+
+
+def list_matching_deployments_in_all_namespaces(
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+) -> List[KubeDeployment]:
+    return list_deployments_in_all_namespaces(
+        kube_client,
+        f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
     )
 
 
