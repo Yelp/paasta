@@ -1,3 +1,10 @@
+paasta-tools (0.168.0) xenial; urgency=medium
+
+  * 0.168.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/status_multiple_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 12 Apr 2023 15:11:33 -0700
+
 paasta-tools (0.167.0) xenial; urgency=medium
 
   * 0.167.0 tagged with 'make release'
