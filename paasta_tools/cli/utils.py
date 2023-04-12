@@ -847,7 +847,7 @@ def get_instance_config(
     )
 
 
-def get_namespace_for_secret(
+def get_namespaces_for_secret(
     service: str, cluster: str, secret_name: str, soa_dir: str = DEFAULT_SOA_DIR
 ) -> Set[str]:
     secret_to_k8s_namespace = set()
@@ -875,6 +875,32 @@ def get_namespace_for_secret(
                     )
 
     return secret_to_k8s_namespace
+
+
+def select_k8s_secret_namespace(namespaces: Set[str]) -> Optional[str]:
+    namespaces_count = len(namespaces)
+
+    if not namespaces_count:
+        return None
+
+    if namespaces_count == 1:
+        return namespaces.pop()
+
+    prioritized_k8s_namespaces = [
+        "paasta",
+        "tron",
+        "paasta-flinks",
+        "paasta-cassandraclusters",
+        "paasta-kafkaclusters",
+        "paasta-nrtsearchservices",
+    ]
+
+    for k8s_namespace in prioritized_k8s_namespaces:
+        if k8s_namespace in namespaces:
+            return k8s_namespace
+
+    # only experimental k8s namespaces
+    return namespaces.pop()
 
 
 def extract_tags(paasta_tag: str) -> Mapping[str, str]:
