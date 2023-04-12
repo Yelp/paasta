@@ -1603,6 +1603,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             kube_client=KubeClient(),
             secret=self.get_crypto_secret_name(),
             service=self.get_sanitised_service_name(),
+            namespace=self.get_namespace(),
         )
 
     def get_sanitised_service_name(self) -> str:
