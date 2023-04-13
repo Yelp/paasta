@@ -20,8 +20,10 @@ import sys
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
+from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
@@ -401,7 +403,20 @@ def paasta_secret(args):
             sys.exit(1)
 
         kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=clusters[0])
-        print(get_kubernetes_secret(kube_client, service, args.secret_name))
+
+        secret_to_k8s_mapping = get_namespaces_for_secret(
+            service, clusters[0], args.secret_name, args.yelpsoa_config_root
+        )
+
+        namespace = select_k8s_secret_namespace(secret_to_k8s_mapping)
+
+        if namespace:
+            print(
+                get_kubernetes_secret(kube_client, service, args.secret_name, namespace)
+            )
+        # fallback to default in case mapping fails
+        else:
+            print(get_kubernetes_secret(kube_client, service, args.secret_name))
         return
 
     if args.action in ["add", "update"]:
