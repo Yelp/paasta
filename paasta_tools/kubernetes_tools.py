@@ -2432,7 +2432,6 @@ def list_deployments_in_managed_namespaces(
                 f"Error fetching deployments from namespace {namespace}: "
                 f"status: {exc.status}, reason: {exc.reason}."
             )
-            pass
     return ret
 
 
