@@ -102,8 +102,22 @@ def capture_oom_events_from_stdin():
         """,
         re.VERBOSE,
     )
-    process_name = ""
+    oom_regex_kubernetes_systemd_cgroup = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/kubepods\.slice/[^,]+docker-(\w{12})\w+\.scope,.*$ # loosely match systemd slice and containerid
+        """,
+        re.VERBOSE,
+    )
+    event_detail_regexes = [
+        oom_regex_docker,
+        oom_regex_kubernetes,
+        oom_regex_kubernetes_structured,
+        oom_regex_kubernetes_systemd_cgroup,
+    ]
 
+    process_name = ""
     while True:
         try:
             syslog = sys.stdin.readline()
@@ -114,18 +128,12 @@ def capture_oom_events_from_stdin():
         r = process_name_regex.search(syslog)
         if r:
             process_name = r.group(1)
-        r = oom_regex_docker.search(syslog)
-        if r:
-            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
-            process_name = ""
-        r = oom_regex_kubernetes.search(syslog)
-        if r:
-            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
-            process_name = ""
-        r = oom_regex_kubernetes_structured.search(syslog)
-        if r:
-            yield (int(r.group(1)), r.group(2), r.group(3), process_name)
-            process_name = ""
+        for expression in event_detail_regexes:
+            r = expression.search(syslog)
+            if r:
+                yield (int(r.group(1)), r.group(2), r.group(3), process_name)
+                process_name = ""
+                break
 
 
 def get_container_env_as_dict(docker_inspect):
