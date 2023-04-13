@@ -152,6 +152,7 @@ def add_run_subparser(subparsers):
 
 def _add_and_update_args(parser: argparse.ArgumentParser):
     """common args for `add` and `update`."""
+    _add_vault_auth_args(parser)
     parser.add_argument(
         "-p",
         "--plain-text",
@@ -423,9 +424,14 @@ def paasta_secret(args):
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
+        secret_provider_extra_kwargs = {
+            "vault_auth_method": args.vault_auth_method,
+            "vault_token_file": args.vault_token_file,
+        }
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
+            secret_provider_extra_kwargs=secret_provider_extra_kwargs,
         )
         secret_provider.write_secret(
             action=args.action,
