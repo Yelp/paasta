@@ -561,7 +561,7 @@ def find_all_relevant_namespaces(
 ) -> Set[str]:
     return {job_config.get_kubernetes_namespace()} | {
         deployment.namespace
-        for deployment in kubernetes_tools.list_deployments_in_all_namespaces(
+        for deployment in kubernetes_tools.list_deployments_in_managed_namespaces(
             kube_client=kube_client,
             label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         )
