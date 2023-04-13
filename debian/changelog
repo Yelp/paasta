@@ -1,3 +1,10 @@
+paasta-tools (0.170.0) xenial; urgency=medium
+
+  * 0.170.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/dont_fetch_all_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 13 Apr 2023 10:46:49 -0700
+
 paasta-tools (0.169.0) xenial; urgency=medium
 
   * 0.169.0 tagged with 'make release'
