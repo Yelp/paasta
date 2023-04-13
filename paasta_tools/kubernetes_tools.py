@@ -2417,15 +2417,23 @@ def list_deployments_in_managed_namespaces(
     kube_client: KubeClient,
     label_selector: str,
 ) -> List[KubeDeployment]:
-    return [
-        d
-        for namespace in get_all_managed_namespaces(kube_client)
-        for d in list_deployments(
-            kube_client=kube_client,
-            label_selector=label_selector,
-            namespace=namespace,
-        )
-    ]
+    ret: List[KubeDeployment] = []
+    for namespace in get_all_managed_namespaces(kube_client):
+        try:
+            ret.extend(
+                list_deployments(
+                    kube_client=kube_client,
+                    label_selector=label_selector,
+                    namespace=namespace,
+                )
+            )
+        except ApiException as exc:
+            log.error(
+                f"Error fetching deployments from namespace {namespace}: "
+                f"status: {exc.status}, reason: {exc.reason}."
+            )
+            pass
+    return ret
 
 
 def recent_container_restart(
