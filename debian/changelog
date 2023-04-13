@@ -1,3 +1,12 @@
+paasta-tools (0.168.1) xenial; urgency=medium
+
+  * 0.168.1 tagged with 'make release'
+    Commit: Merge pull request #3583 from Yelp/u/iiliescu/SECNESS-1452
+    Make paasta secrets for teams decrypt available for multiple
+    instance types and namespaces
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Thu, 13 Apr 2023 03:54:02 -0700
+
 paasta-tools (0.168.0) xenial; urgency=medium
 
   * 0.168.0 tagged with 'make release'
