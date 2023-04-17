@@ -3595,7 +3595,7 @@ def test_create_kubernetes_secret_signature(namespace, secret, secret_data):
     create_secret_signature(
         kube_client=mock_client,
         signature_name=get_paasta_secret_signature_name(namespace, "universe", secret),
-        service="universe",
+        service_name="universe",
         secret_signature="ab1234",
         namespace=namespace,
     )
@@ -3619,7 +3619,7 @@ def test_update_kubernetes_secret_signature(namespace, secret, secret_signature)
     mock_client = mock.Mock()
     update_secret_signature(
         kube_client=mock_client,
-        service="universe",
+        service_name="universe",
         signature_name=get_paasta_secret_signature_name(
             namespace, "universe", secret_signature
         ),

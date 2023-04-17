@@ -3324,8 +3324,8 @@ def create_secret(
             metadata=V1ObjectMeta(
                 name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": sanitise_kubernetes_name(service_name),
-                    "paasta.yelp.com/service": sanitise_kubernetes_name(service_name),
+                    "yelp.com/paasta_service": service_name,
+                    "paasta.yelp.com/service": service_name,
                 },
             ),
             data=secret_data,
@@ -3347,8 +3347,8 @@ def update_secret(
             metadata=V1ObjectMeta(
                 name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": sanitise_kubernetes_name(service_name),
-                    "paasta.yelp.com/service": sanitise_kubernetes_name(service_name),
+                    "yelp.com/paasta_service": service_name,
+                    "paasta.yelp.com/service": service_name,
                 },
             ),
             data=secret_data,
@@ -3379,7 +3379,7 @@ def get_secret_signature(
 
 def update_secret_signature(
     kube_client: KubeClient,
-    service: str,
+    service_name: str,
     signature_name: str,
     secret_signature: str,
     namespace: str = "paasta",
@@ -3391,8 +3391,8 @@ def update_secret_signature(
             metadata=V1ObjectMeta(
                 name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": sanitise_kubernetes_name(service),
-                    "paasta.yelp.com/service": sanitise_kubernetes_name(service),
+                    "yelp.com/paasta_service": service_name,
+                    "paasta.yelp.com/service": service_name,
                 },
             ),
             data={"signature": secret_signature},
@@ -3402,7 +3402,7 @@ def update_secret_signature(
 
 def create_secret_signature(
     kube_client: KubeClient,
-    service: str,
+    service_name: str,
     signature_name: str,
     secret_signature: str,
     namespace: str = "paasta",
@@ -3413,8 +3413,8 @@ def create_secret_signature(
             metadata=V1ObjectMeta(
                 name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": sanitise_kubernetes_name(service),
-                    "paasta.yelp.com/service": sanitise_kubernetes_name(service),
+                    "yelp.com/paasta_service": service_name,
+                    "paasta.yelp.com/service": service_name,
                 },
             ),
             data={"signature": secret_signature},

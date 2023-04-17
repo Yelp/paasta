@@ -447,7 +447,7 @@ def update_k8s_secret(
         try:
             create_secret(
                 kube_client=kube_client,
-                service=service,
+                service_name=service,
                 secret_name=secret_name,
                 secret_data=secret_data,
                 namespace=namespace,
@@ -461,14 +461,14 @@ def update_k8s_secret(
                     kube_client=kube_client,
                     secret_name=secret_name,
                     secret_data=secret_data,
-                    service=service,
+                    service_name=service,
                     namespace=namespace,
                 )
             else:
                 raise
         create_secret_signature(
             kube_client=kube_client,
-            service=service,
+            service_name=service,
             signature_name=signature_name,
             secret_signature=secret_signature,
             namespace=namespace,
@@ -481,12 +481,12 @@ def update_k8s_secret(
             kube_client=kube_client,
             secret_name=secret_name,
             secret_data=secret_data,
-            service=service,
+            service_name=service,
             namespace=namespace,
         )
         update_secret_signature(
             kube_client=kube_client,
-            service=service,
+            service_name=service,
             signature_name=signature_name,
             secret_signature=secret_signature,
             namespace=namespace,
