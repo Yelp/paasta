@@ -226,9 +226,9 @@ def test_sync_secrets_signatures_match(paasta_secrets_patches, namespace):
         get_secret_signature_from_data=mock.Mock(return_value="123abc"),
         decrypt_secret_raw=mock.Mock(return_value=b""),
     )
-    mock_scandir.return_value.__enter__.return_value = [
-        mock.Mock(path="some_file.json")
-    ]
+    mock_file = mock.Mock(path="./some_file.json")
+    mock_file.name = "some_file.json"  # have to set separately because of Mock argument
+    mock_scandir.return_value.__enter__.return_value = [mock_file]
 
     mock_get_kubernetes_secret_signature.return_value = "123abc"
     assert sync_secrets(
@@ -242,7 +242,7 @@ def test_sync_secrets_signatures_match(paasta_secrets_patches, namespace):
         vault_token_file="./vault-token",
     )
     assert mock_get_kubernetes_secret_signature.called
-    _, kwargs = mock_get_kubernetes_secret_signature.call_args_list[-1]
+    _, kwargs = mock_get_kubernetes_secret_signature.call_args
     assert kwargs.get("namespace") == namespace
     assert not mock_create_secret.called
     assert not mock_update_secret.called
@@ -266,9 +266,9 @@ def test_sync_secrets_signature_changed(paasta_secrets_patches, namespace):
         decrypt_secret_raw=mock.Mock(return_value=b""),
     )
 
-    mock_scandir.return_value.__enter__.return_value = [
-        mock.Mock(path="some_file.json")
-    ]
+    mock_file = mock.Mock(path="./some_file.json")
+    mock_file.name = "some_file.json"  # have to set separately because of Mock argument
+    mock_scandir.return_value.__enter__.return_value = [mock_file]
 
     mock_get_kubernetes_secret_signature.return_value = "123def"
     assert sync_secrets(
@@ -309,9 +309,9 @@ def test_sync_secrets_not_exist(paasta_secrets_patches, namespace):
         decrypt_secret_raw=mock.Mock(return_value=b""),
     )
 
-    mock_scandir.return_value.__enter__.return_value = [
-        mock.Mock(path="some_file.json")
-    ]
+    mock_file = mock.Mock(path="./some_file.json")
+    mock_file.name = "some_file.json"  # have to set separately because of Mock argument
+    mock_scandir.return_value.__enter__.return_value = [mock_file]
 
     mock_get_kubernetes_secret_signature.return_value = None
 
@@ -353,9 +353,9 @@ def test_sync_secrets_exists_but_no_signature(paasta_secrets_patches, namespace)
         decrypt_secret_raw=mock.Mock(return_value=b""),
     )
 
-    mock_scandir.return_value.__enter__.return_value = [
-        mock.Mock(path="some_file.json")
-    ]
+    mock_file = mock.Mock(path="./some_file.json")
+    mock_file.name = "some_file.json"  # have to set separately because of Mock argument
+    mock_scandir.return_value.__enter__.return_value = [mock_file]
 
     mock_get_kubernetes_secret_signature.return_value = None
 
@@ -394,9 +394,9 @@ def test_sync_secrets_secret_api_exception(paasta_secrets_patches, namespace):
         decrypt_secret_raw=mock.Mock(return_value=b""),
     )
 
-    mock_scandir.return_value.__enter__.return_value = [
-        mock.Mock(path="some_file.json")
-    ]
+    mock_file = mock.Mock(path="./some_file.json")
+    mock_file.name = "some_file.json"  # have to set separately because of Mock argument
+    mock_scandir.return_value.__enter__.return_value = [mock_file]
 
     mock_get_kubernetes_secret_signature.return_value = None
 

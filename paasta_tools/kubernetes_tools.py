@@ -1581,28 +1581,30 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return volume_mounts
 
-    def _get_secret_name(self, name: str) -> str:
-        return limit_size_with_hash(
-            f"{self.get_namespace()}-{name}-{self.get_sanitised_deployment_name()}"
+    def get_boto_secret_name(self) -> str:
+        return _get_secret_name(
+            self.get_namespace(), "boto-key", self.get_service(), self.get_instance()
         )
 
-    def get_boto_secret_name(self) -> str:
-        return self._get_secret_name("boto-key")
-
     def get_crypto_secret_name(self) -> str:
-        return self._get_secret_name("crypto-key")
+        return _get_secret_name(
+            self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
+        )
 
     def get_boto_secret_signature_name(self) -> str:
-        return self.get_boto_secret_name() + "-signature"
+        return _get_secret_signature_name(
+            self.get_namespace(), "boto-key", self.get_service(), self.get_instance()
+        )
 
     def get_crypto_secret_signature_name(self) -> str:
-        return self.get_crypto_secret_name() + "-signature"
+        return _get_secret_signature_name(
+            self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
+        )
 
     def get_boto_secret_hash(self) -> Optional[str]:
         return get_secret_signature(
             kube_client=KubeClient(),
             signature_name=self.get_boto_secret_signature_name(),
-            service=self.get_sanitised_service_name(),
             namespace=self.get_namespace(),
         )
 
@@ -1610,7 +1612,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return get_secret_signature(
             kube_client=KubeClient(),
             signature_name=self.get_crypto_secret_signature_name(),
-            service=self.get_sanitised_service_name(),
             namespace=self.get_namespace(),
         )
 
@@ -3680,19 +3681,59 @@ def update_crds(
     return success
 
 
-def get_paasta_secret_name(namespace: str, service_name: str, secret_name: str) -> str:
+def _get_secret_name(
+    namespace: str, secret_identifier: str, service_name: str, key_name: str
+) -> str:
     return limit_size_with_hash(
-        f"{namespace}-secret-{sanitise_kubernetes_name(service_name)}-{sanitise_kubernetes_name(secret_name)}",
+        "-".join(
+            [
+                namespace,
+                secret_identifier,
+                sanitise_kubernetes_name(service_name),
+                sanitise_kubernetes_name(key_name),
+            ]
+        ),
         limit=253,
     )
 
 
-def get_paasta_secret_signature_name(
-    namespace: str, service_name: str, secret_name: str
+def _get_secret_signature_name(
+    namespace: str, secret_identifier: str, service_name: str, key_name: str
 ) -> str:
+    """
+    Kubernetes secret names have character limit of 253 characters
+    """
     return limit_size_with_hash(
-        f"{namespace}-secret-{sanitise_kubernetes_name(service_name)}-{sanitise_kubernetes_name(secret_name)}-signature",
+        "-".join(
+            [
+                namespace,
+                secret_identifier,
+                sanitise_kubernetes_name(service_name),
+                sanitise_kubernetes_name(key_name),
+                "signature",
+            ]
+        ),
         limit=253,
+    )
+
+
+def get_paasta_secret_name(namespace: str, service_name: str, key_name: str) -> str:
+    return _get_secret_name(
+        namespace=namespace,
+        secret_identifier="secret",
+        service_name=service_name,
+        key_name=key_name,
+    )
+
+
+def get_paasta_secret_signature_name(
+    namespace: str, service_name: str, key_name: str
+) -> str:
+    return _get_secret_signature_name(
+        namespace=namespace,
+        secret_identifier="secret",
+        service_name=service_name,
+        key_name=key_name,
     )
 
 
