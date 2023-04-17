@@ -25,7 +25,8 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.secret_providers import SecretProvider
@@ -408,7 +409,11 @@ def paasta_secret(args):
             sys.exit(1)
 
         kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=clusters[0])
-        print(get_kubernetes_secret(kube_client, service, args.secret_name))
+        print(
+            get_secret(
+                kube_client, get_paasta_secret_name("paasta", service, args.secret_name)
+            )
+        )
         return
 
     if args.action in ["add", "update"]:

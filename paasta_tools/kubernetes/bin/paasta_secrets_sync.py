@@ -31,15 +31,17 @@ from typing import Set
 from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
 
-from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_secret
-from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import create_secret_signature
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
+from paasta_tools.kubernetes_tools import get_secret_signature
 from paasta_tools.kubernetes_tools import get_vault_key_secret_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
+from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -284,10 +286,14 @@ def sync_secrets(
                     secret_signature = secret_provider.get_secret_signature_from_data(
                         json.load(secret_file)
                     )
-
                 update_k8s_secret(
                     service=service,
-                    secret_name=f"{namespace}-secret-{service}-{sanitise_kubernetes_name(secret)}",
+                    signature_name=get_paasta_secret_signature_name(
+                        namespace, service, sanitise_kubernetes_name(secret)
+                    ),
+                    secret_name=get_paasta_secret_name(
+                        namespace, service, sanitise_kubernetes_name(secret)
+                    ),
                     secret_data={
                         secret: base64.b64encode(
                             secret_provider.decrypt_secret_raw(secret)
@@ -356,6 +362,7 @@ def sync_crypto_secrets(
         time.sleep(0.3)
         update_k8s_secret(
             service=service,
+            signature_name=instance_config.get_crypto_secret_signature_name(),
             # the secret name here must match the secret name given in the secret volume config,
             # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
             secret_name=instance_config.get_crypto_secret_name(),
@@ -404,6 +411,7 @@ def sync_boto_secrets(
         time.sleep(0.3)
         update_k8s_secret(
             service=service,
+            signature_name=instance_config.get_boto_secret_signature_name(),
             secret_name=instance_config.get_boto_secret_name(),
             secret_data=secret_data,
             secret_signature=_get_dict_signature(secret_data),
@@ -422,17 +430,19 @@ def _get_dict_signature(data: Dict[str, str]) -> str:
 def update_k8s_secret(
     service: str,
     secret_name: str,
+    signature_name: str,
     secret_data: Dict[str, str],
     secret_signature: str,
     kube_client: KubeClient,
     namespace: str,
 ) -> None:
-    kubernetes_signature = get_kubernetes_secret_signature(
+    kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
-        secret=secret_name,
+        signature_name=signature_name,
         service=service,
         namespace=namespace,
     )
+
     if not kubernetes_signature:
         log.info(f"{secret_name} for {service} in {namespace} not found, creating")
         try:
@@ -457,10 +467,10 @@ def update_k8s_secret(
                 )
             else:
                 raise
-        create_kubernetes_secret_signature(
+        create_secret_signature(
             kube_client=kube_client,
-            secret=secret_name,
             service=service,
+            signature_name=signature_name,
             secret_signature=secret_signature,
             namespace=namespace,
         )
@@ -475,10 +485,10 @@ def update_k8s_secret(
             service=service,
             namespace=namespace,
         )
-        update_kubernetes_secret_signature(
+        update_secret_signature(
             kube_client=kube_client,
-            secret=secret_name,
             service=service,
+            signature_name=signature_name,
             secret_signature=secret_signature,
             namespace=namespace,
         )
