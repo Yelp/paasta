@@ -439,7 +439,6 @@ def update_k8s_secret(
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
         signature_name=signature_name,
-        service=service,
         namespace=namespace,
     )
 
