@@ -914,7 +914,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_secret_volume_name(self, secret_volume: SecretVolume) -> str:
         return self.get_sanitised_volume_name(
-            "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=253
+            "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=63
         )
 
     def get_boto_secret_volume_name(self, service_name: str) -> str:
