@@ -397,12 +397,15 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--assume-aws-role",
-        help="Takes an ARN and will attempt to create a session",
+        help="Takes an AWS IAM role ARN and attempts to create a session",
     )
 
     aws_group.add_argument(
         "--aws-role-duration",
-        help="Duration in seconds for the role if --assume-aws-role provided",
+        help=(
+            "Duration in seconds for the role if --assume-aws-role provided. "
+            "The maximum is 43200, but by default, roles may only allow 3600."
+        ),
         type=int,
         default=43200,
     )
