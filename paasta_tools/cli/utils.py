@@ -43,11 +43,13 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monkrelaycluster_tools import load_monkrelaycluster_instance_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log
 from paasta_tools.utils import _log_audit
@@ -56,6 +58,8 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
+from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -841,6 +845,56 @@ def get_instance_config(
         load_deployments=load_deployments,
         soa_dir=soa_dir,
     )
+
+
+def get_namespaces_for_secret(
+    service: str, cluster: str, secret_name: str, soa_dir: str = DEFAULT_SOA_DIR
+) -> Set[str]:
+    secret_to_k8s_namespace = set()
+
+    for instance_type in INSTANCE_TYPES:
+        if instance_type == "kubernetes":
+            config_loader = PaastaServiceConfigLoader(service, soa_dir)
+            for service_instance_config in config_loader.instance_configs(
+                cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+            ):
+                secret_to_k8s_namespace.add(service_instance_config.get_namespace())
+        else:
+            instances = get_service_instance_list(
+                service=service,
+                instance_type=instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+
+            for serv, instance in instances:
+                config = get_instance_config(serv, instance, cluster, soa_dir)
+                if secret_name in config.get_env():
+                    secret_to_k8s_namespace.add(
+                        INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                    )
+
+    return secret_to_k8s_namespace
+
+
+def select_k8s_secret_namespace(namespaces: Set[str]) -> Optional[str]:
+    namespaces_count = len(namespaces)
+
+    if not namespaces_count:
+        return None
+
+    if namespaces_count == 1:
+        return namespaces.pop()
+
+    # prioritise paasta, tron namespaces when found
+    for namespace in namespaces:
+        if namespace.startswith("paasta"):
+            return namespace
+        if namespace == "tron":
+            return namespace
+
+    # only experimental k8s namespaces
+    return namespaces.pop()
 
 
 def extract_tags(paasta_tag: str) -> Mapping[str, str]:

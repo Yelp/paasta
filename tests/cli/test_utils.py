@@ -24,6 +24,7 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
+from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import SystemPaastaConfig
@@ -544,3 +545,24 @@ def test_verify_instances_with_suffixes(mock_list_all_instances_for_service):
 )
 def test_extract_tags(tag, expected_result):
     assert extract_tags(tag) == expected_result
+
+
+def test_select_k8s_secret_namespace():
+    namespaces = {}
+    assert not select_k8s_secret_namespace(namespaces)
+
+    namespaces = {"random_experiment"}
+    assert select_k8s_secret_namespace(namespaces) == "random_experiment"
+
+    namespaces = {"random_experiment", "paasta"}
+    assert select_k8s_secret_namespace(namespaces) == "paasta"
+
+    namespaces = {"paasta-flinks", "paastasvc-something"}
+    assert select_k8s_secret_namespace(namespaces).startswith("paasta")
+
+    namespaces = {"paasta-flinks", "tron", "something"}
+    namespace = select_k8s_secret_namespace(namespaces)
+    assert namespace == "paasta-flinks" or namespace == "tron"
+
+    namespaces = {"a", "b"}
+    assert select_k8s_secret_namespace(namespaces) in {"a", "b"}

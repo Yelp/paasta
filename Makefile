@@ -29,7 +29,7 @@ else
 	export DOCKER_REGISTRY ?= ""
 endif
 
-.PHONY: all docs test itest k8s_itests
+.PHONY: all docs test itest k8s_itests quick-test
 
 dev: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -49,6 +49,9 @@ test-yelpy: .paasta/bin/activate
 
 test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
+
+quick-test: .tox/py37-linux
+	TZ=UTC .tox/py37-linux/bin/py.test --last-failed -x -- tests
 
 .tox/py37-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
