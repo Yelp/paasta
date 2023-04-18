@@ -3402,7 +3402,7 @@ def get_secret_signature(
     kube_client: KubeClient,
     signature_name: str,
     namespace: str,
-) -> None:
+) -> Optional[str]:
     try:
         signature = kube_client.core.read_namespaced_config_map(
             name=signature_name,
