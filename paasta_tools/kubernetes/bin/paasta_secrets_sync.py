@@ -286,7 +286,7 @@ def sync_secrets(
                     secret_signature = secret_provider.get_secret_signature_from_data(
                         json.load(secret_file)
                     )
-                update_k8s_secret(
+                create_or_update_k8s_secret(
                     service=service,
                     signature_name=get_paasta_secret_signature_name(
                         namespace, service, sanitise_kubernetes_name(secret)
@@ -360,7 +360,7 @@ def sync_crypto_secrets(
 
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
-        update_k8s_secret(
+        create_or_update_k8s_secret(
             service=service,
             signature_name=instance_config.get_crypto_secret_signature_name(),
             # the secret name here must match the secret name given in the secret volume config,
@@ -409,7 +409,7 @@ def sync_boto_secrets(
 
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
-        update_k8s_secret(
+        create_or_update_k8s_secret(
             service=service,
             signature_name=instance_config.get_boto_secret_signature_name(),
             secret_name=instance_config.get_boto_secret_name(),
@@ -427,7 +427,7 @@ def _get_dict_signature(data: Dict[str, str]) -> str:
     ).hexdigest()
 
 
-def update_k8s_secret(
+def create_or_update_k8s_secret(
     service: str,
     secret_name: str,
     signature_name: str,
