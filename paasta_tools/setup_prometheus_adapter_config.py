@@ -232,10 +232,18 @@ def create_instance_uwsgi_scaling_rule(
     offset_multiplier = load_system_paasta_config().get_uwsgi_offset_multiplier()
 
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    replica_filter_terms = (
-        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
-    )
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
         sum(
@@ -323,10 +331,18 @@ def create_instance_piscina_scaling_rule(
         DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    replica_filter_terms = (
-        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
-    )
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
         sum(
