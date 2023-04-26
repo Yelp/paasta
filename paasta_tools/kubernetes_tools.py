@@ -2233,7 +2233,6 @@ def get_kubernetes_secret_hashes(
         for value in to_get_hash:
             hashes[value] = get_secret_signature(
                 kube_client=kube_client,
-                # value is in form of: "SECRET(<secret-name>)"
                 signature_name=get_paasta_secret_signature_name(
                     namespace,
                     SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
