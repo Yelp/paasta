@@ -296,6 +296,7 @@ def sync_secrets(
                     ),
                     secret_data={
                         secret: base64.b64encode(
+                            # If signatures does not match, it'll sys.exit(1)
                             secret_provider.decrypt_secret_raw(secret)
                         ).decode("utf-8")
                     },

@@ -3359,14 +3359,18 @@ def create_secret(
     secret_data: Dict[str, str],
     namespace: str,
 ) -> None:
+    """
+    :param secret_name: Use _get_secret_name() to generate a secret name
+    :param service_name: Labels have 63 character limit
+    """
     kube_client.core.create_namespaced_secret(
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
                 name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service_name,
-                    "paasta.yelp.com/service": service_name,
+                    "yelp.com/paasta_service": sanitise_label_name(service_name),
+                    "paasta.yelp.com/service": sanitise_label_name(service_name),
                 },
             ),
             data=secret_data,
@@ -3381,6 +3385,9 @@ def update_secret(
     secret_data: Dict[str, str],
     namespace: str,
 ) -> None:
+    """
+    Expect secret_name to exist, e.g. kubectl get secret
+    """
     kube_client.core.replace_namespaced_secret(
         name=secret_name,
         namespace=namespace,
@@ -3388,8 +3395,8 @@ def update_secret(
             metadata=V1ObjectMeta(
                 name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service_name,
-                    "paasta.yelp.com/service": service_name,
+                    "yelp.com/paasta_service": sanitise_label_name(service_name),
+                    "paasta.yelp.com/service": sanitise_label_name(service_name),
                 },
             ),
             data=secret_data,
@@ -3432,8 +3439,8 @@ def update_secret_signature(
             metadata=V1ObjectMeta(
                 name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": service_name,
-                    "paasta.yelp.com/service": service_name,
+                    "yelp.com/paasta_service": sanitise_label_name(service_name),
+                    "paasta.yelp.com/service": sanitise_label_name(service_name),
                 },
             ),
             data={"signature": secret_signature},
@@ -3448,14 +3455,17 @@ def create_secret_signature(
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
+    """
+    :param signature_name: Use _get_signature_name() to generate secret_name
+    """
     kube_client.core.create_namespaced_config_map(
         namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
                 name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": service_name,
-                    "paasta.yelp.com/service": service_name,
+                    "yelp.com/paasta_service": sanitise_label_name(service_name),
+                    "paasta.yelp.com/service": sanitise_label_name(service_name),
                 },
             ),
             data={"signature": secret_signature},
@@ -3719,6 +3729,16 @@ def update_crds(
             success = False
 
     return success
+
+
+def sanitise_label_name(service_name: str):
+    """
+    :param service_name: service_name is sanitized and limited to 63 characters
+    """
+    return limit_size_with_hash(
+        sanitise_kubernetes_name(service_name),
+        limit=63,
+    )
 
 
 def _get_secret_name(
