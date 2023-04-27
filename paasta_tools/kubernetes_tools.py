@@ -3756,13 +3756,13 @@ def update_crds(
     return success
 
 
-def sanitise_label_value(service_name: str) -> str:
+def sanitise_label_value(value: str) -> str:
     """
-    :param service_name: service_name is sanitized and limited to 63 characters due to kubernetes restriction
+    :param value: value is sanitized and limited to 63 characters due to kubernetes restriction
     :return: Sanitised at most 63-character label value
     """
     return limit_size_with_hash(
-        sanitise_kubernetes_name(service_name),
+        sanitise_kubernetes_name(value),
         limit=63,
     )
 
