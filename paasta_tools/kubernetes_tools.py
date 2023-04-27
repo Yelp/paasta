@@ -3360,8 +3360,12 @@ def create_secret(
     namespace: str,
 ) -> None:
     """
-    :param secret_name: Use _get_secret_name() to generate a secret name
-    :param service_name: Labels have 63 character limit
+    See restrictions on kubernetes secret at https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Secret.md
+    :param secret_name: Expect properly formatted kubernetes secret name, see _get_secret_name()
+    :param secret_data: Expect a mapping of string-to-string where values are base64-encoded
+    :param service_name: Expect unsanitised service name, since it's used as a label it will have 63 character limit
+    :param namespace: Unsanitized namespace of a service that will use the secret
+    :raises ApiException:
     """
     kube_client.core.create_namespaced_secret(
         namespace=namespace,
@@ -3387,6 +3391,10 @@ def update_secret(
 ) -> None:
     """
     Expect secret_name to exist, e.g. kubectl get secret
+    :param service_name: Expect unsanitised service name
+    :param secret_data: Expect a mapping of string-to-string where values are base64-encoded
+    :param namespace: Unsanitized namespace of a service that will use the secret
+    :raises ApiException:
     """
     kube_client.core.replace_namespaced_secret(
         name=secret_name,
@@ -3409,6 +3417,11 @@ def get_secret_signature(
     signature_name: str,
     namespace: str,
 ) -> Optional[str]:
+    """
+    :param signature_name: Expect the signature to exist in kubernetes configmap
+    :return: Kubernetes configmap as a signature
+    :raises ApiException:
+    """
     try:
         signature = kube_client.core.read_namespaced_config_map(
             name=signature_name,
@@ -3432,6 +3445,12 @@ def update_secret_signature(
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
+    """
+    :param service_name: Expect unsanitised service_name
+    :param signature_name: Expect signature_name to exist in kubernetes configmap
+    :param secret_signature: Signature to replace with
+    :raises ApiException:
+    """
     kube_client.core.replace_namespaced_config_map(
         name=signature_name,
         namespace=namespace,
@@ -3456,7 +3475,10 @@ def create_secret_signature(
     namespace: str = "paasta",
 ) -> None:
     """
-    :param signature_name: Use _get_signature_name() to generate secret_name
+    :param service_name: Expect unsanitised service_name
+    :param signature_name: Expected properly formatted signature, see _get_secret_signature_name()
+    :param secret_signature: Signature value
+    :param namespace: Unsanitized namespace of a service that will use the signature
     """
     kube_client.core.create_namespaced_config_map(
         namespace=namespace,
@@ -3476,6 +3498,9 @@ def create_secret_signature(
 def sanitise_kubernetes_name(
     service: str,
 ) -> str:
+    """
+    Sanitizes kubernetes name so that hyphen (-) can be used a delimeter
+    """
     name = service.replace("_", "--")
     if name.startswith("--"):
         name = name.replace("--", "underscore-", 1)
@@ -3733,7 +3758,8 @@ def update_crds(
 
 def sanitise_label_value(service_name: str) -> str:
     """
-    :param service_name: service_name is sanitized and limited to 63 characters
+    :param service_name: service_name is sanitized and limited to 63 characters due to kubernetes restriction
+    :return: Sanitised at most 63-character label value
     """
     return limit_size_with_hash(
         sanitise_kubernetes_name(service_name),
@@ -3744,6 +3770,18 @@ def sanitise_label_value(service_name: str) -> str:
 def _get_secret_name(
     namespace: str, secret_identifier: str, service_name: str, key_name: str
 ) -> str:
+    """
+    Use to generate kubernetes secret names,
+    secret names have limit of 253 characters due to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+    However, if you are storing secret name as a label value as well then it has lower limit of 63 characters.
+    Hyphen (-) is used as a delimeter between values.
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param secret_identifier: Identifies the type of secret
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised at most 253-character kubernetes secret name
+    """
     return limit_size_with_hash(
         "-".join(
             [
@@ -3761,7 +3799,11 @@ def _get_secret_signature_name(
     namespace: str, secret_identifier: str, service_name: str, key_name: str
 ) -> str:
     """
-    Kubernetes secret names have character limit of 253 characters
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param secret_identifier: Identifies the type of secret
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised signature name as kubernetes configmap name with at most 253 characters
     """
     return limit_size_with_hash(
         "-".join(
@@ -3778,6 +3820,14 @@ def _get_secret_signature_name(
 
 
 def get_paasta_secret_name(namespace: str, service_name: str, key_name: str) -> str:
+    """
+    Use whenever creating or references a PaaSTA secret
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised PaaSTA secret name
+    """
     return _get_secret_name(
         namespace=namespace,
         secret_identifier="secret",
@@ -3789,6 +3839,14 @@ def get_paasta_secret_name(namespace: str, service_name: str, key_name: str) -> 
 def get_paasta_secret_signature_name(
     namespace: str, service_name: str, key_name: str
 ) -> str:
+    """
+    Get PaaSTA signature name stored as kubernetes configmap
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised PaaSTA signature name
+    """
     return _get_secret_signature_name(
         namespace=namespace,
         secret_identifier="secret",
@@ -3804,6 +3862,12 @@ def get_secret(
     namespace: str = "paasta",
     decode: bool = True,
 ) -> Union[str, bytes]:
+    """
+    :param secret_name: Expect properly formatted kubernetes secret name and that it exists
+    :param key_name: Expect key_name to be a key in a data section
+    :raises ApiException:
+    :raises KeyError: if key_name does not exists in kubernetes secret's data section
+    """
     secret_data = kube_client.core.read_namespaced_secret(
         name=secret_name, namespace=namespace
     ).data[key_name]
