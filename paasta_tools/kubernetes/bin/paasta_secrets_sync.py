@@ -323,7 +323,7 @@ def sync_crypto_secrets(
     2. Create K8s secret from JSON blob containing all key versions.
     3. Create signatures as K8s configmap based on JSON blob hash.
 
-    So each instance count of a service instance get the same key, thereby reducing requests to Vault API
+    So each replica of a service instance gets the same key, thereby reducing requests to Vault API as we only talk to vault during secret syncing
     """
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
