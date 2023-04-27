@@ -33,7 +33,6 @@ debian/files
 debian/paasta-tools.substvars
 debian/paasta-tools.debhelper.log
 debian/paasta-tools.postinst.debhelper
-debian/paasta-tools.prerm.debhelper
 
 # Itest artifacts
 fake_service_uno/

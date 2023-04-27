@@ -16,9 +16,6 @@ import argparse
 import os
 import re
 import sys
-from typing import Any
-from typing import Dict
-from typing import Optional
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
@@ -27,11 +24,9 @@ from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import select_k8s_secret_namespace
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
-from paasta_tools.kubernetes_tools import get_secret
+from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.secret_providers import SecretProvider
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -77,6 +72,7 @@ def add_decrypt_subparser(subparsers):
         "decrypt", help="decrypts a single paasta secret"
     )
     _add_common_args(secret_parser_decrypt)
+    _add_vault_auth_args(secret_parser_decrypt)
 
     secret_parser_decrypt.add_argument(
         "-n",
@@ -119,6 +115,7 @@ def add_run_subparser(subparsers):
         conflict_handler="resolve",
     )
     _add_common_args(secret_parser_run, allow_shared=False)
+    _add_vault_auth_args(secret_parser_run)
 
     secret_parser_run.add_argument(
         "-i",
@@ -234,8 +231,6 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         default=DEFAULT_SOA_DIR,
     )
 
-    _add_vault_auth_args(parser)
-
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
     else:
@@ -348,11 +343,8 @@ def is_service_folder(soa_dir, service_name):
 
 
 def _get_secret_provider_for_service(
-    service_name: str,
-    cluster_names: Optional[str] = None,
-    soa_dir: Optional[str] = None,
-    secret_provider_extra_kwargs: Optional[Dict[str, Any]] = None,
-) -> SecretProvider:
+    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs=None
+):
     secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
 
@@ -420,21 +412,11 @@ def paasta_secret(args):
 
         if namespace:
             print(
-                get_secret(
-                    kube_client,
-                    get_paasta_secret_name(namespace, service, args.secret_name),
-                    namespace,
-                )
+                get_kubernetes_secret(kube_client, service, args.secret_name, namespace)
             )
         # fallback to default in case mapping fails
         else:
-            print(
-                get_secret(
-                    kube_client,
-                    get_paasta_secret_name("paasta", service, args.secret_name),
-                    "paasta",
-                )
-            )
+            print(get_kubernetes_secret(kube_client, service, args.secret_name))
         return
 
     if args.action in ["add", "update"]:
@@ -444,11 +426,6 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            soa_dir=args.yelpsoa_config_root,
-            secret_provider_extra_kwargs={
-                "vault_token_file": args.vault_token_file,
-                "vault_auth_method": args.vault_auth_method,
-            },
         )
         secret_provider.write_secret(
             action=args.action,
