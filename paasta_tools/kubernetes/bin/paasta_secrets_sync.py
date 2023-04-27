@@ -21,27 +21,25 @@ import os
 import sys
 import time
 from collections import defaultdict
-from functools import partial
-from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Set
 
 from kubernetes.client.rest import ApiException
-from typing_extensions import Literal
 
+from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import create_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import create_secret
-from paasta_tools.kubernetes_tools import create_secret_signature
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
-from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
-from paasta_tools.kubernetes_tools import get_secret_signature
-from paasta_tools.kubernetes_tools import get_vault_key_secret_name
+from paasta_tools.kubernetes_tools import get_kubernetes_app_name
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
+from paasta_tools.kubernetes_tools import update_plaintext_dict_secret
 from paasta_tools.kubernetes_tools import update_secret
-from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -94,13 +92,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-v", "--verbose", action="store_true", dest="verbose", default=False
     )
-    parser.add_argument(
-        "--secret-type",
-        choices=["all", "paasta-secret", "boto-key", "crypto-key"],
-        default="all",
-        type=str,
-        help="Define which type of secret to add/update. Default is 'all'",
-    )
     args = parser.parse_args()
     return args
 
@@ -136,7 +127,6 @@ def main() -> None:
         soa_dir=args.soa_dir,
         vault_token_file=args.vault_token_file,
         overwrite_namespace=args.namespace,
-        secret_type=args.secret_type,
     ) else sys.exit(1)
 
 
@@ -186,25 +176,20 @@ def get_services_to_k8s_namespaces(
 def sync_all_secrets(
     kube_client: KubeClient,
     cluster: str,
-    services_to_k8s_namespaces: Dict[str, Set],
+    services_to_k8s_namespaces: Mapping[str, Set],
     secret_provider_name: str,
-    vault_cluster_config: Dict[str, str],
+    vault_cluster_config: Mapping[str, str],
     soa_dir: str,
-    vault_token_file: str,
-    secret_type: Literal["all", "paasta-secret", "crypto-key", "boto-key"] = "all",
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
-
     for service, namespaces in services_to_k8s_namespaces.items():
-        sync_service_secrets: Dict[str, List[Callable]] = defaultdict(list)
-
         if overwrite_namespace:
             namespaces = {overwrite_namespace}
         for namespace in namespaces:
-            sync_service_secrets["paasta-secret"].append(
-                partial(
-                    sync_secrets,
+            results.append(
+                sync_secrets(
                     kube_client=kube_client,
                     cluster=cluster,
                     service=service,
@@ -215,37 +200,14 @@ def sync_all_secrets(
                     vault_token_file=vault_token_file,
                 )
             )
-        sync_service_secrets["boto-key"].append(
-            partial(
-                sync_boto_secrets,
+        results.append(
+            sync_boto_secrets(
                 kube_client=kube_client,
                 cluster=cluster,
                 service=service,
                 soa_dir=soa_dir,
             )
         )
-        sync_service_secrets["crypto-key"].append(
-            partial(
-                sync_crypto_secrets,
-                kube_client=kube_client,
-                cluster=cluster,
-                service=service,
-                secret_provider_name=secret_provider_name,
-                vault_cluster_config=vault_cluster_config,
-                soa_dir=soa_dir,
-                vault_token_file=vault_token_file,
-            )
-        )
-
-        if secret_type == "all":
-            results.append(
-                all(sync() for sync in sync_service_secrets["paasta-secret"])
-            )
-            results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
-            results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
-        else:
-            results.append(all(sync() for sync in sync_service_secrets[secret_type]))
-
     return all(results)
 
 
@@ -254,10 +216,10 @@ def sync_secrets(
     cluster: str,
     service: str,
     secret_provider_name: str,
-    vault_cluster_config: Dict[str, str],
+    vault_cluster_config: Mapping[str, str],
     soa_dir: str,
     namespace: str,
-    vault_token_file: str,
+    vault_token_file: str = DEFAULT_VAULT_TOKEN_FILE,
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -283,96 +245,63 @@ def sync_secrets(
             if secret_file_path.path.endswith("json"):
                 secret = secret_file_path.name.replace(".json", "")
                 with open(secret_file_path, "r") as secret_file:
-                    secret_signature = secret_provider.get_secret_signature_from_data(
-                        json.load(secret_file)
+                    secret_data = json.load(secret_file)
+                secret_signature = secret_provider.get_secret_signature_from_data(
+                    secret_data
+                )
+                if secret_signature:
+                    kubernetes_secret_signature = get_kubernetes_secret_signature(
+                        kube_client=kube_client,
+                        secret=secret,
+                        service=service,
+                        namespace=namespace,
                     )
-                create_or_update_k8s_secret(
-                    service=service,
-                    signature_name=get_paasta_secret_signature_name(
-                        namespace, service, sanitise_kubernetes_name(secret)
-                    ),
-                    secret_name=get_paasta_secret_name(
-                        namespace, service, sanitise_kubernetes_name(secret)
-                    ),
-                    secret_data={
-                        secret: base64.b64encode(
-                            # If signatures does not match, it'll sys.exit(1)
-                            secret_provider.decrypt_secret_raw(secret)
-                        ).decode("utf-8")
-                    },
-                    secret_signature=secret_signature,
-                    kube_client=kube_client,
-                    namespace=namespace,
-                )
-
-    return True
-
-
-def sync_crypto_secrets(
-    kube_client: KubeClient,
-    cluster: str,
-    service: str,
-    secret_provider_name: str,
-    vault_cluster_config: Dict[str, str],
-    soa_dir: str,
-    vault_token_file: str,
-) -> bool:
-    """
-    For each key-name in `crypto_key`,
-    1. Fetch all versions of the key-name from Vault superregion mapped from cluster, e.g. `kubestage` maps to `devc` Vault server.
-    2. Create K8s secret from JSON blob containing all key versions.
-    3. Create signatures as K8s configmap based on JSON blob hash.
-
-    So each replica of a service instance gets the same key, thereby reducing requests to Vault API as we only talk to vault during secret syncing
-    """
-    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-    for instance_config in config_loader.instance_configs(
-        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-    ):
-        crypto_keys = instance_config.get_crypto_keys_from_config()
-        if not crypto_keys:
-            continue
-        secret_data = {}
-        provider = get_secret_provider(
-            secret_provider_name=secret_provider_name,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_names=[cluster],
-            secret_provider_kwargs={
-                "vault_cluster_config": vault_cluster_config,
-                "vault_auth_method": "token",
-                "vault_token_file": vault_token_file,
-            },
-        )
-        for key in crypto_keys:
-            key_versions = provider.get_key_versions(key)
-            if not key_versions:
-                log.error(
-                    f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"
-                )
-                continue
-
-            secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
-                json.dumps(key_versions).encode("utf-8")
-            ).decode("utf-8")
-
-        if not secret_data:
-            continue
-
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
-        create_or_update_k8s_secret(
-            service=service,
-            signature_name=instance_config.get_crypto_secret_signature_name(),
-            # the secret name here must match the secret name given in the secret volume config,
-            # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
-            secret_name=instance_config.get_crypto_secret_name(),
-            secret_data=secret_data,
-            secret_signature=_get_dict_signature(secret_data),
-            kube_client=kube_client,
-            namespace=instance_config.get_namespace(),
-        )
-
+                    if not kubernetes_secret_signature:
+                        log.info(
+                            f"{secret} for {service} not found in {namespace}, creating"
+                        )
+                        try:
+                            create_secret(
+                                kube_client=kube_client,
+                                secret=secret,
+                                service=service,
+                                secret_provider=secret_provider,
+                                namespace=namespace,
+                            )
+                        except ApiException as e:
+                            if e.status == 409:
+                                log.warning(
+                                    f"Secret {secret} for {service} already exists in {namespace}"
+                                )
+                            else:
+                                raise
+                        create_kubernetes_secret_signature(
+                            kube_client=kube_client,
+                            secret=secret,
+                            service=service,
+                            secret_signature=secret_signature,
+                            namespace=namespace,
+                        )
+                    elif secret_signature != kubernetes_secret_signature:
+                        log.info(
+                            f"{secret} for {service} in {namespace} needs updating as signature changed"
+                        )
+                        update_secret(
+                            kube_client=kube_client,
+                            secret=secret,
+                            service=service,
+                            secret_provider=secret_provider,
+                            namespace=namespace,
+                        )
+                        update_kubernetes_secret_signature(
+                            kube_client=kube_client,
+                            secret=secret,
+                            service=service,
+                            secret_signature=secret_signature,
+                            namespace=namespace,
+                        )
+                    else:
+                        log.info(f"{secret} for {service} in {namespace} up to date")
     return True
 
 
@@ -382,10 +311,12 @@ def sync_boto_secrets(
     service: str,
     soa_dir: str,
 ) -> bool:
+    # Update boto key secrets
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
+        instance = instance_config.instance
         boto_keys = instance_config.config_dict.get("boto_keys", [])
         if not boto_keys:
             continue
@@ -404,96 +335,73 @@ def sync_boto_secrets(
                     log.warning(
                         f"Boto key {this_key} required for {service} could not be found."
                     )
-
         if not secret_data:
             continue
-
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
-        create_or_update_k8s_secret(
-            service=service,
-            signature_name=instance_config.get_boto_secret_signature_name(),
-            secret_name=instance_config.get_boto_secret_name(),
-            secret_data=secret_data,
-            secret_signature=_get_dict_signature(secret_data),
+        app_name = get_kubernetes_app_name(service, instance)
+        namespace = instance_config.get_namespace()
+        secret = limit_size_with_hash(f"paasta-boto-key-{app_name}")
+        hashable_data = "".join([secret_data[key] for key in secret_data])
+        signature = hashlib.sha1(hashable_data.encode("utf-8")).hexdigest()
+        kubernetes_signature = get_kubernetes_secret_signature(
             kube_client=kube_client,
-            namespace=instance_config.get_namespace(),
+            secret=secret,
+            service=service,
+            namespace=namespace,
         )
-    return True
-
-
-def _get_dict_signature(data: Dict[str, str]) -> str:
-    return hashlib.sha1(
-        "|".join(f"{key}:{value}" for key, value in data.items()).encode("utf-8")
-    ).hexdigest()
-
-
-def create_or_update_k8s_secret(
-    service: str,
-    secret_name: str,
-    signature_name: str,
-    secret_data: Dict[str, str],
-    secret_signature: str,
-    kube_client: KubeClient,
-    namespace: str,
-) -> None:
-    kubernetes_signature = get_secret_signature(
-        kube_client=kube_client,
-        signature_name=signature_name,
-        namespace=namespace,
-    )
-
-    if not kubernetes_signature:
-        log.info(f"{secret_name} for {service} in {namespace} not found, creating")
-        try:
-            create_secret(
-                kube_client=kube_client,
-                service_name=service,
-                secret_name=secret_name,
-                secret_data=secret_data,
-                namespace=namespace,
-            )
-        except ApiException as e:
-            if e.status == 409:
-                log.warning(
-                    f"Secret {secret_name} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
-                )
-                update_secret(
+        if not kubernetes_signature:
+            log.info(f"{secret} for {service} in {namespace} not found, creating")
+            try:
+                create_plaintext_dict_secret(
                     kube_client=kube_client,
-                    secret_name=secret_name,
+                    secret_name=secret,
                     secret_data=secret_data,
-                    service_name=service,
+                    service=service,
                     namespace=namespace,
                 )
-            else:
-                raise
-        create_secret_signature(
-            kube_client=kube_client,
-            service_name=service,
-            signature_name=signature_name,
-            secret_signature=secret_signature,
-            namespace=namespace,
-        )
-    elif secret_signature != kubernetes_signature:
-        log.info(
-            f"{secret_name} for {service} in {namespace} needs updating as signature changed"
-        )
-        update_secret(
-            kube_client=kube_client,
-            secret_name=secret_name,
-            secret_data=secret_data,
-            service_name=service,
-            namespace=namespace,
-        )
-        update_secret_signature(
-            kube_client=kube_client,
-            service_name=service,
-            signature_name=signature_name,
-            secret_signature=secret_signature,
-            namespace=namespace,
-        )
-    else:
-        log.info(f"{secret_name} for {service} in {namespace} up to date")
+            except ApiException as e:
+                if e.status == 409:
+                    log.warning(
+                        f"Secret {secret} for {service} already exists in {namespace} but no signature found. Updating secret and signature."
+                    )
+                    update_plaintext_dict_secret(
+                        kube_client=kube_client,
+                        secret_name=secret,
+                        secret_data=secret_data,
+                        service=service,
+                        namespace=namespace,
+                    )
+                else:
+                    raise
+            create_kubernetes_secret_signature(
+                kube_client=kube_client,
+                secret=secret,
+                service=service,
+                secret_signature=signature,
+                namespace=namespace,
+            )
+        elif signature != kubernetes_signature:
+            log.info(
+                f"{secret} for {service} in {namespace} needs updating as signature changed"
+            )
+            update_plaintext_dict_secret(
+                kube_client=kube_client,
+                secret_name=secret,
+                secret_data=secret_data,
+                service=service,
+                namespace=namespace,
+            )
+            update_kubernetes_secret_signature(
+                kube_client=kube_client,
+                secret=secret,
+                service=service,
+                secret_signature=signature,
+                namespace=namespace,
+            )
+        else:
+            log.info(f"{secret} for {service} in {namespace} up to date")
+    return True
 
 
 if __name__ == "__main__":
