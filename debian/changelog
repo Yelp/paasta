@@ -1,3 +1,11 @@
+paasta-tools (0.171.0) xenial; urgency=medium
+
+  * 0.171.0 tagged with 'make release'
+    Commit: Merge pull request #3536 from nurdann/master  [PAASTA-17844]
+    Mount Vault KV secrets as k8s secret volumes
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Thu, 27 Apr 2023 12:51:39 -0700
+
 paasta-tools (0.170.0) xenial; urgency=medium
 
   * 0.170.0 tagged with 'make release'
