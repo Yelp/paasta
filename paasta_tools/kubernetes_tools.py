@@ -3731,7 +3731,7 @@ def update_crds(
     return success
 
 
-def sanitise_label_value(service_name: str):
+def sanitise_label_value(service_name: str) -> str:
     """
     :param service_name: service_name is sanitized and limited to 63 characters
     """
