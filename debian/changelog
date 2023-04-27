@@ -1,3 +1,12 @@
+paasta-tools (0.171.1) xenial; urgency=medium
+
+  * 0.171.1 tagged with 'make release'
+    Commit: Revert "[PAASTA-17844] Mount Vault KV secrets as k8s secret
+    volumes" (#3590)  we"re reverting while we figure out why this is
+    causing a big bounce in clusters we deploy this into
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Thu, 27 Apr 2023 15:14:20 -0700
+
 paasta-tools (0.171.0) xenial; urgency=medium
 
   * 0.171.0 tagged with 'make release'
