@@ -2283,9 +2283,17 @@ def force_delete_pods(
         )
 
 
-def get_all_namespaces(kube_client: KubeClient) -> List[str]:
-    namespaces = kube_client.core.list_namespace()
+def get_all_namespaces(
+    kube_client: KubeClient, label_selector: Optional[str] = None
+) -> List[str]:
+    namespaces = kube_client.core.list_namespace(label_selector=label_selector)
     return [item.metadata.name for item in namespaces.items]
+
+
+def get_all_managed_namespaces(kube_client: KubeClient) -> List[str]:
+    return get_all_namespaces(
+        kube_client=kube_client, label_selector=f"{paasta_prefixed('managed')}=true"
+    )
 
 
 def get_matching_namespaces(
@@ -2352,7 +2360,7 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
 
 def list_deployments_in_all_namespaces(
     kube_client: KubeClient, label_selector: str
-) -> Sequence[KubeDeployment]:
+) -> List[KubeDeployment]:
     deployments = kube_client.deployments.list_deployment_for_all_namespaces(
         label_selector=label_selector
     )
@@ -2407,6 +2415,28 @@ def list_deployments(
         )
         for item in deployments.items + stateful_sets.items
     ]
+
+
+def list_deployments_in_managed_namespaces(
+    kube_client: KubeClient,
+    label_selector: str,
+) -> List[KubeDeployment]:
+    ret: List[KubeDeployment] = []
+    for namespace in get_all_managed_namespaces(kube_client):
+        try:
+            ret.extend(
+                list_deployments(
+                    kube_client=kube_client,
+                    label_selector=label_selector,
+                    namespace=namespace,
+                )
+            )
+        except ApiException as exc:
+            log.error(
+                f"Error fetching deployments from namespace {namespace}: "
+                f"status: {exc.status}, reason: {exc.reason}."
+            )
+    return ret
 
 
 def recent_container_restart(
@@ -2766,6 +2796,17 @@ def list_matching_deployments(
         kube_client,
         f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
+    )
+
+
+def list_matching_deployments_in_all_namespaces(
+    service: str,
+    instance: str,
+    kube_client: KubeClient,
+) -> List[KubeDeployment]:
+    return list_deployments_in_all_namespaces(
+        kube_client,
+        f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
     )
 
 
