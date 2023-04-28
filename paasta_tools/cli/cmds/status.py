@@ -2412,6 +2412,9 @@ def paasta_status(args) -> int:
                 return_code, output = future.result()
                 return_codes.append(return_code)
         except KeyboardInterrupt:
+            # ideally we wouldn't need to reach into `ThreadPoolExecutor`
+            # internals, but so far this is the best way to stop all these
+            # threads until a public interface is added
             executor._threads.clear()  # type: ignore
             concurrent.futures.thread._threads_queues.clear()  # type: ignore
             raise KeyboardInterrupt
