@@ -1,3 +1,14 @@
+paasta-tools (0.172.0) xenial; urgency=medium
+
+  * 0.172.0 tagged with 'make release'
+    Commit: Enable skipping clusters in autotune (#3592)  We
+    occasionally want to disable autotune in a given cluster (or set of
+    clusters) for reasons™ - this PR adds an option to the rightsizer
+    script to exclude any number of clusters from having their autotune
+    recommendations be applied
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 28 Apr 2023 11:46:26 -0700
+
 paasta-tools (0.171.1) xenial; urgency=medium
 
   * 0.171.1 tagged with 'make release'
