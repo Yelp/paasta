@@ -1,3 +1,10 @@
+paasta-tools (0.173.0) xenial; urgency=medium
+
+  * 0.173.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/secrets_in_other_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 28 Apr 2023 14:54:58 -0700
+
 paasta-tools (0.172.0) xenial; urgency=medium
 
   * 0.172.0 tagged with 'make release'
