@@ -69,7 +69,7 @@ from paasta_tools.spark_tools import (
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import get_secret_name_from_ref
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_kubernetes_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.spark_tools import KUBERNETES_NAMESPACE as SPARK_KUBERNETES_NAMESPACE
 
@@ -464,10 +464,10 @@ class TronActionConfig(InstanceConfig):
                     self.service if not is_shared_secret(v) else SHARED_SECRET_SERVICE
                 )
                 secret_env[k] = {
-                    "secret_name": get_paasta_secret_name(
-                        self.get_namespace(),
+                    "secret_name": get_kubernetes_secret_name(
                         service,
                         secret,
+                        self.get_namespace(),
                     ),
                     "key": secret,
                 }

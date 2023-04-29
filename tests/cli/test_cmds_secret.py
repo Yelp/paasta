@@ -17,7 +17,6 @@ import mock
 from pytest import raises
 
 from paasta_tools.cli.cmds import secret
-from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 
 
@@ -148,7 +147,7 @@ def test_paasta_secret():
     ) as mock_log_audit, mock.patch(
         "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
     ) as mock_is_secrets_for_teams_enabled, mock.patch(
-        "paasta_tools.cli.cmds.secret.get_secret", autospec=True
+        "paasta_tools.cli.cmds.secret.get_kubernetes_secret", autospec=True
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
     ) as mock_kube_client, mock.patch(
@@ -168,10 +167,7 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth",
-            cluster_names="mesosstage",
-            secret_provider_extra_kwargs=mock.ANY,
-            soa_dir=mock.ANY,
+            "middleearth", cluster_names="mesosstage"
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="add",
@@ -195,10 +191,7 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth",
-            cluster_names="mesosstage",
-            secret_provider_extra_kwargs=mock.ANY,
-            soa_dir=mock.ANY,
+            "middleearth", cluster_names="mesosstage"
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="update",
@@ -253,9 +246,7 @@ def test_paasta_secret():
             config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
         )
         mock_get_kubernetes_secret.assert_called_with(
-            kube_client,
-            get_paasta_secret_name("paasta", "middleearth", "theonering"),
-            "paasta",
+            kube_client, "middleearth", "theonering", "paasta"
         )
 
         # empty namespace list
@@ -263,9 +254,7 @@ def test_paasta_secret():
         mock_select_k8s_secret_namespace.return_value = None
         secret.paasta_secret(mock_args)
         mock_get_kubernetes_secret.assert_called_with(
-            kube_client,
-            get_paasta_secret_name("paasta", "middleearth", "theonering"),
-            "paasta",
+            kube_client, "middleearth", "theonering"
         )
 
         mock_args = mock.Mock(
@@ -277,10 +266,7 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            secret.SHARED_SECRET_SERVICE,
-            cluster_names="mesosstage",
-            secret_provider_extra_kwargs=mock.ANY,
-            soa_dir=mock.ANY,
+            secret.SHARED_SECRET_SERVICE, cluster_names="mesosstage"
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"

@@ -5,7 +5,6 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 
-from mypy_extensions import TypedDict
 from service_configuration_lib import read_service_configuration
 
 
@@ -49,15 +48,5 @@ class BaseSecretProvider:
         raise NotImplementedError
 
 
-class CryptoKey(TypedDict):
-    key_name: str
-    key_version: str
-    key: str
-
-
 class SecretProvider(BaseSecretProvider):
-    def get_key_versions(self, key_name: str) -> List[CryptoKey]:
-        """
-        Dummy attribute to satisfy `mypy` because the class is imported dynamically via __import__
-        """
-        raise NotImplementedError
+    pass
