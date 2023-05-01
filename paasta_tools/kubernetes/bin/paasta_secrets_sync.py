@@ -286,24 +286,26 @@ def sync_secrets(
                     secret_signature = secret_provider.get_secret_signature_from_data(
                         json.load(secret_file)
                     )
-                create_or_update_k8s_secret(
-                    service=service,
-                    signature_name=get_paasta_secret_signature_name(
-                        namespace, service, sanitise_kubernetes_name(secret)
-                    ),
-                    secret_name=get_paasta_secret_name(
-                        namespace, service, sanitise_kubernetes_name(secret)
-                    ),
-                    secret_data={
-                        secret: base64.b64encode(
-                            # If signatures does not match, it'll sys.exit(1)
-                            secret_provider.decrypt_secret_raw(secret)
-                        ).decode("utf-8")
-                    },
-                    secret_signature=secret_signature,
-                    kube_client=kube_client,
-                    namespace=namespace,
-                )
+
+                if secret_signature:
+                    create_or_update_k8s_secret(
+                        service=service,
+                        signature_name=get_paasta_secret_signature_name(
+                            namespace, service, sanitise_kubernetes_name(secret)
+                        ),
+                        secret_name=get_paasta_secret_name(
+                            namespace, service, sanitise_kubernetes_name(secret)
+                        ),
+                        secret_data={
+                            secret: base64.b64encode(
+                                # If signatures does not match, it'll sys.exit(1)
+                                secret_provider.decrypt_secret_raw(secret)
+                            ).decode("utf-8")
+                        },
+                        secret_signature=secret_signature,
+                        kube_client=kube_client,
+                        namespace=namespace,
+                    )
 
     return True
 
