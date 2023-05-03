@@ -1456,7 +1456,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         secret_hash = self.get_boto_secret_hash()
         if not secret_hash:
             log.warning(
-                f"Expected to find boto_cfg k8s signature {self.get_boto_secret_signature_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+                f"Expected to find boto_cfg secret signature {self.get_boto_secret_signature_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
             )
             return None
 
@@ -1484,7 +1484,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         if not self.get_crypto_secret_hash():
             log.warning(
-                f"Expected to find secret signature {self.get_crypto_secret_name()} for crypto_keys"
+                f"Expected to find crypto_keys secret signature {self.get_crypto_secret_name()} {self.get_boto_secret_signature_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
             )
             return None
 
