@@ -1584,8 +1584,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return volume_mounts
 
     def get_boto_secret_name(self) -> str:
-        return _get_secret_name(
-            self.get_namespace(), "boto-key", self.get_service(), self.get_instance()
+        """
+        Namespace is ignored so that there are no bounces with existing boto_keys secrets
+        """
+        # return _get_secret_name(
+        #     self.get_namespace(), "boto-key", self.get_service(), self.get_instance()
+        # )
+        return limit_size_with_hash(
+            f"paasta-boto-key-{self.get_sanitised_deployment_name()}"
         )
 
     def get_crypto_secret_name(self) -> str:
@@ -1604,14 +1610,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_boto_secret_signature_name(self) -> str:
         """
         Keep the following signature naming convention so that bounces do not happen because boto_keys configmap signatures already exist, see PAASTA-17910
-        Most services reside in paasta namespace so we can pull it dynamically
 
-        Note: Since hashing is done only portion of secret, it may explode if service or namespace too long, so we should switch to get_boto_new_secret_signature_name as new namespaces are rolled out
+        Note: Since hashing is done only portion of secret, it may explode if service or instance names are too long, so we should switch to get_boto_new_secret_signature_name as new namespaces are rolled out
         """
         secret_instance = limit_size_with_hash(
-            f"{self.get_namespace()}-boto-key-{self.get_sanitised_deployment_name()}"
+            f"paasta-boto-key-{self.get_sanitised_deployment_name()}"
         )
-        return f"{self.get_namespace()}-secret-{self.get_sanitised_service_name()}-{secret_instance}"
+        return f"paasta-secret-{self.get_sanitised_service_name()}-{secret_instance}-signature"
 
     def get_crypto_secret_signature_name(self) -> str:
         return _get_secret_signature_name(

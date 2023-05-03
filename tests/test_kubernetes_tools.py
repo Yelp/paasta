@@ -1290,25 +1290,51 @@ class TestKubernetesDeploymentConfig:
             )
 
     @pytest.mark.parametrize(
-        "config_dict, service, instance",
+        "config_dict, service, instance, expected_secret_name, expected_signature_name",
         [
             (
-                {"boto_keys": [""]},
+                {"boto_keys": ["pew"]},
                 "zuora_integration",
                 "sync_ads_settings_post_budget_edit_batch_daemon",
+                "paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg",
+                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
             ),
             (
-                {"boto_keys": [""]},
+                {"boto_keys": ["few"]},
                 "zuora_integration",
-                "sync_ads_settings_post_budget_edit_batch_daemon",
+                "reprocess_zuora_amend_callouts_batch_daemon",
+                "paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw",
+                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
             ),
-            ({"boto_keys": ["scribereader", "foobar"]}, "my-service", "my-instance"),
-            ({"boto_keys": ["pew"]}, "login_signals", "main"),
-            ({}, "", ""),
+            (
+                {
+                    "boto_keys": ["foo"],
+                },
+                "kafka_discovery",
+                "main",
+                "paasta-boto-key-kafka--discovery-main",
+                "paasta-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
+            ),
+            (
+                {"boto_keys": ["pew"]},
+                "yelp-main",
+                "lives_data_action_content_ingester_worker",
+                "paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl",
+                "paasta-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
+            ),
+            ({}, "", "", "", ""),
         ],
     )
     @pytest.mark.parametrize("namespace", ["paasta", "hubris"])
-    def test_get_boto_volume(self, config_dict, service, instance, namespace):
+    def test_get_boto_volume(
+        self,
+        config_dict,
+        service,
+        instance,
+        expected_secret_name,
+        expected_signature_name,
+        namespace,
+    ):
         if config_dict:
             config_dict["namespace"] = namespace
 
@@ -1331,19 +1357,26 @@ class TestKubernetesDeploymentConfig:
         if config_dict:
             assert get_signature.call_args[1][
                 "signature_name"
-            ] == "{}-secret-{}-{}".format(
-                namespace,
+            ] == "paasta-secret-{}-{}-signature".format(
                 sanitise_kubernetes_name(service),
                 limit_size_with_hash(
-                    f"{namespace}-boto-key-{sanitise_kubernetes_name(service)}-{sanitise_kubernetes_name(instance)}"
+                    f"paasta-boto-key-{sanitise_kubernetes_name(service)}-{sanitise_kubernetes_name(instance)}"
                 ),
             )
-
-            assert volumes.secret.secret_name == "{}-boto-key-{}-{}".format(
-                namespace,
-                sanitise_kubernetes_name(service),
-                sanitise_kubernetes_name(instance),
+            # check existing signatures match
+            assert (
+                get_signature.call_args[1]["signature_name"] == expected_signature_name
             )
+
+            assert volumes.secret.secret_name == limit_size_with_hash(
+                "paasta-boto-key-{}-{}".format(
+                    sanitise_kubernetes_name(service),
+                    sanitise_kubernetes_name(instance),
+                )
+            )
+            # check existing boto-keys match
+            assert volumes.secret.secret_name == expected_secret_name
+
             assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
             for key in config_dict["boto_keys"]:
                 assert any(
