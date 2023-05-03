@@ -120,6 +120,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -1289,27 +1290,59 @@ class TestKubernetesDeploymentConfig:
             )
 
     @pytest.mark.parametrize(
-        "config_dict",
+        "config_dict, service, instance",
         [
-            {"boto_keys": ["scribereader"]},
-            {"boto_keys": ["scribereader", "foobar"]},
-            {},
+            (
+                {"boto_keys": [""]},
+                "zuora_integration",
+                "sync_ads_settings_post_budget_edit_batch_daemon",
+            ),
+            (
+                {"boto_keys": [""]},
+                "zuora_integration",
+                "sync_ads_settings_post_budget_edit_batch_daemon",
+            ),
+            ({"boto_keys": ["scribereader", "foobar"]}, "my-service", "my-instance"),
+            ({"boto_keys": ["pew"]}, "login_signals", "main"),
+            ({}, "", ""),
         ],
     )
-    def test_get_boto_volume(self, config_dict):
+    @pytest.mark.parametrize("namespace", ["paasta", "hubris"])
+    def test_get_boto_volume(self, config_dict, service, instance, namespace):
+        if config_dict:
+            config_dict["namespace"] = namespace
+
         deployment = KubernetesDeploymentConfig(
-            service="my-service",
-            instance="my-instance",
+            service=service,
+            instance=instance,
             cluster="mega-cluster",
             config_dict=config_dict,
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        with mock.patch.object(deployment, "get_boto_secret_hash", return_value="hash"):
+
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ) as get_signature:
             volumes = deployment.get_boto_volume()
+
         if config_dict:
-            assert (
-                volumes.secret.secret_name == "paasta-boto-key-my-service-my-instance"
+            assert get_signature.call_args[1][
+                "signature_name"
+            ] == "{}-secret-{}-{}".format(
+                namespace,
+                sanitise_kubernetes_name(service),
+                limit_size_with_hash(
+                    f"{namespace}-boto-key-{sanitise_kubernetes_name(service)}-{sanitise_kubernetes_name(instance)}"
+                ),
+            )
+
+            assert volumes.secret.secret_name == "{}-boto-key-{}-{}".format(
+                namespace,
+                sanitise_kubernetes_name(service),
+                sanitise_kubernetes_name(instance),
             )
             assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
             for key in config_dict["boto_keys"]:

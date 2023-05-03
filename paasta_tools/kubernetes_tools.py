@@ -1455,7 +1455,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # Assume k8s secret exists if its configmap signature exists
         secret_hash = self.get_boto_secret_hash()
         if not secret_hash:
-            log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
+            log.warning(
+                f"Expected to find boto_cfg k8s secret {secret_name} with hash {secret_hash} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+            )
             return None
 
         volume = V1Volume(
@@ -1591,10 +1593,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
         )
 
-    def get_boto_secret_signature_name(self) -> str:
+    def get_boto_new_secret_signature_name(self) -> str:
+        """
+        Keeping in case we will want to canonize secret naming
+        """
         return _get_secret_signature_name(
             self.get_namespace(), "boto-key", self.get_service(), self.get_instance()
         )
+
+    def get_boto_secret_signature_name(self) -> str:
+        """
+        Keep the following signature naming convention so that bounces do not happen because boto_keys configmap signatures already exist, see PAASTA-17910
+        Most services reside in paasta namespace so we can pull it dynamically
+
+        Note: Since hashing is done only portion of secret, it may explode if service or namespace too long, so we should switch to get_boto_new_secret_signature_name as new namespaces are rolled out
+        """
+        secret_instance = limit_size_with_hash(
+            f"{self.get_namespace()}-boto-key-{self.get_sanitised_deployment_name()}"
+        )
+        return f"{self.get_namespace()}-secret-{self.get_sanitised_service_name()}-{secret_instance}"
 
     def get_crypto_secret_signature_name(self) -> str:
         return _get_secret_signature_name(
