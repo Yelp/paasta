@@ -120,7 +120,6 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import KubernetesServiceRegistration
-from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import list_all_paasta_deployments
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -1322,10 +1321,19 @@ class TestKubernetesDeploymentConfig:
                 "paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl",
                 "paasta-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
             ),
+            (
+                {
+                    "boto_keys": ["fuu"],
+                    "namespace": "paastasvc-compute-infra-test-service",
+                },
+                "compute-infra-test-service",
+                "boto_keys_test_1",
+                "paasta-boto-key-compute-infra-test-service-boto--keys--test--1",
+                "paastasvc-compute-infra-test-service-secret-compute-infra-test-service-paasta-boto-key-compute-infra-test-service-boto--keys--test--1-signature",
+            ),
             ({}, "", "", "", ""),
         ],
     )
-    @pytest.mark.parametrize("namespace", ["paasta", "hubris"])
     def test_get_boto_volume(
         self,
         config_dict,
@@ -1333,10 +1341,7 @@ class TestKubernetesDeploymentConfig:
         instance,
         expected_secret_name,
         expected_signature_name,
-        namespace,
     ):
-        if config_dict:
-            config_dict["namespace"] = namespace
 
         deployment = KubernetesDeploymentConfig(
             service=service,
@@ -1355,26 +1360,12 @@ class TestKubernetesDeploymentConfig:
             volumes = deployment.get_boto_volume()
 
         if config_dict:
-            assert get_signature.call_args[1][
-                "signature_name"
-            ] == "paasta-secret-{}-{}-signature".format(
-                sanitise_kubernetes_name(service),
-                limit_size_with_hash(
-                    f"paasta-boto-key-{sanitise_kubernetes_name(service)}-{sanitise_kubernetes_name(instance)}"
-                ),
-            )
-            # check existing signatures match
+            # check against existing signatures
             assert (
                 get_signature.call_args[1]["signature_name"] == expected_signature_name
             )
 
-            assert volumes.secret.secret_name == limit_size_with_hash(
-                "paasta-boto-key-{}-{}".format(
-                    sanitise_kubernetes_name(service),
-                    sanitise_kubernetes_name(instance),
-                )
-            )
-            # check existing boto-keys match
+            # check against existing secrets
             assert volumes.secret.secret_name == expected_secret_name
 
             assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4

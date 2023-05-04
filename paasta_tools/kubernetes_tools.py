@@ -1605,7 +1605,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         secret_instance = limit_size_with_hash(
             f"paasta-boto-key-{self.get_sanitised_deployment_name()}"
         )
-        return f"paasta-secret-{self.get_sanitised_service_name()}-{secret_instance}-signature"
+        return f"{self.get_namespace()}-secret-{self.get_sanitised_service_name()}-{secret_instance}-signature"
 
     def get_crypto_secret_signature_name(self) -> str:
         return _get_secret_signature_name(
