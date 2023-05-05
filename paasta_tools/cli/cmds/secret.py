@@ -56,6 +56,7 @@ def check_secret_name(secret_name_arg: str):
 def add_add_subparser(subparsers):
     secret_parser_add = subparsers.add_parser("add", help="adds a paasta secret")
     _add_common_args(secret_parser_add)
+    _add_vault_auth_args(secret_parser_add)
     _add_and_update_args(secret_parser_add)
 
 
@@ -420,12 +421,17 @@ def paasta_secret(args):
         return
 
     if args.action in ["add", "update"]:
+        secret_provider_extra_kwargs = {
+            "vault_auth_method": args.vault_auth_method,
+            "vault_token_file": args.vault_token_file,
+        }
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
+            secret_provider_extra_kwargs=secret_provider_extra_kwargs,
         )
         secret_provider.write_secret(
             action=args.action,

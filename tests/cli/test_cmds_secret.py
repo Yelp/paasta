@@ -167,7 +167,9 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="add",
@@ -191,7 +193,9 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="update",
@@ -266,7 +270,9 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            secret.SHARED_SECRET_SERVICE, cluster_names="mesosstage"
+            secret.SHARED_SECRET_SERVICE,
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
