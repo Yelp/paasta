@@ -2001,6 +2001,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     uwsgi_offset_multiplier: float
+    spark_kubeconfig: str
+    kube_clusters: Dict
 
 
 def load_system_paasta_config(
@@ -2751,6 +2753,12 @@ class SystemPaastaConfig:
         To be removed once PAASTA-17840 is done.
         """
         return self.config_dict.get("uwsgi_offset_multiplier", 1.0)
+
+    def get_spark_kubeconfig(self) -> str:
+        return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")
+
+    def get_kube_clusters(self) -> Dict:
+        return self.config_dict.get("kube_clusters", {})
 
 
 def _run(
