@@ -129,7 +129,6 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -343,6 +342,11 @@ KubePodLabels = TypedDict(
 )
 
 
+class CryptoKeyConfig(TypedDict):
+    encrypt: List[str]
+    decrypt: List[str]
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
@@ -361,6 +365,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     pod_management_policy: str
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
+    crypto_keys: CryptoKeyConfig
 
 
 def load_kubernetes_service_config_no_cache(
@@ -460,6 +465,16 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
         return f"{name[:(limit-suffix-1)]}-{hash[:suffix]}"
     else:
         return name
+
+
+def get_vault_key_secret_name(vault_key: str) -> str:
+    """
+    Vault path may contain `/` slashes which is invalid as secret name
+    V1Secret's data key must match regexp [a-zA-Z0-9._-],
+    which is enforced with schema https://github.com/Yelp/paasta/blob/master/paasta_tools/cli/schemas/adhoc_schema.json#L80
+    Source: https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Secret.md
+    """
+    return vault_key.replace("/", "-")
 
 
 class InvalidKubernetesConfig(Exception):
@@ -899,12 +914,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_secret_volume_name(self, secret_volume: SecretVolume) -> str:
         return self.get_sanitised_volume_name(
-            "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=253
+            "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=63
         )
 
     def get_boto_secret_volume_name(self, service_name: str) -> str:
         return self.get_sanitised_volume_name(
             f"secret-boto-key-{service_name}", length_limit=63
+        )
+
+    def get_crypto_secret_volume_name(self, service_name: str) -> str:
+        return self.get_sanitised_volume_name(
+            f"secret-crypto-key-{service_name}", length_limit=63
         )
 
     def read_only_mode(self, d: VolumeWithMode) -> bool:
@@ -1134,8 +1154,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=get_kubernetes_secret_name(
-                                self.service, secret, self.get_kubernetes_namespace()
+                            name=get_paasta_secret_name(
+                                self.get_namespace(), self.get_service(), secret
                             ),
                             key=secret,
                             optional=False,
@@ -1150,10 +1170,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     name=k,
                     value_from=V1EnvVarSource(
                         secret_key_ref=V1SecretKeySelector(
-                            name=get_kubernetes_secret_name(
-                                SHARED_SECRET_SERVICE,
-                                secret,
-                                self.get_kubernetes_namespace(),
+                            name=get_paasta_secret_name(
+                                self.get_namespace(), SHARED_SECRET_SERVICE, secret
                             ),
                             key=secret,
                             optional=False,
@@ -1398,10 +1416,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 V1Volume(
                     name=self.get_secret_volume_name(secret_volume),
                     secret=V1SecretVolumeSource(
-                        secret_name=get_kubernetes_secret_name(
-                            self.service,
+                        secret_name=get_paasta_secret_name(
+                            self.get_namespace(),
+                            self.get_service(),
                             secret_volume["secret_name"],
-                            self.get_kubernetes_namespace(),
                         ),
                         default_mode=mode_to_int(secret_volume.get("default_mode")),
                         items=items,
@@ -1411,6 +1429,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         boto_volume = self.get_boto_volume()
         if boto_volume:
             pod_volumes.append(boto_volume)
+
+        crypto_volume = self.get_crypto_volume()
+        if crypto_volume:
+            pod_volumes.append(crypto_volume)
+
         return pod_volumes
 
     def get_boto_volume(self) -> Optional[V1Volume]:
@@ -1429,21 +1452,63 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     path=this_key,
                 )
                 items.append(item)
-        # Check that boto keys actually exist as secrets
+        # Assume k8s secret exists if its configmap signature exists
         secret_hash = self.get_boto_secret_hash()
         if not secret_hash:
-            log.warning(f"Expected to find k8s secret {secret_name} for boto_cfg")
+            log.warning(
+                f"Expected to find boto_cfg secret signature {self.get_boto_secret_signature_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+            )
             return None
-        secret_name = limit_size_with_hash(f"paasta-boto-key-{service_name}")
+
         volume = V1Volume(
             name=self.get_boto_secret_volume_name(service_name),
             secret=V1SecretVolumeSource(
-                secret_name=secret_name,
+                secret_name=self.get_boto_secret_name(),
                 default_mode=mode_to_int("0444"),
                 items=items,
             ),
         )
         return volume
+
+    def get_crypto_keys_from_config(self) -> List[str]:
+        crypto_keys = self.config_dict.get("crypto_keys", {})
+        return [
+            *(f"public/{key}" for key in crypto_keys.get("encrypt", [])),
+            *(f"private/{key}" for key in crypto_keys.get("decrypt", [])),
+        ]
+
+    def get_crypto_volume(self) -> Optional[V1Volume]:
+        required_crypto_keys = self.get_crypto_keys_from_config()
+        if not required_crypto_keys:
+            return None
+
+        if not self.get_crypto_secret_hash():
+            log.warning(
+                f"Expected to find crypto_keys secret signature {self.get_crypto_secret_name()} {self.get_boto_secret_signature_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+            )
+            return None
+
+        return V1Volume(
+            name=self.get_crypto_secret_volume_name(
+                self.get_sanitised_deployment_name()
+            ),
+            secret=V1SecretVolumeSource(
+                secret_name=self.get_crypto_secret_name(),
+                default_mode=mode_to_int("0444"),
+                items=[
+                    V1KeyToPath(
+                        # key should exist in data section of k8s secret
+                        key=get_vault_key_secret_name(crypto_key),
+                        # path is equivalent to Vault key directory structure
+                        # e.g. private/foo will create /etc/crypto_keys/private/foo.json
+                        path=f"{crypto_key}.json",
+                        mode=mode_to_int("0444"),
+                    )
+                    for crypto_key in required_crypto_keys
+                ],
+                optional=True,
+            ),
+        )
 
     def get_volume_mounts(
         self,
@@ -1500,17 +1565,64 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         volume_mounts.remove(existing_mount)
                         break
                 volume_mounts.append(mount)
+
+        if self.config_dict.get("crypto_keys", []):
+            if self.get_crypto_secret_hash():
+                mount = V1VolumeMount(
+                    mount_path="/etc/crypto_keys",
+                    name=self.get_crypto_secret_volume_name(
+                        self.get_sanitised_deployment_name()
+                    ),
+                    read_only=True,
+                )
+                for existing_mount in volume_mounts:
+                    if existing_mount.mount_path == "/etc/crypto_keys":
+                        volume_mounts.remove(existing_mount)
+                        break
+                volume_mounts.append(mount)
+
         return volume_mounts
 
-    def get_boto_secret_hash(self) -> str:
-        kube_client = KubeClient()
-        deployment_name = self.get_sanitised_deployment_name()
-        service_name = self.get_sanitised_service_name()
-        secret_name = limit_size_with_hash(f"paasta-boto-key-{deployment_name}")
-        return get_kubernetes_secret_signature(
-            kube_client=kube_client,
-            secret=secret_name,
-            service=service_name,
+    def get_boto_secret_name(self) -> str:
+        """
+        Namespace is ignored so that there are no bounces with existing boto_keys secrets
+        """
+        return limit_size_with_hash(
+            f"paasta-boto-key-{self.get_sanitised_deployment_name()}"
+        )
+
+    def get_crypto_secret_name(self) -> str:
+        return _get_secret_name(
+            self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
+        )
+
+    def get_boto_secret_signature_name(self) -> str:
+        """
+        Keep the following signature naming convention so that bounces do not happen because boto_keys configmap signatures already exist, see PAASTA-17910
+
+        Note: Since hashing is done only on a portion of secret, it may explode if service or instance names are too long
+        """
+        secret_instance = limit_size_with_hash(
+            f"paasta-boto-key-{self.get_sanitised_deployment_name()}"
+        )
+        return f"{self.get_namespace()}-secret-{self.get_sanitised_service_name()}-{secret_instance}-signature"
+
+    def get_crypto_secret_signature_name(self) -> str:
+        return _get_secret_signature_name(
+            self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
+        )
+
+    def get_boto_secret_hash(self) -> Optional[str]:
+        return get_secret_signature(
+            kube_client=KubeClient(),
+            signature_name=self.get_boto_secret_signature_name(),
+            namespace=self.get_namespace(),
+        )
+
+    def get_crypto_secret_hash(self) -> Optional[str]:
+        return get_secret_signature(
+            kube_client=KubeClient(),
+            signature_name=self.get_crypto_secret_signature_name(),
             namespace=self.get_namespace(),
         )
 
@@ -2130,10 +2242,13 @@ def get_kubernetes_secret_hashes(
     if to_get_hash:
         kube_client = KubeClient()
         for value in to_get_hash:
-            hashes[value] = get_kubernetes_secret_signature(
+            hashes[value] = get_secret_signature(
                 kube_client=kube_client,
-                secret=get_secret_name_from_ref(value),
-                service=SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
+                signature_name=get_paasta_secret_signature_name(
+                    namespace,
+                    SHARED_SECRET_SERVICE if is_shared_secret(value) else service,
+                    get_secret_name_from_ref(value),
+                ),
                 namespace=namespace,
             )
     return hashes
@@ -3250,48 +3365,27 @@ def is_kubernetes_available() -> bool:
 
 def create_secret(
     kube_client: KubeClient,
-    secret: str,
-    service: str,
-    secret_provider: BaseSecretProvider,
-    namespace: str = "paasta",
-) -> None:
-    sanitized_service = sanitise_kubernetes_name(service)
-    kube_client.core.create_namespaced_secret(
-        namespace=namespace,
-        body=V1Secret(
-            metadata=V1ObjectMeta(
-                name=get_kubernetes_secret_name(service, secret, namespace),
-                labels={
-                    "yelp.com/paasta_service": sanitized_service,
-                    "paasta.yelp.com/service": sanitized_service,
-                },
-            ),
-            data={
-                secret: base64.b64encode(
-                    secret_provider.decrypt_secret_raw(secret)
-                ).decode("utf-8")
-            },
-        ),
-    )
-
-
-def create_plaintext_dict_secret(
-    kube_client: KubeClient,
+    service_name: str,
     secret_name: str,
-    secret_data: dict,
-    service: str,
-    namespace: str = "paasta",
+    secret_data: Dict[str, str],
+    namespace: str,
 ) -> None:
-    service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret_name)
+    """
+    See restrictions on kubernetes secret at https://github.com/kubernetes-client/python/blob/master/kubernetes/docs/V1Secret.md
+    :param secret_name: Expect properly formatted kubernetes secret name, see _get_secret_name()
+    :param secret_data: Expect a mapping of string-to-string where values are base64-encoded
+    :param service_name: Expect unsanitised service name, since it's used as a label it will have 63 character limit
+    :param namespace: Unsanitized namespace of a service that will use the secret
+    :raises ApiException:
+    """
     kube_client.core.create_namespaced_secret(
         namespace=namespace,
         body=V1Secret(
             metadata=V1ObjectMeta(
-                name=sanitised_secret,
+                name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": service,
-                    "paasta.yelp.com/service": service,
+                    "yelp.com/paasta_service": sanitise_label_value(service_name),
+                    "paasta.yelp.com/service": sanitise_label_value(service_name),
                 },
             ),
             data=secret_data,
@@ -3301,13 +3395,18 @@ def create_plaintext_dict_secret(
 
 def update_secret(
     kube_client: KubeClient,
-    secret: str,
-    service: str,
-    secret_provider: BaseSecretProvider,
-    namespace: str = "paasta",
+    service_name: str,
+    secret_name: str,
+    secret_data: Dict[str, str],
+    namespace: str,
 ) -> None:
-    sanitized_service = sanitise_kubernetes_name(service)
-    secret_name = get_kubernetes_secret_name(service, secret, namespace)
+    """
+    Expect secret_name to exist, e.g. kubectl get secret
+    :param service_name: Expect unsanitised service name
+    :param secret_data: Expect a mapping of string-to-string where values are base64-encoded
+    :param namespace: Unsanitized namespace of a service that will use the secret
+    :raises ApiException:
+    """
     kube_client.core.replace_namespaced_secret(
         name=secret_name,
         namespace=namespace,
@@ -3315,37 +3414,8 @@ def update_secret(
             metadata=V1ObjectMeta(
                 name=secret_name,
                 labels={
-                    "yelp.com/paasta_service": sanitized_service,
-                    "paasta.yelp.com/service": sanitized_service,
-                },
-            ),
-            data={
-                secret: base64.b64encode(
-                    secret_provider.decrypt_secret_raw(secret)
-                ).decode("utf-8")
-            },
-        ),
-    )
-
-
-def update_plaintext_dict_secret(
-    kube_client: KubeClient,
-    secret_name: str,
-    secret_data: dict,
-    service: str,
-    namespace: str = "paasta",
-) -> None:
-    sanitized_service = sanitise_kubernetes_name(service)
-    sanitised_secret = sanitise_kubernetes_name(secret_name)
-    kube_client.core.replace_namespaced_secret(
-        name=sanitised_secret,
-        namespace=namespace,
-        body=V1Secret(
-            metadata=V1ObjectMeta(
-                name=sanitised_secret,
-                labels={
-                    "yelp.com/paasta_service": sanitized_service,
-                    "paasta.yelp.com/service": sanitized_service,
+                    "yelp.com/paasta_service": sanitise_label_value(service_name),
+                    "paasta.yelp.com/service": sanitise_label_value(service_name),
                 },
             ),
             data=secret_data,
@@ -3353,16 +3423,20 @@ def update_plaintext_dict_secret(
     )
 
 
-def get_kubernetes_secret_signature(
+def get_secret_signature(
     kube_client: KubeClient,
-    secret: str,
-    service: str,
-    namespace: str = "paasta",
+    signature_name: str,
+    namespace: str,
 ) -> Optional[str]:
-    secret_name = get_kubernetes_secret_name(service, secret, namespace)
+    """
+    :param signature_name: Expect the signature to exist in kubernetes configmap
+    :return: Kubernetes configmap as a signature
+    :raises ApiException:
+    """
     try:
         signature = kube_client.core.read_namespaced_config_map(
-            name=f"{secret_name}-signature", namespace=namespace
+            name=signature_name,
+            namespace=namespace,
         )
     except ApiException as e:
         if e.status == 404:
@@ -3375,24 +3449,28 @@ def get_kubernetes_secret_signature(
         return signature.data["signature"]
 
 
-def update_kubernetes_secret_signature(
+def update_secret_signature(
     kube_client: KubeClient,
-    secret: str,
-    service: str,
+    service_name: str,
+    signature_name: str,
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
-    secret_name = get_kubernetes_secret_name(service, secret, namespace)
-    sanitized_service = sanitise_kubernetes_name(service)
+    """
+    :param service_name: Expect unsanitised service_name
+    :param signature_name: Expect signature_name to exist in kubernetes configmap
+    :param secret_signature: Signature to replace with
+    :raises ApiException:
+    """
     kube_client.core.replace_namespaced_config_map(
-        name=f"{secret_name}-signature",
+        name=signature_name,
         namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"{secret_name}-signature",
+                name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": sanitized_service,
-                    "paasta.yelp.com/service": sanitized_service,
+                    "yelp.com/paasta_service": sanitise_label_value(service_name),
+                    "paasta.yelp.com/service": sanitise_label_value(service_name),
                 },
             ),
             data={"signature": secret_signature},
@@ -3400,23 +3478,27 @@ def update_kubernetes_secret_signature(
     )
 
 
-def create_kubernetes_secret_signature(
+def create_secret_signature(
     kube_client: KubeClient,
-    secret: str,
-    service: str,
+    service_name: str,
+    signature_name: str,
     secret_signature: str,
     namespace: str = "paasta",
 ) -> None:
-    secret_name = get_kubernetes_secret_name(service, secret, namespace)
-    sanitized_service = sanitise_kubernetes_name(service)
+    """
+    :param service_name: Expect unsanitised service_name
+    :param signature_name: Expected properly formatted signature, see _get_secret_signature_name()
+    :param secret_signature: Signature value
+    :param namespace: Unsanitized namespace of a service that will use the signature
+    """
     kube_client.core.create_namespaced_config_map(
         namespace=namespace,
         body=V1ConfigMap(
             metadata=V1ObjectMeta(
-                name=f"{secret_name}-signature",
+                name=signature_name,
                 labels={
-                    "yelp.com/paasta_service": sanitized_service,
-                    "paasta.yelp.com/service": sanitized_service,
+                    "yelp.com/paasta_service": sanitise_label_value(service_name),
+                    "paasta.yelp.com/service": sanitise_label_value(service_name),
                 },
             ),
             data={"signature": secret_signature},
@@ -3427,6 +3509,9 @@ def create_kubernetes_secret_signature(
 def sanitise_kubernetes_name(
     service: str,
 ) -> str:
+    """
+    Sanitizes kubernetes name so that hyphen (-) can be used a delimeter
+    """
     name = service.replace("_", "--")
     if name.startswith("--"):
         name = name.replace("--", "underscore-", 1)
@@ -3682,28 +3767,121 @@ def update_crds(
     return success
 
 
-def get_kubernetes_secret_name(
-    service_name: str, secret_name: str, namespace: str = "paasta"
+def sanitise_label_value(value: str) -> str:
+    """
+    :param value: value is sanitized and limited to 63 characters due to kubernetes restriction
+    :return: Sanitised at most 63-character label value
+    """
+    return limit_size_with_hash(
+        sanitise_kubernetes_name(value),
+        limit=63,
+    )
+
+
+def _get_secret_name(
+    namespace: str, secret_identifier: str, service_name: str, key_name: str
 ) -> str:
-    service = sanitise_kubernetes_name(service_name)
-    sanitised_secret = sanitise_kubernetes_name(secret_name)
-    name = f"{namespace}-secret-{service}-{sanitised_secret}"
-    return name
+    """
+    Use to generate kubernetes secret names,
+    secret names have limit of 253 characters due to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+    However, if you are storing secret name as a label value as well then it has lower limit of 63 characters.
+    Hyphen (-) is used as a delimeter between values.
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param secret_identifier: Identifies the type of secret
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised at most 253-character kubernetes secret name
+    """
+    return limit_size_with_hash(
+        "-".join(
+            [
+                namespace,
+                secret_identifier,
+                sanitise_kubernetes_name(service_name),
+                sanitise_kubernetes_name(key_name),
+            ]
+        ),
+        limit=253,
+    )
 
 
-def get_kubernetes_secret(
+def _get_secret_signature_name(
+    namespace: str, secret_identifier: str, service_name: str, key_name: str
+) -> str:
+    """
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param secret_identifier: Identifies the type of secret
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised signature name as kubernetes configmap name with at most 253 characters
+    """
+    return limit_size_with_hash(
+        "-".join(
+            [
+                namespace,
+                secret_identifier,
+                sanitise_kubernetes_name(service_name),
+                sanitise_kubernetes_name(key_name),
+                "signature",
+            ]
+        ),
+        limit=253,
+    )
+
+
+def get_paasta_secret_name(namespace: str, service_name: str, key_name: str) -> str:
+    """
+    Use whenever creating or references a PaaSTA secret
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised PaaSTA secret name
+    """
+    return _get_secret_name(
+        namespace=namespace,
+        secret_identifier="secret",
+        service_name=service_name,
+        key_name=key_name,
+    )
+
+
+def get_paasta_secret_signature_name(
+    namespace: str, service_name: str, key_name: str
+) -> str:
+    """
+    Get PaaSTA signature name stored as kubernetes configmap
+
+    :param namespace: Unsanitised namespace of a service that will use the signature
+    :param service_name: Unsanitised service_name
+    :param key_name: Name of the actual secret, typically specified in a configuration file
+    :return: Sanitised PaaSTA signature name
+    """
+    return _get_secret_signature_name(
+        namespace=namespace,
+        secret_identifier="secret",
+        service_name=service_name,
+        key_name=key_name,
+    )
+
+
+def get_secret(
     kube_client: KubeClient,
-    service_name: str,
     secret_name: str,
+    key_name: str,
     namespace: str = "paasta",
     decode: bool = True,
 ) -> Union[str, bytes]:
-
-    k8s_secret_name = get_kubernetes_secret_name(service_name, secret_name, namespace)
-
+    """
+    :param secret_name: Expect properly formatted kubernetes secret name and that it exists
+    :param key_name: Expect key_name to be a key in a data section
+    :raises ApiException:
+    :raises KeyError: if key_name does not exists in kubernetes secret's data section
+    """
     secret_data = kube_client.core.read_namespaced_secret(
-        name=k8s_secret_name, namespace=namespace
-    ).data[secret_name]
+        name=secret_name, namespace=namespace
+    ).data[key_name]
     # String secrets (e.g. yaml config files) need to be decoded
     # Binary secrets (e.g. TLS Keystore or binary certificate files) cannot be decoded
     if decode:
@@ -3720,15 +3898,18 @@ def get_kubernetes_secret_env_variables(
     decrypted_secrets = {}
     for k, v in environment.items():
         if is_secret_ref(v):
-            secret_name = get_secret_name_from_ref(v)
-
+            secret = get_secret_name_from_ref(v)
             # decode=True because environment variables need to be strings and not binary
             # Cast to string to make mypy / type-hints happy
             decrypted_secrets[k] = str(
-                get_kubernetes_secret(
+                get_secret(
                     kube_client,
-                    SHARED_SECRET_SERVICE if is_shared_secret(v) else service_name,
-                    secret_name,
+                    secret_name=get_paasta_secret_name(
+                        namespace,
+                        SHARED_SECRET_SERVICE if is_shared_secret(v) else service_name,
+                        secret,
+                    ),
+                    key_name=secret,
                     decode=True,
                     namespace=namespace,
                 )
@@ -3768,10 +3949,12 @@ def get_kubernetes_secret_volumes(
     # We need to support both cases
     for secret_volume in secret_volumes_config:
         if "items" not in secret_volume:
-            secret_contents = get_kubernetes_secret(
+            secret_contents = get_secret(
                 kube_client,
-                service_name,
-                secret_volume["secret_name"],
+                secret_name=get_paasta_secret_name(
+                    namespace, service_name, secret_volume["secret_name"]
+                ),
+                key_name=secret_volume["secret_name"],
                 decode=False,
                 namespace=namespace,
             )
@@ -3783,10 +3966,12 @@ def get_kubernetes_secret_volumes(
             ] = secret_contents
         else:
             for item in secret_volume["items"]:
-                secret_contents = get_kubernetes_secret(
+                secret_contents = get_secret(
                     kube_client,
-                    service_name,
-                    item["key"],  # secret_name
+                    secret_name=get_paasta_secret_name(
+                        namespace, service_name, item["key"]
+                    ),
+                    key_name=item["key"],
                     decode=False,
                     namespace=namespace,
                 )
