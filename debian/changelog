@@ -1,3 +1,11 @@
+paasta-tools (0.174.1) xenial; urgency=medium
+
+  * 0.174.1 tagged with 'make release'
+    Commit: Merge pull request #3544 from Yelp/u/cuza/PAASTA-17859
+    Clearing paasta status threads after catching KeyboardInterrupt
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 09 May 2023 09:55:45 -0700
+
 paasta-tools (0.174.0) xenial; urgency=medium
 
   * 0.174.0 tagged with 'make release'
