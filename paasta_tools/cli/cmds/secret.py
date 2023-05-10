@@ -444,7 +444,12 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            soa_dir="./",
+            # this will only be invoked on a devbox
+            # and only in a context where we certainly
+            # want to use the working directory rather
+            # than whatever the actual soa_dir path is
+            # configured as
+            soa_dir=os.getcwd(),
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
                 "vault_auth_method": args.vault_auth_method,
