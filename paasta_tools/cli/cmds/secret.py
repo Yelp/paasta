@@ -229,6 +229,11 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         help="A directory from which yelpsoa-configs should be read from",
+        # this will only be invoked on a devbox
+        # and only in a context where we certainly
+        # want to use the working directory rather
+        # than whatever the actual soa_dir path is
+        # configured as
         default=os.getcwd(),
     )
 
@@ -442,11 +447,6 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            # this will only be invoked on a devbox
-            # and only in a context where we certainly
-            # want to use the working directory rather
-            # than whatever the actual soa_dir path is
-            # configured as
             soa_dir=args.yelpsoa_config_root,
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
