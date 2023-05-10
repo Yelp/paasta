@@ -211,7 +211,7 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
         type=str,
         dest="vault_auth_method",
         required=False,
-        default="ldap",  # must have LDAP to get 2FA push for prod
+        default="token",
         choices=["token", "ldap"],
     )
     parser.add_argument(
@@ -441,6 +441,7 @@ def paasta_secret(args):
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
+        print(args)
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
@@ -452,7 +453,9 @@ def paasta_secret(args):
             soa_dir=os.getcwd(),
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
-                "vault_auth_method": args.vault_auth_method,
+                # best solution so far is to change the below string to "token",
+                # so that token file is picked up from argparse
+                "vault_auth_method": "ldap",  # must have LDAP to get 2FA push for prod
             },
         )
         secret_provider.write_secret(
