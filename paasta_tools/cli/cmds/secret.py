@@ -20,6 +20,8 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
+from service_configuration_lib import DEFAULT_SOA_DIR
+
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -229,12 +231,7 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         help="A directory from which yelpsoa-configs should be read from",
-        # this will only be invoked on a devbox
-        # and only in a context where we certainly
-        # want to use the working directory rather
-        # than whatever the actual soa_dir path is
-        # configured as
-        default=os.getcwd(),
+        default=DEFAULT_SOA_DIR,
     )
 
     _add_vault_auth_args(parser)
@@ -447,7 +444,12 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            soa_dir=args.yelpsoa_config_root,
+            # this will only be invoked on a devbox
+            # and only in a context where we certainly
+            # want to use the working directory rather
+            # than whatever the actual soa_dir path is
+            # configured as
+            soa_dir=os.getcwd(),
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
                 "vault_auth_method": args.vault_auth_method,
