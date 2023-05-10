@@ -444,7 +444,7 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            soa_dir=args.yelpsoa_config_root,
+            soa_dir="./",
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
                 "vault_auth_method": args.vault_auth_method,
