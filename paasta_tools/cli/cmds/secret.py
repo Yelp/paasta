@@ -20,8 +20,6 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
-from service_configuration_lib import DEFAULT_SOA_DIR
-
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -211,7 +209,7 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
         type=str,
         dest="vault_auth_method",
         required=False,
-        default="token",  # token falls back to ldap if token file is unreadable
+        default="ldap",  # must have LDAP to get 2FA push for prod
         choices=["token", "ldap"],
     )
     parser.add_argument(
@@ -231,7 +229,7 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         help="A directory from which yelpsoa-configs should be read from",
-        default=DEFAULT_SOA_DIR,
+        default=os.getcwd(),
     )
 
     _add_vault_auth_args(parser)
@@ -449,7 +447,7 @@ def paasta_secret(args):
             # want to use the working directory rather
             # than whatever the actual soa_dir path is
             # configured as
-            soa_dir=os.getcwd(),
+            soa_dir=args.yelpsoa_config_root,
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
                 "vault_auth_method": args.vault_auth_method,
