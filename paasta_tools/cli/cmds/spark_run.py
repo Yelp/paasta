@@ -18,6 +18,7 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -807,14 +808,18 @@ def configure_and_run_docker_container(
     if "history-server" in docker_cmd:
         print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
+        grafana_url = get_grafana_url(spark_conf)
         signalfx_url = get_signalfx_url(spark_conf)
-        signalfx_url_msg = (
-            PaastaColors.green(f"\nSignalfx dashboard: ") + f"{signalfx_url}\n"
+        dashboard_url_msg = (
+            PaastaColors.green(f"\nGrafana dashboard: ")
+            + f"{grafana_url}\n"
+            + PaastaColors.green(f"\nSignalfx dashboard: ")
+            + f"{signalfx_url}\n"
         )
         print(webui_url_msg)
-        print(signalfx_url_msg)
+        print(dashboard_url_msg)
         log.info(webui_url_msg)
-        log.info(signalfx_url_msg)
+        log.info(dashboard_url_msg)
         history_server_url = get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
