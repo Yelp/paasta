@@ -441,7 +441,6 @@ def paasta_secret(args):
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
-        print(args)
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
