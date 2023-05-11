@@ -77,6 +77,7 @@ def add_decrypt_subparser(subparsers):
         "decrypt", help="decrypts a single paasta secret"
     )
     _add_common_args(secret_parser_decrypt)
+    _add_vault_auth_args_for_decrypt_and_run(secret_parser_decrypt)
 
     secret_parser_decrypt.add_argument(
         "-n",
@@ -119,6 +120,7 @@ def add_run_subparser(subparsers):
         conflict_handler="resolve",
     )
     _add_common_args(secret_parser_run, allow_shared=False)
+    _add_vault_auth_args_for_decrypt_and_run(secret_parser_run)
 
     secret_parser_run.add_argument(
         "-i",
@@ -155,6 +157,8 @@ def add_run_subparser(subparsers):
 
 def _add_and_update_args(parser: argparse.ArgumentParser):
     """common args for `add` and `update`."""
+
+    _add_vault_auth_args_for_add_and_update(parser)
     parser.add_argument(
         "-p",
         "--plain-text",
@@ -204,7 +208,15 @@ def _add_and_update_args(parser: argparse.ArgumentParser):
     ).completer = lazy_choices_completer(list_clusters)
 
 
-def _add_vault_auth_args(parser: argparse.ArgumentParser):
+def _add_vault_auth_args_for_decrypt_and_run(parser: argparse.ArgumentParser):
+    parser.add_argument(
+        "-y",
+        "--yelpsoa-config-root",
+        dest="yelpsoa_config_root",
+        help="A directory from which yelpsoa-configs should be read from",
+        default=DEFAULT_SOA_DIR,
+    )
+
     parser.add_argument(
         "--vault-auth-method",
         help="Override how we auth with vault, defaults to token if not present",
@@ -224,17 +236,37 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
     )
 
 
-def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True):
-    # available from any subcommand
+def _add_vault_auth_args_for_add_and_update(parser: argparse.ArgumentParser):
     parser.add_argument(
         "-y",
         "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         help="A directory from which yelpsoa-configs should be read from",
-        default=DEFAULT_SOA_DIR,
+        default=os.getcwd(),
     )
 
-    _add_vault_auth_args(parser)
+    parser.add_argument(
+        "--vault-auth-method",
+        help="Override how we auth with vault, defaults to LDAP because it is neccessary when creating PaaSTA secret in prod due to 2FA Duo push",
+        type=str,
+        dest="vault_auth_method",
+        required=False,
+        default="ldap",
+        choices=["token", "ldap"],
+    )
+
+    parser.add_argument(
+        "--vault-token-file",
+        help="Override vault token file, defaults to %(default)s",
+        type=str,
+        dest="vault_token_file",
+        required=False,
+        default="~/.vault-token",
+    )
+
+
+def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True):
+    # available from any subcommand
 
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
@@ -438,23 +470,18 @@ def paasta_secret(args):
         return
 
     if args.action in ["add", "update"]:
+        print(args)
+        # this will only be invoked on a devbox only
         plaintext = get_plaintext_input(args)
         if not plaintext:
             print("Warning: Given plaintext is an empty string.")
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
-            # this will only be invoked on a devbox
-            # and only in a context where we certainly
-            # want to use the working directory rather
-            # than whatever the actual soa_dir path is
-            # configured as
-            soa_dir=os.getcwd(),
+            soa_dir=args.yelpsoa_config_root,
             secret_provider_extra_kwargs={
                 "vault_token_file": args.vault_token_file,
-                # best solution so far is to change the below string to "token",
-                # so that token file is picked up from argparse
-                "vault_auth_method": "ldap",  # must have LDAP to get 2FA push for prod
+                "vault_auth_method": args.vault_auth_method,
             },
         )
         secret_provider.write_secret(
