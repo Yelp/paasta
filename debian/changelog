@@ -1,3 +1,12 @@
+paasta-tools (0.174.3) xenial; urgency=medium
+
+  * 0.174.3 tagged with 'make release'
+    Commit: Merge pull request #3604 from Yelp/SEC-17834-hard-current-
+    location-paasta-secret  Hard-code current directory only for `paasta
+    secret {add,update}`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 10 May 2023 17:17:06 -0700
+
 paasta-tools (0.174.2) xenial; urgency=medium
 
   * 0.174.2 tagged with 'make release'
