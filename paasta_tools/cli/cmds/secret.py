@@ -16,15 +16,22 @@ import argparse
 import os
 import re
 import sys
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_namespaces_for_secret
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
-from paasta_tools.kubernetes_tools import get_kubernetes_secret
+from paasta_tools.cli.utils import select_k8s_secret_namespace
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.secret_providers import SecretProvider
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -70,7 +77,6 @@ def add_decrypt_subparser(subparsers):
         "decrypt", help="decrypts a single paasta secret"
     )
     _add_common_args(secret_parser_decrypt)
-    _add_vault_auth_args(secret_parser_decrypt)
 
     secret_parser_decrypt.add_argument(
         "-n",
@@ -113,7 +119,6 @@ def add_run_subparser(subparsers):
         conflict_handler="resolve",
     )
     _add_common_args(secret_parser_run, allow_shared=False)
-    _add_vault_auth_args(secret_parser_run)
 
     secret_parser_run.add_argument(
         "-i",
@@ -206,7 +211,7 @@ def _add_vault_auth_args(parser: argparse.ArgumentParser):
         type=str,
         dest="vault_auth_method",
         required=False,
-        default="token",  # token falls back to ldap if token file is unreadable
+        default="token",
         choices=["token", "ldap"],
     )
     parser.add_argument(
@@ -228,6 +233,8 @@ def _add_common_args(parser: argparse.ArgumentParser, allow_shared: bool = True)
         help="A directory from which yelpsoa-configs should be read from",
         default=DEFAULT_SOA_DIR,
     )
+
+    _add_vault_auth_args(parser)
 
     if allow_shared:
         service_group = parser.add_mutually_exclusive_group(required=True)
@@ -341,8 +348,11 @@ def is_service_folder(soa_dir, service_name):
 
 
 def _get_secret_provider_for_service(
-    service_name, cluster_names=None, soa_dir=None, secret_provider_extra_kwargs=None
-):
+    service_name: str,
+    cluster_names: Optional[str] = None,
+    soa_dir: Optional[str] = None,
+    secret_provider_extra_kwargs: Optional[Dict[str, Any]] = None,
+) -> SecretProvider:
     secret_provider_extra_kwargs = secret_provider_extra_kwargs or {}
     soa_dir = soa_dir or os.getcwd()
 
@@ -401,7 +411,30 @@ def paasta_secret(args):
             sys.exit(1)
 
         kube_client = KubeClient(config_file=KUBE_CONFIG_USER_PATH, context=clusters[0])
-        print(get_kubernetes_secret(kube_client, service, args.secret_name))
+
+        secret_to_k8s_mapping = get_namespaces_for_secret(
+            service, clusters[0], args.secret_name, args.yelpsoa_config_root
+        )
+
+        namespace = select_k8s_secret_namespace(secret_to_k8s_mapping)
+
+        if namespace:
+            print(
+                get_secret(
+                    kube_client,
+                    get_paasta_secret_name(namespace, service, args.secret_name),
+                    namespace,
+                )
+            )
+        # fallback to default in case mapping fails
+        else:
+            print(
+                get_secret(
+                    kube_client,
+                    get_paasta_secret_name("paasta", service, args.secret_name),
+                    "paasta",
+                )
+            )
         return
 
     if args.action in ["add", "update"]:
@@ -411,6 +444,18 @@ def paasta_secret(args):
         secret_provider = _get_secret_provider_for_service(
             service,
             cluster_names=args.clusters,
+            # this will only be invoked on a devbox
+            # and only in a context where we certainly
+            # want to use the working directory rather
+            # than whatever the actual soa_dir path is
+            # configured as
+            soa_dir=os.getcwd(),
+            secret_provider_extra_kwargs={
+                "vault_token_file": args.vault_token_file,
+                # best solution so far is to change the below string to "token",
+                # so that token file is picked up from argparse
+                "vault_auth_method": "ldap",  # must have LDAP to get 2FA push for prod
+            },
         )
         secret_provider.write_secret(
             action=args.action,

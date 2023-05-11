@@ -979,6 +979,9 @@ components:
           description: Number of replicas currently ready
           format: int32
           type: integer
+        namespace:
+          description: Kubernetes namespace this version is in
+          type: string
       type: object
     MarathonAppStatus:
       properties:

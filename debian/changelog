@@ -1,3 +1,113 @@
+paasta-tools (0.174.3) xenial; urgency=medium
+
+  * 0.174.3 tagged with 'make release'
+    Commit: Merge pull request #3604 from Yelp/SEC-17834-hard-current-
+    location-paasta-secret  Hard-code current directory only for `paasta
+    secret {add,update}`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 10 May 2023 17:17:06 -0700
+
+paasta-tools (0.174.2) xenial; urgency=medium
+
+  * 0.174.2 tagged with 'make release'
+    Commit: Merge pull request #3603 from Yelp/SEC-17834-fix-default-
+    arguments  Change default directory to `paasta secret {add,update}`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Wed, 10 May 2023 13:05:09 -0700
+
+paasta-tools (0.174.1) xenial; urgency=medium
+
+  * 0.174.1 tagged with 'make release'
+    Commit: Merge pull request #3544 from Yelp/u/cuza/PAASTA-17859
+    Clearing paasta status threads after catching KeyboardInterrupt
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 09 May 2023 09:55:45 -0700
+
+paasta-tools (0.174.0) xenial; urgency=medium
+
+  * 0.174.0 tagged with 'make release'
+    Commit: Merge pull request #3596 from nurdann/master  Unrevert
+    Mounting Vault keys as K8s secrets
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Mon, 08 May 2023 12:07:45 -0700
+
+paasta-tools (0.173.0) xenial; urgency=medium
+
+  * 0.173.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/secrets_in_other_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 28 Apr 2023 14:54:58 -0700
+
+paasta-tools (0.172.0) xenial; urgency=medium
+
+  * 0.172.0 tagged with 'make release'
+    Commit: Enable skipping clusters in autotune (#3592)  We
+    occasionally want to disable autotune in a given cluster (or set of
+    clusters) for reasons™ - this PR adds an option to the rightsizer
+    script to exclude any number of clusters from having their autotune
+    recommendations be applied
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 28 Apr 2023 11:46:26 -0700
+
+paasta-tools (0.171.1) xenial; urgency=medium
+
+  * 0.171.1 tagged with 'make release'
+    Commit: Revert "[PAASTA-17844] Mount Vault KV secrets as k8s secret
+    volumes" (#3590)  we"re reverting while we figure out why this is
+    causing a big bounce in clusters we deploy this into
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Thu, 27 Apr 2023 15:14:20 -0700
+
+paasta-tools (0.171.0) xenial; urgency=medium
+
+  * 0.171.0 tagged with 'make release'
+    Commit: Merge pull request #3536 from nurdann/master  [PAASTA-17844]
+    Mount Vault KV secrets as k8s secret volumes
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Thu, 27 Apr 2023 12:51:39 -0700
+
+paasta-tools (0.170.0) xenial; urgency=medium
+
+  * 0.170.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/dont_fetch_all_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 13 Apr 2023 10:46:49 -0700
+
+paasta-tools (0.169.0) xenial; urgency=medium
+
+  * 0.169.0 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/COMPINFRA-2406"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 13 Apr 2023 07:50:11 -0700
+
+paasta-tools (0.168.1) xenial; urgency=medium
+
+  * 0.168.1 tagged with 'make release'
+    Commit: Merge pull request #3583 from Yelp/u/iiliescu/SECNESS-1452
+    Make paasta secrets for teams decrypt available for multiple
+    instance types and namespaces
+
+ -- Ioana Iliescu <iiliescu@yelp.com>  Thu, 13 Apr 2023 03:54:02 -0700
+
+paasta-tools (0.168.0) xenial; urgency=medium
+
+  * 0.168.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/status_multiple_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 12 Apr 2023 15:11:33 -0700
+
+paasta-tools (0.167.0) xenial; urgency=medium
+
+  * 0.167.0 tagged with 'make release'
+    Commit: Allow setting
+    PreferredDuringSchedulingIgnoredDuringExecution anti-affinity terms
+    with anti_affinity_preferred key. (#3378)  We want to have more
+    control on where (which PaaSTA worker nodes) certain services end up
+    being scheduled. e.g., we want to be able to say "service X and
+    service Y should preferably be scheduled on different nodes."
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 10 Apr 2023 13:18:51 -0700
+
 paasta-tools (0.166.4) xenial; urgency=medium
 
   * 0.166.4 tagged with 'make release'

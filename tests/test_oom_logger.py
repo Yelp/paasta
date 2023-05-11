@@ -104,6 +104,23 @@ def sys_stdin_kubernetes_structured_burstable_qos():
 
 
 @pytest.fixture
+def sys_stdin_kubernetes_structured_burstable_systemd_cgroup():
+    return [
+        "some random line1\n",
+        "1500316299 dev37-devc [30533610.306528] apache2 invoked oom-killer: "
+        "gfp_mask=0x24000c0, order=0, oom_score_adj=0\n",
+        "some random line2\n",
+        "1500316300 dev37-devc [541471.893603] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "nodemask=(null),cpuset=docker-e7ba37bd37089f8b1fda33c6f1fe753421ca6216518594bc73bca2ead7c13ba0.scope,"
+        "mems_allowed=0,oom_memcg=/kubepods.slice/kubepods-burstable.slice/"
+        "kubepods-burstable-pod8a0a7a03_d305_4ebc_83ad_91180c9d5ef9.slice/"
+        "docker-e7ba37bd37089f8b1fda33c6f1fe753421ca6216518594bc73bca2ead7c13ba0.scope,"
+        "task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod8a0a7a03_d305_4ebc_83ad_91180c9d5ef9.slice/"
+        "docker-e7ba37bd37089f8b1fda33c6f1fe753421ca6216518594bc73bca2ead7c13ba0.scope,task=apache2,pid=1757658,uid=0\n",
+    ]
+
+
+@pytest.fixture
 def sys_stdin_process_name_with_slashes():
     return [
         "some random line1\n",
@@ -215,6 +232,18 @@ def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
     for a_tuple in capture_oom_events_from_stdin():
         test_output.append(a_tuple)
     assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_structured_burstable_systemd_cgroup(
+    mock_sys_stdin,
+    sys_stdin_kubernetes_structured_burstable_systemd_cgroup,
+):
+    mock_sys_stdin.readline.side_effect = (
+        sys_stdin_kubernetes_structured_burstable_systemd_cgroup
+    )
+    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+    assert test_output == [(1500316300, "dev37-devc", "e7ba37bd3708", "apache2")]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)

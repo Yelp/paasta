@@ -70,6 +70,9 @@ def get_hmac_for_secret(
 
 
 def get_secret_name_from_ref(env_var_val: str) -> str:
+    """
+    :param env_var_val: Expect value is in form of "SECRET(<secret-name>)"
+    """
     return env_var_val.split("(")[1][:-1]
 
 

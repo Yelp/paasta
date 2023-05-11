@@ -29,7 +29,7 @@ else
 	export DOCKER_REGISTRY ?= ""
 endif
 
-.PHONY: all docs test itest k8s_itests
+.PHONY: all docs test itest k8s_itests quick-test
 
 dev: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -49,6 +49,9 @@ test-yelpy: .paasta/bin/activate
 
 test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
+
+quick-test: .tox/py37-linux
+	TZ=UTC .tox/py37-linux/bin/py.test --last-failed -x -- tests
 
 .tox/py37-linux: .paasta/bin/activate
 	.paasta/bin/tox -i $(PIP_INDEX_URL)
@@ -157,13 +160,19 @@ setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
 	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py37-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: paasta-secrets-sync
-paasta-secrets-sync: setup-kubernetes-job
+paasta-secrets-sync: setup-kubernetes-job .vault-token
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground
+	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
+
+.vault-token:
+	export VAULT_ADDR=https://vault-devc.yelpcorp.com:8200 ;\
+	export VAULT_SKIP_VERIFY=true ;\
+	vault login -token-only -method=ldap > .vault-token
 
 .PHONY: clean-playground
 clean-playground:
 		rm -rf ./etc_paasta_playground
 		rm -rf ./soa_config_playground
+		rm -f .vault-token
