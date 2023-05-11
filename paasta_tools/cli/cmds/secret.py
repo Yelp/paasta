@@ -470,7 +470,6 @@ def paasta_secret(args):
         return
 
     if args.action in ["add", "update"]:
-        print(args)
         # this will only be invoked on a devbox only
         plaintext = get_plaintext_input(args)
         if not plaintext:
