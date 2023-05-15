@@ -1783,15 +1783,13 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capfd)
         assert out.count("Container exited with code 127") == 1
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.timed_flock", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run._run",
     autospec=True,
     return_value=(0, "fake _run output"),
 )
-def test_pull_image_runs_docker_pull(mock_run, mock_flock):
+def test_pull_image_runs_docker_pull(mock_run):
     open_mock = mock.mock_open()
-    mock_flock.return_value.__enter__.return_value.name = "mock"
     with mock.patch("builtins.open", open_mock, autospec=None):
         docker_pull_image("fake_image")
     mock_run.assert_called_once_with(
@@ -1799,14 +1797,12 @@ def test_pull_image_runs_docker_pull(mock_run, mock_flock):
     )
 
 
-@mock.patch("paasta_tools.cli.cmds.local_run.timed_flock", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.local_run._run",
     autospec=True,
     return_value=(42, "fake _run output"),
 )
-def test_pull_docker_image_exists_with_failure(mock_run, mock_flock):
-    mock_flock.return_value.__enter__.return_value.name = "mock"
+def test_pull_docker_image_exists_with_failure(mock_run):
     with raises(SystemExit) as excinfo:
         open_mock = mock.mock_open()
         with mock.patch("builtins.open", open_mock, autospec=None):
