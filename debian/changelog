@@ -1,3 +1,15 @@
+paasta-tools (0.174.4) xenial; urgency=medium
+
+  * 0.174.4 tagged with 'make release'
+    Commit: Revert local-run locking from PAASTA-13417 (#3606)  We"ve
+    since upgraded the version of Docker we run and, according to
+    https://github.com/moby/moby/pull/37781 - this has now been fixed.
+    Even without having found that PR, I"m pretty confident that this
+    issue has been fixed as we pull an ungodly amount of simultaneous
+    images in our kube nodes and have never seen issues like this :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 15 May 2023 11:15:13 -0700
+
 paasta-tools (0.174.3) xenial; urgency=medium
 
   * 0.174.3 tagged with 'make release'
