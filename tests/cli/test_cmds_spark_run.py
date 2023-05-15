@@ -1106,6 +1106,8 @@ def test_paasta_spark_run_bash(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
+        assume_aws_role_arn=None,
+        session_duration=3600,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1210,6 +1212,8 @@ def test_paasta_spark_run(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
+        assume_aws_role_arn=None,
+        session_duration=3600,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1316,6 +1320,8 @@ def test_paasta_spark_run_pyspark(
         no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
+        assume_aws_role_arn=None,
+        session_duration=3600,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
