@@ -41,6 +41,7 @@ from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -494,7 +495,9 @@ def get_docker_run_cmd(
     return cmd
 
 
-def get_docker_image(args, instance_config):
+def get_docker_image(
+    args: argparse.Namespace, instance_config: InstanceConfig
+) -> Optional[str]:
     if args.build:
         return build_and_push_docker_image(args)
     if args.image:
@@ -885,7 +888,9 @@ def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
     )
 
 
-def get_docker_cmd(args, instance_config, spark_conf_str):
+def get_docker_cmd(
+    args: argparse.Namespace, instance_config: InstanceConfig, spark_conf_str: str
+) -> str:
     original_docker_cmd = args.cmd or instance_config.get_cmd()
 
     if args.mrjob:
@@ -909,7 +914,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         return inject_spark_conf_str(original_docker_cmd, spark_conf_str)
 
 
-def build_and_push_docker_image(args):
+def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     """
     Build an image if the default Spark service image is not preferred.
     The image needs to be pushed to a registry for the Spark executors
@@ -949,7 +954,19 @@ def build_and_push_docker_image(args):
     if retcode != 0:
         return None
 
-    return docker_url
+    # Get image digest
+    docker_client = get_docker_client()
+    image_details = docker_client.inspect_image(docker_url)
+    if len(image_details["RepoDigests"]) < 1:
+        print(
+            "Failed to get docker image digest",
+            file=sys.stderr,
+        )
+        return None
+    repo_digest = image_details["RepoDigests"][0]
+    print(PaastaColors.grey(f"Built docker image: {repo_digest}"))
+
+    return repo_digest
 
 
 def validate_work_dir(s):
