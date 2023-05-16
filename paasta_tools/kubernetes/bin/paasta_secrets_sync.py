@@ -441,6 +441,9 @@ def create_or_update_k8s_secret(
     kube_client: KubeClient,
     namespace: str,
 ) -> None:
+    """
+    :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
+    """
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
         signature_name=signature_name,
