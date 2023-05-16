@@ -21,12 +21,14 @@ import os
 import sys
 import time
 from collections import defaultdict
+from functools import lru_cache
 from functools import partial
 from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
+from typing import Union
 
 from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
@@ -329,14 +331,12 @@ def sync_crypto_secrets(
 
     So each replica of a service instance gets the same key, thereby reducing requests to Vault API as we only talk to vault during secret syncing
     """
-    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-    for instance_config in config_loader.instance_configs(
-        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-    ):
-        crypto_keys = instance_config.get_crypto_keys_from_config()
-        if not crypto_keys:
-            continue
-        secret_data = {}
+
+    @lru_cache()
+    def get_secret_data() -> Union[Dict[str, str], None]:
+        """
+        Postpone getting Vault keys, since secrets are defined at service level we can cache its results
+        """
         provider = get_secret_provider(
             secret_provider_name=secret_provider_name,
             soa_dir=soa_dir,
@@ -348,21 +348,24 @@ def sync_crypto_secrets(
                 "vault_token_file": vault_token_file,
             },
         )
+        secret_data = {}
         for key in crypto_keys:
             key_versions = provider.get_key_versions(key)
             if not key_versions:
-                log.error(
-                    f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"
-                )
+                log.error(f"No key versions found for {key} for {service}")
                 continue
-
             secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
                 json.dumps(key_versions).encode("utf-8")
             ).decode("utf-8")
+        return None
 
-        if not secret_data:
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    for instance_config in config_loader.instance_configs(
+        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+    ):
+        crypto_keys = instance_config.get_crypto_keys_from_config()
+        if not crypto_keys:
             continue
-
         # In order to prevent slamming the k8s API, add some artificial delay here
         time.sleep(0.3)
         create_or_update_k8s_secret(
@@ -371,8 +374,8 @@ def sync_crypto_secrets(
             # the secret name here must match the secret name given in the secret volume config,
             # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
             secret_name=instance_config.get_crypto_secret_name(),
-            get_secret_data=(lambda: secret_data),
-            secret_signature=_get_dict_signature(secret_data),
+            get_secret_data=(lambda: get_secret_data()),
+            secret_signature=_get_dict_signature(get_secret_data()),
             kube_client=kube_client,
             namespace=instance_config.get_namespace(),
         )
@@ -427,6 +430,8 @@ def sync_boto_secrets(
 
 
 def _get_dict_signature(data: Dict[str, str]) -> str:
+    if not data:
+        return ""
     return hashlib.sha1(
         "|".join(f"{key}:{value}" for key, value in data.items()).encode("utf-8")
     ).hexdigest()
@@ -436,13 +441,14 @@ def create_or_update_k8s_secret(
     service: str,
     secret_name: str,
     signature_name: str,
-    get_secret_data: Callable[[], Dict[str, str]],
+    get_secret_data: Callable[[], Union[Dict[str, str], None]],
     secret_signature: str,
     kube_client: KubeClient,
     namespace: str,
 ) -> None:
     """
-    :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
+    :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API.
+        If it returns None, then no secret is updated
     """
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
@@ -451,13 +457,16 @@ def create_or_update_k8s_secret(
     )
 
     if not kubernetes_signature:
+        secret_data = get_secret_data()
+        if not secret_data:
+            return
         log.info(f"{secret_name} for {service} in {namespace} not found, creating")
         try:
             create_secret(
                 kube_client=kube_client,
                 service_name=service,
                 secret_name=secret_name,
-                secret_data=get_secret_data(),
+                secret_data=secret_data,
                 namespace=namespace,
             )
         except ApiException as e:
@@ -468,7 +477,7 @@ def create_or_update_k8s_secret(
                 update_secret(
                     kube_client=kube_client,
                     secret_name=secret_name,
-                    secret_data=get_secret_data(),
+                    secret_data=secret_data,
                     service_name=service,
                     namespace=namespace,
                 )
@@ -482,13 +491,16 @@ def create_or_update_k8s_secret(
             namespace=namespace,
         )
     elif secret_signature != kubernetes_signature:
+        secret_data = get_secret_data()
+        if not secret_data:
+            return
         log.info(
             f"{secret_name} for {service} in {namespace} needs updating as signature changed"
         )
         update_secret(
             kube_client=kube_client,
             secret_name=secret_name,
-            secret_data=get_secret_data(),
+            secret_data=secret_data,
             service_name=service,
             namespace=namespace,
         )
