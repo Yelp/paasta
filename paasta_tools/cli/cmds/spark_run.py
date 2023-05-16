@@ -891,7 +891,7 @@ def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
 def get_docker_cmd(
     args: argparse.Namespace, instance_config: InstanceConfig, spark_conf_str: str
 ) -> str:
-    original_docker_cmd = args.cmd or instance_config.get_cmd()
+    original_docker_cmd = str(args.cmd or instance_config.get_cmd())
 
     if args.mrjob:
         return original_docker_cmd + " " + spark_conf_str
