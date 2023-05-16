@@ -296,12 +296,14 @@ def sync_secrets(
                         secret_name=get_paasta_secret_name(
                             namespace, service, sanitise_kubernetes_name(secret)
                         ),
-                        secret_data={
-                            secret: base64.b64encode(
-                                # If signatures does not match, it'll sys.exit(1)
-                                secret_provider.decrypt_secret_raw(secret)
-                            ).decode("utf-8")
-                        },
+                        get_secret_data=(
+                            lambda: {
+                                secret: base64.b64encode(
+                                    # If signatures does not match, it'll sys.exit(1)
+                                    secret_provider.decrypt_secret_raw(secret)
+                                ).decode("utf-8")
+                            }
+                        ),
                         secret_signature=secret_signature,
                         kube_client=kube_client,
                         namespace=namespace,
@@ -369,7 +371,7 @@ def sync_crypto_secrets(
             # the secret name here must match the secret name given in the secret volume config,
             # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
             secret_name=instance_config.get_crypto_secret_name(),
-            secret_data=secret_data,
+            get_secret_data=(lambda: secret_data),
             secret_signature=_get_dict_signature(secret_data),
             kube_client=kube_client,
             namespace=instance_config.get_namespace(),
@@ -416,7 +418,7 @@ def sync_boto_secrets(
             service=service,
             signature_name=instance_config.get_boto_secret_signature_name(),
             secret_name=instance_config.get_boto_secret_name(),
-            secret_data=secret_data,
+            get_secret_data=(lambda: secret_data),
             secret_signature=_get_dict_signature(secret_data),
             kube_client=kube_client,
             namespace=instance_config.get_namespace(),
@@ -434,11 +436,14 @@ def create_or_update_k8s_secret(
     service: str,
     secret_name: str,
     signature_name: str,
-    secret_data: Dict[str, str],
+    get_secret_data: Callable[[], Dict[str, str]],
     secret_signature: str,
     kube_client: KubeClient,
     namespace: str,
 ) -> None:
+    """
+    :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
+    """
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
         signature_name=signature_name,
@@ -452,7 +457,7 @@ def create_or_update_k8s_secret(
                 kube_client=kube_client,
                 service_name=service,
                 secret_name=secret_name,
-                secret_data=secret_data,
+                secret_data=get_secret_data(),
                 namespace=namespace,
             )
         except ApiException as e:
@@ -463,7 +468,7 @@ def create_or_update_k8s_secret(
                 update_secret(
                     kube_client=kube_client,
                     secret_name=secret_name,
-                    secret_data=secret_data,
+                    secret_data=get_secret_data(),
                     service_name=service,
                     namespace=namespace,
                 )
@@ -483,7 +488,7 @@ def create_or_update_k8s_secret(
         update_secret(
             kube_client=kube_client,
             secret_name=secret_name,
-            secret_data=secret_data,
+            secret_data=get_secret_data(),
             service_name=service,
             namespace=namespace,
         )
