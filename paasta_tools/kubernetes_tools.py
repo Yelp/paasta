@@ -46,7 +46,6 @@ from kubernetes import config as kube_config
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -55,6 +54,7 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1ControllerRevision
+from kubernetes.client import V1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinitionList
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
@@ -522,7 +522,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
@@ -3723,7 +3723,7 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 def update_crds(
     kube_client: KubeClient,
-    desired_crds: Collection[V1beta1CustomResourceDefinition],
+    desired_crds: Collection[V1CustomResourceDefinition],
     existing_crds: V1CustomResourceDefinitionList,
 ) -> bool:
     success = True
