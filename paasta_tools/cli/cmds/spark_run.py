@@ -1101,10 +1101,7 @@ def paasta_spark_run(args):
     docker_client = get_docker_client()
     image_details = docker_client.inspect_image(docker_image)
     if len(image_details["RepoDigests"]) < 1:
-        print(
-            "Failed to get docker image digest",
-            file=sys.stderr,
-        )
+        print("Failed to get docker image digest", file=sys.stderr)
         return None
     docker_image_digest = image_details["RepoDigests"][0]
 
