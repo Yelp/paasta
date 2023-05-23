@@ -950,23 +950,11 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
         command = "docker push %s" % docker_url
 
     print(PaastaColors.grey(command))
-    retcode, output = _run(command, stream=True)
+    retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
 
-    # Get image digest
-    docker_client = get_docker_client()
-    image_details = docker_client.inspect_image(docker_url)
-    if len(image_details["RepoDigests"]) < 1:
-        print(
-            "Failed to get docker image digest",
-            file=sys.stderr,
-        )
-        return None
-    repo_digest = image_details["RepoDigests"][0]
-    print(PaastaColors.grey(f"Built docker image: {repo_digest}"))
-
-    return repo_digest
+    return docker_url
 
 
 def validate_work_dir(s):
@@ -1109,6 +1097,17 @@ def paasta_spark_run(args):
     if docker_image is None:
         return 1
 
+    # Get image digest
+    docker_client = get_docker_client()
+    image_details = docker_client.inspect_image(docker_image)
+    if len(image_details["RepoDigests"]) < 1:
+        print(
+            "Failed to get docker image digest",
+            file=sys.stderr,
+        )
+        return None
+    docker_image_digest = image_details["RepoDigests"][0]
+
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
         args.disable_compact_bin_packing, args.cluster_manager
@@ -1150,7 +1149,7 @@ def paasta_spark_run(args):
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         user_spark_opts=user_spark_opts,
         paasta_cluster=args.cluster,
         paasta_pool=args.pool,
@@ -1177,7 +1176,7 @@ def paasta_spark_run(args):
         print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         instance_config=instance_config,
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,
