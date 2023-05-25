@@ -187,6 +187,10 @@ def get_applications_to_kill(
                             application.kube_deployment.namespace
                             != instance_config.get_namespace()
                             and not_bouncing
+                        ) or (
+                            application.kube_deployment.namespace
+                            != instance_config.get_namespace()
+                            and instance_config.get_desired_state() == "stop"
                         ):
                             applications_to_kill.append(application)
     return applications_to_kill
@@ -294,7 +298,7 @@ def main(argv=None) -> None:
         cleanup_unused_apps(
             soa_dir, cluster=cluster, kill_threshold=kill_threshold, force=force
         )
-    except (DontKillEverythingError):
+    except DontKillEverythingError:
         sys.exit(1)
 
 
