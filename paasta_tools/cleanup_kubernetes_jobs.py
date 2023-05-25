@@ -118,10 +118,13 @@ def instance_is_not_bouncing(
     for application in applications:
         if isinstance(application, DeploymentWrapper):
             existing_app = application.item
-            if existing_app.metadata.namespace == instance_config.get_namespace() and (
-                instance_config.get_instances()
-                <= (existing_app.status.ready_replicas or 0)
-            ):
+            if (
+                existing_app.metadata.namespace == instance_config.get_namespace()
+                and (
+                    instance_config.get_instances()
+                    <= (existing_app.status.ready_replicas or 0)
+                )
+            ) or instance_config.get_desired_state() == "stop":
                 return True
 
         elif (
@@ -294,7 +297,7 @@ def main(argv=None) -> None:
         cleanup_unused_apps(
             soa_dir, cluster=cluster, kill_threshold=kill_threshold, force=force
         )
-    except (DontKillEverythingError):
+    except DontKillEverythingError:
         sys.exit(1)
 
 
