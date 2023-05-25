@@ -118,10 +118,13 @@ def instance_is_not_bouncing(
     for application in applications:
         if isinstance(application, DeploymentWrapper):
             existing_app = application.item
-            if existing_app.metadata.namespace == instance_config.get_namespace() and (
-                instance_config.get_instances()
-                <= (existing_app.status.ready_replicas or 0)
-            ):
+            if (
+                existing_app.metadata.namespace == instance_config.get_namespace()
+                and (
+                    instance_config.get_instances()
+                    <= (existing_app.status.ready_replicas or 0)
+                )
+            ) or instance_config.get_desired_state() == "stop":
                 return True
 
         elif (
@@ -187,10 +190,6 @@ def get_applications_to_kill(
                             application.kube_deployment.namespace
                             != instance_config.get_namespace()
                             and not_bouncing
-                        ) or (
-                            application.kube_deployment.namespace
-                            != instance_config.get_namespace()
-                            and instance_config.get_desired_state() == "stop"
                         ):
                             applications_to_kill.append(application)
     return applications_to_kill
