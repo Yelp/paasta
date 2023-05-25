@@ -16,6 +16,7 @@ import argparse
 import mock
 import pytest
 from boto3.exceptions import Boto3Error
+from mock import Mock
 
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
@@ -31,6 +32,9 @@ from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
+
+
+DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
 
 
 @mock.patch("paasta_tools.cli.cmds.spark_run.os.geteuid", autospec=True)
@@ -128,6 +132,23 @@ def mock_instance_config():
 @pytest.fixture
 def mock_run():
     with mock.patch.object(spark_run, "_run") as m:
+        yield m
+
+
+@pytest.fixture
+def mock_get_docker_client():
+    fake_image_info = {
+        "RepoDigests": [
+            DUMMY_DOCKER_IMAGE_DIGEST,
+        ],
+    }
+    docker_client = Mock(inspect_image=Mock(return_value=fake_image_info))
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.get_docker_client",
+        return_value=docker_client,
+        autospec=True,
+    ) as m:
         yield m
 
 
@@ -1062,6 +1083,7 @@ def test_paasta_spark_run_bash(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
+    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1119,7 +1141,7 @@ def test_paasta_spark_run_bash(
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         spark_app_base_name=mock_get_spark_app_name.return_value,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         user_spark_opts=mock_parse_user_spark_args.return_value,
         paasta_cluster="test-cluster",
         paasta_pool="test-pool",
@@ -1135,7 +1157,7 @@ def test_paasta_spark_run_bash(
     mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
         spark_conf=mock_spark_conf,
@@ -1168,6 +1190,7 @@ def test_paasta_spark_run(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
+    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1225,7 +1248,7 @@ def test_paasta_spark_run(
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_MESOS,
         spark_app_base_name=mock_get_spark_app_name.return_value,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         user_spark_opts=mock_parse_user_spark_args.return_value,
         paasta_cluster="test-cluster",
         paasta_pool="test-pool",
@@ -1239,7 +1262,7 @@ def test_paasta_spark_run(
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
         spark_conf=mock_get_spark_conf.return_value,
@@ -1274,6 +1297,7 @@ def test_paasta_spark_run_pyspark(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
+    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1339,7 +1363,7 @@ def test_paasta_spark_run_pyspark(
     mock_get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         spark_app_base_name=mock_get_spark_app_name.return_value,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         user_spark_opts=mock_parse_user_spark_args.return_value,
         paasta_cluster="test-cluster",
         paasta_pool="test-pool",
@@ -1353,7 +1377,7 @@ def test_paasta_spark_run_pyspark(
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
-        docker_img=mock_get_docker_image.return_value,
+        docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
         system_paasta_config=mock_load_system_paasta_config.return_value,
         spark_conf=mock_get_spark_conf.return_value,

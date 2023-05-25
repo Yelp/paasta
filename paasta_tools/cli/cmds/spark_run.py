@@ -41,6 +41,7 @@ from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -509,7 +510,9 @@ def get_docker_run_cmd(
     return cmd
 
 
-def get_docker_image(args, instance_config):
+def get_docker_image(
+    args: argparse.Namespace, instance_config: InstanceConfig
+) -> Optional[str]:
     if args.build:
         return build_and_push_docker_image(args)
     if args.image:
@@ -900,8 +903,10 @@ def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
     )
 
 
-def get_docker_cmd(args, instance_config, spark_conf_str):
-    original_docker_cmd = args.cmd or instance_config.get_cmd()
+def get_docker_cmd(
+    args: argparse.Namespace, instance_config: InstanceConfig, spark_conf_str: str
+) -> str:
+    original_docker_cmd = str(args.cmd or instance_config.get_cmd())
 
     if args.mrjob:
         return original_docker_cmd + " " + spark_conf_str
@@ -924,7 +929,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         return inject_spark_conf_str(original_docker_cmd, spark_conf_str)
 
 
-def build_and_push_docker_image(args):
+def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     """
     Build an image if the default Spark service image is not preferred.
     The image needs to be pushed to a registry for the Spark executors
@@ -960,7 +965,7 @@ def build_and_push_docker_image(args):
         command = "docker push %s" % docker_url
 
     print(PaastaColors.grey(command))
-    retcode, output = _run(command, stream=True)
+    retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
 
@@ -1109,6 +1114,14 @@ def paasta_spark_run(args):
     if docker_image is None:
         return 1
 
+    # Get image digest
+    docker_client = get_docker_client()
+    image_details = docker_client.inspect_image(docker_image)
+    if len(image_details["RepoDigests"]) < 1:
+        print("Failed to get docker image digest", file=sys.stderr)
+        return None
+    docker_image_digest = image_details["RepoDigests"][0]
+
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
         args.disable_compact_bin_packing, args.cluster_manager
@@ -1150,7 +1163,7 @@ def paasta_spark_run(args):
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         user_spark_opts=user_spark_opts,
         paasta_cluster=args.cluster,
         paasta_pool=args.pool,
@@ -1177,7 +1190,7 @@ def paasta_spark_run(args):
         print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         instance_config=instance_config,
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,
