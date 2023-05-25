@@ -1,3 +1,11 @@
+paasta-tools (0.174.6) xenial; urgency=medium
+
+  * 0.174.6 tagged with 'make release'
+    Commit: Merge pull request #3613 from Yelp/u/cuza/clean-stopped-
+    instances  Make cleanup_k8s_job delete stopped instances
+
+ -- Dave Cuza <dcuza@yelp.com>  Thu, 25 May 2023 14:45:04 -0700
+
 paasta-tools (0.174.5) xenial; urgency=medium
 
   * 0.174.5 tagged with 'make release'
