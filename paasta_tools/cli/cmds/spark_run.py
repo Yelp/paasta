@@ -513,25 +513,33 @@ def get_docker_run_cmd(
 def get_docker_image(
     args: argparse.Namespace, instance_config: InstanceConfig
 ) -> Optional[str]:
+    """
+    Since the Docker image digest used to launch the Spark cluster is obtained by inspecting local
+    Docker images, we need to ensure that the Docker image exists locally or is pulled in all scenarios.
+    """
+    # docker image is built locally then pushed
     if args.build:
         return build_and_push_docker_image(args)
-    if args.image:
-        return args.image
 
-    try:
-        docker_url = instance_config.get_docker_url()
-    except NoDockerImageError:
-        print(
-            PaastaColors.red(
-                "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s\n"
-                % (instance_config.get_deploy_group(), args.service)
-            ),
-            sep="",
-            file=sys.stderr,
-        )
-        return None
+    docker_url = ""
+    if args.image:
+        docker_url = args.image
+    else:
+        try:
+            docker_url = instance_config.get_docker_url()
+        except NoDockerImageError:
+            print(
+                PaastaColors.red(
+                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                    "Please ensure this service has either run through a jenkins pipeline "
+                    "or paasta mark-for-deployment has been run for %s\n"
+                    % (instance_config.get_deploy_group(), args.service)
+                ),
+                sep="",
+                file=sys.stderr,
+            )
+            return None
+
     print(
         "Please wait while the image (%s) is pulled (times out after 5m)..."
         % docker_url,
