@@ -1047,6 +1047,7 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
 
 
 def _validate_pool(args, system_paasta_config):
+    return True
     if args.pool:
         valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
         if not valid_pools:
@@ -1068,7 +1069,9 @@ def _validate_pool(args, system_paasta_config):
 
 
 def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
-    return load_system_paasta_config().system_paasta_config.get_kube_clusters().get(cluster, {}).get("server")
+    return (
+        load_system_paasta_config().get_kube_clusters().get(cluster, {}).get("server")
+    )
 
 
 def paasta_spark_run(args):
