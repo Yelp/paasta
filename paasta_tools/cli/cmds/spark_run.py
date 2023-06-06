@@ -1047,7 +1047,6 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
 
 
 def _validate_pool(args, system_paasta_config):
-    return True
     if args.pool:
         valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
         if not valid_pools:
