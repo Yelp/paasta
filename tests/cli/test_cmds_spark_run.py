@@ -236,6 +236,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
+                use_eks=False,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -250,6 +251,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
+                use_eks=False,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -263,6 +265,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
+                use_eks=False,
             ),
             {},
         ),
@@ -299,7 +302,22 @@ def test_get_spark_env(
         **extra_expected,
         **expected_aws,
     }
-    assert spark_run.get_spark_env(args, spark_conf_str, aws, "1234") == expected_output
+    fake_system_paasta_config = (
+        SystemPaastaConfig(
+            {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
+            "fake_dir",
+        ),
+    )
+    assert (
+        spark_run.get_spark_env(
+            args,
+            spark_conf_str,
+            aws,
+            "1234",
+            system_paasta_config=fake_system_paasta_config,
+        )
+        == expected_output
+    )
 
 
 @pytest.mark.parametrize(
@@ -585,6 +603,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
+        args.use_eks = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -696,6 +715,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
+        args.use_eks = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -807,6 +827,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
+        args.use_eks = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -1108,6 +1129,8 @@ def test_paasta_spark_run_bash(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1152,6 +1175,8 @@ def test_paasta_spark_run_bash(
         needs_docker_cfg=False,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_spark_conf = mock_get_spark_conf.return_value
     mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
@@ -1215,6 +1240,8 @@ def test_paasta_spark_run(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1259,6 +1286,8 @@ def test_paasta_spark_run(
         needs_docker_cfg=False,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1322,6 +1351,8 @@ def test_paasta_spark_run_pyspark(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1374,6 +1405,8 @@ def test_paasta_spark_run_pyspark(
         needs_docker_cfg=False,
         aws_region="test-region",
         force_spark_resource_configs=False,
+        use_eks=False,
+        k8s_server_address=None,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,

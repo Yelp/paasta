@@ -321,6 +321,13 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--use-eks",
+        help="Use the EKS version of the target cluster rather than the Yelp-managed target cluster",
+        action="store_true",
+        dest="use_eks",
+    )
+
     if clusterman_metrics:
         list_parser.add_argument(
             "--suppress-clusterman-metrics-errors",
@@ -578,6 +585,7 @@ def get_spark_env(
     spark_conf_str: str,
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     ui_port: str,
+    system_paasta_config: SystemPaastaConfig,
 ) -> Dict[str, str]:
     """Create the env config dict to configure on the docker container"""
 
@@ -618,6 +626,9 @@ def get_spark_env(
         )
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
+
+    if args.use_eks:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -821,10 +832,21 @@ def configure_and_run_docker_container(
     if args.enable_compact_bin_packing:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
+    if args.use_eks:
+        volumes.append(
+            f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
+        )
+
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     environment.update(
-        get_spark_env(args, spark_conf_str, aws_creds, spark_conf["spark.ui.port"])
+        get_spark_env(
+            args=args,
+            spark_conf_str=spark_conf_str,
+            aws_creds=aws_creds,
+            ui_port=spark_conf["spark.ui.port"],
+            system_paasta_config=system_paasta_config,
+        )
     )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
@@ -1045,6 +1067,12 @@ def _validate_pool(args, system_paasta_config):
     return True
 
 
+def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
+    return (
+        load_system_paasta_config().get_kube_clusters().get(cluster, {}).get("server")
+    )
+
+
 def paasta_spark_run(args):
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
@@ -1182,6 +1210,10 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
+        use_eks=args.use_eks,
+        k8s_server_address=_get_k8s_url_for_cluster(args.cluster)
+        if args.use_eks
+        else None,
     )
     # TODO: Remove this after MLCOMPUTE-699 is complete
     if "spark.kubernetes.decommission.script" not in spark_conf:
