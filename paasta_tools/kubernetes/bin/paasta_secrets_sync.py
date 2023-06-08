@@ -146,13 +146,11 @@ def main() -> None:
 
 def get_services_to_k8s_namespaces_to_allowlist(
     service_list: List[str], cluster: str, soa_dir: str, kube_client: KubeClient
-) -> Tuple[
+) -> Dict[
+    str,  # service
     Dict[
-        str,  # service
-        Dict[
-            str,  # namespace
-            Optional[Set[str]],  # allowlist of secret names, None means allow all.
-        ],
+        str,  # namespace
+        Optional[Set[str]],  # allowlist of secret names, None means allow all.
     ],
 ]:
     """
@@ -190,16 +188,22 @@ def get_services_to_k8s_namespaces_to_allowlist(
             secrets_used, shared_secrets_used = get_secrets_used_by_instance(
                 service_instance_config
             )
-            services_to_k8s_namespaces_to_allowlist[service].setdefault(
+            allowlist = services_to_k8s_namespaces_to_allowlist[service].setdefault(
                 service_instance_config.get_namespace(),
                 set(),
-            ).update(secrets_used)
+            )
+            if allowlist is not None:
+                allowlist.update(secrets_used)
 
             if "_shared" in service_list:
-                services_to_k8s_namespaces_to_allowlist["_shared"].setdefault(
+                shared_allowlist = services_to_k8s_namespaces_to_allowlist[
+                    "_shared"
+                ].setdefault(
                     service_instance_config.get_namespace(),
                     set(),
-                ).update(shared_secrets_used)
+                )
+                if shared_allowlist is not None:
+                    shared_allowlist.update(shared_secrets_used)
 
         for instance_type in INSTANCE_TYPES:
             if instance_type == "kubernetes":
@@ -242,7 +246,7 @@ def get_secrets_used_by_instance(
 
     for secret_volume in service_instance_config.get_secret_volumes():
         # currently, only per-service secrets are supported for secret_volumes.
-        secrets_used.add(secret_volume.secret_name)
+        secrets_used.add(secret_volume["secret_name"])
 
     return secrets_used, shared_secrets_used
 
