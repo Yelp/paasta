@@ -204,25 +204,25 @@ def get_services_to_k8s_namespaces_to_allowlist(
         for instance_type in INSTANCE_TYPES:
             if instance_type == "kubernetes":
                 continue  # handled above.
-            else:
-                instances = get_service_instance_list(
-                    service=service,
-                    instance_type=instance_type,
-                    cluster=cluster,
-                    soa_dir=soa_dir,
-                )
-                if instances:
-                    # Currently, all instance types besides kubernetes use one big namespace, defined in
-                    # INSTANCE_TYPE_TO_K8S_NAMESPACE. Sync all shared secrets and all secrets belonging to any service
-                    # which uses that instance type.
 
-                    services_to_k8s_namespaces_to_allowlist[service][
+            instances = get_service_instance_list(
+                service=service,
+                instance_type=instance_type,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            if instances:
+                # Currently, all instance types besides kubernetes use one big namespace, defined in
+                # INSTANCE_TYPE_TO_K8S_NAMESPACE. Sync all shared secrets and all secrets belonging to any service
+                # which uses that instance type.
+
+                services_to_k8s_namespaces_to_allowlist[service][
+                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
+                ] = None
+                if "_shared" in service_list:
+                    services_to_k8s_namespaces_to_allowlist["_shared"][
                         INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
                     ] = None
-                    if "_shared" in service_list:
-                        services_to_k8s_namespaces_to_allowlist["_shared"][
-                            INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
-                        ] = None
 
     return dict(services_to_k8s_namespaces_to_allowlist)
 
