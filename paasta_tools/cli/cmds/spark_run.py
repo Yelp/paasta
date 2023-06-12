@@ -530,7 +530,7 @@ def get_docker_image(
 
     docker_url = ""
     if args.image:
-        docker_url = args.image
+        return args.image
     else:
         try:
             docker_url = instance_config.get_docker_url()
