@@ -1133,6 +1133,10 @@ class PaastaColors:
         :param color: ANSI color code
         :param text: a string
         :return: a string with ANSI color encoding"""
+
+        if os.getenv("NO_COLOR", "0") == "1":
+            return text
+
         # any time text returns to default, we want to insert our color.
         replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
         # then wrap the beginning and end in our color/default.
