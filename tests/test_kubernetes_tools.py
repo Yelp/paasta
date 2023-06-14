@@ -858,6 +858,117 @@ class TestKubernetesDeploymentConfig:
                 is True
             )
 
+    def test_get_gunicorn_exporter_sidecar_container_should_run(self):
+        system_paasta_config = mock.Mock(
+            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
+                return_value="gunicorn_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=True
+        ):
+            ret = self.deployment.get_gunicorn_exporter_sidecar_container(
+                system_paasta_config
+            )
+            assert ret is not None
+            assert ret.image == "gunicorn_exporter_image"
+            assert ret.ports[0].container_port == 9117
+
+    def test_get_gunicorn_exporter_sidecar_container_shouldnt_run(self):
+        system_paasta_config = mock.Mock(
+            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
+                return_value="gunicorn_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=False
+        ):
+            assert (
+                self.deployment.get_gunicorn_exporter_sidecar_container(
+                    system_paasta_config
+                )
+                is None
+            )
+
+    def test_should_run_gunicorn_exporter_sidecar_explicit(self):
+        self.deployment.config_dict.update(
+            {
+                "max_instances": 5,
+                "autoscaling": {
+                    "metrics_provider": "gunicorn",
+                    "use_prometheus": True,
+                },
+            }
+        )
+
+        system_paasta_config = mock.Mock()
+
+        assert (
+            self.deployment.should_run_gunicorn_exporter_sidecar(system_paasta_config)
+            is True
+        )
+
+        self.deployment.config_dict["autoscaling"]["use_prometheus"] = False
+        assert (
+            self.deployment.should_run_gunicorn_exporter_sidecar(system_paasta_config)
+            is False
+        )
+
+    def test_should_run_gunicorn_exporter_sidecar_defaults(self):
+        self.deployment.config_dict.update(
+            {
+                "max_instances": 5,
+                "autoscaling": {
+                    "metrics_provider": "gunicorn",
+                },
+            }
+        )
+
+        system_paasta_config_enabled = mock.Mock(
+            default_should_run_gunicorn_exporter_sidecar=mock.Mock(return_value=True)
+        )
+        system_paasta_config_disabled = mock.Mock(
+            default_should_run_gunicorn_exporter_sidecar=mock.Mock(return_value=False)
+        )
+
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_GUNICORN",
+            autospec=False,
+            new=False,
+        ):
+            assert (
+                self.deployment.should_run_gunicorn_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
+            )
+            assert (
+                self.deployment.should_run_gunicorn_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is False
+            )
+
+        # If the default for use_prometheus is True and config_dict doesn't specify use_prometheus, we should run
+        # gunicorn_exporter regardless of default_should_run_gunicorn_exporter_sidecar.
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_GUNICORN",
+            autospec=False,
+            new=True,
+        ):
+            assert (
+                self.deployment.should_run_gunicorn_exporter_sidecar(
+                    system_paasta_config_enabled
+                )
+                is True
+            )
+            assert (
+                self.deployment.should_run_gunicorn_exporter_sidecar(
+                    system_paasta_config_disabled
+                )
+                is True
+            )
+
     def test_get_env(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.LongRunningServiceConfig.get_env",

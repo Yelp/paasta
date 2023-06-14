@@ -171,7 +171,12 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
-SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
+GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
+SIDECAR_CONTAINER_NAMES = [
+    HACHECK_POD_NAME,
+    UWSGI_EXPORTER_POD_NAME,
+    GUNICORN_EXPORTER_POD_NAME,
+]
 KUBERNETES_NAMESPACE = "paasta"
 PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
 MAX_EVENTS_TO_RETRIEVE = 200
@@ -193,6 +198,7 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
+DEFAULT_USE_PROMETHEUS_GUNICORN = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
@@ -1094,6 +1100,50 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     "use_prometheus",
                     DEFAULT_USE_PROMETHEUS_UWSGI
                     or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
+                ):
+                    return True
+        return False
+
+    def get_gunicorn_exporter_sidecar_container(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> Optional[V1Container]:
+
+        if self.should_run_gunicorn_exporter_sidecar(system_paasta_config):
+            return V1Container(
+                image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
+                resources=self.get_sidecar_resource_requirements("gunicorn_exporter"),
+                name=GUNICORN_EXPORTER_POD_NAME,
+                env=self.get_kubernetes_environment(),
+                ports=[V1ContainerPort(container_port=9117)],
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1Handler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
+                                # metrics up until our Pod dies
+                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                            ]
+                        )
+                    )
+                ),
+            )
+
+        return None
+
+    def should_run_gunicorn_exporter_sidecar(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            if autoscaling_params["metrics_provider"] == "gunicorn":
+                if autoscaling_params.get(
+                    "use_prometheus",
+                    DEFAULT_USE_PROMETHEUS_GUNICORN
+                    or system_paasta_config.default_should_run_gunicorn_exporter_sidecar(),
                 ):
                     return True
         return False
