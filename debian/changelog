@@ -1,3 +1,10 @@
+paasta-tools (0.176.0) xenial; urgency=medium
+
+  * 0.176.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/dont_sync_to_unused_namespaces"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 14 Jun 2023 14:04:57 -0700
+
 paasta-tools (0.175.1) xenial; urgency=medium
 
   * 0.175.1 tagged with 'make release'

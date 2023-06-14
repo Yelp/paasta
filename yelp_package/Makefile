@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.175.1
+RELEASE=0.176.0
 
 SHELL=/bin/bash
 
