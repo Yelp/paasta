@@ -1,3 +1,12 @@
+paasta-tools (0.175.1) xenial; urgency=medium
+
+  * 0.175.1 tagged with 'make release'
+    Commit: Adding support for disabling ANSI colors (#3620)  Reading
+    environment variable NO_COLOR to check if ANSI colors should be
+    omitted, see https://no-color.org/
+
+ -- Chi Chang <chi@yelp.com>  Wed, 14 Jun 2023 11:26:24 -0700
+
 paasta-tools (0.175.0) xenial; urgency=medium
 
   * 0.175.0 tagged with 'make release'
