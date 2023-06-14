@@ -1913,6 +1913,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
+    default_should_run_gunicorn_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -1992,6 +1993,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     taskproc: Dict
     tron: Dict
     uwsgi_exporter_sidecar_image_url: str
+    gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
@@ -2666,6 +2668,18 @@ class SystemPaastaConfig:
 
     def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
         return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+
+    def get_gunicorn_exporter_sidecar_image_url(self) -> str:
+        """Get the docker image URL for the gunicorn_exporter sidecar container"""
+        return self.config_dict.get(
+            "gunicorn_exporter_sidecar_image_url",
+            "docker-dev.yelpcorp.com/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
+        )
+
+    def default_should_run_gunicorn_exporter_sidecar(self) -> bool:
+        return self.config_dict.get(
+            "default_should_run_gunicorn_exporter_sidecar", False
+        )
 
     def get_mark_for_deployment_max_polling_threads(self) -> int:
         return self.config_dict.get("mark_for_deployment_max_polling_threads", 4)
