@@ -1119,7 +1119,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return env
 
-    def get_container_env(self) -> Sequence[V1EnvVar]:
+    def get_env_vars_that_use_secrets(self) -> Tuple[Dict[str, str], Dict[str, str]]:
+        """Returns two dictionaries of environment variable name->value; the first is vars that use non-shared
+        secrets, and the second is vars that use shared secrets.
+
+        The values of the dictionaries are the secret refs as formatted in yelpsoa-configs, e.g. "SECRET(foo)"
+        or "SHARED_SECRET(bar)". These can be decoded with get_secret_name_from_ref.
+        """
         secret_env_vars = {}
         shared_secret_env_vars = {}
         for k, v in self.get_env().items():
@@ -1128,6 +1134,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     shared_secret_env_vars[k] = v
                 else:
                     secret_env_vars[k] = v
+        return secret_env_vars, shared_secret_env_vars
+
+    def get_container_env(self) -> Sequence[V1EnvVar]:
+        secret_env_vars, shared_secret_env_vars = self.get_env_vars_that_use_secrets()
 
         user_env = [
             V1EnvVar(name=name, value=value)
