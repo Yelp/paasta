@@ -1,3 +1,12 @@
+paasta-tools (0.176.1) xenial; urgency=medium
+
+  * 0.176.1 tagged with 'make release'
+    Commit: Bump paasta-tools-go to 0.0.20 to get
+    https://github.com/Yelp/paasta-tools-go/pull/93 which should fix the
+    paasta build on bionic.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 14 Jun 2023 17:19:32 -0700
+
 paasta-tools (0.176.0) xenial; urgency=medium
 
   * 0.176.0 tagged with 'make release'
