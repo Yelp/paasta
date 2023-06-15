@@ -42,8 +42,8 @@ build_%_docker:
 itest_%: package_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-PTG_VERSION=0.0.12
-PTG_SUM=1fa3f94fe5dd00059186404c2e2717625808c1cdefd90bd551f16b6e72018640
+PTG_VERSION=0.0.20
+PTG_SUM=17fabafb3aa8ea728c8c4a62927fc699b7b16ad0bd561ed822096f2da329eed1
 ifeq ($(PAASTA_ENV),YELP)
 	PTG_SANITY=monk
 else
