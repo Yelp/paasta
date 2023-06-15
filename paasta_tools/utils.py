@@ -413,11 +413,8 @@ class InstanceConfig:
         return self.cluster
 
     def get_namespace(self) -> str:
-        """Get namespace from config, default to the value from INSTANCE_TYPE_TO_K8S_NAMESPACE for this instance type, 'paasta' if that isn't defined."""
-        return self.config_dict.get(
-            "namespace",
-            INSTANCE_TYPE_TO_K8S_NAMESPACE.get(self.get_instance_type(), "paasta"),
-        )
+        """Get namespace from config, default to 'paasta'"""
+        return self.config_dict.get("namespace", "paasta")
 
     def get_instance(self) -> str:
         return self.instance

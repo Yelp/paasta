@@ -27,7 +27,6 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Set
-from typing import Tuple
 
 from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
@@ -44,7 +43,6 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import get_secret_provider
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DEFAULT_VAULT_TOKEN_FILE
@@ -122,19 +120,17 @@ def main() -> None:
     secret_provider_name = system_paasta_config.get_secret_provider_name()
     vault_cluster_config = system_paasta_config.get_vault_cluster_config()
     kube_client = KubeClient()
-    services_to_k8s_namespaces_to_allowlist = (
-        get_services_to_k8s_namespaces_to_allowlist(
-            service_list=args.service_list,
-            cluster=cluster,
-            soa_dir=args.soa_dir,
-            kube_client=kube_client,
-        )
+    services_to_k8s_namespaces = get_services_to_k8s_namespaces(
+        service_list=args.service_list,
+        cluster=cluster,
+        soa_dir=args.soa_dir,
+        kube_client=kube_client,
     )
 
     sys.exit(0) if sync_all_secrets(
         kube_client=kube_client,
         cluster=cluster,
-        services_to_k8s_namespaces_to_allowlist=services_to_k8s_namespaces_to_allowlist,
+        services_to_k8s_namespaces=services_to_k8s_namespaces,
         secret_provider_name=secret_provider_name,
         vault_cluster_config=vault_cluster_config,
         soa_dir=args.soa_dir,
@@ -144,117 +140,53 @@ def main() -> None:
     ) else sys.exit(1)
 
 
-def get_services_to_k8s_namespaces_to_allowlist(
+def get_services_to_k8s_namespaces(
     service_list: List[str], cluster: str, soa_dir: str, kube_client: KubeClient
-) -> Dict[
-    str,  # service
-    Dict[
-        str,  # namespace
-        Optional[Set[str]],  # allowlist of secret names, None means allow all.
-    ],
-]:
-    """
-    Generate a mapping of service -> namespace -> allowlist of secrets, e.g.
-
-    {
-        "yelp-main": {
-            "paasta": {"secret1", "secret2"},
-            "paastasvc-yelp-main": {"secret1", "secret3"},
-            "paasta-flinks": None,
-        },
-        "_shared": {
-            "paasta": {"sharedsecret1"},
-            "paastasvc-yelp-main": {"sharedsecret1", "sharedsecret2"},
-            "paasta-flinks": None,
-        }
-    }
-
-    This mapping is used by sync_all_secrets / sync_secrets:
-    sync_secrets will only sync secrets into a namespace if the allowlist is None or contains that secret's name.
-    """
-    services_to_k8s_namespaces_to_allowlist: Dict[
-        str, Dict[str, Optional[Set[str]]]
-    ] = defaultdict(dict)
-
+) -> Dict[str, Set[str]]:
+    services_to_k8s_namespaces: Dict[str, Set[str]] = defaultdict(set)
     for service in service_list:
+        # Special handling for service `_shared`, since it doesn't actually exist
+        # Copy shared secrest to all namespaces, assuming that if a secret is declared shared
+        # the team is aware that more people can see it
         if service == "_shared":
-            # _shared is handled specially for each service.
+            services_to_k8s_namespaces[service] = set(
+                INSTANCE_TYPE_TO_K8S_NAMESPACE.values()
+            )
+            paasta_namespaces = kube_client.core.list_namespace(
+                label_selector="paasta.yelp.com/managed=true"
+            )
+            for namespace in paasta_namespaces.items:
+                services_to_k8s_namespaces[service].add(namespace.metadata.name)
             continue
-
-        config_loader = PaastaServiceConfigLoader(service, soa_dir)
-        for service_instance_config in config_loader.instance_configs(
-            cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-        ):
-            secrets_used, shared_secrets_used = get_secrets_used_by_instance(
-                service_instance_config
-            )
-            allowlist = services_to_k8s_namespaces_to_allowlist[service].setdefault(
-                service_instance_config.get_namespace(),
-                set(),
-            )
-            if allowlist is not None:
-                allowlist.update(secrets_used)
-
-            if "_shared" in service_list:
-                shared_allowlist = services_to_k8s_namespaces_to_allowlist[
-                    "_shared"
-                ].setdefault(
-                    service_instance_config.get_namespace(),
-                    set(),
-                )
-                if shared_allowlist is not None:
-                    shared_allowlist.update(shared_secrets_used)
 
         for instance_type in INSTANCE_TYPES:
             if instance_type == "kubernetes":
-                continue  # handled above.
-
-            instances = get_service_instance_list(
-                service=service,
-                instance_type=instance_type,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
-            if instances:
-                # Currently, all instance types besides kubernetes use one big namespace, defined in
-                # INSTANCE_TYPE_TO_K8S_NAMESPACE. Sync all shared secrets and all secrets belonging to any service
-                # which uses that instance type.
-
-                services_to_k8s_namespaces_to_allowlist[service][
-                    INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
-                ] = None
-                if "_shared" in service_list:
-                    services_to_k8s_namespaces_to_allowlist["_shared"][
+                config_loader = PaastaServiceConfigLoader(service, soa_dir)
+                for service_instance_config in config_loader.instance_configs(
+                    cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                ):
+                    services_to_k8s_namespaces[service].add(
+                        service_instance_config.get_namespace()
+                    )
+            else:
+                instances = get_service_instance_list(
+                    service=service,
+                    instance_type=instance_type,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+                if instances:
+                    services_to_k8s_namespaces[service].add(
                         INSTANCE_TYPE_TO_K8S_NAMESPACE[instance_type]
-                    ] = None
+                    )
 
-    return dict(services_to_k8s_namespaces_to_allowlist)
-
-
-def get_secrets_used_by_instance(
-    service_instance_config: KubernetesDeploymentConfig,
-) -> Tuple[Set[str], Set[str]]:
-    (
-        secret_env_vars,
-        shared_secret_env_vars,
-    ) = service_instance_config.get_env_vars_that_use_secrets()
-
-    secrets_used = {get_secret_name_from_ref(v) for v in secret_env_vars.values()}
-    shared_secrets_used = {
-        get_secret_name_from_ref(v) for v in shared_secret_env_vars.values()
-    }
-
-    for secret_volume in service_instance_config.get_secret_volumes():
-        # currently, only per-service secrets are supported for secret_volumes.
-        secrets_used.add(secret_volume["secret_name"])
-
-    return secrets_used, shared_secrets_used
+    return dict(services_to_k8s_namespaces)
 
 
 def sync_all_secrets(
     kube_client: KubeClient,
     cluster: str,
-    services_to_k8s_namespaces_to_allowlist: Dict[str, Dict[str, Set[str]]],
+    services_to_k8s_namespaces: Dict[str, Set],
     secret_provider_name: str,
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
@@ -264,19 +196,12 @@ def sync_all_secrets(
 ) -> bool:
     results = []
 
-    for (
-        service,
-        namespaces_to_allowlist,
-    ) in services_to_k8s_namespaces_to_allowlist.items():
+    for service, namespaces in services_to_k8s_namespaces.items():
         sync_service_secrets: Dict[str, List[Callable]] = defaultdict(list)
 
         if overwrite_namespace:
-            namespaces_to_allowlist = {
-                overwrite_namespace: namespaces_to_allowlist.get(
-                    overwrite_namespace, set()
-                ),
-            }
-        for namespace, secret_allowlist in namespaces_to_allowlist.items():
+            namespaces = {overwrite_namespace}
+        for namespace in namespaces:
             sync_service_secrets["paasta-secret"].append(
                 partial(
                     sync_secrets,
@@ -288,7 +213,6 @@ def sync_all_secrets(
                     soa_dir=soa_dir,
                     namespace=namespace,
                     vault_token_file=vault_token_file,
-                    secret_allowlist=secret_allowlist,
                 )
             )
         sync_service_secrets["boto-key"].append(
@@ -334,7 +258,6 @@ def sync_secrets(
     soa_dir: str,
     namespace: str,
     vault_token_file: str,
-    secret_allowlist: Optional[Set[str]],
 ) -> bool:
     secret_dir = os.path.join(soa_dir, service, "secrets")
     secret_provider_kwargs = {
@@ -359,13 +282,6 @@ def sync_secrets(
         for secret_file_path in secret_file_paths:
             if secret_file_path.path.endswith("json"):
                 secret = secret_file_path.name.replace(".json", "")
-                if secret_allowlist is not None:
-                    if secret not in secret_allowlist:
-                        log.debug(
-                            f"Skipping {service}.{secret} in {namespace} because it's not in in secret_allowlist"
-                        )
-                        continue
-
                 with open(secret_file_path, "r") as secret_file:
                     secret_signature = secret_provider.get_secret_signature_from_data(
                         json.load(secret_file)

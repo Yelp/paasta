@@ -1,12 +1,10 @@
-from typing import Optional
-
 import mock
 import pytest
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import _get_dict_signature
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import (
-    get_services_to_k8s_namespaces_to_allowlist,
+    get_services_to_k8s_namespaces,
 )
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import main
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
@@ -15,7 +13,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_crypto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def test_parse_args():
@@ -55,16 +53,16 @@ def test_sync_all_secrets():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
     ):
-        services_to_k8s_namespaces_to_allowlist = {
-            "foo": {"paastasvc-foo": None},
-            "bar": {"paastasvc-foo": {"barsecret"}},
+        services_to_k8s_namespaces = {
+            "foo": {"paastasvc-foo"},
+            "bar": {"paastasvc-foo"},
         }
 
         mock_sync_secrets.side_effect = [True, True]
         assert sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            services_to_k8s_namespaces_to_allowlist=services_to_k8s_namespaces_to_allowlist,
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
@@ -75,7 +73,7 @@ def test_sync_all_secrets():
         assert not sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            services_to_k8s_namespaces_to_allowlist=services_to_k8s_namespaces_to_allowlist,
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
@@ -86,7 +84,7 @@ def test_sync_all_secrets():
         assert sync_all_secrets(
             kube_client=mock.Mock(),
             cluster="westeros-prod",
-            services_to_k8s_namespaces_to_allowlist=services_to_k8s_namespaces_to_allowlist,
+            services_to_k8s_namespaces=services_to_k8s_namespaces,
             secret_provider_name="vaulty",
             vault_cluster_config={},
             soa_dir="/nail/blah",
@@ -98,129 +96,18 @@ def test_sync_shared():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_service_instance_list",
-        autospec=True,
-    ) as mock_get_service_instance_list:
+    ):
         kube_client = mock.Mock()
         kube_client.core = mock.MagicMock()
-
-        # If no services besides _shared are passed, we should get an empty dict, as
-        # get_services_to_k8s_namespaces_to_allowlist only adds shared secrets that are used by the other services
-        # listed.
-        assert (
-            get_services_to_k8s_namespaces_to_allowlist(
-                ["_shared"],
-                "fake_cluster",
-                "/fake/soa/dir",
-                kube_client,
-            )
-            == {}
-        )
-
-        def fake_config_loader_init(
-            service: str,
-            soa_dir: str = DEFAULT_SOA_DIR,
-            load_deployments: bool = True,
-        ):
-            loader = mock.Mock()
-            if service == "foo":
-                loader.instance_configs.return_value = [
-                    KubernetesDeploymentConfig(
-                        service="foo",
-                        instance="a",
-                        cluster="fake_cluster",
-                        config_dict={
-                            "namespace": "paastasvc-foo",
-                            "env": {
-                                "A": "SECRET(foo-secret)",
-                                "B": "SHARED_SECRET(shared_secret1)",
-                            },
-                        },
-                        soa_dir=soa_dir,
-                        branch_dict=None,
-                    ),
-                ]
-            elif service == "bar":
-                loader.instance_configs.return_value = [
-                    KubernetesDeploymentConfig(
-                        service="bar",
-                        instance="a",
-                        cluster="fake_cluster",
-                        config_dict={
-                            "namespace": "paastasvc-bar",
-                            "env": {
-                                "A": "SECRET(bar-secret1)",
-                                "B": "SECRET(bar-secret2)",
-                                "C": "SHARED_SECRET(shared_secret2)",
-                            },
-                        },
-                        soa_dir=soa_dir,
-                        branch_dict=None,
-                    ),
-                    KubernetesDeploymentConfig(
-                        service="bar",
-                        instance="b",
-                        cluster="fake_cluster",
-                        config_dict={
-                            "namespace": "paasta",
-                            "env": {
-                                "A": "SECRET(bar-secret2)",
-                                "B": "SECRET(bar-secret3)",
-                                "C": "SHARED_SECRET(shared_secret3)",
-                            },
-                        },
-                        soa_dir=soa_dir,
-                        branch_dict=None,
-                    ),
-                ]
-            elif service == "flink-service":
-                loader.instance_configs.return_value = []
-            else:
-                raise ValueError(
-                    f"only services foo and bar are expected here, got {service}"
-                )
-
-            return loader
-
-        mock_config_loader.side_effect = fake_config_loader_init
-
-        def fake_get_service_instance_list(
-            service: str,
-            cluster: Optional[str] = None,
-            instance_type: str = None,
-            soa_dir: str = DEFAULT_SOA_DIR,
-        ):
-            if instance_type == "flink" and service == "flink-service":
-                return ["flink-service"]
-            else:
-                return []
-
-        mock_get_service_instance_list.side_effect = fake_get_service_instance_list
-
-        assert get_services_to_k8s_namespaces_to_allowlist(
-            ["_shared", "foo", "bar", "flink-service"],
-            "fake_cluster",
-            "/fake/soa/dir",
-            kube_client,
-        ) == {
-            "_shared": {
-                "paastasvc-foo": {"shared_secret1"},
-                "paastasvc-bar": {"shared_secret2"},
-                "paasta": {"shared_secret3"},
-                "paasta-flinks": None,
-            },
-            "foo": {
-                "paastasvc-foo": {"foo-secret"},
-            },
-            "bar": {
-                "paastasvc-bar": {"bar-secret1", "bar-secret2"},
-                "paasta": {"bar-secret2", "bar-secret3"},
-            },
-            "flink-service": {
-                "paasta-flinks": None,
-            },
-        }
+        # _shared does no actual lookup, and as such works without cluster
+        # we just need to ensure it returns non-empty namespaces
+        assert get_services_to_k8s_namespaces(["_shared"], "", "", kube_client) != {}
+        try:
+            assert get_services_to_k8s_namespaces(["_foo"], "", "", kube_client) == {}
+        except PaastaNotConfiguredError:
+            # this check can only be done if /etc/paasta... exists and has a cluster
+            # which is not the case on GHA and devboxes, hence we accept a failure
+            pass
 
 
 @pytest.fixture
@@ -292,7 +179,6 @@ def test_sync_secrets_empty_soa_dir(paasta_secrets_patches, namespace):
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
 
 
@@ -321,7 +207,6 @@ def test_sync_secrets_soa_no_json_files(paasta_secrets_patches, namespace):
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
 
 
@@ -355,7 +240,6 @@ def test_sync_secrets_signatures_match(paasta_secrets_patches, namespace):
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
     assert mock_get_kubernetes_secret_signature.called
     _, kwargs = mock_get_kubernetes_secret_signature.call_args
@@ -396,7 +280,6 @@ def test_sync_secrets_signature_changed(paasta_secrets_patches, namespace):
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
     assert mock_get_kubernetes_secret_signature.called
     assert not mock_create_secret.called
@@ -441,7 +324,6 @@ def test_sync_secrets_not_exist(paasta_secrets_patches, namespace):
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
     assert mock_get_kubernetes_secret_signature.called
     assert mock_create_secret.called
@@ -487,7 +369,6 @@ def test_sync_secrets_exists_but_no_signature(paasta_secrets_patches, namespace)
         soa_dir="/nail/blah",
         namespace=namespace,
         vault_token_file="./vault-token",
-        secret_allowlist=None,
     )
     assert mock_get_kubernetes_secret_signature.called
     assert mock_create_secret.called
@@ -530,58 +411,6 @@ def test_sync_secrets_secret_api_exception(paasta_secrets_patches, namespace):
             soa_dir="/nail/blah",
             namespace=namespace,
             vault_token_file="./vault-token",
-            secret_allowlist=None,
-        )
-
-
-@pytest.mark.parametrize("namespace", namespaces)
-def test_sync_secrets_only_does_allowlisted_files(paasta_secrets_patches, namespace):
-    (
-        mock_get_secret_provider,
-        mock_scandir,
-        mock_get_kubernetes_secret_signature,
-        mock_create_secret,
-        mock_create_kubernetes_secret_signature,
-        mock_update_secret,
-        mock_update_kubernetes_secret_signature,
-    ) = paasta_secrets_patches
-
-    mock_get_secret_provider.return_value = mock.Mock(
-        get_secret_signature_from_data=mock.Mock(return_value="abc"),
-        decrypt_secret_raw=mock.Mock(return_value=b""),
-    )
-
-    mock_file1 = mock.Mock(path="./some_file1.json")
-    mock_file1.name = (
-        "some_file1.json"  # have to set separately because of Mock argument
-    )
-    mock_file2 = mock.Mock(path="./some_file2.json")
-    mock_file2.name = (
-        "some_file2.json"  # have to set separately because of Mock argument
-    )
-    mock_scandir.return_value.__enter__.return_value = [mock_file1, mock_file2]
-
-    with mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
-        autospec=True,
-    ) as mock_create_or_update:
-        assert sync_secrets(
-            kube_client=mock.Mock(),
-            cluster="westeros-prod",
-            service="universe",
-            secret_provider_name="vaulty",
-            vault_cluster_config={},
-            soa_dir="/nail/blah",
-            namespace=namespace,
-            vault_token_file="./vault-token",
-            secret_allowlist={"some_file1"},
-        )
-
-        # It should only sync some_file1, not some_file2 because that's not in the allowlist.
-        assert mock_create_or_update.call_count == 1
-        assert (
-            mock_create_or_update.call_args_list[0][1]["secret_name"]
-            == f"{namespace}-secret-universe-some--file1"
         )
 
 
