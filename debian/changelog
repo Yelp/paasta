@@ -1,3 +1,13 @@
+paasta-tools (0.177.0) xenial; urgency=medium
+
+  * 0.177.0 tagged with 'make release'
+    Commit: Revert "Merge branch
+    "u/krall/dont_sync_to_unused_namespaces""  This reverts commit
+    31d37224ee6764cfa0492927ea4eae437adba926, reversing changes made to
+    a0fda947793b5834857d58dc80e2c2151feeeaa1.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 14 Jun 2023 17:52:16 -0700
+
 paasta-tools (0.176.1) xenial; urgency=medium
 
   * 0.176.1 tagged with 'make release'
