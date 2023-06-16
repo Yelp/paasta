@@ -29,6 +29,7 @@ from typing import Sequence
 from kubernetes.client import V1DeleteOptions
 from pysensu_yelp import Status
 
+from paasta_tools.kubernetes_tools import get_all_namespaces
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Pod
@@ -131,20 +132,25 @@ def remove_pods(
 def evicted_pods_per_service(
     client: KubeClient,
 ) -> Mapping[str, Sequence[EvictedPod]]:
-    all_pods = get_all_pods(kube_client=client, namespace="")
-    evicted_pods = get_evicted_pods(all_pods)
-    log.info(f"Pods in evicted state: {[pod.metadata.name for pod in evicted_pods]}")
     evicted_pods_aggregated: Dict[str, List[EvictedPod]] = defaultdict(list)
-    for pod in evicted_pods:
-        service = get_pod_service(pod)
-        if service:
-            evicted_pods_aggregated[service].append(
-                EvictedPod(
-                    pod.metadata.name, pod.metadata.namespace, pod.status.message
+
+    for namespace in get_all_namespaces(client):
+        all_pods = get_all_pods(kube_client=client, namespace=namespace)
+        evicted_pods = get_evicted_pods(all_pods)
+        log.info(
+            f"Pods in evicted state in {namespace}: {[pod.metadata.name for pod in evicted_pods]}"
+        )
+
+        for pod in evicted_pods:
+            service = get_pod_service(pod)
+            if service:
+                evicted_pods_aggregated[service].append(
+                    EvictedPod(
+                        pod.metadata.name, pod.metadata.namespace, pod.status.message
+                    )
                 )
-            )
-        else:
-            log.info(f"Could not get service name for pod {pod.metadata.name}")
+            else:
+                log.info(f"Could not get service name for pod {pod.metadata.name}")
     return evicted_pods_aggregated
 
 

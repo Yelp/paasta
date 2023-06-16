@@ -176,7 +176,11 @@ def test_evicted_pods_per_service():
     with mock.patch(
         "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.get_all_pods",
         autospec=True,
-    ) as mock_get_all_pods:
+    ) as mock_get_all_pods, mock.patch(
+        "paasta_tools.kubernetes.bin.kubernetes_remove_evicted_pods.get_all_namespaces",
+        autospec=True,
+        return_value=["namespace1"],
+    ):
         mock_get_all_pods.return_value = [pod1, pod2, pod3]
         evicted_pods = evicted_pods_per_service(mock_client)
         assert evicted_pods == {
