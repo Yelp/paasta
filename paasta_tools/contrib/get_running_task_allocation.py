@@ -167,7 +167,6 @@ def get_kubernetes_metadata(
     Optional[str],
     Optional[str],
     Optional[str],
-    Optional[str],
 ]:
     labels = pod.metadata.labels or {}
     pod_name = pod.metadata.name
@@ -192,8 +191,9 @@ def get_container_type(container_name: str, instance_name: str) -> str:
         return container_name
 
 
-def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocationInfo]:
-    client = KubeClient()
+def get_kubernetes_task_allocation_info(
+    namespace: str, client: KubeClient
+) -> Iterable[TaskAllocationInfo]:
     pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
@@ -257,12 +257,14 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
 
 
 def get_task_allocation_info(
-    scheduler: str, namespace: str
+    scheduler: str,
+    namespace: str,
+    kube_client: Optional[KubeClient],
 ) -> Iterable[TaskAllocationInfo]:
     if scheduler == "mesos":
         return get_mesos_task_allocation_info()
     elif scheduler == "kubernetes":
-        return get_kubernetes_task_allocation_info(namespace)
+        return get_kubernetes_task_allocation_info(namespace, kube_client)
     else:
         return []
 
@@ -309,18 +311,27 @@ def get_matching_namespaces(
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
     if args.scheduler == "mesos":
-        display_task_allocation_info(cluster, args.scheduler, args.namespace_prefix)
+        display_task_allocation_info(
+            cluster, args.scheduler, args.namespace_prefix, kube_client=None
+        )
     else:
-        client = KubeClient()
-        all_namespaces = kubernetes_tools.get_all_namespaces(client)
+        kube_client = KubeClient()
+        all_namespaces = kubernetes_tools.get_all_namespaces(kube_client)
         for matching_namespace in get_matching_namespaces(
             all_namespaces, args.namespace_prefix, args.additional_namespaces
         ):
-            display_task_allocation_info(cluster, args.scheduler, matching_namespace)
+            display_task_allocation_info(
+                cluster, args.scheduler, matching_namespace, kube_client
+            )
 
 
-def display_task_allocation_info(cluster, scheduler, namespace):
-    info_list = get_task_allocation_info(scheduler, namespace)
+def display_task_allocation_info(
+    cluster: str,
+    scheduler: str,
+    namespace: str,
+    kube_client: Optional[KubeClient],
+) -> None:
+    info_list = get_task_allocation_info(scheduler, namespace, kube_client)
     timestamp = time.time()
     for info in info_list:
         info_dict = info._asdict()
