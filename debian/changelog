@@ -1,3 +1,10 @@
+paasta-tools (0.178.0) xenial; urgency=medium
+
+  * 0.178.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/unrevert_paasta_secrets_changes"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 16 Jun 2023 14:43:50 -0700
+
 paasta-tools (0.177.0) xenial; urgency=medium
 
   * 0.177.0 tagged with 'make release'
