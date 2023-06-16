@@ -313,9 +313,8 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--enable-dra",
         help=(
-            "Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in (y/spark-dra). DRA "
-            "dynamically scales up and down the executor instance count based on the number of pending tasks "
-            "and requirements. Disabled by default. Does not override Spark DRA configs if specified by the user."
+            "[DEPRECATED] Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in (y/spark-dra)."
+            "DRA is enabled by default now. This config is a no-op operation and recommended to be removed."
         ),
         action="store_true",
         default=False,
@@ -1221,13 +1220,6 @@ def paasta_spark_run(args):
             "spark.kubernetes.decommission.script"
         ] = "/opt/spark/kubernetes/dockerfiles/spark/decom.sh"
 
-    # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
-    # Enable AQE: Adaptive Query Execution
-    if "spark.sql.adaptive.enabled" not in spark_conf:
-        spark_conf["spark.sql.adaptive.enabled"] = "true"
-        aqe_msg = "Spark performance improving feature Adaptive Query Execution (AQE) is enabled. Set spark.sql.adaptive.enabled as false to disable."
-        log.info(aqe_msg)
-        print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
         docker_img=docker_image_digest,
