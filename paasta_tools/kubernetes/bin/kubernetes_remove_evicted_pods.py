@@ -135,8 +135,12 @@ def evicted_pods_per_service(
     evicted_pods_aggregated: Dict[str, List[EvictedPod]] = defaultdict(list)
 
     for namespace in get_all_namespaces(client):
-        all_pods = get_all_pods(kube_client=client, namespace=namespace)
-        evicted_pods = get_evicted_pods(all_pods)
+        failed_pods = get_all_pods(
+            kube_client=client,
+            namespace=namespace,
+            field_selector="status.phase=Failed",
+        )
+        evicted_pods = get_evicted_pods(failed_pods)
         log.info(
             f"Pods in evicted state in {namespace}: {[pod.metadata.name for pod in evicted_pods]}"
         )

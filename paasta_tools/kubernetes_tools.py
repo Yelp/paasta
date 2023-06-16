@@ -2971,8 +2971,14 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> List[V1Pod]:
-    return kube_client.core.list_namespaced_pod(namespace=namespace).items
+def get_all_pods(
+    kube_client: KubeClient,
+    namespace: str = "paasta",
+    field_selector: Optional[str] = None,
+) -> List[V1Pod]:
+    return kube_client.core.list_namespaced_pod(
+        namespace=namespace, field_selector=field_selector
+    ).items
 
 
 @time_cache(ttl=300)
