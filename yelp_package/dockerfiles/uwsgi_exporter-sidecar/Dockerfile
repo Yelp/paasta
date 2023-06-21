@@ -1,4 +1,4 @@
-FROM docker-dev.yelpcorp.com/xenial_yelp
+FROM docker-dev.yelpcorp.com/jammy_yelp
 
 COPY ./uwsgi_exporter/uwsgi_exporter /bin/uwsgi_exporter
 ENV STATS_PORT=8889

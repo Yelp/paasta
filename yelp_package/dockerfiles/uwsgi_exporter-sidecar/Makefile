@@ -1,6 +1,6 @@
 UWSGI_EXPORTER_REPO ?= https://github.com/timonwong/uwsgi_exporter
-UWSGI_EXPORTER_TAG ?= v1.0.0
-YELP_SUFFIX ?= yelp2
+UWSGI_EXPORTER_TAG ?= v1.3.0
+YELP_SUFFIX ?= yelp0
 
 DOCKER_IMAGE ?= docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:$(UWSGI_EXPORTER_TAG)-$(YELP_SUFFIX)
 
@@ -14,7 +14,7 @@ checkout: uwsgi_exporter
 	git -C uwsgi_exporter checkout --force $(UWSGI_EXPORTER_TAG)
 
 uwsgi_exporter/uwsgi_exporter: checkout
-	make -C uwsgi_exporter
+	make -C uwsgi_exporter test build
 
 docker_image: uwsgi_exporter/uwsgi_exporter
 	docker build -t $(DOCKER_IMAGE) .
