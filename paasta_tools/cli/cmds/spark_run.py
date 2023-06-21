@@ -530,7 +530,7 @@ def get_docker_image(
 
     docker_url = ""
     if args.image:
-        return args.image
+        docker_url = args.image
     else:
         try:
             docker_url = instance_config.get_docker_url()
@@ -552,7 +552,11 @@ def get_docker_image(
         % docker_url,
         file=sys.stderr,
     )
-    retcode, _ = _run("sudo -H docker pull %s" % docker_url, stream=True, timeout=300)
+    # Need sudo for credentials when pulling images from paasta docker registry (docker-paasta.yelpcorp.com)
+    # However, in CI env, we can't connect to docker via root and we can pull with user `jenkins`
+    is_ci_env = "CI" in os.environ
+    cmd_prefix = "" if is_ci_env else "sudo -H "
+    retcode, _ = _run(f"{cmd_prefix}docker pull {docker_url}", stream=True, timeout=300)
     if retcode != 0:
         print(
             "\nPull failed. Are you authorized to run docker commands?",
