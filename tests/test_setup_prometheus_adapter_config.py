@@ -10,10 +10,16 @@ from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_cpu_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
+    create_instance_gunicorn_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_uwsgi_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 from paasta_tools.setup_prometheus_adapter_config import should_create_cpu_scaling_rule
+from paasta_tools.setup_prometheus_adapter_config import (
+    should_create_gunicorn_scaling_rule,
+)
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
 )
@@ -191,6 +197,79 @@ def test_create_instance_cpu_scaling_rule() -> None:
 
     # our query doesn't include the setpoint as we'll just give the HPA the current CPU usage and
     # let the HPA compare that to the setpoint directly
+    assert (
+        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+    )
+
+
+@pytest.mark.parametrize(
+    "autoscaling_config,expected",
+    [
+        (
+            {
+                "metrics_provider": "cpu",
+                "decision_policy": "bespoke",
+                "moving_average_window_seconds": 123,
+                "setpoint": 0.653,
+            },
+            False,
+        ),
+        (
+            {
+                "metrics_provider": "gunicorn",
+                "moving_average_window_seconds": 124,
+                "setpoint": 0.425,
+            },
+            True,
+        ),
+    ],
+)
+def test_should_create_gunicorn_scaling_rule(
+    autoscaling_config: AutoscalingParamsDict, expected: bool
+) -> None:
+    should_create, reason = should_create_gunicorn_scaling_rule(
+        autoscaling_config=autoscaling_config
+    )
+
+    assert should_create == expected
+    if expected:
+        assert reason is None
+    else:
+        assert reason is not None
+
+
+def test_create_instance_gunicorn_scaling_rule() -> None:
+    service_name = "test_service"
+    instance_name = "test_instance"
+    paasta_cluster = "test_cluster"
+    autoscaling_config: AutoscalingParamsDict = {
+        "metrics_provider": "gunicorn",
+        "setpoint": 0.1234567890,
+        "moving_average_window_seconds": 20120302,
+        "use_prometheus": True,
+    }
+
+    with mock.patch(
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        rule = create_instance_gunicorn_scaling_rule(
+            service=service_name,
+            instance=instance_name,
+            paasta_cluster=paasta_cluster,
+            autoscaling_config=autoscaling_config,
+        )
+
+    # we test that the format of the dictionary is as expected with mypy
+    # and we don't want to test the full contents of the retval since then
+    # we're basically just writting a change-detector test - instead, we test
+    # that we're actually using our inputs
+    assert service_name in rule["seriesQuery"]
+    assert instance_name in rule["seriesQuery"]
+    assert paasta_cluster in rule["seriesQuery"]
+    # these two numbers are distinctive and unlikely to be used as constants
+    assert str(autoscaling_config["setpoint"]) in rule["metricsQuery"]
     assert (
         str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
     )
