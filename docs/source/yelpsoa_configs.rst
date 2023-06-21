@@ -387,7 +387,7 @@ instance MAY have:
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for details
 
     * ``metrics_provider``: Which method the autoscaler will use to determine a service's utilization.
-      Should be ``cpu`` or ``uwsgi``.
+      Should be ``cpu``, ``uwsgi``, or ``gunicorn``.
 
     * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
       Should be ``proportional`` or ``bespoke``.
