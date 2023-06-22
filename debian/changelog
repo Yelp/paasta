@@ -1,3 +1,10 @@
+paasta-tools (0.178.1) xenial; urgency=medium
+
+  * 0.178.1 tagged with 'make release'
+    Commit: Pull paasta docker images without sudo in CI env (#3623)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 22 Jun 2023 06:50:34 -0700
+
 paasta-tools (0.178.0) xenial; urgency=medium
 
   * 0.178.0 tagged with 'make release'
