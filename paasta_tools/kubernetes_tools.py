@@ -965,12 +965,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
             system_paasta_config
         )
+        gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
+            system_paasta_config
+        )
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
         if uwsgi_exporter_container:
             sidecars.append(uwsgi_exporter_container)
+        if gunicorn_exporter_container:
+            sidecars.append(gunicorn_exporter_container)
         return sidecars
 
     def get_readiness_check_prefix(
