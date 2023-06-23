@@ -1,3 +1,12 @@
+paasta-tools (0.178.2) xenial; urgency=medium
+
+  * 0.178.2 tagged with 'make release'
+    Commit: Merge pull request #3630 from
+    ymilki/gunicorn_metrics_provider_validation  Add `metrics_provider:
+    gunicorn" to schema
+
+ -- Jonathan Chu <jrchu@yelp.com>  Fri, 23 Jun 2023 10:43:22 -0700
+
 paasta-tools (0.178.1) xenial; urgency=medium
 
   * 0.178.1 tagged with 'make release'
