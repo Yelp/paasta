@@ -20,7 +20,11 @@ docker_image: uwsgi_exporter/uwsgi_exporter
 	docker build -t $(DOCKER_IMAGE) .
 
 push: docker_image
+ifeq ($(CI), true)
+	docker push $(DOCKER_IMAGE)
+else
 	sudo -H docker push $(DOCKER_IMAGE)
+endif
 
 # NOTE: we can get rid of this target if we're ok with overwriting the currently
 # tagged image on every run of the CI pipeline that will use this Makefile
