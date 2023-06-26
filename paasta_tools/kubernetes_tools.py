@@ -334,6 +334,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
+        "paasta.yelp.com/scrape_gunicorn_prometheus": str,
         "paasta.yelp.com/service": str,
         "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
@@ -2127,6 +2128,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif self.should_setup_piscina_prometheus_scraping():
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+
+        elif self.should_run_gunicorn_exporter_sidecar():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
