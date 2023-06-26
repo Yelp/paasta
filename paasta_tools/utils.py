@@ -2010,6 +2010,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     uwsgi_offset_multiplier: float
     spark_kubeconfig: str
     kube_clusters: Dict
+    spark_use_eks_default: bool
 
 
 def load_system_paasta_config(
@@ -2085,6 +2086,9 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_spark_use_eks_default(self) -> bool:
+        return self.config_dict.get("spark_use_eks_default", False)
 
     def get_tron_default_pool_override(self) -> str:
         """Get the default pool override variable defined in this host's cluster config file.
