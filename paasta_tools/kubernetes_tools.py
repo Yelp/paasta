@@ -1947,7 +1947,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> str:
         """Return whether the routable_ip label should be true or false.
 
-        Services with a `prometheus_port` defined or that use the uwsgi_exporter sidecar must have a routable IP
+        Services with a `prometheus_port` defined or that use certain sidecars must have a routable IP
         address to allow Prometheus shards to scrape metrics.
         """
         if (
@@ -1955,6 +1955,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
             or self.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            or self.should_run_gunicorn_exporter_sidecar()
         ):
             return "true"
         return "false"
