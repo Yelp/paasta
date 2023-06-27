@@ -102,6 +102,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
@@ -1816,6 +1817,24 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             affinity.pod_anti_affinity = pod_anti_affinity
             pod_spec_kwargs["affinity"] = affinity
 
+        pod_topology_spread_constraints = self.get_pod_topology_spread_constraints(
+            system_paasta_config=system_paasta_config
+        )
+        if pod_topology_spread_constraints is not None:
+            topology_spread_constraints = pod_spec_kwargs.get(
+                "topologySpreadConstraints", []
+            )
+            topology_spread_constraints += pod_topology_spread_constraints
+            pod_spec_kwargs["topologySpreadConstraints"] = topology_spread_constraints
+        #     attribute_map = {
+        #         'label_selector': 'labelSelector',
+        #         'max_skew': 'maxSkew',
+        #         'topology_key': 'topologyKey',
+        #         'when_unsatisfiable': 'whenUnsatisfiable'
+        #     }
+        #
+        #     def __init__(self, label_selector=None, max_skew=None, topology_key=None, when_unsatisfiable=None, local_vars_configuration=None):  # noqa: E501
+
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
             pod_spec_kwargs[
@@ -2001,6 +2020,32 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1PodAntiAffinity(
             required_during_scheduling_ignored_during_execution=affinity_terms
         )
+
+    def get_pod_topology_spread_constraints(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> List[V1TopologySpreadConstraint]:
+        """
+        Converts the given anti-affinity on service and instance to pod
+        affinities with the "paasta.yelp.com" prefixed label selector
+        :return:
+        """
+        pod_topology_spread_constraints = (
+            system_paasta_config.get_pod_topology_spread_constraints()
+        )
+        if not pod_topology_spread_constraints:
+            return None
+
+        # selector = V1LabelSelector(
+        #    match_labels={
+        #        "paasta.yelp.com/service": self.get_service(),
+        #        "paasta.yelp.com/instance": self.get_instance(),
+        #    }
+        # )
+
+        for constraint in pod_topology_spread_constraints:
+            pass
+
+        return None
 
     def _kube_affinity_condition_to_label_selector(
         self, condition: KubeAffinityCondition
