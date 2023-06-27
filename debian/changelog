@@ -1,3 +1,13 @@
+paasta-tools (0.179.0) xenial; urgency=medium
+
+  * 0.179.0 tagged with 'make release'
+    Commit: Allow setting a default for Spark target cluster type
+    (#3633)  Rather than forcing the addition of --use-eks to everything
+    we may want to migrate to EKS, we can instead set a system-level
+    default and instead allow users to override that value.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 27 Jun 2023 13:13:31 -0700
+
 paasta-tools (0.178.2) xenial; urgency=medium
 
   * 0.178.2 tagged with 'make release'
