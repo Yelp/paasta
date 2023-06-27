@@ -1365,10 +1365,10 @@ def get_versions_table(
     else:
         versions = sorted(versions, key=lambda x: x.create_timestamp, reverse=True)
         config_shas = {v.config_sha for v in versions}
-        if len(config_shas) > 1:
-            show_config_sha = True
-        else:
-            show_config_sha = False
+        show_config_sha = len(config_shas) > 1
+
+        namespaces = {v.namespace for v in versions}
+        show_namespace = len(namespaces) > 1
 
         table: List[str] = []
         table.extend(
@@ -1379,6 +1379,7 @@ def get_versions_table(
                 cluster,
                 version_name_suffix="new",
                 show_config_sha=show_config_sha,
+                show_namespace=show_namespace,
                 verbose=verbose,
             )
         )
@@ -1391,6 +1392,7 @@ def get_versions_table(
                     cluster,
                     version_name_suffix="old",
                     show_config_sha=show_config_sha,
+                    show_namespace=show_namespace,
                     verbose=verbose,
                 )
             )
@@ -1404,6 +1406,7 @@ def get_version_table_entry(
     cluster: str,
     version_name_suffix: str = None,
     show_config_sha: bool = False,
+    show_namespace: bool = False,
     verbose: int = 0,
 ) -> List[str]:
     version_name = version.git_sha[:8]
@@ -1413,6 +1416,8 @@ def get_version_table_entry(
         version_name += f" (image_version: {version.image_version})"
     if version_name_suffix is not None:
         version_name += f" ({version_name_suffix})"
+    if version.namespace is not None and (show_namespace or verbose > 1):
+        version_name += f" (namespace: {version.namespace})"
     version_name = PaastaColors.blue(version_name)
 
     start_datetime = datetime.fromtimestamp(version.create_timestamp)
@@ -2407,9 +2412,17 @@ def paasta_status(args) -> int:
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         tasks = [executor.submit(t[0], **t[1]) for t in tasks]  # type: ignore
-        for future in concurrent.futures.as_completed(tasks):  # type: ignore
-            return_code, output = future.result()
-            return_codes.append(return_code)
+        try:
+            for future in concurrent.futures.as_completed(tasks):  # type: ignore
+                return_code, output = future.result()
+                return_codes.append(return_code)
+        except KeyboardInterrupt:
+            # ideally we wouldn't need to reach into `ThreadPoolExecutor`
+            # internals, but so far this is the best way to stop all these
+            # threads until a public interface is added
+            executor._threads.clear()  # type: ignore
+            concurrent.futures.thread._threads_queues.clear()  # type: ignore
+            raise KeyboardInterrupt
 
     return max(return_codes)
 

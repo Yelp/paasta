@@ -18,6 +18,7 @@ from typing import Union
 import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
+from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
@@ -40,6 +41,7 @@ from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -319,6 +321,13 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--use-eks",
+        help="Use the EKS version of the target cluster rather than the Yelp-managed target cluster",
+        action="store_true",
+        dest="use_eks",
+    )
+
     if clusterman_metrics:
         list_parser.add_argument(
             "--suppress-clusterman-metrics-errors",
@@ -393,6 +402,21 @@ def add_subparser(subparsers):
         help=f"Specify an aws region. If the region is not specified, we will"
         f"default to using {DEFAULT_AWS_REGION}.",
         default=DEFAULT_AWS_REGION,
+    )
+
+    aws_group.add_argument(
+        "--assume-aws-role",
+        help="Takes an AWS IAM role ARN and attempts to create a session",
+    )
+
+    aws_group.add_argument(
+        "--aws-role-duration",
+        help=(
+            "Duration in seconds for the role if --assume-aws-role provided. "
+            "The maximum is 43200, but by default, roles may only allow 3600."
+        ),
+        type=int,
+        default=43200,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -493,32 +517,46 @@ def get_docker_run_cmd(
     return cmd
 
 
-def get_docker_image(args, instance_config):
+def get_docker_image(
+    args: argparse.Namespace, instance_config: InstanceConfig
+) -> Optional[str]:
+    """
+    Since the Docker image digest used to launch the Spark cluster is obtained by inspecting local
+    Docker images, we need to ensure that the Docker image exists locally or is pulled in all scenarios.
+    """
+    # docker image is built locally then pushed
     if args.build:
         return build_and_push_docker_image(args)
-    if args.image:
-        return args.image
 
-    try:
-        docker_url = instance_config.get_docker_url()
-    except NoDockerImageError:
-        print(
-            PaastaColors.red(
-                "Error: No sha has been marked for deployment for the %s deploy group.\n"
-                "Please ensure this service has either run through a jenkins pipeline "
-                "or paasta mark-for-deployment has been run for %s\n"
-                % (instance_config.get_deploy_group(), args.service)
-            ),
-            sep="",
-            file=sys.stderr,
-        )
-        return None
+    docker_url = ""
+    if args.image:
+        docker_url = args.image
+    else:
+        try:
+            docker_url = instance_config.get_docker_url()
+        except NoDockerImageError:
+            print(
+                PaastaColors.red(
+                    "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                    "Please ensure this service has either run through a jenkins pipeline "
+                    "or paasta mark-for-deployment has been run for %s\n"
+                    % (instance_config.get_deploy_group(), args.service)
+                ),
+                sep="",
+                file=sys.stderr,
+            )
+            return None
+
     print(
         "Please wait while the image (%s) is pulled (times out after 5m)..."
         % docker_url,
         file=sys.stderr,
     )
-    retcode, _ = _run("sudo -H docker pull %s" % docker_url, stream=True, timeout=300)
+    # Need sudo for credentials when pulling images from paasta docker registry (docker-paasta.yelpcorp.com)
+    # However, in CI env, we can't connect to docker via root and we can pull with user `jenkins`
+    is_ci_env = "CI" in os.environ
+    cmd_prefix = "" if is_ci_env else "sudo -H "
+    retcode, _ = _run(f"{cmd_prefix}docker pull {docker_url}", stream=True, timeout=300)
     if retcode != 0:
         print(
             "\nPull failed. Are you authorized to run docker commands?",
@@ -551,6 +589,7 @@ def get_spark_env(
     spark_conf_str: str,
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     ui_port: str,
+    system_paasta_config: SystemPaastaConfig,
 ) -> Dict[str, str]:
     """Create the env config dict to configure on the docker container"""
 
@@ -591,6 +630,9 @@ def get_spark_env(
         )
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
+
+    if args.use_eks:
+        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -794,10 +836,21 @@ def configure_and_run_docker_container(
     if args.enable_compact_bin_packing:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
+    if args.use_eks:
+        volumes.append(
+            f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
+        )
+
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
     environment.update(
-        get_spark_env(args, spark_conf_str, aws_creds, spark_conf["spark.ui.port"])
+        get_spark_env(
+            args=args,
+            spark_conf_str=spark_conf_str,
+            aws_creds=aws_creds,
+            ui_port=spark_conf["spark.ui.port"],
+            system_paasta_config=system_paasta_config,
+        )
     )  # type:ignore
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
@@ -807,14 +860,18 @@ def configure_and_run_docker_container(
     if "history-server" in docker_cmd:
         print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
+        grafana_url = get_grafana_url(spark_conf)
         signalfx_url = get_signalfx_url(spark_conf)
-        signalfx_url_msg = (
-            PaastaColors.green(f"\nSignalfx dashboard: ") + f"{signalfx_url}\n"
+        dashboard_url_msg = (
+            PaastaColors.green(f"\nGrafana dashboard: ")
+            + f"{grafana_url}\n"
+            + PaastaColors.green(f"\nSignalfx dashboard: ")
+            + f"{signalfx_url}\n"
         )
         print(webui_url_msg)
-        print(signalfx_url_msg)
+        print(dashboard_url_msg)
         log.info(webui_url_msg)
-        log.info(signalfx_url_msg)
+        log.info(dashboard_url_msg)
         history_server_url = get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
@@ -880,8 +937,10 @@ def _should_get_resource_requirements(docker_cmd: str, is_mrjob: bool) -> bool:
     )
 
 
-def get_docker_cmd(args, instance_config, spark_conf_str):
-    original_docker_cmd = args.cmd or instance_config.get_cmd()
+def get_docker_cmd(
+    args: argparse.Namespace, instance_config: InstanceConfig, spark_conf_str: str
+) -> str:
+    original_docker_cmd = str(args.cmd or instance_config.get_cmd())
 
     if args.mrjob:
         return original_docker_cmd + " " + spark_conf_str
@@ -904,7 +963,7 @@ def get_docker_cmd(args, instance_config, spark_conf_str):
         return inject_spark_conf_str(original_docker_cmd, spark_conf_str)
 
 
-def build_and_push_docker_image(args):
+def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     """
     Build an image if the default Spark service image is not preferred.
     The image needs to be pushed to a registry for the Spark executors
@@ -940,7 +999,7 @@ def build_and_push_docker_image(args):
         command = "docker push %s" % docker_url
 
     print(PaastaColors.grey(command))
-    retcode, output = _run(command, stream=True)
+    retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
 
@@ -991,23 +1050,6 @@ def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
     return cmd
 
 
-def _enable_dra_default(args, user_spark_opts):
-    if (
-        args.cluster_manager == CLUSTER_MANAGER_K8S
-        and "spark.dynamicAllocation.enabled" not in user_spark_opts
-    ):
-        log.warning(
-            PaastaColors.yellow(
-                "Spark Dynamic Resource Allocation (DRA) enabled for this batch. "
-                "More info: y/spark-dra. If your job is performing worse because "
-                "of DRA, consider disabling DRA. To disable, please provide "
-                "spark.dynamicAllocation.enabled=false in --spark-args\n"
-            )
-        )
-        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
-    return user_spark_opts
-
-
 def _validate_pool(args, system_paasta_config):
     if args.pool:
         valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
@@ -1027,6 +1069,12 @@ def _validate_pool(args, system_paasta_config):
             )
             return False
     return True
+
+
+def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
+    return (
+        load_system_paasta_config().get_kube_clusters().get(cluster, {}).get("server")
+    )
 
 
 def paasta_spark_run(args):
@@ -1099,10 +1147,20 @@ def paasta_spark_run(args):
         no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
+        assume_aws_role_arn=args.assume_aws_role,
+        session_duration=args.aws_role_duration,
     )
     docker_image = get_docker_image(args, instance_config)
     if docker_image is None:
         return 1
+
+    # Get image digest
+    docker_client = get_docker_client()
+    image_details = docker_client.inspect_image(docker_image)
+    if len(image_details["RepoDigests"]) < 1:
+        print("Failed to get docker image digest", file=sys.stderr)
+        return None
+    docker_image_digest = image_details["RepoDigests"][0]
 
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
@@ -1142,13 +1200,10 @@ def paasta_spark_run(args):
 
     paasta_instance = get_smart_paasta_instance_name(args)
 
-    # Spark DRA is enabled by default for all batches unless disabled explicitly. More info: y/spark-dra
-    user_spark_opts = _enable_dra_default(args, user_spark_opts)
-
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         user_spark_opts=user_spark_opts,
         paasta_cluster=args.cluster,
         paasta_pool=args.pool,
@@ -1159,7 +1214,16 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
+        use_eks=args.use_eks,
+        k8s_server_address=_get_k8s_url_for_cluster(args.cluster)
+        if args.use_eks
+        else None,
     )
+    # TODO: Remove this after MLCOMPUTE-699 is complete
+    if "spark.kubernetes.decommission.script" not in spark_conf:
+        spark_conf[
+            "spark.kubernetes.decommission.script"
+        ] = "/opt/spark/kubernetes/dockerfiles/spark/decom.sh"
 
     # Experimental: TODO: Move to service_configuration_lib once confirmed that there are no issues
     # Enable AQE: Adaptive Query Execution
@@ -1170,7 +1234,7 @@ def paasta_spark_run(args):
         print(PaastaColors.blue(aqe_msg))
     return configure_and_run_docker_container(
         args,
-        docker_img=docker_image,
+        docker_img=docker_image_digest,
         instance_config=instance_config,
         system_paasta_config=system_paasta_config,
         spark_conf=spark_conf,

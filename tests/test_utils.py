@@ -1244,6 +1244,13 @@ def test_color_text_nested():
     assert actual == expected
 
 
+def test_color_text_with_no_color():
+    expected = "hi"
+    with mock.patch.dict(os.environ, {"NO_COLOR": "1"}):
+        actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")
+    assert actual == expected
+
+
 def test_DeploymentsJson_read():
     file_mock = mock.mock_open()
     fake_dir = "/var/dir_of_fake"

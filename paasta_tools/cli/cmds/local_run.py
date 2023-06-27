@@ -66,7 +66,6 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import timed_flock
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
@@ -76,6 +75,7 @@ class AWSSessionCreds(TypedDict):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_SESSION_TOKEN: str
+    AWS_SECURITY_TOKEN: str
 
 
 def parse_date(date_string):
@@ -587,18 +587,16 @@ def docker_pull_image(docker_url):
         % docker_url,
         file=sys.stderr,
     )
-    DEVNULL = open(os.devnull, "wb")
-    with open("/tmp/paasta-local-run-pull.lock", "w") as f:
-        with timed_flock(f, seconds=1800):
-            ret, output = _run(
-                "docker pull %s" % docker_url, stream=True, stdin=DEVNULL
+    with Timeout(
+        seconds=1800, error_message=f"Timed out pulling docker image from {docker_url}"
+    ), open(os.devnull, mode="wb") as DEVNULL:
+        ret, _ = _run("docker pull %s" % docker_url, stream=True, stdin=DEVNULL)
+        if ret != 0:
+            print(
+                "\nPull failed. Are you authorized to run docker commands?",
+                file=sys.stderr,
             )
-            if ret != 0:
-                print(
-                    "\nPull failed. Are you authorized to run docker commands?",
-                    file=sys.stderr,
-                )
-                sys.exit(ret)
+            sys.exit(ret)
 
 
 def get_container_id(docker_client, container_name):
@@ -778,6 +776,7 @@ def assume_aws_role(
         "AWS_ACCESS_KEY_ID": cmd_output["AccessKeyId"],
         "AWS_SECRET_ACCESS_KEY": cmd_output["SecretAccessKey"],
         "AWS_SESSION_TOKEN": cmd_output["SessionToken"],
+        "AWS_SECURITY_TOKEN": cmd_output["SessionToken"],
     }
     return creds_dict
 

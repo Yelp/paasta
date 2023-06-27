@@ -140,7 +140,6 @@ INSTANCE_TYPES = (
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
     "adhoc": "paasta",
-    "kubernetes": "paasta",
     "tron": "tron",
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
@@ -414,8 +413,11 @@ class InstanceConfig:
         return self.cluster
 
     def get_namespace(self) -> str:
-        """Get namespace from config, default to 'paasta'"""
-        return self.config_dict.get("namespace", "paasta")
+        """Get namespace from config, default to the value from INSTANCE_TYPE_TO_K8S_NAMESPACE for this instance type, 'paasta' if that isn't defined."""
+        return self.config_dict.get(
+            "namespace",
+            INSTANCE_TYPE_TO_K8S_NAMESPACE.get(self.get_instance_type(), "paasta"),
+        )
 
     def get_instance(self) -> str:
         return self.instance
@@ -1134,6 +1136,10 @@ class PaastaColors:
         :param color: ANSI color code
         :param text: a string
         :return: a string with ANSI color encoding"""
+
+        if os.getenv("NO_COLOR", "0") == "1":
+            return text
+
         # any time text returns to default, we want to insert our color.
         replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
         # then wrap the beginning and end in our color/default.
@@ -2002,6 +2008,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
     uwsgi_offset_multiplier: float
+    spark_kubeconfig: str
+    kube_clusters: Dict
 
 
 def load_system_paasta_config(
@@ -2752,6 +2760,12 @@ class SystemPaastaConfig:
         To be removed once PAASTA-17840 is done.
         """
         return self.config_dict.get("uwsgi_offset_multiplier", 1.0)
+
+    def get_spark_kubeconfig(self) -> str:
+        return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")
+
+    def get_kube_clusters(self) -> Dict:
+        return self.config_dict.get("kube_clusters", {})
 
 
 def _run(

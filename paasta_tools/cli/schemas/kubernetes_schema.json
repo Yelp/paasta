@@ -105,7 +105,7 @@
                 "mem": {
                     "type": "number",
                     "minimum": 32,
-                    "exclusiveMinimum": true,
+                    "exclusiveMinimum": false,
                     "default": 1024
                 },
                 "disk": {
@@ -197,6 +197,7 @@
                                 "uwsgi",
                                 "cpu",
                                 "piscina",
+                                "gunicorn",
                                 "arbitrary_promql"
                             ]
                         },
@@ -285,6 +286,7 @@
                                                 "uwsgi",
                                                 "cpu",
                                                 "piscina",
+                                                "gunicorn",
                                                 "if metrics_provider is arbitrary_promql, the prometheus_adapter_config parameter is required"
                                             ]
                                         }
@@ -460,6 +462,28 @@
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "crypto_keys": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "encrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        },
+                        "decrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        }
                     }
                 },
                 "extra_volumes": {
@@ -725,6 +749,43 @@
                                     },
                                     "instance": {
                                         "type": "string"
+                                    }
+                                }
+                            },
+                            "uniqueItems": true
+                        }
+                    ]
+                },
+                "anti_affinity_preferred": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "service": {
+                                    "type": "string"
+                                },
+                                "instance": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "service": {
+                                        "type": "string"
+                                    },
+                                    "instance": {
+                                        "type": "string"
+                                    },
+                                    "weight": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 100,
+                                        "exclusiveMinimum": false,
+                                        "exclusiveMaximum": false
                                     }
                                 }
                             },

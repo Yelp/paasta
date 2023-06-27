@@ -256,6 +256,14 @@ class TestKubernetesStatusV2:
         ) as mock_get_pod_event_messages:
             yield mock_get_pod_event_messages
 
+    @pytest.fixture
+    def mock_find_all_relevant_namespaces(self):
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.find_all_relevant_namespaces",
+            autospec=True,
+        ) as mock_find_all_relevant_namespaces:
+            yield mock_find_all_relevant_namespaces
+
     def test_replicaset(
         self,
         mock_replicasets_for_service_instance,
@@ -265,7 +273,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -277,6 +287,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={
@@ -316,6 +327,7 @@ class TestKubernetesStatusV2:
                     "git_sha": "aaa000",
                     "image_version": None,
                     "config_sha": "config000",
+                    "namespace": "paasta",
                     "pods": [
                         {
                             "name": "pod_1",
@@ -375,7 +387,9 @@ class TestKubernetesStatusV2:
         mock_pods_for_service_instance,
         mock_mesh_status,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
@@ -386,6 +400,7 @@ class TestKubernetesStatusV2:
             Struct(
                 metadata=Struct(
                     name="controller_revision_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 4, 1),
                     labels={
                         "paasta.yelp.com/git_sha": "aaa000",
@@ -423,6 +438,7 @@ class TestKubernetesStatusV2:
             "image_version": None,
             "config_sha": "config000",
             "pods": [mock.ANY],
+            "namespace": "paasta",
         }
 
     def test_statefulset_with_image_version(
@@ -433,7 +449,9 @@ class TestKubernetesStatusV2:
         mock_pods_for_service_instance,
         mock_mesh_status,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
@@ -444,6 +462,7 @@ class TestKubernetesStatusV2:
             Struct(
                 metadata=Struct(
                     name="controller_revision_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 4, 1),
                     labels={
                         "paasta.yelp.com/git_sha": "aaa000",
@@ -482,6 +501,7 @@ class TestKubernetesStatusV2:
             "image_version": "extrastuff",
             "config_sha": "config000",
             "pods": [mock.ANY],
+            "namespace": "paasta",
         }
 
     def test_event_timeout(
@@ -493,7 +513,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -505,6 +527,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={
@@ -545,7 +568,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )

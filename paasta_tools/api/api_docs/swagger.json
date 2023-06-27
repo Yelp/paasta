@@ -1846,6 +1846,10 @@
                     "type": "integer",
                     "format": "int32",
                     "description": "Number of replicas currently ready"
+                },
+                "namespace": {
+                    "type": "string",
+                    "description": "Kubernetes namespace this version is in"
                 }
             }
         },

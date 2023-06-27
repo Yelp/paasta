@@ -90,6 +90,7 @@ class KubernetesVersion(ModelNormal):
             'pods': ([KubernetesPodV2],),  # noqa: E501
             'replicas': (int,),  # noqa: E501
             'ready_replicas': (int,),  # noqa: E501
+            'namespace': (str,),  # noqa: E501
         }
 
     @cached_property
@@ -107,6 +108,7 @@ class KubernetesVersion(ModelNormal):
         'pods': 'pods',  # noqa: E501
         'replicas': 'replicas',  # noqa: E501
         'ready_replicas': 'ready_replicas',  # noqa: E501
+        'namespace': 'namespace',  # noqa: E501
     }
 
     _composed_schemas = {}
@@ -164,6 +166,7 @@ class KubernetesVersion(ModelNormal):
             pods ([KubernetesPodV2]): Pods associated to this version. [optional]  # noqa: E501
             replicas (int): Desired number of replicas for this version. [optional]  # noqa: E501
             ready_replicas (int): Number of replicas currently ready. [optional]  # noqa: E501
+            namespace (str): Kubernetes namespace this version is in. [optional]  # noqa: E501
         """
 
         _check_type = kwargs.pop('_check_type', True)

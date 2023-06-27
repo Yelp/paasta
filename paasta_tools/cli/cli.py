@@ -255,7 +255,7 @@ def main(argv=None):
         else:
             return_code = args.command(args)
     except KeyboardInterrupt:
-        return_code = 1
+        return_code = 130
     sys.exit(return_code)
 
 

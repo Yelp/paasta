@@ -81,10 +81,10 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
-from paasta_tools.kubernetes_tools import create_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
+from paasta_tools.kubernetes_tools import create_secret_signature
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
@@ -97,14 +97,17 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import get_annotations_for_kubernetes_service
 from paasta_tools.kubernetes_tools import get_kubernetes_app_by_name
 from paasta_tools.kubernetes_tools import get_kubernetes_app_deploy_status
-from paasta_tools.kubernetes_tools import get_kubernetes_secret
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_env_variables
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_hashes
-from paasta_tools.kubernetes_tools import get_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here
 from paasta_tools.kubernetes_tools import get_kubernetes_services_running_here_for_nerve
 from paasta_tools.kubernetes_tools import get_nodes_grouped_by_attribute
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
+from paasta_tools.kubernetes_tools import get_secret
+from paasta_tools.kubernetes_tools import get_secret_name_from_ref
+from paasta_tools.kubernetes_tools import get_secret_signature
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
@@ -132,8 +135,8 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import set_instances_for_kubernetes_service
 from paasta_tools.kubernetes_tools import update_custom_resource
 from paasta_tools.kubernetes_tools import update_deployment
-from paasta_tools.kubernetes_tools import update_kubernetes_secret_signature
 from paasta_tools.kubernetes_tools import update_secret
+from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -1287,14 +1290,102 @@ class TestKubernetesDeploymentConfig:
             )
 
     @pytest.mark.parametrize(
+        "config_dict, service, instance, expected_secret_name, expected_signature_name",
+        [
+            (
+                {"boto_keys": ["pew"]},
+                "zuora_integration",
+                "sync_ads_settings_post_budget_edit_batch_daemon",
+                "paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg",
+                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
+            ),
+            (
+                {"boto_keys": ["few"]},
+                "zuora_integration",
+                "reprocess_zuora_amend_callouts_batch_daemon",
+                "paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw",
+                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
+            ),
+            (
+                {
+                    "boto_keys": ["foo"],
+                },
+                "kafka_discovery",
+                "main",
+                "paasta-boto-key-kafka--discovery-main",
+                "paasta-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
+            ),
+            (
+                {"boto_keys": ["pew"]},
+                "yelp-main",
+                "lives_data_action_content_ingester_worker",
+                "paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl",
+                "paasta-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
+            ),
+            (
+                {
+                    "boto_keys": ["fuu"],
+                    "namespace": "paastasvc-compute-infra-test-service",
+                },
+                "compute-infra-test-service",
+                "boto_keys_test_1",
+                "paasta-boto-key-compute-infra-test-service-boto--keys--test--1",
+                "paastasvc-compute-infra-test-service-secret-compute-infra-test-service-paasta-boto-key-compute-infra-test-service-boto--keys--test--1-signature",
+            ),
+            ({}, "", "", "", ""),
+        ],
+    )
+    def test_get_boto_volume(
+        self,
+        config_dict,
+        service,
+        instance,
+        expected_secret_name,
+        expected_signature_name,
+    ):
+
+        deployment = KubernetesDeploymentConfig(
+            service=service,
+            instance=instance,
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ) as get_signature:
+            volumes = deployment.get_boto_volume()
+
+        if config_dict:
+            # check against existing signatures
+            assert (
+                get_signature.call_args[1]["signature_name"] == expected_signature_name
+            )
+
+            # check against existing secrets
+            assert volumes.secret.secret_name == expected_secret_name
+
+            assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
+            for key in config_dict["boto_keys"]:
+                assert any(
+                    [item.path == f"{key}.yaml" for item in volumes.secret.items]
+                )
+        else:
+            assert volumes is None
+
+    @pytest.mark.parametrize(
         "config_dict",
         [
-            {"boto_keys": ["scribereader"]},
-            {"boto_keys": ["scribereader", "foobar"]},
+            {"crypto_keys": {"encrypt": ["mad"], "decrypt": ["max"]}},
+            {"crypto_keys": {"decrypt": ["furiosa"]}},
             {},
         ],
     )
-    def test_get_boto_volume(self, config_dict):
+    def test_get_crypto_volume(self, config_dict):
         deployment = KubernetesDeploymentConfig(
             service="my-service",
             instance="my-instance",
@@ -1303,17 +1394,17 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        with mock.patch.object(deployment, "get_boto_secret_hash", return_value="hash"):
-            volumes = deployment.get_boto_volume()
+        with mock.patch.object(
+            deployment, "get_crypto_secret_hash", return_value="hash"
+        ):
+            volumes = deployment.get_crypto_volume()
         if config_dict:
-            assert (
-                volumes.secret.secret_name == "paasta-boto-key-my-service-my-instance"
-            )
-            assert len(volumes.secret.items) == len(config_dict["boto_keys"]) * 4
-            for key in config_dict["boto_keys"]:
-                assert any(
-                    [item.path == f"{key}.yaml" for item in volumes.secret.items]
-                )
+            (volumes.secret.secret_name == "paasta-crypto-key-my-service-my-instance")
+
+            assert len(volumes.secret.items) == len(config_dict["crypto_keys"])
+            assert set(deployment.get_crypto_keys_from_config()) == {
+                item.path.rstrip(".json") for item in volumes.secret.items
+            }
         else:
             assert volumes is None
 
@@ -1623,6 +1714,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
+            "paasta.yelp.com/managed": "true",
         }
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
@@ -1911,6 +2003,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/pool": "default",
                     "paasta.yelp.com/cluster": "brentford",
                     "yelp.com/owner": "compute_infra_platform_experience",
+                    "paasta.yelp.com/managed": "true",
                 },
                 name="kurupt-fm",
                 namespace="paasta",
@@ -3550,158 +3643,156 @@ def test_sanitise_kubernetes_name():
     assert sanitise_kubernetes_name("_shared_thing") == "underscore-shared--thing"
 
 
-def test_create_kubernetes_secret_signature():
+@pytest.mark.parametrize(
+    "namespace, secret, secret_data",
+    [
+        ("paasta", "mortys-fate", "ab1234"),
+        ("tron", "mortys-fate", "ab1234"),
+    ],
+)
+def test_create_kubernetes_secret_signature(namespace, secret, secret_data):
     mock_client = mock.Mock()
-    create_kubernetes_secret_signature(
+    create_secret_signature(
         kube_client=mock_client,
-        secret="mortys-fate",
-        service="universe",
+        signature_name=get_paasta_secret_signature_name(namespace, "universe", secret),
+        service_name="universe",
         secret_signature="ab1234",
+        namespace=namespace,
     )
     assert mock_client.core.create_namespaced_config_map.called
-    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[0]
-    assert kwargs.get("namespace") == "paasta"
-
-    create_kubernetes_secret_signature(
-        kube_client=mock_client,
-        secret="mortys-fate",
-        service="universe",
-        secret_signature="ab1234",
-        namespace="tron",
+    _, kwargs = mock_client.core.create_namespaced_config_map.call_args
+    assert kwargs.get("namespace") == namespace
+    assert (
+        kwargs.get("body").metadata.name
+        == f"{namespace}-secret-universe-{sanitise_kubernetes_name(secret)}-signature"
     )
-    _, kwargs = mock_client.core.create_namespaced_config_map.call_args_list[1]
-    assert kwargs.get("namespace") == "tron"
 
 
-def test_update_kubernetes_secret_signature():
+@pytest.mark.parametrize(
+    "namespace, secret, secret_signature",
+    [
+        ("paasta", "mortys-fate", "ab1234"),
+        ("tron", "mortys-fate", "abc4321"),
+    ],
+)
+def test_update_kubernetes_secret_signature(namespace, secret, secret_signature):
     mock_client = mock.Mock()
-    update_kubernetes_secret_signature(
+    update_secret_signature(
         kube_client=mock_client,
-        secret="mortys-fate",
-        service="universe",
-        secret_signature="ab1234",
+        service_name="universe",
+        signature_name=get_paasta_secret_signature_name(
+            namespace, "universe", secret_signature
+        ),
+        secret_signature=secret_signature,
+        namespace=namespace,
     )
     assert mock_client.core.replace_namespaced_config_map.called
-    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[0]
-    assert kwargs.get("namespace") == "paasta"
-
-    update_kubernetes_secret_signature(
-        kube_client=mock_client,
-        secret="mortys-fate",
-        service="universe",
-        secret_signature="ab1234",
-        namespace="tron",
-    )
-    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args_list[1]
-    assert kwargs.get("namespace") == "tron"
+    _, kwargs = mock_client.core.replace_namespaced_config_map.call_args
+    assert kwargs.get("namespace") == namespace
 
 
-def test_get_kubernetes_secret_signature():
+@pytest.mark.parametrize(
+    "namespace, secret, secret_signature",
+    [
+        ("paasta", "mortys-morty", "hancock"),
+        ("tron", "mortys-morty", "hungry"),
+    ],
+)
+def test_get_kubernetes_secret_signature(namespace, secret, secret_signature):
     mock_client = mock.Mock()
     mock_client.core.read_namespaced_config_map.return_value = mock.Mock(
-        data={"signature": "hancock"}
+        data={"signature": secret_signature}
     )
 
-    secret_sig = get_kubernetes_secret_signature(
-        kube_client=mock_client, secret="mortys-morty", service="universe"
-    )
-    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[0]
-    assert kwargs.get("namespace") == "paasta"
-    assert secret_sig == "hancock"
-
-    secret_sig = get_kubernetes_secret_signature(
+    secret_sig = get_secret_signature(
         kube_client=mock_client,
-        secret="mortys-morty",
-        service="universe",
-        namespace="tron",
+        signature_name=get_paasta_secret_signature_name(namespace, "universe", secret),
+        namespace=namespace,
     )
-    _, kwargs = mock_client.core.read_namespaced_config_map.call_args_list[1]
-    assert kwargs.get("namespace") == "tron"
-    assert secret_sig == "hancock"
+    _, kwargs = mock_client.core.read_namespaced_config_map.call_args
+    assert kwargs.get("namespace") == namespace
+    assert secret_sig == secret_signature
+    assert (
+        kwargs["name"]
+        == f"{namespace}-secret-universe-{sanitise_kubernetes_name(secret)}-signature"
+    )
 
+
+def test_get_kubernetes_secret_signature_404():
+    mock_client = mock.Mock()
     mock_client.core.read_namespaced_config_map.side_effect = ApiException(404)
     assert (
-        get_kubernetes_secret_signature(
-            kube_client=mock_client, secret="mortys-morty", service="universe"
+        get_secret_signature(
+            kube_client=mock_client,
+            signature_name="paasta-secret-foo-signature",
+            namespace="paasta",
         )
         is None
     )
+
+
+def test_get_kubernetes_secret_signature_401():
+    mock_client = mock.Mock()
     mock_client.core.read_namespaced_config_map.side_effect = ApiException(401)
     with pytest.raises(ApiException):
-        get_kubernetes_secret_signature(
-            kube_client=mock_client, secret="mortys-morty", service="universe"
+        get_secret_signature(
+            kube_client=mock_client,
+            signature_name="paasta-secret-foo-signature",
+            namespace="paasta",
         )
 
 
-def test_create_secret():
+@pytest.mark.parametrize(
+    "namespace, secret, secret_data",
+    [
+        ("paasta", "mortys-fate", {"mortys-fate": "Zm9v"}),
+        ("tron", "mortys_fate", {"foo": "boo"}),
+    ],
+)
+def test_create_secret(namespace, secret, secret_data):
     mock_client = mock.Mock()
-    mock_secret_provider = mock.Mock()
-    mock_secret_provider.decrypt_secret_raw.return_value = bytes("plaintext", "utf-8")
     create_secret(
         kube_client=mock_client,
-        service="universe",
-        secret="mortys-fate",
-        secret_provider=mock_secret_provider,
+        service_name="universe",
+        secret_name=get_paasta_secret_name(namespace, "universe", secret),
+        secret_data=secret_data,
+        namespace=namespace,
     )
     assert mock_client.core.create_namespaced_secret.called
-    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[0]
-    assert kwargs.get("namespace") == "paasta"
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
-
-    create_secret(
-        kube_client=mock_client,
-        service="universe",
-        secret="mortys_fate",
-        secret_provider=mock_secret_provider,
+    _, kwargs = mock_client.core.create_namespaced_secret.call_args
+    assert kwargs.get("namespace") == namespace
+    assert kwargs["body"].data == secret_data
+    assert (
+        kwargs["body"].metadata.name
+        == f"{namespace}-secret-universe-{sanitise_kubernetes_name(secret)}"
     )
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
-
-    create_secret(
-        kube_client=mock_client,
-        service="universe",
-        secret="mortys_fate",
-        secret_provider=mock_secret_provider,
-        namespace="tron",
-    )
-    _, kwargs = mock_client.core.create_namespaced_secret.call_args_list[2]
-    assert kwargs.get("namespace") == "tron"
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 
-def test_update_secret():
+@pytest.mark.parametrize(
+    "namespace,secret,secret_data",
+    [
+        ("paasta", "mortys-fate", {"fury": "bury"}),
+        ("tron", "mortys_fate", {"ant": "pant"}),
+    ],
+)
+def test_update_secret(namespace, secret, secret_data):
     mock_client = mock.Mock()
-    mock_secret_provider = mock.Mock()
-    mock_secret_provider.decrypt_secret_raw.return_value = bytes("plaintext", "utf-8")
 
     update_secret(
         kube_client=mock_client,
-        service="universe",
-        secret="mortys-fate",
-        secret_provider=mock_secret_provider,
+        service_name="universe",
+        secret_name=get_paasta_secret_name(namespace, "universe", secret),
+        secret_data=secret_data,
+        namespace=namespace,
     )
     assert mock_client.core.replace_namespaced_secret.called
-    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[0]
-    assert kwargs.get("namespace") == "paasta"
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys-fate")
-
-    update_secret(
-        kube_client=mock_client,
-        service="universe",
-        secret="mortys_fate",
-        secret_provider=mock_secret_provider,
+    _, kwargs = mock_client.core.replace_namespaced_secret.call_args
+    assert kwargs.get("namespace") == namespace
+    assert kwargs["body"].data == secret_data
+    assert (
+        kwargs["body"].metadata.name
+        == f"{namespace}-secret-universe-{sanitise_kubernetes_name(secret)}"
     )
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
-
-    update_secret(
-        kube_client=mock_client,
-        service="universe",
-        secret="mortys_fate",
-        secret_provider=mock_secret_provider,
-        namespace="tron",
-    )
-    _, kwargs = mock_client.core.replace_namespaced_secret.call_args_list[2]
-    assert kwargs.get("namespace") == "tron"
-    mock_secret_provider.decrypt_secret_raw.assert_called_with("mortys_fate")
 
 
 def test_get_kubernetes_secret_hashes():
@@ -3710,7 +3801,7 @@ def test_get_kubernetes_secret_hashes():
     ) as mock_client, mock.patch(
         "paasta_tools.kubernetes_tools.is_secret_ref", autospec=True
     ) as mock_is_secret_ref, mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret_signature",
+        "paasta_tools.kubernetes_tools.get_secret_signature",
         autospec=True,
         return_value="somesig",
     ) as mock_get_kubernetes_secret_signature, mock.patch(
@@ -3720,6 +3811,7 @@ def test_get_kubernetes_secret_hashes():
         mock_is_shared_secret.side_effect = (
             lambda x: False if not x.startswith("SHARED") else True
         )
+
         hashes = get_kubernetes_secret_hashes(
             environment_variables={
                 "A": "SECRET(ref)",
@@ -3733,14 +3825,20 @@ def test_get_kubernetes_secret_hashes():
             [
                 mock.call(
                     kube_client=mock_client.return_value,
-                    secret="ref",
-                    service="universe",
+                    signature_name=get_paasta_secret_signature_name(
+                        "paasta",
+                        "universe",
+                        get_secret_name_from_ref("SECRET(ref)"),
+                    ),
                     namespace="paasta",
                 ),
                 mock.call(
                     kube_client=mock_client.return_value,
-                    secret="ref1",
-                    service=SHARED_SECRET_SERVICE,
+                    signature_name=get_paasta_secret_signature_name(
+                        "paasta",
+                        SHARED_SECRET_SERVICE,
+                        get_secret_name_from_ref("SECRET(ref1)"),
+                    ),
                     namespace="paasta",
                 ),
             ]
@@ -4217,9 +4315,9 @@ def test_get_kubernetes_secret(decode):
         )
         mock_kube_client.return_value = mock_client
 
-        ret = get_kubernetes_secret(
+        ret = get_secret(
             mock_client,
-            service_name,
+            get_paasta_secret_name(mock_namespace, service_name, secret_name),
             secret_name,
             mock_namespace,
             decode,
@@ -4237,7 +4335,7 @@ def test_get_kubernetes_secret_env_variables():
     ) as mock_is_secret_ref, mock.patch(
         "paasta_tools.kubernetes_tools.get_secret_name_from_ref", autospec=True
     ) as mock_get_ref, mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+        "paasta_tools.kubernetes_tools.get_secret", autospec=True
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
@@ -4246,11 +4344,12 @@ def test_get_kubernetes_secret_env_variables():
             "MY": "aaa",
             "SECRET_NAME1": "SECRET(SECRET_NAME1)",
             "SECRET_NAME2": "SECRET(SECRET_NAME2)",
+            "SHARED_SECRET1": "SHARED_SECRET(SHARED_SECRET1)",
         }
 
         mock_is_secret_ref.side_effect = lambda val: "SECRET" in val
-        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2"]
-        mock_get_kubernetes_secret.side_effect = ["123", "abc"]
+        mock_get_ref.side_effect = ["SECRET_NAME1", "SECRET_NAME2", "SHARED_SECRET1"]
+        mock_get_kubernetes_secret.side_effect = ["123", "abc", "shared"]
         mock_client = mock.Mock()
         mock_kube_client.return_value = mock_client
 
@@ -4259,21 +4358,46 @@ def test_get_kubernetes_secret_env_variables():
             environment=mock_environment,
             service_name="universe",
         )
-        assert ret == {"SECRET_NAME1": "123", "SECRET_NAME2": "abc"}
+        assert ret == {
+            "SECRET_NAME1": "123",
+            "SECRET_NAME2": "abc",
+            "SHARED_SECRET1": "shared",
+        }
 
         assert mock_get_kubernetes_secret.call_args_list == [
             mock.call(
-                mock_client, "universe", "SECRET_NAME1", decode=True, namespace="paasta"
+                mock_client,
+                secret_name=get_paasta_secret_name(
+                    "paasta", "universe", "SECRET_NAME1"
+                ),
+                key_name="SECRET_NAME1",
+                decode=True,
+                namespace="paasta",
             ),
             mock.call(
-                mock_client, "universe", "SECRET_NAME2", decode=True, namespace="paasta"
+                mock_client,
+                secret_name=get_paasta_secret_name(
+                    "paasta", "universe", "SECRET_NAME2"
+                ),
+                key_name="SECRET_NAME2",
+                decode=True,
+                namespace="paasta",
+            ),
+            mock.call(
+                mock_client,
+                secret_name=get_paasta_secret_name(
+                    "paasta", SHARED_SECRET_SERVICE, "SHARED_SECRET1"
+                ),
+                key_name="SHARED_SECRET1",
+                decode=True,
+                namespace="paasta",
             ),
         ]
 
 
 def test_get_kubernetes_secret_volumes_multiple_files():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+        "paasta_tools.kubernetes_tools.get_secret", autospec=True
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
@@ -4308,7 +4432,7 @@ def test_get_kubernetes_secret_volumes_multiple_files():
 
 def test_get_kubernetes_secret_volumes_single_file():
     with mock.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_secret", autospec=True
+        "paasta_tools.kubernetes_tools.get_secret", autospec=True
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:

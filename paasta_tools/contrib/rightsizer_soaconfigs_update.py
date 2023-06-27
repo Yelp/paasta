@@ -1,6 +1,7 @@
 import argparse
 import logging
 from collections import defaultdict
+from typing import Set
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
@@ -115,6 +116,12 @@ def parse_args():
         action="store_true",
         dest="verbose",
     )
+    parser.add_argument(
+        "--exclude-clusters",
+        required=False,
+        default=None,
+        nargs="+",
+    )
     return parser.parse_args()
 
 
@@ -162,9 +169,22 @@ def get_recommendation_from_result(result, keys_to_apply):
     return rec
 
 
-def get_recommendations_by_service_file(results, keys_to_apply):
+def get_recommendations_by_service_file(
+    results,
+    keys_to_apply,
+    exclude_clusters: Set[str],
+):
     results_by_service_file = defaultdict(dict)
     for result in results.values():
+        # we occasionally want to disable autotune for a cluster (or set of clusters)
+        # to do so, we can simply skip getting recommendations for any (service, cluster)
+        # pairing that includes the cluster(s) to disable
+        if result["cluster"] in exclude_clusters:
+            print(
+                f"{result['service']}.{result['instance']} in {result['cluster']} skipped due to disabled cluster."
+            )
+            continue
+
         key = (
             result["service"],
             result["cluster"],
@@ -190,7 +210,13 @@ def main(args):
     config_source = args.source_id or args.csv_report
 
     keys_to_apply = args.csv_keys or SUPPORTED_CSV_KEYS
-    results = get_recommendations_by_service_file(report["results"], keys_to_apply)
+    results = get_recommendations_by_service_file(
+        report["results"],
+        keys_to_apply,
+        exclude_clusters={
+            f"kubernetes-{cluster}" for cluster in (args.exclude_clusters or [])
+        },
+    )
     updater = AutoConfigUpdater(
         config_source=config_source,
         git_remote=args.git_remote or get_default_git_remote(),
