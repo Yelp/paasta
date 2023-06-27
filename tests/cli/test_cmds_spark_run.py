@@ -1443,12 +1443,23 @@ def test__should_get_resource_requirements(docker_cmd, is_mrjob, expected):
 
 
 @pytest.mark.parametrize(
-    "override,expected",
+    "override,default,expected",
     (
-        (True, True),
-        (False, False),
-        (None, False),
+        (True, True, True),
+        (False, True, False),
+        (None, True, True),
+        (True, False, True),
+        (False, False, False),
+        (None, False, True),
     ),
 )
-def test_decide_final_eks_toggle_state(override, expected):
-    assert decide_final_eks_toggle_state(override) is expected
+def test_decide_final_eks_toggle_state(override, default, expected):
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
+            default
+        )
+
+        assert decide_final_eks_toggle_state(override) is expected
