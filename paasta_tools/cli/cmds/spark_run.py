@@ -321,11 +321,24 @@ def add_subparser(subparsers):
         default=False,
     )
 
-    list_parser.add_argument(
-        "--use-eks",
+    k8s_target_cluster_type_group = list_parser.add_mutually_exclusive_group()
+    k8s_target_cluster_type_group.add_argument(
+        "--force-use-eks",
         help="Use the EKS version of the target cluster rather than the Yelp-managed target cluster",
         action="store_true",
-        dest="use_eks",
+        dest="use_eks_override",
+        # We'll take a boolean value to mean that we should honor what the user wants, and None as using
+        # the CI-provided default
+        default=None,
+    )
+    k8s_target_cluster_type_group.add_argument(
+        "--force-no-use-eks",
+        help="Use the Yelp-managed version of the target cluster rather than the AWS-managed EKS target cluster",
+        action="store_false",
+        dest="use_eks_override",
+        # We'll take a boolean value to mean that we should honor what the user wants, and None as using
+        # the CI-provided default
+        default=None,
     )
 
     if clusterman_metrics:
@@ -442,6 +455,23 @@ def add_subparser(subparsers):
     )
 
     list_parser.set_defaults(command=paasta_spark_run)
+
+
+def decide_final_eks_toggle_state(user_override: Optional[bool]) -> bool:
+    """
+    This is slightly weird (hooray for tri-value logic!) - but basically:
+    we want to prioritize any user choice for using EKS (i.e., force
+    enable/disable using EKS) regardless of what the PaaSTA-supplied
+    default is.
+
+    If a user hasn't set --force-use-eks or --force-no-use-eks, argparse
+    will leave args.use_eks_override (or, in this function, user_override) as None -
+    otherwise, there'll be an actual boolean there.
+    """
+    if user_override is not None:
+        return user_override
+
+    return load_system_paasta_config().get_spark_use_eks_default()
 
 
 def sanitize_container_name(container_name):
@@ -631,7 +661,7 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    if args.use_eks:
+    if decide_final_eks_toggle_state(args.use_eks_override):
         spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
@@ -836,7 +866,7 @@ def configure_and_run_docker_container(
     if args.enable_compact_bin_packing:
         volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    if args.use_eks:
+    if decide_final_eks_toggle_state(args.use_eks_override):
         volumes.append(
             f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
         )
@@ -1200,6 +1230,8 @@ def paasta_spark_run(args):
 
     paasta_instance = get_smart_paasta_instance_name(args)
 
+    use_eks = decide_final_eks_toggle_state(args.use_eks_override)
+    k8s_server_address = _get_k8s_url_for_cluster(args.cluster) if use_eks else None
     spark_conf = get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
@@ -1214,10 +1246,8 @@ def paasta_spark_run(args):
         needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
-        use_eks=args.use_eks,
-        k8s_server_address=_get_k8s_url_for_cluster(args.cluster)
-        if args.use_eks
-        else None,
+        use_eks=use_eks,
+        k8s_server_address=k8s_server_address,
     )
     # TODO: Remove this after MLCOMPUTE-699 is complete
     if "spark.kubernetes.decommission.script" not in spark_conf:

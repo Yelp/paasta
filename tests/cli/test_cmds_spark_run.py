@@ -23,6 +23,7 @@ from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
+from paasta_tools.cli.cmds.spark_run import decide_final_eks_toggle_state
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_CORES_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_MEMORY_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
@@ -236,7 +237,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="jupyter-lab",
                 aws_region="test-region",
                 mrjob=False,
-                use_eks=False,
+                use_eks_override=False,
             ),
             {
                 "JUPYTER_RUNTIME_DIR": "/source/.jupyter",
@@ -251,7 +252,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 mrjob=False,
                 spark_args="spark.history.fs.logDirectory=s3a://bucket",
                 work_dir="/first:/second",
-                use_eks=False,
+                use_eks_override=False,
             ),
             {
                 "SPARK_LOG_DIR": "/second",
@@ -265,7 +266,7 @@ def mock_get_possible_launced_by_user_variable_from_env():
                 cmd="spark-submit job.py",
                 aws_region="test-region",
                 mrjob=True,
-                use_eks=False,
+                use_eks_override=False,
             ),
             {},
         ),
@@ -603,7 +604,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
-        args.use_eks = False
+        args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -715,7 +716,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
-        args.use_eks = False
+        args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -827,7 +828,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
-        args.use_eks = False
+        args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -1129,7 +1130,7 @@ def test_paasta_spark_run_bash(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
-        use_eks=False,
+        use_eks_override=False,
         k8s_server_address=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
@@ -1240,7 +1241,7 @@ def test_paasta_spark_run(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
-        use_eks=False,
+        use_eks_override=False,
         k8s_server_address=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
@@ -1351,8 +1352,11 @@ def test_paasta_spark_run_pyspark(
         force_spark_resource_configs=False,
         assume_aws_role=None,
         aws_role_duration=3600,
-        use_eks=False,
+        use_eks_override=False,
         k8s_server_address=None,
+    )
+    mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
+        False
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1436,3 +1440,26 @@ def test_paasta_spark_run_pyspark(
 )
 def test__should_get_resource_requirements(docker_cmd, is_mrjob, expected):
     assert _should_get_resource_requirements(docker_cmd, is_mrjob) is expected
+
+
+@pytest.mark.parametrize(
+    "override,default,expected",
+    (
+        (True, True, True),
+        (False, True, False),
+        (None, True, True),
+        (True, False, True),
+        (False, False, False),
+        (None, False, False),
+    ),
+)
+def test_decide_final_eks_toggle_state(override, default, expected):
+    with mock.patch(
+        "paasta_tools.cli.cmds.spark_run.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
+            default
+        )
+
+        assert decide_final_eks_toggle_state(override) is expected
