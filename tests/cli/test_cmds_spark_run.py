@@ -1450,7 +1450,7 @@ def test__should_get_resource_requirements(docker_cmd, is_mrjob, expected):
         (None, True, True),
         (True, False, True),
         (False, False, False),
-        (None, False, True),
+        (None, False, False),
     ),
 )
 def test_decide_final_eks_toggle_state(override, default, expected):
