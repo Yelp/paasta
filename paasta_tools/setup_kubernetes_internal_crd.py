@@ -23,7 +23,7 @@ import argparse
 import logging
 import sys
 
-from kubernetes.client import V1beta1CustomResourceDefinition
+from kubernetes.client import V1CustomResourceDefinition
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 
 
 INTERNAL_CRDS = [
-    V1beta1CustomResourceDefinition(
+    V1CustomResourceDefinition(
         api_version="apiextensions.k8s.io/v1beta1",
         kind="CustomResourceDefinition",
         metadata={
@@ -65,7 +65,7 @@ INTERNAL_CRDS = [
             },
         },
     ),
-    V1beta1CustomResourceDefinition(
+    V1CustomResourceDefinition(
         api_version="apiextensions.k8s.io/v1beta1",
         kind="CustomResourceDefinition",
         metadata={
