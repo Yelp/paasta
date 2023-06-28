@@ -1208,7 +1208,6 @@ def paasta_spark_run(args):
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
-    needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(
         args.spark_args,
         pod_template_path,
@@ -1243,7 +1242,6 @@ def paasta_spark_run(args):
         paasta_instance=paasta_instance,
         extra_volumes=volumes,
         aws_creds=aws_creds,
-        needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=use_eks,
