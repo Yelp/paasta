@@ -1664,6 +1664,9 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
+        "autoscaling_metric_provider", [None, "uwsgi", "piscina", "gunicorn"]
+    )
+    @pytest.mark.parametrize(
         "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period,pod_topology",
         [
             (True, "true", None, None, {}, None, []),
@@ -1712,6 +1715,7 @@ class TestKubernetesDeploymentConfig:
         anti_affinity,
         spec_affinity,
         termination_grace_period,
+        autoscaling_metric_provider,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_load_service_namespace_config.return_value = mock_service_namespace_config
@@ -1727,9 +1731,27 @@ class TestKubernetesDeploymentConfig:
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
-        ret = self.deployment.get_pod_template_spec(
-            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
-        )
+        if autoscaling_metric_provider:
+            mock_config_dict = KubernetesDeploymentConfigDict(
+                min_instances=1,
+                max_instances=3,
+                autoscaling={"metrics_provider": autoscaling_metric_provider},
+                deploy_group="fake_group",
+            )
+            deployment = KubernetesDeploymentConfig(
+                service="kurupt",
+                instance="fm",
+                cluster="brentford",
+                config_dict=mock_config_dict,
+                branch_dict=None,
+            )
+            ret = deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
+        else:
+            ret = self.deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
 
         assert mock_load_service_namespace_config.called
         assert mock_service_namespace_config.is_in_smartstack.called
@@ -1755,7 +1777,9 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/git_sha": "aaaa123",
             "paasta.yelp.com/instance": "fm",
             "paasta.yelp.com/service": "kurupt",
-            "paasta.yelp.com/autoscaled": "false",
+            "paasta.yelp.com/autoscaled": "true"
+            if autoscaling_metric_provider
+            else "false",
             "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
@@ -1764,11 +1788,21 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
+        if autoscaling_metric_provider:
+            expected_labels["paasta.yelp.com/deploy_group"] = "fake_group"
+            expected_labels[
+                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
+            ] = "true"
+        if autoscaling_metric_provider in ("uwsgi", "gunicorn"):
+            routable_ip = "true"
+
         expected_annotations = {
             "smartstack_registrations": '["kurupt.fm"]',
             "paasta.yelp.com/routable_ip": routable_ip,
             "iam.amazonaws.com/role": "",
         }
+        if autoscaling_metric_provider == "uwsgi":
+            expected_annotations["autoscaling"] = "uwsgi"
 
         expected = V1PodTemplateSpec(
             metadata=V1ObjectMeta(
