@@ -1635,14 +1635,6 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-        autospec=True,
-    )
-    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
         autospec=True,
     )
@@ -1712,8 +1704,6 @@ class TestKubernetesDeploymentConfig:
         mock_get_node_affinity,
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
-        mock_get_instance,
-        mock_get_service,
         mock_get_volumes,
         in_smtstk,
         routable_ip,
@@ -1760,11 +1750,11 @@ class TestKubernetesDeploymentConfig:
         expected_labels = {
             "paasta.yelp.com/pool": "default",
             "yelp.com/paasta_git_sha": "aaaa123",
-            "yelp.com/paasta_instance": mock_get_instance.return_value,
-            "yelp.com/paasta_service": mock_get_service.return_value,
+            "yelp.com/paasta_instance": "fm",
+            "yelp.com/paasta_service": "kurupt",
             "paasta.yelp.com/git_sha": "aaaa123",
-            "paasta.yelp.com/instance": mock_get_instance.return_value,
-            "paasta.yelp.com/service": mock_get_service.return_value,
+            "paasta.yelp.com/instance": "fm",
+            "paasta.yelp.com/service": "kurupt",
             "paasta.yelp.com/autoscaled": "false",
             "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
