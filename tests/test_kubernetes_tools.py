@@ -2365,6 +2365,83 @@ class TestKubernetesDeploymentConfig:
             == return_value
         )
 
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+        ),
+    )
+    def test_get_autoscaling_metric_spec_gunicorn_prometheus(
+        self, fake_system_paasta_config
+    ):
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_provider": "gunicorn",
+                    "setpoint": 0.5,
+                    "forecast_policy": "moving_average",
+                    "moving_average_window_seconds": 300,
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+        )
+        expected_res = V2beta2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={},
+            ),
+            spec=V2beta2HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="service-instance-gunicorn-prom",
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                        ),
+                    ),
+                ],
+                scale_target_ref=V2beta2CrossVersionObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
+                ),
+            ),
+        )
+
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
+
     def test_override_scaledown_policies(self):
         config_dict = KubernetesDeploymentConfigDict(
             {
