@@ -1764,14 +1764,16 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
+        expected_annotations = {
+            "smartstack_registrations": '["kurupt.fm"]',
+            "paasta.yelp.com/routable_ip": routable_ip,
+            "iam.amazonaws.com/role": "",
+        }
+
         expected = V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels=expected_labels,
-                annotations={
-                    "smartstack_registrations": '["kurupt.fm"]',
-                    "paasta.yelp.com/routable_ip": routable_ip,
-                    "iam.amazonaws.com/role": "",
-                },
+                annotations=expected_annotations,
             ),
             spec=V1PodSpec(**pod_spec_kwargs),
         )
