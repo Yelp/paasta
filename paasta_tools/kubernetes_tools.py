@@ -198,7 +198,6 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
-DEFAULT_USE_PROMETHEUS_GUNICORN = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
 
 
@@ -1109,7 +1108,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         system_paasta_config: SystemPaastaConfig,
     ) -> Optional[V1Container]:
 
-        if self.should_run_gunicorn_exporter_sidecar(system_paasta_config):
+        if self.should_run_gunicorn_exporter_sidecar():
             return V1Container(
                 image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
                 resources=self.get_sidecar_resource_requirements("gunicorn_exporter"),
@@ -1133,19 +1132,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return None
 
-    def should_run_gunicorn_exporter_sidecar(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> bool:
+    def should_run_gunicorn_exporter_sidecar(self) -> bool:
         if self.is_autoscaling_enabled():
             autoscaling_params = self.get_autoscaling_params()
             if autoscaling_params["metrics_provider"] == "gunicorn":
-                if autoscaling_params.get(
-                    "use_prometheus",
-                    DEFAULT_USE_PROMETHEUS_GUNICORN
-                    or system_paasta_config.default_should_run_gunicorn_exporter_sidecar(),
-                ):
-                    return True
+                return True
         return False
 
     def should_setup_piscina_prometheus_scraping(

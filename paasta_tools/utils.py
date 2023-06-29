@@ -1913,7 +1913,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
-    default_should_run_gunicorn_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -2674,11 +2673,6 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "gunicorn_exporter_sidecar_image_url",
             "docker-dev.yelpcorp.com/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
-        )
-
-    def default_should_run_gunicorn_exporter_sidecar(self) -> bool:
-        return self.config_dict.get(
-            "default_should_run_gunicorn_exporter_sidecar", False
         )
 
     def get_mark_for_deployment_max_polling_threads(self) -> int:
