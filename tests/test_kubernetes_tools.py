@@ -1764,7 +1764,7 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
-        assert ret == V1PodTemplateSpec(
+        expected = V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels=expected_labels,
                 annotations={
@@ -1775,6 +1775,8 @@ class TestKubernetesDeploymentConfig:
             ),
             spec=V1PodSpec(**pod_spec_kwargs),
         )
+
+        assert ret == expected
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
