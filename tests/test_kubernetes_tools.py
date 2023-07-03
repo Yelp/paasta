@@ -1774,7 +1774,9 @@ class TestKubernetesDeploymentConfig:
 
         assert ret == expected
 
-    def test_get_pod_topology_spread_constraints(self, topology_spread_constraints, expected):
+    def test_get_pod_topology_spread_constraints(
+        self, topology_spread_constraints, expected
+    ):
         configured_constraints = [
             {
                 "topology_key": "kubernetes.io/hostname",
@@ -1813,9 +1815,12 @@ class TestKubernetesDeploymentConfig:
             ),
         ]
 
-        assert self.deployment.get_pod_topology_spread_constraints(
-            "schematizer", "main", configured_constraints
-        ) == expected_constraints
+        assert (
+            self.deployment.get_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
 
     @pytest.mark.parametrize(
         "raw_selectors,expected",
