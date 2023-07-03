@@ -56,6 +56,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
@@ -3763,6 +3764,46 @@ def test_load_custom_resources():
             kube_kind=kubernetes_tools.KubeKind(plural="Flinks", singular="flink"),
             file_prefix="flink",
             group="yelp.com",
+        )
+    ]
+
+
+def test_load_topology_spread_constraints():
+    mock_resources = [
+        {
+            "topology_key": "kubernetes.io/hostname",
+            "max_skew": 1,
+            "when_unsatisfiable": "ScheduleAnyway",
+        },
+        {
+            "topology_key": "topology.kubernetes.io/zone",
+            "max_skew": 3,
+            "when_unsatisfiable": "DoNotSchedule",
+        }
+    ]
+    mock_config = mock.Mock(
+        get_topology_spread_constraints=mock.Mock(return_value=mock_resources)
+    )
+    service = "schematizer"
+    instance = "main"
+    selector = V1LabelSelector(
+       match_labels={
+           "paasta.yelp.com/service": service,
+           "paasta.yelp.com/instance": instance,
+       }
+    )
+    assert kubernetes_tools.get_pod_topology_spread_constraints(mock_config, service, instance) == [
+        V1TopologySpreadConstraint(
+            label_selector=selector,
+            max_skew=1,
+            topology_key="kubernetes.io/hostname",
+            when_unsatisfiable="ScheduleAnyway"
+        ),
+        V1TopologySpreadConstraint(
+            label_selector=selector,
+            max_skew=1,
+            topology_key="topology.kubernetes.io/zone",
+            when_unsatisfiable="DoNotSchedule"
         )
     ]
 

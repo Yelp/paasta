@@ -1817,23 +1817,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             affinity.pod_anti_affinity = pod_anti_affinity
             pod_spec_kwargs["affinity"] = affinity
 
-        pod_topology_spread_constraints = self.get_pod_topology_spread_constraints(
-            system_paasta_config=system_paasta_config
+        # PAASTA-17941: Allow configuring topology spread constraints per cluster
+        topology_spread_constraints = get_pod_topology_spread_constraints(
+            system_paasta_config=system_paasta_config,
+            service=self.get_service(),
+            instance=self.get_instance()
         )
-        if pod_topology_spread_constraints is not None:
-            topology_spread_constraints = pod_spec_kwargs.get(
+        if topology_spread_constraints:
+            pod_topology_spread_constraints = pod_spec_kwargs.get(
                 "topologySpreadConstraints", []
             )
-            topology_spread_constraints += pod_topology_spread_constraints
-            pod_spec_kwargs["topologySpreadConstraints"] = topology_spread_constraints
-        #     attribute_map = {
-        #         'label_selector': 'labelSelector',
-        #         'max_skew': 'maxSkew',
-        #         'topology_key': 'topologyKey',
-        #         'when_unsatisfiable': 'whenUnsatisfiable'
-        #     }
-        #
-        #     def __init__(self, label_selector=None, max_skew=None, topology_key=None, when_unsatisfiable=None, local_vars_configuration=None):  # noqa: E501
+            pod_topology_spread_constraints += topology_spread_constraints
+            pod_spec_kwargs["topologySpreadConstraints"] = pod_topology_spread_constraints
 
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
@@ -2020,32 +2015,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1PodAntiAffinity(
             required_during_scheduling_ignored_during_execution=affinity_terms
         )
-
-    def get_pod_topology_spread_constraints(
-        self, system_paasta_config: SystemPaastaConfig
-    ) -> List[V1TopologySpreadConstraint]:
-        """
-        Converts the given anti-affinity on service and instance to pod
-        affinities with the "paasta.yelp.com" prefixed label selector
-        :return:
-        """
-        pod_topology_spread_constraints = (
-            system_paasta_config.get_pod_topology_spread_constraints()
-        )
-        if not pod_topology_spread_constraints:
-            return None
-
-        # selector = V1LabelSelector(
-        #    match_labels={
-        #        "paasta.yelp.com/service": self.get_service(),
-        #        "paasta.yelp.com/instance": self.get_instance(),
-        #    }
-        # )
-
-        for constraint in pod_topology_spread_constraints:
-            pass
-
-        return None
 
     def _kube_affinity_condition_to_label_selector(
         self, condition: KubeAffinityCondition
@@ -3390,6 +3359,42 @@ def load_custom_resource_definitions(
             )
         )
     return custom_resources
+
+
+def get_pod_topology_spread_constraints(
+    system_paasta_config: SystemPaastaConfig,
+    service: str,
+    instance: str
+) -> List[V1TopologySpreadConstraint]:
+    """
+    Applies cluster-level topology spread constraints to every Pod.
+    This allows us to configure default topology spread constraints on EKS where we cannot configure the scheduler.
+    """
+    topology_spread_constraints = (
+        system_paasta_config.get_topology_spread_constraints()
+    )
+    if not topology_spread_constraints:
+        return []
+
+    selector = V1LabelSelector(
+       match_labels={
+           "paasta.yelp.com/service": service,
+           "paasta.yelp.com/instance": instance,
+       }
+    )
+
+    pod_topology_spread_constraints = []
+    for constraint in topology_spread_constraints:
+        pod_topology_spread_constraints.append(
+            V1TopologySpreadConstraint(
+                label_selector=selector,
+                max_skew=constraint.get("maxSkew", 1),
+                topology_key=constraint.get("topologyKey", None),  # ValueError will be raised if unset
+                when_unsatisfiable=constraint.get("whenUnsatisfiable", "ScheduleAnyway")
+            )
+        )
+
+    return pod_topology_spread_constraints
 
 
 def sanitised_cr_name(service: str, instance: str) -> str:
