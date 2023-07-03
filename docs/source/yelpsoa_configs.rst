@@ -149,6 +149,22 @@ Kubernetes
 
 These options are only applicable to tasks scheduled on Kubernetes.
 
+  * ``topology_spread_constraints``: A set of rules to spread Pods across topologies, for example to try spreading Pods evenly across both nodes and availability zones::
+
+      topology_spread_constraints:
+        - max_skew: 1
+          topology_key: "topology.kubernetes.io/zone"
+          when_unsatisfiable: "ScheduleAnyway"
+        - max_skew: 1
+          topology_key: "kubernetes.io/hostname"
+          when_unsatisfiable: "ScheduleAnyway"
+
+    These can be configured per cluster (or globally) and will be added to every Pod Spec template, using `paasta.yelp.com/service` and `paasta.yelp.com/instance` as selectors.
+
+    For more information, see the official Kubernetes
+    documentation on `topology spread constraints
+    <https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/>`_.
+
   * ``node_selectors``: A map of labels a node is required to have for a task
     to be launched on said node. There are several ways to define a selector.
     The simplest is a key-value pair. For example, this selector restricts a
