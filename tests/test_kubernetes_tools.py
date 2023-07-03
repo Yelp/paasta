@@ -56,6 +56,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
@@ -1772,6 +1773,49 @@ class TestKubernetesDeploymentConfig:
         )
 
         assert ret == expected
+
+    def test_get_pod_topology_spread_constraints(self, topology_spread_constraints, expected):
+        configured_constraints = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+            },
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 3,
+                "when_unsatisfiable": "DoNotSchedule",
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+            ),
+        ]
+
+        assert self.deployment.get_pod_topology_spread_constraints(
+            "schematizer", "main", configured_constraints
+        ) == expected_constraints
 
     @pytest.mark.parametrize(
         "raw_selectors,expected",
