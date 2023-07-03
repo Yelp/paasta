@@ -1682,56 +1682,46 @@ class TestKubernetesDeploymentConfig:
 
         assert ret == expected
 
-    @pytest.mark.parametrize(
-        "service,instance,topology_spread_constraints,expected",
-        [
-            ("schematizer", "main", [], []),  # no topology spread constraints set
-            (  # topology_spread_constraints configs case
-                "schematizer",
-                "main",
-                [
-                    {
-                        "topology_key": "kubernetes.io/hostname",
-                        "max_skew": 1,
-                        "when_unsatisfiable": "ScheduleAnyway",
-                    },
-                    {
-                        "topology_key": "topology.kubernetes.io/zone",
-                        "max_skew": 3,
-                        "when_unsatisfiable": "DoNotSchedule",
-                    },
-                ],
-                [
-                    V1TopologySpreadConstraint(
-                        label_selector=V1LabelSelector(
-                            match_labels={
-                                "paasta.yelp.com/service": "schematizer",
-                                "paasta.yelp.com/instance": "main",
-                            }
-                        ),
-                        max_skew=1,
-                        topology_key="kubernetes.io/hostname",
-                        when_unsatisfiable="ScheduleAnyway",
-                    ),
-                    V1TopologySpreadConstraint(
-                        label_selector=V1LabelSelector(
-                            match_labels={
-                                "paasta.yelp.com/service": "schematizer",
-                                "paasta.yelp.com/instance": "main",
-                            }
-                        ),
-                        max_skew=3,
-                        topology_key="topology.kubernetes.io/zone",
-                        when_unsatisfiable="DoNotSchedule",
-                    ),
-                ]
+    def test_get_pod_topology_spread_constraints(self):
+        assert self.deployment.get_pod_topology_spread_constraints(
+            "schematizer",
+            "main",
+            [
+                {
+                    "topology_key": "kubernetes.io/hostname",
+                    "max_skew": 1,
+                    "when_unsatisfiable": "ScheduleAnyway",
+                },
+                {
+                    "topology_key": "topology.kubernetes.io/zone",
+                    "max_skew": 3,
+                    "when_unsatisfiable": "DoNotSchedule",
+                },
+            ],
+        ) == [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
             ),
-        ],
-    )
-    def test_get_pod_topology_spread_constraints(self, topology_spread_constraints, expected):
-        if topology_spread_constraints:
-            self.deployment.config_dict["topology_spread_constraints"] = topology_spread_constraints
-        assert self.deployment.get_node_selector() == expected
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+            ),
+        ]
 
     @pytest.mark.parametrize(
         "raw_selectors,expected",
@@ -3819,7 +3809,7 @@ def test_load_custom_resources():
     ]
 
 
-#def test_load_topology_spread_constraints():
+# def test_load_topology_spread_constraints():
 #    mock_resources = [
 #        {
 #            "topology_key": "kubernetes.io/hostname",

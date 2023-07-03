@@ -1824,9 +1824,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
         )
         if pod_topology_spread_constraints:
-            constraints = pod_spec_kwargs.get(
-                "topologySpreadConstraints", []
-            )
+            constraints = pod_spec_kwargs.get("topologySpreadConstraints", [])
             constraints += pod_topology_spread_constraints
             pod_spec_kwargs["topologySpreadConstraints"] = constraints
 
@@ -1949,10 +1947,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return node_selectors
 
     def get_pod_topology_spread_constraints(
-            self,
-            service: str,
-            instance: str,
-            topology_spread_constraints: List[TypedDict]
+        self, service: str, instance: str, topology_spread_constraints: List[TypedDict]
     ) -> List[V1TopologySpreadConstraint]:
         """
         Applies cluster-level topology spread constraints to every Pod template.
