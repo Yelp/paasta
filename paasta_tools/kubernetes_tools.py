@@ -3388,7 +3388,7 @@ def get_pod_topology_spread_constraints(
                 label_selector=selector,
                 max_skew=constraint.max_skew,
                 topology_key=constraint.topology_key,
-                when_unsatisfiable=constraint.when_unsatisfiable
+                when_unsatisfiable=constraint.when_unsatisfiable,
             )
         )
 
