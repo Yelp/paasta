@@ -3386,9 +3386,13 @@ def get_pod_topology_spread_constraints(
         pod_topology_spread_constraints.append(
             V1TopologySpreadConstraint(
                 label_selector=selector,
-                max_skew=constraint.max_skew,
-                topology_key=constraint.topology_key,
-                when_unsatisfiable=constraint.when_unsatisfiable,
+                max_skew=constraint.get("max_skew", 1),
+                topology_key=constraint.get(
+                    "topology_key", None
+                ),  # ValueError will be raised if unset
+                when_unsatisfiable=constraint.get(
+                    "when_unsatisfiable", "ScheduleAnyway"
+                ),
             )
         )
 
