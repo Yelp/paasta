@@ -102,6 +102,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
@@ -1816,6 +1817,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             affinity.pod_anti_affinity = pod_anti_affinity
             pod_spec_kwargs["affinity"] = affinity
 
+        # PAASTA-17941: Allow configuring topology spread constraints per cluster
+        pod_topology_spread_constraints = self.get_pod_topology_spread_constraints(
+            service=self.get_service(),
+            instance=self.get_instance(),
+            topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
+        )
+        if pod_topology_spread_constraints:
+            constraints = pod_spec_kwargs.get(
+                "topologySpreadConstraints", []
+            )
+            constraints += pod_topology_spread_constraints
+            pod_spec_kwargs["topologySpreadConstraints"] = constraints
+
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
             pod_spec_kwargs[
@@ -1933,6 +1947,43 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         }
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
+
+    def get_pod_topology_spread_constraints(
+            self,
+            service: str,
+            instance: str,
+            topology_spread_constraints: List[TypedDict]
+    ) -> List[V1TopologySpreadConstraint]:
+        """
+        Applies cluster-level topology spread constraints to every Pod template.
+        This allows us to configure default topology spread constraints on EKS where we cannot configure the scheduler.
+        """
+        if not topology_spread_constraints:
+            return []
+
+        selector = V1LabelSelector(
+            match_labels={
+                "paasta.yelp.com/service": service,
+                "paasta.yelp.com/instance": instance,
+            }
+        )
+
+        pod_topology_spread_constraints = []
+        for constraint in topology_spread_constraints:
+            pod_topology_spread_constraints.append(
+                V1TopologySpreadConstraint(
+                    label_selector=selector,
+                    max_skew=constraint.get("max_skew", 1),
+                    topology_key=constraint.get(
+                        "topology_key", None
+                    ),  # ValueError will be raised if unset
+                    when_unsatisfiable=constraint.get(
+                        "when_unsatisfiable", "ScheduleAnyway"
+                    ),
+                )
+            )
+
+        return pod_topology_spread_constraints
 
     def get_node_affinity(self) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
