@@ -1866,8 +1866,8 @@ class PaastaNativeConfig(TypedDict, total=False):
 
 
 class TopologySpreadConstraint(TypedDict, total=False):
-    topology_key: str        # Must not be empty
-    max_skew: int            # Defaults to 1
+    topology_key: str  # Must not be empty
+    max_skew: int  # Defaults to 1
     when_unsatisfiable: str  # Defaults to ScheduleAnyway
 
 

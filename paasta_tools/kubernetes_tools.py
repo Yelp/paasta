@@ -1821,14 +1821,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         topology_spread_constraints = get_pod_topology_spread_constraints(
             system_paasta_config=system_paasta_config,
             service=self.get_service(),
-            instance=self.get_instance()
+            instance=self.get_instance(),
         )
         if topology_spread_constraints:
             pod_topology_spread_constraints = pod_spec_kwargs.get(
                 "topologySpreadConstraints", []
             )
             pod_topology_spread_constraints += topology_spread_constraints
-            pod_spec_kwargs["topologySpreadConstraints"] = pod_topology_spread_constraints
+            pod_spec_kwargs[
+                "topologySpreadConstraints"
+            ] = pod_topology_spread_constraints
 
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
@@ -3362,25 +3364,21 @@ def load_custom_resource_definitions(
 
 
 def get_pod_topology_spread_constraints(
-    system_paasta_config: SystemPaastaConfig,
-    service: str,
-    instance: str
+    system_paasta_config: SystemPaastaConfig, service: str, instance: str
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod.
     This allows us to configure default topology spread constraints on EKS where we cannot configure the scheduler.
     """
-    topology_spread_constraints = (
-        system_paasta_config.get_topology_spread_constraints()
-    )
+    topology_spread_constraints = system_paasta_config.get_topology_spread_constraints()
     if not topology_spread_constraints:
         return []
 
     selector = V1LabelSelector(
-       match_labels={
-           "paasta.yelp.com/service": service,
-           "paasta.yelp.com/instance": instance,
-       }
+        match_labels={
+            "paasta.yelp.com/service": service,
+            "paasta.yelp.com/instance": instance,
+        }
     )
 
     pod_topology_spread_constraints = []
@@ -3389,8 +3387,12 @@ def get_pod_topology_spread_constraints(
             V1TopologySpreadConstraint(
                 label_selector=selector,
                 max_skew=constraint.get("maxSkew", 1),
-                topology_key=constraint.get("topologyKey", None),  # ValueError will be raised if unset
-                when_unsatisfiable=constraint.get("whenUnsatisfiable", "ScheduleAnyway")
+                topology_key=constraint.get(
+                    "topologyKey", None
+                ),  # ValueError will be raised if unset
+                when_unsatisfiable=constraint.get(
+                    "whenUnsatisfiable", "ScheduleAnyway"
+                ),
             )
         )
 
