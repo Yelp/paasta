@@ -1871,6 +1871,8 @@ class PaastaNativeConfig(TypedDict, total=False):
     secret: str
 
 
+# PAASTA-17941: Allow configuring TSC.
+# Please only do not use `when_unsatisfiable: DoNotSchedule` until PAASTA-17951 is resolved
 class TopologySpreadConstraint(TypedDict, total=False):
     topology_key: str  # Must not be empty
     max_skew: int  # Defaults to 1

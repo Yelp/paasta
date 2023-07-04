@@ -161,6 +161,8 @@ These options are only applicable to tasks scheduled on Kubernetes.
 
     These can be configured per cluster (or globally) and will be added to every Pod Spec template, using `paasta.yelp.com/service` and `paasta.yelp.com/instance` as selectors.
 
+    To avoid conflicts with the `deploy_whitelist` and `deploy_blacklist`, please only use `when_unsatisfiable: "ScheduleAnyway"` (at least until PAASTA-17951 is resolved).
+
     For more information, see the official Kubernetes
     documentation on `topology spread constraints
     <https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/>`_.
