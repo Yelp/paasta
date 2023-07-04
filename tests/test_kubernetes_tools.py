@@ -1622,6 +1622,10 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
         "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period",
         [
@@ -1654,6 +1658,7 @@ class TestKubernetesDeploymentConfig:
     )
     def test_get_pod_template_spec(
         self,
+        mock_create_pod_topology_spread_constraints,
         mock_get_pod_anti_affinity,
         mock_get_termination_grace_period,
         mock_load_service_namespace_config,
@@ -1665,6 +1670,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_volumes,
         in_smtstk,
         routable_ip,
+        pod_topology,
         node_affinity,
         anti_affinity,
         spec_affinity,
@@ -1675,9 +1681,13 @@ class TestKubernetesDeploymentConfig:
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_get_node_affinity.return_value = node_affinity
         mock_get_pod_anti_affinity.return_value = anti_affinity
+        mock_create_pod_topology_spread_constraints.return_value = pod_topology
         mock_system_paasta_config = mock.Mock()
         mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
             True
+        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = (
+            []
         )
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
