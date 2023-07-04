@@ -1654,7 +1654,7 @@ class TestKubernetesDeploymentConfig:
                     )
                 },
                 None,
-                []
+                [],
             ),
         ],
     )
