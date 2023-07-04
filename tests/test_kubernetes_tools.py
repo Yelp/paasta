@@ -911,6 +911,7 @@ class TestKubernetesDeploymentConfig:
         ret = self.deployment.get_kubernetes_environment()
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
+        assert "PAASTA_CLUSTER" in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
@@ -1710,6 +1711,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/instance": mock_get_instance.return_value,
             "paasta.yelp.com/service": mock_get_service.return_value,
             "paasta.yelp.com/autoscaled": "false",
+            "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
@@ -1999,6 +2001,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/autoscaled": autoscaled_label,
                     "paasta.yelp.com/pool": "default",
+                    "paasta.yelp.com/cluster": "brentford",
                     "yelp.com/owner": "compute_infra_platform_experience",
                     "paasta.yelp.com/managed": "true",
                 },
@@ -3905,7 +3908,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config9e0d925d"
+            == "configf6939dba"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3951,7 +3954,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config295207ad"
+            == "config0107126a"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

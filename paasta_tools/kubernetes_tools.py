@@ -172,6 +172,7 @@ HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
+PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
     "region",
@@ -333,6 +334,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/cluster": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
@@ -1117,6 +1119,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         env["PAASTA_SOA_CONFIGS_SHA"] = read_soa_metadata(soa_dir=self.soa_dir).get(
             "git_sha", ""
         )
+
+        # We drop PAASTA_CLUSTER here because it will be added via `get_kubernetes_environment()`
+        env.pop("PAASTA_CLUSTER", None)
+
         return env
 
     def get_env_vars_that_use_secrets(self) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -1211,6 +1217,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name="PAASTA_HOST",
                 value_from=V1EnvVarSource(
                     field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_CLUSTER",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path="metadata.labels['"
+                        + paasta_prefixed("cluster")
+                        + "']"
+                    )
                 ),
             ),
         ]
@@ -1738,17 +1754,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             name=self.get_sanitised_deployment_name(),
             namespace=self.get_namespace(),
             labels={
+                "yelp.com/owner": PAASTA_WORKLOAD_OWNER,
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
-                "paasta.yelp.com/service": self.get_service(),
-                "paasta.yelp.com/instance": self.get_instance(),
-                "paasta.yelp.com/git_sha": git_sha,
-                "paasta.yelp.com/pool": self.get_pool(),
-                "yelp.com/owner": "compute_infra_platform_experience",
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+                paasta_prefixed("git_sha"): git_sha,
+                paasta_prefixed("cluster"): self.cluster,
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
+                paasta_prefixed("paasta.yelp.com/pool"): self.get_pool(),
                 paasta_prefixed("managed"): "true",
             },
         )
@@ -2007,6 +2024,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
+            "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
         }
