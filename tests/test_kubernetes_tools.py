@@ -1627,10 +1627,10 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period",
+        "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period,pod_topology",
         [
-            (True, "true", None, None, {}, None),
-            (False, "false", None, None, {}, 10),
+            (True, "true", None, None, {}, None, []),
+            (False, "false", None, None, {}, 10, []),
             # an node affinity absent but pod anti affinity present
             (
                 False,
@@ -1639,6 +1639,7 @@ class TestKubernetesDeploymentConfig:
                 "pod_anti_affinity",
                 {"affinity": V1Affinity(pod_anti_affinity="pod_anti_affinity")},
                 None,
+                [],
             ),
             # an affinity obj is only added if there is a node affinity
             (
@@ -1653,6 +1654,7 @@ class TestKubernetesDeploymentConfig:
                     )
                 },
                 None,
+                []
             ),
         ],
     )
@@ -1686,9 +1688,7 @@ class TestKubernetesDeploymentConfig:
         mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
             True
         )
-        mock_system_paasta_config.get_topology_spread_constraints.return_value = (
-            []
-        )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
