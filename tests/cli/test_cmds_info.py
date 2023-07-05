@@ -42,9 +42,7 @@ def test_get_service_info():
             "external_link": "http://bla",
             "smartstack": {"main": {"proxy_port": 9001}},
         }
-        mock_scl_read_service_configuration.return_value = (
-            mock_read_service_configuration.return_value
-        )
+       
         mock_read_extra_service_information.return_value = (
             mock_read_service_configuration.return_value["smartstack"]
         )
