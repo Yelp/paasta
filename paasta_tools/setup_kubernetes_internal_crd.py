@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 
 INTERNAL_CRDS = [
     V1CustomResourceDefinition(
-        api_version="apiextensions.k8s.io/v1beta1",
+        api_version="apiextensions.k8s.io/v1",
         kind="CustomResourceDefinition",
         metadata={
             "name": "deploygroups.paasta.yelp.com",
@@ -44,7 +44,24 @@ INTERNAL_CRDS = [
         },
         spec={
             "group": "paasta.yelp.com",
-            "versions": [{"name": "v1beta1", "served": True, "storage": True}],
+            "versions": [
+                {
+                    "name": "v1beta1",
+                    "served": True,
+                    "storage": True,
+                    "schema": {
+                        "openAPIV3Schema": {
+                            "type": "object",
+                            "properties": {
+                                "service": {"type": "string"},
+                                "deploy_group": {"type": "string"},
+                                "git_sha": {"type": "string"},
+                                "image_version": {"type": "string"},
+                            },
+                        }
+                    },
+                }
+            ],
             "scope": "Namespaced",
             "names": {
                 "plural": "deploygroups",
