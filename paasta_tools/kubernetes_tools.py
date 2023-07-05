@@ -3557,7 +3557,7 @@ def load_custom_resource_definitions(
 def create_pod_topology_spread_constraints(
     service: str,
     instance: str,
-    topology_spread_constraints: List[dict],
+    topology_spread_constraints: List[Dict[Any, Any]],
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod template.
