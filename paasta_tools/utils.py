@@ -1970,6 +1970,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
+    topology_spread_constraints: List[Dict[str, Any]]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2555,6 +2556,10 @@ class SystemPaastaConfig:
 
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
+
+    def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
+        """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
+        return self.config_dict.get("topology_spread_constraints", [])
 
     def get_vault_environment(self) -> Optional[str]:
         """Get the environment name for the vault cluster
