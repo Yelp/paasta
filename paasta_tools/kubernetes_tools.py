@@ -3557,7 +3557,7 @@ def load_custom_resource_definitions(
 def create_pod_topology_spread_constraints(
     service: str,
     instance: str,
-    topology_spread_constraints: List[Dict[Any, Any]],
+    topology_spread_constraints: List[Dict[str, Any]],
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod template.
@@ -3578,10 +3578,10 @@ def create_pod_topology_spread_constraints(
         pod_topology_spread_constraints.append(
             V1TopologySpreadConstraint(
                 label_selector=selector,
-                max_skew=constraint.get("max_skew", 1),
                 topology_key=constraint.get(
                     "topology_key", None
                 ),  # ValueError will be raised if unset
+                max_skew=constraint.get("max_skew", 1),
                 when_unsatisfiable=constraint.get(
                     "when_unsatisfiable", "ScheduleAnyway"
                 ),

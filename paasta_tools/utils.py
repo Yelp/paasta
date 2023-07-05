@@ -1871,14 +1871,6 @@ class PaastaNativeConfig(TypedDict, total=False):
     secret: str
 
 
-# PAASTA-17941: Allow configuring TSC.
-# Please only do not use `when_unsatisfiable: DoNotSchedule` until PAASTA-17951 is resolved
-class TopologySpreadConstraint(TypedDict, total=False):
-    topology_key: str  # Must not be empty
-    max_skew: int  # Defaults to 1
-    when_unsatisfiable: str  # Defaults to ScheduleAnyway
-
-
 ExpectedSlaveAttributes = List[Dict[str, Any]]
 
 
@@ -1978,7 +1970,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    topology_spread_constraints: List[TopologySpreadConstraint]
+    topology_spread_constraints: List[Dict[str, Any]]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2565,7 +2557,7 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
-    def get_topology_spread_constraints(self) -> List[TopologySpreadConstraint]:
+    def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
 
