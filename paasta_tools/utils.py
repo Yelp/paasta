@@ -2672,7 +2672,7 @@ class SystemPaastaConfig:
         """Get the docker image URL for the gunicorn_exporter sidecar container"""
         return self.config_dict.get(
             "gunicorn_exporter_sidecar_image_url",
-            "docker-dev.yelpcorp.com/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
+            "docker-paasta.yelpcorp.com/gunicorn_exporter-k8s-sidecar:v0.24.0-yelp0",
         )
 
     def get_mark_for_deployment_max_polling_threads(self) -> int:
