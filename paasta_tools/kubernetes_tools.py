@@ -155,6 +155,7 @@ from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
+from paasta_tools.utils import TopologySpreadConstraint
 from paasta_tools.utils import VolumeWithMode
 
 
@@ -3555,7 +3556,7 @@ def load_custom_resource_definitions(
 
 
 def create_pod_topology_spread_constraints(
-    service: str, instance: str, topology_spread_constraints: List[TypedDict]
+    service: str, instance: str, topology_spread_constraints: List[TopologySpreadConstraint]
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod template.
