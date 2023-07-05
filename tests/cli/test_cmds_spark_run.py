@@ -1180,7 +1180,6 @@ def test_paasta_spark_run_bash(
         k8s_server_address=None,
     )
     mock_spark_conf = mock_get_spark_conf.return_value
-    mock_spark_conf["spark.sql.adaptive.enabled"] = "true"
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
         docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
