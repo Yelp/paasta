@@ -69,21 +69,10 @@ INTERNAL_CRDS = [
                 "kind": "DeployGroup",
                 "shortNames": ["dg"],
             },
-            "validation": {
-                "openAPIV3Schema": {
-                    "type": "object",
-                    "properties": {
-                        "service": {"type": "string"},
-                        "deploy_group": {"type": "string"},
-                        "git_sha": {"type": "string"},
-                        "image_version": {"type": "string"},
-                    },
-                }
-            },
         },
     ),
     V1CustomResourceDefinition(
-        api_version="apiextensions.k8s.io/v1beta1",
+        api_version="apiextensions.k8s.io/v1",
         kind="CustomResourceDefinition",
         metadata={
             "name": "startstopcontrols.paasta.yelp.com",
@@ -93,23 +82,29 @@ INTERNAL_CRDS = [
         },
         spec={
             "group": "paasta.yelp.com",
-            "versions": [{"name": "v1beta1", "served": True, "storage": True}],
+            "versions": [
+                {
+                    "name": "v1beta1",
+                    "served": True,
+                    "storage": True,
+                    "schema": {
+                        "openAPIV3Schema": {
+                            "type": "object",
+                            "properties": {
+                                "service": {"type": "string"},
+                                "instance": {"type": "string"},
+                                "desired_state": {"type": "string"},
+                                "force_bounce": {"type": "string"},
+                            },
+                        }
+                    },
+                }
+            ],
             "scope": "Namespaced",
             "names": {
                 "plural": "startstopcontrols",
                 "singular": "startstopcontrol",
                 "kind": "StartStopControl",
-            },
-            "validation": {
-                "openAPIV3Schema": {
-                    "type": "object",
-                    "properties": {
-                        "service": {"type": "string"},
-                        "instance": {"type": "string"},
-                        "desired_state": {"type": "string"},
-                        "force_bounce": {"type": "string"},
-                    },
-                }
             },
         },
     ),
