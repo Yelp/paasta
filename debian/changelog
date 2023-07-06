@@ -1,3 +1,39 @@
+paasta-tools (0.180.0) xenial; urgency=medium
+
+  * 0.180.0 tagged with 'make release'
+    Commit: PAASTA-17941: add topology spread constraints option (#3641)
+    Ticket: PAASTA-17941  Problem ----- On EKS, we cannot configure the
+    default Kubernetes scheduler with pod topology constraints. But to
+    support the Karpenter migration and to be able to tune our spread of
+    Pods across zones and nodes, we want to be able to configure cluster
+    wide topology constraints via PaaSTA.  Solution ----- Add a
+    `topology_spread_constraints` option to the PaaSTA system config
+    that allows defining rules to spread Pods across topologies per
+    cluster. For example to try spreading Pods evenly across both nodes
+    and availability zones, we"d set: ``` topology_spread_constraints:
+    - max_skew: 1       topology_key: "topology.kubernetes.io/zone"
+    when_unsatisfiable: "ScheduleAnyway"     - max_skew: 1
+    topology_key: "kubernetes.io/hostname"       when_unsatisfiable:
+    "ScheduleAnyway" ``` This can be configured once per cluster (or
+    globally) and will be added to every Pod Spec template (i.e. both
+    Deployments and StatefulSets), using `paasta.yelp.com/service` and
+    `paasta.yelp.com/instance` as label selectors.  Future Work ------
+    There is a potentially conflicting interaction of this new
+    configuration option with `deploy_whitelist` and `deploy_blacklist`
+    because those use node affinities and could constrain a deployment
+    to one specific habitat/AZ while the topology spread constraint
+    might be configured to spread Pods across multiple AZs. If
+    `when_unsatisfiable: "DoNotSchedule"` is set, this would lead to
+    Pods being unable to get scheduled.  For now, this will be handled
+    by not defining any default spread constraints and only using
+    `ScheduleAnyway` but we"ll probably pose a follow-up PR to change
+    the implementation of the whitelist/blacklist options from node
+    affinities (which are somewhat expensive anyway) to topology spread
+    constraints and give priority to the whitelist/blacklist options, if
+    defined.  Signed-off-by: Max Falk <gfalk@yelp.com>
+
+ -- Max Falk <gfalk@yelp.com>  Thu, 06 Jul 2023 00:49:07 -0700
+
 paasta-tools (0.179.0) xenial; urgency=medium
 
   * 0.179.0 tagged with 'make release'
