@@ -1,6 +1,15 @@
 paasta-tools (0.180.0) xenial; urgency=medium
 
   * 0.180.0 tagged with 'make release'
+    Commit: Merge pull request #3632 from Yelp/u/wilmerrafael/PAASTA-
+    17925_upgrading_kubernetes_library  Upgrading kubernetes client
+    library to v24.2.0
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 07 Jul 2023 00:15:11 -0700
+
+paasta-tools (0.180.0) xenial; urgency=medium
+
+  * 0.180.0 tagged with 'make release'
     Commit: PAASTA-17941: add topology spread constraints option (#3641)
     Ticket: PAASTA-17941  Problem ----- On EKS, we cannot configure the
     default Kubernetes scheduler with pod topology constraints. But to
