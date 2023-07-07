@@ -1,3 +1,12 @@
+paasta-tools (0.182.0) xenial; urgency=medium
+
+  * 0.182.0 tagged with 'make release'
+    Commit: Merge pull request #3632 from Yelp/u/wilmerrafael/PAASTA-
+    17925_upgrading_kubernetes_library  Upgrading kubernetes client
+    library to v24.2.0
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 07 Jul 2023 01:36:00 -0700
+
 paasta-tools (0.180.0) xenial; urgency=medium
 
   * 0.180.0 tagged with 'make release'
