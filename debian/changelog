@@ -1,3 +1,10 @@
+paasta-tools (0.181.0) xenial; urgency=medium
+
+  * 0.181.0 tagged with 'make release'
+    Commit: Released 0.180.0 via make release
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 07 Jul 2023 00:19:26 -0700
+
 paasta-tools (0.180.0) xenial; urgency=medium
 
   * 0.180.0 tagged with 'make release'
