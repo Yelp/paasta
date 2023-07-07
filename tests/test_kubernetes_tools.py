@@ -1738,14 +1738,14 @@ class TestKubernetesDeploymentConfig:
                 autoscaling={"metrics_provider": autoscaling_metric_provider},
                 deploy_group="fake_group",
             )
-            deployment = KubernetesDeploymentConfig(
+            autoscaled_deployment = KubernetesDeploymentConfig(
                 service="kurupt",
                 instance="fm",
                 cluster="brentford",
                 config_dict=mock_config_dict,
                 branch_dict=None,
             )
-            ret = deployment.get_pod_template_spec(
+            ret = autoscaled_deployment.get_pod_template_spec(
                 git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
             )
         else:
