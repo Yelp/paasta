@@ -2081,9 +2081,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        if self.get_service() == "compute-infra-test-service":
-            print(pod_spec_kwargs)
-
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels=labels,
