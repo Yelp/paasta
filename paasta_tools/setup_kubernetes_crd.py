@@ -27,7 +27,7 @@ import sys
 from typing import Sequence
 
 import service_configuration_lib
-from kubernetes.client import V1CustomResourceDefinition
+from kubernetes.client import V1beta1CustomResourceDefinition
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -118,7 +118,7 @@ def setup_kube_crd(
             metadata["labels"] = {}
         metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"][paasta_prefixed("service")] = service
-        desired_crd = V1CustomResourceDefinition(
+        desired_crd = V1beta1CustomResourceDefinition(
             api_version=crd_config.get("apiVersion"),
             kind=crd_config.get("kind"),
             metadata=metadata,
