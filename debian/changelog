@@ -1,3 +1,14 @@
+paasta-tools (0.183.0) xenial; urgency=medium
+
+  * 0.183.0 tagged with 'make release'
+    Commit: Revert "Upgrading kubernetes client library to v24.2.0"
+    (#3645)  Need to do a clean release of PaaSTA v0.183.0 that we can
+    release to production.  This PR is currently blocking that release
+    because PaaSTA cannot apply CRDs with version `v1beta1`.  We"ll re-
+    apply this PR once 183 is released.  Reverts Yelp/paasta#3632
+
+ -- Max Falk <gfalk@yelp.com>  Mon, 10 Jul 2023 03:55:17 -0700
+
 paasta-tools (0.182.0) xenial; urgency=medium
 
   * 0.182.0 tagged with 'make release'
