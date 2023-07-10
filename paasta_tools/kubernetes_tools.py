@@ -43,10 +43,10 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
-from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
+from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -55,7 +55,6 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1ControllerRevision
-from kubernetes.client import V1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinitionList
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
@@ -63,13 +62,14 @@ from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
+from kubernetes.client import V1Event
 from kubernetes.client import V1ExecAction
+from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
-from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
@@ -525,7 +525,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
-        self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
@@ -1025,7 +1025,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V1Container(
                 image=system_paasta_config.get_hacheck_sidecar_image_url(),
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
+                    pre_stop=V1Handler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1067,7 +1067,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
+                    pre_stop=V1Handler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1377,20 +1377,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
+    def get_kubernetes_container_termination_action(self) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
         # default pre stop hook for the container
         if not command:
-            return V1LifecycleHandler(
+            return V1Handler(
                 _exec=V1ExecAction(
                     command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
                 )
             )
         if isinstance(command, str):
             command = [command]
-        return V1LifecycleHandler(_exec=V1ExecAction(command=command))
+        return V1Handler(_exec=V1ExecAction(command=command))
 
     def get_pod_volumes(
         self,
@@ -3294,7 +3294,7 @@ def update_stateful_set(
     )
 
 
-def get_event_timestamp(event: CoreV1Event) -> Optional[float]:
+def get_event_timestamp(event: V1Event) -> Optional[float]:
     # Cycle through timestamp attributes in order of preference
     for ts_attr in ["last_timestamp", "event_time", "first_timestamp"]:
         ts = getattr(event, ts_attr)
@@ -3309,7 +3309,7 @@ async def get_events_for_object(
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
     max_age_in_seconds: Optional[int] = None,
-) -> List[CoreV1Event]:
+) -> List[V1Event]:
 
     try:
         # this is a blocking call since it does network I/O and can end up significantly blocking the
@@ -3800,7 +3800,7 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 def update_crds(
     kube_client: KubeClient,
-    desired_crds: Collection[V1CustomResourceDefinition],
+    desired_crds: Collection[V1beta1CustomResourceDefinition],
     existing_crds: V1CustomResourceDefinitionList,
 ) -> bool:
     success = True
