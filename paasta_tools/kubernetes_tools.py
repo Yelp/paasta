@@ -1978,9 +1978,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
         )
         if pod_topology_spread_constraints:
-            constraints = pod_spec_kwargs.get("topologySpreadConstraints", [])
+            constraints = pod_spec_kwargs.get("topology_spread_constraints", [])
             constraints += pod_topology_spread_constraints
-            pod_spec_kwargs["topologySpreadConstraints"] = constraints
+            pod_spec_kwargs["topology_spread_constraints"] = constraints
 
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
@@ -2080,6 +2080,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif self.should_setup_piscina_prometheus_scraping():
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+
+        if self.get_service() == "compute-infra-test-service":
+            print(pod_spec_kwargs)
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(
