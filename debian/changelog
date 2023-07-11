@@ -1,3 +1,68 @@
+paasta-tools (0.184.0) xenial; urgency=medium
+
+  * 0.184.0 tagged with 'make release'
+    Commit: Merge pull request #3646 from Yelp/revert-3645-revert-3632-
+    u/wilmerrafael/PAASTA-17925_upgrading_kubernetes_library  Revert
+    "Revert "Upgrading kubernetes client library to v24.2.0""
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 10 Jul 2023 04:16:45 -0700
+
+paasta-tools (0.183.0) xenial; urgency=medium
+
+  * 0.183.0 tagged with 'make release'
+    Commit: Revert "Upgrading kubernetes client library to v24.2.0"
+    (#3645)  Need to do a clean release of PaaSTA v0.183.0 that we can
+    release to production.  This PR is currently blocking that release
+    because PaaSTA cannot apply CRDs with version `v1beta1`.  We"ll re-
+    apply this PR once 183 is released.  Reverts Yelp/paasta#3632
+
+ -- Max Falk <gfalk@yelp.com>  Mon, 10 Jul 2023 03:55:17 -0700
+
+paasta-tools (0.182.0) xenial; urgency=medium
+
+  * 0.182.0 tagged with 'make release'
+    Commit: Merge pull request #3632 from Yelp/u/wilmerrafael/PAASTA-
+    17925_upgrading_kubernetes_library  Upgrading kubernetes client
+    library to v24.2.0
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 07 Jul 2023 01:36:00 -0700
+
+paasta-tools (0.180.0) xenial; urgency=medium
+
+  * 0.180.0 tagged with 'make release'
+    Commit: PAASTA-17941: add topology spread constraints option (#3641)
+    Ticket: PAASTA-17941  Problem ----- On EKS, we cannot configure the
+    default Kubernetes scheduler with pod topology constraints. But to
+    support the Karpenter migration and to be able to tune our spread of
+    Pods across zones and nodes, we want to be able to configure cluster
+    wide topology constraints via PaaSTA.  Solution ----- Add a
+    `topology_spread_constraints` option to the PaaSTA system config
+    that allows defining rules to spread Pods across topologies per
+    cluster. For example to try spreading Pods evenly across both nodes
+    and availability zones, we"d set: ``` topology_spread_constraints:
+    - max_skew: 1       topology_key: "topology.kubernetes.io/zone"
+    when_unsatisfiable: "ScheduleAnyway"     - max_skew: 1
+    topology_key: "kubernetes.io/hostname"       when_unsatisfiable:
+    "ScheduleAnyway" ``` This can be configured once per cluster (or
+    globally) and will be added to every Pod Spec template (i.e. both
+    Deployments and StatefulSets), using `paasta.yelp.com/service` and
+    `paasta.yelp.com/instance` as label selectors.  Future Work ------
+    There is a potentially conflicting interaction of this new
+    configuration option with `deploy_whitelist` and `deploy_blacklist`
+    because those use node affinities and could constrain a deployment
+    to one specific habitat/AZ while the topology spread constraint
+    might be configured to spread Pods across multiple AZs. If
+    `when_unsatisfiable: "DoNotSchedule"` is set, this would lead to
+    Pods being unable to get scheduled.  For now, this will be handled
+    by not defining any default spread constraints and only using
+    `ScheduleAnyway` but we"ll probably pose a follow-up PR to change
+    the implementation of the whitelist/blacklist options from node
+    affinities (which are somewhat expensive anyway) to topology spread
+    constraints and give priority to the whitelist/blacklist options, if
+    defined.  Signed-off-by: Max Falk <gfalk@yelp.com>
+
+ -- Max Falk <gfalk@yelp.com>  Thu, 06 Jul 2023 00:49:07 -0700
+
 paasta-tools (0.179.0) xenial; urgency=medium
 
   * 0.179.0 tagged with 'make release'
