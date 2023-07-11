@@ -1122,7 +1122,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 env=self.get_kubernetes_environment(),
                 ports=[V1ContainerPort(container_port=9117)],
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1Handler(
+                    pre_stop=V1LifecycleHandler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
