@@ -516,6 +516,21 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_readiness_check_script",
             autospec=True,
             return_value=["/nail/blah.sh"],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_resource_requirements",
+            autospec=True,
+            return_value={
+                "limits": {
+                    "cpu": 0.1,
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "256Mi",
+                },
+                "requests": {
+                    "cpu": 0.1,
+                    "memory": "1024Mi",
+                    "ephemeral-storage": "256Mi",
+                },
+            },
         ):
             mock_system_config = mock.Mock(
                 get_hacheck_sidecar_image_url=mock.Mock(
@@ -656,9 +671,10 @@ class TestKubernetesDeploymentConfig:
                 },
             }
         }
+        system_paasta_config = mock.Mock()
 
         assert self.deployment.get_sidecar_resource_requirements(
-            "hacheck"
+            "hacheck", system_paasta_config
         ) == V1ResourceRequirements(
             limits={"cpu": 0.3, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
             requests={"cpu": 0.2, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
@@ -675,9 +691,9 @@ class TestKubernetesDeploymentConfig:
                 },
             }
         }
-
+        system_paasta_config = mock.Mock()
         assert self.deployment.get_sidecar_resource_requirements(
-            "hacheck"
+            "hacheck", system_paasta_config
         ) == V1ResourceRequirements(
             limits={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
             requests={"cpu": 0.2, "memory": "1025Mi", "ephemeral-storage": "257Mi"},
@@ -690,11 +706,27 @@ class TestKubernetesDeploymentConfig:
         except KeyError:
             pass
 
+        system_paasta_config = mock.Mock(
+            get_sidecar_requirements_config=mock.Mock(
+                return_value={
+                    "hacheck": {
+                        "cpu": 0.1,
+                        "memory": "512Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                    "uwsgi_exporter": {
+                        "cpu": 0.1,
+                        "memory": "512Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                }
+            )
+        )
         assert self.deployment.get_sidecar_resource_requirements(
-            "hacheck"
+            "hacheck", system_paasta_config
         ) == V1ResourceRequirements(
-            limits={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
-            requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
+            limits={"cpu": 0.1, "memory": "512Mi", "ephemeral-storage": "256Mi"},
+            requests={"cpu": 0.1, "memory": "512Mi", "ephemeral-storage": "256Mi"},
         )
 
     def test_get_sidecar_resource_requirements_limits_override_default_requirements(
@@ -706,9 +738,24 @@ class TestKubernetesDeploymentConfig:
                 "limits": {"cpu": 1.0},
             }
         }
-
+        system_paasta_config = mock.Mock(
+            get_sidecar_requirements_config=mock.Mock(
+                return_value={
+                    "hacheck": {
+                        "cpu": 0.1,
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                    "uwsgi_exporter": {
+                        "cpu": 0.1,
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "256Mi",
+                    },
+                }
+            )
+        )
         assert self.deployment.get_sidecar_resource_requirements(
-            "hacheck"
+            "hacheck", system_paasta_config
         ) == V1ResourceRequirements(
             limits={"cpu": 1.0, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
             requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},

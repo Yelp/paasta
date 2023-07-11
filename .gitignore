@@ -52,3 +52,5 @@ unique-run
 
 # Coverage artifacts
 .coverage
+
+unique-run
