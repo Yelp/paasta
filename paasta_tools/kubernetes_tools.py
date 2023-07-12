@@ -47,7 +47,6 @@ from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1Beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -538,17 +537,6 @@ class KubeClient:
         # to monkey-patch the JSON data with configs the api supports, but the
         # Python client lib may not yet.
         self.jsonify = self.api_client.sanitize_for_serialization
-
-
-class KubeClientV1Beta1(KubeClient):
-    def __init__(
-        self,
-        component: Optional[str] = None,
-        config_file: Optional[str] = None,
-        context: Optional[str] = None,
-    ) -> None:
-        super().__init__(self, component, config_file, context)
-        self.apiextensions = kube_client.ApiextensionsV1Beta1Api(self.api_client)
 
 
 def allowlist_denylist_to_requirements(
@@ -3812,9 +3800,7 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 def update_crds(
     kube_client: KubeClient,
-    desired_crds: Collection[
-        V1CustomResourceDefinition | V1Beta1CustomResourceDefinition
-    ],
+    desired_crds: Collection[V1CustomResourceDefinition],
     existing_crds: V1CustomResourceDefinitionList,
 ) -> bool:
     success = True
