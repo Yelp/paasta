@@ -725,7 +725,7 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
             continue
         # Process Spark configs with multiple space separated values to be in single quotes
         if isinstance(val, str) and " " in val:
-            val = f"\'{val}\'"
+            val = f"'{val}'"
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
 
