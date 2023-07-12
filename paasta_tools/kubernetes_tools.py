@@ -171,7 +171,12 @@ KUBE_DEPLOY_STATEGY_MAP = {
 }
 HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
-SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
+GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
+SIDECAR_CONTAINER_NAMES = [
+    HACHECK_POD_NAME,
+    UWSGI_EXPORTER_POD_NAME,
+    GUNICORN_EXPORTER_POD_NAME,
+]
 KUBERNETES_NAMESPACE = "paasta"
 PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
 MAX_EVENTS_TO_RETRIEVE = 200
@@ -329,6 +334,7 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/prometheus_shard": str,
         "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
+        "paasta.yelp.com/scrape_gunicorn_prometheus": str,
         "paasta.yelp.com/service": str,
         "paasta.yelp.com/autoscaled": str,
         "yelp.com/paasta_git_sha": str,
@@ -781,7 +787,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in {"uwsgi", "piscina"}:
+        elif metrics_provider in {"uwsgi", "piscina", "gunicorn"}:
             metrics.append(
                 V2beta2MetricSpec(
                     type="Object",
@@ -960,12 +966,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
             system_paasta_config
         )
+        gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
+            system_paasta_config
+        )
 
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
         if uwsgi_exporter_container:
             sidecars.append(uwsgi_exporter_container)
+        if gunicorn_exporter_container:
+            sidecars.append(gunicorn_exporter_container)
         return sidecars
 
     def get_readiness_check_prefix(
@@ -1096,6 +1107,42 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
                 ):
                     return True
+        return False
+
+    def get_gunicorn_exporter_sidecar_container(
+        self,
+        system_paasta_config: SystemPaastaConfig,
+    ) -> Optional[V1Container]:
+
+        if self.should_run_gunicorn_exporter_sidecar():
+            return V1Container(
+                image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
+                resources=self.get_sidecar_resource_requirements("gunicorn_exporter"),
+                name=GUNICORN_EXPORTER_POD_NAME,
+                env=self.get_kubernetes_environment(),
+                ports=[V1ContainerPort(container_port=9117)],
+                lifecycle=V1Lifecycle(
+                    pre_stop=V1LifecycleHandler(
+                        _exec=V1ExecAction(
+                            command=[
+                                "/bin/sh",
+                                "-c",
+                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
+                                # metrics up until our Pod dies
+                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
+                            ]
+                        )
+                    )
+                ),
+            )
+
+        return None
+
+    def should_run_gunicorn_exporter_sidecar(self) -> bool:
+        if self.is_autoscaling_enabled():
+            autoscaling_params = self.get_autoscaling_params()
+            if autoscaling_params["metrics_provider"] == "gunicorn":
+                return True
         return False
 
     def should_setup_piscina_prometheus_scraping(
@@ -1901,7 +1948,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     ) -> str:
         """Return whether the routable_ip label should be true or false.
 
-        Services with a `prometheus_port` defined or that use the uwsgi_exporter sidecar must have a routable IP
+        Services with a `prometheus_port` defined or that use certain sidecars must have a routable IP
         address to allow Prometheus shards to scrape metrics.
         """
         if (
@@ -1909,6 +1956,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
             or self.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            or self.should_run_gunicorn_exporter_sidecar()
         ):
             return "true"
         return "false"
@@ -2080,6 +2128,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         elif self.should_setup_piscina_prometheus_scraping():
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
+
+        elif self.should_run_gunicorn_exporter_sidecar():
+            labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
+            labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
         return V1PodTemplateSpec(
             metadata=V1ObjectMeta(

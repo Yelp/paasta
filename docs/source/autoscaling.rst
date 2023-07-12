@@ -80,6 +80,10 @@ The currently available metrics providers are:
     the port that your uWSGI master process will respond to with stats.
     Defaults to 8889.
 
+:gunicorn:
+  With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
+  This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
+
 
 Decision policies
 ^^^^^^^^^^^^^^^^^

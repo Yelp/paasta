@@ -858,6 +858,50 @@ class TestKubernetesDeploymentConfig:
                 is True
             )
 
+    def test_get_gunicorn_exporter_sidecar_container_should_run(self):
+        system_paasta_config = mock.Mock(
+            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
+                return_value="gunicorn_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=True
+        ):
+            ret = self.deployment.get_gunicorn_exporter_sidecar_container(
+                system_paasta_config
+            )
+            assert ret is not None
+            assert ret.image == "gunicorn_exporter_image"
+            assert ret.ports[0].container_port == 9117
+
+    def test_get_gunicorn_exporter_sidecar_container_shouldnt_run(self):
+        system_paasta_config = mock.Mock(
+            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
+                return_value="gunicorn_exporter_image"
+            )
+        )
+        with mock.patch.object(
+            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=False
+        ):
+            assert (
+                self.deployment.get_gunicorn_exporter_sidecar_container(
+                    system_paasta_config
+                )
+                is None
+            )
+
+    def test_should_run_gunicorn_exporter_sidecar(self):
+        self.deployment.config_dict.update(
+            {
+                "max_instances": 5,
+                "autoscaling": {
+                    "metrics_provider": "gunicorn",
+                },
+            }
+        )
+
+        assert self.deployment.should_run_gunicorn_exporter_sidecar() is True
+
     def test_get_env(self):
         with mock.patch(
             "paasta_tools.kubernetes_tools.LongRunningServiceConfig.get_env",
@@ -1591,14 +1635,6 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_service",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_instance",
-        autospec=True,
-    )
-    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_kubernetes_containers",
         autospec=True,
     )
@@ -1626,6 +1662,9 @@ class TestKubernetesDeploymentConfig:
     @mock.patch(
         "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
         autospec=True,
+    )
+    @pytest.mark.parametrize(
+        "autoscaling_metric_provider", [None, "uwsgi", "piscina", "gunicorn"]
     )
     @pytest.mark.parametrize(
         "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period,pod_topology",
@@ -1668,8 +1707,6 @@ class TestKubernetesDeploymentConfig:
         mock_get_node_affinity,
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
-        mock_get_instance,
-        mock_get_service,
         mock_get_volumes,
         in_smtstk,
         routable_ip,
@@ -1678,6 +1715,7 @@ class TestKubernetesDeploymentConfig:
         anti_affinity,
         spec_affinity,
         termination_grace_period,
+        autoscaling_metric_provider,
     ):
         mock_service_namespace_config = mock.Mock()
         mock_load_service_namespace_config.return_value = mock_service_namespace_config
@@ -1693,9 +1731,27 @@ class TestKubernetesDeploymentConfig:
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
-        ret = self.deployment.get_pod_template_spec(
-            git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
-        )
+        if autoscaling_metric_provider:
+            mock_config_dict = KubernetesDeploymentConfigDict(
+                min_instances=1,
+                max_instances=3,
+                autoscaling={"metrics_provider": autoscaling_metric_provider},
+                deploy_group="fake_group",
+            )
+            autoscaled_deployment = KubernetesDeploymentConfig(
+                service="kurupt",
+                instance="fm",
+                cluster="brentford",
+                config_dict=mock_config_dict,
+                branch_dict=None,
+            )
+            ret = autoscaled_deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
+        else:
+            ret = self.deployment.get_pod_template_spec(
+                git_sha="aaaa123", system_paasta_config=mock_system_paasta_config
+            )
 
         assert mock_load_service_namespace_config.called
         assert mock_service_namespace_config.is_in_smartstack.called
@@ -1716,12 +1772,14 @@ class TestKubernetesDeploymentConfig:
         expected_labels = {
             "paasta.yelp.com/pool": "default",
             "yelp.com/paasta_git_sha": "aaaa123",
-            "yelp.com/paasta_instance": mock_get_instance.return_value,
-            "yelp.com/paasta_service": mock_get_service.return_value,
+            "yelp.com/paasta_instance": "fm",
+            "yelp.com/paasta_service": "kurupt",
             "paasta.yelp.com/git_sha": "aaaa123",
-            "paasta.yelp.com/instance": mock_get_instance.return_value,
-            "paasta.yelp.com/service": mock_get_service.return_value,
-            "paasta.yelp.com/autoscaled": "false",
+            "paasta.yelp.com/instance": "fm",
+            "paasta.yelp.com/service": "kurupt",
+            "paasta.yelp.com/autoscaled": "true"
+            if autoscaling_metric_provider
+            else "false",
             "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
@@ -1730,17 +1788,31 @@ class TestKubernetesDeploymentConfig:
         if in_smtstk:
             expected_labels["paasta.yelp.com/weight"] = "10"
 
-        assert ret == V1PodTemplateSpec(
+        if autoscaling_metric_provider:
+            expected_labels["paasta.yelp.com/deploy_group"] = "fake_group"
+            expected_labels[
+                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
+            ] = "true"
+        if autoscaling_metric_provider in ("uwsgi", "gunicorn"):
+            routable_ip = "true"
+
+        expected_annotations = {
+            "smartstack_registrations": '["kurupt.fm"]',
+            "paasta.yelp.com/routable_ip": routable_ip,
+            "iam.amazonaws.com/role": "",
+        }
+        if autoscaling_metric_provider == "uwsgi":
+            expected_annotations["autoscaling"] = "uwsgi"
+
+        expected = V1PodTemplateSpec(
             metadata=V1ObjectMeta(
                 labels=expected_labels,
-                annotations={
-                    "smartstack_registrations": '["kurupt.fm"]',
-                    "paasta.yelp.com/routable_ip": routable_ip,
-                    "iam.amazonaws.com/role": "",
-                },
+                annotations=expected_annotations,
             ),
             spec=V1PodSpec(**pod_spec_kwargs),
         )
+
+        assert ret == expected
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_prometheus_port",
@@ -1750,30 +1822,40 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_run_uwsgi_exporter_sidecar",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_run_gunicorn_exporter_sidecar",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
-        "ip_configured,in_smtstk,prometheus_port,should_run_uwsgi_exporter_sidecar_retval,expected",
+        "ip_configured,in_smtstk,prometheus_port,should_run_uwsgi_exporter_sidecar_retval,should_run_gunicorn_exporter_sidecar_retval,expected",
         [
-            (False, True, 8888, False, "true"),
-            (False, False, 8888, False, "true"),
-            (False, True, None, False, "true"),
-            (True, False, None, False, "true"),
-            (False, False, None, True, "true"),
-            (False, False, None, False, "false"),
+            (False, True, 8888, False, False, "true"),
+            (False, False, 8888, False, False, "true"),
+            (False, True, None, False, False, "true"),
+            (True, False, None, False, False, "true"),
+            (False, False, None, True, False, "true"),
+            (False, False, None, False, False, "false"),
+            (False, False, None, False, True, "true"),
         ],
     )
     def test_routable_ip(
         self,
         mock_should_run_uwsgi_exporter_sidecar,
+        mock_should_run_gunicorn_exporter_sidecar,
         mock_get_prometheus_port,
         ip_configured,
         in_smtstk,
         prometheus_port,
         should_run_uwsgi_exporter_sidecar_retval,
+        should_run_gunicorn_exporter_sidecar_retval,
         expected,
     ):
         mock_get_prometheus_port.return_value = prometheus_port
         mock_should_run_uwsgi_exporter_sidecar.return_value = (
             should_run_uwsgi_exporter_sidecar_retval
+        )
+        mock_should_run_gunicorn_exporter_sidecar.return_value = (
+            should_run_gunicorn_exporter_sidecar_retval
         )
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
@@ -2257,6 +2339,83 @@ class TestKubernetesDeploymentConfig:
                         object=V2beta2ObjectMetricSource(
                             metric=V2beta2MetricIdentifier(
                                 name="service-instance-uwsgi-prom",
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=1,
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1",
+                                kind="Deployment",
+                                name="fake_name",
+                            ),
+                        ),
+                    ),
+                ],
+                scale_target_ref=V2beta2CrossVersionObjectReference(
+                    api_version="apps/v1",
+                    kind="Deployment",
+                    name="fake_name",
+                ),
+            ),
+        )
+
+        assert (
+            self.patch_expected_autoscaling_spec(expected_res, mock_config)
+            == return_value
+        )
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+        return_value=mock.Mock(
+            get_legacy_autoscaling_signalflow=lambda: "fake_signalflow_query"
+        ),
+    )
+    def test_get_autoscaling_metric_spec_gunicorn_prometheus(
+        self, fake_system_paasta_config
+    ):
+        config_dict = KubernetesDeploymentConfigDict(
+            {
+                "min_instances": 1,
+                "max_instances": 3,
+                "autoscaling": {
+                    "metrics_provider": "gunicorn",
+                    "setpoint": 0.5,
+                    "forecast_policy": "moving_average",
+                    "moving_average_window_seconds": 300,
+                },
+            }
+        )
+        mock_config = KubernetesDeploymentConfig(  # type: ignore
+            service="service",
+            cluster="cluster",
+            instance="instance",
+            config_dict=config_dict,
+            branch_dict=None,
+        )
+        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+            mock_config,
+            "fake_name",
+            "cluster",
+            KubeClient(),
+        )
+        expected_res = V2beta2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name="fake_name",
+                namespace="paasta",
+                annotations={},
+            ),
+            spec=V2beta2HorizontalPodAutoscalerSpec(
+                max_replicas=3,
+                min_replicas=1,
+                metrics=[
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name="service-instance-gunicorn-prom",
                             ),
                             target=V2beta2MetricTarget(
                                 type="Value",
