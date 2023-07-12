@@ -24,12 +24,12 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
-from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1NodeAffinity
 from kubernetes.client import V1NodeSelector
 from kubernetes.client import V1NodeSelectorRequirement
@@ -56,6 +56,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V2beta2CrossVersionObjectReference
@@ -558,7 +559,7 @@ class TestKubernetesDeploymentConfig:
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(
                                 command=[
                                     "/bin/sh",
@@ -604,7 +605,7 @@ class TestKubernetesDeploymentConfig:
                     ],
                     image="some-docker-image",
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(
                                 command=[
                                     "/bin/sh",
@@ -911,6 +912,7 @@ class TestKubernetesDeploymentConfig:
         ret = self.deployment.get_kubernetes_environment()
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
+        assert "PAASTA_CLUSTER" in [env.name for env in ret]
 
     def test_get_resource_requirements(self):
         with mock.patch(
@@ -1003,7 +1005,7 @@ class TestKubernetesDeploymentConfig:
                     resources=mock_get_resource_requirements.return_value,
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
-                        pre_stop=V1Handler(
+                        pre_stop=V1LifecycleHandler(
                             _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
                         )
                     ),
@@ -1621,11 +1623,15 @@ class TestKubernetesDeploymentConfig:
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_pod_anti_affinity",
         autospec=True,
     )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.create_pod_topology_spread_constraints",
+        autospec=True,
+    )
     @pytest.mark.parametrize(
-        "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period",
+        "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period,pod_topology",
         [
-            (True, "true", None, None, {}, None),
-            (False, "false", None, None, {}, 10),
+            (True, "true", None, None, {}, None, []),
+            (False, "false", None, None, {}, 10, []),
             # an node affinity absent but pod anti affinity present
             (
                 False,
@@ -1634,6 +1640,7 @@ class TestKubernetesDeploymentConfig:
                 "pod_anti_affinity",
                 {"affinity": V1Affinity(pod_anti_affinity="pod_anti_affinity")},
                 None,
+                [],
             ),
             # an affinity obj is only added if there is a node affinity
             (
@@ -1648,11 +1655,13 @@ class TestKubernetesDeploymentConfig:
                     )
                 },
                 None,
+                [],
             ),
         ],
     )
     def test_get_pod_template_spec(
         self,
+        mock_create_pod_topology_spread_constraints,
         mock_get_pod_anti_affinity,
         mock_get_termination_grace_period,
         mock_load_service_namespace_config,
@@ -1664,6 +1673,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_volumes,
         in_smtstk,
         routable_ip,
+        pod_topology,
         node_affinity,
         anti_affinity,
         spec_affinity,
@@ -1674,10 +1684,12 @@ class TestKubernetesDeploymentConfig:
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_get_node_affinity.return_value = node_affinity
         mock_get_pod_anti_affinity.return_value = anti_affinity
+        mock_create_pod_topology_spread_constraints.return_value = pod_topology
         mock_system_paasta_config = mock.Mock()
         mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
             True
         )
+        mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period
 
@@ -1710,6 +1722,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/instance": mock_get_instance.return_value,
             "paasta.yelp.com/service": mock_get_service.return_value,
             "paasta.yelp.com/autoscaled": "false",
+            "paasta.yelp.com/cluster": "brentford",
             "registrations.paasta.yelp.com/kurupt.fm": "true",
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
@@ -1772,6 +1785,52 @@ class TestKubernetesDeploymentConfig:
         )
 
         assert ret == expected
+
+    def test_create_pod_topology_spread_constraints(self):
+        configured_constraints = [
+            {
+                "topology_key": "kubernetes.io/hostname",
+                "max_skew": 1,
+                "when_unsatisfiable": "ScheduleAnyway",
+            },
+            {
+                "topology_key": "topology.kubernetes.io/zone",
+                "max_skew": 3,
+                "when_unsatisfiable": "DoNotSchedule",
+            },
+        ]
+
+        expected_constraints = [
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=1,
+                topology_key="kubernetes.io/hostname",
+                when_unsatisfiable="ScheduleAnyway",
+            ),
+            V1TopologySpreadConstraint(
+                label_selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": "schematizer",
+                        "paasta.yelp.com/instance": "main",
+                    }
+                ),
+                max_skew=3,
+                topology_key="topology.kubernetes.io/zone",
+                when_unsatisfiable="DoNotSchedule",
+            ),
+        ]
+
+        assert (
+            kubernetes_tools.create_pod_topology_spread_constraints(
+                "schematizer", "main", configured_constraints
+            )
+            == expected_constraints
+        )
 
     @pytest.mark.parametrize(
         "raw_selectors,expected",
@@ -1890,7 +1949,7 @@ class TestKubernetesDeploymentConfig:
             self.deployment.config_dict["lifecycle"] = {
                 "pre_stop_command": termination_action
             }
-        handler = V1Handler(_exec=V1ExecAction(command=expected))
+        handler = V1LifecycleHandler(_exec=V1ExecAction(command=expected))
         assert self.deployment.get_kubernetes_container_termination_action() == handler
 
     @pytest.mark.parametrize(
@@ -1999,6 +2058,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/service": mock_get_service.return_value,
                     "paasta.yelp.com/autoscaled": autoscaled_label,
                     "paasta.yelp.com/pool": "default",
+                    "paasta.yelp.com/cluster": "brentford",
                     "yelp.com/owner": "compute_infra_platform_experience",
                     "paasta.yelp.com/managed": "true",
                 },
@@ -3905,7 +3965,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config9e0d925d"
+            == "configd6531f39"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -3951,7 +4011,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config295207ad"
+            == "configa5abd828"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 

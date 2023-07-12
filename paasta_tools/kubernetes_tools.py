@@ -43,10 +43,10 @@ import service_configuration_lib
 from humanfriendly import parse_size
 from kubernetes import client as kube_client
 from kubernetes import config as kube_config
+from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -55,6 +55,7 @@ from kubernetes.client import V1Container
 from kubernetes.client import V1ContainerPort
 from kubernetes.client import V1ContainerStatus
 from kubernetes.client import V1ControllerRevision
+from kubernetes.client import V1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinitionList
 from kubernetes.client import V1DeleteOptions
 from kubernetes.client import V1Deployment
@@ -62,14 +63,13 @@ from kubernetes.client import V1DeploymentSpec
 from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
-from kubernetes.client import V1Event
 from kubernetes.client import V1ExecAction
-from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
@@ -102,6 +102,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
 from kubernetes.client import V1TCPSocketAction
+from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
 from kubernetes.client import V1WeightedPodAffinityTerm
@@ -172,6 +173,7 @@ HACHECK_POD_NAME = "hacheck"
 UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 SIDECAR_CONTAINER_NAMES = [HACHECK_POD_NAME, UWSGI_EXPORTER_POD_NAME]
 KUBERNETES_NAMESPACE = "paasta"
+PAASTA_WORKLOAD_OWNER = "compute_infra_platform_experience"
 MAX_EVENTS_TO_RETRIEVE = 200
 DISCOVERY_ATTRIBUTES = {
     "region",
@@ -333,6 +335,7 @@ KubePodLabels = TypedDict(
         "yelp.com/paasta_instance": str,
         "yelp.com/paasta_service": str,
         "sidecar.istio.io/inject": str,
+        "paasta.yelp.com/cluster": str,
         "paasta.yelp.com/pool": str,
         "paasta.yelp.com/weight": str,
         "yelp.com/owner": str,
@@ -522,7 +525,7 @@ class KubeClient:
         self.deployments = kube_client.AppsV1Api(self.api_client)
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
@@ -1022,7 +1025,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V1Container(
                 image=system_paasta_config.get_hacheck_sidecar_image_url(),
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1Handler(
+                    pre_stop=V1LifecycleHandler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1064,7 +1067,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1Handler(
+                    pre_stop=V1LifecycleHandler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1117,6 +1120,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         env["PAASTA_SOA_CONFIGS_SHA"] = read_soa_metadata(soa_dir=self.soa_dir).get(
             "git_sha", ""
         )
+
+        # We drop PAASTA_CLUSTER here because it will be added via `get_kubernetes_environment()`
+        env.pop("PAASTA_CLUSTER", None)
+
         return env
 
     def get_env_vars_that_use_secrets(self) -> Tuple[Dict[str, str], Dict[str, str]]:
@@ -1211,6 +1218,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 name="PAASTA_HOST",
                 value_from=V1EnvVarSource(
                     field_ref=V1ObjectFieldSelector(field_path="spec.nodeName")
+                ),
+            ),
+            V1EnvVar(
+                name="PAASTA_CLUSTER",
+                value_from=V1EnvVarSource(
+                    field_ref=V1ObjectFieldSelector(
+                        field_path="metadata.labels['"
+                        + paasta_prefixed("cluster")
+                        + "']"
+                    )
                 ),
             ),
         ]
@@ -1360,20 +1377,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_kubernetes_container_termination_action(self) -> V1Handler:
+    def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
         # default pre stop hook for the container
         if not command:
-            return V1Handler(
+            return V1LifecycleHandler(
                 _exec=V1ExecAction(
                     command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
                 )
             )
         if isinstance(command, str):
             command = [command]
-        return V1Handler(_exec=V1ExecAction(command=command))
+        return V1LifecycleHandler(_exec=V1ExecAction(command=command))
 
     def get_pod_volumes(
         self,
@@ -1738,17 +1755,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             name=self.get_sanitised_deployment_name(),
             namespace=self.get_namespace(),
             labels={
+                "yelp.com/owner": PAASTA_WORKLOAD_OWNER,
                 "yelp.com/paasta_service": self.get_service(),
                 "yelp.com/paasta_instance": self.get_instance(),
                 "yelp.com/paasta_git_sha": git_sha,
-                "paasta.yelp.com/service": self.get_service(),
-                "paasta.yelp.com/instance": self.get_instance(),
-                "paasta.yelp.com/git_sha": git_sha,
-                "paasta.yelp.com/pool": self.get_pool(),
-                "yelp.com/owner": "compute_infra_platform_experience",
+                paasta_prefixed("service"): self.get_service(),
+                paasta_prefixed("instance"): self.get_instance(),
+                paasta_prefixed("git_sha"): git_sha,
+                paasta_prefixed("cluster"): self.cluster,
                 paasta_prefixed("autoscaled"): str(
                     self.is_autoscaling_enabled()
                 ).lower(),
+                paasta_prefixed("paasta.yelp.com/pool"): self.get_pool(),
                 paasta_prefixed("managed"): "true",
             },
         )
@@ -1953,6 +1971,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             affinity.pod_anti_affinity = pod_anti_affinity
             pod_spec_kwargs["affinity"] = affinity
 
+        # PAASTA-17941: Allow configuring topology spread constraints per cluster
+        pod_topology_spread_constraints = create_pod_topology_spread_constraints(
+            service=self.get_service(),
+            instance=self.get_instance(),
+            topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
+        )
+        if pod_topology_spread_constraints:
+            constraints = pod_spec_kwargs.get("topology_spread_constraints", [])
+            constraints += pod_topology_spread_constraints
+            pod_spec_kwargs["topology_spread_constraints"] = constraints
+
         termination_grace_period = self.get_termination_grace_period()
         if termination_grace_period is not None:
             pod_spec_kwargs[
@@ -2007,6 +2036,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "paasta.yelp.com/git_sha": git_sha,
             "paasta.yelp.com/autoscaled": str(self.is_autoscaling_enabled()).lower(),
             "paasta.yelp.com/pool": self.get_pool(),
+            "paasta.yelp.com/cluster": self.cluster,
             "yelp.com/owner": "compute_infra_platform_experience",
             "paasta.yelp.com/managed": "true",
         }
@@ -3264,7 +3294,7 @@ def update_stateful_set(
     )
 
 
-def get_event_timestamp(event: V1Event) -> Optional[float]:
+def get_event_timestamp(event: CoreV1Event) -> Optional[float]:
     # Cycle through timestamp attributes in order of preference
     for ts_attr in ["last_timestamp", "event_time", "first_timestamp"]:
         ts = getattr(event, ts_attr)
@@ -3279,7 +3309,7 @@ async def get_events_for_object(
     obj: Union[V1Pod, V1Deployment, V1StatefulSet, V1ReplicaSet],
     kind: str,  # for some reason, obj.kind isn't populated when this function is called so we pass it in by hand
     max_age_in_seconds: Optional[int] = None,
-) -> List[V1Event]:
+) -> List[CoreV1Event]:
 
     try:
         # this is a blocking call since it does network I/O and can end up significantly blocking the
@@ -3542,6 +3572,43 @@ def load_custom_resource_definitions(
     return custom_resources
 
 
+def create_pod_topology_spread_constraints(
+    service: str,
+    instance: str,
+    topology_spread_constraints: List[Dict[str, Any]],
+) -> List[V1TopologySpreadConstraint]:
+    """
+    Applies cluster-level topology spread constraints to every Pod template.
+    This allows us to configure default topology spread constraints on EKS where we cannot configure the scheduler.
+    """
+    if not topology_spread_constraints:
+        return []
+
+    selector = V1LabelSelector(
+        match_labels={
+            "paasta.yelp.com/service": service,
+            "paasta.yelp.com/instance": instance,
+        }
+    )
+
+    pod_topology_spread_constraints = []
+    for constraint in topology_spread_constraints:
+        pod_topology_spread_constraints.append(
+            V1TopologySpreadConstraint(
+                label_selector=selector,
+                topology_key=constraint.get(
+                    "topology_key", None
+                ),  # ValueError will be raised if unset
+                max_skew=constraint.get("max_skew", 1),
+                when_unsatisfiable=constraint.get(
+                    "when_unsatisfiable", "ScheduleAnyway"
+                ),
+            )
+        )
+
+    return pod_topology_spread_constraints
+
+
 def sanitised_cr_name(service: str, instance: str) -> str:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -3733,7 +3800,7 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 def update_crds(
     kube_client: KubeClient,
-    desired_crds: Collection[V1beta1CustomResourceDefinition],
+    desired_crds: Collection[V1CustomResourceDefinition],
     existing_crds: V1CustomResourceDefinitionList,
 ) -> bool:
     success = True
