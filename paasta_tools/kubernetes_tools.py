@@ -553,7 +553,7 @@ class KubeClientV1Beta1(KubeClient):
         config_file: Optional[str] = None,
         context: Optional[str] = None,
     ) -> None:
-        super().__init__(self, component, config_file, context)
+        super().__init__(component, config_file, context)
         self.apiextensions = kube_client.ApiextensionsV1Beta1Api(self.api_client)
 
 
