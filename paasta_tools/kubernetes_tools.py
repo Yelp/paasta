@@ -47,7 +47,7 @@ from kubernetes.client import CoreV1Event
 from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
-from kubernetes.client import V1Beta1CustomResourceDefinition
+from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -65,12 +65,12 @@ from kubernetes.client import V1DeploymentStrategy
 from kubernetes.client import V1EnvVar
 from kubernetes.client import V1EnvVarSource
 from kubernetes.client import V1ExecAction
+from kubernetes.client import V1Handler
 from kubernetes.client import V1HostPathVolumeSource
 from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
-from kubernetes.client import V1LifecycleHandler
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
@@ -1048,7 +1048,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return V1Container(
                 image=system_paasta_config.get_hacheck_sidecar_image_url(),
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
+                    pre_stop=V1Handler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1090,7 +1090,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
                 lifecycle=V1Lifecycle(
-                    pre_stop=V1LifecycleHandler(
+                    pre_stop=V1Handler(
                         _exec=V1ExecAction(
                             command=[
                                 "/bin/sh",
@@ -1436,20 +1436,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_kubernetes_container_termination_action(self) -> V1LifecycleHandler:
+    def get_kubernetes_container_termination_action(self) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
         # default pre stop hook for the container
         if not command:
-            return V1LifecycleHandler(
+            return V1Handler(
                 _exec=V1ExecAction(
                     command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
                 )
             )
         if isinstance(command, str):
             command = [command]
-        return V1LifecycleHandler(_exec=V1ExecAction(command=command))
+        return V1Handler(_exec=V1ExecAction(command=command))
 
     def get_pod_volumes(
         self,
@@ -3865,7 +3865,7 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 def update_crds(
     kube_client: KubeClient,
     desired_crds: Collection[
-        V1CustomResourceDefinition | V1Beta1CustomResourceDefinition
+        Union[V1CustomResourceDefinition, V1beta1CustomResourceDefinition]
     ],
     existing_crds: V1CustomResourceDefinitionList,
 ) -> bool:
