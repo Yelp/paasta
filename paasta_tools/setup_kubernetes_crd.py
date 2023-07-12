@@ -27,9 +27,11 @@ import sys
 from typing import Sequence
 
 import service_configuration_lib
+from kubernetes.client import V1Beta1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinition
 
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import KubeClientV1Beta1
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import update_crds
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -84,9 +86,15 @@ def main() -> None:
         cluster = system_paasta_config.get_cluster()
 
     kube_client = KubeClient()
+    kube_client_v1_beta1 = KubeClientV1Beta1()
 
     success = setup_kube_crd(
         kube_client=kube_client,
+        cluster=cluster,
+        services=args.service_list,
+        soa_dir=soa_dir,
+    ) or setup_kube_crd(
+        kube_client=kube_client_v1_beta1,
         cluster=cluster,
         services=args.service_list,
         soa_dir=soa_dir,
@@ -118,12 +126,20 @@ def setup_kube_crd(
             metadata["labels"] = {}
         metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"][paasta_prefixed("service")] = service
-        desired_crd = V1CustomResourceDefinition(
-            api_version=crd_config.get("apiVersion"),
-            kind=crd_config.get("kind"),
-            metadata=metadata,
-            spec=crd_config.get("spec"),
-        )
+        if isinstance(kube_client, KubeClientV1Beta1):
+            desired_crd = V1Beta1CustomResourceDefinition(
+                api_version=crd_config.get("apiVersion"),
+                kind=crd_config.get("kind"),
+                metadata=metadata,
+                spec=crd_config.get("spec"),
+            )
+        else:
+            desired_crd = V1CustomResourceDefinition(
+                api_version=crd_config.get("apiVersion"),
+                kind=crd_config.get("kind"),
+                metadata=metadata,
+                spec=crd_config.get("spec"),
+            )
         desired_crds.append(desired_crd)
 
     return update_crds(
