@@ -154,6 +154,10 @@ def setup_all_custom_resources(
 ) -> bool:
 
     got_results = False
+    # We support two versions due to our upgrade to 1.22
+    # this functions runs succefully when any of the two apiextensions
+    # succeed to update the CRDs as the cluster could be in any version
+    # we need to try both possibilities
     for apiextension in [
         kube_client.apiextensions,
         kube_client.apiextensions_v1_beta1,

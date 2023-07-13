@@ -533,6 +533,10 @@ class KubeClient:
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+
+        # We need to support apiextensions /v1 and /v1beta1 in order
+        # to make our upgrade to k8s 1.22 smooth, otherwise
+        # updating the CRDs make this script fail
         self.apiextensions_v1_beta1 = kube_client.ApiextensionsV1beta1Api(
             self.api_client
         )
