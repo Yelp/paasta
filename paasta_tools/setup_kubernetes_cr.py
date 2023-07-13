@@ -36,7 +36,6 @@ from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import CustomResourceDefinition
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.kubernetes_tools import KubeClientV1Beta1
 from paasta_tools.kubernetes_tools import KubeCustomResource
 from paasta_tools.kubernetes_tools import KubeKind
 from paasta_tools.kubernetes_tools import list_custom_resources
@@ -128,7 +127,6 @@ def main() -> None:
         logging.basicConfig(level=logging.INFO)
 
     kube_client: Any = KubeClient()
-    kube_client_v1_beta1: Any = KubeClientV1Beta1()
     if args.dry_run:
         kube_client = StdoutKubeClient(kube_client)
 
@@ -137,13 +135,6 @@ def main() -> None:
     custom_resource_definitions = load_custom_resource_definitions(system_paasta_config)
     setup_kube_succeeded = setup_all_custom_resources(
         kube_client=kube_client,
-        soa_dir=soa_dir,
-        cluster=cluster,
-        custom_resource_definitions=custom_resource_definitions,
-        service=args.service,
-        instance=args.instance,
-    ) or setup_all_custom_resources(
-        kube_client=kube_client_v1_beta1,
         soa_dir=soa_dir,
         cluster=cluster,
         custom_resource_definitions=custom_resource_definitions,
@@ -161,44 +152,54 @@ def setup_all_custom_resources(
     service: str = None,
     instance: str = None,
 ) -> bool:
-    cluster_crds = {
-        crd.spec.names.kind
-        for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector=paasta_prefixed("service")
-        ).items
-    }
-    log.debug(f"CRDs found: {cluster_crds}")
-    results = []
-    for crd in custom_resource_definitions:
-        if crd.kube_kind.singular not in cluster_crds:
-            # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
-            # and not `crd.names.singular`
-            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
-            continue
 
-        # by convention, entries where key begins with _ are used as templates
-        # and will be filter out here
-        config_dicts = load_all_configs(
-            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
-        )
+    got_results = False
+    for apiextension in [
+        kube_client.apiextensions,
+        kube_client.apiextensions_v1_beta1,
+    ]:
+        cluster_crds = {
+            crd.spec.names.kind
+            for crd in apiextension.list_custom_resource_definition(
+                label_selector=paasta_prefixed("service")
+            ).items
+        }
+        log.debug(f"CRDs found: {cluster_crds}")
+        results = []
+        for crd in custom_resource_definitions:
+            if crd.kube_kind.singular not in cluster_crds:
+                # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
+                # and not `crd.names.singular`
+                log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
+                continue
 
-        ensure_namespace(
-            kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
-        )
-        results.append(
-            setup_custom_resources(
-                kube_client=kube_client,
-                kind=crd.kube_kind,
-                crd=crd,
-                config_dicts=config_dicts,
-                version=crd.version,
-                group=crd.group,
-                cluster=cluster,
-                service=service,
-                instance=instance,
+            # by convention, entries where key begins with _ are used as templates
+            # and will be filter out here
+            config_dicts = load_all_configs(
+                cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
             )
-        )
-    return any(results) if results else True
+
+            ensure_namespace(
+                kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
+            )
+            results.append(
+                setup_custom_resources(
+                    kube_client=kube_client,
+                    kind=crd.kube_kind,
+                    crd=crd,
+                    config_dicts=config_dicts,
+                    version=crd.version,
+                    group=crd.group,
+                    cluster=cluster,
+                    service=service,
+                    instance=instance,
+                )
+            )
+        if results:
+            got_results = True
+            if any(results):
+                return True
+    return not got_results
 
 
 def setup_custom_resources(

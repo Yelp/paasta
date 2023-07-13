@@ -533,6 +533,9 @@ class KubeClient:
         self.core = kube_client.CoreV1Api(self.api_client)
         self.policy = kube_client.PolicyV1beta1Api(self.api_client)
         self.apiextensions = kube_client.ApiextensionsV1Api(self.api_client)
+        self.apiextensions_v1_beta1 = kube_client.ApiextensionsV1beta1Api(
+            self.api_client
+        )
         self.custom = kube_client.CustomObjectsApi(self.api_client)
         self.autoscaling = kube_client.AutoscalingV2beta2Api(self.api_client)
         self.rbac = kube_client.RbacAuthorizationV1Api(self.api_client)
@@ -544,17 +547,6 @@ class KubeClient:
         # to monkey-patch the JSON data with configs the api supports, but the
         # Python client lib may not yet.
         self.jsonify = self.api_client.sanitize_for_serialization
-
-
-class KubeClientV1Beta1(KubeClient):
-    def __init__(
-        self,
-        component: Optional[str] = None,
-        config_file: Optional[str] = None,
-        context: Optional[str] = None,
-    ) -> None:
-        super().__init__(component, config_file, context)
-        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
 
 
 def allowlist_denylist_to_requirements(
