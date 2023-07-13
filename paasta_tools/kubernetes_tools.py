@@ -554,7 +554,7 @@ class KubeClientV1Beta1(KubeClient):
         context: Optional[str] = None,
     ) -> None:
         super().__init__(component, config_file, context)
-        self.apiextensions = kube_client.ApiextensionsV1Beta1Api(self.api_client)
+        self.apiextensions = kube_client.ApiextensionsV1beta1Api(self.api_client)
 
 
 def allowlist_denylist_to_requirements(
