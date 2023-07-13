@@ -203,6 +203,9 @@ def setup_all_custom_resources(
             got_results = True
             if any(results):
                 return True
+    # we want to return True if we never called `setup_custom_resources` 
+    # (i.e., we noop'd) or if any call to `setup_custom_resources` 
+    # succeed (handled above) - otherwise, we want to return False 
     return not got_results
 
 
