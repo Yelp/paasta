@@ -148,7 +148,7 @@ def setup_kube_internal_crd(
             label_selector=paasta_prefixed("internal")
         )
         if update_crds(
-            kube_client=kube_client,
+            apiextensions=apiextension,
             desired_crds=INTERNAL_CRDS,
             existing_crds=existing_crds,
         ):
