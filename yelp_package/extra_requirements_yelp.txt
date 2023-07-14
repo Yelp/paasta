@@ -5,7 +5,7 @@ cffi==1.15.0
 cffi==1.15.0
 clusterman_metrics==2.2.0
 crypto-lib==4.0.0
-cryptography==3.0
+cryptography==41.0.2
 dateglob==0.3
 geogrid==1.3.5
 gitdb2==2.0.3
