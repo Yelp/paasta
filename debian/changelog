@@ -1,3 +1,17 @@
+paasta-tools (0.185.0) xenial; urgency=medium
+
+  * 0.185.0 tagged with 'make release'
+    Commit: Adding support for extensions v1 v1beta1 (#3648)  * Adding
+    support for extensions v1 v1beta1  * Fixing tests  * updating
+    setup_kubernetes_cr  * Fixing call to super  * fixing typo  * adding
+    minimal req for tests  * putting older version back  * Rebasing  *
+    Removing second client  * Adding comments for clairification  *
+    Update paasta_tools/setup_kubernetes_cr.py  Co-authored-by: Luis
+    Pérez <luisp@yelp.com>  * Fixing some whitespace errors  ---------
+    Co-authored-by: Luis Pérez <luisp@yelp.com>
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 14 Jul 2023 00:18:35 -0700
+
 paasta-tools (0.184.0) xenial; urgency=medium
 
   * 0.184.0 tagged with 'make release'
