@@ -135,6 +135,7 @@ def setup_kube_crd(
             kube_client=kube_client,
             desired_crds=desired_crds,
             existing_crds=existing_crds,
+            apiextensions=apiextension,
         ):
             return True
     return False

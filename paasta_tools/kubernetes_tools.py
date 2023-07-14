@@ -3864,6 +3864,9 @@ def update_crds(
         Union[V1CustomResourceDefinition, V1beta1CustomResourceDefinition]
     ],
     existing_crds: V1CustomResourceDefinitionList,
+    apiextensions: Union[
+        kube_client.ApiextensionsV1Api, kube_client.ApiextensionsV1beta1Api
+    ],
 ) -> bool:
     success = True
     for desired_crd in desired_crds:
@@ -3878,14 +3881,12 @@ def update_crds(
                 desired_crd.metadata[
                     "resourceVersion"
                 ] = existing_crd.metadata.resource_version
-                kube_client.apiextensions.replace_custom_resource_definition(
+                apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd
                 )
             else:
                 try:
-                    kube_client.apiextensions.create_custom_resource_definition(
-                        body=desired_crd
-                    )
+                    apiextensions.create_custom_resource_definition(body=desired_crd)
                 except ValueError as err:
                     # TODO: kubernetes server will sometimes reply with conditions:null,
                     # figure out how to deal with this correctly, for more details:
