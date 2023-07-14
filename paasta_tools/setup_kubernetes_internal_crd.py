@@ -140,13 +140,20 @@ def main() -> None:
 def setup_kube_internal_crd(
     kube_client: KubeClient,
 ) -> bool:
-    existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector=paasta_prefixed("internal")
-    )
-
-    return update_crds(
-        kube_client=kube_client, desired_crds=INTERNAL_CRDS, existing_crds=existing_crds
-    )
+    for apiextension in [
+        kube_client.apiextensions,
+        kube_client.apiextensions_v1_beta1,
+    ]:
+        existing_crds = apiextension.list_custom_resource_definition(
+            label_selector=paasta_prefixed("internal")
+        )
+        if update_crds(
+            kube_client=kube_client,
+            desired_crds=INTERNAL_CRDS,
+            existing_crds=existing_crds,
+        ):
+            return True
+    return False
 
 
 if __name__ == "__main__":
