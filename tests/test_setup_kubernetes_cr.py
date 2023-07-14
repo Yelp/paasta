@@ -60,8 +60,12 @@ def test_setup_all_custom_resources():
         cassandra_crd.spec.names = mock.Mock(
             plural="cassandraclusters", kind="CassandraCluster"
         )
+        mock_client.apiextensions_v1_beta1.list_custom_resource_definition.return_value = mock.Mock(
+            items=[flink_crd, cassandra_crd]
+        )
+
         mock_client.apiextensions.list_custom_resource_definition.return_value = (
-            mock.Mock(items=[flink_crd, cassandra_crd])
+            mock.Mock(items=[])
         )
 
         custom_resource_definitions = [

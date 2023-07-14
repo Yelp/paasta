@@ -27,6 +27,7 @@ import sys
 from typing import Sequence
 
 import service_configuration_lib
+from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinition
 
 from paasta_tools.kubernetes_tools import KubeClient
@@ -100,37 +101,43 @@ def setup_kube_crd(
     services: Sequence[str],
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> bool:
-    existing_crds = kube_client.apiextensions.list_custom_resource_definition(
-        label_selector=paasta_prefixed("service")
-    )
-
-    desired_crds = []
-    for service in services:
-        crd_config = service_configuration_lib.read_extra_service_information(
-            service, f"crd-{cluster}", soa_dir=soa_dir
+    for apiextension, crd_class in [
+        (kube_client.apiextensions, V1CustomResourceDefinition),
+        (kube_client.apiextensions_v1_beta1, V1beta1CustomResourceDefinition),
+    ]:
+        existing_crds = apiextension.list_custom_resource_definition(
+            label_selector=paasta_prefixed("service")
         )
-        if not crd_config:
-            log.info("nothing to deploy")
-            continue
 
-        metadata = crd_config.get("metadata", {})
-        if "labels" not in metadata:
-            metadata["labels"] = {}
-        metadata["labels"]["yelp.com/paasta_service"] = service
-        metadata["labels"][paasta_prefixed("service")] = service
-        desired_crd = V1CustomResourceDefinition(
-            api_version=crd_config.get("apiVersion"),
-            kind=crd_config.get("kind"),
-            metadata=metadata,
-            spec=crd_config.get("spec"),
-        )
-        desired_crds.append(desired_crd)
+        desired_crds = []
+        for service in services:
+            crd_config = service_configuration_lib.read_extra_service_information(
+                service, f"crd-{cluster}", soa_dir=soa_dir
+            )
+            if not crd_config:
+                log.info("nothing to deploy")
+                continue
 
-    return update_crds(
-        kube_client=kube_client,
-        desired_crds=desired_crds,
-        existing_crds=existing_crds,
-    )
+            metadata = crd_config.get("metadata", {})
+            if "labels" not in metadata:
+                metadata["labels"] = {}
+            metadata["labels"]["yelp.com/paasta_service"] = service
+            metadata["labels"][paasta_prefixed("service")] = service
+            desired_crd = crd_class(
+                api_version=crd_config.get("apiVersion"),
+                kind=crd_config.get("kind"),
+                metadata=metadata,
+                spec=crd_config.get("spec"),
+            )
+            desired_crds.append(desired_crd)
+
+        if update_crds(
+            kube_client=kube_client,
+            desired_crds=desired_crds,
+            existing_crds=existing_crds,
+        ):
+            return True
+    return False
 
 
 if __name__ == "__main__":
