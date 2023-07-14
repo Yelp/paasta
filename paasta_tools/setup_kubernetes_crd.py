@@ -132,7 +132,7 @@ def setup_kube_crd(
             desired_crds.append(desired_crd)
 
         if update_crds(
-            kube_client=kube_client,
+            apiextensions=apiextension,
             desired_crds=desired_crds,
             existing_crds=existing_crds,
         ):
