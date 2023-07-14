@@ -3859,14 +3859,13 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 
 def update_crds(
-    kube_client: KubeClient,
+    apiextensions: Union[
+        kube_client.ApiextensionsV1Api, kube_client.ApiextensionsV1beta1Api
+    ],
     desired_crds: Collection[
         Union[V1CustomResourceDefinition, V1beta1CustomResourceDefinition]
     ],
     existing_crds: V1CustomResourceDefinitionList,
-    apiextensions: Union[
-        kube_client.ApiextensionsV1Api, kube_client.ApiextensionsV1beta1Api
-    ],
 ) -> bool:
     success = True
     for desired_crd in desired_crds:
