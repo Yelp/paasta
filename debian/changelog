@@ -1,3 +1,12 @@
+paasta-tools (0.186.0) xenial; urgency=medium
+
+  * 0.186.0 tagged with 'make release'
+    Commit: Adding extensions to update_crds function (#3649)  * Adding
+    extensions to update_crds function  * removing unused client  *
+    Fixing internal update crd  * fixing internal update crd
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 17 Jul 2023 01:23:12 -0700
+
 paasta-tools (0.185.0) xenial; urgency=medium
 
   * 0.185.0 tagged with 'make release'
