@@ -1,3 +1,12 @@
+paasta-tools (0.187.0) xenial; urgency=medium
+
+  * 0.187.0 tagged with 'make release'
+    Commit: Merge pull request #3615 from Yelp/u/vit/tron-1636-add-
+    secret-volume  TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 18 Jul 2023 14:12:30 -0700
+
 paasta-tools (0.186.0) xenial; urgency=medium
 
   * 0.186.0 tagged with 'make release'
