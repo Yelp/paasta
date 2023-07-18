@@ -48,6 +48,7 @@ from kubernetes.client import models
 from kubernetes.client import V1Affinity
 from kubernetes.client import V1AWSElasticBlockStoreVolumeSource
 from kubernetes.client import V1beta1CustomResourceDefinition
+from kubernetes.client import V1beta1CustomResourceDefinitionList
 from kubernetes.client import V1beta1PodDisruptionBudget
 from kubernetes.client import V1beta1PodDisruptionBudgetSpec
 from kubernetes.client import V1Capabilities
@@ -3859,27 +3860,32 @@ def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
 
 
 def update_crds(
-    apiextensions: Union[
-        kube_client.ApiextensionsV1Api, kube_client.ApiextensionsV1beta1Api
-    ],
+    kube_client: KubeClient,
     desired_crds: Collection[
         Union[V1CustomResourceDefinition, V1beta1CustomResourceDefinition]
     ],
-    existing_crds: V1CustomResourceDefinitionList,
+    existing_crds: Union[
+        V1CustomResourceDefinitionList, V1beta1CustomResourceDefinitionList
+    ],
 ) -> bool:
-    success = True
     for desired_crd in desired_crds:
         existing_crd = None
         for crd in existing_crds.items:
             if crd.metadata.name == desired_crd.metadata["name"]:
                 existing_crd = crd
                 break
-
         try:
+
+            if "apiextensions.k8s.io/v1beta1" == desired_crd.api_version:
+                apiextensions = kube_client.apiextensions_v1_beta1
+            else:
+                apiextensions = kube_client.apiextensions
+
             if existing_crd:
                 desired_crd.metadata[
                     "resourceVersion"
                 ] = existing_crd.metadata.resource_version
+
                 apiextensions.replace_custom_resource_definition(
                     name=desired_crd.metadata["name"], body=desired_crd
                 )
@@ -3901,9 +3907,9 @@ def update_crds(
                 f"status: {exc.status}, reason: {exc.reason}"
             )
             log.debug(exc.body)
-            success = False
+            return False
 
-    return success
+    return True
 
 
 def sanitise_label_value(value: str) -> str:
