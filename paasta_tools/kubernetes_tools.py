@@ -3876,7 +3876,7 @@ def update_crds(
                 break
         try:
 
-            if "beta" in desired_crd.api_version:
+            if "apiextensions.k8s.io/v1beta1" == desired_crd.api_version:
                 apiextensions = kube_client.apiextensions_v1_beta1
             else:
                 apiextensions = kube_client.apiextensions

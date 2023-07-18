@@ -114,12 +114,14 @@ def setup_kube_crd(
                 label_selector=paasta_prefixed("service")
             )
         )
-    except ApiException as e:
+    except ApiException:
         existing_crds_v1_beta1 = []
-        log.debug(e)
+        log.debug(
+            "Listing CRDs with apiextensions/v1beta1 not supported on this cluster, falling back to v1"
+        )
 
     desired_crds = []
-    desired_crds_v1_beta_1 = []
+    desired_crds_v1_beta1 = []
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f"crd-{cluster}", soa_dir=soa_dir
@@ -134,14 +136,14 @@ def setup_kube_crd(
         metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"][paasta_prefixed("service")] = service
 
-        if "beta" in crd_config["apiVersion"]:
+        if "apiextensions.k8s.io/v1beta1" == crd_config["apiVersion"]:
             desired_crd = V1beta1CustomResourceDefinition(
                 api_version=crd_config.get("apiVersion"),
                 kind=crd_config.get("kind"),
                 metadata=metadata,
                 spec=crd_config.get("spec"),
             )
-            desired_crds_v1_beta_1.append(desired_crd)
+            desired_crds_v1_beta1.append(desired_crd)
         else:
             desired_crd = V1CustomResourceDefinition(
                 api_version=crd_config.get("apiVersion"),
@@ -157,7 +159,7 @@ def setup_kube_crd(
         existing_crds=existing_crds,
     ) and update_crds(
         kube_client=kube_client,
-        desired_crds=desired_crds_v1_beta_1,
+        desired_crds=desired_crds_v1_beta1,
         existing_crds=existing_crds_v1_beta1,
     )
 
