@@ -1203,7 +1203,7 @@ def paasta_spark_run(args):
         document = POD_TEMPLATE.format(
             spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
         )
-        parsed_pod_template = yaml.load(document)
+        parsed_pod_template = yaml.full_load(document)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
