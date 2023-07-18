@@ -36,8 +36,6 @@ jobs:
       DOCKER_REGISTRY: ""
     steps:
       - uses: actions/checkout@v2
-      - name: Install docker-compose
-        run: sudo apt-get update && sudo apt-get install -y docker-compose=1.25.0-1
       - uses: actions/setup-python@v2
         with:
           python-version: 3.7
