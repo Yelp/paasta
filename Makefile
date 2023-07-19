@@ -14,6 +14,7 @@
 
 # Set ENV to 'YELP' if FQDN ends in '.yelpcorp.com'
 # Otherwise, set ENV to the FQDN
+export PIP_CONSTRAINTS ?= ./constraints.txt
 
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	PAASTA_ENV ?= YELP
