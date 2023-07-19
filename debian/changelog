@@ -1,3 +1,10 @@
+paasta-tools (0.188.0) xenial; urgency=medium
+
+  * 0.188.0 tagged with 'make release'
+    Commit: Fixing script bug (#3651)  * Fixing script bug
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 01:34:56 -0700
+
 paasta-tools (0.187.0) xenial; urgency=medium
 
   * 0.187.0 tagged with 'make release'
