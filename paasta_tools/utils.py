@@ -273,10 +273,6 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
-class TronSecretVolume(SecretVolume, total=False):
-    secret_volume_name: str
-
-
 class MonitoringDict(TypedDict, total=False):
     alert_after: Union[str, float]
     check_every: str

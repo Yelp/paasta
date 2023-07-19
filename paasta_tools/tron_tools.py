@@ -52,7 +52,6 @@ from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
-from paasta_tools.utils import TronSecretVolume
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
     create_or_find_service_account_name,
@@ -69,7 +68,6 @@ from paasta_tools.spark_tools import (
 )
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
-from paasta_tools.secret_tools import is_shared_secret_from_secret_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
@@ -415,39 +413,9 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
-    def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
-        """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
-        secret_volumes = super().get_secret_volumes()
-        return [
-            TronSecretVolume(
-                secret_volume_name=self.get_secret_volume_name(
-                    secret_volume["secret_name"]
-                ),
-                secret_name=secret_volume["secret_name"],
-                container_path=secret_volume["container_path"],
-                default_mode=secret_volume["default_mode"],
-                items=secret_volume["items"],
-            )
-            for secret_volume in secret_volumes
-        ]
-
     def get_namespace(self) -> str:
         """Get namespace from config, default to 'paasta'"""
         return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
-
-    def get_secret_volume_name(self, secret_name: str) -> str:
-        service = (
-            self.service
-            if not is_shared_secret_from_secret_name(
-                soa_dir=self.soa_dir, secret_name=secret_name
-            )
-            else SHARED_SECRET_SERVICE
-        )
-        return get_paasta_secret_name(
-            self.get_namespace(),
-            service,
-            secret_name,
-        )
 
     def get_deploy_group(self) -> Optional[str]:
         return self.config_dict.get("deploy_group", None)
@@ -901,7 +869,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "node": action_config.get_node(),
         "retries": action_config.get_retries(),
         "retries_delay": action_config.get_retries_delay(),
-        "secret_volumes": action_config.get_secret_volumes(),
         "expected_runtime": action_config.get_expected_runtime(),
         "trigger_downstreams": action_config.get_trigger_downstreams(),
         "triggered_by": action_config.get_triggered_by(),
