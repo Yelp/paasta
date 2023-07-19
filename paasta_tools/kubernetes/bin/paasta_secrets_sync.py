@@ -98,7 +98,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--secret-type",
-        choices=["all", "paasta-secret", "boto-key", "crypto-key"],
+        choices=[
+            "all",
+            "paasta-secret",
+            "boto-key",
+            "crypto-key",
+            "database-credentials",
+        ],
         default="all",
         type=str,
         help="Define which type of secret to add/update. Default is 'all'",
@@ -259,7 +265,9 @@ def sync_all_secrets(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
-    secret_type: Literal["all", "paasta-secret", "crypto-key", "boto-key"] = "all",
+    secret_type: Literal[
+        "all", "paasta-secret", "crypto-key", "boto-key", "database-credentials"
+    ] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
@@ -313,12 +321,26 @@ def sync_all_secrets(
             )
         )
 
+        sync_service_secrets["database-credentials"].append(
+            partial(
+                sync_database_credentials,
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                secret_provider_name=secret_provider_name,
+                vault_cluster_config=vault_cluster_config,
+                soa_dir=soa_dir,
+                vault_token_file=vault_token_file,
+            )
+        )
+
         if secret_type == "all":
             results.append(
                 all(sync() for sync in sync_service_secrets["paasta-secret"])
             )
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
+            # note that since database-credentials are in a different vault, they're not synced as part of 'all'
         else:
             results.append(all(sync() for sync in sync_service_secrets[secret_type]))
 
@@ -392,6 +414,79 @@ def sync_secrets(
                         kube_client=kube_client,
                         namespace=namespace,
                     )
+
+    return True
+
+
+def sync_database_credentials(
+    kube_client: KubeClient,
+    cluster: str,
+    service: str,
+    secret_provider_name: str,
+    vault_cluster_config: Dict[str, str],
+    soa_dir: str,
+    vault_token_file: str,
+) -> bool:
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    for instance_config in config_loader.instance_configs(
+        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+    ):
+        # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
+        # in order to use a custom vault shard
+        database_credentials = instance_config.get_database_credentials()
+
+        provider = get_secret_provider(
+            secret_provider_name=secret_provider_name,
+            soa_dir=soa_dir,
+            service_name=service,
+            cluster_names=[cluster],
+            # overridden by env variables but still needed here for spec validation
+            secret_provider_kwargs={
+                "vault_cluster_config": vault_cluster_config,
+                "vault_auth_method": "token",
+                "vault_token_file": vault_token_file,
+            },
+        )
+
+        for dstore in database_credentials.keys():
+            for credential in database_credentials[dstore]:
+                vault_path = f"secrets/database/{dstore}/{credential}"
+                secrets = provider.get_secrets_from_vault_path(vault_path)
+                if not secrets:
+                    # no secrets found at this path. skip syncing
+                    log.debug(
+                        f"Warning: no secrets found at requested path {vault_path}."
+                    )
+                    continue
+
+                # decrypt and save in secret_data
+                vault_key_path = get_vault_key_secret_name(vault_path)
+
+                # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
+                secret_data = {}
+                secret_data[vault_key_path] = base64.b64encode(
+                    json.dumps(secrets).encode("utf-8")
+                ).decode("utf-8")
+
+                if not secret_data:
+                    continue
+
+                # delay between k8s updates
+                time.sleep(0.3)
+
+                create_or_update_k8s_secret(
+                    service=service,
+                    signature_name=instance_config.get_database_credentials_signature_name(
+                        dstore=dstore, credential=credential
+                    ),
+                    secret_name=instance_config.get_database_credentials_secret_name(
+                        dstore=dstore, credential=credential
+                    ),
+                    get_secret_data=(lambda: secret_data),
+                    secret_signature=_get_dict_signature(secret_data),
+                    kube_client=kube_client,
+                    namespace=instance_config.get_namespace(),
+                )
 
     return True
 

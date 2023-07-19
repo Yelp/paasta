@@ -1425,6 +1425,41 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "config_dict",
         [
+            {"database_credentials": {"mysql": ["credential1", "credential2"]}},
+            {"database_credentials": {"mysql": ["credential3"]}},
+            {"database_credentials": {"mysql": []}},
+            {
+                "database_credentials": {
+                    "mysql": ["credential1"],
+                    "cassandra": ["credential4", "credential5"],
+                }
+            },
+            {},
+        ],
+    )
+    def test_get_database_credentials_secrets_volumes(self, config_dict):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        volumes = deployment.get_database_credentials_secrets_volumes()
+        if config_dict:
+            assert volumes is not None
+            total_volumes = 0
+            for dstore in config_dict["database_credentials"]:
+                total_volumes += len(config_dict["database_credentials"][dstore])
+            assert len(volumes) == total_volumes
+        else:
+            assert volumes is None
+
+    @pytest.mark.parametrize(
+        "config_dict",
+        [
             {"crypto_keys": {"encrypt": ["mad"], "decrypt": ["max"]}},
             {"crypto_keys": {"decrypt": ["furiosa"]}},
             {},

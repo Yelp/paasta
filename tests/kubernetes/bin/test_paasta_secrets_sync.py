@@ -13,6 +13,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_crypto_secrets
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_database_credentials
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -825,6 +826,81 @@ def crypto_keys_patches():
             mock_config_loader,
             mock_config_loader.return_value.instance_configs,
         )
+
+
+@pytest.fixture
+def database_credentials_patches():
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
+        autospec=True,
+    ) as mock_get_secret_provider, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_signature",
+        autospec=True,
+    ) as mock_get_kubernetes_secret_signature, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret",
+        autospec=True,
+    ) as mock_create_secret, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_secret_signature",
+        autospec=True,
+    ) as mock_create_kubernetes_secret_signature, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret",
+        autospec=True,
+    ) as mock_update_secret, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.update_secret_signature",
+        autospec=True,
+    ) as mock_update_kubernetes_secret_signature, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
+        autospec=True,
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
+        autospec=True,
+    ):
+        yield (
+            mock_get_kubernetes_secret_signature,
+            mock_create_secret,
+            mock_create_kubernetes_secret_signature,
+            mock_update_secret,
+            mock_update_kubernetes_secret_signature,
+            mock_config_loader,
+            mock_config_loader.return_value.instance_configs,
+            mock_get_secret_provider,
+        )
+
+
+def test_sync_database_secrets(database_credentials_patches):
+    (
+        mock_get_kubernetes_secret_signature,
+        mock_create_secret,
+        mock_create_kubernetes_secret_signature,
+        mock_update_secret,
+        mock_update_kubernetes_secret_signature,
+        mock_config_loader,
+        mock_config_loader_instances,
+        mock_get_secret_provider,
+    ) = database_credentials_patches
+    config_dict = {"database_credentials": {"mysql": ["credential1", "credential2"]}}
+    deployment = KubernetesDeploymentConfig(
+        service="my-service",
+        instance="my-instance",
+        cluster="mega-cluster",
+        config_dict=config_dict,
+        branch_dict=None,
+        soa_dir="/nail/blah",
+    )
+    mock_get_secret_provider.return_value.get_secrets_from_vault_path.return_value = {
+        "mock-credential-user1": "username",
+        "mock-credential-password1": "password",
+    }
+    mock_config_loader_instances.return_value = [deployment]
+    assert sync_database_credentials(
+        kube_client=mock.Mock(),
+        cluster="pentos-devc",
+        service="u2",
+        secret_provider_name="faulty",
+        vault_cluster_config={},
+        soa_dir="/blah/blah",
+        vault_token_file="/.vault-token",
+    )
 
 
 @pytest.fixture()
