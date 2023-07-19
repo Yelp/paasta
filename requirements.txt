@@ -79,7 +79,7 @@ python-iptables==1.0.1
 python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
-pyyaml==6.0.1
+pyyaml==5.4.1
 repoze.lru==0.6
 requests==2.25.0
 requests-cache==0.6.3

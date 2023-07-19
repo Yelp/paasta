@@ -557,7 +557,6 @@
                             },
                             "items": {
                                 "type": "array",
-                                "maxItems": 1,
                                 "items": {
                                     "type": "object",
                                     "properties": {
