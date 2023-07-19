@@ -1,3 +1,11 @@
+paasta-tools (0.189.0) xenial; urgency=medium
+
+  * 0.189.0 tagged with 'make release'
+    Commit: Revert "TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace" (#3652)
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 05:26:34 -0700
+
 paasta-tools (0.188.0) xenial; urgency=medium
 
   * 0.188.0 tagged with 'make release'
