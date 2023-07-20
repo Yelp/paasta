@@ -1,3 +1,50 @@
+paasta-tools (0.189.0) xenial; urgency=medium
+
+  * 0.189.0 tagged with 'make release'
+    Commit: Revert "TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace" (#3652)
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 05:26:34 -0700
+
+paasta-tools (0.188.0) xenial; urgency=medium
+
+  * 0.188.0 tagged with 'make release'
+    Commit: Fixing script bug (#3651)  * Fixing script bug
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 01:34:56 -0700
+
+paasta-tools (0.187.0) xenial; urgency=medium
+
+  * 0.187.0 tagged with 'make release'
+    Commit: Merge pull request #3615 from Yelp/u/vit/tron-1636-add-
+    secret-volume  TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 18 Jul 2023 14:12:30 -0700
+
+paasta-tools (0.186.0) xenial; urgency=medium
+
+  * 0.186.0 tagged with 'make release'
+    Commit: Adding extensions to update_crds function (#3649)  * Adding
+    extensions to update_crds function  * removing unused client  *
+    Fixing internal update crd  * fixing internal update crd
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 17 Jul 2023 01:23:12 -0700
+
+paasta-tools (0.185.0) xenial; urgency=medium
+
+  * 0.185.0 tagged with 'make release'
+    Commit: Adding support for extensions v1 v1beta1 (#3648)  * Adding
+    support for extensions v1 v1beta1  * Fixing tests  * updating
+    setup_kubernetes_cr  * Fixing call to super  * fixing typo  * adding
+    minimal req for tests  * putting older version back  * Rebasing  *
+    Removing second client  * Adding comments for clairification  *
+    Update paasta_tools/setup_kubernetes_cr.py  Co-authored-by: Luis
+    Pérez <luisp@yelp.com>  * Fixing some whitespace errors  ---------
+    Co-authored-by: Luis Pérez <luisp@yelp.com>
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 14 Jul 2023 00:18:35 -0700
+
 paasta-tools (0.184.0) xenial; urgency=medium
 
   * 0.184.0 tagged with 'make release'

@@ -44,7 +44,7 @@ jmespath==0.9.3
 jsonref==0.1
 jsonschema==2.5.1
 kazoo==2.8.0
-kubernetes==24.2.0
+kubernetes==21.7.0
 ldap3==2.6
 manhole==1.5.0
 marathon==0.12.0

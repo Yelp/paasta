@@ -143,9 +143,10 @@ def setup_kube_internal_crd(
     existing_crds = kube_client.apiextensions.list_custom_resource_definition(
         label_selector=paasta_prefixed("internal")
     )
-
     return update_crds(
-        kube_client=kube_client, desired_crds=INTERNAL_CRDS, existing_crds=existing_crds
+        kube_client=kube_client,
+        desired_crds=INTERNAL_CRDS,
+        existing_crds=existing_crds,
     )
 
 
