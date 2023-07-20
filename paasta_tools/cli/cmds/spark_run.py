@@ -724,7 +724,7 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
             continue
         # Process Spark configs with multiple space separated values to be in single quotes
         if isinstance(val, str) and " " in val:
-            val = f"\'{val}\'"
+            val = f"'{val}'"
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
 
@@ -1206,7 +1206,7 @@ def paasta_spark_run(args):
         document = POD_TEMPLATE.format(
             spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
         )
-        parsed_pod_template = yaml.load(document)
+        parsed_pod_template = yaml.load(document, Loader=yaml.SafeLoader)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
