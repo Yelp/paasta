@@ -155,6 +155,7 @@ def setup_all_custom_resources(
 ) -> bool:
 
     got_results = False
+    succeeded = False
     # We support two versions due to our upgrade to 1.22
     # this functions runs succefully when any of the two apiextensions
     # succeed to update the CRDs as the cluster could be in any version
@@ -170,12 +171,11 @@ def setup_all_custom_resources(
             ).items
         except ApiException:
             log.debug(
-                "Listing CRDs with apiextensions/v1beta1 not supported on this cluster, falling back to v1"
+                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
             )
             crds_list = []
 
         cluster_crds = {crd.spec.names.kind for crd in crds_list}
-        succeeded = False
         log.debug(f"CRDs found: {cluster_crds}")
         results = []
         for crd in custom_resource_definitions:
