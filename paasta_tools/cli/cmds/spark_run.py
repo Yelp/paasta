@@ -19,10 +19,9 @@ import yaml
 from boto3.exceptions import Boto3Error
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
-from service_configuration_lib.spark_config import get_spark_conf
+from service_configuration_lib.spark_config import SparkConfBuilder
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
@@ -904,7 +903,8 @@ def configure_and_run_docker_container(
         print(dashboard_url_msg)
         log.info(webui_url_msg)
         log.info(dashboard_url_msg)
-        history_server_url = get_history_url(spark_conf)
+        spark_conf_builder = SparkConfBuilder()
+        history_server_url = spark_conf_builder.get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
@@ -1233,7 +1233,8 @@ def paasta_spark_run(args):
 
     use_eks = decide_final_eks_toggle_state(args.use_eks_override)
     k8s_server_address = _get_k8s_url_for_cluster(args.cluster) if use_eks else None
-    spark_conf = get_spark_conf(
+    spark_conf_builder = SparkConfBuilder()
+    spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
         docker_img=docker_image_digest,
