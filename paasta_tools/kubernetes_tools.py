@@ -1538,7 +1538,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_database_credentials_volume_name(self, dstore="", credential="") -> str:
-        return f"database-credentials-volume-{dstore}-{credential}-{self.get_sanitised_service_name()}"
+        return limit_size_with_hash(
+            name=f"database-credentials-volume-{dstore}-{credential}-{self.get_sanitised_service_name()}".replace(
+                "_", "--"
+            )
+        )
 
     def get_database_credentials_secrets_volumes(self) -> Optional[V1Volume]:
         database_credentials = self.get_database_credentials()
