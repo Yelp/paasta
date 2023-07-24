@@ -29,6 +29,7 @@ from typing import Optional
 from typing import Sequence
 
 import yaml
+from kubernetes.client.exceptions import ApiException
 
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
@@ -154,6 +155,7 @@ def setup_all_custom_resources(
 ) -> bool:
 
     got_results = False
+    succeeded = False
     # We support two versions due to our upgrade to 1.22
     # this functions runs succefully when any of the two apiextensions
     # succeed to update the CRDs as the cluster could be in any version
@@ -162,12 +164,18 @@ def setup_all_custom_resources(
         kube_client.apiextensions,
         kube_client.apiextensions_v1_beta1,
     ]:
-        cluster_crds = {
-            crd.spec.names.kind
-            for crd in apiextension.list_custom_resource_definition(
+
+        try:
+            crds_list = apiextension.list_custom_resource_definition(
                 label_selector=paasta_prefixed("service")
             ).items
-        }
+        except ApiException:
+            log.debug(
+                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
+            )
+            crds_list = []
+
+        cluster_crds = {crd.spec.names.kind for crd in crds_list}
         log.debug(f"CRDs found: {cluster_crds}")
         results = []
         for crd in custom_resource_definitions:
@@ -202,11 +210,11 @@ def setup_all_custom_resources(
         if results:
             got_results = True
             if any(results):
-                return True
+                succeeded = True
     # we want to return True if we never called `setup_custom_resources`
     # (i.e., we noop'd) or if any call to `setup_custom_resources`
     # succeed (handled above) - otherwise, we want to return False
-    return not got_results
+    return succeeded or not got_results
 
 
 def setup_custom_resources(

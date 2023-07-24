@@ -1,3 +1,11 @@
+paasta-tools (0.190.0) xenial; urgency=medium
+
+  * 0.190.0 tagged with 'make release'
+    Commit: Fixing setup_kubernetes_cr exception (#3658)  * Fixing
+    setup_kubernetes_cr exception  * Fixing tests and logic
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Thu, 20 Jul 2023 09:49:46 -0700
+
 paasta-tools (0.189.0) xenial; urgency=medium
 
   * 0.189.0 tagged with 'make release'
