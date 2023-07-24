@@ -21,7 +21,7 @@ from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
-from service_configuration_lib.spark_config import SparkConfBuilder
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
@@ -903,7 +903,7 @@ def configure_and_run_docker_container(
         print(dashboard_url_msg)
         log.info(webui_url_msg)
         log.info(dashboard_url_msg)
-        spark_conf_builder = SparkConfBuilder()
+        spark_conf_builder = spark_config.SparkConfBuilder()
         history_server_url = spark_conf_builder.get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
@@ -1233,7 +1233,7 @@ def paasta_spark_run(args):
 
     use_eks = decide_final_eks_toggle_state(args.use_eks_override)
     k8s_server_address = _get_k8s_url_for_cluster(args.cluster) if use_eks else None
-    spark_conf_builder = SparkConfBuilder()
+    spark_conf_builder = spark_config.SparkConfBuilder()
     spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,

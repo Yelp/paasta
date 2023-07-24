@@ -853,7 +853,8 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
-    def test_format_tron_action_dict_spark(self):
+    @mock.patch("paasta_tools.spark_tools.spark_config.SparkConfBuilder", autospec=True)
+    def test_format_tron_action_dict_spark(self, mock_spark_conf_builder):
         action_dict = {
             "iam_role_provider": "aws",
             "iam_role": "arn:aws:iam::000000000000:role/some_role",
