@@ -1529,7 +1529,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         database_credentials = self.config_dict.get("database_credentials", {})
         return database_credentials
 
-    def get_database_credentials_secret_name(self, dstore="", credential="") -> str:
+    def get_database_credentials_secret_name(self, dstore, credential) -> str:
         return _get_secret_name(
             self.get_namespace(),
             "database-credentials",
@@ -1537,7 +1537,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             f"{dstore}-{credential}",
         )
 
-    def get_database_credentials_volume_name(self, dstore="", credential="") -> str:
+    def get_database_credentials_volume_name(self, dstore, credential) -> str:
         return limit_size_with_hash(
             name=f"database-credentials-volume-{dstore}-{credential}-{self.get_sanitised_service_name()}".replace(
                 "_", "--"
@@ -1550,21 +1550,21 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         result = []
-        for dstore in database_credentials.keys():
-            for credential in database_credentials[dstore]:
+        for dstore, credentials in database_credentials.items():
+            for credential in credentials:
                 volume_name = self.get_database_credentials_volume_name(
                     dstore=dstore, credential=credential
                 )
-                v1_secret_source_name = self.get_database_credentials_secret_name(
+                secret_name = self.get_database_credentials_secret_name(
                     dstore=dstore, credential=credential
                 )
 
-                # map the entirety of this v1 secret to the volume name
+                # map the entirety of this secret to the volume name
                 result.append(
                     V1Volume(
                         name=volume_name,
                         secret=V1SecretVolumeSource(
-                            secret_name=v1_secret_source_name,
+                            secret_name=secret_name,
                             default_mode=mode_to_int("0444"),
                             optional=False,
                         ),
@@ -1719,17 +1719,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 volume_mounts.append(mount)
 
         database_credentials = self.config_dict.get("database_credentials", {})
-        if database_credentials:
-            for dstore in database_credentials:
-                for credential in database_credentials[dstore]:
-                    mount = V1VolumeMount(
-                        mount_path=f"/dstore/{dstore}/{credential}",
-                        name=self.get_database_credentials_volume_name(
-                            dstore=dstore, credential=credential
-                        ),
-                        read_only=True,
-                    )
-                    volume_mounts.append(mount)
+        for dstore, credentials in database_credentials.items():
+            for credential in credentials:
+                mount = V1VolumeMount(
+                    mount_path=f"/dstore/{dstore}/{credential}",
+                    name=self.get_database_credentials_volume_name(
+                        dstore=dstore, credential=credential
+                    ),
+                    read_only=True,
+                )
+                volume_mounts.append(mount)
 
         return volume_mounts
 
@@ -1762,7 +1761,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
         )
 
-    def get_database_credentials_signature_name(self, dstore="", credential="") -> str:
+    def get_database_credentials_signature_name(self, dstore, credential) -> str:
         return _get_secret_signature_name(
             self.get_namespace(),
             "database-credentials",

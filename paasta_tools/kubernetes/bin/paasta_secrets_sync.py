@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import base64
+import contextlib
 import hashlib
 import json
 import logging
@@ -111,6 +112,21 @@ def parse_args() -> argparse.Namespace:
     )
     args = parser.parse_args()
     return args
+
+
+@contextlib.contextmanager
+def set_env(**environ) -> None:
+    """
+    :type environ: dict[str, unicode]
+    :param environ: Environment variables to set
+    """
+    old_environ = dict(os.environ)
+    os.environ.update(environ)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
 
 
 def main() -> None:
@@ -428,30 +444,35 @@ def sync_database_credentials(
     vault_token_file: str,
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    system_paasta_config = load_system_paasta_config()
+    database_credentials_vault_overrides = (
+        system_paasta_config.get_database_credentials_vault_overrides()
+    )
+
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
-        # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
-        # in order to use a custom vault shard
         database_credentials = instance_config.get_database_credentials()
+        with set_env(**database_credentials_vault_overrides):
+            # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
+            # in order to use a custom vault shard. overriden temporarily in this context
+            provider = get_secret_provider(
+                secret_provider_name=secret_provider_name,
+                soa_dir=soa_dir,
+                service_name=service,
+                cluster_names=[cluster],
+                # overridden by env variables but still needed here for spec validation
+                secret_provider_kwargs={
+                    "vault_cluster_config": vault_cluster_config,
+                    "vault_auth_method": "token",
+                    "vault_token_file": vault_token_file,
+                },
+            )
 
-        provider = get_secret_provider(
-            secret_provider_name=secret_provider_name,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_names=[cluster],
-            # overridden by env variables but still needed here for spec validation
-            secret_provider_kwargs={
-                "vault_cluster_config": vault_cluster_config,
-                "vault_auth_method": "token",
-                "vault_token_file": vault_token_file,
-            },
-        )
-
-        for dstore in database_credentials.keys():
-            for credential in database_credentials[dstore]:
+        for dstore, credentials in database_credentials.items():
+            for credential in credentials:
                 vault_path = f"secrets/database/{dstore}/{credential}"
-                secrets = provider.get_secrets_from_vault_path(vault_path)
+                secrets = provider.get_data_from_vault_path(vault_path)
                 if not secrets:
                     # no secrets found at this path. skip syncing
                     log.debug(
@@ -463,6 +484,8 @@ def sync_database_credentials(
                 vault_key_path = get_vault_key_secret_name(vault_path)
 
                 # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
+                # may look like:
+                # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
                 secret_data = {}
                 secret_data[vault_key_path] = base64.b64encode(
                     json.dumps(secrets).encode("utf-8")

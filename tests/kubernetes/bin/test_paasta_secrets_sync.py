@@ -887,7 +887,7 @@ def test_sync_database_secrets(database_credentials_patches):
         branch_dict=None,
         soa_dir="/nail/blah",
     )
-    mock_get_secret_provider.return_value.get_secrets_from_vault_path.return_value = {
+    mock_get_secret_provider.return_value.get_data_from_vault_path.return_value = {
         "mock-credential-user1": "username",
         "mock-credential-password1": "password",
     }

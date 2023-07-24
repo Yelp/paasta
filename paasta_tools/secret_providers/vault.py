@@ -155,13 +155,21 @@ class SecretProvider(BaseSecretProvider):
         else:
             return None
 
-    def get_secrets_from_vault_path(self, path=""):
-        data = self.clients[self.ecosystems[0]].read(path)
-        # returns None on empty path. return {} instead
-        # since we want to return the data['data'] key anyway
-        if data:
-            return data.get("data", {})
-        return {}
+    def get_data_from_vault_path(self, path) -> Optional[str]:
+        # clients.read returns None if not set
+        # if it is set, it returns an object with { **metadata, data: {} }
+        # eg lease_id, request_id, etc. we only care about 'data' here
+        entry = self.clients[self.ecosystems[0]].read(path)
+
+        # returns one of 3 things:
+        #   entry -> could be None
+        #   entry["data"] -> could be an object with content
+        #   entry["data"] -> could be empty (ie no secrets)
+        # all are plausible and valid scenarios that give different information about the path
+
+        if entry is not None:
+            return entry.get("data", {})
+        return None
 
     def get_key_versions(
         self,
