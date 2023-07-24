@@ -17,6 +17,7 @@ import mock
 import pytest
 from boto3.exceptions import Boto3Error
 from mock import Mock
+from service_configuration_lib import spark_config
 
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
@@ -33,8 +34,6 @@ from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
-
-from service_configuration_lib import spark_config
 
 
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
@@ -1092,7 +1091,9 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
 def test_paasta_spark_run_bash(
@@ -1201,7 +1202,9 @@ def test_paasta_spark_run_bash(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
 def test_paasta_spark_run(
@@ -1310,7 +1313,9 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
 @mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
 @mock.patch.object(spark_run, "configure_and_run_docker_container", autospec=True)
 @mock.patch.object(spark_run, "get_smart_paasta_instance_name", autospec=True)
 def test_paasta_spark_run_pyspark(

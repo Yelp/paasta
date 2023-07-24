@@ -937,6 +937,15 @@ class TestTronTools:
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
+            mock_spark_conf_builder.return_value._adjust_spark_requested_resources.return_value = {
+                "spark.executor.instances": "2",
+                "spark.kubernetes.executor.limit.cores": "2",
+                "spark.scheduler.maxRegisteredResourcesWaitingTime": "15min",
+                "spark.task.cpus": "1",
+                "spark.sql.shuffle.partitions": "12",
+                "spark.sql.files.minPartitionNum": "12",
+                "spark.default.parallelism": "12",
+            }
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
         assert result == {

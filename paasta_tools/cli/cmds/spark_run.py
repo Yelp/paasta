@@ -17,11 +17,11 @@ from typing import Union
 
 import yaml
 from boto3.exceptions import Boto3Error
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
-from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
