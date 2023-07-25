@@ -105,12 +105,16 @@ def main():
         log.info(f"{master_config}")
         updated.append(MASTER_NAMESPACE)
     else:
-        if client.update_namespace(MASTER_NAMESPACE, master_config):
-            updated.append(MASTER_NAMESPACE)
-            log.debug(f"Updated {MASTER_NAMESPACE}")
-        else:
-            skipped.append(MASTER_NAMESPACE)
-            log.debug(f"Skipped {MASTER_NAMESPACE}")
+        try:
+            if client.update_namespace(MASTER_NAMESPACE, master_config):
+                updated.append(MASTER_NAMESPACE)
+                log.debug(f"Updated {MASTER_NAMESPACE}")
+            else:
+                skipped.append(MASTER_NAMESPACE)
+                log.debug(f"Skipped {MASTER_NAMESPACE}")
+        except Exception:
+            failed.append(MASTER_NAMESPACE)
+            log.exception(f"Error while updating {MASTER_NAMESPACE}:")
 
     k8s_enabled_for_cluster = (
         yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
