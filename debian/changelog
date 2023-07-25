@@ -1,3 +1,11 @@
+paasta-tools (0.190.1) xenial; urgency=medium
+
+  * 0.190.1 tagged with 'make release'
+    Commit: Merge pull request #3660 from Yelp/u/jfong/TRON-1968-master-
+    config  TRON-1968: Catch exceptions when updaitng MASTER config
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 25 Jul 2023 10:31:24 -0700
+
 paasta-tools (0.190.0) xenial; urgency=medium
 
   * 0.190.0 tagged with 'make release'
