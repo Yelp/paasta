@@ -1112,7 +1112,7 @@ def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
     any soaconfigs/alter folk's muscle memory.
 
     Ideally we can get rid of this entirely once spark-run reads soaconfigs
-    in a manner more cloesly aligned to what we do with other paasta workloads
+    in a manner more closely aligned to what we do with other paasta workloads
     (i.e., have it automatically determine where to run based on soaconfigs
     filenames - and not rely on explicit config)
     """
