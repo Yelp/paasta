@@ -1,3 +1,12 @@
+paasta-tools (0.190.2) xenial; urgency=medium
+
+  * 0.190.2 tagged with 'make release'
+    Commit: Merge pull request #3663 from
+    Yelp/u/jfong/check_support_parallel_step  COMPINFRA-2938: Support
+    security-check in parallel steps
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 28 Jul 2023 12:51:55 -0700
+
 paasta-tools (0.190.1) xenial; urgency=medium
 
   * 0.190.1 tagged with 'make release'
