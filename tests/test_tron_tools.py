@@ -1,5 +1,7 @@
 import datetime
 import hashlib
+import os
+import tempfile
 
 import mock
 import pytest
@@ -7,6 +9,7 @@ import yaml
 
 from paasta_tools import tron_tools
 from paasta_tools import utils
+from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 from paasta_tools.tron_tools import MESOS_EXECUTOR_NAMES
 from paasta_tools.utils import CAPS_DROP
@@ -141,6 +144,63 @@ class TestTronActionConfig:
         action_config.config_dict["env"] = test_env
         secret_env = action_config.get_secret_env()
         assert secret_env == expected_env
+
+    @pytest.mark.parametrize(
+        ("test_secret_volumes", "expected_secret_volumes"),
+        (
+            (
+                [
+                    {
+                        "secret_name": "secret1",
+                        "container_path": "/b/c",
+                        "default_mode": "0644",
+                        "items": [{"key": "secret1", "path": "abc"}],
+                    }
+                ],
+                [
+                    {
+                        "secret_volume_name": "tron-secret-my--service-secret1",
+                        "secret_name": "secret1",
+                        "container_path": "/b/c",
+                        "default_mode": "0644",
+                        "items": [{"key": "secret1", "path": "abc"}],
+                    }
+                ],
+            ),
+        ),
+    )
+    def test_get_secret_volumes(
+        self, action_config, test_secret_volumes, expected_secret_volumes
+    ):
+        action_config.config_dict["secret_volumes"] = test_secret_volumes
+        secret_volumes = action_config.get_secret_volumes()
+        assert secret_volumes == expected_secret_volumes
+
+    @pytest.mark.parametrize(
+        ("is_shared, secret_name, expected_secret_volume_name"),
+        (
+            (False, "secret1", "tron-secret-my--service-secret1"),
+            (True, "secret1", "tron-secret-underscore-shared-secret1"),
+        ),
+    )
+    def test_get_secret_volume_name(
+        self, action_config, is_shared, secret_name, expected_secret_volume_name
+    ):
+
+        with tempfile.TemporaryDirectory() as dir_path:
+            service = action_config.service if not is_shared else SHARED_SECRET_SERVICE
+            secret_path = os.path.join(
+                dir_path, service, "secrets", f"{secret_name}.json"
+            )
+            os.makedirs(os.path.dirname(secret_path), exist_ok=True)
+            with open(secret_path, "w") as f:
+                f.write("FOOBAR")
+
+            with mock.patch.object(action_config, "soa_dir", dir_path):
+                assert (
+                    action_config.get_secret_volume_name(secret_name)
+                    == expected_secret_volume_name
+                )
 
     def test_get_executor_default(self, action_config):
         assert action_config.get_executor() == "paasta"
@@ -787,6 +847,14 @@ class TestTronTools:
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
+            "secret_volumes": [
+                {
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
             ],
@@ -835,6 +903,15 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "secret_volumes": [
+                {
+                    "secret_volume_name": "tron-secret-my--service-secret1",
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
@@ -875,6 +952,14 @@ class TestTronTools:
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
+            "secret_volumes": [
+                {
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
             ],
@@ -1003,6 +1088,15 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "secret_volumes": [
+                {
+                    "secret_volume_name": "tron-secret-my--service-secret1",
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
@@ -1094,6 +1188,7 @@ class TestTronTools:
             "env": mock.ANY,
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
+            "secret_volumes": [],
             "extra_volumes": [],
             "service_account_name": "a-magic-sa",
         }
@@ -1140,6 +1235,14 @@ class TestTronTools:
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash", "SOME_SECRET": "SECRET(secret_name)"},
+            "secret_volumes": [
+                {
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
             ],
@@ -1178,6 +1281,10 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+        ), mock.patch(
+            "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
+            autospec=True,
+            return_value=False,
         ):
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
@@ -1218,6 +1325,15 @@ class TestTronTools:
                     "key": "secret_name",
                 }
             },
+            "secret_volumes": [
+                {
+                    "secret_volume_name": "tron-secret-my--service-secret1",
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
@@ -1248,6 +1364,14 @@ class TestTronTools:
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},
+            "secret_volumes": [
+                {
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
             ],
@@ -1273,7 +1397,6 @@ class TestTronTools:
             autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
-
         assert result == {
             "command": "echo something",
             "requires": ["required_action"],
@@ -1284,6 +1407,15 @@ class TestTronTools:
             "mem": 1200,
             "disk": 42,
             "env": mock.ANY,
+            "secret_volumes": [
+                {
+                    "secret_volume_name": "tron-secret-my--service-secret1",
+                    "secret_name": "secret1",
+                    "container_path": "/b/c",
+                    "default_mode": "0644",
+                    "items": [{"key": "secret1", "path": "abc"}],
+                }
+            ],
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
@@ -1430,7 +1562,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "f740410f7ae2794f9924121c1115e15d"
+        assert hasher.hexdigest() == "35972651618a848ac6bf7947245dbaea"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
