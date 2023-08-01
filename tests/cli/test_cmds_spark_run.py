@@ -1091,6 +1091,7 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
 )
@@ -1100,6 +1101,7 @@ def test_paasta_spark_run_bash(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_spark_conf_builder,
+    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1140,6 +1142,7 @@ def test_paasta_spark_run_bash(
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
         "test-cluster": ["test-pool"]
     }
+    mock_should_enable_compact_bin_packing.return_value = True
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "/bin/bash"
@@ -1202,6 +1205,7 @@ def test_paasta_spark_run_bash(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
+@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
 )
@@ -1211,6 +1215,7 @@ def test_paasta_spark_run(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_spark_conf_builder,
+    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1251,6 +1256,7 @@ def test_paasta_spark_run(
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
         "test-cluster": ["test-pool"]
     }
+    mock_should_enable_compact_bin_packing.return_value = True
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "USER=test timeout 1m spark-submit test.py"
