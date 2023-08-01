@@ -418,18 +418,16 @@ class TronActionConfig(InstanceConfig):
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
         """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
         secret_volumes = super().get_secret_volumes()
-        return [
-            TronSecretVolume(
+        tron_secret_volumes = []
+        for secret_volume in secret_volumes:
+            tron_secret_volume = TronSecretVolume(
                 secret_volume_name=self.get_secret_volume_name(
                     secret_volume["secret_name"]
-                ),
-                secret_name=secret_volume["secret_name"],
-                container_path=secret_volume["container_path"],
-                default_mode=secret_volume["default_mode"],
-                items=secret_volume["items"],
+                )
             )
-            for secret_volume in secret_volumes
-        ]
+            tron_secret_volume.update(secret_volume)
+            tron_secret_volumes.append(tron_secret_volume)
+        return tron_secret_volumes
 
     def get_namespace(self) -> str:
         """Get namespace from config, default to 'paasta'"""
