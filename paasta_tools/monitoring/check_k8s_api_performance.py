@@ -62,32 +62,50 @@ def parse_k8s_api_performance_options() -> argparse.Namespace:
         help="Pass the label selector you want to select",
     )
 
+    # Add additional filtering options
+    parser.add_argument(
+        "--pod-status",
+        dest="pod_status",
+        default=None,
+        help="Filter pods by their status (e.g., Running, Pending, Succeeded, etc.)",
+    )
+
+    parser.add_argument(
+        "--container-name",
+        dest="container_name",
+        default=None,
+        help="Filter pods by their container name",
+    )
+
     options = parser.parse_args()
     return options
 
 
-def get_pods_from_namespace(
-    kube_client: KubeClient, namespace: str
-) -> client.models.v1_pod_list.V1PodList:
-
-    # list all the running pods
-    ret = kube_client.core.list_namespaced_pod(namespace, watch=False)
-    return ret
-
-
 def get_pods_from_namespace_selector(
-    kube_client: KubeClient, namespace: str, label_selector: str
+    kube_client: KubeClient, namespace: str, label_selector: str, pod_status: str, container_name: str
 ) -> client.models.v1_pod_list.V1PodList:
 
-    # list all the running pods
+    field_selector = []
+    if pod_status:
+        field_selector.append(f"status.phase={pod_status}")
+
+    # Construct field selector for container name
+    if container_name:
+        field_selector.append(f"spec.containers[*].name={container_name}")
+
+    if field_selector:
+        field_selector_str = ",".join(field_selector)
+    else:
+        field_selector_str = None
+
+    # list all the running pods with filters
     ret = kube_client.core.list_namespaced_pod(
-        namespace, watch=False, label_selector=label_selector
+        namespace, watch=False, label_selector=label_selector, field_selector=field_selector_str
     )
     return ret
 
 
 if __name__ == "__main__":
-
     options = parse_k8s_api_performance_options()
     kube_client = KubeClient(
         config_file=options.kube_config_path, context=options.context
@@ -96,7 +114,7 @@ if __name__ == "__main__":
     # measure the performance of this function
     start = time.time()
     ret = get_pods_from_namespace_selector(
-        kube_client, options.namespace, options.label_selector
+        kube_client, options.namespace, options.label_selector, options.pod_status, options.container_name
     )
     end = time.time()
 
