@@ -1,3 +1,11 @@
+paasta-tools (0.191.2) xenial; urgency=medium
+
+  * 0.191.2 tagged with 'make release'
+    Commit: Merge pull request #3665 from Yelp/u/vit/fix-default_mode
+    SEC-18177: Enable secret_volumes in adhoc jobs
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 01 Aug 2023 09:55:38 -0700
+
 paasta-tools (0.191.0) xenial; urgency=medium
 
   * 0.191.0 tagged with 'make release'
