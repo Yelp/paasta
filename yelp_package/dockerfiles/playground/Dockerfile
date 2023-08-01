@@ -1,6 +1,6 @@
 FROM example_cluster_itest_xenial
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/xenial/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update > /dev/null && \

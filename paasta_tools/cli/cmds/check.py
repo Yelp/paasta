@@ -77,7 +77,13 @@ def deploy_check(service_path):
 
 def deploy_has_security_check(service, soa_dir):
     pipeline = get_pipeline_config(service=service, soa_dir=soa_dir)
-    steps = [step["step"] for step in pipeline]
+    steps = [step["step"] for step in pipeline if not step.get("parallel")]
+    steps += [
+        substep["step"]
+        for step in pipeline
+        if step.get("parallel")
+        for substep in step.get("parallel")
+    ]
     if "security-check" in steps:
         print(PaastaCheckMessages.DEPLOY_SECURITY_FOUND)
         return True
