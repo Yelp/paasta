@@ -415,6 +415,7 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
+    # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken. Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
         """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
         secret_volumes = super().get_secret_volumes()
@@ -425,7 +426,7 @@ class TronActionConfig(InstanceConfig):
                     secret_volume["secret_name"]
                 )
             )
-            tron_secret_volume.update(secret_volume)
+            tron_secret_volume.update(secret_volume)  # type: ignore
             tron_secret_volumes.append(tron_secret_volume)
         return tron_secret_volumes
 
