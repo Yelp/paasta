@@ -1,61 +1,52 @@
-import contextlib
-
-import asynctest
-import mock
-import pytest
+import asyncio
+import unittest
+from unittest import mock
 
 from paasta_tools import hacheck
 
 
-@contextlib.contextmanager
-def mock_ClientSession(**fake_session_kwargs):
-    fake_session = asynctest.MagicMock(name="session", **fake_session_kwargs)
+class FakeClientSession:
+    def __init__(self, *args, **kwargs):
+        pass
 
-    class FakeClientSession:
-        def __init__(self, *args, **kwargs):
-            ...
+    async def __aenter__(self):
+        return self
 
-        async def __aenter__(*args):
-            return fake_session
-
-        async def __aexit__(*args):
-            pass
-
-    with mock.patch("aiohttp.ClientSession", new=FakeClientSession, autospec=False):
-        yield
+    async def __aexit__(self, *args):
+        pass
 
 
-@pytest.mark.asyncio
-async def test_get_spool():
-    fake_response = mock.Mock(
-        status=503,
-        text=asynctest.CoroutineMock(
-            return_value="Service service in down state since 1435694078.778886 "
-            "until 1435694178.780000: Drained by Paasta"
-        ),
-    )
-    fake_task = mock.Mock(host="fake_host", ports=[54321])
+class TestHacheck(unittest.IsolatedAsyncioTestCase):
 
-    with mock_ClientSession(
-        get=asynctest.Mock(
-            return_value=asynctest.MagicMock(
-                __aenter__=asynctest.CoroutineMock(return_value=fake_response)
-            )
+    async def mock_ClientSession(self, **fake_session_kwargs):
+        return FakeClientSession()
+
+    async def test_get_spool(self):
+        fake_response = mock.Mock(
+            status=503,
+            text=mock.CoroutineMock(
+                return_value="Service service in down state since 1435694078.778886 "
+                             "until 1435694178.780000: Drained by Paasta"
+            ),
         )
-    ):
-        actual = await hacheck.get_spool(fake_task)
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
 
-    expected = {
-        "service": "service",
-        "state": "down",
-        "reason": "Drained by Paasta",
-        "since": 1435694078.778886,
-        "until": 1435694178.780000,
-    }
-    assert actual == expected
+        with mock.patch("aiohttp.ClientSession", new=self.mock_ClientSession):
+            actual = await hacheck.get_spool(fake_task)
+
+        expected = {
+            "service": "service",
+            "state": "down",
+            "reason": "Drained by Paasta",
+            "since": 1435694078.778886,
+            "until": 1435694178.780000,
+        }
+        self.assertEqual(actual, expected)
+
+    async def test_get_spool_handles_no_ports(self):
+        actual = await hacheck.get_spool(None)
+        self.assertIsNone(actual)
 
 
-@pytest.mark.asyncio
-async def test_get_spool_handles_no_ports():
-    actual = await hacheck.get_spool(None)
-    assert actual is None
+if __name__ == '__main__':
+    unittest.main()
