@@ -429,6 +429,7 @@ class TronActionConfig(InstanceConfig):
                 container_path=secret_volume["container_path"],
                 items=secret_volume.get("items", []),
             )
+            # we have a different place where the default can come from (tron) and we don't want to insert the wrong default here
             if "default_mode" in secret_volume:
                 tron_secret_volume["default_mode"] = secret_volume["default_mode"]
 
