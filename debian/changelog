@@ -1,3 +1,14 @@
+paasta-tools (0.192.0) xenial; urgency=medium
+
+  * 0.192.0 tagged with 'make release'
+    Commit: Add support for eks cluster not matching --cluster spark arg
+    (#3636)  We may make a different cluster for spark in dev, but we
+    don"t really want to deal with a soaconfigs migration in case we
+    decide to rollback  This PR transparently sets the right eks cluster
+    params based on whether or not eks usage is toggled on or off
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 01 Aug 2023 12:24:29 -0700
+
 paasta-tools (0.191.2) xenial; urgency=medium
 
   * 0.191.2 tagged with 'make release'
