@@ -424,9 +424,14 @@ class TronActionConfig(InstanceConfig):
             tron_secret_volume = TronSecretVolume(
                 secret_volume_name=self.get_secret_volume_name(
                     secret_volume["secret_name"]
-                )
+                ),
+                secret_name=secret_volume["secret_name"],
+                container_path=secret_volume["container_path"],
+                items=secret_volume.get("items", []),
             )
-            tron_secret_volume.update(secret_volume)  # type: ignore
+            if "default_mode" in secret_volume:
+                tron_secret_volume["default_mode"] = secret_volume["default_mode"]
+
             tron_secret_volumes.append(tron_secret_volume)
         return tron_secret_volumes
 
