@@ -2029,6 +2029,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     kube_clusters: Dict
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
+    eks_cluster_aliases: Dict[str, str]
 
 
 def load_system_paasta_config(
@@ -2753,6 +2754,9 @@ class SystemPaastaConfig:
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
+
+    def get_eks_cluster_aliases(self) -> Dict[str, str]:
+        return self.config_dict.get("eks_cluster_aliases", {})
 
     def get_cluster_pools(self) -> Dict[str, List[str]]:
         return self.config_dict.get("allowed_pools", {})
