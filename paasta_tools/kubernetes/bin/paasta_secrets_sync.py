@@ -353,6 +353,7 @@ def sync_all_secrets(
                 vault_cluster_config=vault_cluster_config,
                 soa_dir=soa_dir,
                 vault_token_file=vault_token_file,
+                overwrite_namespace=overwrite_namespace,
             )
         )
 
@@ -448,6 +449,7 @@ def sync_datastore_credentials(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
+    overwrite_namespace: Optional[str],
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     system_paasta_config = load_system_paasta_config()
@@ -458,6 +460,11 @@ def sync_datastore_credentials(
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
+        namespace = (
+            overwrite_namespace
+            if overwrite_namespace is not None
+            else instance_config.get_namespace()
+        )
         datastore_credentials = instance_config.get_datastore_credentials()
         with set_temporary_environment_variables(
             **datastore_credentials_vault_overrides
@@ -516,7 +523,7 @@ def sync_datastore_credentials(
                     get_secret_data=(lambda: secret_data),
                     secret_signature=_get_dict_signature(secret_data),
                     kube_client=kube_client,
-                    namespace=instance_config.get_namespace(),
+                    namespace=namespace,
                 )
 
     return True
