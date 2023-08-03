@@ -282,6 +282,10 @@ class KubeWeightedAffinityCondition(KubeAffinityCondition):
     weight: int
 
 
+class DatastoreCredentialsConfig(TypedDict, total=False):
+    mysql: List[str]
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -1524,7 +1528,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         return pod_volumes
 
-    def get_datastore_credentials(self) -> Dict:
+    def get_datastore_credentials(self) -> DatastoreCredentialsConfig:
         datastore_credentials = self.config_dict.get("datastore_credentials", {})
         return datastore_credentials
 
