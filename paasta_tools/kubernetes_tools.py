@@ -148,6 +148,7 @@ from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
+from paasta_tools.utils import KubeContainerResourceRequest
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -201,6 +202,11 @@ DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 DEFAULT_USE_PROMETHEUS_CPU = False
 DEFAULT_USE_PROMETHEUS_UWSGI = True
 DEFAULT_USE_RESOURCE_METRICS_CPU = True
+DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
+    "cpu": 0.1,
+    "memory": "1024Mi",
+    "ephemeral-storage": "256Mi",
+}
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -288,17 +294,6 @@ def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> No
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
     """
     self._disrupted_pods = disrupted_pods
-
-
-KubeContainerResourceRequest = TypedDict(
-    "KubeContainerResourceRequest",
-    {
-        "cpu": float,
-        "memory": str,
-        "ephemeral-storage": str,
-    },
-    total=False,
-)
 
 
 SidecarResourceRequirements = TypedDict(
@@ -1055,7 +1050,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         )
                     )
                 ),
-                resources=self.get_sidecar_resource_requirements("hacheck"),
+                resources=self.get_sidecar_resource_requirements(
+                    "hacheck",
+                    system_paasta_config,
+                ),
                 name=HACHECK_POD_NAME,
                 env=self.get_kubernetes_environment() + [hacheck_registrations_env],
                 ports=[V1ContainerPort(container_port=6666)],
@@ -1082,7 +1080,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
             return V1Container(
                 image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements("uwsgi_exporter"),
+                resources=self.get_sidecar_resource_requirements(
+                    "uwsgi_exporter",
+                    system_paasta_config,
+                ),
                 name=UWSGI_EXPORTER_POD_NAME,
                 env=self.get_kubernetes_environment() + [stats_port_env],
                 ports=[V1ContainerPort(container_port=9117)],
@@ -1126,7 +1127,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.should_run_gunicorn_exporter_sidecar():
             return V1Container(
                 image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements("gunicorn_exporter"),
+                resources=self.get_sidecar_resource_requirements(
+                    "gunicorn_exporter", system_paasta_config
+                ),
                 name=GUNICORN_EXPORTER_POD_NAME,
                 env=self.get_kubernetes_environment(),
                 ports=[V1ContainerPort(container_port=9117)],
@@ -1306,15 +1309,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1ResourceRequirements(limits=limits, requests=requests)
 
     def get_sidecar_resource_requirements(
-        self, sidecar_name: str
+        self,
+        sidecar_name: str,
+        system_paasta_config: SystemPaastaConfig,
     ) -> V1ResourceRequirements:
+        """
+        Sidecar request/limits are set with varying levels of priority, with
+        elements further down the list taking precedence:
+        * hard-coded paasta default
+        * SystemPaastaConfig
+        * per-service soaconfig overrides
+
+        Additionally, for the time being we do not expose a way to set
+        limits separately from requests - these values will always mirror
+        each other
+
+        NOTE: changing any of these will cause a bounce of all services that
+        run the sidecars affected by the resource change
+        """
         config = self.config_dict.get("sidecar_resource_requirements", {}).get(
             sidecar_name, {}
         )
+        sidecar_requirements_config = (
+            system_paasta_config.get_sidecar_requirements_config().get(
+                sidecar_name, DEFAULT_SIDECAR_REQUEST
+            )
+        )
         requests: KubeContainerResourceRequest = {
-            "cpu": 0.1,
-            "memory": "1024Mi",
-            "ephemeral-storage": "256Mi",
+            "cpu": sidecar_requirements_config.get("cpu"),
+            "memory": sidecar_requirements_config.get("memory"),
+            "ephemeral-storage": sidecar_requirements_config.get("ephemeral-storage"),
         }
         requests.update(config.get("requests", {}))
 

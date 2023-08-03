@@ -415,21 +415,26 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
+    # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken. Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
         """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
         secret_volumes = super().get_secret_volumes()
-        return [
-            TronSecretVolume(
+        tron_secret_volumes = []
+        for secret_volume in secret_volumes:
+            tron_secret_volume = TronSecretVolume(
                 secret_volume_name=self.get_secret_volume_name(
                     secret_volume["secret_name"]
                 ),
                 secret_name=secret_volume["secret_name"],
                 container_path=secret_volume["container_path"],
-                default_mode=secret_volume["default_mode"],
-                items=secret_volume["items"],
+                items=secret_volume.get("items", []),
             )
-            for secret_volume in secret_volumes
-        ]
+            # we have a different place where the default can come from (tron) and we don't want to insert the wrong default here
+            if "default_mode" in secret_volume:
+                tron_secret_volume["default_mode"] = secret_volume["default_mode"]
+
+            tron_secret_volumes.append(tron_secret_volume)
+        return tron_secret_volumes
 
     def get_namespace(self) -> str:
         """Get namespace from config, default to 'paasta'"""
