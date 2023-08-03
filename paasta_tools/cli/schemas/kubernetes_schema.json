@@ -486,6 +486,20 @@
                         }
                     }
                 },
+                "datastore_credentials": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "properties": {
+                        "mysql": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z][a-zA-Z0-9_.-]*$"
+                            },
+                            "uniqueItems": true
+                        }
+                    }
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
