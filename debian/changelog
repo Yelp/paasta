@@ -1,3 +1,11 @@
+paasta-tools (0.193.0) xenial; urgency=medium
+
+  * 0.193.0 tagged with 'make release'
+    Commit: Merge pull request #3647 from Yelp/COMPINFRA-2833  make
+    sidecar resource limit configurable
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Thu, 03 Aug 2023 04:38:50 -0700
+
 paasta-tools (0.192.0) xenial; urgency=medium
 
   * 0.192.0 tagged with 'make release'
