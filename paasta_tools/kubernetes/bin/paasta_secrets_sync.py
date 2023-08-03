@@ -25,6 +25,7 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Set
@@ -115,9 +116,14 @@ def parse_args() -> argparse.Namespace:
 
 
 @contextlib.contextmanager
-def set_env(**environ) -> None:
+def set_temporary_environment_variables(
+    **environ: Dict[str, str]
+) -> Generator[None, None, None]:
     """
-    :type environ: dict[str, unicode]
+    *Note the return value means "yields None, takes None, and when finished, returns None"*
+
+    Modifies the os.environ variable then yields this temporary state. Resets it when finished.
+
     :param environ: Environment variables to set
     """
     old_environ = dict(os.environ)  # ensure we're storing a copy
@@ -453,7 +459,9 @@ def sync_datastore_credentials(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
         datastore_credentials = instance_config.get_datastore_credentials()
-        with set_env(**datastore_credentials_vault_overrides):
+        with set_temporary_environment_variables(
+            **datastore_credentials_vault_overrides
+        ):
             # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
             # in order to use a custom vault shard. overriden temporarily in this context
             provider = get_secret_provider(
