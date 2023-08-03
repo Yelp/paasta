@@ -159,7 +159,14 @@ class SecretProvider(BaseSecretProvider):
         # clients.read returns None if not set
         # if it is set, it returns an object with { **metadata, data: {} }
         # eg lease_id, request_id, etc. we only care about 'data' here
-        entry = self.clients[self.ecosystems[0]].read(path)
+
+        client = self.clients[self.ecosystems[0]]
+
+        # there is a chance client is None (ie if the connection is invalid)
+        if client is None:
+            return None
+
+        entry = client.read(path)
 
         # returns one of 3 things:
         #   entry -> could be None
