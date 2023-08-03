@@ -13,7 +13,7 @@ from paasta_tools.kubernetes.bin.paasta_secrets_sync import parse_args
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_all_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_boto_secrets
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_crypto_secrets
-from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_database_credentials
+from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_datastore_credentials
 from paasta_tools.kubernetes.bin.paasta_secrets_sync import sync_secrets
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -829,7 +829,7 @@ def crypto_keys_patches():
 
 
 @pytest.fixture
-def database_credentials_patches():
+def datastore_credentials_patches():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.get_secret_provider",
         autospec=True,
@@ -867,7 +867,28 @@ def database_credentials_patches():
         )
 
 
-def test_sync_database_secrets(database_credentials_patches):
+@pytest.mark.parametrize(
+    "config_dict, expected_mock_create_or_update_call_count",
+    [
+        ({"datastore_credentials": {"mysql": ["credential1", "credential2"]}}, 2),
+        (
+            {
+                "datastore_credentials": {
+                    "mysql": ["credential1", "credential2"],
+                    "cassandra": ["credential3"],
+                }
+            },
+            3,
+        ),
+        ({"datastore_credentials": {}}, 0),
+        ({}, 0),
+    ],
+)
+def test_sync_datastore_secrets(
+    datastore_credentials_patches,
+    config_dict,
+    expected_mock_create_or_update_call_count,
+):
     (
         mock_get_kubernetes_secret_signature,
         mock_create_secret,
@@ -877,8 +898,7 @@ def test_sync_database_secrets(database_credentials_patches):
         mock_config_loader,
         mock_config_loader_instances,
         mock_get_secret_provider,
-    ) = database_credentials_patches
-    config_dict = {"database_credentials": {"mysql": ["credential1", "credential2"]}}
+    ) = datastore_credentials_patches
     deployment = KubernetesDeploymentConfig(
         service="my-service",
         instance="my-instance",
@@ -892,15 +912,23 @@ def test_sync_database_secrets(database_credentials_patches):
         "mock-credential-password1": "password",
     }
     mock_config_loader_instances.return_value = [deployment]
-    assert sync_database_credentials(
-        kube_client=mock.Mock(),
-        cluster="pentos-devc",
-        service="u2",
-        secret_provider_name="faulty",
-        vault_cluster_config={},
-        soa_dir="/blah/blah",
-        vault_token_file="/.vault-token",
-    )
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.create_or_update_k8s_secret",
+        autospec=True,
+    ) as mock_create_or_update:
+        assert sync_datastore_credentials(
+            kube_client=mock.Mock(),
+            cluster="mega-cluster",
+            service="my-service",
+            secret_provider_name="faulty",
+            vault_cluster_config={},
+            soa_dir="/nail/blah",
+            vault_token_file="/.vault-token",
+        )
+        assert (
+            mock_create_or_update.call_count
+            == expected_mock_create_or_update_call_count
+        )
 
 
 @pytest.fixture()

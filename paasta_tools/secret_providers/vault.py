@@ -155,7 +155,7 @@ class SecretProvider(BaseSecretProvider):
         else:
             return None
 
-    def get_data_from_vault_path(self, path) -> Optional[str]:
+    def get_data_from_vault_path(self, path: str) -> Optional[dict]:
         # clients.read returns None if not set
         # if it is set, it returns an object with { **metadata, data: {} }
         # eg lease_id, request_id, etc. we only care about 'data' here

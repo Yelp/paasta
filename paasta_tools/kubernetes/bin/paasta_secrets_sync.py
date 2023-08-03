@@ -104,7 +104,7 @@ def parse_args() -> argparse.Namespace:
             "paasta-secret",
             "boto-key",
             "crypto-key",
-            "database-credentials",
+            "datastore-credentials",
         ],
         default="all",
         type=str,
@@ -120,7 +120,7 @@ def set_env(**environ) -> None:
     :type environ: dict[str, unicode]
     :param environ: Environment variables to set
     """
-    old_environ = dict(os.environ)
+    old_environ = dict(os.environ)  # ensure we're storing a copy
     os.environ.update(environ)
     try:
         yield
@@ -282,7 +282,7 @@ def sync_all_secrets(
     soa_dir: str,
     vault_token_file: str,
     secret_type: Literal[
-        "all", "paasta-secret", "crypto-key", "boto-key", "database-credentials"
+        "all", "paasta-secret", "crypto-key", "boto-key", "datastore-credentials"
     ] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
@@ -337,9 +337,9 @@ def sync_all_secrets(
             )
         )
 
-        sync_service_secrets["database-credentials"].append(
+        sync_service_secrets["datastore-credentials"].append(
             partial(
-                sync_database_credentials,
+                sync_datastore_credentials,
                 kube_client=kube_client,
                 cluster=cluster,
                 service=service,
@@ -356,7 +356,7 @@ def sync_all_secrets(
             )
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
-            # note that since database-credentials are in a different vault, they're not synced as part of 'all'
+            # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
         else:
             results.append(all(sync() for sync in sync_service_secrets[secret_type]))
 
@@ -434,7 +434,7 @@ def sync_secrets(
     return True
 
 
-def sync_database_credentials(
+def sync_datastore_credentials(
     kube_client: KubeClient,
     cluster: str,
     service: str,
@@ -445,15 +445,15 @@ def sync_database_credentials(
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     system_paasta_config = load_system_paasta_config()
-    database_credentials_vault_overrides = (
-        system_paasta_config.get_database_credentials_vault_overrides()
+    datastore_credentials_vault_overrides = (
+        system_paasta_config.get_datastore_credentials_vault_overrides()
     )
 
     for instance_config in config_loader.instance_configs(
         cluster=cluster, instance_type_class=KubernetesDeploymentConfig
     ):
-        database_credentials = instance_config.get_database_credentials()
-        with set_env(**database_credentials_vault_overrides):
+        datastore_credentials = instance_config.get_datastore_credentials()
+        with set_env(**datastore_credentials_vault_overrides):
             # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
             # in order to use a custom vault shard. overriden temporarily in this context
             provider = get_secret_provider(
@@ -469,9 +469,9 @@ def sync_database_credentials(
                 },
             )
 
-        for dstore, credentials in database_credentials.items():
+        for datastore, credentials in datastore_credentials.items():
             for credential in credentials:
-                vault_path = f"secrets/database/{dstore}/{credential}"
+                vault_path = f"secrets/datastore/{datastore}/{credential}"
                 secrets = provider.get_data_from_vault_path(vault_path)
                 if not secrets:
                     # no secrets found at this path. skip syncing
@@ -499,11 +499,11 @@ def sync_database_credentials(
 
                 create_or_update_k8s_secret(
                     service=service,
-                    signature_name=instance_config.get_database_credentials_signature_name(
-                        dstore=dstore, credential=credential
+                    signature_name=instance_config.get_datastore_credentials_signature_name(
+                        datastore=datastore, credential=credential
                     ),
-                    secret_name=instance_config.get_database_credentials_secret_name(
-                        dstore=dstore, credential=credential
+                    secret_name=instance_config.get_datastore_credentials_secret_name(
+                        datastore=datastore, credential=credential
                     ),
                     get_secret_data=(lambda: secret_data),
                     secret_signature=_get_dict_signature(secret_data),

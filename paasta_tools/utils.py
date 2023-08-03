@@ -2562,12 +2562,12 @@ class SystemPaastaConfig:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
 
-    def get_database_credentials_vault_overrides(self) -> Optional[str]:
+    def get_datastore_credentials_vault_overrides(self) -> Optional[str]:
         """In order to use different Vault shards, vault-tools allows you to override
         environment variables (CA, token file, and URL). DB credentials are stored in
         a different shard to minimize the impact on the core Vault shard (which has
         size restrictions derived from Zookeeper limitations)."""
-        return self.config_dict.get("database_credentials_vault_env_overrides", {})
+        return self.config_dict.get("datastore_credentials_vault_env_overrides", {})
 
     def get_vault_environment(self) -> Optional[str]:
         """Get the environment name for the vault cluster
