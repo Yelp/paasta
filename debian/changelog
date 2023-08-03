@@ -1,3 +1,17 @@
+paasta-tools (0.193.1) xenial; urgency=medium
+
+  * 0.193.1 tagged with 'make release'
+    Commit: MLCOMPUTE-699 | mesos param deprecation and
+    service_configuration_lib version upgrade (#3634)  * MLCOMPUTE-699 |
+    remove obsolete mesos param  * MLCOMPUTE-699 | process space
+    separated spark configs correctly, upgrade service-configuration-lib
+    version  * MLCOMPUTE-699 | fix Spark tests  * MLCOMPUTE-699 |
+    changes corresponding to service_configuration_lib 2.18.0  *
+    MLCOMPUTE-951 | fix mocking in spark tests  ---------  Co-authored-
+    by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 03 Aug 2023 10:07:01 -0700
+
 paasta-tools (0.193.0) xenial; urgency=medium
 
   * 0.193.0 tagged with 'make release'
