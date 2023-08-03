@@ -349,6 +349,17 @@ class DockerParameter(TypedDict):
     value: str
 
 
+KubeContainerResourceRequest = TypedDict(
+    "KubeContainerResourceRequest",
+    {
+        "cpu": float,
+        "memory": str,
+        "ephemeral-storage": str,
+    },
+    total=False,
+)
+
+
 def safe_deploy_blacklist(input: UnsafeDeployBlacklist) -> DeployBlacklist:
     return [(t, l) for t, l in input]
 
@@ -2017,6 +2028,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
+    sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
 
 
@@ -2096,6 +2108,11 @@ class SystemPaastaConfig:
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
+
+    def get_sidecar_requirements_config(
+        self,
+    ) -> Dict[str, KubeContainerResourceRequest]:
+        return self.config_dict.get("sidecar_requirements_config", {})
 
     def get_tron_default_pool_override(self) -> str:
         """Get the default pool override variable defined in this host's cluster config file.
