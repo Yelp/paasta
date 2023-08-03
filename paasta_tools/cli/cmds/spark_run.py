@@ -17,12 +17,11 @@ from typing import Union
 
 import yaml
 from boto3.exceptions import Boto3Error
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
-from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
@@ -723,6 +722,9 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
         # mrjob use separate options to configure master
         if is_mrjob and opt == "spark.master":
             continue
+        # Process Spark configs with multiple space separated values to be in single quotes
+        if isinstance(val, str) and " " in val:
+            val = f"'{val}'"
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
 
@@ -901,7 +903,8 @@ def configure_and_run_docker_container(
         print(dashboard_url_msg)
         log.info(webui_url_msg)
         log.info(dashboard_url_msg)
-        history_server_url = get_history_url(spark_conf)
+        spark_conf_builder = spark_config.SparkConfBuilder()
+        history_server_url = spark_conf_builder.get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
@@ -1229,7 +1232,6 @@ def paasta_spark_run(args):
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
-    needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(
         args.spark_args,
         pod_template_path,
@@ -1260,7 +1262,8 @@ def paasta_spark_run(args):
         .get_eks_cluster_aliases()
         .get(args.cluster, args.cluster)
     )
-    spark_conf = get_spark_conf(
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
         docker_img=docker_image_digest,
@@ -1271,7 +1274,6 @@ def paasta_spark_run(args):
         paasta_instance=paasta_instance,
         extra_volumes=volumes,
         aws_creds=aws_creds,
-        needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=use_eks,

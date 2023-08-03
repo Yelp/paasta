@@ -930,7 +930,8 @@ class TestTronTools:
         assert result["env"]["SHELL"] == "/bin/bash"
         assert isinstance(result["docker_parameters"], list)
 
-    def test_format_tron_action_dict_spark(self):
+    @mock.patch("paasta_tools.spark_tools.spark_config.SparkConfBuilder", autospec=True)
+    def test_format_tron_action_dict_spark(self, mock_spark_conf_builder):
         action_dict = {
             "iam_role_provider": "aws",
             "iam_role": "arn:aws:iam::000000000000:role/some_role",
@@ -1021,6 +1022,15 @@ class TestTronTools:
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
         ):
+            mock_spark_conf_builder.return_value._adjust_spark_requested_resources.return_value = {
+                "spark.executor.instances": "2",
+                "spark.kubernetes.executor.limit.cores": "2",
+                "spark.scheduler.maxRegisteredResourcesWaitingTime": "15min",
+                "spark.task.cpus": "1",
+                "spark.sql.shuffle.partitions": "12",
+                "spark.sql.files.minPartitionNum": "12",
+                "spark.default.parallelism": "12",
+            }
             result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
 
         assert result == {
@@ -1067,9 +1077,8 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/group "
             "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
             # coreml adjustments
-            "--conf spark.executor.instances=1 "
-            "--conf spark.kubernetes.allocation.batch.size=512 "
-            "--conf spark.kubernetes.executor.limit.cores=1 "
+            "--conf spark.executor.instances=2 "
+            "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
             "--conf spark.task.cpus=1 "
             "--conf spark.sql.shuffle.partitions=12 "
