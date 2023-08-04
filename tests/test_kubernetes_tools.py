@@ -1423,7 +1423,7 @@ class TestKubernetesDeploymentConfig:
             assert volumes is None
 
     @pytest.mark.parametrize(
-        "config_dict, expected_volume_count",
+        "config_dict, expected_secret_mount_items_count",
         [
             ({"datastore_credentials": {"mysql": ["credential1", "credential2"]}}, 2),
             ({"datastore_credentials": {"mysql": ["credential3"]}}, 1),
@@ -1439,7 +1439,7 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_get_datastore_credentials_secrets_volumes_exists(
-        self, config_dict, expected_volume_count
+        self, config_dict, expected_secret_mount_items_count
     ):
         deployment = KubernetesDeploymentConfig(
             service="my-service",
@@ -1450,8 +1450,10 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        volumes = deployment.get_datastore_credentials_secrets_volumes()
-        assert len(volumes) == expected_volume_count
+        secret_mount_items = (
+            deployment.get_datastore_credentials_secrets_volume().secret.items
+        )
+        assert len(secret_mount_items) == expected_secret_mount_items_count
 
     @pytest.mark.parametrize(
         "config_dict",
@@ -1471,8 +1473,13 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        volumes = deployment.get_datastore_credentials_secrets_volumes()
-        assert len(volumes) == 0
+        if len(config_dict) == 0:
+            assert deployment.get_datastore_credentials_secrets_volume() is None
+        else:
+            secret_items = (
+                deployment.get_datastore_credentials_secrets_volume().secret.items
+            )
+            assert len(secret_items) == 0
 
     @pytest.mark.parametrize(
         "config_dict",

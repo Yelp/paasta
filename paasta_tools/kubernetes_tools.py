@@ -1520,11 +1520,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if crypto_volume:
             pod_volumes.append(crypto_volume)
 
-        datastore_credentials_secrets_volumes = (
-            self.get_datastore_credentials_secrets_volumes()
+        datastore_credentials_secrets_volume = (
+            self.get_datastore_credentials_secrets_volume()
         )
-        for volume in datastore_credentials_secrets_volumes:
-            pod_volumes.append(volume)
+        if datastore_credentials_secrets_volume:
+            pod_volumes.append(datastore_credentials_secrets_volume)
 
         return pod_volumes
 
@@ -1532,57 +1532,56 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         datastore_credentials = self.config_dict.get("datastore_credentials", {})
         return datastore_credentials
 
-    def get_datastore_credentials_secret_name(
-        self, datastore: str, credential: str
-    ) -> str:
+    def get_datastore_credentials_secret_name(self) -> str:
         return _get_secret_name(
             self.get_namespace(),
             "datastore-credentials",
             self.get_service(),
-            f"{datastore}-{credential}",
+            self.get_instance(),
         )
 
-    def get_datastore_credentials_volume_name(
-        self, datastore: str, credential: str
-    ) -> str:
-        return limit_size_with_hash(
-            name=f"datastore-credentials-volume-{datastore}-{credential}-{self.get_sanitised_service_name()}".replace(
-                "_", "--"
-            )
-        )
-
-    def get_datastore_credentials_secrets_volumes(self) -> List[V1Volume]:
+    def get_datastore_credentials_volume_name(self) -> str:
         """
-        For each credential in the soaconfig, find the corresponding secret and volume names
-        and create the associated volumes, one per credential
+        Volume names must abide to DNS mappings of 63 chars or less, so we limit it here and replace _ with --.
+        """
+        prefix = "datastore-credentials-volume"
+        service_name = self.get_sanitised_service_name()
+        instance_name = self.get_sanitised_instance_name()
+        return limit_size_with_hash(
+            name=f"{prefix}-{service_name}-{instance_name}".replace("_", "--")
+        )
+
+    def get_datastore_credentials_secrets_volume(self) -> List[V1Volume]:
+        """
+        All credentials are stored in 1 Kubernetes Secret, which are mapped on an item->path
+        structure to /datastore/<datastore>/<credential>/<password file>.
         """
         datastore_credentials = self.get_datastore_credentials()
         if not datastore_credentials:
-            return []
+            return None
 
-        result = []
+        secrets_with_custom_mountpaths = []
         for datastore, credentials in datastore_credentials.items():
             for credential in credentials:
-                volume_name = self.get_datastore_credentials_volume_name(
-                    datastore=datastore, credential=credential
-                )
-                secret_name = self.get_datastore_credentials_secret_name(
-                    datastore=datastore, credential=credential
+                secrets_with_custom_mountpaths.append(
+                    {
+                        "key": get_vault_key_secret_name(
+                            f"secrets/datastore/{datastore}/{credential}"
+                        ),
+                        "mode": mode_to_int("0444"),
+                        "path": f"{datastore}/{credential}/credentials",
+                    }
                 )
 
-                # map the entirety of this secret to the volume name
-                result.append(
-                    V1Volume(
-                        name=volume_name,
-                        secret=V1SecretVolumeSource(
-                            secret_name=secret_name,
-                            default_mode=mode_to_int("0444"),
-                            optional=False,
-                        ),
-                        # note: no 'items' key here to map all secret key/value pairs to files of the same name
-                    )
-                )
-        return result
+        return V1Volume(
+            name=self.get_datastore_credentials_volume_name(),
+            secret=V1SecretVolumeSource(
+                secret_name=self.get_datastore_credentials_secret_name(),
+                default_mode=mode_to_int("0444"),
+                items=secrets_with_custom_mountpaths,
+                optional=False,
+            ),
+        )
 
     def get_boto_volume(self) -> Optional[V1Volume]:
         required_boto_keys = self.config_dict.get("boto_keys", [])
@@ -1730,16 +1729,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 volume_mounts.append(mount)
 
         datastore_credentials = self.config_dict.get("datastore_credentials", {})
-        for datastore, credentials in datastore_credentials.items():
-            for credential in credentials:
-                mount = V1VolumeMount(
-                    mount_path=f"/datastore/{datastore}/{credential}",
-                    name=self.get_datastore_credentials_volume_name(
-                        datastore=datastore, credential=credential
-                    ),
+        if datastore_credentials:
+            volume_mounts.append(
+                V1VolumeMount(
+                    mount_path=f"/datastore",
+                    name=self.get_datastore_credentials_volume_name(),
                     read_only=True,
                 )
-                volume_mounts.append(mount)
+            )
 
         return volume_mounts
 
@@ -1772,14 +1769,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
         )
 
-    def get_datastore_credentials_signature_name(
-        self, datastore: str, credential: str
-    ) -> str:
+    def get_datastore_credentials_signature_name(self) -> str:
+        """
+        All datastore credentials are stored in a single Kubernetes secret, so they share a name
+        """
         return _get_secret_signature_name(
             self.get_namespace(),
             "datastore-credentials",
             self.get_service(),
-            key_name=f"{datastore}-{credential}",
+            # key is on instances, which get their own configurations
+            key_name=self.get_instance(),
         )
 
     def get_boto_secret_hash(self) -> Optional[str]:

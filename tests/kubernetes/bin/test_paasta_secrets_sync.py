@@ -19,6 +19,15 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
+@pytest.fixture(scope="session", autouse=True)
+def mock_time_sleep():
+    with mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
+        autospec=True,
+    ) as _fixture:
+        yield _fixture
+
+
 def test_parse_args():
     with mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.argparse.ArgumentParser",
@@ -611,10 +620,7 @@ def boto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
-        autospec=True,
-    ):
+    ) as mock_config_loader:
         yield (
             mock_open,
             mock_open.return_value.__enter__.return_value,
@@ -812,10 +818,7 @@ def crypto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
-        autospec=True,
-    ):
+    ) as mock_config_loader:
         yield (
             provider,
             mock_get_kubernetes_secret_signature,
@@ -851,10 +854,7 @@ def datastore_credentials_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader, mock.patch(
-        "paasta_tools.kubernetes.bin.paasta_secrets_sync.time.sleep",
-        autospec=True,
-    ):
+    ) as mock_config_loader:
         yield (
             mock_get_kubernetes_secret_signature,
             mock_create_secret,
@@ -868,9 +868,15 @@ def datastore_credentials_patches():
 
 
 @pytest.mark.parametrize(
-    "config_dict, expected_mock_create_or_update_call_count",
+    "config_dict, expected_keys_in_secrets_data",
     [
-        ({"datastore_credentials": {"mysql": ["credential1", "credential2"]}}, 2),
+        (
+            {"datastore_credentials": {"mysql": ["credential1", "credential2"]}},
+            [
+                "secrets-datastore-mysql-credential1",
+                "secrets-datastore-mysql-credential2",
+            ],
+        ),
         (
             {
                 "datastore_credentials": {
@@ -878,16 +884,20 @@ def datastore_credentials_patches():
                     "cassandra": ["credential3"],
                 }
             },
-            3,
+            [
+                "secrets-datastore-mysql-credential1",
+                "secrets-datastore-mysql-credential2",
+                "secrets-datastore-cassandra-credential3",
+            ],
         ),
-        ({"datastore_credentials": {}}, 0),
-        ({}, 0),
+        ({"datastore_credentials": {}}, []),
+        ({}, []),
     ],
 )
 def test_sync_datastore_secrets(
     datastore_credentials_patches,
     config_dict,
-    expected_mock_create_or_update_call_count,
+    expected_keys_in_secrets_data,
 ):
     (
         mock_get_kubernetes_secret_signature,
@@ -925,10 +935,12 @@ def test_sync_datastore_secrets(
             soa_dir="/nail/blah",
             vault_token_file="/.vault-token",
         )
-        assert (
-            mock_create_or_update.call_count
-            == expected_mock_create_or_update_call_count
-        )
+        # kwargs contains the calls to mock_create_or_update. check the secret_data in the lambda
+        _, _, kwargs = mock_create_or_update.mock_calls[0]
+        secret_data = kwargs["get_secret_data"]()
+        assert len(secret_data) == len(expected_keys_in_secrets_data)
+        for key in expected_keys_in_secrets_data:
+            assert key in secret_data
 
 
 @pytest.fixture()

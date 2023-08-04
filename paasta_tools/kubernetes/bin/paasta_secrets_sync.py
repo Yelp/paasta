@@ -449,8 +449,12 @@ def sync_datastore_credentials(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
-    overwrite_namespace: Optional[str],
+    overwrite_namespace: Optional[str] = None,
 ) -> bool:
+    """
+    Map all the passwords requested for this service-instance to a single Kubernetes Secret store.
+    Volume mounts will then map the associated secrets to their associated mount paths.
+    """
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
     system_paasta_config = load_system_paasta_config()
     datastore_credentials_vault_overrides = (
@@ -484,6 +488,7 @@ def sync_datastore_credentials(
                 },
             )
 
+        secret_data = {}
         for datastore, credentials in datastore_credentials.items():
             for credential in credentials:
                 vault_path = f"secrets/datastore/{datastore}/{credential}"
@@ -501,30 +506,19 @@ def sync_datastore_credentials(
                 # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
                 # may look like:
                 # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
-                secret_data = {}
                 secret_data[vault_key_path] = base64.b64encode(
                     json.dumps(secrets).encode("utf-8")
                 ).decode("utf-8")
 
-                if not secret_data:
-                    continue
-
-                # delay between k8s updates
-                time.sleep(0.3)
-
-                create_or_update_k8s_secret(
-                    service=service,
-                    signature_name=instance_config.get_datastore_credentials_signature_name(
-                        datastore=datastore, credential=credential
-                    ),
-                    secret_name=instance_config.get_datastore_credentials_secret_name(
-                        datastore=datastore, credential=credential
-                    ),
-                    get_secret_data=(lambda: secret_data),
-                    secret_signature=_get_dict_signature(secret_data),
-                    kube_client=kube_client,
-                    namespace=namespace,
-                )
+        create_or_update_k8s_secret(
+            service=service,
+            signature_name=instance_config.get_datastore_credentials_signature_name(),
+            secret_name=instance_config.get_datastore_credentials_secret_name(),
+            get_secret_data=(lambda: secret_data),
+            secret_signature=_get_dict_signature(secret_data),
+            kube_client=kube_client,
+            namespace=namespace,
+        )
 
     return True
 
@@ -580,8 +574,6 @@ def sync_crypto_secrets(
         if not secret_data:
             continue
 
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
         create_or_update_k8s_secret(
             service=service,
             signature_name=instance_config.get_crypto_secret_signature_name(),
@@ -629,8 +621,6 @@ def sync_boto_secrets(
         if not secret_data:
             continue
 
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
         create_or_update_k8s_secret(
             service=service,
             signature_name=instance_config.get_boto_secret_signature_name(),
@@ -661,6 +651,9 @@ def create_or_update_k8s_secret(
     """
     :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
     """
+    # In order to prevent slamming the k8s API, add some artificial delay here
+    time.sleep(0.3)
+
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
         signature_name=signature_name,
