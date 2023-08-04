@@ -164,7 +164,9 @@ class SecretProvider(BaseSecretProvider):
 
         # there is a chance client is None (ie if the connection is invalid)
         if client is None:
-            return None
+            raise Exception(
+                "possible Vault misconfiguration as client is not available"
+            )
 
         entry = client.read(path)
 
