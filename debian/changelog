@@ -1,3 +1,12 @@
+paasta-tools (0.193.3) xenial; urgency=medium
+
+  * 0.193.3 tagged with 'make release'
+    Commit: Merge pull request #3670 from Yelp/u/cuza/adding-paasta-
+    cassandraclusters-to-shared-secrets-namespaces  adding paasta-
+    cassandraclusters to shared secrets namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 14:13:50 -0700
+
 paasta-tools (0.193.2) xenial; urgency=medium
 
   * 0.193.2 tagged with 'make release'
