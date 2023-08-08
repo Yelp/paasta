@@ -18,6 +18,7 @@ import inspect
 import json
 import os
 import sqlite3
+import traceback
 from typing import Collection
 from typing import Iterable
 
@@ -60,6 +61,7 @@ def add_subparser(subparsers):
 
 
 IGNORED_METHODS = {
+    "get_desired_instances",
     "get_autoscaled_instances",
     "get_boto_secret_hash",
     "get_boto_volume",
@@ -233,7 +235,12 @@ def insert_instances(
             executor.submit(calculate_values_for_instance, x) for x in instance_configs
         ]
         for future in concurrent.futures.as_completed(futures):
-            cursor.execute(query, future.result())
+            try:
+                result = future.result()
+                cursor.execute(query, future.result())
+                print(result)
+            except Exception:
+                traceback.print_exc()
 
 
 def paasta_sql(args):
@@ -245,7 +252,7 @@ def paasta_sql(args):
     with sqlite3.connect(args.database) as conn:
         create_table_for_class(conn.cursor(), KubernetesDeploymentConfig)
 
-    clusters = list_clusters()
+    clusters = ["nova-prod"]
 
     for service in list_services(args.soa_dir):
         pscl = PaastaServiceConfigLoader(
