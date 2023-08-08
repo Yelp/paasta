@@ -1,3 +1,11 @@
+paasta-tools (0.193.2) xenial; urgency=medium
+
+  * 0.193.2 tagged with 'make release'
+    Commit: Merge pull request #3669 from Yelp/u/cuza/adding-shared-
+    secret-namespaces  Adding shared sectret k8s namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 13:28:51 -0700
+
 paasta-tools (0.193.1) xenial; urgency=medium
 
   * 0.193.1 tagged with 'make release'
