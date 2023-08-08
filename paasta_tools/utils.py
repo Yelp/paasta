@@ -147,6 +147,10 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
+SHARED_SECRETS_K8S_NAMESPACES = {
+    "paasta-spark",
+}
+
 CAPS_DROP = [
     "SETPCAP",
     "MKNOD",
