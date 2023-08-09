@@ -1,3 +1,128 @@
+paasta-tools (0.193.3) xenial; urgency=medium
+
+  * 0.193.3 tagged with 'make release'
+    Commit: Merge pull request #3670 from Yelp/u/cuza/adding-paasta-
+    cassandraclusters-to-shared-secrets-namespaces  adding paasta-
+    cassandraclusters to shared secrets namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 14:13:50 -0700
+
+paasta-tools (0.193.2) xenial; urgency=medium
+
+  * 0.193.2 tagged with 'make release'
+    Commit: Merge pull request #3669 from Yelp/u/cuza/adding-shared-
+    secret-namespaces  Adding shared sectret k8s namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 13:28:51 -0700
+
+paasta-tools (0.193.1) xenial; urgency=medium
+
+  * 0.193.1 tagged with 'make release'
+    Commit: MLCOMPUTE-699 | mesos param deprecation and
+    service_configuration_lib version upgrade (#3634)  * MLCOMPUTE-699 |
+    remove obsolete mesos param  * MLCOMPUTE-699 | process space
+    separated spark configs correctly, upgrade service-configuration-lib
+    version  * MLCOMPUTE-699 | fix Spark tests  * MLCOMPUTE-699 |
+    changes corresponding to service_configuration_lib 2.18.0  *
+    MLCOMPUTE-951 | fix mocking in spark tests  ---------  Co-authored-
+    by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 03 Aug 2023 10:07:01 -0700
+
+paasta-tools (0.193.0) xenial; urgency=medium
+
+  * 0.193.0 tagged with 'make release'
+    Commit: Merge pull request #3647 from Yelp/COMPINFRA-2833  make
+    sidecar resource limit configurable
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Thu, 03 Aug 2023 04:38:50 -0700
+
+paasta-tools (0.192.0) xenial; urgency=medium
+
+  * 0.192.0 tagged with 'make release'
+    Commit: Add support for eks cluster not matching --cluster spark arg
+    (#3636)  We may make a different cluster for spark in dev, but we
+    don"t really want to deal with a soaconfigs migration in case we
+    decide to rollback  This PR transparently sets the right eks cluster
+    params based on whether or not eks usage is toggled on or off
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 01 Aug 2023 12:24:29 -0700
+
+paasta-tools (0.191.2) xenial; urgency=medium
+
+  * 0.191.2 tagged with 'make release'
+    Commit: Merge pull request #3665 from Yelp/u/vit/fix-default_mode
+    SEC-18177: Enable secret_volumes in adhoc jobs
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 01 Aug 2023 09:55:38 -0700
+
+paasta-tools (0.191.0) xenial; urgency=medium
+
+  * 0.191.0 tagged with 'make release'
+    Commit: Merge pull request #3653 from Yelp/revert-3652-revert-3615-
+    u/vit/tron-1636-add-secret-volume  TRON-1636: Setup tron
+    secret_volumes in setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Mon, 31 Jul 2023 10:27:13 -0700
+
+paasta-tools (0.190.2) xenial; urgency=medium
+
+  * 0.190.2 tagged with 'make release'
+    Commit: Merge pull request #3663 from
+    Yelp/u/jfong/check_support_parallel_step  COMPINFRA-2938: Support
+    security-check in parallel steps
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 28 Jul 2023 12:51:55 -0700
+
+paasta-tools (0.190.1) xenial; urgency=medium
+
+  * 0.190.1 tagged with 'make release'
+    Commit: Merge pull request #3660 from Yelp/u/jfong/TRON-1968-master-
+    config  TRON-1968: Catch exceptions when updaitng MASTER config
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 25 Jul 2023 10:31:24 -0700
+
+paasta-tools (0.190.0) xenial; urgency=medium
+
+  * 0.190.0 tagged with 'make release'
+    Commit: Fixing setup_kubernetes_cr exception (#3658)  * Fixing
+    setup_kubernetes_cr exception  * Fixing tests and logic
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Thu, 20 Jul 2023 09:49:46 -0700
+
+paasta-tools (0.189.0) xenial; urgency=medium
+
+  * 0.189.0 tagged with 'make release'
+    Commit: Revert "TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace" (#3652)
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 05:26:34 -0700
+
+paasta-tools (0.188.0) xenial; urgency=medium
+
+  * 0.188.0 tagged with 'make release'
+    Commit: Fixing script bug (#3651)  * Fixing script bug
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 01:34:56 -0700
+
+paasta-tools (0.187.0) xenial; urgency=medium
+
+  * 0.187.0 tagged with 'make release'
+    Commit: Merge pull request #3615 from Yelp/u/vit/tron-1636-add-
+    secret-volume  TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 18 Jul 2023 14:12:30 -0700
+
+paasta-tools (0.186.0) xenial; urgency=medium
+
+  * 0.186.0 tagged with 'make release'
+    Commit: Adding extensions to update_crds function (#3649)  * Adding
+    extensions to update_crds function  * removing unused client  *
+    Fixing internal update crd  * fixing internal update crd
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 17 Jul 2023 01:23:12 -0700
+
 paasta-tools (0.185.0) xenial; urgency=medium
 
   * 0.185.0 tagged with 'make release'

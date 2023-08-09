@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.185.0
+RELEASE=0.193.3
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw -e PIP_INDEX_URL=$(PIP_INDEX_URL) yelp/paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -36,7 +36,8 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "yelp/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
-		--build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) -t "yelp/paastatools_$*_container" .
+	$(if $(filter-out $(PAASTA_ENV),YELP), --build-arg PIP_INDEX_URL=https://pypi.org/simple,) \
+		-t "yelp/paastatools_$*_container" .
 
 .SECONDEXPANSION:
 itest_%: package_$$*

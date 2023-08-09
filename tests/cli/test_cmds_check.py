@@ -417,6 +417,24 @@ def test_deploy_has_security_check_true(mock_pipeline_config, capfd):
     assert actual is True
 
 
+@patch("paasta_tools.cli.cmds.check.get_pipeline_config", autospec=True)
+def test_deploy_has_parallel_security_check_true(mock_pipeline_config, capfd):
+    mock_pipeline_config.return_value = [
+        {
+            "step": "initial",
+            "parallel": [
+                {"step": "test"},
+                {"step": "security-check"},
+            ],
+        },
+        {"step": "push-to-registry"},
+        {"step": "hab.canary", "trigger_next_step_manually": True},
+        {"step": "hab.main"},
+    ]
+    actual = deploy_has_security_check(service="fake_service", soa_dir="/fake/path")
+    assert actual is True
+
+
 @patch("paasta_tools.cli.cmds.check.get_instance_config", autospec=True)
 @patch("paasta_tools.cli.cmds.check.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.check.get_service_instance_list", autospec=True)

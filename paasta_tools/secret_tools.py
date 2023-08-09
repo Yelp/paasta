@@ -42,6 +42,14 @@ def is_shared_secret(env_var_val: str) -> bool:
     return env_var_val.startswith("SHARED_")
 
 
+def is_shared_secret_from_secret_name(soa_dir: str, secret_name: str) -> bool:
+    """Alternative way of figuring if a secret is shared, directly from the secret_name."""
+    secret_path = os.path.join(
+        soa_dir, SHARED_SECRET_SERVICE, "secrets", f"{secret_name}.json"
+    )
+    return os.path.isfile(secret_path)
+
+
 def get_hmac_for_secret(
     env_var_val: str, service: str, soa_dir: str, secret_environment: str
 ) -> Optional[str]:

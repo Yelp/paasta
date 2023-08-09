@@ -147,6 +147,8 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
+SHARED_SECRETS_K8S_NAMESPACES = {"paasta-spark", "paasta-cassandraclusters"}
+
 CAPS_DROP = [
     "SETPCAP",
     "MKNOD",
@@ -273,6 +275,10 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
+class TronSecretVolume(SecretVolume, total=False):
+    secret_volume_name: str
+
+
 class MonitoringDict(TypedDict, total=False):
     alert_after: Union[str, float]
     check_every: str
@@ -343,6 +349,17 @@ class BranchDictV2(TypedDict):
 class DockerParameter(TypedDict):
     key: str
     value: str
+
+
+KubeContainerResourceRequest = TypedDict(
+    "KubeContainerResourceRequest",
+    {
+        "cpu": float,
+        "memory": str,
+        "ephemeral-storage": str,
+    },
+    total=False,
+)
 
 
 def safe_deploy_blacklist(input: UnsafeDeployBlacklist) -> DeployBlacklist:
@@ -2013,6 +2030,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
+    sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
+    eks_cluster_aliases: Dict[str, str]
 
 
 def load_system_paasta_config(
@@ -2091,6 +2110,11 @@ class SystemPaastaConfig:
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
+
+    def get_sidecar_requirements_config(
+        self,
+    ) -> Dict[str, KubeContainerResourceRequest]:
+        return self.config_dict.get("sidecar_requirements_config", {})
 
     def get_tron_default_pool_override(self) -> str:
         """Get the default pool override variable defined in this host's cluster config file.
@@ -2739,6 +2763,9 @@ class SystemPaastaConfig:
 
     def get_cluster_aliases(self) -> Dict[str, str]:
         return self.config_dict.get("cluster_aliases", {})
+
+    def get_eks_cluster_aliases(self) -> Dict[str, str]:
+        return self.config_dict.get("eks_cluster_aliases", {})
 
     def get_cluster_pools(self) -> Dict[str, List[str]]:
         return self.config_dict.get("allowed_pools", {})

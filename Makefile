@@ -22,42 +22,41 @@ else
 endif
 
 ifeq ($(PAASTA_ENV),YELP)
-	export PIP_INDEX_URL ?= https://pypi.yelpcorp.com/simple
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 else
-	export PIP_INDEX_URL ?= https://pypi.python.org/simple
 	export DOCKER_REGISTRY ?= ""
+	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
 endif
 
 .PHONY: all docs test itest k8s_itests quick-test
 
 dev: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL)
+	.paasta/bin/tox
 
 docs: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e docs
+	.paasta/bin/tox -e docs
 
 test: .paasta/bin/activate
 	if [ "$(PAASTA_ENV)" != "YELP" ]; then \
-		.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests; \
+		.paasta/bin/tox -e tests; \
 	else \
-		.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests-yelpy; \
+		.paasta/bin/tox -e tests-yelpy; \
 	fi
 
 test-yelpy: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests-yelpy
+	.paasta/bin/tox -e tests-yelpy
 
 test-not-yelpy: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e tests
+	.paasta/bin/tox -e tests
 
 quick-test: .tox/py37-linux
 	TZ=UTC .tox/py37-linux/bin/py.test --last-failed -x -- tests
 
 .tox/py37-linux: .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL)
+	.paasta/bin/tox
 
 dev-api: .tox/py37-linux
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e dev-api
+	.paasta/bin/tox -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
 	test -d .paasta/bin/activate || virtualenv -p python3.7 .paasta
@@ -69,7 +68,7 @@ dev-api: .tox/py37-linux
 	touch .paasta/bin/activate
 
 itest: test .paasta/bin/activate
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e general_itests
+	.paasta/bin/tox -e general_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -150,7 +149,7 @@ generate_deployments_for_service: | soa_config_playground .tox/py37-linux
 
 .PHONY: playground-api
 playground-api: .tox/py37-linux | soa_config_playground
-	.paasta/bin/tox -i $(PIP_INDEX_URL) -e playground-api
+	.paasta/bin/tox -e playground-api
 
 .PHONY: setup-kubernetes-job
 setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service

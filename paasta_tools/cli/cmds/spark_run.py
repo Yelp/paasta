@@ -17,12 +17,11 @@ from typing import Union
 
 import yaml
 from boto3.exceptions import Boto3Error
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
-from service_configuration_lib.spark_config import get_history_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
-from service_configuration_lib.spark_config import get_spark_conf
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
@@ -723,6 +722,9 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
         # mrjob use separate options to configure master
         if is_mrjob and opt == "spark.master":
             continue
+        # Process Spark configs with multiple space separated values to be in single quotes
+        if isinstance(val, str) and " " in val:
+            val = f"'{val}'"
         spark_config_entries.append(f"{conf_option} {opt}={val}")
     return " ".join(spark_config_entries)
 
@@ -901,7 +903,8 @@ def configure_and_run_docker_container(
         print(dashboard_url_msg)
         log.info(webui_url_msg)
         log.info(dashboard_url_msg)
-        history_server_url = get_history_url(spark_conf)
+        spark_conf_builder = spark_config.SparkConfBuilder()
+        history_server_url = spark_conf_builder.get_history_url(spark_conf)
         if history_server_url:
             history_server_url_msg = (
                 f"\nAfter the job is finished, you can find the spark UI from {history_server_url}\n"
@@ -1101,8 +1104,28 @@ def _validate_pool(args, system_paasta_config):
 
 
 def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
+    """
+    Annoyingly, there's two layers of aliases: one to figure out what
+    k8s server url to use (this one) and another to figure out what
+    soaconfigs filename to use ;_;
+
+    This exists so that we can map something like `--cluster pnw-devc`
+    into spark-pnw-devc's k8s apiserver url without needing to update
+    any soaconfigs/alter folk's muscle memory.
+
+    Ideally we can get rid of this entirely once spark-run reads soaconfigs
+    in a manner more closely aligned to what we do with other paasta workloads
+    (i.e., have it automatically determine where to run based on soaconfigs
+    filenames - and not rely on explicit config)
+    """
+    realized_cluster = (
+        load_system_paasta_config().get_eks_cluster_aliases().get(cluster, cluster)
+    )
     return (
-        load_system_paasta_config().get_kube_clusters().get(cluster, {}).get("server")
+        load_system_paasta_config()
+        .get_kube_clusters()
+        .get(realized_cluster, {})
+        .get("server")
     )
 
 
@@ -1137,14 +1160,16 @@ def paasta_spark_run(args):
     if not _validate_pool(args, system_paasta_config):
         return 1
 
+    # annoyingly, there's two layers of aliases: one for the soaconfigs to read from
+    # (that's this alias lookup) - and then another layer later when figuring out what
+    # k8s server url to use ;_;
+    cluster = system_paasta_config.get_cluster_aliases().get(args.cluster, args.cluster)
     # Use the default spark:client instance configs if not provided
     try:
         instance_config = get_instance_config(
             service=args.service,
             instance=args.instance,
-            cluster=system_paasta_config.get_cluster_aliases().get(
-                args.cluster, args.cluster
-            ),
+            cluster=cluster,
             load_deployments=args.build is False and args.image is None,
             soa_dir=args.yelpsoa_config_root,
         )
@@ -1203,11 +1228,10 @@ def paasta_spark_run(args):
         document = POD_TEMPLATE.format(
             spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
         )
-        parsed_pod_template = yaml.load(document)
+        parsed_pod_template = yaml.safe_load(document)
         with open(pod_template_path, "w") as f:
             yaml.dump(parsed_pod_template, f)
 
-    needs_docker_cfg = not args.build
     user_spark_opts = _parse_user_spark_args(
         args.spark_args,
         pod_template_path,
@@ -1231,18 +1255,25 @@ def paasta_spark_run(args):
 
     use_eks = decide_final_eks_toggle_state(args.use_eks_override)
     k8s_server_address = _get_k8s_url_for_cluster(args.cluster) if use_eks else None
-    spark_conf = get_spark_conf(
+    paasta_cluster = (
+        args.cluster
+        if not use_eks
+        else load_system_paasta_config()
+        .get_eks_cluster_aliases()
+        .get(args.cluster, args.cluster)
+    )
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
         spark_app_base_name=app_base_name,
         docker_img=docker_image_digest,
         user_spark_opts=user_spark_opts,
-        paasta_cluster=args.cluster,
+        paasta_cluster=paasta_cluster,
         paasta_pool=args.pool,
         paasta_service=args.service,
         paasta_instance=paasta_instance,
         extra_volumes=volumes,
         aws_creds=aws_creds,
-        needs_docker_cfg=needs_docker_cfg,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=use_eks,

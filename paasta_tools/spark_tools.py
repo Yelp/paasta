@@ -12,8 +12,7 @@ from typing import Set
 
 import yaml
 from mypy_extensions import TypedDict
-from service_configuration_lib.spark_config import _adjust_spark_requested_resources
-from service_configuration_lib.spark_config import _append_sql_partitions_conf
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import DEFAULT_SPARK_RUN_CONFIG
 
 from paasta_tools.utils import DockerVolume
@@ -135,7 +134,8 @@ def adjust_spark_resources(
     """
     # TODO: would be nice if _adjust_spark_requested_resources only returned the stuff it
     # modified
-    return _adjust_spark_requested_resources(
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    return spark_conf_builder._adjust_spark_requested_resources(
         # additionally, _adjust_spark_requested_resources modifies the dict you pass in
         # so we make a copy to make things less confusing - consider dropping the
         # service_configuration_lib dependency here so that we can do things in a slightly
@@ -154,7 +154,8 @@ def setup_shuffle_partitions(spark_args: Dict[str, str]) -> Dict[str, str]:
     """
     # as above, this function also returns everything + mutates the passed in dictionary
     # which is not ideal
-    return _append_sql_partitions_conf(
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    return spark_conf_builder._append_sql_partitions_conf(
         spark_opts=copy.copy(spark_args),
     )
 
