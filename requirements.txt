@@ -5,7 +5,7 @@ argcomplete==0.8.1
 argparse==1.4.0
 arrow==1.1.0
 async-timeout==3.0.0
-attrs==17.4.0
+attrs==19.2.0
 binaryornot==0.4.4
 boto==2.48.0
 boto3==1.11.11

@@ -49,17 +49,17 @@ test-yelpy: .paasta/bin/activate
 test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -e tests
 
-quick-test: .tox/py37-linux
-	TZ=UTC .tox/py37-linux/bin/py.test --last-failed -x -- tests
+quick-test: .tox/py38-linux
+	TZ=UTC .tox/py38-linux/bin/py.test --last-failed -x -- tests
 
-.tox/py37-linux: .paasta/bin/activate
+.tox/py38-linux: .paasta/bin/activate
 	.paasta/bin/tox
 
-dev-api: .tox/py37-linux
+dev-api: .tox/py38-linux
 	.paasta/bin/tox -e dev-api
 
 .paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.7 .paasta
+	test -d .paasta/bin/activate || virtualenv -p python3.8 .paasta
 	.paasta/bin/pip install -U \
 		pip==18.1 \
 		virtualenv==16.2.0 \
@@ -102,7 +102,7 @@ k8s_itests: .paasta/bin/activate
 	make -C k8s_itests all
 
 .PHONY: k8s_fake_cluster
-k8s_fake_cluster: .tox/py37-linux
+k8s_fake_cluster: .tox/py38-linux
 	make -C k8s_itests .fake_cluster
 
 .PHONY: k8s_clean
@@ -133,22 +133,22 @@ swagger-validate:
 		-i paasta_tools/api/api_docs/swagger.json
 
 .PHONY: vscode_settings
-vscode_settings: .paasta/bin/activate .tox/py37-linux
+vscode_settings: .paasta/bin/activate .tox/py38-linux
 	.paasta/bin/python paasta_tools/contrib/ide_helper.py
 
-etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py37-linux
-	.tox/py37-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
+etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py38-linux
+	.tox/py38-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
 .PHONY: generate_deployments_for_service
-generate_deployments_for_service: | soa_config_playground .tox/py37-linux
+generate_deployments_for_service: | soa_config_playground .tox/py38-linux
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py37-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
-	.tox/py37-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
+	.tox/py38-linux/bin/python -m paasta_tools.cli.cli list -a -y ./soa_config_playground | shuf | xargs -n 1 --no-run-if-empty \
+	.tox/py38-linux/bin/python -m paasta_tools.generate_deployments_for_service -d ./soa_config_playground -v -s
 
 .PHONY: playground-api
-playground-api: .tox/py37-linux | soa_config_playground
+playground-api: .tox/py38-linux | soa_config_playground
 	.paasta/bin/tox -e playground-api
 
 .PHONY: setup-kubernetes-job
@@ -156,14 +156,14 @@ setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	.tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py37-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
+	.tox/py38-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py38-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
 .PHONY: paasta-secrets-sync
 paasta-secrets-sync: setup-kubernetes-job .vault-token
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
-	{ .tox/py37-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py37-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
+	{ .tox/py38-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py38-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
 
 .vault-token:
 	export VAULT_ADDR=https://vault-devc.yelpcorp.com:8200 ;\
