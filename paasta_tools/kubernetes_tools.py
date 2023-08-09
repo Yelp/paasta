@@ -1540,7 +1540,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_instance(),
         )
 
-    def get_datastore_credentials_volume_name(self) -> str:
+    def get_datastore_secret_volume_name(self) -> str:
         """
         Volume names must abide to DNS mappings of 63 chars or less, so we limit it here and replace _ with --.
         """
@@ -1580,7 +1580,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 )
 
         return V1Volume(
-            name=self.get_datastore_credentials_volume_name(),
+            name=self.get_datastore_secret_volume_name(),
             secret=V1SecretVolumeSource(
                 secret_name=self.get_datastore_credentials_secret_name(),
                 default_mode=mode_to_int("0444"),
@@ -1740,7 +1740,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 volume_mounts.append(
                     V1VolumeMount(
                         mount_path=f"/datastore",
-                        name=self.get_datastore_credentials_volume_name(),
+                        name=self.get_datastore_secret_volume_name(),
                         read_only=True,
                     )
                 )
