@@ -1,3 +1,11 @@
+paasta-tools (0.193.4) xenial; urgency=medium
+
+  * 0.193.4 tagged with 'make release'
+    Commit: Merge pull request #3673 from ymilki/gunicorn-sidecar-image-
+    url  Fix `gunicorn_exporter_sidecar_image_url`
+
+ -- Jonathan Chu <jrchu@yelp.com>  Wed, 09 Aug 2023 15:56:28 -0700
+
 paasta-tools (0.193.3) xenial; urgency=medium
 
   * 0.193.3 tagged with 'make release'
