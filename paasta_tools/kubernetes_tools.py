@@ -1545,10 +1545,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         Volume names must abide to DNS mappings of 63 chars or less, so we limit it here and replace _ with --.
         """
         prefix = "datastore-credentials-volume"
-        service_name = self.get_sanitised_service_name()
-        instance_name = self.get_sanitised_instance_name()
-        return limit_size_with_hash(
-            name=f"{prefix}-{service_name}-{instance_name}".replace("_", "--")
+        return self.get_sanitised_volume_name(
+            f"secret-datastore-creds-{self.get_sanitised_deployment_name()}", length_limit=63
         )
 
     def get_datastore_credentials_secrets_volume(self) -> List[V1Volume]:
