@@ -1450,10 +1450,15 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        secret_mount_items = (
-            deployment.get_datastore_credentials_secrets_volume().secret.items
-        )
-        assert len(secret_mount_items) == expected_secret_mount_items_count
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ):
+            secret_mount_items = (
+                deployment.get_datastore_credentials_secrets_volume().secret.items
+            )
+            assert len(secret_mount_items) == expected_secret_mount_items_count
 
     @pytest.mark.parametrize(
         "config_dict",
@@ -1473,13 +1478,18 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        if len(config_dict) == 0:
-            assert deployment.get_datastore_credentials_secrets_volume() is None
-        else:
-            secret_items = (
-                deployment.get_datastore_credentials_secrets_volume().secret.items
-            )
-            assert len(secret_items) == 0
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ):
+            if len(config_dict) == 0:
+                assert deployment.get_datastore_credentials_secrets_volume() is None
+            else:
+                secret_items = (
+                    deployment.get_datastore_credentials_secrets_volume().secret.items
+                )
+                assert len(secret_items) == 0
 
     @pytest.mark.parametrize(
         "config_dict",

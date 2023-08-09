@@ -488,7 +488,7 @@
                 },
                 "datastore_credentials": {
                     "type": "object",
-                    "additionalProperties": true,
+                    "additionalProperties": false,
                     "properties": {
                         "mysql": {
                             "type": "array",

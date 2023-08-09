@@ -1544,9 +1544,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         Volume names must abide to DNS mappings of 63 chars or less, so we limit it here and replace _ with --.
         """
-        prefix = "datastore-credentials-volume"
         return self.get_sanitised_volume_name(
-            f"secret-datastore-creds-{self.get_sanitised_deployment_name()}", length_limit=63
+            f"secret-datastore-creds-{self.get_sanitised_deployment_name()}",
+            length_limit=63,
         )
 
     def get_datastore_credentials_secrets_volume(self) -> List[V1Volume]:
@@ -1556,6 +1556,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         """
         datastore_credentials = self.get_datastore_credentials()
         if not datastore_credentials:
+            return None
+
+        # Assume k8s secret exists if its configmap signature exists
+        secret_hash = self.get_datastore_credentials_secret_hash()
+        if not secret_hash:
+            log.warning(
+                f"Expected to find datastore_credentials secret signature {self.get_datastore_credentials_secret_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+            )
             return None
 
         secrets_with_custom_mountpaths = []
@@ -1728,13 +1736,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         datastore_credentials = self.config_dict.get("datastore_credentials", {})
         if datastore_credentials:
-            volume_mounts.append(
-                V1VolumeMount(
-                    mount_path=f"/datastore",
-                    name=self.get_datastore_credentials_volume_name(),
-                    read_only=True,
+            if self.get_datastore_credentials_secret_hash():
+                volume_mounts.append(
+                    V1VolumeMount(
+                        mount_path=f"/datastore",
+                        name=self.get_datastore_credentials_volume_name(),
+                        read_only=True,
+                    )
                 )
-            )
 
         return volume_mounts
 
@@ -1790,6 +1799,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return get_secret_signature(
             kube_client=KubeClient(),
             signature_name=self.get_crypto_secret_signature_name(),
+            namespace=self.get_namespace(),
+        )
+
+    def get_datastore_credentials_secret_hash(self) -> Optional[str]:
+        return get_secret_signature(
+            kube_client=KubeClient(),
+            signature_name=self.get_datastore_credentials_signature_name(),
             namespace=self.get_namespace(),
         )
 
