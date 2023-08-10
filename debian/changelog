@@ -1,3 +1,11 @@
+paasta-tools (0.194.0) xenial; urgency=medium
+
+  * 0.194.0 tagged with 'make release'
+    Commit: Switch all references of py37 to py38 (#3672)  Python3.7 is
+    pretty old, we should at least be on 3.8
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Aug 2023 11:05:52 -0700
+
 paasta-tools (0.193.4) xenial; urgency=medium
 
   * 0.193.4 tagged with 'make release'
