@@ -1928,6 +1928,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster: str
     cr_owners: Dict[str, str]
     dashboard_links: Dict[str, Dict[str, str]]
+    datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist

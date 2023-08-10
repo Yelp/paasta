@@ -27,6 +27,7 @@ from typing import Callable
 from typing import Dict
 from typing import Generator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Set
 from typing import Tuple
@@ -110,7 +111,7 @@ def parse_args() -> argparse.Namespace:
         ],
         default="all",
         type=str,
-        help="Define which type of secret to add/update. Default is 'all'",
+        help="Define which type of secret to add/update. Default is 'all' (which does not include datastore-credentials)",
     )
     args = parser.parse_args()
     return args
@@ -118,7 +119,7 @@ def parse_args() -> argparse.Namespace:
 
 @contextlib.contextmanager
 def set_temporary_environment_variables(
-    **environ: Dict[str, str]
+    environ: Mapping[str, str]
 ) -> Generator[None, None, None]:
     """
     *Note the return value means "yields None, takes None, and when finished, returns None"*
@@ -471,9 +472,7 @@ def sync_datastore_credentials(
             else instance_config.get_namespace()
         )
         datastore_credentials = instance_config.get_datastore_credentials()
-        with set_temporary_environment_variables(
-            **datastore_credentials_vault_overrides
-        ):
+        with set_temporary_environment_variables(datastore_credentials_vault_overrides):
             # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
             # in order to use a custom vault shard. overriden temporarily in this context
             provider = get_secret_provider(
@@ -489,27 +488,29 @@ def sync_datastore_credentials(
                 },
             )
 
-        secret_data = {}
-        for datastore, credentials in datastore_credentials.items():
-            for credential in credentials:
-                vault_path = f"secrets/datastore/{datastore}/{credential}"
-                secrets = provider.get_data_from_vault_path(vault_path)
-                if not secrets:
-                    # no secrets found at this path. skip syncing
-                    log.debug(
-                        f"Warning: no secrets found at requested path {vault_path}."
-                    )
-                    continue
+            secret_data = {}
+            for datastore, credentials in datastore_credentials.items():
+                # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+                # https://github.com/python/mypy/issues/7178
+                for credential in credentials:  # type: ignore
+                    vault_path = f"secrets/datastore/{datastore}/{credential}"
+                    secrets = provider.get_data_from_vault_path(vault_path)
+                    if not secrets:
+                        # no secrets found at this path. skip syncing
+                        log.debug(
+                            f"Warning: no secrets found at requested path {vault_path}."
+                        )
+                        continue
 
-                # decrypt and save in secret_data
-                vault_key_path = get_vault_key_secret_name(vault_path)
+                    # decrypt and save in secret_data
+                    vault_key_path = get_vault_key_secret_name(vault_path)
 
-                # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
-                # may look like:
-                # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
-                secret_data[vault_key_path] = base64.b64encode(
-                    json.dumps(secrets).encode("utf-8")
-                ).decode("utf-8")
+                    # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
+                    # may look like:
+                    # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
+                    secret_data[vault_key_path] = base64.b64encode(
+                        json.dumps(secrets).encode("utf-8")
+                    ).decode("utf-8")
 
         create_or_update_k8s_secret(
             service=service,

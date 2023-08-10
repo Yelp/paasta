@@ -376,6 +376,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
+    datastore_credentials: DatastoreCredentialsConfig
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1574,7 +1575,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             length_limit=63,
         )
 
-    def get_datastore_credentials_secrets_volume(self) -> List[V1Volume]:
+    def get_datastore_credentials_secrets_volume(self) -> V1Volume:
         """
         All credentials are stored in 1 Kubernetes Secret, which are mapped on an item->path
         structure to /datastore/<datastore>/<credential>/<password file>.
@@ -1592,8 +1593,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         secrets_with_custom_mountpaths = []
+
         for datastore, credentials in datastore_credentials.items():
-            for credential in credentials:
+            # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+            # https://github.com/python/mypy/issues/7178
+            for credential in credentials:  # type: ignore
                 secrets_with_custom_mountpaths.append(
                     {
                         "key": get_vault_key_secret_name(
@@ -1759,7 +1763,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         break
                 volume_mounts.append(mount)
 
-        datastore_credentials = self.config_dict.get("datastore_credentials", {})
+        datastore_credentials = self.get_datastore_credentials()
         if datastore_credentials:
             if self.get_datastore_credentials_secret_hash():
                 volume_mounts.append(

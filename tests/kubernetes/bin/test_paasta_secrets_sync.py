@@ -854,7 +854,10 @@ def datastore_credentials_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         yield (
             mock_get_kubernetes_secret_signature,
             mock_create_secret,
