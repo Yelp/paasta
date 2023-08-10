@@ -37,7 +37,7 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.7-dev \
+        python3.8-dev \
         python-pip \
         python-tox \
         wget \

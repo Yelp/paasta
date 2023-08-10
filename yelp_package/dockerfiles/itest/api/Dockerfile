@@ -24,7 +24,7 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.7-dev \
+        python3.8-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -34,7 +34,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.7 --no-download
+RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 
