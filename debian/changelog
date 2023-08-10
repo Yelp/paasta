@@ -1,3 +1,14 @@
+paasta-tools (0.194.1) xenial; urgency=medium
+
+  * 0.194.1 tagged with 'make release'
+    Commit: Add kubernetes upper-bound for things using paasta as a
+    library (#3671)  This most often pops us as folks unable to use
+    paasta validate when they have the soaconfigs venv activated as pip
+    will grab the latest kuberentes version available - which is not
+    guaranteed to work with our code in paasta.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Aug 2023 14:39:56 -0700
+
 paasta-tools (0.194.0) xenial; urgency=medium
 
   * 0.194.0 tagged with 'make release'
