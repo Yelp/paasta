@@ -64,6 +64,7 @@ CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
 CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
+DEFAULT_DOCKER_SHM_SIZE = "64m"
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
 DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
@@ -182,6 +183,14 @@ def add_subparser(subparsers):
         help=(
             "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
             "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
+        ),
+        default=None,
+    )
+    list_parser.add_argument(
+        "--docker-shm-size",
+        help=(
+            f"Set docker shared memory size limit. Shared memory usage doesn't count towards the memory limit. Defaults to {DEFAULT_DOCKER_SHM_SIZE}. Example: 8g, 256m"
+            "Note: Shared memory and memory limit should not exceed the total memory in the pod."
         ),
         default=None,
     )
@@ -508,13 +517,15 @@ def get_docker_run_cmd(
     docker_cmd,
     nvidia,
     docker_memory_limit,
+    docker_shm_size,
     docker_cpu_limit,
 ):
     print(
-        f"Setting docker memory and cpu limits as {docker_memory_limit}, {docker_cpu_limit} core(s) respectively."
+        f"Setting docker memory, shared memory, and cpu limits as {docker_memory_limit}, {docker_shm_size}, and {docker_cpu_limit} core(s) respectively."
     )
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
+    cmd.append(f"--shm-size={docker_shm_size}")
     cmd.append(f"--cpus={docker_cpu_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
@@ -738,6 +749,7 @@ def run_docker_container(
     dry_run,
     nvidia,
     docker_memory_limit,
+    docker_shm_size,
     docker_cpu_limit,
 ) -> int:
 
@@ -749,6 +761,7 @@ def run_docker_container(
         docker_cmd=docker_cmd,
         nvidia=nvidia,
         docker_memory_limit=docker_memory_limit,
+        docker_shm_size=docker_shm_size,
         docker_cpu_limit=docker_cpu_limit,
     )
     docker_run_cmd = get_docker_run_cmd(**docker_run_args)
@@ -819,6 +832,17 @@ def _calculate_docker_memory_limit(
     return docker_memory_limit
 
 
+def _calculate_docker_shared_memory_size(shm_size: Optional[str]) -> str:
+    """In Order of preference:
+    1. Argument: --docker-shm-size
+    3. Default
+    """
+    if shm_size:
+        return shm_size
+
+    return DEFAULT_DOCKER_SHM_SIZE
+
+
 def _calculate_docker_cpu_limit(
     spark_conf: Mapping[str, str], cpu_limit: Optional[str]
 ) -> str:
@@ -847,6 +871,7 @@ def configure_and_run_docker_container(
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
     )
+    docker_shm_size = _calculate_docker_shared_memory_size(args.docker_shm_size)
     docker_cpu_limit = _calculate_docker_cpu_limit(
         spark_conf,
         args.docker_cpu_limit,
@@ -959,6 +984,7 @@ def configure_and_run_docker_container(
         dry_run=args.dry_run,
         nvidia=args.nvidia,
         docker_memory_limit=docker_memory_limit,
+        docker_shm_size=docker_shm_size,
         docker_cpu_limit=docker_cpu_limit,
     )
 
