@@ -1202,7 +1202,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     secret_env_vars[k] = v
         return secret_env_vars, shared_secret_env_vars
 
-    def get_container_env(self) -> Sequence[V1EnvVar]:
+    def get_container_env(
+        self, sidecars: Sequence[V1Container] = ()
+    ) -> Sequence[V1EnvVar]:
         secret_env_vars, shared_secret_env_vars = self.get_env_vars_that_use_secrets()
 
         user_env = [
@@ -1215,7 +1217,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             secret_env_vars=secret_env_vars,
             shared_secret_env_vars=shared_secret_env_vars,
         )
-        return user_env + self.get_kubernetes_environment()  # type: ignore
+        return user_env + self.get_kubernetes_environment(sidecars)  # type: ignore
 
     def get_kubernetes_secret_env_vars(
         self,
@@ -1257,7 +1259,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return ret
 
-    def get_kubernetes_environment(self) -> List[V1EnvVar]:
+    def get_kubernetes_environment(
+        self, sidecars: Sequence[V1Container] = ()
+    ) -> List[V1EnvVar]:
         kubernetes_env = [
             V1EnvVar(
                 name="PAASTA_POD_IP",
@@ -1290,6 +1294,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 ),
             ),
         ]
+
+        for sidecar_container in sidecars:
+            if sidecar_container.name == GUNICORN_EXPORTER_POD_NAME:
+                kubernetes_env.append(
+                    V1EnvVar(
+                        name="POD_SIDECARS",
+                        value="|".join(
+                            [sidecar_container.name for sidecar_container in sidecars]
+                        ),
+                    )
+                )
+
         return kubernetes_env
 
     def get_resource_requirements(self) -> V1ResourceRequirements:
@@ -1421,11 +1437,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if prometheus_port and prometheus_port not in ports:
             ports.append(prometheus_port)
 
+        sidecar_containers = self.get_sidecar_containers(
+            system_paasta_config=system_paasta_config,
+            service_namespace_config=service_namespace_config,
+            hacheck_sidecar_volumes=hacheck_sidecar_volumes,
+        )
+
         service_container = V1Container(
             image=self.get_docker_url(),
             command=self.get_cmd(),
             args=self.get_args(),
-            env=self.get_container_env(),
+            env=self.get_container_env(sidecar_containers),
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
                 pre_stop=self.get_kubernetes_container_termination_action()
@@ -1442,11 +1464,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 secret_volumes=secret_volumes,
             ),
         )
-        containers = [service_container] + self.get_sidecar_containers(  # type: ignore
-            system_paasta_config=system_paasta_config,
-            service_namespace_config=service_namespace_config,
-            hacheck_sidecar_volumes=hacheck_sidecar_volumes,
-        )
+        containers = [service_container] + sidecar_containers  # type: ignore
         return containers
 
     def get_readiness_probe(

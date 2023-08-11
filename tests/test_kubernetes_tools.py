@@ -1004,6 +1004,41 @@ class TestKubernetesDeploymentConfig:
         assert "PAASTA_POD_IP" in [env.name for env in ret]
         assert "POD_NAME" in [env.name for env in ret]
         assert "PAASTA_CLUSTER" in [env.name for env in ret]
+        assert "POD_SIDECARS" not in [env.name for env in ret]
+
+    def test_get_kubernetes_environmen_with_non_gunicorn_sidecar(self):
+        sidecars = [
+            V1Container(name="random_sidecar0", env=[]),
+            V1Container(name="random_sidecar1", env=[]),
+        ]
+
+        ret = self.deployment.get_kubernetes_environment(sidecars)
+        assert "PAASTA_POD_IP" in [env.name for env in ret]
+        assert "POD_NAME" in [env.name for env in ret]
+        assert "PAASTA_CLUSTER" in [env.name for env in ret]
+        assert "POD_SIDECARS" not in [env.name for env in ret]
+
+    def test_get_kubernetes_environmen_with_gunicorn_sidecar(self):
+        sidecars = [
+            V1Container(name="random_sidecar0", env=[]),
+            V1Container(name="random_sidecar1", env=[]),
+            V1Container(name=kubernetes_tools.GUNICORN_EXPORTER_POD_NAME, env=[]),
+        ]
+
+        ret = self.deployment.get_kubernetes_environment(sidecars)
+        assert "PAASTA_POD_IP" in [env.name for env in ret]
+        assert "POD_NAME" in [env.name for env in ret]
+        assert "PAASTA_CLUSTER" in [env.name for env in ret]
+
+        for env in ret:
+            if env.name == "POD_SIDECARS":
+                assert (
+                    env.value
+                    == f"random_sidecar0|random_sidecar1|{kubernetes_tools.GUNICORN_EXPORTER_POD_NAME}"
+                )
+                break
+        else:
+            assert False, "Missing POD_SIDECARS"
 
     def test_get_resource_requirements(self):
         with mock.patch(
