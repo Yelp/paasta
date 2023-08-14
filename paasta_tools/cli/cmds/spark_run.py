@@ -189,8 +189,10 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--docker-shm-size",
         help=(
-            f"Set docker shared memory size limit. Shared memory usage doesn't count towards the memory limit. Defaults to {DEFAULT_DOCKER_SHM_SIZE}. Example: 8g, 256m"
-            "Note: Shared memory and memory limit should not exceed the total memory in the pod."
+            "Set docker shared memory size limit. This is the same as setting docker run --shm-size and is mounted to /dev/shm in the container."
+            "Anything written to the shared memory mount point counts towards the docker memory limit. Therefore, this should be less than --docker-memory-limit"
+            f"Defaults to {DEFAULT_DOCKER_SHM_SIZE}. Example: 8g, 256m"
+            "Note: this option also adds the --ulimit memlock=-1 to the docker run command since this is recommended for Tensorflow applications that use NCCL."
         ),
         default=None,
     )
@@ -525,7 +527,7 @@ def get_docker_run_cmd(
     )
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
-    cmd.append(f"--shm-size={docker_shm_size}")
+    cmd.append(f"--shm-size={docker_shm_size} --ulimit memlock=-1")
     cmd.append(f"--cpus={docker_cpu_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
