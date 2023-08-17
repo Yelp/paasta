@@ -98,11 +98,12 @@ KUBERNETES_NAMESPACE = "tron"
 DEFAULT_AWS_REGION = "us-west-2"
 EXECUTOR_TYPE_TO_NAMESPACE = {
     "paasta": "tron",
-    "spark": "paasta-spark",
+    "spark": "tron",
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh"]
+DEFAULT_SPARK_IAM_ROLE = "spark-driver-eks"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -294,12 +295,12 @@ class TronActionConfig(InstanceConfig):
         # this service account will either be used solely for k8s access or for
         # k8s + AWS access - the executor will have its own account though: and
         # only if users opt into using pod identity
-        driver_service_account = create_or_find_service_account_name(
-            iam_role=self.get_iam_role(),
-            namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
-            k8s_role=_spark_k8s_role(),
-            dry_run=self.for_validation,
-        )
+        # driver_service_account = create_or_find_service_account_name(
+        #     iam_role=self.get_iam_role(),
+        #     namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+        #     k8s_role=_spark_k8s_role(),
+        #     dry_run=self.for_validation,
+        # )
 
         # this is pretty similar to what's done in service_configuration_lib, but it doesn't seem
         # worth refactoring things there when it's unlikely that other users of that library will
@@ -324,7 +325,7 @@ class TronActionConfig(InstanceConfig):
             "spark.executorEnv.SPARK_EXECUTOR_DIRS": "/tmp",
             # XXX: do we need to set this for the driver if the pod running the driver was created with
             # this SA already?
-            "spark.kubernetes.authenticate.driver.serviceAccountName": driver_service_account,
+            # "spark.kubernetes.authenticate.driver.serviceAccountName": driver_service_account,
             "spark.kubernetes.pyspark.pythonVersion": "3",
             "spark.kubernetes.container.image": self.get_docker_url(
                 system_paasta_config
@@ -415,7 +416,8 @@ class TronActionConfig(InstanceConfig):
     def get_action_name(self):
         return self.action
 
-    # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken. Until this is fixed, let's ignore this issue.
+    # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken.
+    # Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
         """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
         secret_volumes = super().get_secret_volumes()
@@ -912,7 +914,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "triggered_by": action_config.get_triggered_by(),
         "on_upstream_rerun": action_config.get_on_upstream_rerun(),
         "trigger_timeout": action_config.get_trigger_timeout(),
-        # outside of Spark usescases, we also allow users to specify an expected-to-exist Service Account name
+        # outside of Spark use-cases, we also allow users to specify an expected-to-exist Service Account name
         # in the Tron namespace in case an action needs specific k8s permissions (e.g., a Jolt batch may need
         # k8s permissions to list Jolt pods in the jolt namespace to do science™ to them).
         # if the provided Service Account does not exist, Tron should simply fail to create the Podspec and report
@@ -921,7 +923,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "service_account_name": action_config.get_service_account_name(),
     }
 
-    # while we're tranisitioning, we want to be able to cleanly fallback to Mesos
+    # while we're transitioning, we want to be able to cleanly fall back to Mesos,
     # so we'll default to Mesos unless k8s usage is enabled for both the cluster
     # and job.
     # there are slight differences between k8s and Mesos configs, so we'll translate
@@ -999,10 +1001,11 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         if executor == "spark":
             # this service account will only be used by Spark drivers since executors don't
             # need Kubernetes access permissions
+            spark_iam_role = action_config.get_iam_role() or DEFAULT_SPARK_IAM_ROLE
             result["service_account_name"] = create_or_find_service_account_name(
-                iam_role=action_config.get_iam_role(),
+                iam_role=spark_iam_role,
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
-                k8s_role=_spark_k8s_role(),
+                # k8s_role=_spark_k8s_role(),
                 dry_run=action_config.for_validation,
             )
             # spark, unlike normal batches, needs to expose  several ports for things like the spark
