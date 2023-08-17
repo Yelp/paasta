@@ -48,6 +48,9 @@ class BaseSecretProvider:
     def get_secret_signature_from_data(self, data: Mapping[str, Any]) -> Optional[str]:
         raise NotImplementedError
 
+    def get_data_from_vault_path(self, path: str) -> Optional[Dict[str, str]]:
+        raise NotImplementedError
+
 
 class CryptoKey(TypedDict):
     key_name: str

@@ -7,6 +7,14 @@ nodes:
   - role: worker
     labels:
       yelp.com/pool: default
+    # this mount is needed for services which rely on /nail/etc/{ecosystem,runtime}
+    extraMounts:
+      - hostPath: /nail/etc
+        containerPath: /nail/etc
   - role: worker
     labels:
       yelp.com/pool: default
+    # this mount is needed for services which rely on /nail/etc/{ecosystem,runtime}
+    extraMounts:
+      - hostPath: /nail/etc
+        containerPath: /nail/etc

@@ -1928,6 +1928,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     cluster: str
     cr_owners: Dict[str, str]
     dashboard_links: Dict[str, Dict[str, str]]
+    datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
     default_should_run_uwsgi_exporter_sidecar: bool
     deploy_blacklist: UnsafeDeployBlacklist
@@ -2585,6 +2586,13 @@ class SystemPaastaConfig:
     def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
+
+    def get_datastore_credentials_vault_overrides(self) -> Dict[str, str]:
+        """In order to use different Vault shards, vault-tools allows you to override
+        environment variables (CA, token file, and URL). DB credentials are stored in
+        a different shard to minimize the impact on the core Vault shard (which has
+        size restrictions derived from Zookeeper limitations)."""
+        return self.config_dict.get("datastore_credentials_vault_env_overrides", {})
 
     def get_vault_environment(self) -> Optional[str]:
         """Get the environment name for the vault cluster

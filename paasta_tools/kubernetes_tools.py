@@ -289,6 +289,10 @@ class KubeWeightedAffinityCondition(KubeAffinityCondition):
     weight: int
 
 
+class DatastoreCredentialsConfig(TypedDict, total=False):
+    mysql: List[str]
+
+
 def _set_disrupted_pods(self: Any, disrupted_pods: Mapping[str, datetime]) -> None:
     """Private function used to patch the setter for V1beta1PodDisruptionBudgetStatus.
     Can be removed once https://github.com/kubernetes-client/python/issues/466 is resolved
@@ -372,6 +376,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     is_istio_sidecar_injection_enabled: bool
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
+    datastore_credentials: DatastoreCredentialsConfig
 
 
 def load_kubernetes_service_config_no_cache(
@@ -1541,7 +1546,77 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if crypto_volume:
             pod_volumes.append(crypto_volume)
 
+        datastore_credentials_secrets_volume = (
+            self.get_datastore_credentials_secrets_volume()
+        )
+        if datastore_credentials_secrets_volume:
+            pod_volumes.append(datastore_credentials_secrets_volume)
+
         return pod_volumes
+
+    def get_datastore_credentials(self) -> DatastoreCredentialsConfig:
+        datastore_credentials = self.config_dict.get("datastore_credentials", {})
+        return datastore_credentials
+
+    def get_datastore_credentials_secret_name(self) -> str:
+        return _get_secret_name(
+            self.get_namespace(),
+            "datastore-credentials",
+            self.get_service(),
+            self.get_instance(),
+        )
+
+    def get_datastore_secret_volume_name(self) -> str:
+        """
+        Volume names must abide to DNS mappings of 63 chars or less, so we limit it here and replace _ with --.
+        """
+        return self.get_sanitised_volume_name(
+            f"secret-datastore-creds-{self.get_sanitised_deployment_name()}",
+            length_limit=63,
+        )
+
+    def get_datastore_credentials_secrets_volume(self) -> V1Volume:
+        """
+        All credentials are stored in 1 Kubernetes Secret, which are mapped on an item->path
+        structure to /datastore/<datastore>/<credential>/<password file>.
+        """
+        datastore_credentials = self.get_datastore_credentials()
+        if not datastore_credentials:
+            return None
+
+        # Assume k8s secret exists if its configmap signature exists
+        secret_hash = self.get_datastore_credentials_secret_hash()
+        if not secret_hash:
+            log.warning(
+                f"Expected to find datastore_credentials secret signature {self.get_datastore_credentials_secret_name()} for {self.get_service()}.{self.get_instance()} on {self.get_namespace()}"
+            )
+            return None
+
+        secrets_with_custom_mountpaths = []
+
+        for datastore, credentials in datastore_credentials.items():
+            # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+            # https://github.com/python/mypy/issues/7178
+            for credential in credentials:  # type: ignore
+                secrets_with_custom_mountpaths.append(
+                    {
+                        "key": get_vault_key_secret_name(
+                            f"secrets/datastore/{datastore}/{credential}"
+                        ),
+                        "mode": mode_to_int("0444"),
+                        "path": f"{datastore}/{credential}/credentials",
+                    }
+                )
+
+        return V1Volume(
+            name=self.get_datastore_secret_volume_name(),
+            secret=V1SecretVolumeSource(
+                secret_name=self.get_datastore_credentials_secret_name(),
+                default_mode=mode_to_int("0444"),
+                items=secrets_with_custom_mountpaths,
+                optional=False,
+            ),
+        )
 
     def get_boto_volume(self) -> Optional[V1Volume]:
         required_boto_keys = self.config_dict.get("boto_keys", [])
@@ -1688,6 +1763,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         break
                 volume_mounts.append(mount)
 
+        datastore_credentials = self.get_datastore_credentials()
+        if datastore_credentials:
+            if self.get_datastore_credentials_secret_hash():
+                volume_mounts.append(
+                    V1VolumeMount(
+                        mount_path=f"/datastore",
+                        name=self.get_datastore_secret_volume_name(),
+                        read_only=True,
+                    )
+                )
+
         return volume_mounts
 
     def get_boto_secret_name(self) -> str:
@@ -1719,6 +1805,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.get_namespace(), "crypto-key", self.get_service(), self.get_instance()
         )
 
+    def get_datastore_credentials_signature_name(self) -> str:
+        """
+        All datastore credentials are stored in a single Kubernetes secret, so they share a name
+        """
+        return _get_secret_signature_name(
+            self.get_namespace(),
+            "datastore-credentials",
+            self.get_service(),
+            # key is on instances, which get their own configurations
+            key_name=self.get_instance(),
+        )
+
     def get_boto_secret_hash(self) -> Optional[str]:
         return get_secret_signature(
             kube_client=KubeClient(),
@@ -1730,6 +1828,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return get_secret_signature(
             kube_client=KubeClient(),
             signature_name=self.get_crypto_secret_signature_name(),
+            namespace=self.get_namespace(),
+        )
+
+    def get_datastore_credentials_secret_hash(self) -> Optional[str]:
+        return get_secret_signature(
+            kube_client=KubeClient(),
+            signature_name=self.get_datastore_credentials_signature_name(),
             namespace=self.get_namespace(),
         )
 
