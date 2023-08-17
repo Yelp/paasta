@@ -1,3 +1,17 @@
+paasta-tools (0.195.0) xenial; urgency=medium
+
+  * 0.195.0 tagged with 'make release'
+    Commit: Introduced new soa key for rotating database passwords
+    (#3655)  `database_credentials` is a top level key. The next key
+    will be a datastore. This could be MySQL or Cassandra or anything
+    else.   Each data store (dstore) contains a name, eg {mysql:
+    ["cred1", "cred2"]}.   These credentials point to a vault path under
+    /dstore/mysql/{cred1,cred2}   These passwords are then mapped to the
+    paasta service as a volume, where each file corresponds to a Vault
+    entry
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 17 Aug 2023 14:56:16 -0700
+
 paasta-tools (0.194.1) xenial; urgency=medium
 
   * 0.194.1 tagged with 'make release'
