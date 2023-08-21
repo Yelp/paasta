@@ -17,7 +17,6 @@ import mock
 import pytest
 from boto3.exceptions import Boto3Error
 from mock import Mock
-from service_configuration_lib import spark_config
 
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
@@ -510,7 +509,9 @@ def test_run_docker_container(
 @mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_docker_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_signalfx_url", autospec=True)
-@mock.patch.object(spark_config.SparkConfBuilder(), "get_history_url", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
+)
 class TestConfigureAndRunDockerContainer:
 
     instance_config = InstanceConfig(
