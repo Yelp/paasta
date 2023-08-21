@@ -99,6 +99,7 @@ SCHEMA_TYPES = {
     "marathon",  # long-running services on mesos - no longer used
     "rollback",  # automatic rollbacks during deployments
     "tron",  # batch workloads
+    "eks",  # eks workloads
 }
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
