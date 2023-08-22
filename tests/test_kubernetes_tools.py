@@ -1470,6 +1470,75 @@ class TestKubernetesDeploymentConfig:
             assert volumes is None
 
     @pytest.mark.parametrize(
+        "config_dict, expected_secret_mount_items_count",
+        [
+            ({"datastore_credentials": {"mysql": ["credential1", "credential2"]}}, 2),
+            ({"datastore_credentials": {"mysql": ["credential3"]}}, 1),
+            (
+                {
+                    "datastore_credentials": {
+                        "mysql": ["credential1"],
+                        "cassandra": ["credential4", "credential5"],
+                    }
+                },
+                3,
+            ),
+        ],
+    )
+    def test_get_datastore_credentials_secrets_volumes_exists(
+        self, config_dict, expected_secret_mount_items_count
+    ):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ):
+            secret_mount_items = (
+                deployment.get_datastore_credentials_secrets_volume().secret.items
+            )
+            assert len(secret_mount_items) == expected_secret_mount_items_count
+
+    @pytest.mark.parametrize(
+        "config_dict",
+        [
+            {"datastore_credentials": {"mysql": []}},
+            {"datastore_credentials": {"mysql": [], "cassandra": []}},
+            {},
+        ],
+    )
+    def test_get_datastore_credentials_secrets_volumes_not_exist(self, config_dict):
+        deployment = KubernetesDeploymentConfig(
+            service="my-service",
+            instance="my-instance",
+            cluster="mega-cluster",
+            config_dict=config_dict,
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.get_secret_signature",
+            return_value="hash",
+            autospec=True,
+        ):
+            if len(config_dict) == 0:
+                assert deployment.get_datastore_credentials_secrets_volume() is None
+            else:
+                secret_items = (
+                    deployment.get_datastore_credentials_secrets_volume().secret.items
+                )
+                assert len(secret_items) == 0
+
+    @pytest.mark.parametrize(
         "config_dict",
         [
             {"crypto_keys": {"encrypt": ["mad"], "decrypt": ["max"]}},
