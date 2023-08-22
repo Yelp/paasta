@@ -129,6 +129,7 @@ INSTANCE_TYPES = (
     "paasta_native",
     "adhoc",
     "kubernetes",
+    "eks",
     "tron",
     "flink",
     "cassandracluster",

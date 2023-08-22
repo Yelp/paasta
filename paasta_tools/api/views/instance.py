@@ -80,6 +80,11 @@ from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
 
+K8S_INSTANCE_TYPES = {
+    "eks",
+    "kubernetes",
+}
+
 
 def tron_instance_status(
     instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
@@ -864,7 +869,7 @@ def bounce_status(request):
         error_message = traceback.format_exc()
         raise ApiFailure(error_message, 500)
 
-    if instance_type != "kubernetes":
+    if instance_type not in K8S_INSTANCE_TYPES:
         # We are using HTTP 204 to indicate that the instance exists but has
         # no bounce status to be returned.  The client should just mark the
         # instance as bounced.
@@ -873,7 +878,9 @@ def bounce_status(request):
         return response
 
     try:
-        return pik.bounce_status(service, instance, settings)
+        return pik.bounce_status(
+            service, instance, settings, is_eks=instance_type == "eks"
+        )
     except asyncio.TimeoutError:
         raise ApiFailure(
             "Temporary issue fetching bounce status. Please try again.", 599

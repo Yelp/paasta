@@ -41,6 +41,7 @@ from mypy_extensions import NamedArg
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
@@ -815,6 +816,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     monkrelays=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
+    eks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_eks_service_config
+    ),
 )
 
 
@@ -854,11 +858,16 @@ def get_namespaces_for_secret(
 ) -> Set[str]:
     secret_to_k8s_namespace = set()
 
+    k8s_instance_type_classes = {
+        "kubernetes": KubernetesDeploymentConfig,
+        "eks": EksDeploymentConfig,
+    }
     for instance_type in INSTANCE_TYPES:
-        if instance_type == "kubernetes":
+        if instance_type in {"kubernetes", "eks"}:
             config_loader = PaastaServiceConfigLoader(service, soa_dir)
             for service_instance_config in config_loader.instance_configs(
-                cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                cluster=cluster,
+                instance_type_class=k8s_instance_type_classes[instance_type],
             ):
                 secret_to_k8s_namespace.add(service_instance_config.get_namespace())
         else:

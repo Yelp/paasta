@@ -57,6 +57,7 @@ from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
@@ -101,6 +102,7 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
@@ -112,6 +114,7 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
 ]
@@ -278,9 +281,15 @@ def paasta_status_on_api_endpoint(
     lock: Lock,
     verbose: int,
     new: bool = False,
+    is_eks: bool = False,
 ) -> int:
     output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    # this is a tiny bit of a lie so that we hit the correct paasta-api for
+    # eks instances since the "cluster" is otherwise the same
+    api_cluster = cluster
+    if is_eks:
+        api_cluster = f"eks-{cluster}"
+    client = get_paasta_oapi_client(api_cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
@@ -2138,7 +2147,7 @@ def report_status_for_cluster(
     output = ["", "service: %s" % service, "cluster: %s" % cluster]
     deployed_instances = []
     instances = [
-        instance
+        (instance, instance_config_class)
         for instance, instance_config_class in instance_whitelist.items()
         if instance_config_class in ALLOWED_INSTANCE_CONFIG
     ]
@@ -2175,7 +2184,7 @@ def report_status_for_cluster(
 
     return_code = 0
     return_codes = []
-    for deployed_instance in instances:
+    for deployed_instance, instance_config_class in instances:
         return_codes.append(
             paasta_status_on_api_endpoint(
                 cluster=cluster,
@@ -2185,6 +2194,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
+                is_eks=instance_config_class == EksDeploymentConfig,
             )
         )
 
@@ -2192,7 +2202,11 @@ def report_status_for_cluster(
         return_code = 1
 
     output.append(
-        report_invalid_whitelist_values(instances, seen_instances, "instance")
+        report_invalid_whitelist_values(
+            whitelist=[instance[0] for instance in instances],
+            items=seen_instances,
+            item_type="instance",
+        )
     )
 
     return return_code, output
@@ -2569,6 +2583,7 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
     kubernetes_v2=print_kubernetes_status_v2,
+    eks=print_kubernetes_status,
     tron=print_tron_status,
     adhoc=print_adhoc_status,
     flink=print_flink_status,
