@@ -162,6 +162,9 @@ def get_schema(file_type):
 
     :param file_type: what schema type should we validate against
     """
+    if file_type == "eks":
+        # since eks_schema.json is a symlink to kubernetes_schema.json
+        file_type = "kubernetes"
     schema_path = "schemas/%s_schema.json" % file_type
     try:
         schema = pkgutil.get_data("paasta_tools.cli", schema_path).decode()
@@ -283,9 +286,9 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     config_file_object = get_config_file_dict(file_path)
     try:
         validator.validate(config_file_object)
-        if file_type == "kubernetes" and not validate_instance_names(
-            config_file_object, file_path
-        ):
+        if (
+            file_type == "kubernetes" or file_type == "eks"
+        ) and not validate_instance_names(config_file_object, file_path):
             return False
 
         if file_type == "rollback" and not validate_rollback_bounds(
@@ -572,11 +575,21 @@ def validate_autoscaling_configs(service_path):
             )
 
             if (
-                instance_config.get_instance_type() == "kubernetes"
+                (
+                    instance_config.get_instance_type() == "kubernetes"
+                    or instance_config.get_instance_type() == "eks"
+                )
                 and instance_config.is_autoscaling_enabled()
                 # we should eventually make the python templates add the override comment
                 # to the correspoding YAML line, but until then we just opt these out of that validation
-                and __is_templated(service, soa_dir, cluster, workload="kubernetes")
+                and __is_templated(
+                    service,
+                    soa_dir,
+                    cluster,
+                    workload="eks"
+                    if instance_config.get_instance_type() == "eks"
+                    else "kubernetes",
+                )
                 is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
@@ -611,7 +624,13 @@ def validate_autoscaling_configs(service_path):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion
                     config = get_config_file_dict(
-                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                        os.path.join(
+                            soa_dir,
+                            service,
+                            f"eks-{cluster}.yaml"
+                            if instance_config.get_instance_type() == "eks"
+                            else f"kubernetes-{cluster}.yaml",
+                        ),
                         use_ruamel=True,
                     )
                     if config[instance].get("cpus") is None:
@@ -747,7 +766,9 @@ def validate_cpu_burst(service_path: str) -> bool:
 
     returncode = True
     for cluster in list_clusters(service, soa_dir):
-        if __is_templated(service, soa_dir, cluster, workload="kubernetes"):
+        if __is_templated(
+            service, soa_dir, cluster, workload="kubernetes"
+        ) or __is_templated(service, soa_dir, cluster, workload="eks"):
             # we should eventually make the python templates add the override comment
             # to the correspoding YAML line, but until then we just opt these out of that validation
             continue
@@ -761,13 +782,22 @@ def validate_cpu_burst(service_path: str) -> bool:
                 load_deployments=False,
                 soa_dir=soa_dir,
             )
-            is_k8s_service = instance_config.get_instance_type() == "kubernetes"
+            is_k8s_service = (
+                instance_config.get_instance_type() == "kubernetes"
+                or instance_config.get_instance_type() == "eks"
+            )
             should_skip_cpu_burst_validation = service in skip_cpu_burst_validation_list
             if is_k8s_service and not should_skip_cpu_burst_validation:
                 # we need access to the comments, so we need to read the config with ruamel to be able
                 # to actually get them in a "nice" automated fashion
                 config = get_config_file_dict(
-                    os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                    os.path.join(
+                        soa_dir,
+                        service,
+                        f"eks-{cluster}.yaml"
+                        if instance_config.get_instance_type() == "eks"
+                        else f"kubernetes-{cluster}.yaml",
+                    ),
                     use_ruamel=True,
                 )
 

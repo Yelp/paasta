@@ -41,6 +41,7 @@ from mypy_extensions import NamedArg
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
+from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -772,6 +773,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     kubernetes=InstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
     ),
+    eks=InstanceTypeHandler(get_service_instance_list, load_eks_service_config),
     tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
     flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
     cassandracluster=InstanceTypeHandler(
