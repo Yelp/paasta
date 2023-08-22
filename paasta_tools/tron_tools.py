@@ -103,7 +103,8 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh"]
-DEFAULT_SPARK_IAM_ROLE = "spark-driver-eks"
+# TODO: move to SystemPaastaConfig
+DEFAULT_SPARK_IAM_ROLE = "spark-driver-k8s"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -292,16 +293,6 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def _build_spark_config(self) -> Dict[str, str]:
-        # this service account will either be used solely for k8s access or for
-        # k8s + AWS access - the executor will have its own account though: and
-        # only if users opt into using pod identity
-        # driver_service_account = create_or_find_service_account_name(
-        #     iam_role=self.get_iam_role(),
-        #     namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
-        #     k8s_role=_spark_k8s_role(),
-        #     dry_run=self.for_validation,
-        # )
-
         # this is pretty similar to what's done in service_configuration_lib, but it doesn't seem
         # worth refactoring things there when it's unlikely that other users of that library will
         # have the k8s creds to deal with service account creation (or the role bindings for the
@@ -323,9 +314,6 @@ class TronActionConfig(InstanceConfig):
             "spark.executorEnv.PAASTA_CLUSTER": self.get_cluster(),
             "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
             "spark.executorEnv.SPARK_EXECUTOR_DIRS": "/tmp",
-            # XXX: do we need to set this for the driver if the pod running the driver was created with
-            # this SA already?
-            # "spark.kubernetes.authenticate.driver.serviceAccountName": driver_service_account,
             "spark.kubernetes.pyspark.pythonVersion": "3",
             "spark.kubernetes.container.image": self.get_docker_url(
                 system_paasta_config
@@ -1005,7 +993,6 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             result["service_account_name"] = create_or_find_service_account_name(
                 iam_role=spark_iam_role,
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
-                # k8s_role=_spark_k8s_role(),
                 dry_run=action_config.for_validation,
             )
             # spark, unlike normal batches, needs to expose  several ports for things like the spark
