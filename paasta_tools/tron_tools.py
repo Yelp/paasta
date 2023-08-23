@@ -103,8 +103,6 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh"]
-# TODO: move to SystemPaastaConfig
-DEFAULT_SPARK_IAM_ROLE = "spark-driver-k8s"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -480,6 +478,14 @@ class TronActionConfig(InstanceConfig):
             # these to the correct values for the executors as part of the driver commandline
 
         return env
+
+    def get_iam_role(self) -> str:
+        iam_role = super().get_iam_role()
+
+        if not iam_role and self.get_executor() == "spark":
+            iam_role = load_system_paasta_config().get_spark_driver_iam_role()
+
+        return iam_role
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
@@ -989,9 +995,8 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         if executor == "spark":
             # this service account will only be used by Spark drivers since executors don't
             # need Kubernetes access permissions
-            spark_iam_role = action_config.get_iam_role() or DEFAULT_SPARK_IAM_ROLE
             result["service_account_name"] = create_or_find_service_account_name(
-                iam_role=spark_iam_role,
+                iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 dry_run=action_config.for_validation,
             )

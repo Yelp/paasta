@@ -1881,6 +1881,7 @@ class RemoteRunConfig(TypedDict, total=False):
 class SparkRunConfig(TypedDict, total=False):
     default_cluster: str
     default_pool: str
+    default_spark_driver_iam_role: str
 
 
 class PaastaNativeConfig(TypedDict, total=False):
@@ -2770,6 +2771,9 @@ class SystemPaastaConfig:
 
     def get_cluster_pools(self) -> Dict[str, List[str]]:
         return self.config_dict.get("allowed_pools", {})
+
+    def get_spark_driver_iam_role(self) -> str:
+        return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
