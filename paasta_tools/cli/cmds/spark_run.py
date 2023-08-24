@@ -195,6 +195,11 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--app-id",
+        help="Explicitly set spark app id. This is strongly not recommended.",
+        default="",
+    )
+    list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
         default=DEFAULT_SPARK_DOCKER_REGISTRY,
@@ -1278,6 +1283,7 @@ def paasta_spark_run(args):
         force_spark_resource_configs=args.force_spark_resource_configs,
         use_eks=use_eks,
         k8s_server_address=k8s_server_address,
+        spark_app_id=args.app_id,
     )
     # TODO: Remove this after MLCOMPUTE-699 is complete
     if "spark.kubernetes.decommission.script" not in spark_conf:
