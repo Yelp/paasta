@@ -115,6 +115,8 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 # this to the autotune cap (i.e., 1)
 CPU_BURST_THRESHOLD = 2
 
+K8S_TYPES = {"eks", "kubernetes"}
+
 
 class ConditionConfig(TypedDict, total=False):
     """
@@ -162,9 +164,6 @@ def get_schema(file_type):
 
     :param file_type: what schema type should we validate against
     """
-    if file_type == "eks":
-        # since eks_schema.json is a symlink to kubernetes_schema.json
-        file_type = "kubernetes"
     schema_path = "schemas/%s_schema.json" % file_type
     try:
         schema = pkgutil.get_data("paasta_tools.cli", schema_path).decode()
@@ -286,9 +285,9 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     config_file_object = get_config_file_dict(file_path)
     try:
         validator.validate(config_file_object)
-        if (
-            file_type == "kubernetes" or file_type == "eks"
-        ) and not validate_instance_names(config_file_object, file_path):
+        if file_type in K8S_TYPES and not validate_instance_names(
+            config_file_object, file_path
+        ):
             return False
 
         if file_type == "rollback" and not validate_rollback_bounds(
@@ -575,10 +574,7 @@ def validate_autoscaling_configs(service_path):
             )
 
             if (
-                (
-                    instance_config.get_instance_type() == "kubernetes"
-                    or instance_config.get_instance_type() == "eks"
-                )
+                instance_config.get_instance_type() in K8S_TYPES
                 and instance_config.is_autoscaling_enabled()
                 # we should eventually make the python templates add the override comment
                 # to the correspoding YAML line, but until then we just opt these out of that validation
@@ -586,9 +582,7 @@ def validate_autoscaling_configs(service_path):
                     service,
                     soa_dir,
                     cluster,
-                    workload="eks"
-                    if instance_config.get_instance_type() == "eks"
-                    else "kubernetes",
+                    workload=instance_config.get_instance_type(),
                 )
                 is False
             ):
@@ -627,9 +621,7 @@ def validate_autoscaling_configs(service_path):
                         os.path.join(
                             soa_dir,
                             service,
-                            f"eks-{cluster}.yaml"
-                            if instance_config.get_instance_type() == "eks"
-                            else f"kubernetes-{cluster}.yaml",
+                            f"{instance_config.get_instance_type()}-{cluster}.yaml",
                         ),
                         use_ruamel=True,
                     )
@@ -794,9 +786,7 @@ def validate_cpu_burst(service_path: str) -> bool:
                     os.path.join(
                         soa_dir,
                         service,
-                        f"eks-{cluster}.yaml"
-                        if instance_config.get_instance_type() == "eks"
-                        else f"kubernetes-{cluster}.yaml",
+                        f"{instance_config.get_instance_type()}-{cluster}.yaml",
                     ),
                     use_ruamel=True,
                 )
