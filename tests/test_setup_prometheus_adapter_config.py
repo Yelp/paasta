@@ -15,6 +15,9 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_uwsgi_scaling_rule,
 )
+from paasta_tools.setup_prometheus_adapter_config import (
+    create_instance_active_requests_scaling_rule,
+)
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
 from paasta_tools.setup_prometheus_adapter_config import should_create_cpu_scaling_rule
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -30,6 +33,84 @@ MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
     "/mock/system/configs",
 )
 
+
+@pytest.mark.parametrize(
+    "autoscaling_config,expected",
+    [
+        (
+            {
+                "metrics_provider": "cpu",
+                "decision_policy": "bespoke",
+                "moving_average_window_seconds": 123,
+                "setpoint": 0.653,
+            },
+            False,
+        ),
+        (
+            {
+                "metrics_provider": "active-requests",
+                "moving_average_window_seconds": 124,
+                "desired_active_requests_per_replica": 0.425,
+            },
+            True,
+        ),
+        (
+            {
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 0.764,
+            },
+            True,
+        ),
+    ],
+)
+def test_should_create_uswgi_scaling_rule(
+        autoscaling_config: AutoscalingParamsDict, expected: bool
+) -> None:
+    should_create, reason = should_create_uwsgi_scaling_rule(
+        autoscaling_config=autoscaling_config
+    )
+
+    assert should_create == expected
+    if expected:
+        assert reason is None
+    else:
+        assert reason is not None
+
+
+def test_create_instance_active_requests_scaling_rule() -> None:
+    service_name = "test_service"
+    instance_name = "test_instance"
+    paasta_cluster = "test_cluster"
+    autoscaling_config: AutoscalingParamsDict = {
+        "metrics_provider": "active-requests",
+        "desired_active_requests_per_replica": 12,
+        "moving_average_window_seconds": 20120302,
+    }
+
+    with mock.patch(
+            "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+            autospec=True,
+            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+    ):
+        rule = create_instance_active_requests_scaling_rule(
+            service=service_name,
+            instance=instance_name,
+            paasta_cluster=paasta_cluster,
+            autoscaling_config=autoscaling_config,
+        )
+
+    # we test that the format of the dictionary is as expected with mypy
+    # and we don't want to test the full contents of the retval since then
+    # we're basically just writting a change-detector test - instead, we test
+    # that we're actually using our inputs
+    assert service_name in rule["seriesQuery"]
+    assert instance_name in rule["seriesQuery"]
+    assert paasta_cluster in rule["seriesQuery"]
+    # these two numbers are distinctive and unlikely to be used as constants
+    assert str(autoscaling_config["desired_active_requests_per_replica"]) in rule["metricsQuery"]
+    assert (
+            str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+    )
 
 @pytest.mark.parametrize(
     "autoscaling_config,expected",
