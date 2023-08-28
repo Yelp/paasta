@@ -2275,6 +2275,7 @@ def test_validate_service_instance_invalid():
     mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
+    mock_eks_instances = [("service1", "eks")]
     mock_tron_instances = [("service1", "job.action")]
     mock_flink_instances = [("service1", "flink")]
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
@@ -2293,6 +2294,7 @@ def test_validate_service_instance_invalid():
             mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
+            mock_eks_instances,
             mock_tron_instances,
             mock_flink_instances,
             mock_cassandracluster_instances,
