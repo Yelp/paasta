@@ -52,13 +52,10 @@ else
 endif
 
 go_entrypoint:
-	# GH appears to require using TLS1.2+ in a way that breaks wget's automatic protocol selection
-	# we can somewhat future-proof ourselves for a while by forcing TLS1.3 - but we should go back
-	# to auto once (if?) GH fixes the way that they're blocking TLS1.1
 	rm -rf gopath && \
 	mkdir -p gopath && \
 	cd gopath && \
-	wget --secure-protocol=TLSv1_3 https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip && \
+	wget https://github.com/Yelp/paasta-tools-go/archive/v$(PTG_VERSION).zip && \
 	sha256sum v$(PTG_VERSION).zip | grep -q ^$(PTG_SUM) && \
 	unzip v$(PTG_VERSION).zip && \
 	cd paasta-tools-go-$(PTG_VERSION) && \
