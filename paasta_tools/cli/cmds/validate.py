@@ -581,6 +581,21 @@ def validate_autoscaling_configs(service_path):
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
                 if autoscaling_params["metrics_provider"] in {
+                    "active-requests",
+                }:
+                    desired_active_requests_per_replica = autoscaling_params.get(
+                        "desired_active_requests_per_replica", 0
+                    )
+                    if desired_active_requests_per_replica <= 0:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: desired_active_requests_per_replica must be "
+                                "greater than zero",
+                                link="",
+                            )
+                        )
+                if autoscaling_params["metrics_provider"] in {
                     "uwsgi",
                     "piscina",
                 }:
