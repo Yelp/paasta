@@ -26,6 +26,9 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
 )
+from paasta_tools.setup_prometheus_adapter_config import (
+    should_create_active_requests_scaling_rule,
+)
 from paasta_tools.utils import SystemPaastaConfig
 
 MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
@@ -63,10 +66,10 @@ MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
         ),
     ],
 )
-def test_should_create_uswgi_scaling_rule(
+def test_should_create_active_requests_scaling_rule(
         autoscaling_config: AutoscalingParamsDict, expected: bool
 ) -> None:
-    should_create, reason = should_create_uwsgi_scaling_rule(
+    should_create, reason = should_create_active_requests_scaling_rule(
         autoscaling_config=autoscaling_config
     )
 
