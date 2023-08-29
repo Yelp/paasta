@@ -174,7 +174,7 @@ def add_subparser(subparsers):
         "--docker-memory-limit",
         help=(
             "Set docker memory limit. Should be greater than driver memory. Defaults to 2x spark.driver.memory. Example: 2g, 500m, Max: 64g"
-            "Note: If memory limit provided is greater than associated with the batch instance, it will default to max memory of the box."
+            " Note: If memory limit provided is greater than associated with the batch instance, it will default to max memory of the box."
         ),
         default=None,
     )
@@ -182,17 +182,27 @@ def add_subparser(subparsers):
         "--docker-cpu-limit",
         help=(
             "Set docker cpus limit. Should be greater than driver cores. Defaults to 1x spark.driver.cores."
-            "Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
+            " Note: The job will fail if the limit provided is greater than number of cores present on batch box (8 for production batch boxes)."
         ),
         default=None,
     )
+
     list_parser.add_argument(
         "--docker-shm-size",
         help=(
-            "Set docker shared memory size limit. This is the same as setting docker run --shm-size and is mounted to /dev/shm in the container."
-            "Anything written to the shared memory mount point counts towards the docker memory limit. Therefore, this should be less than --docker-memory-limit"
-            f"Defaults to {DEFAULT_DOCKER_SHM_SIZE}. Example: 8g, 256m"
-            "Note: this option also adds the --ulimit memlock=-1 to the docker run command since this is recommended for Tensorflow applications that use NCCL."
+            "Set docker shared memory size limit for the driver's container. This is the same as setting docker run --shm-size and the shared"
+            " memory is mounted to /dev/shm in the container. Anything written to the shared memory mount point counts towards the docker memory"
+            " limit for the driver's container. Therefore, this should be less than --docker-memory-limit."
+            f" Defaults to {DEFAULT_DOCKER_SHM_SIZE}. Example: 8g, 256m"
+            " Note: this option is mainly useful when training TensorFlow models in the driver, with multiple GPUs using NCCL. The shared memory"
+            f" space is used to sync gradient updates between GPUs during training. The default value of {DEFAULT_DOCKER_SHM_SIZE} is typically not large enough for"
+            " this inter-gpu communication to run efficiently. We recommend a starting value of 8g to ensure that the entire set of model parameters"
+            " can fit in the shared memory. This can be less if you are training a smaller model (<1g parameters) or more if you are using a larger model (>2.5g parameters)"
+            " If you are observing low, average GPU utilization during epoch training (<65-70 percent) you can also try increasing this value; you may be"
+            " resource constrained when GPUs sync training weights between mini-batches (there are other potential bottlenecks that could cause this as well)."
+            " A tool such as nvidia-smi can be use to check GPU utilization."
+            " This option also adds the --ulimit memlock=-1 to the docker run command since this is recommended for TensorFlow applications that use NCCL."
+            " Please refer to docker run documentation for more details on --shm-size and --ulimit memlock=-1."
         ),
         default=None,
     )
