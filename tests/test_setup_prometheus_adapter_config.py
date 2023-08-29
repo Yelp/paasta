@@ -4,6 +4,9 @@ import pytest
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
+    create_instance_active_requests_scaling_rule,
+)
+from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_arbitrary_promql_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -15,19 +18,16 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_uwsgi_scaling_rule,
 )
-from paasta_tools.setup_prometheus_adapter_config import (
-    create_instance_active_requests_scaling_rule,
-)
 from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_instance
+from paasta_tools.setup_prometheus_adapter_config import (
+    should_create_active_requests_scaling_rule,
+)
 from paasta_tools.setup_prometheus_adapter_config import should_create_cpu_scaling_rule
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_gunicorn_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
-    should_create_active_requests_scaling_rule,
 )
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -67,7 +67,7 @@ MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
     ],
 )
 def test_should_create_active_requests_scaling_rule(
-        autoscaling_config: AutoscalingParamsDict, expected: bool
+    autoscaling_config: AutoscalingParamsDict, expected: bool
 ) -> None:
     should_create, reason = should_create_active_requests_scaling_rule(
         autoscaling_config=autoscaling_config
@@ -91,9 +91,9 @@ def test_create_instance_active_requests_scaling_rule() -> None:
     }
 
     with mock.patch(
-            "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
-            autospec=True,
-            return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
+        autospec=True,
+        return_value=MOCK_SYSTEM_PAASTA_CONFIG,
     ):
         rule = create_instance_active_requests_scaling_rule(
             service=service_name,
@@ -110,10 +110,14 @@ def test_create_instance_active_requests_scaling_rule() -> None:
     assert instance_name in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
     # these two numbers are distinctive and unlikely to be used as constants
-    assert str(autoscaling_config["desired_active_requests_per_replica"]) in rule["metricsQuery"]
     assert (
-            str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+        str(autoscaling_config["desired_active_requests_per_replica"])
+        in rule["metricsQuery"]
     )
+    assert (
+        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+    )
+
 
 @pytest.mark.parametrize(
     "autoscaling_config,expected",

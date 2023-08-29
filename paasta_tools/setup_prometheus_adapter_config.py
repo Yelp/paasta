@@ -41,6 +41,9 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import (
+    DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
     DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.long_running_service_tools import (
@@ -51,9 +54,6 @@ from paasta_tools.long_running_service_tools import (
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
-)
-from paasta_tools.long_running_service_tools import (
-    DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -244,18 +244,21 @@ def should_create_active_requests_scaling_rule(
 
 
 def create_instance_active_requests_scaling_rule(
-        service: str,
-        instance: str,
-        autoscaling_config: AutoscalingParamsDict,
-        paasta_cluster: str,
-        namespace: str = "paasta",
+    service: str,
+    instance: str,
+    autoscaling_config: AutoscalingParamsDict,
+    paasta_cluster: str,
+    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    desired_active_requests_per_replica = autoscaling_config["desired_active_requests_per_replica"]
+    desired_active_requests_per_replica = autoscaling_config[
+        "desired_active_requests_per_replica"
+    ]
     moving_average_window = autoscaling_config.get(
-        "moving_average_window_seconds", DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW
+        "moving_average_window_seconds",
+        DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
@@ -339,6 +342,7 @@ def create_instance_active_requests_scaling_rule(
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
+
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
@@ -889,7 +893,10 @@ def get_rules_for_service_instance(
     rules: List[PrometheusAdapterRule] = []
 
     for should_create_scaling_rule, create_instance_scaling_rule in (
-        (should_create_active_requests_scaling_rule, create_instance_active_requests_scaling_rule),
+        (
+            should_create_active_requests_scaling_rule,
+            create_instance_active_requests_scaling_rule,
+        ),
         (should_create_uwsgi_scaling_rule, create_instance_uwsgi_scaling_rule),
         (should_create_piscina_scaling_rule, create_instance_piscina_scaling_rule),
         (should_create_cpu_scaling_rule, create_instance_cpu_scaling_rule),
