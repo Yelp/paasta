@@ -59,6 +59,7 @@ from paasta_tools.cli.cmds.status import get_main_container
 from paasta_tools.cli.cmds.status import get_version_table_entry
 from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.utils import get_jenkins_build_output_url
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import trigger_deploys
@@ -68,6 +69,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import validate_short_git_sha
 from paasta_tools.deployment_utils import get_currently_deployed_sha
 from paasta_tools.deployment_utils import get_currently_deployed_version
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -1496,7 +1498,12 @@ def diagnose_why_instance_is_stuck(
     should_ping_for_unhealthy_pods: bool,
     notify_fn: Optional[Callable[[str], None]] = None,
 ) -> None:
-    api = client.get_paasta_oapi_client(cluster=cluster)
+    api = client.get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(
+            cluster=cluster,
+            is_eks=instance_config.get_instance_type() == "eks",
+        ),
+    )
     try:
         status = api.service.status_instance(
             service=service,
@@ -1622,7 +1629,12 @@ def check_if_instance_is_done(
     api: Optional[client.PaastaOApiClient] = None,
 ) -> bool:
     if api is None:
-        api = client.get_paasta_oapi_client(cluster=cluster)
+        api = client.get_paasta_oapi_client(
+            cluster=get_paasta_oapi_api_clustername(
+                cluster=cluster,
+                is_eks=instance_config.get_instance_type() == "eks",
+            ),
+        )
         if not api:
             log.warning(
                 "Couldn't reach the PaaSTA api for {}! Assuming it is not "
@@ -1732,6 +1744,7 @@ def check_if_instance_is_done(
 WAIT_FOR_INSTANCE_CLASSES = [
     MarathonServiceConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     CassandraClusterDeploymentConfig,
 ]
 
