@@ -198,7 +198,8 @@
                                 "cpu",
                                 "piscina",
                                 "gunicorn",
-                                "arbitrary_promql"
+                                "arbitrary_promql",
+                                "active-requests"
                             ]
                         },
                         "decision_policy": {

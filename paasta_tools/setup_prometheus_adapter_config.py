@@ -47,6 +47,9 @@ from paasta_tools.long_running_service_tools import (
     DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.long_running_service_tools import (
+    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+)
+from paasta_tools.long_running_service_tools import (
     DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.long_running_service_tools import (
@@ -254,7 +257,8 @@ def create_instance_active_requests_scaling_rule(
     Creates a Prometheus adapter rule config for a given service instance.
     """
     desired_active_requests_per_replica = autoscaling_config.get(
-        "desired_active_requests_per_replica", 1
+        "desired_active_requests_per_replica",
+        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
     )
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",

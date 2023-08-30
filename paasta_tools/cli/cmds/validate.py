@@ -49,6 +49,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+)
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -584,7 +587,8 @@ def validate_autoscaling_configs(service_path):
                     "active-requests",
                 }:
                     desired_active_requests_per_replica = autoscaling_params.get(
-                        "desired_active_requests_per_replica", 0
+                        "desired_active_requests_per_replica",
+                        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
                     )
                     if desired_active_requests_per_replica <= 0:
                         returncode = False

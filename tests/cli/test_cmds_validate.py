@@ -1023,7 +1023,7 @@ def test_validate_autoscaling_configs_no_offset_specified(
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_active_requests_invalid_missing_config(
+def test_validate_autoscaling_configs_active_requests_no_default_threshold_config(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_list_all_instances_for_service,
@@ -1051,7 +1051,7 @@ def test_validate_autoscaling_configs_active_requests_invalid_missing_config(
             directory="/some/test/dir",
         ),
     ):
-        assert validate_autoscaling_configs("fake-service-path") is False
+        assert validate_autoscaling_configs("fake-service-path") is True
 
 
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
