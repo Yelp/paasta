@@ -253,9 +253,9 @@ def create_instance_active_requests_scaling_rule(
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    desired_active_requests_per_replica = autoscaling_config[
-        "desired_active_requests_per_replica"
-    ]
+    desired_active_requests_per_replica = autoscaling_config.get(
+        "desired_active_requests_per_replica", 1
+    )
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
         DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -317,7 +317,7 @@ def create_instance_active_requests_scaling_rule(
             {load_per_instance}
         ) by (kube_deployment)
         +
-        {missing_instances}
+        ({missing_instances} * {desired_active_requests_per_replica})
     )
     """
     desired_instances_at_each_point_in_time = f"""

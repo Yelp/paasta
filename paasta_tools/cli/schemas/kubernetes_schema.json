@@ -204,6 +204,9 @@
                         "decision_policy": {
                             "type": "string"
                         },
+                        "desired_active_requests_per_replica": {
+                            "type": "number"
+                        },
                         "setpoint": {
                             "type": "number"
                         },
