@@ -52,6 +52,7 @@ from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
@@ -284,11 +285,7 @@ def paasta_status_on_api_endpoint(
     is_eks: bool = False,
 ) -> int:
     output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    # this is a tiny bit of a lie so that we hit the correct paasta-api for
-    # eks instances since the "cluster" is otherwise the same
-    api_cluster = cluster
-    if is_eks:
-        api_cluster = f"eks-{cluster}"
+    api_cluster = get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks)
     client = get_paasta_oapi_client(api_cluster, system_paasta_config)
     if not client:
         print("Cannot get a paasta-api client")

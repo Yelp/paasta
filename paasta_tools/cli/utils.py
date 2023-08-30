@@ -26,6 +26,7 @@ from collections import defaultdict
 from shlex import quote
 from typing import Callable
 from typing import Collection
+from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -1057,7 +1058,7 @@ def get_instance_configs_for_service(
     type_filter: Optional[Iterable[str]] = None,
     clusters: Optional[Sequence[str]] = None,
     instances: Optional[Sequence[str]] = None,
-) -> Iterable[InstanceConfig]:
+) -> Generator[InstanceConfig, None, None]:
     if not clusters:
         clusters = list_clusters(service=service, soa_dir=soa_dir)
 
@@ -1189,3 +1190,15 @@ def verify_instances(
                 print("  %s" % instance)
 
     return misspelled_instances
+
+
+def get_paasta_oapi_api_clustername(cluster: str, is_eks: bool) -> str:
+    """
+    We'll be doing a tiny bit of lying while we have both EKS and non-EKS
+    clusters: these will generally share the same PaaSTA name (i.e., the
+    soaconfigs suffix will stay the same) - but we'll need a way to route API
+    requests to the correct place. To do so, we'll add "fake" entries to our
+    api_endpoints SystemPaastaConfig that are the PaaSTA clustername with an
+    "eks-" prefix
+    """
+    return f"eks-{cluster}" if is_eks else cluster

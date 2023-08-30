@@ -136,7 +136,6 @@ INSTANCE_TYPES = (
     "kafkacluster",
     "monkrelays",
     "nrtsearchservice",
-    "eks",
 )
 
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
