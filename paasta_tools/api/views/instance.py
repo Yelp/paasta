@@ -879,7 +879,7 @@ def bounce_status(request):
 
     try:
         return pik.bounce_status(
-            service, instance, settings, is_eks=instance_type == "eks"
+            service, instance, settings, is_eks=(instance_type == "eks")
         )
     except asyncio.TimeoutError:
         raise ApiFailure(
