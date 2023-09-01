@@ -796,7 +796,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                     )
                 )
-        elif metrics_provider in {"uwsgi", "piscina", "gunicorn"}:
+        elif metrics_provider in {"uwsgi", "piscina", "gunicorn", "active-requests"}:
             metrics.append(
                 V2beta2MetricSpec(
                     type="Object",
