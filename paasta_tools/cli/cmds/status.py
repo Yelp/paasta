@@ -285,8 +285,14 @@ def paasta_status_on_api_endpoint(
     is_eks: bool = False,
 ) -> int:
     output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    api_cluster = get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks)
-    client = get_paasta_oapi_client(api_cluster, system_paasta_config)
+    api_cluster = 
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(
+            cluster=cluster,
+            is_eks=is_eks
+        ),
+        system_paasta_config=system_paasta_config,
+    )
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
@@ -2191,7 +2197,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
-                is_eks=instance_config_class == EksDeploymentConfig,
+                is_eks=(instance_config_class == EksDeploymentConfig,)
             )
         )
 

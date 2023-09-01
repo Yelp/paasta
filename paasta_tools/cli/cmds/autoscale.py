@@ -88,7 +88,7 @@ def paasta_autoscale(args):
     api = client.get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(
             cluster=args.cluster,
-            is_eks=instance_config.__class__ == EksDeploymentConfig,
+            is_eks=(instance_config.__class__ == EksDeploymentConfig),
         ),
         http_res=True,
     )

@@ -1501,7 +1501,7 @@ def diagnose_why_instance_is_stuck(
     api = client.get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(
             cluster=cluster,
-            is_eks=instance_config.get_instance_type() == "eks",
+            is_eks=(instance_config.get_instance_type() == "eks"),
         ),
     )
     try:
@@ -1632,7 +1632,7 @@ def check_if_instance_is_done(
         api = client.get_paasta_oapi_client(
             cluster=get_paasta_oapi_api_clustername(
                 cluster=cluster,
-                is_eks=instance_config.get_instance_type() == "eks",
+                is_eks=(instance_config.get_instance_type() == "eks"),
             ),
         )
         if not api:
