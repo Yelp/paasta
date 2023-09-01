@@ -537,7 +537,10 @@ def get_docker_run_cmd(
     )
     cmd = ["paasta_docker_wrapper", "run"]
     cmd.append(f"--memory={docker_memory_limit}")
-    cmd.append(f"--shm-size={docker_shm_size} --ulimit memlock=-1")
+    if docker_shm_size is not None:
+        cmd.append(f"--shm-size={docker_shm_size}")
+        cmd.append("--ulimit")
+        cmd.append("memlock=-1")
     cmd.append(f"--cpus={docker_cpu_limit}")
     cmd.append("--rm")
     cmd.append("--net=host")
