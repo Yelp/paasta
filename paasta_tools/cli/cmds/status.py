@@ -285,7 +285,6 @@ def paasta_status_on_api_endpoint(
     is_eks: bool = False,
 ) -> int:
     output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    api_cluster = 
     client = get_paasta_oapi_client(
         cluster=get_paasta_oapi_api_clustername(
             cluster=cluster,
