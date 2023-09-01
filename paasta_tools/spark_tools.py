@@ -176,12 +176,12 @@ def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[st
             "spark.kubernetes.executor.volumes.hostPath." in key
             and ".mount.path" in key
         ):
-            volume_name = re.match(
+            v_name = re.match(
                 r"spark.kubernetes.executor.volumes.hostPath.([a-z0-9]([-a-z0-9]*[a-z0-9])?).mount.path",
                 key,
             )
-            if volume_name:
-                volume_names.append(volume_name.group(1))
+            if v_name:
+                volume_names.append(v_name.group(1))
             else:
                 log.error(
                     f"Volume names must consist of lower case alphanumeric characters or '-', "
