@@ -169,13 +169,17 @@ def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[
 
 
 def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
-    volume_names = [
-        re.match(
-            r"spark.kubernetes.executor.volumes.hostPath.(\d+).mount.path", key
-        ).group(1)
-        for key in spark_conf.keys()
-        if "spark.kubernetes.executor.volumes.hostPath." in key and ".mount.path" in key
-    ]
+    volume_names = []
+    for key in spark_conf.keys():
+        if "spark.kubernetes.executor.volumes.hostPath." in key and ".mount.path" in key:
+            volume_name = re.match(
+                r"spark.kubernetes.executor.volumes.hostPath.(\w+).mount.path", key
+            )
+            if volume_name:
+                volume_names.append(volume_name.group(1))
+            else:
+                log.warn(f"Volume name should be alphanumeric. Skipping {key} config.")
+
     volumes = []
     for volume_name in volume_names:
         read_only = (
