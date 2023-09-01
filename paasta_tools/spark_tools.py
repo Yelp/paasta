@@ -171,7 +171,10 @@ def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[
 def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
     volume_names = []
     for key in spark_conf.keys():
-        if "spark.kubernetes.executor.volumes.hostPath." in key and ".mount.path" in key:
+        if (
+            "spark.kubernetes.executor.volumes.hostPath." in key
+            and ".mount.path" in key
+        ):
             volume_name = re.match(
                 r"spark.kubernetes.executor.volumes.hostPath.(\w+).mount.path", key
             )
