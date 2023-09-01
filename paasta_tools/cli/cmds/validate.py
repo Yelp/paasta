@@ -583,9 +583,7 @@ def validate_autoscaling_configs(service_path):
                 is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
-                if autoscaling_params["metrics_provider"] in {
-                    "active-requests",
-                }:
+                if autoscaling_params["metrics_provider"] == "active-requests":
                     desired_active_requests_per_replica = autoscaling_params.get(
                         "desired_active_requests_per_replica",
                         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
