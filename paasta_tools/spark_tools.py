@@ -171,7 +171,6 @@ def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[
 
 def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
     volume_names = []
-    invalid_configs = []
     for key in list(spark_conf.keys()):
         if (
             "spark.kubernetes.executor.volumes.hostPath." in key
@@ -184,7 +183,6 @@ def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[st
             if volume_name:
                 volume_names.append(volume_name.group(1))
             else:
-                invalid_configs.append(key)
                 log.error(
                     f"Volume names must consist of lower case alphanumeric characters or '-', "
                     f"and must start and end with an alphanumeric character. Config -> '{key}' must be fixed."
