@@ -2,6 +2,7 @@ import copy
 import logging
 import re
 import socket
+import sys
 from functools import lru_cache
 from typing import cast
 from typing import Dict
@@ -170,18 +171,27 @@ def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[
 
 def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
     volume_names = []
-    for key in spark_conf.keys():
+    invalid_configs = []
+    for key in list(spark_conf.keys()):
         if (
             "spark.kubernetes.executor.volumes.hostPath." in key
             and ".mount.path" in key
         ):
             volume_name = re.match(
-                r"spark.kubernetes.executor.volumes.hostPath.(\w+).mount.path", key
+                r"spark.kubernetes.executor.volumes.hostPath.([a-z0-9]([-a-z0-9]*[a-z0-9])?).mount.path",
+                key,
             )
             if volume_name:
                 volume_names.append(volume_name.group(1))
             else:
-                log.warn(f"Volume name should be alphanumeric. Skipping {key} config.")
+                invalid_configs.append(key)
+                log.error(
+                    f"Volume names must consist of lower case alphanumeric characters or '-', "
+                    f"and must start and end with an alphanumeric character. Config -> '{key}' must be fixed."
+                )
+                # Failing here because the k8s pod fails to start if the volume names
+                # don't follow the lowercase RFC 1123 standard.
+                sys.exit(1)
 
     volumes = []
     for volume_name in volume_names:
