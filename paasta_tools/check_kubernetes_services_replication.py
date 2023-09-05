@@ -30,27 +30,104 @@ After retrieving that information, a fraction of available instances is calculat
 CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
 instance then it will be used instead.
 """
+import argparse
 import logging
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
+from paasta_tools import eks_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import get_proxy_port_for_instance
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import SPACER
 
 
 log = logging.getLogger(__name__)
 DEFAULT_ALERT_AFTER = "10m"
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-d",
+        "--soa-dir",
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
+    parser.add_argument(
+        "--crit",
+        dest="under_replicated_crit_pct",
+        type=float,
+        default=10,
+        help="The percentage of under replicated service instances past which "
+        "the script will return a critical status",
+    )
+    parser.add_argument(
+        "--min-count-critical",
+        dest="min_count_critical",
+        type=int,
+        default=5,
+        help="The script will not return a critical status if the number of "
+        "under replicated service instances is below this number, even if the "
+        "percentage is above the critical percentage.",
+    )
+    parser.add_argument(
+        "service_instance_list",
+        nargs="*",
+        help="The list of service instances to check",
+        metavar="SERVICE%sINSTANCE" % SPACER,
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", dest="verbose", default=False
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Print Sensu alert events and metrics instead of sending them",
+    )
+    parser.add_argument(
+        "--namespace-prefix",
+        help="prefix of the namespace to check services replication for"
+        "Used only when service is kubernetes",
+        dest="namespace_prefix",
+        default="paastasvc-",
+    )
+    parser.add_argument(
+        "--additional-namespaces",
+        help="full names of namespaces to check services replication for that don't match --namespace-prefix"
+        "Used only when service is kubernetes",
+        dest="additional_namespaces",
+        nargs="+",
+        # we default this to paasta since we always want to run this check on paasta namespace
+        # to avoid having two cron jobs running with two different namespace-prefix
+        default=["paasta"],
+    )
+    parser.add_argument(
+        "--eks",
+        help="This flag checks k8 services running on EKS",
+        dest="eks",
+        type=bool,
+        default=False,
+    )
+    options = parser.parse_args()
+
+    return options
+
+
 def check_healthy_kubernetes_tasks_for_service_instance(
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     expected_count: int,
     all_pods: Sequence[V1Pod],
     dry_run: bool = False,
@@ -73,7 +150,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 
 def check_kubernetes_pod_replication(
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     all_tasks_or_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
@@ -81,7 +158,7 @@ def check_kubernetes_pod_replication(
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack/envoy or k8s)
 
-    :param instance_config: an instance of KubernetesDeploymentConfig
+    :param instance_config: an instance of KubernetesDeploymentConfig or EksDeploymentConfig
     :param replication_checker: an instance of KubeSmartstackEnvoyReplicationChecker
     """
     default_alert_after = DEFAULT_ALERT_AFTER
@@ -129,7 +206,10 @@ def check_kubernetes_pod_replication(
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main(
-        instance_type_class=kubernetes_tools.KubernetesDeploymentConfig,
+        instance_type_class=eks_tools.EksDeploymentConfig
+        if args.eks
+        else kubernetes_tools.KubernetesDeploymentConfig,
         check_service_replication=check_kubernetes_pod_replication,
     )
