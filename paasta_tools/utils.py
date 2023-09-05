@@ -138,6 +138,11 @@ INSTANCE_TYPES = (
     "nrtsearchservice",
 )
 
+PAASTA_K8S_INSTANCE_TYPES = {
+    "kubernetes",
+    "eks",
+}
+
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
     "adhoc": "paasta",

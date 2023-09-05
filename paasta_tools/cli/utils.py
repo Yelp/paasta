@@ -68,6 +68,7 @@ from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
@@ -864,7 +865,7 @@ def get_namespaces_for_secret(
         "eks": EksDeploymentConfig,
     }
     for instance_type in INSTANCE_TYPES:
-        if instance_type in {"kubernetes", "eks"}:
+        if instance_type in PAASTA_K8S_INSTANCE_TYPES:
             config_loader = PaastaServiceConfigLoader(service, soa_dir)
             for service_instance_config in config_loader.instance_configs(
                 cluster=cluster,
