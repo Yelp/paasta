@@ -1169,7 +1169,7 @@ def test_load_service_instance_config(
     autospec=True,
 )
 @pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
-def test_load_service_instance_auto_configs(
+def test_load_service_instance_auto_configs_no_aliases(
     mock_load_system_paasta_config,
     mock_read_extra_service_information,
     instance_type_enabled,
@@ -1177,6 +1177,9 @@ def test_load_service_instance_auto_configs(
     mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
         "marathon": instance_type_enabled,
     }
+    mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
+        {}
+    )
     result = utils.load_service_instance_auto_configs(
         service="fake_service",
         instance_type="marathon",
@@ -1193,6 +1196,41 @@ def test_load_service_instance_auto_configs(
         assert result == mock_read_extra_service_information.return_value
     else:
         assert result == {}
+
+
+@pytest.mark.parametrize(
+    "instance_type_aliases, instance_type, expected_instance_type",
+    (({}, "kubernetes", "kubernetes"), ({"eks": "kubernetes"}, "eks", "kubernetes")),
+)
+def test_load_service_instance_auto_configs_with_autotune_aliases(
+    instance_type_aliases, instance_type, expected_instance_type
+):
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
+            expected_instance_type: True,
+        }
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
+            instance_type_aliases
+        )
+        result = utils.load_service_instance_auto_configs(
+            service="fake_service",
+            instance_type=instance_type,
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        mock_read_extra_service_information.assert_called_with(
+            "fake_service",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/{expected_instance_type}-fake",
+            soa_dir="fake_dir",
+            deepcopy=False,
+        )
+        assert result == mock_read_extra_service_information.return_value
 
 
 def test_get_services_for_cluster():

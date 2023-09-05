@@ -1917,6 +1917,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
+    auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
     boost_regions: List[str]
     cluster_autoscaler_max_decrease: float
