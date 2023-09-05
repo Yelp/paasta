@@ -1,3 +1,11 @@
+paasta-tools (0.198.1) xenial; urgency=medium
+
+  * 0.198.1 tagged with 'make release'
+    Commit: [COREJAVA-869] Add active requests to kubernetes schema
+    (#3692)
+
+ -- Charan Gangaraju <sclg@yelp.com>  Tue, 05 Sep 2023 07:11:23 -0700
+
 paasta-tools (0.198.0) xenial; urgency=medium
 
   * 0.198.0 tagged with 'make release'
