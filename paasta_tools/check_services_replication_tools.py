@@ -131,7 +131,7 @@ def parse_args() -> argparse.Namespace:
         "--eks",
         help="This flag checks k8 services running on EKS",
         dest="eks",
-        type=bool,
+        action="store_true",
         default=False,
     )
     options = parser.parse_args()

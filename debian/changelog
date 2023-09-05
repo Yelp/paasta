@@ -1,3 +1,17 @@
+paasta-tools (0.198.0) xenial; urgency=medium
+
+  * 0.198.0 tagged with 'make release'
+    Commit: [COREJAVA-800] Implement active requests autoscaler (#3688)
+    * [COREJAVA-800] Implement active requests autoscaler  * Update test
+    * Reformat code  * Add validation for active-requests  * Add tests
+    for autoscaling config validate  * Incorporate PR feedback  * Move
+    default threshold to a shared variable and update schema  * Update
+    paasta_tools/cli/cmds/validate.py  Co-authored-by: Luis Pérez
+    <luisp@yelp.com>  * Setup HPA for active-requests  ---------  Co-
+    authored-by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 01 Sep 2023 09:11:07 -0700
+
 paasta-tools (0.197.1) xenial; urgency=medium
 
   * 0.197.1 tagged with 'make release'
