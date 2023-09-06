@@ -2081,6 +2081,9 @@ def test_run_docker_container_assume_aws_role(
     assert 0 == return_code
 
 
+fake_service_names = ["fake_service", "override_service_name"]
+
+
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.pick_random_port",
     autospec=True,
@@ -2113,6 +2116,7 @@ def test_run_docker_container_assume_aws_role(
     autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
+@mark.parametrize("override_service_name", fake_service_names)
 def test_run_docker_container_secret_volumes(
     mock_os_makedirs,
     mock_open,
@@ -2123,6 +2127,7 @@ def test_run_docker_container_secret_volumes(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    override_service_name,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
@@ -2130,8 +2135,12 @@ def test_run_docker_container_secret_volumes(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
+
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
+    mock_service_manifest.get_service = mock.MagicMock(
+        return_value=override_service_name
+    )
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2149,7 +2158,7 @@ def test_run_docker_container_secret_volumes(
     os.environ["TMPDIR"] = "/tmp/"
     return_code = run_docker_container(
         docker_client=mock_docker_client,
-        service="fake_service",
+        service=fake_service_names[0],
         instance="fake_instance",
         docker_url="fake_hash",
         volumes=[],
@@ -2173,6 +2182,9 @@ def test_run_docker_container_secret_volumes(
         r"^/[^:]*:/the/container/path/the_secret_name2:ro",
         the_kwargs["volumes"][1],
     ), "Did not find the expected secret file volume mount"
+
+    _, decrypt_kwargs = mock_decrypt_secret_volumes.call_args_list[0]
+    assert decrypt_kwargs["service_name"] == override_service_name
 
     assert 0 == return_code
 
