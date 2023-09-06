@@ -2081,9 +2081,6 @@ def test_run_docker_container_assume_aws_role(
     assert 0 == return_code
 
 
-fake_service_names = ["fake_service", "override_service_name"]
-
-
 @mock.patch(
     "paasta_tools.cli.cmds.local_run.pick_random_port",
     autospec=True,
@@ -2116,7 +2113,13 @@ fake_service_names = ["fake_service", "override_service_name"]
     autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
-@mark.parametrize("override_service_name", fake_service_names)
+@mark.parametrize(
+    "original_service_name, override_service_name",
+    (
+        ("fake_service", "fake_service"),  # no service override
+        ("fake_service", "super_fake_service"),  # service override
+    ),
+)
 def test_run_docker_container_secret_volumes(
     mock_os_makedirs,
     mock_open,
@@ -2127,6 +2130,7 @@ def test_run_docker_container_secret_volumes(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    original_service_name,
     override_service_name,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
@@ -2158,7 +2162,7 @@ def test_run_docker_container_secret_volumes(
     os.environ["TMPDIR"] = "/tmp/"
     return_code = run_docker_container(
         docker_client=mock_docker_client,
-        service=fake_service_names[0],
+        service=original_service_name,
         instance="fake_instance",
         docker_url="fake_hash",
         volumes=[],
