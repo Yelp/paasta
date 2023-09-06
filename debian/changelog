@@ -1,3 +1,12 @@
+paasta-tools (0.198.3) xenial; urgency=medium
+
+  * 0.198.3 tagged with 'make release'
+    Commit: Merge pull request #3694 from Yelp/u/vit/fix-local-run-
+    secret  PAASTA-18017: Read secret where instance service is defined,
+    rather than service defined in CLI args.
+
+ -- Vincent Thibault <vit@yelp.com>  Wed, 06 Sep 2023 10:25:37 -0700
+
 paasta-tools (0.198.2) xenial; urgency=medium
 
   * 0.198.2 tagged with 'make release'
