@@ -1,3 +1,15 @@
+paasta-tools (0.198.2) xenial; urgency=medium
+
+  * 0.198.2 tagged with 'make release'
+    Commit: MLCOMPUTE-1008 | update regex for Spark volume names to be
+    alphanumeric (#3690)  * MLCOMPUTE-1008 | update regex for Spark
+    volume names to be alphanumeric  * MLCOMPUTE-1008 | update regex
+    according to k8s standard, fail fast on incorrect volume names  *
+    MLCOMPUTE-1008 | fix mypy tests  * MLCOMPUTE-1008 | add unit tests  -
+    --------  Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 06 Sep 2023 09:18:30 -0700
+
 paasta-tools (0.198.1) xenial; urgency=medium
 
   * 0.198.1 tagged with 'make release'
