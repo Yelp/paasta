@@ -2113,6 +2113,13 @@ def test_run_docker_container_assume_aws_role(
     autospec=None,
 )
 @mock.patch("os.makedirs", autospec=True)
+@mark.parametrize(
+    "original_service_name, override_service_name",
+    (
+        ("fake_service", "fake_service"),  # no service override
+        ("fake_service", "super_fake_service"),  # service override
+    ),
+)
 def test_run_docker_container_secret_volumes(
     mock_os_makedirs,
     mock_open,
@@ -2123,6 +2130,8 @@ def test_run_docker_container_secret_volumes(
     mock_execlpe,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
+    original_service_name,
+    override_service_name,
 ):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
@@ -2130,8 +2139,12 @@ def test_run_docker_container_secret_volumes(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
+
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.cluster = "fake_cluster"
+    mock_service_manifest.get_service = mock.MagicMock(
+        return_value=override_service_name
+    )
 
     # Coverage for binary file vs non-binary file
     mock_text_io_wrapper = mock.Mock(name="text_io_wrapper", autospec=True)
@@ -2149,7 +2162,7 @@ def test_run_docker_container_secret_volumes(
     os.environ["TMPDIR"] = "/tmp/"
     return_code = run_docker_container(
         docker_client=mock_docker_client,
-        service="fake_service",
+        service=original_service_name,
         instance="fake_instance",
         docker_url="fake_hash",
         volumes=[],
@@ -2173,6 +2186,9 @@ def test_run_docker_container_secret_volumes(
         r"^/[^:]*:/the/container/path/the_secret_name2:ro",
         the_kwargs["volumes"][1],
     ), "Did not find the expected secret file volume mount"
+
+    _, decrypt_kwargs = mock_decrypt_secret_volumes.call_args_list[0]
+    assert decrypt_kwargs["service_name"] == override_service_name
 
     assert 0 == return_code
 

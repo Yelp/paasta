@@ -857,7 +857,7 @@ def run_docker_container(
                     secret_provider_name=secret_provider_name,
                     environment=environment,
                     soa_dir=soa_dir,
-                    service_name=service,
+                    service_name=instance_config.get_service(),
                     cluster_name=instance_config.cluster,
                     secret_provider_kwargs=secret_provider_kwargs,
                 )
@@ -865,7 +865,7 @@ def run_docker_container(
                     secret_provider_name=secret_provider_name,
                     secret_volumes_config=instance_config.get_secret_volumes(),
                     soa_dir=soa_dir,
-                    service_name=service,
+                    service_name=instance_config.get_service(),
                     cluster_name=instance_config.cluster,
                     secret_provider_kwargs=secret_provider_kwargs,
                 )
