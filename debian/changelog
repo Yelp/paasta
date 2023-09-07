@@ -1,3 +1,14 @@
+paasta-tools (0.199.0) xenial; urgency=medium
+
+  * 0.199.0 tagged with 'make release'
+    Commit: Add API support for paasta <CMD>ing eks-* instances (#3685)
+    We do a tiny bit of lying here in order to keep the same PaaSTA
+    cluster name in the soaconfigs filenames (and CLI), but introduce
+    the concept of an API cluster so that we can direct queries for
+    things running from eks-* files to the correct PaaSTA API
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 07 Sep 2023 10:00:44 -0700
+
 paasta-tools (0.198.3) xenial; urgency=medium
 
   * 0.198.3 tagged with 'make release'
