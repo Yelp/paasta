@@ -129,14 +129,19 @@ INSTANCE_TYPES = (
     "paasta_native",
     "adhoc",
     "kubernetes",
+    "eks",
     "tron",
     "flink",
     "cassandracluster",
     "kafkacluster",
     "monkrelays",
     "nrtsearchservice",
-    "eks",
 )
+
+PAASTA_K8S_INSTANCE_TYPES = {
+    "kubernetes",
+    "eks",
+}
 
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
