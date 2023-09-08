@@ -275,7 +275,7 @@ def create_instance_active_requests_scaling_rule(
     #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
     # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
     # by (desired_instances / current_replicas) is meaningful for each namespace.
-    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',service_name='{service}',service_instance='{instance}'"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
     replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
@@ -306,7 +306,7 @@ def create_instance_active_requests_scaling_rule(
     """
     load_per_instance = f"""
         avg(
-            service_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
+            paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
     missing_instances = f"""
@@ -342,7 +342,7 @@ def create_instance_active_requests_scaling_rule(
 
     return {
         "name": {"as": metric_name},
-        "seriesQuery": f"service_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
+        "seriesQuery": f"paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
