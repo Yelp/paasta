@@ -306,7 +306,7 @@ def create_instance_active_requests_scaling_rule(
     """
     load_per_instance = f"""
         avg(
-            service_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
+            paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
         ) by (kube_pod, kube_deployment)
     """
     missing_instances = f"""
@@ -342,7 +342,7 @@ def create_instance_active_requests_scaling_rule(
 
     return {
         "name": {"as": metric_name},
-        "seriesQuery": f"service_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
+        "seriesQuery": f"paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
