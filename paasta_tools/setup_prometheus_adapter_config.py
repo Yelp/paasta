@@ -275,7 +275,7 @@ def create_instance_active_requests_scaling_rule(
     #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
     # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
     # by (desired_instances / current_replicas) is meaningful for each namespace.
-    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',service_name='{service}',service_instance='{instance}'"
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
     replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
