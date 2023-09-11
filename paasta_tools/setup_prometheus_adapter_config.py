@@ -309,7 +309,7 @@ def create_instance_active_requests_scaling_rule(
             avg(
                 paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
             ),
-            "kube_deployment", {deployment_name}, "", "(.*)
+            "kube_deployment", {deployment_name}, "", "(.*)"
         )
     """
     missing_instances = f"""
