@@ -308,7 +308,7 @@ def create_instance_active_requests_scaling_rule(
         label_replace(
             avg(
                 paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
-            ), 
+            ),
             "kube_deployment", {deployment_name}, "", "(.*)
         )
     """
