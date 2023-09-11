@@ -304,12 +304,19 @@ def create_instance_active_requests_scaling_rule(
             )
         ) by (kube_deployment))
     """
+
+    # envoy-based metrics have no labels corresponding to the k8s resources that they
+    # front, but we can trivially add one in since our deployment names are of the form
+    # {service_name}-{instance_name} - which are both things in `worker_filter_terms` so
+    # it's safe to unconditionally add.
+    # This is necessary as otherwise the HPA/prometheus adapter does not know what these
+    # metrics are for.
     load_per_instance = f"""
         label_replace(
             avg(
                 paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
             ),
-            "kube_deployment", {deployment_name}, "", "(.*)"
+            "kube_deployment", {deployment_name}, "", ""
         )
     """
     missing_instances = f"""
