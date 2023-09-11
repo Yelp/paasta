@@ -1,3 +1,11 @@
+paasta-tools (0.200.0) xenial; urgency=medium
+
+  * 0.200.0 tagged with 'make release'
+    Commit: Merge pull request #3696 from Yelp/u/emanelsabban/PAASTA-
+    17987  Adding support for SKJ on EKS - PAASTA-17987
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 11 Sep 2023 07:40:31 -0700
+
 paasta-tools (0.199.1) xenial; urgency=medium
 
   * 0.199.1 tagged with 'make release'
