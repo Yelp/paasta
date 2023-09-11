@@ -13,6 +13,7 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
@@ -68,15 +69,23 @@ class Application(ABC):
         self.logging = logging
 
     def load_local_config(
-        self, soa_dir: str, cluster: str
+        self, soa_dir: str, cluster: str, eks: bool = False
     ) -> Optional[KubernetesDeploymentConfig]:
         if not self.soa_config:
-            self.soa_config = load_kubernetes_service_config_no_cache(
-                service=self.kube_deployment.service,
-                instance=self.kube_deployment.instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
+            if eks:
+                self.soa_config = load_eks_service_config_no_cache(
+                    service=self.kube_deployment.service,
+                    instance=self.kube_deployment.instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            else:
+                self.soa_config = load_kubernetes_service_config_no_cache(
+                    service=self.kube_deployment.service,
+                    instance=self.kube_deployment.instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
         return self.soa_config
 
     def __str__(self):
