@@ -305,9 +305,12 @@ def create_instance_active_requests_scaling_rule(
         ) by (kube_deployment))
     """
     load_per_instance = f"""
-        avg(
-            paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
-        ) by (kube_pod, kube_deployment)
+        label_replace(
+            avg(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
+            ), 
+            "kube_deployment", {deployment_name}, "", "(.*)
+        )
     """
     missing_instances = f"""
         clamp_min(
