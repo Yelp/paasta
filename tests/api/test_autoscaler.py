@@ -12,21 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+import pytest
 from pyramid import testing
 
 from paasta_tools.api.views import autoscaler
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 @mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
-def test_get_autoscaler_count(mock_get_instance_config):
+@pytest.mark.parametrize(
+    "instance_type_class",
+    (
+        KubernetesDeploymentConfig,
+        EksDeploymentConfig,
+    ),
+)
+def test_get_autoscaler_count(mock_get_instance_config, instance_type_class):
     request = testing.DummyRequest()
     request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
 
     mock_get_instance_config.return_value = mock.MagicMock(
         get_instances=mock.MagicMock(return_value=123),
-        spec=KubernetesDeploymentConfig,
+        spec=instance_type_class,
     )
     response = autoscaler.get_autoscaler_count(request)
     assert response.json_body["desired_instances"] == 123
@@ -54,7 +63,16 @@ def test_update_autoscaler_count_marathon(mock_get_instance_config):
 
 
 @mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
-def test_update_autoscaler_count_kubernetes(mock_get_instance_config):
+@pytest.mark.parametrize(
+    "instance_type_class",
+    (
+        KubernetesDeploymentConfig,
+        EksDeploymentConfig,
+    ),
+)
+def test_update_autoscaler_count_kubernetes(
+    mock_get_instance_config, instance_type_class
+):
     request = testing.DummyRequest()
     request.swagger_data = {
         "service": "fake_kubernetes_service",
@@ -65,7 +83,7 @@ def test_update_autoscaler_count_kubernetes(mock_get_instance_config):
     mock_get_instance_config.return_value = mock.MagicMock(
         get_min_instances=mock.MagicMock(return_value=100),
         get_max_instances=mock.MagicMock(return_value=200),
-        spec=KubernetesDeploymentConfig,
+        spec=instance_type_class,
     )
 
     response = autoscaler.update_autoscaler_count(request)
@@ -74,7 +92,14 @@ def test_update_autoscaler_count_kubernetes(mock_get_instance_config):
 
 
 @mock.patch("paasta_tools.api.views.autoscaler.get_instance_config", autospec=True)
-def test_update_autoscaler_count_warning(mock_get_instance_config):
+@pytest.mark.parametrize(
+    "instance_type_class",
+    (
+        KubernetesDeploymentConfig,
+        EksDeploymentConfig,
+    ),
+)
+def test_update_autoscaler_count_warning(mock_get_instance_config, instance_type_class):
     request = testing.DummyRequest()
     request.swagger_data = {
         "service": "fake_service",
@@ -85,7 +110,7 @@ def test_update_autoscaler_count_warning(mock_get_instance_config):
     mock_get_instance_config.return_value = mock.MagicMock(
         get_min_instances=mock.MagicMock(return_value=10),
         get_max_instances=mock.MagicMock(return_value=100),
-        spec=KubernetesDeploymentConfig,
+        spec=instance_type_class,
     )
 
     response = autoscaler.update_autoscaler_count(request)

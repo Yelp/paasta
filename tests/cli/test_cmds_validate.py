@@ -231,6 +231,11 @@ def test_get_schema_marathon_found():
     is_schema(schema)
 
 
+def test_get_schema_eks_found():
+    schema = get_schema("eks")
+    is_schema(schema)
+
+
 def test_get_schema_tron_found():
     schema = get_schema("tron")
     is_schema(schema)
@@ -260,7 +265,7 @@ _main_http:
   registrations: ['foo.bar', 'bar.baz']
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -321,7 +326,7 @@ main:
     <<: *template
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -340,7 +345,7 @@ main_worker:
   healthcheck_mode: tcp
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -354,7 +359,7 @@ main_worker:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -372,7 +377,7 @@ valid:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -387,7 +392,7 @@ this_is_okay_too_1:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_VALID in output
@@ -402,7 +407,7 @@ dashes-are-okay-too:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
         output, _ = capsys.readouterr()
@@ -418,7 +423,7 @@ main_worker_CAPITALS_INVALID:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.yaml", schema_type)
         get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
         output, _ = capsys.readouterr()
@@ -434,7 +439,7 @@ $^&*()(&*^%&definitely_not_okay:
   cmd: virtualenv_run/bin/python adindexer/adindex_worker.py
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.yaml", schema_type)
         output, _ = capsys.readouterr()
         assert SCHEMA_INVALID in output
@@ -455,7 +460,7 @@ main_worker:
   healthcheck_mode: cmd
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.yaml", schema_type)
         get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
         output, _ = capsys.readouterr()
@@ -472,7 +477,7 @@ main_worker:
   healthcheck_cmd: '/bin/true'
 """
     mock_get_file_contents.return_value = marathon_content
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert validate_schema("unused_service_path.yaml", schema_type)
         get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
         output, _ = capsys.readouterr()
@@ -491,7 +496,7 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     "page": false
 }
 """
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.json", schema_type)
         get_config_file_dict.cache_clear()  # HACK: ensure cache is cleared for future calls
 
@@ -521,7 +526,7 @@ main:
     security:
         outbound_firewall: bblock
 """
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.yaml", schema_type)
 
         output, _ = capsys.readouterr()
@@ -537,7 +542,7 @@ def test_marathon_validate_invalid_key_bad(mock_get_file_contents, capsys):
     }
 }
 """
-    for schema_type in ["marathon", "kubernetes"]:
+    for schema_type in ["marathon", "kubernetes", "eks"]:
         assert not validate_schema("unused_service_path.json", schema_type)
 
         output, _ = capsys.readouterr()
@@ -936,11 +941,14 @@ def test_check_secrets_for_instance_missing_secret(
 
 
 @pytest.mark.parametrize(
-    "setpoint,offset,expected",
+    "setpoint,offset,expected,instance_type",
     [
-        (0.5, 0.5, False),
-        (0.5, 0.6, False),
-        (0.8, 0.25, True),
+        (0.5, 0.5, False, "kubernetes"),
+        (0.5, 0.6, False, "kubernetes"),
+        (0.8, 0.25, True, "kubernetes"),
+        (0.5, 0.5, False, "eks"),
+        (0.5, 0.6, False, "eks"),
+        (0.8, 0.25, True, "eks"),
     ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
@@ -955,13 +963,14 @@ def test_validate_autoscaling_configs(
     setpoint,
     offset,
     expected,
+    instance_type,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_list_all_instances_for_service.return_value = {"fake_instance1"}
     mock_get_instance_config.return_value = mock.Mock(
         get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
+        get_instance_type=mock.Mock(return_value=instance_type),
         is_autoscaling_enabled=mock.Mock(return_value=True),
         get_autoscaling_params=mock.Mock(
             return_value={
@@ -983,6 +992,10 @@ def test_validate_autoscaling_configs(
         assert validate_autoscaling_configs("fake-service-path") is expected
 
 
+@pytest.mark.parametrize(
+    "instance_type",
+    [("kubernetes"), ("eks")],
+)
 @patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
@@ -992,13 +1005,14 @@ def test_validate_autoscaling_configs_no_offset_specified(
     mock_list_clusters,
     mock_list_all_instances_for_service,
     mock_get_instance_config,
+    instance_type,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_list_all_instances_for_service.return_value = {"fake_instance1"}
     mock_get_instance_config.return_value = mock.Mock(
         get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
+        get_instance_type=mock.Mock(return_value=instance_type),
         is_autoscaling_enabled=mock.Mock(return_value=True),
         get_autoscaling_params=mock.Mock(
             return_value={
@@ -1019,13 +1033,124 @@ def test_validate_autoscaling_configs_no_offset_specified(
         assert validate_autoscaling_configs("fake-service-path") is True
 
 
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs_active_requests_no_default_threshold_config(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "active-requests",
+            }
+        ),
+    )
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is True
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs_active_requests_invalid_threshold(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": -5,
+            }
+        ),
+    )
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is False
+
+
+@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
+def test_validate_autoscaling_configs_active_requests_valid(
+    mock_path_to_soa_dir_service,
+    mock_list_clusters,
+    mock_list_all_instances_for_service,
+    mock_get_instance_config,
+):
+    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
+    mock_list_clusters.return_value = ["fake_cluster"]
+    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
+    mock_get_instance_config.return_value = mock.Mock(
+        get_instance=mock.Mock(return_value="fake_instance1"),
+        get_instance_type=mock.Mock(return_value="kubernetes"),
+        is_autoscaling_enabled=mock.Mock(return_value=True),
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 5,
+            }
+        ),
+    )
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
+        autospec=True,
+        return_value=SystemPaastaConfig(
+            config={"skip_cpu_override_validation": ["not-a-real-service"]},
+            directory="/some/test/dir",
+        ),
+    ):
+        assert validate_autoscaling_configs("fake-service-path") is True
+
+
 @pytest.mark.parametrize(
-    "filecontents,expected",
+    "filecontents,expected, instance_type",
     [
-        ("# overridexxx-cpu-setting", False),
-        ("# override-cpu-setting", False),
-        ("", False),
-        ("# override-cpu-setting (PAASTA-17522)", True),
+        ("# overridexxx-cpu-setting", False, "kubernetes"),
+        ("# override-cpu-setting", False, "kubernetes"),
+        ("", False, "kubernetes"),
+        ("# override-cpu-setting (PAASTA-17522)", True, "kubernetes"),
+        ("# overridexxx-cpu-setting", False, "eks"),
+        ("# override-cpu-setting", False, "eks"),
+        ("", False, "eks"),
+        ("# override-cpu-setting (PAASTA-17522)", True, "eks"),
     ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -1041,13 +1166,14 @@ def test_validate_cpu_autotune_override(
     mock_get_file_contents,
     filecontents,
     expected,
+    instance_type,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_list_all_instances_for_service.return_value = {"fake_instance1"}
     mock_get_instance_config.return_value = mock.Mock(
         get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
+        get_instance_type=mock.Mock(return_value=instance_type),
         is_autoscaling_enabled=mock.Mock(return_value=True),
         get_autoscaling_params=mock.Mock(
             return_value={
@@ -1114,22 +1240,25 @@ def test_list_upcoming_runs(schedule, starting_from, num_runs, expected):
 
 
 @pytest.mark.parametrize(
-    "burst, comment, expected",
+    "burst, comment, expected, instance_type",
     [
-        (3, "# overridexxx-cpu-burst", False),
-        (4, "# override-cpu-burst", False),
-        (5, "", False),
-        (6, "# override-cpu-burst (MAGIC-42)", True),
-        (7, "# override-cpu-burst (SECURE-1234#some comment)", True),
-        (1, "# override-cpu-burst (HWAT-789)", True),
-        (1, "# override-cpu-burst", True),
+        (3, "# overridexxx-cpu-burst", False, "kubernetes"),
+        (4, "# override-cpu-burst", False, "kubernetes"),
+        (5, "", False, "kubernetes"),
+        (6, "# override-cpu-burst (MAGIC-42)", True, "kubernetes"),
+        (7, "# override-cpu-burst (SECURE-1234#some comment)", True, "kubernetes"),
+        (1, "# override-cpu-burst (HWAT-789)", True, "kubernetes"),
+        (1, "# override-cpu-burst", True, "kubernetes"),
+        (3, "# overridexxx-cpu-burst", False, "eks"),
+        (4, "# override-cpu-burst", False, "eks"),
+        (5, "", False, "eks"),
+        (6, "# override-cpu-burst (MAGIC-42)", True, "eks"),
+        (7, "# override-cpu-burst (SECURE-1234#some comment)", True, "eks"),
+        (1, "# override-cpu-burst (HWAT-789)", True, "eks"),
+        (1, "# override-cpu-burst", True, "eks"),
     ],
 )
-def test_validate_cpu_burst_override(
-    burst,
-    comment,
-    expected,
-):
+def test_validate_cpu_burst_override(burst, comment, expected, instance_type):
     instance_config = f"""
 ---
 fake_instance1:
@@ -1152,7 +1281,7 @@ fake_instance1:
         autospec=True,
         return_value=mock.Mock(
             get_instance=mock.Mock(return_value="fake_instance1"),
-            get_instance_type=mock.Mock(return_value="kubernetes"),
+            get_instance_type=mock.Mock(return_value=instance_type),
         ),
     ), mock.patch(
         "paasta_tools.cli.cmds.validate.list_all_instances_for_service",

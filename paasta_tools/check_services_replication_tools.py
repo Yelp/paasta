@@ -127,6 +127,13 @@ def parse_args() -> argparse.Namespace:
         # to avoid having two cron jobs running with two different namespace-prefix
         default=["paasta"],
     )
+    parser.add_argument(
+        "--eks",
+        help="This flag checks k8 services running on EKS",
+        dest="eks",
+        action="store_true",
+        default=False,
+    )
     options = parser.parse_args()
 
     return options

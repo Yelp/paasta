@@ -26,6 +26,8 @@ def test_parse_args():
         ("kubernetes", False, "service_1.instance1\nservice_2.instance1", False, None),
         ("kubernetes", True, "service--1-instance1\nservice--2-instance1", False, None),
         ("flink", True, "service--1-instance1\nservice--2-instance1", False, None),
+        ("eks", False, "service_1.instance1\nservice_2.instance1", False, None),
+        ("eks", True, "service--1-instance1\nservice--2-instance1", False, None),
     ],
 )
 def test_main(

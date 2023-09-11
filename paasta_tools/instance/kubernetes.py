@@ -12,6 +12,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import a_sync
 import pytz
@@ -24,6 +25,7 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools import cassandracluster_tools
+from paasta_tools import eks_tools
 from paasta_tools import envoy_tools
 from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
@@ -47,7 +49,11 @@ from paasta_tools.utils import calculate_tail_lines
 
 
 INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
-INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES_K8S = {
+    "cassandracluster",
+    "eks",
+    "kubernetes",
+}
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
@@ -459,18 +465,29 @@ def filter_actually_running_replicasets(
 
 
 def bounce_status(
-    service: str,
-    instance: str,
-    settings: Any,
+    service: str, instance: str, settings: Any, is_eks: bool = False
 ) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
-    job_config = kubernetes_tools.load_kubernetes_service_config(
-        service=service,
-        instance=instance,
-        cluster=settings.cluster,
-        soa_dir=settings.soa_dir,
-        load_deployments=True,
-    )
+    # this should be the only place where it matters that we use eks_tools.
+    # apart from loading config files, we should be using kubernetes_tools
+    # everywhere.
+    job_config: Union[KubernetesDeploymentConfig, eks_tools.EksDeploymentConfig]
+    if is_eks:
+        job_config = eks_tools.load_eks_service_config(
+            service=service,
+            instance=instance,
+            cluster=settings.cluster,
+            soa_dir=settings.soa_dir,
+            load_deployments=True,
+        )
+    else:
+        job_config = kubernetes_tools.load_kubernetes_service_config(
+            service=service,
+            instance=instance,
+            cluster=settings.cluster,
+            soa_dir=settings.soa_dir,
+            load_deployments=True,
+        )
     expected_instance_count = job_config.get_instances()
     status["expected_instance_count"] = expected_instance_count
     desired_state = job_config.get_desired_state()

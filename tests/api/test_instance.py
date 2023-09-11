@@ -23,6 +23,7 @@ from marathon.models.app import MarathonTask
 from pyramid import testing
 from requests.exceptions import ReadTimeout
 
+from paasta_tools import eks_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
@@ -530,7 +531,26 @@ def test_marathon_service_mesh_status(
 
 
 @pytest.mark.asyncio
-async def test_kubernetes_smartstack_status():
+@pytest.mark.parametrize(
+    "mock_job_config",
+    (
+        kubernetes_tools.KubernetesDeploymentConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"bounce_method": "fake_bounce"},
+            branch_dict=None,
+        ),
+        eks_tools.EksDeploymentConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"bounce_method": "fake_bounce"},
+            branch_dict=None,
+        ),
+    ),
+)
+async def test_kubernetes_smartstack_status(mock_job_config):
     with asynctest.patch(
         "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
     ) as mock_match_backends_and_pods, asynctest.patch(
@@ -568,13 +588,6 @@ async def test_kubernetes_smartstack_status():
         mock_pod = mock.create_autospec(V1Pod)
         mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
 
-        mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
-            service="fake_service",
-            cluster="fake_cluster",
-            instance="fake_instance",
-            config_dict={"bounce_method": "fake_bounce"},
-            branch_dict=None,
-        )
         mock_service_namespace_config = ServiceNamespaceConfig()
         mock_settings = mock.Mock()
 
@@ -1279,13 +1292,21 @@ class TestBounceStatus:
         }
         return request
 
+    @pytest.mark.parametrize(
+        "instance_type",
+        (
+            "kubernetes",
+            "eks",
+        ),
+    )
     def test_success(
         self,
         mock_pik_bounce_status,
         mock_validate_service_instance,
         mock_request,
+        instance_type,
     ):
-        mock_validate_service_instance.return_value = "kubernetes"
+        mock_validate_service_instance.return_value = instance_type
         response = instance.bounce_status(mock_request)
         assert response == mock_pik_bounce_status.return_value
 

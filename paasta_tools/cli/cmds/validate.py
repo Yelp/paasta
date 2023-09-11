@@ -49,6 +49,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+)
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -114,6 +117,8 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 # if we see that people are still misusing this configuration, we can lower
 # this to the autotune cap (i.e., 1)
 CPU_BURST_THRESHOLD = 2
+
+K8S_TYPES = {"eks", "kubernetes"}
 
 
 class ConditionConfig(TypedDict, total=False):
@@ -283,7 +288,7 @@ def validate_schema(file_path: str, file_type: str) -> bool:
     config_file_object = get_config_file_dict(file_path)
     try:
         validator.validate(config_file_object)
-        if file_type == "kubernetes" and not validate_instance_names(
+        if file_type in K8S_TYPES and not validate_instance_names(
             config_file_object, file_path
         ):
             return False
@@ -572,14 +577,33 @@ def validate_autoscaling_configs(service_path):
             )
 
             if (
-                instance_config.get_instance_type() == "kubernetes"
+                instance_config.get_instance_type() in K8S_TYPES
                 and instance_config.is_autoscaling_enabled()
                 # we should eventually make the python templates add the override comment
                 # to the correspoding YAML line, but until then we just opt these out of that validation
-                and __is_templated(service, soa_dir, cluster, workload="kubernetes")
+                and __is_templated(
+                    service,
+                    soa_dir,
+                    cluster,
+                    workload=instance_config.get_instance_type(),
+                )
                 is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
+                if autoscaling_params["metrics_provider"] == "active-requests":
+                    desired_active_requests_per_replica = autoscaling_params.get(
+                        "desired_active_requests_per_replica",
+                        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+                    )
+                    if desired_active_requests_per_replica <= 0:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: desired_active_requests_per_replica must be "
+                                "greater than zero",
+                                link="",
+                            )
+                        )
                 if autoscaling_params["metrics_provider"] in {
                     "uwsgi",
                     "piscina",
@@ -611,7 +635,11 @@ def validate_autoscaling_configs(service_path):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion
                     config = get_config_file_dict(
-                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                        os.path.join(
+                            soa_dir,
+                            service,
+                            f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                        ),
                         use_ruamel=True,
                     )
                     if config[instance].get("cpus") is None:
@@ -747,7 +775,9 @@ def validate_cpu_burst(service_path: str) -> bool:
 
     returncode = True
     for cluster in list_clusters(service, soa_dir):
-        if __is_templated(service, soa_dir, cluster, workload="kubernetes"):
+        if __is_templated(
+            service, soa_dir, cluster, workload="kubernetes"
+        ) or __is_templated(service, soa_dir, cluster, workload="eks"):
             # we should eventually make the python templates add the override comment
             # to the correspoding YAML line, but until then we just opt these out of that validation
             continue
@@ -761,13 +791,20 @@ def validate_cpu_burst(service_path: str) -> bool:
                 load_deployments=False,
                 soa_dir=soa_dir,
             )
-            is_k8s_service = instance_config.get_instance_type() == "kubernetes"
+            is_k8s_service = (
+                instance_config.get_instance_type() == "kubernetes"
+                or instance_config.get_instance_type() == "eks"
+            )
             should_skip_cpu_burst_validation = service in skip_cpu_burst_validation_list
             if is_k8s_service and not should_skip_cpu_burst_validation:
                 # we need access to the comments, so we need to read the config with ruamel to be able
                 # to actually get them in a "nice" automated fashion
                 config = get_config_file_dict(
-                    os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                    os.path.join(
+                        soa_dir,
+                        service,
+                        f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                    ),
                     use_ruamel=True,
                 )
 

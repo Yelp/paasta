@@ -19,8 +19,11 @@ from paasta_tools.api.client import get_paasta_oapi_client
 from paasta_tools.cli.cmds.status import get_envoy_status_human
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import verify_instances
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -75,8 +78,30 @@ def paasta_mesh_status_on_api_endpoint(
     service: str,
     instance: str,
     system_paasta_config: SystemPaastaConfig,
+    soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Tuple[int, List[str]]:
-    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    instance_config = next(
+        get_instance_configs_for_service(
+            service=service,
+            soa_dir=soa_dir,
+            clusters=[cluster],
+            instances=[instance],
+        ),
+        None,
+    )
+    if not instance_config:
+        print(
+            "ERROR: Could not find config files for this service instance in soaconfigs. Maybe you mispelled an argument?"
+        )
+        exit(1)
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(
+            cluster,
+            is_eks=(instance_config.__class__ == EksDeploymentConfig),
+        ),
+        system_paasta_config=system_paasta_config,
+    )
     if not client:
         print("ERROR: Cannot get a paasta-api client")
         exit(1)
@@ -128,7 +153,7 @@ def paasta_mesh_status(args) -> int:
 
     # validate args, funcs have their own error output
     service = figure_out_service_name(args, args.soa_dir)
-    if verify_instances(args.instance, service, [args.cluster]):
+    if verify_instances(args.instance, service, [args.cluster], args.soa_dir):
         return 1
 
     return_code, mesh_output = paasta_mesh_status_on_api_endpoint(
@@ -136,6 +161,7 @@ def paasta_mesh_status(args) -> int:
         service=service,
         instance=args.instance,
         system_paasta_config=system_paasta_config,
+        soa_dir=args.soa_dir,
     )
 
     output = [
