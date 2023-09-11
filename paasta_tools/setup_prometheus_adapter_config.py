@@ -280,17 +280,14 @@ def create_instance_active_requests_scaling_rule(
 
     current_replicas = f"""
         sum(
-            label_join(
-                (
-                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+            (
+                kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
                     or
-                    max_over_time(
-                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-                    )
-                ),
-                "kube_deployment", "", "deployment"
+                max_over_time(
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                )
             )
-        ) by (kube_deployment)
+        )
     """
     # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
     # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
@@ -302,16 +299,16 @@ def create_instance_active_requests_scaling_rule(
             max_over_time(
                 k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
             )
-        ) by (kube_deployment))
+        )
     """
     load_per_instance = f"""
         avg(
             paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
-        ) by (kube_pod, kube_deployment)
+        )
     """
     missing_instances = f"""
         clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            {ready_pods} - count({load_per_instance}),
             0
         )
     """
@@ -319,7 +316,7 @@ def create_instance_active_requests_scaling_rule(
     (
         sum(
             {load_per_instance}
-        ) by (kube_deployment)
+        )
         +
         ({missing_instances} * {desired_active_requests_per_replica})
     )
