@@ -1137,7 +1137,6 @@ def test_paasta_spark_run_bash(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
-        app_id="",
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1184,7 +1183,6 @@ def test_paasta_spark_run_bash(
         force_spark_resource_configs=False,
         use_eks=False,
         k8s_server_address=None,
-        spark_app_id="",
     )
     mock_spark_conf = mock_spark_conf_builder.return_value.get_spark_conf.return_value
     mock_configure_and_run_docker_container.assert_called_once_with(
@@ -1253,7 +1251,6 @@ def test_paasta_spark_run(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
-        app_id="",
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1300,7 +1297,6 @@ def test_paasta_spark_run(
         force_spark_resource_configs=False,
         use_eks=False,
         k8s_server_address=None,
-        spark_app_id="",
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
@@ -1368,7 +1364,6 @@ def test_paasta_spark_run_pyspark(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
-        app_id="",
     )
     mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
         False
@@ -1424,7 +1419,6 @@ def test_paasta_spark_run_pyspark(
         force_spark_resource_configs=False,
         use_eks=False,
         k8s_server_address=None,
-        spark_app_id="",
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
         args,
