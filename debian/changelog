@@ -1,3 +1,13 @@
+paasta-tools (0.200.1) xenial; urgency=medium
+
+  * 0.200.1 tagged with 'make release'
+    Commit: [COREJAVA-888] Add kube deployment label to envoy metrics
+    aggregation (#3699)  * [COREJAVA-888] Add kube deployment label to
+    envoy metrics aggregation  * Format  * Add missing quotes  * PR
+    Feedback - update regex in label_replace and add comment
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 11 Sep 2023 13:54:00 -0700
+
 paasta-tools (0.200.0) xenial; urgency=medium
 
   * 0.200.0 tagged with 'make release'
