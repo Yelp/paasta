@@ -1,3 +1,14 @@
+paasta-tools (0.200.2) xenial; urgency=medium
+
+  * 0.200.2 tagged with 'make release'
+    Commit: Add quotes around new label name in label_replace (#3700)  *
+    [COREJAVA-888] Add kube deployment label to envoy metrics
+    aggregation  * Format  * Add missing quotes  * PR Feedback - update
+    regex in label_replace and add comment  * Add quotes around new
+    label name in label_replace
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 11 Sep 2023 15:12:29 -0700
+
 paasta-tools (0.200.1) xenial; urgency=medium
 
   * 0.200.1 tagged with 'make release'
