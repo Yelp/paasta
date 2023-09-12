@@ -345,14 +345,29 @@ def create_instance_active_requests_scaling_rule(
         )
     """
     metrics_query = f"""
-        {desired_instances} / {current_replicas}
+        label_replace(
+            label_replace(
+                {desired_instances} / {current_replicas}, 
+                "kube_deployment", "{deployment_name}", "", ""
+            ),
+            "kube_namespace", "{namespace}", "", ""
+        )
+    """
+    seriesQuery = f"""
+        label_replace(
+            label_replace(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}, 
+                "kube_deployment", "{deployment_name}", "", ""
+            ), 
+            "kube_namespace", "{namespace}", "", ""
+        )
     """
 
     metric_name = f"{deployment_name}-active-requests-prom"
 
     return {
         "name": {"as": metric_name},
-        "seriesQuery": f"paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
+        "seriesQuery": seriesQuery,
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
