@@ -350,7 +350,7 @@ def create_instance_active_requests_scaling_rule(
     metrics_query = f"""
         label_replace(
             label_replace(
-                {desired_instances} / {current_replicas}, 
+                {desired_instances} / {current_replicas},
                 "kube_deployment", "{deployment_name}", "", ""
             ),
             "kube_namespace", "{namespace}", "", ""
@@ -359,9 +359,9 @@ def create_instance_active_requests_scaling_rule(
     seriesQuery = f"""
         label_replace(
             label_replace(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}, 
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
                 "kube_deployment", "{deployment_name}", "", ""
-            ), 
+            ),
             "kube_namespace", "{namespace}", "", ""
         )
     """
