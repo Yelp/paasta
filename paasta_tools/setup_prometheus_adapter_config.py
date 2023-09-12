@@ -356,7 +356,7 @@ def create_instance_active_requests_scaling_rule(
             "kube_namespace", "{namespace}", "", ""
         )
     """
-    seriesQuery = f"""
+    series_query = f"""
         label_replace(
             label_replace(
                 paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
@@ -370,7 +370,7 @@ def create_instance_active_requests_scaling_rule(
 
     return {
         "name": {"as": metric_name},
-        "seriesQuery": seriesQuery,
+        "seriesQuery": _minify_promql(series_query),
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
