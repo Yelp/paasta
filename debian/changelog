@@ -1,3 +1,14 @@
+paasta-tools (0.200.3) xenial; urgency=medium
+
+  * 0.200.3 tagged with 'make release'
+    Commit: [COREJAVA-888] Add kube_deployment and kube_namespace to
+    series and metrics query for hpa (#3701)  * [COREJAVA-888] Add
+    kube_deployment and kube_namespace to series and metrics query for
+    hpa  * add a comment  * Format  * PR Feedback - rename variable and
+    minify promql
+
+ -- Charan Gangaraju <sclg@yelp.com>  Tue, 12 Sep 2023 06:53:28 -0700
+
 paasta-tools (0.200.2) xenial; urgency=medium
 
   * 0.200.2 tagged with 'make release'
