@@ -344,6 +344,9 @@ def create_instance_active_requests_scaling_rule(
             )[{moving_average_window}s:]
         )
     """
+
+    # The prometheus HPA adapter needs kube_deployment and kube_namespace labels attached to the metrics its scaling on.
+    # The envoy-based metrics have no labels corresponding to the k8s resources, so we can add them in.
     metrics_query = f"""
         label_replace(
             label_replace(
