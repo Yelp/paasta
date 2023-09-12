@@ -344,15 +344,33 @@ def create_instance_active_requests_scaling_rule(
             )[{moving_average_window}s:]
         )
     """
+
+    # The prometheus HPA adapter needs kube_deployment and kube_namespace labels attached to the metrics its scaling on.
+    # The envoy-based metrics have no labels corresponding to the k8s resources, so we can add them in.
     metrics_query = f"""
-        {desired_instances} / {current_replicas}
+        label_replace(
+            label_replace(
+                {desired_instances} / {current_replicas},
+                "kube_deployment", "{deployment_name}", "", ""
+            ),
+            "kube_namespace", "{namespace}", "", ""
+        )
+    """
+    series_query = f"""
+        label_replace(
+            label_replace(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
+                "kube_deployment", "{deployment_name}", "", ""
+            ),
+            "kube_namespace", "{namespace}", "", ""
+        )
     """
 
     metric_name = f"{deployment_name}-active-requests-prom"
 
     return {
         "name": {"as": metric_name},
-        "seriesQuery": f"paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}",
+        "seriesQuery": _minify_promql(series_query),
         "resources": {"template": "kube_<<.Resource>>"},
         "metricsQuery": _minify_promql(metrics_query),
     }
