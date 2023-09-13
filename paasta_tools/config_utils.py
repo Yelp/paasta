@@ -17,7 +17,13 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 log = logging.getLogger(__name__)
 
 # Must have a schema defined
-KNOWN_CONFIG_TYPES = ("marathon", "kubernetes", "deploy", "smartstack")
+KNOWN_CONFIG_TYPES = (
+    "marathon",
+    "kubernetes",
+    "deploy",
+    "smartstack",
+    "cassandracluster",
+)
 
 
 def my_represent_none(self, data):
