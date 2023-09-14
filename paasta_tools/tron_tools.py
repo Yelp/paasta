@@ -476,6 +476,7 @@ class TronActionConfig(InstanceConfig):
             # if this changes and we do need it - please add a comment about *why* we need it!
             # XXX: update PAASTA_RESOURCE_* env vars to use the correct value from spark_args and set
             # these to the correct values for the executors as part of the driver commandline
+            env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
         return env
 
@@ -892,7 +893,7 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
 def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = False):
     """Generate a dict of tronfig for an action, from the TronActionConfig.
 
-    :param job_config: TronActionConfig
+    :param action_config: TronActionConfig
     """
     executor = action_config.get_executor()
     result = {
@@ -993,6 +994,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             )
 
         if executor == "spark":
+            system_paasta_config = load_system_paasta_config()
             # this service account will only be used by Spark drivers since executors don't
             # need Kubernetes access permissions
             result["service_account_name"] = create_or_find_service_account_name(
@@ -1000,12 +1002,17 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 dry_run=action_config.for_validation,
             )
-            # spark, unlike normal batches, needs to expose  several ports for things like the spark
+            result["extra_volumes"] = [{
+                "container_path": system_paasta_config.get_spark_kubeconfig(),
+                "host_path": system_paasta_config.get_spark_kubeconfig(),
+                "mode": "RO",
+            }]
+            # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
                 set(
                     _get_spark_ports(
-                        system_paasta_config=load_system_paasta_config()
+                        system_paasta_config=system_paasta_config
                     ).values()
                 )
             )
@@ -1029,7 +1036,10 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
-        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
+        if "extra_volumes" in result:
+            result["extra_volumes"] = result["extra_volumes"] + format_volumes(action_config.get_extra_volumes())
+        else:
+            result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
