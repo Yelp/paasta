@@ -1,3 +1,11 @@
+paasta-tools (0.200.4) xenial; urgency=medium
+
+  * 0.200.4 tagged with 'make release'
+    Commit: [COREJAVA-897] Avoid using label_replace in series query
+    (#3704)
+
+ -- Charan Gangaraju <sclg@yelp.com>  Wed, 13 Sep 2023 13:40:45 -0700
+
 paasta-tools (0.200.3) xenial; urgency=medium
 
   * 0.200.3 tagged with 'make release'

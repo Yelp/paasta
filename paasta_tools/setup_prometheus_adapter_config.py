@@ -357,13 +357,7 @@ def create_instance_active_requests_scaling_rule(
         )
     """
     series_query = f"""
-        label_replace(
-            label_replace(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
-                "kube_deployment", "{deployment_name}", "", ""
-            ),
-            "kube_namespace", "{namespace}", "", ""
-        )
+        k8s:deployment:pods_status_ready{{{worker_filter_terms}}}
     """
 
     metric_name = f"{deployment_name}-active-requests-prom"
