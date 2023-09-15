@@ -91,9 +91,15 @@ def test_write_auto_config_data_file_exists(tmpdir):
 
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
 def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
-    for config_type in config_utils.KNOWN_CONFIG_TYPES:
+    for config_type in (
+        "marathon",
+        "kubernetes",
+        "deploy",
+        "smartstack",
+        "cassandracluster",
+    ):
         filepath = f"service/{config_type}-cluster.yaml"
-        config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
+        assert config_utils.validate_auto_config_file(filepath, AUTO_SOACONFIG_SUBDIR)
         mock_validate.assert_called_with(filepath, f"autotuned_defaults/{config_type}")
 
 
