@@ -311,27 +311,14 @@ def create_instance_active_requests_scaling_rule(
     # it's safe to unconditionally add.
     # This is necessary as otherwise the HPA/prometheus adapter does not know what these
     # metrics are for.
-    load_per_instance = f"""
-        label_replace(
-            avg(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
-            ),
-            "kube_deployment", "{deployment_name}", "", ""
-        )
-    """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
-        )
-    """
     total_load = f"""
     (
         sum(
-            {load_per_instance}
+            label_replace(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
+                "kube_deployment", "{deployment_name}", "", ""
+            )
         ) by (kube_deployment)
-        +
-        ({missing_instances} * {desired_active_requests_per_replica})
     )
     """
     desired_instances_at_each_point_in_time = f"""
