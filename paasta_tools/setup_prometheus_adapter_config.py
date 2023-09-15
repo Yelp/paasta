@@ -292,18 +292,6 @@ def create_instance_active_requests_scaling_rule(
             )
         ) by (kube_deployment)
     """
-    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
-    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
-    # deployment.
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
 
     # envoy-based metrics have no labels corresponding to the k8s resources that they
     # front, but we can trivially add one in since our deployment names are of the form
