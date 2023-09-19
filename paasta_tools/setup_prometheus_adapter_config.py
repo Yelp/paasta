@@ -292,18 +292,6 @@ def create_instance_active_requests_scaling_rule(
             )
         ) by (kube_deployment)
     """
-    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
-    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
-    # deployment.
-    ready_pods = f"""
-        (sum(
-            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
-            or
-            max_over_time(
-                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-            )
-        ) by (kube_deployment))
-    """
 
     # envoy-based metrics have no labels corresponding to the k8s resources that they
     # front, but we can trivially add one in since our deployment names are of the form
@@ -311,27 +299,14 @@ def create_instance_active_requests_scaling_rule(
     # it's safe to unconditionally add.
     # This is necessary as otherwise the HPA/prometheus adapter does not know what these
     # metrics are for.
-    load_per_instance = f"""
-        label_replace(
-            avg(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}}
-            ),
-            "kube_deployment", "{deployment_name}", "", ""
-        )
-    """
-    missing_instances = f"""
-        clamp_min(
-            {ready_pods} - count({load_per_instance}) by (kube_deployment),
-            0
-        )
-    """
     total_load = f"""
     (
         sum(
-            {load_per_instance}
+            label_replace(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
+                "kube_deployment", "{deployment_name}", "", ""
+            )
         ) by (kube_deployment)
-        +
-        ({missing_instances} * {desired_active_requests_per_replica})
     )
     """
     desired_instances_at_each_point_in_time = f"""

@@ -1,3 +1,21 @@
+paasta-tools (0.201.1) xenial; urgency=medium
+
+  * 0.201.1 tagged with 'make release'
+    Commit: [COREJAVA-901] Remove calculation of missing instances as it
+    can"t be calculated with data in HPA (#3706)  * [COREJAVA-901]
+    Remove calculation of missing instances as it can"t be calculated
+    with data in HPA  * Remove unused ready pods calculation
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 15 Sep 2023 07:44:20 -0700
+
+paasta-tools (0.201.0) xenial; urgency=medium
+
+  * 0.201.0 tagged with 'make release'
+    Commit: Merge pull request #3702 from Yelp/u/emanelsabban/PAASTA-
+    17988  Add eks support for cleanup kubernetes job - PAASTA-17988
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Fri, 15 Sep 2023 06:12:01 -0700
+
 paasta-tools (0.200.4) xenial; urgency=medium
 
   * 0.200.4 tagged with 'make release'
