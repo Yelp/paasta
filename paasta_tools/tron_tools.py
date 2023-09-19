@@ -476,7 +476,6 @@ class TronActionConfig(InstanceConfig):
             # if this changes and we do need it - please add a comment about *why* we need it!
             # XXX: update PAASTA_RESOURCE_* env vars to use the correct value from spark_args and set
             # these to the correct values for the executors as part of the driver commandline
-            env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
         return env
 
@@ -1002,18 +1001,19 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 dry_run=action_config.for_validation,
             )
-            result["extra_volumes"] = [{
-                "container_path": system_paasta_config.get_spark_kubeconfig(),
-                "host_path": system_paasta_config.get_spark_kubeconfig(),
-                "mode": "RO",
-            }]
+            result["extra_volumes"] = [
+                {
+                    "container_path": system_paasta_config.get_spark_kubeconfig(),
+                    "host_path": system_paasta_config.get_spark_kubeconfig(),
+                    "mode": "RO",
+                }
+            ]
+            result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
                 set(
-                    _get_spark_ports(
-                        system_paasta_config=system_paasta_config
-                    ).values()
+                    _get_spark_ports(system_paasta_config=system_paasta_config).values()
                 )
             )
 
@@ -1037,7 +1037,9 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
         if "extra_volumes" in result:
-            result["extra_volumes"] = result["extra_volumes"] + format_volumes(action_config.get_extra_volumes())
+            result["extra_volumes"] = result["extra_volumes"] + format_volumes(
+                action_config.get_extra_volumes()
+            )
         else:
             result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_image"] = action_config.get_docker_url()

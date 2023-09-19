@@ -962,7 +962,7 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1042,7 +1042,6 @@ class TestTronTools:
             "--conf spark.executorEnv.PAASTA_CLUSTER=test-cluster "
             "--conf spark.executorEnv.PAASTA_INSTANCE_TYPE=spark "
             "--conf spark.executorEnv.SPARK_EXECUTOR_DIRS=/tmp "
-            "--conf spark.kubernetes.authenticate.driver.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role--spark "
             "--conf spark.kubernetes.pyspark.pythonVersion=3 "
             "--conf spark.kubernetes.container.image=docker-registry.com:400/my_service:paasta-123abcde "
             "--conf spark.kubernetes.namespace=paasta-spark "
@@ -1107,14 +1106,19 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/etc/kubernetes/spark.conf",
+                    "host_path": "/etc/kubernetes/spark.conf",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
-            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role--spark",
+            "service_account_name": "paasta--arn-aws-iam-000000000000-role-some-role",
             "node_selectors": {"yelp.com/pool": "special_pool"},
             "ports": [33000, 33001, 33002],
             "labels": {
