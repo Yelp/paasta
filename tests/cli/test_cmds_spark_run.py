@@ -25,6 +25,7 @@ from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import decide_final_eks_toggle_state
+from paasta_tools.cli.cmds.spark_run import DEFAULT_DOCKER_SHM_SIZE
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_CORES_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DRIVER_MEMORY_BY_SPARK
 from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
@@ -52,6 +53,7 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
     docker_cmd = "pyspark"
     nvidia = False
     docker_memory_limit = "2g"
+    docker_shm_size = "1g"
     docker_cpu_limit = "2"
 
     actual = get_docker_run_cmd(
@@ -62,10 +64,10 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
         docker_cmd,
         nvidia,
         docker_memory_limit,
+        docker_shm_size,
         docker_cpu_limit,
     )
-
-    assert actual[7:] == [
+    assert actual[-12:] == [
         "--user=1234:100",
         "--name=fake_name",
         "--env",
@@ -473,6 +475,7 @@ def test_run_docker_container(
             dry_run=dry_run,
             nvidia=nvidia,
             docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+            docker_shm_size=DEFAULT_DOCKER_SHM_SIZE,
             docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
         )
         mock_get_docker_run_cmd.assert_called_once_with(
@@ -483,6 +486,7 @@ def test_run_docker_container(
             docker_cmd=docker_cmd,
             nvidia=nvidia,
             docker_memory_limit=DEFAULT_DRIVER_MEMORY_BY_SPARK,
+            docker_shm_size=DEFAULT_DOCKER_SHM_SIZE,
             docker_cpu_limit=DEFAULT_DRIVER_CORES_BY_SPARK,
         )
         if dry_run:
@@ -605,6 +609,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
+        args.docker_shm_size = False
         args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -642,6 +647,7 @@ class TestConfigureAndRunDockerContainer:
             dry_run=True,
             nvidia=False,
             docker_memory_limit="2g",
+            docker_shm_size=DEFAULT_DOCKER_SHM_SIZE,
             docker_cpu_limit="1",
         )
 
@@ -717,6 +723,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
+        args.docker_shm_size = "1g"
         args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -754,6 +761,7 @@ class TestConfigureAndRunDockerContainer:
             dry_run=True,
             nvidia=False,
             docker_memory_limit="4g",
+            docker_shm_size="1g",
             docker_cpu_limit=3,
         )
 
@@ -829,6 +837,7 @@ class TestConfigureAndRunDockerContainer:
         args.cluster_manager = cluster_manager
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
+        args.docker_shm_size = False
         args.use_eks_override = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
@@ -866,6 +875,7 @@ class TestConfigureAndRunDockerContainer:
             dry_run=True,
             nvidia=False,
             docker_memory_limit="2g",
+            docker_shm_size=DEFAULT_DOCKER_SHM_SIZE,
             docker_cpu_limit="2",
         )
 
