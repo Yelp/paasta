@@ -1,3 +1,12 @@
+paasta-tools (0.201.2) xenial; urgency=medium
+
+  * 0.201.2 tagged with 'make release'
+    Commit: Merge pull request #3703 from siadat/sina/add-
+    cassandracluster-to-known-config-types  COMPINFRA-3079: Add
+    cassandracluster to known autotuned config types
+
+ -- Sina Siadat <sina@yelp.com>  Tue, 19 Sep 2023 08:34:48 -0700
+
 paasta-tools (0.201.1) xenial; urgency=medium
 
   * 0.201.1 tagged with 'make release'
