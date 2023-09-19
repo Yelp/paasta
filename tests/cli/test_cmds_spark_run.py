@@ -67,8 +67,7 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
         docker_shm_size,
         docker_cpu_limit,
     )
-
-    assert actual[8:] == [
+    assert actual[-12:] == [
         "--user=1234:100",
         "--name=fake_name",
         "--env",
