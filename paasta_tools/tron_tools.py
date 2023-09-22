@@ -102,7 +102,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 }
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
-EXECUTOR_TYPES = ["paasta", "ssh"]
+EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
 
 
 class FieldSelectorConfig(TypedDict):
