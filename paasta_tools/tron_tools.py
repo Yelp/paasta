@@ -53,6 +53,7 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import TronSecretVolume
+from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
     create_or_find_service_account_name,
@@ -305,7 +306,7 @@ class TronActionConfig(InstanceConfig):
                 f"tron_spark_{self.get_service()}_{self.get_instance()}",
             ),
             # TODO: figure out how to handle dedicated spark cluster here
-            "spark.master": f"k8s://https://k8s.{self.get_cluster()}.paasta:6443",
+            "spark.master": f"k8s://{get_k8s_url_for_cluster(self.get_cluster())}",
             # TODO: add PAASTA_RESOURCE_* environment variables here
             "spark.executorEnv.PAASTA_SERVICE": self.get_service(),
             "spark.executorEnv.PAASTA_INSTANCE": self.get_instance(),
