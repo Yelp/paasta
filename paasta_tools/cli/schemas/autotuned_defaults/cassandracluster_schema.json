@@ -15,9 +15,9 @@
                     "minimum": 0,
                     "exclusiveMinimum": true
                 },
-                "cpu_burst_add": {
+                "cpu_burst_percent": {
                     "type": "number",
-                    "minimum": 0.0,
+                    "minimum": 0,
                     "exclusiveMinimum": false
                 },
                 "disk": {
