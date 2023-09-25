@@ -1021,6 +1021,10 @@ class TestTronTools:
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.get_k8s_url_for_cluster",
+            autospec=True,
+            return_value="https://k8s.test-cluster.paasta:6443",
         ):
             mock_spark_conf_builder.return_value._adjust_spark_requested_resources.return_value = {
                 "spark.executor.instances": "2",
