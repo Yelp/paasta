@@ -1,0 +1,37 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "Properties that can be set by automated processes for cassandracluster spec files",
+    "type": "object",
+    "additionalProperties": false,
+    "minProperties": 1,
+    "patternProperties": {
+        "^([a-z0-9]|[a-z0-9][a-z0-9_-]*[a-z0-9])*$": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+                "cpus": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                },
+                "cpu_burst_percent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": false
+                },
+                "disk": {
+                    "type": "string"
+                },
+                "mem": {
+                    "type": "string"
+                },
+                "replicas": {
+                    "type": "number",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                }
+            }
+        }
+    }
+}
