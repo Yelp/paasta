@@ -1535,6 +1535,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                         default_mode=mode_to_int(secret_volume.get("default_mode")),
                         items=items,
+                        optional=False,
                     ),
                 )
             )
