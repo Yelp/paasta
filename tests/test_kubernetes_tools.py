@@ -1299,12 +1299,16 @@ class TestKubernetesDeploymentConfig:
             ),
             V1Volume(
                 name="secret--waldo",
-                secret=V1SecretVolumeSource(secret_name="paasta-secret-kurupt-waldo"),
+                secret=V1SecretVolumeSource(
+                    secret_name="paasta-secret-kurupt-waldo", optional=False
+                ),
             ),
             V1Volume(
                 name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo", default_mode=0o765
+                    secret_name="paasta-secret-kurupt-waldo",
+                    default_mode=0o765,
+                    optional=False,
                 ),
             ),
             V1Volume(
@@ -1315,6 +1319,7 @@ class TestKubernetesDeploymentConfig:
                         V1KeyToPath(key="aaa", mode=0o567, path="bbb"),
                         V1KeyToPath(key="ccc", path="ddd"),
                     ],
+                    optional=False,
                 ),
             ),
         ]

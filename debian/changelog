@@ -1,3 +1,17 @@
+paasta-tools (0.201.4) xenial; urgency=medium
+
+  * 0.201.4 tagged with 'make release'
+    Commit: Ensure secret_volume volumes are not optional (#3708)  We
+    noticed some logging from a newly added use of secret_volume that
+    makes us think that the default for these is that
+    V1SecretVolumeSources are optional - let"s clear up any ambiguity
+    and explicitly set a value for this  NOTE: I"m not quite sure if
+    this will require a big bounce of anything using secret_volume - but
+    I guess that"s also less of a concern than a big bounce of
+    *everything*
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 25 Sep 2023 13:01:01 -0700
+
 paasta-tools (0.201.3) xenial; urgency=medium
 
   * 0.201.3 tagged with 'make release'
