@@ -1,3 +1,15 @@
+paasta-tools (0.201.5) xenial; urgency=medium
+
+  * 0.201.5 tagged with 'make release'
+    Commit: Remove sfx autoscaling link (#3710)  We haven"t used SFX for
+    autoscaling in quite some time and this confuses people that see it
+    referenced in the output of `paasta status`  At some point we"ll
+    want to replace this with a dashboard that visualizes how the
+    Prometheus-based autoscaling works - but that"s for future-us to do
+    :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 27 Sep 2023 14:37:27 -0700
+
 paasta-tools (0.201.4) xenial; urgency=medium
 
   * 0.201.4 tagged with 'make release'
