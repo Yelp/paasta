@@ -82,6 +82,7 @@ metadata:
   labels:
     spark: {spark_pod_label}
 spec:
+  dnsPolicy: Default
   affinity:
     podAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
