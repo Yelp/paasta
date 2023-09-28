@@ -178,7 +178,7 @@ def get_cassandra_recommendation_from_result(result, keys_to_apply):
         if key == "cpus":
             rec["cpus"] = float(val)
         elif key == "cpu_burst_percent":
-            rec["cpu_burst_percent"] = min(1, float(val))
+            rec["cpu_burst_percent"] = float(val)
         elif key == "mem":
             rec["mem"] = val
         elif key == "disk":
