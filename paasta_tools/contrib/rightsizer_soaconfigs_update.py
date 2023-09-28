@@ -192,7 +192,6 @@ def get_recommendation_from_result(instance_type, result, keys_to_apply):
     function_map = {
         "cassandracluster": get_cassandra_recommendation_from_result,
         "kubernetes": get_kubernetes_recommendation_from_result,
-        "marathon": get_kubernetes_recommendation_from_result,
     }
     return function_map[instance_type](result, keys_to_apply)
 
