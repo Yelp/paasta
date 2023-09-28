@@ -1,8 +1,12 @@
 import argparse
 import logging
 from collections import defaultdict
+from typing import Any
+from typing import cast
+from typing import Dict
 from typing import List
 from typing import Literal
+from typing import Optional
 from typing import Set
 from typing import TypedDict
 from typing import Union
@@ -157,11 +161,12 @@ class CassandraRightsizerResult(TypedDict):
     suggested_replicas: str
 
 
-class CassandraRecommendation(TypedDict):
+class CassandraRecommendation(TypedDict, total=False):
     disk: str
     mem: str
     cpus: float
     replicas: int
+    cpu_burst_percent: float
 
 
 class KubernetesRightsizerResult(TypedDict):
@@ -183,33 +188,35 @@ class KubernetesRightsizerResult(TypedDict):
     suggested_max_instances: int
 
 
-class KubernetesRecommendation(TypedDict):
-    disk: str
-    mem: str
+class CPU(TypedDict):
+    cpu: float
+
+
+class Hacheck(TypedDict):
+    requests: CPU
+    limits: CPU
+
+
+class SidecarResourceRequirements(TypedDict):
+    hacheck: Hacheck
+
+
+class KubernetesRecommendation(TypedDict, total=False):
+    disk: float
+    mem: float
     cpus: float
     cpu_burst_add: float
     max_instances: int
     min_instances: int
-    sidecar_resource_requirements: TypedDict(
-        "SidecarResourceRequirements",
-        {
-            "hacheck": TypedDict(
-                "Hacheck",
-                {
-                    "requests": TypedDict("Requests", {"cpu": float}),
-                    "limits": TypedDict("Limits", {"cpu": float}),
-                },
-            ),
-        },
-    )
+    sidecar_resource_requirements: SidecarResourceRequirements
 
 
 def get_kubernetes_recommendation_from_result(
-    result: KubernetesRightsizerResult, keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]]
-):
-    rec = {}
+    result: KubernetesRightsizerResult, keys_to_apply: List[str]
+) -> KubernetesRecommendation:
+    rec: KubernetesRecommendation = {}
     for key in keys_to_apply:
-        val = result.get(key)
+        val: Optional[str] = cast(Optional[str], result.get(key))
         if not val or val == NULL:
             continue
         if key == "cpus":
@@ -240,11 +247,11 @@ def get_kubernetes_recommendation_from_result(
 
 
 def get_cassandra_recommendation_from_result(
-    result: CassandraRightsizerResult, keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]]
-):
-    rec = {}
+    result: CassandraRightsizerResult, keys_to_apply: List[str]
+) -> CassandraRecommendation:
+    rec: CassandraRecommendation = {}
     for key in keys_to_apply:
-        val = result.get(key)
+        val: Optional[str] = cast(Optional[str], result.get(key))
         if not val or val == NULL:
             continue
         if key == "cpus":
@@ -260,24 +267,12 @@ def get_cassandra_recommendation_from_result(
     return rec
 
 
-def get_recommendation_from_result(
-    instance_type: SupportedInstanceType,
-    result: Union[CassandraRightsizerResult, KubernetesRightsizerResult],
-    keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]],
-) -> Union[CassandraRecommendation, KubernetesRecommendation]:
-    function_map = {
-        "cassandracluster": get_cassandra_recommendation_from_result,
-        "kubernetes": get_kubernetes_recommendation_from_result,
-    }
-    return function_map[instance_type](result, keys_to_apply)
-
-
 def get_recommendations_by_service_file(
     results,
     keys_to_apply,
     exclude_clusters: Set[str],
 ):
-    results_by_service_file = defaultdict(dict)
+    results_by_service_file: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
     for result in results.values():
         # we occasionally want to disable autotune for a cluster (or set of clusters)
         # to do so, we can simply skip getting recommendations for any (service, cluster)
@@ -293,7 +288,11 @@ def get_recommendations_by_service_file(
             result["cluster"],
         )  # e.g. (foo, marathon-norcal-stagef)
         instance_type = result["cluster"].split("-", 1)[0]
-        rec = get_recommendation_from_result(instance_type, result, keys_to_apply)
+        rec: Union[KubernetesRecommendation, CassandraRecommendation]
+        if instance_type == "cassandracluster":
+            rec = get_cassandra_recommendation_from_result(result, keys_to_apply)
+        elif instance_type == "kubernetes":
+            rec = get_kubernetes_recommendation_from_result(result, keys_to_apply)
         if not rec:
             continue
         results_by_service_file[key][result["instance"]] = rec
