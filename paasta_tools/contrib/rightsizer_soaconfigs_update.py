@@ -136,7 +136,7 @@ def get_default_git_remote():
     return default_git_remote
 
 
-def get_recommendation_from_result(result, keys_to_apply):
+def get_kubernetes_recommendation_from_result(result, keys_to_apply):
     rec = {}
     for key in keys_to_apply:
         val = result.get(key)
@@ -169,6 +169,34 @@ def get_recommendation_from_result(result, keys_to_apply):
     return rec
 
 
+def get_cassandra_recommendation_from_result(result, keys_to_apply):
+    rec = {}
+    for key in keys_to_apply:
+        val = result.get(key)
+        if not val or val == NULL:
+            continue
+        if key == "cpus":
+            rec["cpus"] = float(val)
+        elif key == "cpu_burst_percent":
+            rec["cpu_burst_percent"] = min(1, float(val))
+        elif key == "mem":
+            rec["mem"] = val
+        elif key == "disk":
+            rec["disk"] = val
+        elif key == "replicas":
+            rec["replicas"] = int(val)
+    return rec
+
+
+def get_recommendation_from_result(instance_type, result, keys_to_apply):
+    function_map = {
+        "cassandracluster": get_cassandra_recommendation_from_result,
+        "kubernetes": get_kubernetes_recommendation_from_result,
+        "marathon": get_kubernetes_recommendation_from_result,
+    }
+    return function_map[instance_type](result, keys_to_apply)
+
+
 def get_recommendations_by_service_file(
     results,
     keys_to_apply,
@@ -189,7 +217,8 @@ def get_recommendations_by_service_file(
             result["service"],
             result["cluster"],
         )  # e.g. (foo, marathon-norcal-stagef)
-        rec = get_recommendation_from_result(result, keys_to_apply)
+        instance_type = result["cluster"].split("-", 1)[0]
+        rec = get_recommendation_from_result(instance_type, result, keys_to_apply)
         if not rec:
             continue
         results_by_service_file[key][result["instance"]] = rec
