@@ -1,7 +1,11 @@
 import argparse
 import logging
 from collections import defaultdict
+from typing import List
+from typing import Literal
 from typing import Set
+from typing import TypedDict
+from typing import Union
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
@@ -136,7 +140,73 @@ def get_default_git_remote():
     return default_git_remote
 
 
-def get_kubernetes_recommendation_from_result(result, keys_to_apply):
+SupportedInstanceType = Literal["kubernetes", "eks", "cassandracluster"]
+
+
+class CassandraRightsizerResult(TypedDict):
+    current_cpus: str
+    suggested_cpus: str
+
+    current_disk: str
+    suggested_disk: str
+
+    current_mem: str
+    suggested_mem: str
+
+    current_replicas: str
+    suggested_replicas: str
+
+
+class CassandraRecommendation(TypedDict):
+    disk: str
+    mem: str
+    cpus: float
+    replicas: int
+
+
+class KubernetesRightsizerResult(TypedDict):
+    current_cpus: str
+    suggested_cpus: str
+
+    current_disk: str
+    suggested_disk: str
+
+    current_mem: str
+    suggested_mem: str
+
+    suggested_hacheck_cpus: float
+
+    suggested_cpu_burst_add: float
+
+    suggested_min_instances: int
+
+    suggested_max_instances: int
+
+
+class KubernetesRecommendation(TypedDict):
+    disk: str
+    mem: str
+    cpus: float
+    cpu_burst_add: float
+    max_instances: int
+    min_instances: int
+    sidecar_resource_requirements: TypedDict(
+        "SidecarResourceRequirements",
+        {
+            "hacheck": TypedDict(
+                "Hacheck",
+                {
+                    "requests": TypedDict("Requests", {"cpu": float}),
+                    "limits": TypedDict("Limits", {"cpu": float}),
+                },
+            ),
+        },
+    )
+
+
+def get_kubernetes_recommendation_from_result(
+    result: KubernetesRightsizerResult, keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]]
+):
     rec = {}
     for key in keys_to_apply:
         val = result.get(key)
@@ -169,7 +239,9 @@ def get_kubernetes_recommendation_from_result(result, keys_to_apply):
     return rec
 
 
-def get_cassandra_recommendation_from_result(result, keys_to_apply):
+def get_cassandra_recommendation_from_result(
+    result: CassandraRightsizerResult, keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]]
+):
     rec = {}
     for key in keys_to_apply:
         val = result.get(key)
@@ -188,7 +260,11 @@ def get_cassandra_recommendation_from_result(result, keys_to_apply):
     return rec
 
 
-def get_recommendation_from_result(instance_type, result, keys_to_apply):
+def get_recommendation_from_result(
+    instance_type: SupportedInstanceType,
+    result: Union[CassandraRightsizerResult, KubernetesRightsizerResult],
+    keys_to_apply: List[Literal[SUPPORTED_CSV_KEYS]],
+) -> Union[CassandraRecommendation, KubernetesRecommendation]:
     function_map = {
         "cassandracluster": get_cassandra_recommendation_from_result,
         "kubernetes": get_kubernetes_recommendation_from_result,
