@@ -629,7 +629,8 @@
                 },
                 "iam_role": {
                     "type": "string",
-                    "pattern": "^arn:aws:iam::[0-9]+:role/[a-zA-Z0-9+=,.@_-]+$"
+                    "pattern": "^arn:aws:iam::[0-9]+:role/[a-zA-Z0-9+=,.@_-]+$",
+                    "$comment": "This should be a valid AWS IAM role ARN, see https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-names"
                 },
                 "iam_role_provider": {
                     "enum": [
