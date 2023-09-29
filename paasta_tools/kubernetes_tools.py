@@ -3910,9 +3910,9 @@ def create_or_find_service_account_name(
         # to support these two usecases, we'll suffix the name of a Service Account with the
         # Kubernetes Role name to disambiguate between the two.
         if k8s_role:
-            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}--{k8s_role}"
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role.lower())}--{k8s_role}"
         else:
-            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role)}"
+            sa_name = f"paasta--{_RE_NORMALIZE_IAM_ROLE.sub('-', iam_role.lower())}"
     # until Core ML migrates Spark to use Pod Identity, we need to support starting Spark drivers with a Service Account
     # that only has k8s access
     elif not iam_role and k8s_role:
