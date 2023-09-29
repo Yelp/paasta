@@ -101,7 +101,8 @@
                     "type": "string"
                 },
                 "iam_role": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^arn:aws:iam::[0-9]+:role/[a-zA-Z0-9+=,.@_-]+$"
                 },
                 "iam_role_provider": {
                     "enum": [

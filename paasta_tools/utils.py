@@ -945,7 +945,7 @@ class InstanceConfig:
         return self.config_dict.get("iam_role", "")
 
     def get_iam_role_provider(self) -> str:
-        return self.config_dict.get("iam_role_provider", "kiam")
+        return self.config_dict.get("iam_role_provider", "aws")
 
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on."""
