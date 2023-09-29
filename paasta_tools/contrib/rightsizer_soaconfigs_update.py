@@ -13,6 +13,7 @@ from typing import Union
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
+from paasta_tools.kubernetes_tools import SidecarResourceRequirements
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
@@ -188,19 +189,6 @@ class KubernetesRightsizerResult(TypedDict):
     suggested_max_instances: int
 
 
-class CPU(TypedDict):
-    cpu: float
-
-
-class Hacheck(TypedDict):
-    requests: CPU
-    limits: CPU
-
-
-class SidecarResourceRequirements(TypedDict):
-    hacheck: Hacheck
-
-
 class KubernetesRecommendation(TypedDict, total=False):
     disk: float
     mem: float
@@ -208,7 +196,7 @@ class KubernetesRecommendation(TypedDict, total=False):
     cpu_burst_add: float
     max_instances: int
     min_instances: int
-    sidecar_resource_requirements: SidecarResourceRequirements
+    sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
 
 
 def get_kubernetes_recommendation_from_result(
