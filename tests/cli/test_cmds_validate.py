@@ -549,6 +549,39 @@ def test_marathon_validate_invalid_key_bad(mock_get_file_contents, capsys):
         assert SCHEMA_INVALID in output
 
 
+@pytest.mark.parametrize(
+    "iam_role, expected, instance_type",
+    [
+        ("not_an_arn", False, "kubernetes"),
+        ("not_an_arn", False, "eks"),
+        ("arn:aws:iam::12345678:role/some_role", True, "kubernetes"),
+        ("arn:aws:iam::12345678:role/some_role", True, "eks"),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True, "kubernetes"),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True, "eks"),
+        ("arn:aws:iam::12345678::role/malformed_role", False, "kubernetes"),
+        ("arn:aws:iam::12345678::role/malformed_role", False, "eks"),
+    ],
+)
+def test_instance_validate_schema_iam_role(
+    iam_role,
+    expected,
+    instance_type,
+    capsys,
+):
+    instance_content = f"""
+test_instance:
+  iam_role: {iam_role}
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = instance_content
+        assert validate_schema("unused_service_path.yaml", instance_type) == expected
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        output, _ = capsys.readouterr()
+        assert expected_output in output
+
+
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_tron_validate_schema_understands_underscores(mock_get_file_contents, capsys):
     tron_content = """
@@ -625,6 +658,35 @@ test_job:
     assert not validate_schema("unused_service_path.yaml", "tron")
     output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
+
+
+@pytest.mark.parametrize(
+    "iam_role, expected",
+    [
+        ("not_an_arn", False),
+        ("arn:aws:iam::12345678:role/some_role", True),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True),
+        ("arn:aws:iam::12345678::role/malformed_role", False),
+    ],
+)
+def test_tron_validate_schema_iam_role(iam_role, expected, capsys):
+    tron_content = f"""
+test_job:
+  node: paasta
+  schedule: "daily 04:00:00"
+  actions:
+    first:
+      iam_role: {iam_role}
+      command: echo hello world
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = tron_content
+        assert validate_schema("unused_service_path.yaml", "tron") == expected
+        output, _ = capsys.readouterr()
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        assert expected_output in output
 
 
 @pytest.mark.parametrize(

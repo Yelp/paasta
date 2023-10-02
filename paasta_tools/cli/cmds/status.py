@@ -1724,7 +1724,6 @@ def get_autoscaling_table(
             f"       Desired instances: {autoscaling_status['desired_replicas']}"
         )
         table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
-        table.append(f"       Dashboard: y/sfx-autoscaling")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             table.append(f"       Metrics:")
