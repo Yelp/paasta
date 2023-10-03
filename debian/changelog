@@ -1,3 +1,11 @@
+paasta-tools (0.202.0) xenial; urgency=medium
+
+  * 0.202.0 tagged with 'make release'
+    Commit: Merge pull request #3714 from Yelp/jfong/PAASTA-18066
+    Validate iam_role and stop supporting kiam
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Oct 2023 10:04:47 -0700
+
 paasta-tools (0.201.5) xenial; urgency=medium
 
   * 0.201.5 tagged with 'make release'
