@@ -1,6 +1,7 @@
 import mock
 import pytest
 
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -29,7 +30,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_uwsgi_scaling_rule,
 )
-from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import SystemPaastaConfig
 
 MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
@@ -456,7 +456,7 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
     ],
 )
 def test_get_rules_for_service_instance(
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     expected_rules: int,
 ) -> None:
     with mock.patch(

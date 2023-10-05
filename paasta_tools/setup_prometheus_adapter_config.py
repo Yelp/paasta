@@ -61,7 +61,6 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
@@ -249,7 +248,7 @@ def should_create_active_requests_scaling_rule(
 
 def create_instance_active_requests_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
     namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
@@ -350,7 +349,7 @@ def create_instance_active_requests_scaling_rule(
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
@@ -454,7 +453,7 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
@@ -566,7 +565,7 @@ def should_create_cpu_scaling_rule(
 
 def create_instance_cpu_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
@@ -715,7 +714,7 @@ def create_instance_cpu_scaling_rule(
 
 def create_instance_gunicorn_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
@@ -828,7 +827,7 @@ def should_create_arbitrary_promql_scaling_rule(
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     autoscaling_config = instance_config.get_autoscaling_params()
@@ -889,7 +888,7 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_config: InstanceConfig_T,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> List[PrometheusAdapterRule]:
     """
