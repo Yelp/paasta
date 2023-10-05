@@ -250,7 +250,6 @@ def create_instance_active_requests_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
