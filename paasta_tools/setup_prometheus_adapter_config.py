@@ -256,7 +256,7 @@ def create_instance_active_requests_scaling_rule(
     """
     autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
-    namespace = instance_config.get_namespace() or "paasta"
+    namespace = instance_config.get_namespace()
     desired_active_requests_per_replica = autoscaling_config.get(
         "desired_active_requests_per_replica",
         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
@@ -356,7 +356,7 @@ def create_instance_uwsgi_scaling_rule(
     """
     autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
-    namespace = instance_config.get_namespace() or "paasta"
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
@@ -460,7 +460,7 @@ def create_instance_piscina_scaling_rule(
     """
     autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
-    namespace = instance_config.get_namespace() or "paasta"
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
@@ -572,7 +572,7 @@ def create_instance_cpu_scaling_rule(
     """
     autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
-    namespace = instance_config.get_namespace() or "paasta"
+    namespace = instance_config.get_namespace()
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
@@ -721,7 +721,7 @@ def create_instance_gunicorn_scaling_rule(
     """
     autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
-    namespace = instance_config.get_namespace() or "paasta"
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
