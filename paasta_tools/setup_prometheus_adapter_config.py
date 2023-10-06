@@ -248,14 +248,15 @@ def should_create_active_requests_scaling_rule(
 
 def create_instance_active_requests_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     desired_active_requests_per_replica = autoscaling_config.get(
         "desired_active_requests_per_replica",
         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
@@ -347,14 +348,15 @@ def create_instance_active_requests_scaling_rule(
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
@@ -450,14 +452,15 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
@@ -561,14 +564,15 @@ def should_create_cpu_scaling_rule(
 
 def create_instance_cpu_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
@@ -709,14 +713,15 @@ def create_instance_cpu_scaling_rule(
 
 def create_instance_gunicorn_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
@@ -821,11 +826,12 @@ def should_create_arbitrary_promql_scaling_rule(
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str,
 ) -> PrometheusAdapterRule:
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
@@ -881,10 +887,8 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_name: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str,
 ) -> List[PrometheusAdapterRule]:
     """
     Returns a list of Prometheus Adapter rules for a given service instance. For now, this
@@ -904,23 +908,21 @@ def get_rules_for_service_instance(
         (should_create_gunicorn_scaling_rule, create_instance_gunicorn_scaling_rule),
     ):
         should_create, skip_reason = should_create_scaling_rule(
-            autoscaling_config=autoscaling_config,
+            autoscaling_config=instance_config.get_autoscaling_params(),
         )
         if should_create:
             rules.append(
                 create_instance_scaling_rule(
                     service=service_name,
-                    instance=instance_name,
-                    autoscaling_config=autoscaling_config,
+                    instance_config=instance_config,
                     paasta_cluster=paasta_cluster,
-                    namespace=namespace,
                 )
             )
         else:
             log.debug(
                 "Skipping %s.%s - %s.",
                 service_name,
-                instance_name,
+                instance_config.instance,
                 skip_reason,
             )
 
@@ -959,10 +961,8 @@ def create_prometheus_adapter_config(
             rules.extend(
                 get_rules_for_service_instance(
                     service_name=service_name,
-                    instance_name=instance_config.instance,
-                    autoscaling_config=instance_config.get_autoscaling_params(),
+                    instance_config=instance_config,
                     paasta_cluster=paasta_cluster,
-                    namespace=instance_config.get_namespace(),
                 )
             )
 

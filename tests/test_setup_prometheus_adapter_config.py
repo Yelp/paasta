@@ -1,6 +1,7 @@
 import mock
 import pytest
 
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -82,13 +83,17 @@ def test_should_create_active_requests_scaling_rule(
 
 def test_create_instance_active_requests_scaling_rule() -> None:
     service_name = "test_service"
-    instance_name = "test_instance"
+    instance_config = mock.Mock(
+        instance="test_instance",
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 12,
+                "moving_average_window_seconds": 20120302,
+            }
+        ),
+    )
     paasta_cluster = "test_cluster"
-    autoscaling_config: AutoscalingParamsDict = {
-        "metrics_provider": "active-requests",
-        "desired_active_requests_per_replica": 12,
-        "moving_average_window_seconds": 20120302,
-    }
 
     with mock.patch(
         "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
@@ -97,9 +102,8 @@ def test_create_instance_active_requests_scaling_rule() -> None:
     ):
         rule = create_instance_active_requests_scaling_rule(
             service=service_name,
-            instance=instance_name,
+            instance_config=instance_config,
             paasta_cluster=paasta_cluster,
-            autoscaling_config=autoscaling_config,
         )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -107,15 +111,20 @@ def test_create_instance_active_requests_scaling_rule() -> None:
     # we're basically just writting a change-detector test - instead, we test
     # that we're actually using our inputs
     assert service_name in rule["seriesQuery"]
-    assert instance_name in rule["seriesQuery"]
+    assert instance_config.instance in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
     # these two numbers are distinctive and unlikely to be used as constants
     assert (
-        str(autoscaling_config["desired_active_requests_per_replica"])
+        str(
+            instance_config.get_autoscaling_params()[
+                "desired_active_requests_per_replica"
+            ]
+        )
         in rule["metricsQuery"]
     )
     assert (
-        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+        str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
+        in rule["metricsQuery"]
     )
 
 
@@ -175,14 +184,18 @@ def test_should_create_uswgi_scaling_rule(
 
 def test_create_instance_uwsgi_scaling_rule() -> None:
     service_name = "test_service"
-    instance_name = "test_instance"
+    instance_config = mock.Mock(
+        instance="test_instance",
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "uwsgi",
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
+                "use_prometheus": True,
+            }
+        ),
+    )
     paasta_cluster = "test_cluster"
-    autoscaling_config: AutoscalingParamsDict = {
-        "metrics_provider": "uwsgi",
-        "setpoint": 0.1234567890,
-        "moving_average_window_seconds": 20120302,
-        "use_prometheus": True,
-    }
 
     with mock.patch(
         "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
@@ -191,9 +204,8 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     ):
         rule = create_instance_uwsgi_scaling_rule(
             service=service_name,
-            instance=instance_name,
+            instance_config=instance_config,
             paasta_cluster=paasta_cluster,
-            autoscaling_config=autoscaling_config,
         )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -201,12 +213,16 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
     # we're basically just writting a change-detector test - instead, we test
     # that we're actually using our inputs
     assert service_name in rule["seriesQuery"]
-    assert instance_name in rule["seriesQuery"]
+    assert instance_config.instance in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
     # these two numbers are distinctive and unlikely to be used as constants
-    assert str(autoscaling_config["setpoint"]) in rule["metricsQuery"]
     assert (
-        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+        str(instance_config.get_autoscaling_params()["setpoint"])
+        in rule["metricsQuery"]
+    )
+    assert (
+        str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
+        in rule["metricsQuery"]
     )
 
 
@@ -265,29 +281,33 @@ def test_should_create_cpu_scaling_rule(
 
 def test_create_instance_cpu_scaling_rule() -> None:
     service_name = "test_service"
-    instance_name = "test_instance"
+    instance_config = mock.Mock(
+        instance="test_instance",
+        get_namespace=mock.Mock(return_value="test_namespace"),
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "cpu",
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
+                "use_prometheus": True,
+            }
+        ),
+    )
     paasta_cluster = "test_cluster"
-    namespace = "test_namespace"
-    autoscaling_config: AutoscalingParamsDict = {
-        "metrics_provider": "cpu",
-        "setpoint": 0.1234567890,
-        "moving_average_window_seconds": 20120302,
-        "use_prometheus": True,
-    }
 
     rule = create_instance_cpu_scaling_rule(
         service=service_name,
-        instance=instance_name,
+        instance_config=instance_config,
         paasta_cluster=paasta_cluster,
-        autoscaling_config=autoscaling_config,
-        namespace=namespace,
     )
 
     # our query doesn't include the setpoint as we'll just give the HPA the current CPU usage and
     # let the HPA compare that to the setpoint directly
     assert (
-        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+        str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
+        in rule["metricsQuery"]
     )
+    assert str(instance_config.get_namespace()) in rule["metricsQuery"]
 
 
 @pytest.mark.parametrize(
@@ -328,14 +348,18 @@ def test_should_create_gunicorn_scaling_rule(
 
 def test_create_instance_gunicorn_scaling_rule() -> None:
     service_name = "test_service"
-    instance_name = "test_instance"
+    instance_config = mock.Mock(
+        instance="test_instance",
+        get_autoscaling_params=mock.Mock(
+            return_value={
+                "metrics_provider": "gunicorn",
+                "setpoint": 0.1234567890,
+                "moving_average_window_seconds": 20120302,
+                "use_prometheus": True,
+            }
+        ),
+    )
     paasta_cluster = "test_cluster"
-    autoscaling_config: AutoscalingParamsDict = {
-        "metrics_provider": "gunicorn",
-        "setpoint": 0.1234567890,
-        "moving_average_window_seconds": 20120302,
-        "use_prometheus": True,
-    }
 
     with mock.patch(
         "paasta_tools.setup_prometheus_adapter_config.load_system_paasta_config",
@@ -344,9 +368,8 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
     ):
         rule = create_instance_gunicorn_scaling_rule(
             service=service_name,
-            instance=instance_name,
+            instance_config=instance_config,
             paasta_cluster=paasta_cluster,
-            autoscaling_config=autoscaling_config,
         )
 
     # we test that the format of the dictionary is as expected with mypy
@@ -354,58 +377,86 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
     # we're basically just writting a change-detector test - instead, we test
     # that we're actually using our inputs
     assert service_name in rule["seriesQuery"]
-    assert instance_name in rule["seriesQuery"]
+    assert instance_config.instance in rule["seriesQuery"]
     assert paasta_cluster in rule["seriesQuery"]
     # these two numbers are distinctive and unlikely to be used as constants
-    assert str(autoscaling_config["setpoint"]) in rule["metricsQuery"]
     assert (
-        str(autoscaling_config["moving_average_window_seconds"]) in rule["metricsQuery"]
+        str(instance_config.get_autoscaling_params()["setpoint"])
+        in rule["metricsQuery"]
+    )
+    assert (
+        str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
+        in rule["metricsQuery"]
     )
 
 
 @pytest.mark.parametrize(
-    "autoscaling_config,expected_rules",
+    "instance_config,expected_rules",
     [
         (
-            {
-                "metrics_provider": "uwsgi",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
-            },
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "uwsgi",
+                        "setpoint": 0.1234567890,
+                        "moving_average_window_seconds": 20120302,
+                        "use_prometheus": True,
+                    }
+                ),
+            ),
             1,
         ),
         (
-            {
-                "metrics_provider": "uwsgi",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": False,
-            },
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "uwsgi",
+                        "setpoint": 0.1234567890,
+                        "moving_average_window_seconds": 20120302,
+                        "use_prometheus": False,
+                    }
+                ),
+            ),
             0,
         ),
         (
-            {
-                "metrics_provider": "cpu",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": False,
-            },
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "cpu",
+                        "setpoint": 0.1234567890,
+                        "moving_average_window_seconds": 20120302,
+                        "use_prometheus": False,
+                    }
+                ),
+            ),
             0,
         ),
         (
-            {
-                "metrics_provider": "cpu",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
-            },
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "cpu",
+                        "setpoint": 0.1234567890,
+                        "moving_average_window_seconds": 20120302,
+                        "use_prometheus": True,
+                    }
+                ),
+            ),
             1,
         ),
     ],
 )
 def test_get_rules_for_service_instance(
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     expected_rules: int,
 ) -> None:
     with mock.patch(
@@ -417,10 +468,8 @@ def test_get_rules_for_service_instance(
             len(
                 get_rules_for_service_instance(
                     service_name="service",
-                    instance_name="instance",
-                    autoscaling_config=autoscaling_config,
+                    instance_config=instance_config,
                     paasta_cluster="cluster",
-                    namespace="test_namespace",
                 )
             )
             == expected_rules
@@ -447,10 +496,14 @@ def test__minify_promql(query: str, expected: str) -> None:
 def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
-        instance="instance",
-        autoscaling_config={"prometheus_adapter_config": {"metricsQuery": "foo"}},
+        instance_config=mock.Mock(
+            instance="instance",
+            get_namespace=mock.Mock(return_value="paasta"),
+            get_autoscaling_params=mock.Mock(
+                return_value={"prometheus_adapter_config": {"metricsQuery": "foo"}}
+            ),
+        ),
         paasta_cluster="cluster",
-        namespace="paasta",
     )
 
     assert rule == {
@@ -469,12 +522,19 @@ def test_create_instance_arbitrary_promql_scaling_rule_no_seriesQuery():
 def test_create_instance_arbitrary_promql_scaling_rule_with_seriesQuery():
     rule = create_instance_arbitrary_promql_scaling_rule(
         service="service",
-        instance="instance",
-        autoscaling_config={
-            "prometheus_adapter_config": {"metricsQuery": "foo", "seriesQuery": "bar"}
-        },
+        instance_config=mock.Mock(
+            instance="instance",
+            get_namespace=mock.Mock(return_value="test_namespace"),
+            get_autoscaling_params=mock.Mock(
+                return_value={
+                    "prometheus_adapter_config": {
+                        "metricsQuery": "foo",
+                        "seriesQuery": "bar",
+                    }
+                }
+            ),
+        ),
         paasta_cluster="cluster",
-        namespace="test_namespace",
     )
 
     assert rule == {
