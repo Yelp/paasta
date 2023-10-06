@@ -1,3 +1,15 @@
+paasta-tools (0.202.2) xenial; urgency=medium
+
+  * 0.202.2 tagged with 'make release'
+    Commit: [COREJAVA-995] Refactor to pass instance_config to all
+    scaling rules (#3716)  * [COREJAVA-995] Refactor to pass
+    instance_config to all scaling rules  * Update the type of
+    instance_config  * Remove namespace as parameter for active-requests
+    scaling  * remove default value as get_namespace() will always
+    return a value
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 06 Oct 2023 02:16:10 -0700
+
 paasta-tools (0.202.1) xenial; urgency=medium
 
   * 0.202.1 tagged with 'make release'
