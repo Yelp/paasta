@@ -294,7 +294,12 @@ def create_instance_active_requests_scaling_rule(
         ) by (kube_deployment)
     """
 
-    # TODO - add a note on whats happening here :)
+    # Envoy tracks metrics at the smartstack namespace level. In most cases the paasta instance name matches the smartstack namespace.
+    # In rare cases, there are custom registration added to instance configs.
+    # If there is no custom registration the envoy and instance names match and no need to update the worker_filter_terms.
+    # If there is a single custom registration for an instance, we will process the registration value and extract the value to be used.
+    # The registrations usually follow the format of {service_name}.{smartstack_name}. Hence we split the string by dot and extract the last token.
+    # More than one custom registrations are not supported and config validation takes care of rejecting such configs.
     registrations = instance_config.get_registrations()
 
     envoy_filter_terms = (
