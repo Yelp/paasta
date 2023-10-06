@@ -294,6 +294,15 @@ def create_instance_active_requests_scaling_rule(
         ) by (kube_deployment)
     """
 
+    # TODO - add a note on whats happening here :)
+    registrations = instance_config.get_registrations()
+
+    envoy_filter_terms = (
+        f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{registrations[0].split('.')[-1]}'"
+        if len(registrations) == 1
+        else worker_filter_terms
+    )
+
     # envoy-based metrics have no labels corresponding to the k8s resources that they
     # front, but we can trivially add one in since our deployment names are of the form
     # {service_name}-{instance_name} - which are both things in `worker_filter_terms` so
@@ -304,7 +313,7 @@ def create_instance_active_requests_scaling_rule(
     (
         sum(
             label_replace(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
                 "kube_deployment", "{deployment_name}", "", ""
             )
         ) by (kube_deployment)
