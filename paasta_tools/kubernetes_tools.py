@@ -1985,7 +1985,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_namespace(self) -> str:
         """Get namespace from config, default to 'paasta'"""
-        return self.config_dict.get("namespace", "paasta")
+        return self.config_dict.get(
+            "namespace", f"paastasvc-{self.get_sanitised_service_name()}"
+        )
 
     def get_pod_management_policy(self) -> str:
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""

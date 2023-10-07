@@ -1300,13 +1300,13 @@ class TestKubernetesDeploymentConfig:
             V1Volume(
                 name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo", optional=False
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo", optional=False
                 ),
             ),
             V1Volume(
                 name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo",
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo",
                     default_mode=0o765,
                     optional=False,
                 ),
@@ -1314,7 +1314,7 @@ class TestKubernetesDeploymentConfig:
             V1Volume(
                 name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo",
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo",
                     items=[
                         V1KeyToPath(key="aaa", mode=0o567, path="bbb"),
                         V1KeyToPath(key="ccc", path="ddd"),
@@ -1394,14 +1394,14 @@ class TestKubernetesDeploymentConfig:
                 "zuora_integration",
                 "sync_ads_settings_post_budget_edit_batch_daemon",
                 "paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg",
-                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
+                "paastasvc-zuora--integration-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
             ),
             (
                 {"boto_keys": ["few"]},
                 "zuora_integration",
                 "reprocess_zuora_amend_callouts_batch_daemon",
                 "paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw",
-                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
+                "paastasvc-zuora--integration-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
             ),
             (
                 {
@@ -1410,14 +1410,14 @@ class TestKubernetesDeploymentConfig:
                 "kafka_discovery",
                 "main",
                 "paasta-boto-key-kafka--discovery-main",
-                "paasta-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
+                "paastasvc-kafka--discovery-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
             ),
             (
                 {"boto_keys": ["pew"]},
                 "yelp-main",
                 "lives_data_action_content_ingester_worker",
                 "paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl",
-                "paasta-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
+                "paastasvc-yelp-main-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
             ),
             (
                 {
@@ -2266,7 +2266,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/managed": "true",
                 },
                 name="kurupt-fm",
-                namespace="paasta",
+                namespace="paastasvc-kurupt",
             )
 
     @pytest.mark.parametrize(
@@ -2695,7 +2695,9 @@ class TestKubernetesDeploymentConfig:
                 name="SOME",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-kurupt-a--ref", key="a_ref", optional=False
+                        name="paastasvc-kurupt-secret-kurupt-a--ref",
+                        key="a_ref",
+                        optional=False,
                     )
                 ),
             ),
@@ -2703,7 +2705,7 @@ class TestKubernetesDeploymentConfig:
                 name="A",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-underscore-shared-underscore-ref1",
+                        name="paastasvc-kurupt-secret-underscore-shared-underscore-ref1",
                         key="_ref1",
                         optional=False,
                     )
