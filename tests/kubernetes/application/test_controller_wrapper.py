@@ -120,7 +120,9 @@ def test_ensure_pod_disruption_budget_create(
         app.soa_config.get_bounce_margin_factor.return_value = 0.1
     app.kube_deployment.service.return_value = "fake_service"
     app.kube_deployment.instance.return_value = "fake_instance"
-    Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
+    Application.ensure_pod_disruption_budget(
+        self=app, kube_client=mock_client, namespace="paasta"
+    )
     mock_client.policy.create_namespaced_pod_disruption_budget.assert_called_once_with(
         body=mock_req_pdr, namespace=mock_req_pdr.metadata.namespace
     )
@@ -145,7 +147,9 @@ def test_ensure_pod_disruption_budget_replaces_outdated(
     app.soa_config.get_bounce_margin_factor.return_value = 0.1
     app.kube_deployment.service.return_value = "fake_service"
     app.kube_deployment.instance.return_value = "fake_instance"
-    Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
+    Application.ensure_pod_disruption_budget(
+        self=app, kube_client=mock_client, namespace="paasta"
+    )
 
     mock_client.policy.patch_namespaced_pod_disruption_budget.assert_called_once_with(
         name=mock_req_pdr.metadata.name,
@@ -173,7 +177,9 @@ def test_ensure_pod_disruption_budget_noop_when_min_available_is_set(
     app.soa_config.get_bounce_margin_factor.return_value = 0.1
     app.kube_deployment.service.return_value = "fake_service"
     app.kube_deployment.instance.return_value = "fake_instance"
-    Application.ensure_pod_disruption_budget(self=app, kube_client=mock_client)
+    Application.ensure_pod_disruption_budget(
+        self=app, kube_client=mock_client, namespace="paasta"
+    )
 
     mock_client.policy.patch_namespaced_pod_disruption_budget.assert_not_called()
 

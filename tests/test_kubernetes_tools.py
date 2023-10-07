@@ -2294,6 +2294,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2357,6 +2358,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2443,6 +2445,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -2520,6 +2523,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -2590,6 +2594,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
             "stabilizationWindowSeconds": 123,
@@ -2617,6 +2622,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = None
         assert expected_res == return_value
@@ -3186,7 +3192,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(kube_client=mock_client) == []
+    assert list_all_deployments(kube_client=mock_client, namespace="paasta") == []
 
     mock_items = [
         mock.Mock(
@@ -3235,7 +3241,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(mock_client) == [
+    assert list_all_deployments(mock_client, namespace="paasta") == [
         KubeDeployment(
             service="kurupt",
             instance="fm",
@@ -3707,7 +3713,10 @@ def test_get_kubernetes_app_by_name():
     mock_client.deployments.read_namespaced_deployment_status.return_value = (
         mock_deployment
     )
-    assert get_kubernetes_app_by_name("someservice", mock_client) == mock_deployment
+    assert (
+        get_kubernetes_app_by_name("someservice", mock_client, namespace="paasta")
+        == mock_deployment
+    )
     assert mock_client.deployments.read_namespaced_deployment_status.called
     assert not mock_client.deployments.read_namespaced_stateful_set_status.called
 
@@ -3719,7 +3728,10 @@ def test_get_kubernetes_app_by_name():
     mock_client.deployments.read_namespaced_stateful_set_status.return_value = (
         mock_stateful_set
     )
-    assert get_kubernetes_app_by_name("someservice", mock_client) == mock_stateful_set
+    assert (
+        get_kubernetes_app_by_name("someservice", mock_client, namespace="paasta")
+        == mock_stateful_set
+    )
     assert mock_client.deployments.read_namespaced_deployment_status.called
     assert mock_client.deployments.read_namespaced_stateful_set_status.called
 
@@ -3728,7 +3740,7 @@ def test_get_kubernetes_app_by_name():
 async def test_pods_for_service_instance():
     mock_client = mock.Mock()
     assert (
-        await pods_for_service_instance("kurupt", "fm", mock_client)
+        await pods_for_service_instance("kurupt", "fm", mock_client, namespace="paasta")
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 
@@ -3787,7 +3799,7 @@ def test_get_active_versions_for_service():
 def test_get_all_pods():
     mock_client = mock.Mock()
     assert (
-        get_all_pods(mock_client)
+        get_all_pods(mock_client, namespace="paasta")
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 
@@ -4750,8 +4762,8 @@ def test_get_kubernetes_secret(decode):
             mock_client,
             get_paasta_secret_name(mock_namespace, service_name, secret_name),
             secret_name,
-            mock_namespace,
-            decode,
+            namespace=mock_namespace,
+            decode=decode,
         )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
@@ -4788,6 +4800,7 @@ def test_get_kubernetes_secret_env_variables():
             kube_client=mock_client,
             environment=mock_environment,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "SECRET_NAME1": "123",
@@ -4854,6 +4867,7 @@ def test_get_kubernetes_secret_volumes_multiple_files():
             kube_client=mock_client,
             secret_volumes_config=mock_secret_volumes_config,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "/the/container/path/the_secret_filename1": "secret_contents1",
@@ -4883,6 +4897,7 @@ def test_get_kubernetes_secret_volumes_single_file():
             kube_client=mock_client,
             secret_volumes_config=mock_secret_volumes_config,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",

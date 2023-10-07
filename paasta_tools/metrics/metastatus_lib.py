@@ -461,7 +461,7 @@ def assert_mesos_tasks_running(
 
 
 def assert_kube_pods_running(
-    kube_client: KubeClient, namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str
 ) -> HealthCheckResult:
     statuses = [
         get_pod_status(pod) for pod in get_all_pods_cached(kube_client, namespace)
@@ -884,9 +884,10 @@ def get_resource_utilization_by_grouping(
 def get_resource_utilization_by_grouping_kube(
     grouping_func: _GenericNodeGroupingFunctionT,
     kube_client: KubeClient,
+    *,
+    namespace: str,
     filters: Sequence[_GenericNodeFilterFunctionT] = [],
     sort_func: _GenericNodeSortFunctionT = None,
-    namespace: str = "paasta",
 ) -> Mapping[_KeyFuncRetT, ResourceUtilizationDict]:
     """Given a function used to group nodes, calculate resource utilization
     for each value of a given attribute.
@@ -1045,7 +1046,7 @@ def assert_marathon_deployments(
 
 
 def assert_kube_deployments(
-    kube_client: KubeClient, namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str
 ) -> HealthCheckResult:
     num_deployments = len(list_all_deployments(kube_client, namespace))
     return HealthCheckResult(
@@ -1065,7 +1066,7 @@ def get_marathon_status(
 
 
 def get_kube_status(
-    kube_client: KubeClient, namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str
 ) -> Sequence[HealthCheckResult]:
     """Gather information about Kubernetes.
     :param kube_client: the KUbernetes client

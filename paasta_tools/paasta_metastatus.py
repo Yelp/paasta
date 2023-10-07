@@ -230,8 +230,9 @@ def utilization_table_by_grouping_from_kube(
     groupings: Sequence[str],
     threshold: float,
     kube_client: KubeClient,
+    *,
+    namespace: str,
     service_instance_stats: Optional[ServiceInstanceStats] = None,
-    namespace: str = "paasta",
 ) -> Tuple[Sequence[MutableSequence[str]], bool]:
     grouping_function = metastatus_lib.key_func_for_attribute_multi_kube(groupings)
 
@@ -317,7 +318,7 @@ def get_service_instance_stats(
 
 
 def _run_kube_checks(
-    kube_client: KubeClient, namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str
 ) -> Sequence[HealthCheckResult]:
     kube_status = metastatus_lib.get_kube_status(kube_client, namespace)
     kube_metrics_status = metastatus_lib.get_kube_resource_utilization_health(
