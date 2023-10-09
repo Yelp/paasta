@@ -82,24 +82,20 @@ def test_should_create_active_requests_scaling_rule(
 
 
 @pytest.mark.parametrize(
-    "registrations,registration_expected_in_metrics_query",
+    "registrations,expected_instance",
     [
         (
-            [],
-            False,
-        ),
-        (
             ["test_service.abc", "test_service.xyz", "test_service.123"],
-            False,
+            "test_instance",
         ),
         (
             ["test_service.xyz"],
-            True,
+            "xyz",
         ),
     ],
 )
 def test_create_instance_active_requests_scaling_rule(
-    registrations: list, registration_expected_in_metrics_query: bool
+    registrations: list, expected_instance: str
 ) -> None:
     service_name = "test_service"
     instance_config = mock.Mock(
@@ -146,13 +142,8 @@ def test_create_instance_active_requests_scaling_rule(
         str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
-    if registration_expected_in_metrics_query:
-        assert (
-            f"paasta_instance='{registrations[0].split('.')[-1]}'"
-            in rule["metricsQuery"]
-        )
-    else:
-        assert f"paasta_instance='{instance_config.instance}'" in rule["metricsQuery"]
+    print(rule["metricsQuery"])
+    assert f"paasta_instance='{expected_instance}'" in rule["metricsQuery"]
 
 
 @pytest.mark.parametrize(

@@ -302,10 +302,8 @@ def create_instance_active_requests_scaling_rule(
     # More than one custom registrations are not supported and config validation takes care of rejecting such configs.
     registrations = instance_config.get_registrations()
 
-    mesh_instance = registrations[0].split('.')[-1] if registrations else None
-    envoy_filter_terms = (
-        f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{mesh_instance or instance}'"
-    )
+    mesh_instance = registrations[0].split(".")[-1] if len(registrations) == 1 else None
+    envoy_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{mesh_instance or instance}'"
 
     # envoy-based metrics have no labels corresponding to the k8s resources that they
     # front, but we can trivially add one in since our deployment names are of the form
