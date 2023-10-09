@@ -142,7 +142,6 @@ def test_create_instance_active_requests_scaling_rule(
         str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
-    print(rule["metricsQuery"])
     assert f"paasta_instance='{expected_instance}'" in rule["metricsQuery"]
 
 
