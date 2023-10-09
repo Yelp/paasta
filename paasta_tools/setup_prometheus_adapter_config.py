@@ -31,6 +31,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -80,6 +81,11 @@ DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
 
 CPU_METRICS_PROVIDER = "cpu"
+
+K8S_INSTANCE_TYPE_CLASSES = (
+    KubernetesDeploymentConfig,
+    EksDeploymentConfig,
+)
 
 
 class PrometheusAdapterResourceConfig(TypedDict, total=False):
@@ -965,17 +971,18 @@ def create_prometheus_adapter_config(
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
         )
-        for instance_config in config_loader.instance_configs(
-            cluster=paasta_cluster,
-            instance_type_class=KubernetesDeploymentConfig,
-        ):
-            rules.extend(
-                get_rules_for_service_instance(
-                    service_name=service_name,
-                    instance_config=instance_config,
-                    paasta_cluster=paasta_cluster,
+        for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+            for instance_config in config_loader.instance_configs(
+                cluster=paasta_cluster,
+                instance_type_class=instance_type_class,
+            ):
+                rules.extend(
+                    get_rules_for_service_instance(
+                        service_name=service_name,
+                        instance_config=instance_config,
+                        paasta_cluster=paasta_cluster,
+                    )
                 )
-            )
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps
