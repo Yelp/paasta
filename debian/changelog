@@ -1,3 +1,20 @@
+paasta-tools (0.202.3) xenial; urgency=medium
+
+  * 0.202.3 tagged with 'make release'
+    Commit: [COREJAVA-998] Use registration name for paasta_instance
+    name if a single custom registration is used (#3717)  * [COREJAVA-
+    998] Use registration name for paasta_instance name if a single
+    custom registration is used  * Add rules to active-requests validate
+    * Add comment inline  * Update
+    paasta_tools/setup_prometheus_adapter_config.py  Simplify
+    envoy_filter_terms  Co-authored-by: Luis Pérez <luisp@yelp.com>  *
+    Update tests and add registration length check  * Update
+    tests/test_setup_prometheus_adapter_config.py  Remove debug print.
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  ---------  Co-authored-
+    by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 09 Oct 2023 10:13:40 -0700
+
 paasta-tools (0.202.2) xenial; urgency=medium
 
   * 0.202.2 tagged with 'make release'
