@@ -604,6 +604,14 @@ def validate_autoscaling_configs(service_path):
                                 link="",
                             )
                         )
+                    if len(instance_config.get_registrations()) > 1:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: active-requests autoscaler doesn't support instances with multiple registrations.",
+                                link="",
+                            )
+                        )
                 if autoscaling_params["metrics_provider"] in {
                     "uwsgi",
                     "piscina",
