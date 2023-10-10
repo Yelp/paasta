@@ -1,3 +1,15 @@
+paasta-tools (0.202.4) xenial; urgency=medium
+
+  * 0.202.4 tagged with 'make release'
+    Commit: Sync paasta secrets for eks instances as well (#3718)  We
+    could also teach this to only sync secrets for self-managed OR EKS
+    clusters individually - but that seems like more effort (and there"s
+    no real harm to syncing these to both: in fact, it makes rolling
+    back even easier since there"s no need to wait for secrets to re-
+    sync)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Oct 2023 14:24:18 -0700
+
 paasta-tools (0.202.3) xenial; urgency=medium
 
   * 0.202.3 tagged with 'make release'
