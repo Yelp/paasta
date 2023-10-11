@@ -1,3 +1,52 @@
+paasta-tools (0.202.4) xenial; urgency=medium
+
+  * 0.202.4 tagged with 'make release'
+    Commit: Sync paasta secrets for eks instances as well (#3718)  We
+    could also teach this to only sync secrets for self-managed OR EKS
+    clusters individually - but that seems like more effort (and there"s
+    no real harm to syncing these to both: in fact, it makes rolling
+    back even easier since there"s no need to wait for secrets to re-
+    sync)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Oct 2023 14:24:18 -0700
+
+paasta-tools (0.202.3) xenial; urgency=medium
+
+  * 0.202.3 tagged with 'make release'
+    Commit: [COREJAVA-998] Use registration name for paasta_instance
+    name if a single custom registration is used (#3717)  * [COREJAVA-
+    998] Use registration name for paasta_instance name if a single
+    custom registration is used  * Add rules to active-requests validate
+    * Add comment inline  * Update
+    paasta_tools/setup_prometheus_adapter_config.py  Simplify
+    envoy_filter_terms  Co-authored-by: Luis Pérez <luisp@yelp.com>  *
+    Update tests and add registration length check  * Update
+    tests/test_setup_prometheus_adapter_config.py  Remove debug print.
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  ---------  Co-authored-
+    by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 09 Oct 2023 10:13:40 -0700
+
+paasta-tools (0.202.2) xenial; urgency=medium
+
+  * 0.202.2 tagged with 'make release'
+    Commit: [COREJAVA-995] Refactor to pass instance_config to all
+    scaling rules (#3716)  * [COREJAVA-995] Refactor to pass
+    instance_config to all scaling rules  * Update the type of
+    instance_config  * Remove namespace as parameter for active-requests
+    scaling  * remove default value as get_namespace() will always
+    return a value
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 06 Oct 2023 02:16:10 -0700
+
+paasta-tools (0.202.1) xenial; urgency=medium
+
+  * 0.202.1 tagged with 'make release'
+    Commit: Merge pull request #3715 from
+    Yelp/jfong/uppercase_iam_support  Support uppercase IAM role names
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 03 Oct 2023 14:45:46 -0700
+
 paasta-tools (0.202.0) xenial; urgency=medium
 
   * 0.202.0 tagged with 'make release'
