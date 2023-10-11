@@ -1,3 +1,10 @@
+paasta-tools (0.203.0) xenial; urgency=medium
+
+  * 0.203.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-18016_change_default_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Oct 2023 10:45:59 -0700
+
 paasta-tools (0.202.4) xenial; urgency=medium
 
   * 0.202.4 tagged with 'make release'
