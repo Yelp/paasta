@@ -50,7 +50,7 @@ test-not-yelpy: .paasta/bin/activate
 	.paasta/bin/tox -e tests
 
 quick-test: .tox/py38-linux
-	TZ=UTC .tox/py38-linux/bin/py.test --last-failed -x -- tests
+	TZ=UTC .tox/py38-linux/bin/py.test --failed-first -x --disable-warnings -- tests
 
 .tox/py38-linux: .paasta/bin/activate
 	.paasta/bin/tox

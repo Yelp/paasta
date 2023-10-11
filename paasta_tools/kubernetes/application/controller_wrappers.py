@@ -150,7 +150,7 @@ class Application(ABC):
             )
 
     def ensure_pod_disruption_budget(
-        self, kube_client: KubeClient, namespace: str = "paasta"
+        self, kube_client: KubeClient, namespace: str
     ) -> V1beta1PodDisruptionBudget:
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
