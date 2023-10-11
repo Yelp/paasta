@@ -1029,8 +1029,10 @@ def run_docker_container(
         running = docker_client.inspect_container(container_id)["State"]["Running"]
         if running:
             print("Your service is now running! Tailing stdout and stderr:")
-            for line in docker_client.attach(
-                container_id, stderr=True, stream=True, logs=True
+            for line in docker_client.logs(
+                container_id,
+                stderr=True,
+                stream=True,
             ):
                 # writing to sys.stdout.buffer lets us write the raw bytes we
                 # get from the docker client without having to convert them to
