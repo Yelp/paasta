@@ -1,3 +1,25 @@
+paasta-tools (0.204.0) xenial; urgency=medium
+
+  * 0.204.0 tagged with 'make release'
+    Commit: Add support for autotuned type aliases (#3693)  For some
+    instance types that are autotuned (e.g., `kubernetes`), we may have
+    a largely-similar instance type (e.g., `eks`) and the ability to
+    trivially move instances back and forth between these.  For these,
+    there"s a couple different options for how to handle autotune: 1)
+    have tooling/documentation to migrate data between
+    `autotuned_defaults/` files on instance moves + teach the autotune
+    machinery what the correct cluster/filename to update should be (as
+    well as teach autotune how to gather data correctly) 2) have
+    tooling/documentation to temporarily pin the new instance type at
+    the old autotuned request until autotune has updated with the new
+    instance type data 3) add some form of aliasing and pretend (at the
+    autotune level) that    there"s a single instance type for these
+    largely-similar instance    types  This PR goes for option 3 as it
+    is the least complex and has the fewest moving parts/places for
+    things to horribly blow up.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Oct 2023 12:18:40 -0700
+
 paasta-tools (0.203.0) xenial; urgency=medium
 
   * 0.203.0 tagged with 'make release'
