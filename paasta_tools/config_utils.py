@@ -181,6 +181,7 @@ class AutoConfigUpdater:
         os.chdir(self.working_dir)
         if self.branch != "master":
             if self._remote_branch_exists():
+                subprocess.check_call(["git", "fetch", "origin", self.branch])
                 subprocess.check_call(
                     ["git", "checkout", "-b", self.branch, f"origin/{self.branch}"]
                 )
@@ -196,7 +197,7 @@ class AutoConfigUpdater:
     def _remote_branch_exists(self) -> bool:
         return (
             subprocess.run(
-                ["git", "show-ref", "--quiet", f"refs/remotes/origin/{self.branch}"],
+                ["git", "ls-remote", "--exit-code", "--heads", "origin", self.branch],
             ).returncode
             == 0
         )

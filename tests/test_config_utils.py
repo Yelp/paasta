@@ -163,10 +163,13 @@ def test_auto_config_updater_context(
         expected_calls = [mock.call.check_call(["git", "clone", remote, clone_dir])]
         if branch != "master":
             if remote_branch_exists:
-                expected_calls.append(
-                    mock.call.check_call(
-                        ["git", "checkout", "-b", branch, f"origin/{branch}"]
-                    )
+                expected_calls.extend(
+                    [
+                        mock.call.check_call(["git", "fetch", "origin", branch]),
+                        mock.call.check_call(
+                            ["git", "checkout", "-b", branch, f"origin/{branch}"]
+                        ),
+                    ]
                 )
             else:
                 expected_calls.append(
@@ -207,9 +210,10 @@ def test_auto_config_updater_context_no_clone(
         else:
             if remote_branch_exists:
                 expected_calls = [
+                    mock.call.check_call(["git", "fetch", "origin", branch]),
                     mock.call.check_call(
                         ["git", "checkout", "-b", branch, f"origin/{branch}"]
-                    )
+                    ),
                 ]
             else:
                 expected_calls = [
