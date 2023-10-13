@@ -155,7 +155,9 @@ def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
         expected_calls = [mock.call.check_call(["git", "clone", remote, clone_dir])]
         if branch != "master":
             expected_calls.append(
-                mock.call.check_call(["git", "checkout", "-b", branch])
+                mock.call.check_call(
+                    ["git", "checkout", "-b", branch, f"origin/{branch}"]
+                )
             )
         assert mock_subprocess.mock_calls == expected_calls
         assert os.getcwd() == clone_dir
@@ -182,7 +184,11 @@ def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
         if branch == "master":
             expected_calls = []
         else:
-            expected_calls = [mock.call.check_call(["git", "checkout", "-b", branch])]
+            expected_calls = [
+                mock.call.check_call(
+                    ["git", "checkout", "-b", branch, f"origin/{branch}"]
+                ),
+            ]
         assert mock_subprocess.mock_calls == expected_calls
         assert os.getcwd() == working_dir
 
