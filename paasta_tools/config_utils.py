@@ -180,12 +180,11 @@ class AutoConfigUpdater:
         self.pwd = os.getcwd()
         os.chdir(self.working_dir)
         if self.branch != "master":
-            try:
-                # If there is a remote branch, checkout that branch
+            if self._remote_branch_exists():
                 subprocess.check_call(
                     ["git", "checkout", "-b", self.branch, f"origin/{self.branch}"]
                 )
-            except subprocess.CalledProcessError:
+            else:
                 subprocess.check_call(["git", "checkout", "-b", self.branch])
         return self
 
@@ -193,6 +192,14 @@ class AutoConfigUpdater:
         os.chdir(self.pwd)
         if self.tmp_dir:
             self.tmp_dir.cleanup()
+
+    def _remote_branch_exists(self) -> bool:
+        return (
+            subprocess.run(
+                ["git", "show-ref", "--quiet", f"refs/remotes/origin/{self.branch}"],
+            ).returncode
+            == 0
+        )
 
     def write_configs(
         self,
