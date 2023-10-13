@@ -180,7 +180,13 @@ class AutoConfigUpdater:
         self.pwd = os.getcwd()
         os.chdir(self.working_dir)
         if self.branch != "master":
-            subprocess.check_call(["git", "checkout", "-b", self.branch])
+            try:
+                # If there is a remote branch, checkout that branch
+                subprocess.check_call(
+                    ["git", "checkout", "-b", self.branch, f"origin/{self.branch}"]
+                )
+            except subprocess.CalledProcessError:
+                subprocess.check_call(["git", "checkout", "-b", self.branch])
         return self
 
     def __exit__(self, type, value, traceback):
