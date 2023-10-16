@@ -1,3 +1,11 @@
+paasta-tools (0.204.1) xenial; urgency=medium
+
+  * 0.204.1 tagged with 'make release'
+    Commit: Merge pull request #3724 from Yelp/sina/try-remote-branch-
+    first  DREIMP-10150: Base new commits on remote branch, if it exists
+
+ -- Sina Siadat <sina@yelp.com>  Mon, 16 Oct 2023 03:21:50 -0700
+
 paasta-tools (0.204.0) xenial; urgency=medium
 
   * 0.204.0 tagged with 'make release'
