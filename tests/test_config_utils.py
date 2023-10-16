@@ -141,11 +141,19 @@ def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
     )
 
 
-@pytest.mark.parametrize("branch", ["master", "other_test"])
-def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
+@pytest.mark.parametrize(
+    "branch, remote_branch_exists",
+    [("master", True), ("other_test", True), ("other_test", False)],
+)
+def test_auto_config_updater_context(
+    branch, remote_branch_exists, tmpdir, mock_subprocess
+):
     remote = "git_remote"
     updater = config_utils.AutoConfigUpdater(
         "test_source", remote, branch=branch, working_dir=tmpdir
+    )
+    updater._remote_branch_exists = mock.MagicMock(
+        autospec=True, return_value=remote_branch_exists
     )
     initial_wd = os.getcwd()
 
@@ -154,9 +162,19 @@ def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
         assert os.path.isdir(clone_dir)
         expected_calls = [mock.call.check_call(["git", "clone", remote, clone_dir])]
         if branch != "master":
-            expected_calls.append(
-                mock.call.check_call(["git", "checkout", "-b", branch])
-            )
+            if remote_branch_exists:
+                expected_calls.extend(
+                    [
+                        mock.call.check_call(["git", "fetch", "origin", branch]),
+                        mock.call.check_call(
+                            ["git", "checkout", "-b", branch, f"origin/{branch}"]
+                        ),
+                    ]
+                )
+            else:
+                expected_calls.append(
+                    mock.call.check_call(["git", "checkout", "-b", branch])
+                )
         assert mock_subprocess.mock_calls == expected_calls
         assert os.getcwd() == clone_dir
 
@@ -165,8 +183,13 @@ def test_auto_config_updater_context(branch, tmpdir, mock_subprocess):
     assert os.getcwd() == initial_wd
 
 
-@pytest.mark.parametrize("branch", ["master", "other_test"])
-def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
+@pytest.mark.parametrize(
+    "branch, remote_branch_exists",
+    [("master", True), ("other_test", True), ("other_test", False)],
+)
+def test_auto_config_updater_context_no_clone(
+    branch, remote_branch_exists, tmpdir, mock_subprocess
+):
     remote = "git_remote"
     working_dir = tmpdir.mkdir("testing")
     updater = config_utils.AutoConfigUpdater(
@@ -176,13 +199,26 @@ def test_auto_config_updater_context_no_clone(branch, tmpdir, mock_subprocess):
         working_dir=working_dir,
         do_clone=False,
     )
+    updater._remote_branch_exists = mock.MagicMock(
+        autospec=True, return_value=remote_branch_exists
+    )
     initial_wd = os.getcwd()
 
     with updater:
         if branch == "master":
             expected_calls = []
         else:
-            expected_calls = [mock.call.check_call(["git", "checkout", "-b", branch])]
+            if remote_branch_exists:
+                expected_calls = [
+                    mock.call.check_call(["git", "fetch", "origin", branch]),
+                    mock.call.check_call(
+                        ["git", "checkout", "-b", branch, f"origin/{branch}"]
+                    ),
+                ]
+            else:
+                expected_calls = [
+                    mock.call.check_call(["git", "checkout", "-b", branch])
+                ]
         assert mock_subprocess.mock_calls == expected_calls
         assert os.getcwd() == working_dir
 
