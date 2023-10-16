@@ -1923,6 +1923,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
+    auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
     boost_regions: List[str]
     cluster_autoscaler_max_decrease: float
@@ -2219,6 +2220,13 @@ class SystemPaastaConfig:
 
     def get_auto_config_instance_types_enabled(self) -> Dict[str, bool]:
         return self.config_dict.get("auto_config_instance_types_enabled", {})
+
+    def get_auto_config_instance_type_aliases(self) -> Dict[str, str]:
+        """
+        Allow re-using another instance type's autotuned data. This is useful when an instance can be trivially moved around
+        type-wise as it allows us to avoid data races/issues with the autotuned recommendations generator/updater.
+        """
+        return self.config_dict.get("auto_config_instance_type_aliases", {})
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]
@@ -3415,8 +3423,18 @@ def load_service_instance_auto_configs(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, Any]]:
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
-    conf_file = f"{instance_type}-{cluster}"
-    if enabled_types.get(instance_type):
+    # this looks a little funky: but what we're generally trying to do here is ensure that
+    # certain types of instances can be moved between instance types without having to worry
+    # about any sort of data races (or data weirdness) in autotune.
+    # instead, what we do is map certain instance types to whatever we've picked as the "canonical"
+    # instance type in autotune and always merge from there.
+    realized_type = (
+        load_system_paasta_config()
+        .get_auto_config_instance_type_aliases()
+        .get(instance_type, instance_type)
+    )
+    conf_file = f"{realized_type}-{cluster}"
+    if enabled_types.get(realized_type):
         return service_configuration_lib.read_extra_service_information(
             service,
             f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}",

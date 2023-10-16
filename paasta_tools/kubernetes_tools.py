@@ -723,7 +723,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         name: str,
         cluster: str,
         kube_client: KubeClient,
-        namespace: str = "paasta",
+        namespace: str,
     ) -> Optional[Union[V2beta2HorizontalPodAutoscaler, Dict]]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
@@ -1985,7 +1985,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_namespace(self) -> str:
         """Get namespace from config, default to 'paasta'"""
-        return self.config_dict.get("namespace", "paasta")
+        return self.config_dict.get(
+            "namespace", f"paastasvc-{self.get_sanitised_service_name()}"
+        )
 
     def get_pod_management_policy(self) -> str:
         """Get sts pod_management_policy from config, default to 'OrderedReady'"""
@@ -2463,7 +2465,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
 
 def get_kubernetes_secret_hashes(
-    environment_variables: Mapping[str, str], service: str, namespace: str = "paasta"
+    environment_variables: Mapping[str, str], service: str, namespace: str
 ) -> Mapping[str, str]:
     hashes = {}
     to_get_hash = []
@@ -2621,6 +2623,7 @@ def force_delete_pods(
         paasta_service,
         instance,
         kube_client,
+        namespace=namespace,
     )
     delete_options = V1DeleteOptions()
     for pod in pods_to_delete:
@@ -2734,8 +2737,9 @@ def list_deployments_in_all_namespaces(
 
 def list_deployments(
     kube_client: KubeClient,
+    *,
+    namespace: str,
     label_selector: str = "",
-    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
 
     deployments = kube_client.deployments.list_namespaced_deployment(
@@ -3030,7 +3034,7 @@ def pod_disruption_budget_for_service_instance(
     service: str,
     instance: str,
     max_unavailable: Union[str, int],
-    namespace: str = "paasta",
+    namespace: str,
 ) -> V1beta1PodDisruptionBudget:
     return V1beta1PodDisruptionBudget(
         metadata=V1ObjectMeta(
@@ -3052,7 +3056,7 @@ def pod_disruption_budget_for_service_instance(
 def create_pod_disruption_budget(
     kube_client: KubeClient,
     pod_disruption_budget: V1beta1PodDisruptionBudget,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.policy.create_namespaced_pod_disruption_budget(
         namespace=namespace, body=pod_disruption_budget
@@ -3127,7 +3131,7 @@ def list_all_paasta_deployments(kube_client: KubeClient) -> Sequence[KubeDeploym
 
 
 def list_all_deployments(
-    kube_client: KubeClient, namespace: str = "paasta"
+    kube_client: KubeClient, namespace: str
 ) -> Sequence[KubeDeployment]:
     return list_deployments(kube_client=kube_client, namespace=namespace)
 
@@ -3135,12 +3139,13 @@ def list_all_deployments(
 def list_matching_deployments(
     service: str,
     instance: str,
+    *,
+    namespace: str,
     kube_client: KubeClient,
-    namespace: str = "paasta",
 ) -> Sequence[KubeDeployment]:
     return list_deployments(
         kube_client,
-        f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
+        label_selector=f"paasta.yelp.com/service={service},paasta.yelp.com/instance={instance}",
         namespace=namespace,
     )
 
@@ -3158,7 +3163,7 @@ def list_matching_deployments_in_all_namespaces(
 
 @async_timeout()
 async def replicasets_for_service_instance(
-    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
+    service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ReplicaSet]:
     async_list_replica_set = a_sync.to_async(
         kube_client.deployments.list_namespaced_replica_set
@@ -3172,7 +3177,7 @@ async def replicasets_for_service_instance(
 
 @async_timeout()
 async def controller_revisions_for_service_instance(
-    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
+    service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1ControllerRevision]:
     async_list_controller_revisions = a_sync.to_async(
         kube_client.deployments.list_namespaced_controller_revision
@@ -3186,7 +3191,7 @@ async def controller_revisions_for_service_instance(
 
 @async_timeout(15)
 async def pods_for_service_instance(
-    service: str, instance: str, kube_client: KubeClient, namespace: str = "paasta"
+    service: str, instance: str, kube_client: KubeClient, namespace: str
 ) -> Sequence[V1Pod]:
     async_list_pods = a_sync.to_async(kube_client.core.list_namespaced_pod)
     response = await async_list_pods(
@@ -3202,14 +3207,12 @@ def get_pods_by_node(kube_client: KubeClient, node: V1Node) -> Sequence[V1Pod]:
     ).items
 
 
-def get_all_pods(kube_client: KubeClient, namespace: str = "paasta") -> List[V1Pod]:
+def get_all_pods(kube_client: KubeClient, namespace: str) -> List[V1Pod]:
     return kube_client.core.list_namespaced_pod(namespace=namespace).items
 
 
 @time_cache(ttl=300)
-def get_all_pods_cached(
-    kube_client: KubeClient, namespace: str = "paasta"
-) -> Sequence[V1Pod]:
+def get_all_pods_cached(kube_client: KubeClient, namespace: str) -> Sequence[V1Pod]:
     pods: Sequence[V1Pod] = get_all_pods(kube_client, namespace)
     return pods
 
@@ -3401,7 +3404,7 @@ def get_kubernetes_app_name(service: str, instance: str) -> str:
 
 
 def get_kubernetes_app_by_name(
-    name: str, kube_client: KubeClient, namespace: str = "paasta"
+    name: str, kube_client: KubeClient, namespace: str
 ) -> Union[V1Deployment, V1StatefulSet]:
     try:
         app = kube_client.deployments.read_namespaced_deployment_status(
@@ -3421,7 +3424,7 @@ def get_kubernetes_app_by_name(
 def create_deployment(
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.create_namespaced_deployment(
         namespace=namespace, body=formatted_deployment
@@ -3431,7 +3434,7 @@ def create_deployment(
 def update_deployment(
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.replace_namespaced_deployment(
         name=formatted_deployment.metadata.name,
@@ -3443,7 +3446,7 @@ def update_deployment(
 def patch_deployment(
     kube_client: KubeClient,
     formatted_deployment: V1Deployment,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.patch_namespaced_deployment(
         name=formatted_deployment.metadata.name,
@@ -3455,7 +3458,7 @@ def patch_deployment(
 def delete_deployment(
     kube_client: KubeClient,
     deployment_name: str,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.delete_namespaced_deployment(
         name=deployment_name,
@@ -3466,7 +3469,7 @@ def delete_deployment(
 def create_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.create_namespaced_stateful_set(
         namespace=namespace, body=formatted_stateful_set
@@ -3476,7 +3479,7 @@ def create_stateful_set(
 def update_stateful_set(
     kube_client: KubeClient,
     formatted_stateful_set: V1StatefulSet,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     return kube_client.deployments.replace_namespaced_stateful_set(
         name=formatted_stateful_set.metadata.name,
@@ -3685,7 +3688,7 @@ def update_secret_signature(
     service_name: str,
     signature_name: str,
     secret_signature: str,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     """
     :param service_name: Expect unsanitised service_name
@@ -3714,7 +3717,7 @@ def create_secret_signature(
     service_name: str,
     signature_name: str,
     secret_signature: str,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> None:
     """
     :param service_name: Expect unsanitised service_name
@@ -3895,7 +3898,7 @@ _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 def create_or_find_service_account_name(
     iam_role: str,
-    namespace: str = "paasta",
+    namespace: str,
     k8s_role: Optional[str] = None,
     dry_run: bool = False,
 ) -> str:
@@ -4145,7 +4148,8 @@ def get_secret(
     kube_client: KubeClient,
     secret_name: str,
     key_name: str,
-    namespace: str = "paasta",
+    *,
+    namespace: str,
     decode: bool = True,
 ) -> Union[str, bytes]:
     """
@@ -4168,7 +4172,7 @@ def get_kubernetes_secret_env_variables(
     kube_client: KubeClient,
     environment: Dict[str, str],
     service_name: str,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> Dict[str, str]:
     decrypted_secrets = {}
     for k, v in environment.items():
@@ -4196,7 +4200,7 @@ def get_kubernetes_secret_volumes(
     kube_client: KubeClient,
     secret_volumes_config: Sequence[SecretVolume],
     service_name: str,
-    namespace: str = "paasta",
+    namespace: str,
 ) -> Dict[str, Union[str, bytes]]:
     secret_volumes = {}
     # The config might look one of two ways:

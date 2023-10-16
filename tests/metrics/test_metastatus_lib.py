@@ -265,7 +265,7 @@ def test_assert_kube_deployments():
     ) as mock_list_all_deployments:
         client = Mock()
         mock_list_all_deployments.return_value = ["KubeDeployment:1"]
-        output, ok = metastatus_lib.assert_kube_deployments(client)
+        output, ok = metastatus_lib.assert_kube_deployments(client, namespace="paasta")
         assert re.match("Kubernetes deployments:   1", output)
         assert ok
 
@@ -283,7 +283,7 @@ def test_assert_kube_pods_running():
             V1Pod(status=V1PodStatus(phase="Failed")),
             V1Pod(status=V1PodStatus(phase="Failed")),
         ]
-        output, ok = metastatus_lib.assert_kube_pods_running(client)
+        output, ok = metastatus_lib.assert_kube_pods_running(client, namespace="paasta")
         assert re.match("Pods: running: 1 pending: 2 failed: 3", output)
         assert ok
 
