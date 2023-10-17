@@ -180,13 +180,27 @@ class AutoConfigUpdater:
         self.pwd = os.getcwd()
         os.chdir(self.working_dir)
         if self.branch != "master":
-            subprocess.check_call(["git", "checkout", "-b", self.branch])
+            if self._remote_branch_exists():
+                subprocess.check_call(["git", "fetch", "origin", self.branch])
+                subprocess.check_call(
+                    ["git", "checkout", "-b", self.branch, f"origin/{self.branch}"]
+                )
+            else:
+                subprocess.check_call(["git", "checkout", "-b", self.branch])
         return self
 
     def __exit__(self, type, value, traceback):
         os.chdir(self.pwd)
         if self.tmp_dir:
             self.tmp_dir.cleanup()
+
+    def _remote_branch_exists(self) -> bool:
+        return (
+            subprocess.run(
+                ["git", "ls-remote", "--exit-code", "--heads", "origin", self.branch],
+            ).returncode
+            == 0
+        )
 
     def write_configs(
         self,

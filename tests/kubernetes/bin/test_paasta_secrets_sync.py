@@ -665,7 +665,16 @@ def test_sync_boto_secrets_create(boto_keys_patches):
         "scribereader-cfg": "ZmlsZTQ=",
     }
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = None
     assert sync_boto_secrets(
         kube_client=mock.Mock(),
@@ -711,7 +720,16 @@ def test_sync_boto_secrets_update(boto_keys_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = "1235abc"
     assert sync_boto_secrets(
         kube_client=mock.Mock(),
@@ -738,7 +756,16 @@ def test_sync_boto_secrets_noop(boto_keys_patches):
         mock_config_loader_instances,
     ) = boto_keys_patches
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = (
         "4c3da4da5d97294f69527dc92c2b930ce127522c"
     )
@@ -778,7 +805,16 @@ def test_sync_boto_secrets_exists_but_no_signature(boto_keys_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = None
     mock_create_secret.side_effect = ApiException(409)
 

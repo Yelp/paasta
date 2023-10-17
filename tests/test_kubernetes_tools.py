@@ -1299,22 +1299,27 @@ class TestKubernetesDeploymentConfig:
             ),
             V1Volume(
                 name="secret--waldo",
-                secret=V1SecretVolumeSource(secret_name="paasta-secret-kurupt-waldo"),
-            ),
-            V1Volume(
-                name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo", default_mode=0o765
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo", optional=False
                 ),
             ),
             V1Volume(
                 name="secret--waldo",
                 secret=V1SecretVolumeSource(
-                    secret_name="paasta-secret-kurupt-waldo",
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo",
+                    default_mode=0o765,
+                    optional=False,
+                ),
+            ),
+            V1Volume(
+                name="secret--waldo",
+                secret=V1SecretVolumeSource(
+                    secret_name="paastasvc-kurupt-secret-kurupt-waldo",
                     items=[
                         V1KeyToPath(key="aaa", mode=0o567, path="bbb"),
                         V1KeyToPath(key="ccc", path="ddd"),
                     ],
+                    optional=False,
                 ),
             ),
         ]
@@ -1389,14 +1394,14 @@ class TestKubernetesDeploymentConfig:
                 "zuora_integration",
                 "sync_ads_settings_post_budget_edit_batch_daemon",
                 "paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg",
-                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
+                "paastasvc-zuora--integration-secret-zuora--integration-paasta-boto-key-zuora--integration-sync--ads--settings--po-4xbg-signature",
             ),
             (
                 {"boto_keys": ["few"]},
                 "zuora_integration",
                 "reprocess_zuora_amend_callouts_batch_daemon",
                 "paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw",
-                "paasta-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
+                "paastasvc-zuora--integration-secret-zuora--integration-paasta-boto-key-zuora--integration-reprocess--zuora--amend-jztw-signature",
             ),
             (
                 {
@@ -1405,14 +1410,14 @@ class TestKubernetesDeploymentConfig:
                 "kafka_discovery",
                 "main",
                 "paasta-boto-key-kafka--discovery-main",
-                "paasta-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
+                "paastasvc-kafka--discovery-secret-kafka--discovery-paasta-boto-key-kafka--discovery-main-signature",
             ),
             (
                 {"boto_keys": ["pew"]},
                 "yelp-main",
                 "lives_data_action_content_ingester_worker",
                 "paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl",
-                "paasta-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
+                "paastasvc-yelp-main-secret-yelp-main-paasta-boto-key-yelp-main-lives--data--action--content--in-4pxl-signature",
             ),
             (
                 {
@@ -2261,7 +2266,7 @@ class TestKubernetesDeploymentConfig:
                     "paasta.yelp.com/managed": "true",
                 },
                 name="kurupt-fm",
-                namespace="paasta",
+                namespace="paastasvc-kurupt",
             )
 
     @pytest.mark.parametrize(
@@ -2289,6 +2294,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2352,6 +2358,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         annotations: Dict[Any, Any] = {}
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2438,6 +2445,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -2515,6 +2523,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
@@ -2585,6 +2594,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
             "stabilizationWindowSeconds": 123,
@@ -2612,6 +2622,7 @@ class TestKubernetesDeploymentConfig:
             "fake_name",
             "cluster",
             KubeClient(),
+            "paasta",
         )
         expected_res = None
         assert expected_res == return_value
@@ -2684,7 +2695,9 @@ class TestKubernetesDeploymentConfig:
                 name="SOME",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-kurupt-a--ref", key="a_ref", optional=False
+                        name="paastasvc-kurupt-secret-kurupt-a--ref",
+                        key="a_ref",
+                        optional=False,
                     )
                 ),
             ),
@@ -2692,7 +2705,7 @@ class TestKubernetesDeploymentConfig:
                 name="A",
                 value_from=V1EnvVarSource(
                     secret_key_ref=V1SecretKeySelector(
-                        name="paasta-secret-underscore-shared-underscore-ref1",
+                        name="paastasvc-kurupt-secret-underscore-shared-underscore-ref1",
                         key="_ref1",
                         optional=False,
                     )
@@ -3181,7 +3194,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(kube_client=mock_client) == []
+    assert list_all_deployments(kube_client=mock_client, namespace="paasta") == []
 
     mock_items = [
         mock.Mock(
@@ -3230,7 +3243,7 @@ def test_list_all_deployments(addl_labels, replicas):
             list_namespaced_stateful_set=mock.Mock(return_value=mock_stateful_sets),
         )
     )
-    assert list_all_deployments(mock_client) == [
+    assert list_all_deployments(mock_client, namespace="paasta") == [
         KubeDeployment(
             service="kurupt",
             instance="fm",
@@ -3702,7 +3715,10 @@ def test_get_kubernetes_app_by_name():
     mock_client.deployments.read_namespaced_deployment_status.return_value = (
         mock_deployment
     )
-    assert get_kubernetes_app_by_name("someservice", mock_client) == mock_deployment
+    assert (
+        get_kubernetes_app_by_name("someservice", mock_client, namespace="paasta")
+        == mock_deployment
+    )
     assert mock_client.deployments.read_namespaced_deployment_status.called
     assert not mock_client.deployments.read_namespaced_stateful_set_status.called
 
@@ -3714,7 +3730,10 @@ def test_get_kubernetes_app_by_name():
     mock_client.deployments.read_namespaced_stateful_set_status.return_value = (
         mock_stateful_set
     )
-    assert get_kubernetes_app_by_name("someservice", mock_client) == mock_stateful_set
+    assert (
+        get_kubernetes_app_by_name("someservice", mock_client, namespace="paasta")
+        == mock_stateful_set
+    )
     assert mock_client.deployments.read_namespaced_deployment_status.called
     assert mock_client.deployments.read_namespaced_stateful_set_status.called
 
@@ -3723,7 +3742,7 @@ def test_get_kubernetes_app_by_name():
 async def test_pods_for_service_instance():
     mock_client = mock.Mock()
     assert (
-        await pods_for_service_instance("kurupt", "fm", mock_client)
+        await pods_for_service_instance("kurupt", "fm", mock_client, namespace="paasta")
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 
@@ -3782,7 +3801,7 @@ def test_get_active_versions_for_service():
 def test_get_all_pods():
     mock_client = mock.Mock()
     assert (
-        get_all_pods(mock_client)
+        get_all_pods(mock_client, namespace="paasta")
         == mock_client.core.list_namespaced_pod.return_value.items
     )
 
@@ -4622,6 +4641,100 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
+def test_create_or_find_service_account_name_caps():
+    iam_role = "arn:aws:iam::000000000000:role/Some_Role"
+    namespace = "test_namespace"
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = [
+            V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": iam_role},
+                ),
+            )
+        ]
+        mock_kube_client.return_value = mock_client
+
+        assert expected_sa_name == create_or_find_service_account_name(
+            iam_role,
+            namespace=namespace,
+        )
+        mock_client.core.create_namespaced_service_account.assert_not_called()
+
+
+def test_create_or_find_service_account_name_caps_with_k8s():
+    iam_role = "arn:aws:iam::000000000000:role/Some_Role"
+    namespace = "test_namespace"
+    k8s_role = "mega-admin"
+    expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role--mega-admin"
+    with mock.patch(
+        "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.KubeClient",
+        autospec=False,
+    ) as mock_kube_client:
+        mock_client = mock.Mock()
+        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
+        mock_client.rbac = mock.Mock(spec=kube_client.RbacAuthorizationV1Api)
+        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
+            spec=V1ServiceAccountList
+        )
+        mock_client.core.list_namespaced_service_account.return_value.items = [
+            V1ServiceAccount(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                    annotations={"eks.amazonaws.com/role-arn": iam_role},
+                ),
+            )
+        ]
+        mock_client.rbac.list_namespaced_role_binding.return_value = mock.Mock(
+            spec=V1RoleBinding,
+        )
+        mock_client.rbac.list_namespaced_role_binding.return_value.items = [
+            V1RoleBinding(
+                kind="ServiceAccount",
+                metadata=V1ObjectMeta(
+                    name=expected_sa_name,
+                    namespace=namespace,
+                ),
+                role_ref=V1RoleRef(
+                    api_group="rbac.authorization.k8s.io",
+                    kind="Role",
+                    name=k8s_role,
+                ),
+                subjects=[
+                    V1Subject(
+                        kind="ServiceAccount",
+                        namespace=namespace,
+                        name=expected_sa_name,
+                    )
+                ],
+            )
+        ]
+        mock_kube_client.return_value = mock_client
+
+        assert expected_sa_name == create_or_find_service_account_name(
+            iam_role, namespace=namespace, k8s_role=k8s_role
+        )
+        mock_client.core.create_namespaced_service_account.assert_not_called()
+        mock_client.rbac.create_namespaced_role_binding.assert_not_called()
+
+
 @pytest.mark.parametrize("decode", [(True), (False)])
 def test_get_kubernetes_secret(decode):
     with mock.patch(
@@ -4651,8 +4764,8 @@ def test_get_kubernetes_secret(decode):
             mock_client,
             get_paasta_secret_name(mock_namespace, service_name, secret_name),
             secret_name,
-            mock_namespace,
-            decode,
+            namespace=mock_namespace,
+            decode=decode,
         )
         mock_client.core.read_namespaced_secret.assert_called_with(
             name="paasta-secret-example--service-example--secret", namespace="paasta"
@@ -4689,6 +4802,7 @@ def test_get_kubernetes_secret_env_variables():
             kube_client=mock_client,
             environment=mock_environment,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "SECRET_NAME1": "123",
@@ -4755,6 +4869,7 @@ def test_get_kubernetes_secret_volumes_multiple_files():
             kube_client=mock_client,
             secret_volumes_config=mock_secret_volumes_config,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "/the/container/path/the_secret_filename1": "secret_contents1",
@@ -4784,6 +4899,7 @@ def test_get_kubernetes_secret_volumes_single_file():
             kube_client=mock_client,
             secret_volumes_config=mock_secret_volumes_config,
             service_name="universe",
+            namespace="paasta",
         )
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",

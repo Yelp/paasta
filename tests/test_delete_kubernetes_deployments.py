@@ -28,6 +28,7 @@ def test_main():
         mock_delete_deployment.assert_called_with(
             kube_client=mock_kube_client.return_value,
             deployment_name="fake_pcm_deployment",
+            namespace="paasta",
         )
 
         # Test main() failed

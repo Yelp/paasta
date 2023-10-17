@@ -1,3 +1,123 @@
+paasta-tools (0.204.1) xenial; urgency=medium
+
+  * 0.204.1 tagged with 'make release'
+    Commit: Merge pull request #3724 from Yelp/sina/try-remote-branch-
+    first  DREIMP-10150: Base new commits on remote branch, if it exists
+
+ -- Sina Siadat <sina@yelp.com>  Mon, 16 Oct 2023 03:21:50 -0700
+
+paasta-tools (0.204.0) xenial; urgency=medium
+
+  * 0.204.0 tagged with 'make release'
+    Commit: Add support for autotuned type aliases (#3693)  For some
+    instance types that are autotuned (e.g., `kubernetes`), we may have
+    a largely-similar instance type (e.g., `eks`) and the ability to
+    trivially move instances back and forth between these.  For these,
+    there"s a couple different options for how to handle autotune: 1)
+    have tooling/documentation to migrate data between
+    `autotuned_defaults/` files on instance moves + teach the autotune
+    machinery what the correct cluster/filename to update should be (as
+    well as teach autotune how to gather data correctly) 2) have
+    tooling/documentation to temporarily pin the new instance type at
+    the old autotuned request until autotune has updated with the new
+    instance type data 3) add some form of aliasing and pretend (at the
+    autotune level) that    there"s a single instance type for these
+    largely-similar instance    types  This PR goes for option 3 as it
+    is the least complex and has the fewest moving parts/places for
+    things to horribly blow up.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Oct 2023 12:18:40 -0700
+
+paasta-tools (0.203.0) xenial; urgency=medium
+
+  * 0.203.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-18016_change_default_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Oct 2023 10:45:59 -0700
+
+paasta-tools (0.202.4) xenial; urgency=medium
+
+  * 0.202.4 tagged with 'make release'
+    Commit: Sync paasta secrets for eks instances as well (#3718)  We
+    could also teach this to only sync secrets for self-managed OR EKS
+    clusters individually - but that seems like more effort (and there"s
+    no real harm to syncing these to both: in fact, it makes rolling
+    back even easier since there"s no need to wait for secrets to re-
+    sync)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Oct 2023 14:24:18 -0700
+
+paasta-tools (0.202.3) xenial; urgency=medium
+
+  * 0.202.3 tagged with 'make release'
+    Commit: [COREJAVA-998] Use registration name for paasta_instance
+    name if a single custom registration is used (#3717)  * [COREJAVA-
+    998] Use registration name for paasta_instance name if a single
+    custom registration is used  * Add rules to active-requests validate
+    * Add comment inline  * Update
+    paasta_tools/setup_prometheus_adapter_config.py  Simplify
+    envoy_filter_terms  Co-authored-by: Luis Pérez <luisp@yelp.com>  *
+    Update tests and add registration length check  * Update
+    tests/test_setup_prometheus_adapter_config.py  Remove debug print.
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  ---------  Co-authored-
+    by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 09 Oct 2023 10:13:40 -0700
+
+paasta-tools (0.202.2) xenial; urgency=medium
+
+  * 0.202.2 tagged with 'make release'
+    Commit: [COREJAVA-995] Refactor to pass instance_config to all
+    scaling rules (#3716)  * [COREJAVA-995] Refactor to pass
+    instance_config to all scaling rules  * Update the type of
+    instance_config  * Remove namespace as parameter for active-requests
+    scaling  * remove default value as get_namespace() will always
+    return a value
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 06 Oct 2023 02:16:10 -0700
+
+paasta-tools (0.202.1) xenial; urgency=medium
+
+  * 0.202.1 tagged with 'make release'
+    Commit: Merge pull request #3715 from
+    Yelp/jfong/uppercase_iam_support  Support uppercase IAM role names
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 03 Oct 2023 14:45:46 -0700
+
+paasta-tools (0.202.0) xenial; urgency=medium
+
+  * 0.202.0 tagged with 'make release'
+    Commit: Merge pull request #3714 from Yelp/jfong/PAASTA-18066
+    Validate iam_role and stop supporting kiam
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Oct 2023 10:04:47 -0700
+
+paasta-tools (0.201.5) xenial; urgency=medium
+
+  * 0.201.5 tagged with 'make release'
+    Commit: Remove sfx autoscaling link (#3710)  We haven"t used SFX for
+    autoscaling in quite some time and this confuses people that see it
+    referenced in the output of `paasta status`  At some point we"ll
+    want to replace this with a dashboard that visualizes how the
+    Prometheus-based autoscaling works - but that"s for future-us to do
+    :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 27 Sep 2023 14:37:27 -0700
+
+paasta-tools (0.201.4) xenial; urgency=medium
+
+  * 0.201.4 tagged with 'make release'
+    Commit: Ensure secret_volume volumes are not optional (#3708)  We
+    noticed some logging from a newly added use of secret_volume that
+    makes us think that the default for these is that
+    V1SecretVolumeSources are optional - let"s clear up any ambiguity
+    and explicitly set a value for this  NOTE: I"m not quite sure if
+    this will require a big bounce of anything using secret_volume - but
+    I guess that"s also less of a concern than a big bounce of
+    *everything*
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 25 Sep 2023 13:01:01 -0700
+
 paasta-tools (0.201.3) xenial; urgency=medium
 
   * 0.201.3 tagged with 'make release'

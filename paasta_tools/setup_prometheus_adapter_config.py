@@ -31,6 +31,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -80,6 +81,11 @@ DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
 
 CPU_METRICS_PROVIDER = "cpu"
+
+K8S_INSTANCE_TYPE_CLASSES = (
+    KubernetesDeploymentConfig,
+    EksDeploymentConfig,
+)
 
 
 class PrometheusAdapterResourceConfig(TypedDict, total=False):
@@ -248,14 +254,15 @@ def should_create_active_requests_scaling_rule(
 
 def create_instance_active_requests_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     desired_active_requests_per_replica = autoscaling_config.get(
         "desired_active_requests_per_replica",
         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
@@ -293,6 +300,17 @@ def create_instance_active_requests_scaling_rule(
         ) by (kube_deployment)
     """
 
+    # Envoy tracks metrics at the smartstack namespace level. In most cases the paasta instance name matches the smartstack namespace.
+    # In rare cases, there are custom registration added to instance configs.
+    # If there is no custom registration the envoy and instance names match and no need to update the worker_filter_terms.
+    # If there is a single custom registration for an instance, we will process the registration value and extract the value to be used.
+    # The registrations usually follow the format of {service_name}.{smartstack_name}. Hence we split the string by dot and extract the last token.
+    # More than one custom registrations are not supported and config validation takes care of rejecting such configs.
+    registrations = instance_config.get_registrations()
+
+    mesh_instance = registrations[0].split(".")[-1] if len(registrations) == 1 else None
+    envoy_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{mesh_instance or instance}'"
+
     # envoy-based metrics have no labels corresponding to the k8s resources that they
     # front, but we can trivially add one in since our deployment names are of the form
     # {service_name}-{instance_name} - which are both things in `worker_filter_terms` so
@@ -303,7 +321,7 @@ def create_instance_active_requests_scaling_rule(
     (
         sum(
             label_replace(
-                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{worker_filter_terms}}},
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
                 "kube_deployment", "{deployment_name}", "", ""
             )
         ) by (kube_deployment)
@@ -347,14 +365,15 @@ def create_instance_active_requests_scaling_rule(
 
 def create_instance_uwsgi_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
@@ -450,14 +469,15 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
@@ -561,14 +581,15 @@ def should_create_cpu_scaling_rule(
 
 def create_instance_cpu_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
@@ -709,14 +730,15 @@ def create_instance_cpu_scaling_rule(
 
 def create_instance_gunicorn_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str = "paasta",
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
@@ -821,11 +843,12 @@ def should_create_arbitrary_promql_scaling_rule(
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str,
 ) -> PrometheusAdapterRule:
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
@@ -881,10 +904,8 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_name: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
-    namespace: str,
 ) -> List[PrometheusAdapterRule]:
     """
     Returns a list of Prometheus Adapter rules for a given service instance. For now, this
@@ -904,23 +925,21 @@ def get_rules_for_service_instance(
         (should_create_gunicorn_scaling_rule, create_instance_gunicorn_scaling_rule),
     ):
         should_create, skip_reason = should_create_scaling_rule(
-            autoscaling_config=autoscaling_config,
+            autoscaling_config=instance_config.get_autoscaling_params(),
         )
         if should_create:
             rules.append(
                 create_instance_scaling_rule(
                     service=service_name,
-                    instance=instance_name,
-                    autoscaling_config=autoscaling_config,
+                    instance_config=instance_config,
                     paasta_cluster=paasta_cluster,
-                    namespace=namespace,
                 )
             )
         else:
             log.debug(
                 "Skipping %s.%s - %s.",
                 service_name,
-                instance_name,
+                instance_config.instance,
                 skip_reason,
             )
 
@@ -952,19 +971,18 @@ def create_prometheus_adapter_config(
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
         )
-        for instance_config in config_loader.instance_configs(
-            cluster=paasta_cluster,
-            instance_type_class=KubernetesDeploymentConfig,
-        ):
-            rules.extend(
-                get_rules_for_service_instance(
-                    service_name=service_name,
-                    instance_name=instance_config.instance,
-                    autoscaling_config=instance_config.get_autoscaling_params(),
-                    paasta_cluster=paasta_cluster,
-                    namespace=instance_config.get_namespace(),
+        for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+            for instance_config in config_loader.instance_configs(
+                cluster=paasta_cluster,
+                instance_type_class=instance_type_class,
+            ):
+                rules.extend(
+                    get_rules_for_service_instance(
+                        service_name=service_name,
+                        instance_config=instance_config,
+                        paasta_cluster=paasta_cluster,
+                    )
                 )
-            )
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps

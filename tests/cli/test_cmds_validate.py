@@ -549,6 +549,39 @@ def test_marathon_validate_invalid_key_bad(mock_get_file_contents, capsys):
         assert SCHEMA_INVALID in output
 
 
+@pytest.mark.parametrize(
+    "iam_role, expected, instance_type",
+    [
+        ("not_an_arn", False, "kubernetes"),
+        ("not_an_arn", False, "eks"),
+        ("arn:aws:iam::12345678:role/some_role", True, "kubernetes"),
+        ("arn:aws:iam::12345678:role/some_role", True, "eks"),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True, "kubernetes"),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True, "eks"),
+        ("arn:aws:iam::12345678::role/malformed_role", False, "kubernetes"),
+        ("arn:aws:iam::12345678::role/malformed_role", False, "eks"),
+    ],
+)
+def test_instance_validate_schema_iam_role(
+    iam_role,
+    expected,
+    instance_type,
+    capsys,
+):
+    instance_content = f"""
+test_instance:
+  iam_role: {iam_role}
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = instance_content
+        assert validate_schema("unused_service_path.yaml", instance_type) == expected
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        output, _ = capsys.readouterr()
+        assert expected_output in output
+
+
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_tron_validate_schema_understands_underscores(mock_get_file_contents, capsys):
     tron_content = """
@@ -625,6 +658,35 @@ test_job:
     assert not validate_schema("unused_service_path.yaml", "tron")
     output, _ = capsys.readouterr()
     assert SCHEMA_INVALID in output
+
+
+@pytest.mark.parametrize(
+    "iam_role, expected",
+    [
+        ("not_an_arn", False),
+        ("arn:aws:iam::12345678:role/some_role", True),
+        ("arn:aws:iam::12345678:role/Some_Capitalized_Role", True),
+        ("arn:aws:iam::12345678::role/malformed_role", False),
+    ],
+)
+def test_tron_validate_schema_iam_role(iam_role, expected, capsys):
+    tron_content = f"""
+test_job:
+  node: paasta
+  schedule: "daily 04:00:00"
+  actions:
+    first:
+      iam_role: {iam_role}
+      command: echo hello world
+"""
+    with patch(
+        "paasta_tools.cli.cmds.validate.get_file_contents", autospec=True
+    ) as mock_get_file_contents:
+        mock_get_file_contents.return_value = tron_content
+        assert validate_schema("unused_service_path.yaml", "tron") == expected
+        output, _ = capsys.readouterr()
+        expected_output = SCHEMA_VALID if expected else SCHEMA_INVALID
+        assert expected_output in output
 
 
 @pytest.mark.parametrize(
@@ -1037,82 +1099,58 @@ def test_validate_autoscaling_configs_no_offset_specified(
 @patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_active_requests_no_default_threshold_config(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
+@pytest.mark.parametrize(
+    "autoscaling_config,registrations,expected",
+    [
+        (
+            {
                 "metrics_provider": "active-requests",
-            }
+            },
+            [],
+            True,
         ),
-    )
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is True
-
-
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_active_requests_invalid_threshold(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
+        (
+            {
                 "metrics_provider": "active-requests",
                 "desired_active_requests_per_replica": -5,
-            }
+            },
+            [],
+            False,
         ),
-    )
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
+        (
+            {
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 5,
+            },
+            [],
+            True,
         ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is False
-
-
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_active_requests_valid(
+        (
+            {
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 5,
+            },
+            ["fake_service.abc"],
+            True,
+        ),
+        (
+            {
+                "metrics_provider": "active-requests",
+                "desired_active_requests_per_replica": 5,
+            },
+            ["fake_service.abc", "fake_service.def"],
+            False,
+        ),
+    ],
+)
+def test_validate_autoscaling_configs_active_requests(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_list_all_instances_for_service,
     mock_get_instance_config,
+    autoscaling_config,
+    registrations,
+    expected,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
@@ -1121,12 +1159,8 @@ def test_validate_autoscaling_configs_active_requests_valid(
         get_instance=mock.Mock(return_value="fake_instance1"),
         get_instance_type=mock.Mock(return_value="kubernetes"),
         is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
-            }
-        ),
+        get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
+        get_registrations=mock.Mock(return_value=registrations),
     )
 
     with mock.patch(
@@ -1137,7 +1171,7 @@ def test_validate_autoscaling_configs_active_requests_valid(
             directory="/some/test/dir",
         ),
     ):
-        assert validate_autoscaling_configs("fake-service-path") is True
+        assert validate_autoscaling_configs("fake-service-path") is expected
 
 
 @pytest.mark.parametrize(

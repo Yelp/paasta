@@ -149,7 +149,7 @@ def test_paasta_secret():
         "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
     ) as mock_is_secrets_for_teams_enabled, mock.patch(
         "paasta_tools.cli.cmds.secret.get_secret", autospec=True
-    ) as mock_get_kubernetes_secret, mock.patch(
+    ) as mock_get_secret, mock.patch(
         "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
     ) as mock_kube_client, mock.patch(
         "paasta_tools.cli.cmds.secret.get_namespaces_for_secret", autospec=True
@@ -242,8 +242,8 @@ def test_paasta_secret():
         )
         kube_client = mock.Mock()
         mock_is_secrets_for_teams_enabled.return_value = True
-        mock_get_namespaces_for_secret.return_value = {"paasta"}
-        mock_select_k8s_secret_namespace.return_value = "paasta"
+        mock_get_namespaces_for_secret.return_value = {"paastasvc-middleearth"}
+        mock_select_k8s_secret_namespace.return_value = "paastasvc-middleearth"
         mock_kube_client.return_value = kube_client
 
         secret.paasta_secret(mock_args)
@@ -252,20 +252,24 @@ def test_paasta_secret():
         mock_kube_client.assert_called_with(
             config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
         )
-        mock_get_kubernetes_secret.assert_called_with(
+        mock_get_secret.assert_called_with(
             kube_client,
-            get_paasta_secret_name("paasta", "middleearth", "theonering"),
-            "paasta",
+            get_paasta_secret_name(
+                "paastasvc-middleearth", "middleearth", "theonering"
+            ),
+            key_name="theonering",
+            namespace="paastasvc-middleearth",
         )
 
         # empty namespace list
         mock_get_namespaces_for_secret.return_value = set()
         mock_select_k8s_secret_namespace.return_value = None
         secret.paasta_secret(mock_args)
-        mock_get_kubernetes_secret.assert_called_with(
+        mock_get_secret.assert_called_with(
             kube_client,
             get_paasta_secret_name("paasta", "middleearth", "theonering"),
-            "paasta",
+            key_name="theonering",
+            namespace="paasta",
         )
 
         mock_args = mock.Mock(

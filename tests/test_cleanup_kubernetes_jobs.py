@@ -34,7 +34,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 def fake_deployment():
     fake_deployment = V1Deployment(
         metadata=mock.Mock(
-            namespace="paasta",
+            namespace="paastasvc-service",
             labels={
                 "yelp.com/paasta_service": "service",
                 "yelp.com/paasta_instance": "instance-1",
