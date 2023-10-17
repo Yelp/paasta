@@ -104,6 +104,8 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
+SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
+SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -332,6 +334,10 @@ class TronActionConfig(InstanceConfig):
             "spark.driver.host": "$PAASTA_POD_IP",
         }
 
+        # required to tell Spark to use AWS_WEB_IDENTITY_TOKEN_FILE inside the pod
+        if self.get_executor() == "spark":
+            conf["spark.hadoop.fs.s3a.aws.credentials.provider"] = SPARK_AWS_CREDS_PROVIDER
+
         # most of the service_configuration_lib function expected string values only
         # so let's go ahead and convert the values now instead of once per-wrapper
         stringified_spark_args = {
@@ -351,12 +357,13 @@ class TronActionConfig(InstanceConfig):
         # but that has more permissions than what we'd like to give the executors, so use
         # the default service account instead
         conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = "default"
-        if self.get_iam_role() and self.get_iam_role_provider() == "aws":
+        if self.get_spark_executor_iam_role():
             conf[
                 "spark.kubernetes.authenticate.executor.serviceAccountName"
             ] = create_or_find_service_account_name(
-                iam_role=self.get_iam_role(),
-                namespace=EXECUTOR_TYPE_TO_NAMESPACE[self.get_executor()],
+                iam_role=self.get_spark_executor_iam_role(),
+                namespace=SPARK_EXECUTOR_NAMESPACE,
+                kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
                 dry_run=self.for_validation,
             )
 
@@ -487,6 +494,12 @@ class TronActionConfig(InstanceConfig):
             iam_role = load_system_paasta_config().get_spark_driver_iam_role()
 
         return iam_role
+
+    def get_spark_executor_iam_role(self) -> str:
+        if self.get_executor() == "spark":
+            return load_system_paasta_config().get_spark_executor_iam_role()
+
+        return ""
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})

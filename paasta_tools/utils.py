@@ -2781,6 +2781,9 @@ class SystemPaastaConfig:
     def get_spark_driver_iam_role(self) -> str:
         return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
 
+    def get_spark_executor_iam_role(self) -> str:
+        return self.get_spark_run_config().get("default_spark_executor_iam_role", "")
+
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
 
