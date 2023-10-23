@@ -46,6 +46,7 @@ def main():
         src="./k8s_itests/deployments/paasta/fake_soa_config",
         dst="soa_config_playground",
         values=values_path,
+        overwrite=False,
     )
 
 
