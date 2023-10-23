@@ -1,4 +1,7 @@
-# from typing import Sequence
+from typing import List
+from typing import Tuple
+from typing import Union
+
 import mock
 import pytest
 from kubernetes.client import V1Deployment
@@ -10,6 +13,7 @@ from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.setup_kubernetes_job import create_application_object
 from paasta_tools.setup_kubernetes_job import get_kubernetes_deployment_config
 from paasta_tools.setup_kubernetes_job import get_service_instances_with_valid_names
@@ -51,7 +55,7 @@ def test_main_logging():
             service="my-service",
             instance="my-instance",
             cluster="cluster",
-            config_dict={},
+            config_dict=KubernetesDeploymentConfigDict(),
             branch_dict=None,
         )
         mock_service_instance_configs_list.return_value = [
@@ -80,7 +84,7 @@ def test_main_logging():
                 service="my-service",
                 instance="my-instance",
                 cluster="cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             False,
@@ -90,7 +94,7 @@ def test_main_logging():
                 service="my-service",
                 instance="my-instance",
                 cluster="cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             True,
@@ -213,7 +217,7 @@ def test_get_kubernetes_deployment_config():
             instance="instance",
             cluster="fake_cluster",
             soa_dir="nail/blah",
-            config_dict={},
+            config_dict=KubernetesDeploymentConfigDict(),
             branch_dict=None,
         )
         mock_load_kubernetes_service_config_no_cache.side_effect = None
@@ -232,7 +236,7 @@ def test_get_kubernetes_deployment_config():
                     instance="instance",
                     cluster="fake_cluster",
                     soa_dir="nail/blah",
-                    config_dict={},
+                    config_dict=KubernetesDeploymentConfigDict(),
                     branch_dict=None,
                 ),
             )
@@ -278,7 +282,7 @@ def test_get_eks_deployment_config():
             instance="instance",
             cluster="fake_cluster",
             soa_dir="nail/blah",
-            config_dict={},
+            config_dict=KubernetesDeploymentConfigDict(),
             branch_dict=None,
         )
         mock_load_eks_service_config_no_cache.side_effect = None
@@ -298,7 +302,7 @@ def test_get_eks_deployment_config():
                     instance="instance",
                     cluster="fake_cluster",
                     soa_dir="nail/blah",
-                    config_dict={},
+                    config_dict=KubernetesDeploymentConfigDict(),
                     branch_dict=None,
                 ),
             )
@@ -315,7 +319,7 @@ def test_get_eks_deployment_config():
                 instance="instance",
                 cluster="fake_cluster",
                 soa_dir="nail/blah",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
         ),
@@ -326,7 +330,7 @@ def test_get_eks_deployment_config():
                 instance="instance",
                 cluster="fake_cluster",
                 soa_dir="nail/blah",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
         ),
@@ -408,7 +412,7 @@ def test_create_application_object(eks_flag, mock_service_config):
                 instance="fm",
                 cluster="fake_cluster",
                 soa_dir="/nail/blah",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             False,
@@ -419,7 +423,7 @@ def test_create_application_object(eks_flag, mock_service_config):
                 instance="fm",
                 cluster="fake_cluster",
                 soa_dir="/nail/blah",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             True,
@@ -448,7 +452,14 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
         fake_app.update = fake_update
         fake_app.update_related_api_objects = fake_update_related_api_objects
         fake_app.item = None
-        fake_app.soa_config = None
+        fake_app.soa_config = KubernetesDeploymentConfig(
+            service=service_instance_config.service,
+            cluster=cluster,
+            instance=service_instance_config.instance,
+            config_dict=KubernetesDeploymentConfigDict(),
+            branch_dict=None,
+            soa_dir=soa_dir,
+        )
         fake_app.__str__ = lambda app: "fake_app"
         return True, fake_app
 
@@ -468,7 +479,9 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
     ) as mock_service_instance_configs_list:
         mock_client = mock.Mock()
         # No instances created
-        mock_service_instance_configs_list = []
+        mock_service_instance_configs_list: List[
+            Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
+        ] = []
         setup_kube_deployments(
             kube_client=mock_client,
             service_instance_configs_list=mock_service_instance_configs_list,
@@ -629,7 +642,7 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
             instance="garage",
             cluster="fake_cluster",
             soa_dir="/nail/blah",
-            config_dict={},
+            config_dict=KubernetesDeploymentConfigDict(),
             branch_dict=None,
         )
         mock_service_instance_configs_list = [
@@ -698,21 +711,21 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
                 service="kurupt",
                 instance="fm",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             KubernetesDeploymentConfig(
                 service="kurupt",
                 instance="garage",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             KubernetesDeploymentConfig(
                 service="kurupt",
                 instance="radio",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             False,
@@ -722,21 +735,21 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
                 service="kurupt",
                 instance="fm",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             EksDeploymentConfig(
                 service="kurupt",
                 instance="garage",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             EksDeploymentConfig(
                 service="kurupt",
                 instance="radio",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             True,
@@ -758,7 +771,9 @@ def test_setup_kube_deployments_rate_limit(
         "paasta_tools.setup_kubernetes_job.log", autospec=True
     ) as mock_log_obj:
         mock_client = mock.Mock()
-        mock_service_instance_configs_list = [
+        mock_service_instance_configs_list: List[
+            Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
+        ] = [
             (True, mock_kube_deploy_config_fm),
             (True, mock_kube_deploy_config_garage),
             (True, mock_kube_deploy_config_radio),
@@ -801,14 +816,14 @@ def test_setup_kube_deployments_rate_limit(
                 service="fake",
                 instance="instance",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             KubernetesDeploymentConfig(
                 service="mock",
                 instance="instance",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             False,
@@ -818,14 +833,14 @@ def test_setup_kube_deployments_rate_limit(
                 service="fake",
                 instance="instance",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             EksDeploymentConfig(
                 service="mock",
                 instance="instance",
                 cluster="fake_cluster",
-                config_dict={},
+                config_dict=KubernetesDeploymentConfigDict(),
                 branch_dict=None,
             ),
             True,
@@ -844,7 +859,9 @@ def test_setup_kube_deployments_skip_malformed_apps(
         "paasta_tools.setup_kubernetes_job.log", autospec=True
     ) as mock_log_obj:
         mock_client = mock.Mock()
-        mock_service_instance_configs_list = [
+        mock_service_instance_configs_list: List[
+            Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
+        ] = [
             (True, mock_kube_deploy_config_fake),
             (True, mock_kube_deploy_config_mock),
         ]
