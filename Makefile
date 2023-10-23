@@ -158,12 +158,32 @@ setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
 	.tox/py38-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground --shuffle --group-lines 1 | xargs --no-run-if-empty .tox/py38-linux/bin/python -m paasta_tools.setup_kubernetes_job -d ./soa_config_playground -c kind-${USER}-k8s-test
 
+.PHONY: cleanup-kubernetes-jobs
+cleanup-kubernetes-jobs:
+	export KUBECONFIG=./k8s_itests/kubeconfig;\
+	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
+	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
+	.tox/py38-linux/bin/python -m paasta_tools.cleanup_kubernetes_jobs -d ./soa_config_playground -c kind-${USER}-k8s-test --force
+
 .PHONY: paasta-secrets-sync
 paasta-secrets-sync: setup-kubernetes-job .vault-token
 	export KUBECONFIG=./k8s_itests/kubeconfig;\
 	export PAASTA_SYSTEM_CONFIG_DIR=./etc_paasta_playground/;\
 	export PAASTA_TEST_CLUSTER=kind-${USER}-k8s-test;\
 	{ .tox/py38-linux/bin/python -m paasta_tools.list_kubernetes_service_instances -d ./soa_config_playground ; echo -n \ _shared; } | cut -f1 -d"." | uniq | shuf | xargs .tox/py38-linux/bin/python -m paasta_tools.kubernetes.bin.paasta_secrets_sync -v -d ./soa_config_playground -t ./.vault-token
+
+define ANNOUNCE_CRONS_BODY
+The following PaaSTA cron jobs will run on an infinite loop using the PaaSTA Playground k8s cluster:
+- setup-kubernetes-job
+- cleanup-kubernetes-job
+- paasta-secrets-sync
+- generate_deployments_for_service
+endef
+export ANNOUNCE_CRONS_BODY
+.PHONY: paasta-crons
+make paasta-cronjobs:
+	@echo "$$ANNOUNCE_CRONS_BODY"
+	while true; do make paasta-secrets-sync && make cleanup-kubernetes-jobs; sleep 5; done
 
 .vault-token:
 	export VAULT_ADDR=https://vault-devc.yelpcorp.com:8200 ;\
