@@ -1,6 +1,7 @@
 astroid
 asynctest
 coverage
+debugpy
 docutils
 flake8
 freezegun
