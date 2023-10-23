@@ -1,3 +1,15 @@
+paasta-tools (0.205.0) xenial; urgency=medium
+
+  * 0.205.0 tagged with 'make release'
+    Commit: Respect a service"s docker_registry for adhoc spark-runs
+    (#3728)  There are some services where we want to ensure that a
+    specialized docker registry is always used - even for adhoc
+    development runs.  This change is loosely based on what we do in
+    push-to-registry, where we read service.yaml to see if a specialized
+    registry needs to be used.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 23 Oct 2023 13:45:05 -0700
+
 paasta-tools (0.204.2) xenial; urgency=medium
 
   * 0.204.2 tagged with 'make release'
