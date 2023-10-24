@@ -233,14 +233,14 @@ def setup_kube_deployments(
     eks: bool = False,
 ) -> bool:
 
-    existing_apps = set()
-    existing_kube_deployments = set()
-    if service_instance_configs_list:
-        existing_kube_deployments = set(list_all_paasta_deployments(kube_client))
-        existing_apps = {
-            (deployment.service, deployment.instance, deployment.namespace)
-            for deployment in existing_kube_deployments
-        }
+    if not service_instance_configs_list:
+        return True
+
+    existing_kube_deployments = set(list_all_paasta_deployments(kube_client))
+    existing_apps = {
+        (deployment.service, deployment.instance, deployment.namespace)
+        for deployment in existing_kube_deployments
+    }
 
     applications = [
         create_application_object(
@@ -269,15 +269,17 @@ def setup_kube_deployments(
                     app.kube_deployment.namespace,
                 ) not in existing_apps:
                     if app.soa_config.get_bounce_method() == "downthenup":
-                        exist_on_other_namespace = False
-                        for existing_app in existing_apps:
-                            if existing_app[:2] == (
-                                app.kube_deployment.service,
-                                app.kube_deployment.instance,
-                            ):
-                                exist_on_other_namespace = True
-                                break
-                        if exist_on_other_namespace:
+                        if any(
+                            (
+                                app[:2]
+                                == (
+                                    app.kube_deployment.service,
+                                    app.kube_deployment.instance,
+                                )
+                            )
+                            for app in existing_apps
+                        ):
+                            # For downthenup, we don't want to create until cleanup_kubernetes_job has cleaned up the instance in the other namespace.
                             continue
                     log.info(f"Creating {app} because it does not exist yet.")
                     app.create(kube_client)
