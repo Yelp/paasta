@@ -1080,7 +1080,7 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     if retcode != 0:
         return None
 
-    if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
+    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
         command = "sudo -H docker push %s" % docker_url
     else:
         command = "docker push %s" % docker_url
