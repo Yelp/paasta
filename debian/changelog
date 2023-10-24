@@ -1,3 +1,12 @@
+paasta-tools (0.205.1) xenial; urgency=medium
+
+  * 0.205.1 tagged with 'make release'
+    Commit: Merge pull request #3730 from
+    Yelp/u/jfong/fix_spark_run_docker_reg  Use the correct registry_uri
+    to check if we need to sudo
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 23 Oct 2023 17:08:53 -0700
+
 paasta-tools (0.205.0) xenial; urgency=medium
 
   * 0.205.0 tagged with 'make release'
