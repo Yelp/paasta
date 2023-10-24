@@ -476,7 +476,7 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
     ) as mock_no_metrics, mock.patch(
         "paasta_tools.setup_kubernetes_job.get_kubernetes_deployment_config",
         autospec=True,
-    ) as mock_service_instance_configs_list:
+    ):
         mock_client = mock.Mock()
         # No instances created
         mock_service_instance_configs_list: List[

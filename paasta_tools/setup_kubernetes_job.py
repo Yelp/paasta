@@ -271,13 +271,13 @@ def setup_kube_deployments(
                     if app.soa_config.get_bounce_method() == "downthenup":
                         if any(
                             (
-                                app[:2]
+                                existing_app[:2]
                                 == (
                                     app.kube_deployment.service,
                                     app.kube_deployment.instance,
                                 )
                             )
-                            for app in existing_apps
+                            for existing_app in existing_apps
                         ):
                             # For downthenup, we don't want to create until cleanup_kubernetes_job has cleaned up the instance in the other namespace.
                             continue
