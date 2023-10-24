@@ -124,12 +124,16 @@ def instance_is_not_bouncing(
         if isinstance(application, DeploymentWrapper):
             existing_app = application.item
             if (
-                existing_app.metadata.namespace != instance_config.get_namespace()
-                and (instance_config.get_bounce_method() == "downthenup")
-                or existing_app.metadata.namespace == instance_config.get_namespace()
-                and (
-                    instance_config.get_instances()
-                    <= (existing_app.status.ready_replicas or 0)
+                (
+                    existing_app.metadata.namespace != instance_config.get_namespace()
+                    and (instance_config.get_bounce_method() == "downthenup")
+                )
+                or (
+                    existing_app.metadata.namespace == instance_config.get_namespace()
+                    and (
+                        instance_config.get_instances()
+                        <= (existing_app.status.ready_replicas or 0)
+                    )
                 )
             ) or instance_config.get_desired_state() == "stop":
                 return True
