@@ -353,19 +353,14 @@ class TronActionConfig(InstanceConfig):
 
         conf.update(_get_spark_ports(system_paasta_config=system_paasta_config))
 
-        # Spark defaults to using the Service Account that the driver uses for executors,
-        # but that has more permissions than what we'd like to give the executors, so use
-        # the default service account instead
-        conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = "default"
-        if self.get_spark_executor_iam_role():
-            conf[
-                "spark.kubernetes.authenticate.executor.serviceAccountName"
-            ] = create_or_find_service_account_name(
-                iam_role=self.get_spark_executor_iam_role(),
-                namespace=SPARK_EXECUTOR_NAMESPACE,
-                kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
-                dry_run=self.for_validation,
-            )
+        # We need to make sure the Service Account used by the executors has been created.
+        # We are using the Service Account created using the provided or default IAM role.
+        conf["spark.kubernetes.authenticate.executor.serviceAccountName"] = create_or_find_service_account_name(
+            iam_role=self.get_spark_executor_iam_role(),
+            namespace=SPARK_EXECUTOR_NAMESPACE,
+            kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
+            dry_run=self.for_validation,
+        )
 
         conf.update(
             setup_volume_mounts(
@@ -391,16 +386,7 @@ class TronActionConfig(InstanceConfig):
         command = self.config_dict.get("command")
 
         if self.get_executor() == "spark":
-            # until we switch drivers to use pod identity, we need to use the Yelp's legacy AWS credential system
-            # and ensure that the AWS access keys are part of the environment variables that the driver is started
-            # with - this is more secure than what we appear to have tried to do in the previous attempt and also
-            # still allows us to use the new CEP-1713 "private" boto_cfg system should the pod identity migration
-            # require more work/time than expected.
-            aws_credentials = self.config_dict.get("aws_credentials")
-            cmd_setup = (
-                f". /etc/boto_cfg/{aws_credentials}.sh && " if aws_credentials else ""
-            )
-            command = f"{cmd_setup}{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
+            command = f"{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
 
         return command
 
@@ -496,10 +482,9 @@ class TronActionConfig(InstanceConfig):
         return iam_role
 
     def get_spark_executor_iam_role(self) -> str:
-        if self.get_executor() == "spark":
-            return load_system_paasta_config().get_spark_executor_iam_role()
-
-        return ""
+        if self.get_iam_role():
+            return self.get_iam_role()
+        return load_system_paasta_config().get_spark_executor_iam_role()
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
@@ -998,7 +983,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
             and action_config.get_iam_role()
             and not action_config.for_validation
         ):
-            # this service account will be used for normal Tron batches as well as for Spark executors
+            # this service account will be used for normal Tron batches as well as for Spark drivers
             result["service_account_name"] = create_or_find_service_account_name(
                 iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
@@ -1008,13 +993,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
 
         if executor == "spark":
             system_paasta_config = load_system_paasta_config()
-            # this service account will only be used by Spark drivers since executors don't
-            # need Kubernetes access permissions
-            result["service_account_name"] = create_or_find_service_account_name(
-                iam_role=action_config.get_iam_role(),
-                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
-                dry_run=action_config.for_validation,
-            )
+            # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
             result["extra_volumes"] = [
                 {
                     "container_path": system_paasta_config.get_spark_kubeconfig(),
