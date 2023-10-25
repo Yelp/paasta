@@ -31,15 +31,17 @@ def render_file(src, dst, values):
             new.write(replace(old.read(), values))
 
 
-def render(src, dst, values={}, exclude={}):
+def render(src, dst, values={}, exclude={}, overwrite=True):
     if os.path.isfile(src):
-        render_file(src, dst, values)
+        if overwrite:
+            render_file(src, dst, values)
         return
     for f in os.scandir(src):
         if f.name.startswith(".") or f.path in exclude:
             continue
         if os.path.isfile(f.path):
-            render_file(f.path, dst, values)
+            if overwrite:
+                render_file(f.path, dst, values)
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
             try:
@@ -47,7 +49,7 @@ def render(src, dst, values={}, exclude={}):
             except OSError as e:
                 if e.errno != os.errno.EEXIST:
                     raise
-            render(f.path, new_dst, values, exclude)
+            render(f.path, new_dst, values, exclude, overwrite)
 
 
 def parse_args():
@@ -82,7 +84,7 @@ def parse_args():
     return args
 
 
-def render_values(src: str, dst: str, values: str) -> None:
+def render_values(src: str, dst: str, values: str, overwrite=True) -> None:
     if values is not None:
         values = os.path.abspath(values)
     # Validate src and values. Dst needs to be a directory. src can be either a valid folder of directory. values need to be valid file if provided.
@@ -108,7 +110,7 @@ def render_values(src: str, dst: str, values: str) -> None:
             ),
             v,
         )
-    render(src, dst, config_dict, {values})
+    render(src, dst, config_dict, {values}, overwrite)
 
 
 def main():
