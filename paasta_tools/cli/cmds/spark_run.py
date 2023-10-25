@@ -17,6 +17,7 @@ from typing import Union
 
 import yaml
 from boto3.exceptions import Boto3Error
+from service_configuration_lib import read_service_configuration
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
@@ -219,7 +220,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--docker-registry",
         help="Docker registry to push the Spark image built.",
-        default=DEFAULT_SPARK_DOCKER_REGISTRY,
+        default=None,
     )
 
     list_parser.add_argument(
@@ -1037,6 +1038,14 @@ def get_docker_cmd(
         return inject_spark_conf_str(original_docker_cmd, spark_conf_str)
 
 
+def _get_adhoc_docker_registry(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> str:
+    if service is None:
+        raise NotImplementedError('"None" is not a valid service')
+
+    service_configuration = read_service_configuration(service, soa_dir)
+    return service_configuration.get("docker_registry", DEFAULT_SPARK_DOCKER_REGISTRY)
+
+
 def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     """
     Build an image if the default Spark service image is not preferred.
@@ -1060,14 +1069,19 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     if cook_return != 0:
         return None
 
-    docker_url = f"{args.docker_registry}/{docker_tag}"
+    registry_uri = args.docker_registry or _get_adhoc_docker_registry(
+        service=args.service,
+        soa_dir=args.yelpsoa_config_root,
+    )
+
+    docker_url = f"{registry_uri}/{docker_tag}"
     command = f"docker tag {docker_tag} {docker_url}"
     print(PaastaColors.grey(command))
     retcode, _ = _run(command, stream=True)
     if retcode != 0:
         return None
 
-    if args.docker_registry != DEFAULT_SPARK_DOCKER_REGISTRY:
+    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
         command = "sudo -H docker push %s" % docker_url
     else:
         command = "docker push %s" % docker_url
