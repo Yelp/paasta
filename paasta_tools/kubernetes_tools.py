@@ -72,6 +72,9 @@ from kubernetes.client import V1HTTPGetAction
 from kubernetes.client import V1KeyToPath
 from kubernetes.client import V1LabelSelector
 from kubernetes.client import V1Lifecycle
+from kubernetes.client import V1LimitRange
+from kubernetes.client import V1LimitRangeItem
+from kubernetes.client import V1LimitRangeSpec
 from kubernetes.client import V1Namespace
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeAffinity
@@ -2676,6 +2679,7 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
         kube_client.core.create_namespace(body=paasta_namespace)
 
     ensure_paasta_api_rolebinding(kube_client, namespace)
+    ensure_paasta_namespace_limits(kube_client, namespace)
 
 
 def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> None:
@@ -2683,7 +2687,7 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
     rolebinding_names = [item.metadata.name for item in rolebindings]
     if "paasta-api-server-per-namespace" not in rolebinding_names:
         log.warning(
-            f"Creating rolebinding paasta-api-server-per-namespace as it does not exist"
+            f"Creating rolebinding paasta-api-server-per-namespace on {namespace} namespace as it does not exist"
         )
         role_binding = V1RoleBinding(
             metadata=V1ObjectMeta(
@@ -2705,6 +2709,39 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
         kube_client.rbac.create_namespaced_role_binding(
             namespace=namespace, body=role_binding
         )
+
+
+def ensure_paasta_namespace_limits(kube_client: KubeClient, namespace: str) -> None:
+    limits = get_all_limit_ranges(kube_client, namespace=namespace)
+    limits_names = {item.metadata.name for item in limits}
+    if "limit-mem-cpu-disk-per-container" not in limits_names:
+        log.warning(
+            f"Creating limit: limit-mem-cpu-disk-per-container on {namespace} namespace as it does not exist"
+        )
+        limit = V1LimitRange(
+            metadata=V1ObjectMeta(
+                name="limit-mem-cpu-disk-per-container",
+                namespace=namespace,
+            ),
+            spec=V1LimitRangeSpec(
+                limits=[
+                    V1LimitRangeItem(
+                        type="Container",
+                        default={
+                            "cpu": "1",
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "1Gi",
+                        },
+                        default_request={
+                            "cpu": "1",
+                            "memory": "1024Mi",
+                            "ephemeral-storage": "1Gi",
+                        },
+                    )
+                ]
+            ),
+        )
+        kube_client.core.create_namespaced_limit_range(namespace=namespace, body=limit)
 
 
 def list_deployments_in_all_namespaces(
@@ -3891,6 +3928,13 @@ def get_all_role_bindings(
     namespace: str,
 ) -> Sequence[V1RoleBinding]:
     return kube_client.rbac.list_namespaced_role_binding(namespace=namespace).items
+
+
+def get_all_limit_ranges(
+    kube_client: KubeClient,
+    namespace: str,
+) -> Sequence[V1LimitRange]:
+    return kube_client.core.list_namespaced_limit_range(namespace).items
 
 
 _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")

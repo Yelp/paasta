@@ -89,6 +89,7 @@ from paasta_tools.kubernetes_tools import create_secret_signature
 from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
+from paasta_tools.kubernetes_tools import ensure_paasta_namespace_limits
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
@@ -3022,6 +3023,8 @@ def test_KubeClient():
 def test_ensure_namespace_doesnt_create_if_namespace_exists():
     with mock.patch(
         "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
     ):
         mock_metadata = mock.Mock()
         type(mock_metadata).name = "paasta"
@@ -3036,6 +3039,8 @@ def test_ensure_namespace_doesnt_create_if_namespace_exists():
 def test_ensure_namespace_kube_system():
     with mock.patch(
         "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
     ):
         mock_metadata = mock.Mock()
         type(mock_metadata).name = "kube-system"
@@ -3050,6 +3055,8 @@ def test_ensure_namespace_kube_system():
 def test_ensure_namespace_creates_namespace_if_doesnt_exist():
     with mock.patch(
         "paasta_tools.kubernetes_tools.ensure_paasta_api_rolebinding", autospec=True
+    ), mock.patch(
+        "paasta_tools.kubernetes_tools.ensure_paasta_namespace_limits", autospec=True
     ):
         mock_namespaces = mock.Mock(items=[])
         mock_client = mock.Mock(
@@ -3083,6 +3090,28 @@ def test_ensure_paasta_api_rolebinding_doesnt_create_if_exists():
 
     ensure_paasta_api_rolebinding(mock_client, namespace="paastasvc-cool-service-name")
     assert not mock_client.rbac.create_namespaced_role_binding.called
+
+
+def test_ensure_paasta_namespace_limits_creates_if_not_exist():
+    mock_limits = mock.Mock(items=[])
+    mock_client = mock.Mock(
+        core=mock.Mock(list_namespaced_limit_range=mock.Mock(return_value=mock_limits)),
+    )
+
+    ensure_paasta_namespace_limits(mock_client, namespace="paastasvc-cool-service-name")
+    assert mock_client.core.create_namespaced_limit_range.called
+
+
+def test_ensure_paasta_namespace_limits_doesnt_create_if_exists():
+    mock_metadata = mock.Mock()
+    type(mock_metadata).name = "limit-mem-cpu-disk-per-container"
+    mock_limits = mock.Mock(items=[mock.Mock(metadata=mock_metadata)])
+    mock_client = mock.Mock(
+        core=mock.Mock(list_namespaced_limit_range=mock.Mock(return_value=mock_limits)),
+    )
+
+    ensure_paasta_namespace_limits(mock_client, namespace="paastasvc-cool-service-name")
+    assert not mock_client.core.create_namespaced_role_binding.called
 
 
 @pytest.mark.parametrize(
