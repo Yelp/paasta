@@ -456,7 +456,7 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
             service=service_instance_config.service,
             cluster=cluster,
             instance=service_instance_config.instance,
-            config_dict=KubernetesDeploymentConfigDict(),
+            config_dict=service_instance_config.config_dict,
             branch_dict=None,
             soa_dir=soa_dir,
         )
@@ -509,6 +509,47 @@ def test_setup_kube_deployment_create_update(mock_kube_deploy_config, eks_flag):
         assert fake_update.call_count == 0
         assert fake_update_related_api_objects.call_count == 1
         assert mock_no_metrics.emit_event.call_count == 1
+        mock_log_obj.info.reset_mock()
+        mock_no_metrics.reset_mock()
+
+        # Skipping downthenup instance cuz of existing_apps
+        fake_create.reset_mock()
+        fake_update.reset_mock()
+        fake_update_related_api_objects.reset_mock()
+        mock_list_all_paasta_deployments.return_value = [
+            KubeDeployment(
+                service="kurupt",
+                instance="fm",
+                git_sha="2",
+                namespace="paastasvc-kurupt",
+                image_version="extrastuff-1",
+                config_sha="1",
+                replicas=1,
+            )
+        ]
+        mock_downthenup_kube_deploy_config = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            config_dict=KubernetesDeploymentConfigDict(bounce_method="downthenup"),
+            branch_dict=None,
+        )
+        mock_service_instance_configs_list = [
+            (True, mock_downthenup_kube_deploy_config)
+        ]
+        setup_kube_deployments(
+            kube_client=mock_client,
+            service_instance_configs_list=mock_service_instance_configs_list,
+            cluster="fake_cluster",
+            soa_dir="/nail/blah",
+            metrics_interface=mock_no_metrics,
+            eks=eks_flag,
+        )
+        assert fake_create.call_count == 0
+        assert fake_update.call_count == 0
+        assert fake_update_related_api_objects.call_count == 0
+        assert mock_no_metrics.emit_event.call_count == 0
         mock_log_obj.info.reset_mock()
         mock_no_metrics.reset_mock()
 
