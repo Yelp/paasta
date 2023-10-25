@@ -1,3 +1,12 @@
+paasta-tools (0.206.0) xenial; urgency=medium
+
+  * 0.206.0 tagged with 'make release'
+    Commit: Merge pull request #3729 from Yelp/u/cuza/making-skj-and-ckj-
+    aware-of-downthenup-bounces-across-namespaces  making skj and ckj
+    aware of downthenup bounces across namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 25 Oct 2023 10:18:25 -0700
+
 paasta-tools (0.205.1) xenial; urgency=medium
 
   * 0.205.1 tagged with 'make release'
