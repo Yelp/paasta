@@ -1,3 +1,10 @@
+paasta-tools (0.207.0) xenial; urgency=medium
+
+  * 0.207.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/allow_non_paastasvc"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Oct 2023 11:18:27 -0700
+
 paasta-tools (0.206.0) xenial; urgency=medium
 
   * 0.206.0 tagged with 'make release'
