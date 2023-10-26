@@ -30,10 +30,9 @@ from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
-from paasta_tools.kubernetes_tools import get_all_namespaces
+from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
-from paasta_tools.kubernetes_tools import get_matching_namespaces
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
@@ -109,13 +108,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="dry_run",
         help="Print Sensu alert events and metrics instead of sending them",
-    )
-    parser.add_argument(
-        "--namespace-prefix",
-        help="prefix of the namespace to check services replication for"
-        "Used only when service is kubernetes",
-        dest="namespace_prefix",
-        default="paastasvc-",
     )
     parser.add_argument(
         "--additional-namespaces",
@@ -216,9 +208,6 @@ def main(
     replication_checker: ReplicationChecker
 
     if namespace:
-        # Note: we will have by default namespace_prefix always set to paastasvc
-        # which means we could have namespace and namespace_prefix set at the same time
-        # what differentiate between which one we will use, will be this if statement
         tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
@@ -226,7 +215,6 @@ def main(
         )
     else:
         tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
-            namespace_prefix=args.namespace_prefix,
             additional_namespaces=args.additional_namespaces,
         )
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
@@ -280,7 +268,6 @@ def get_mesos_tasks_and_slaves(
 
 
 def get_kubernetes_pods_and_nodes(
-    namespace_prefix: Optional[str] = None,
     namespace: Optional[str] = None,
     additional_namespaces: Optional[Container[str]] = None,
 ) -> Tuple[List[V1Pod], List[V1Node]]:
@@ -290,12 +277,10 @@ def get_kubernetes_pods_and_nodes(
     if namespace:
         all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
     else:
-        all_namespaces = get_all_namespaces(kube_client)
-        for matching_namespace in get_matching_namespaces(
-            all_namespaces, namespace_prefix, additional_namespaces
-        ):
+        all_managed_namespaces = get_all_managed_namespaces(kube_client)
+        for managed_namespace in all_managed_namespaces:
             all_pods.extend(
-                get_all_pods(kube_client=kube_client, namespace=matching_namespace)
+                get_all_pods(kube_client=kube_client, namespace=managed_namespace)
             )
 
     all_nodes = get_all_nodes(kube_client)
