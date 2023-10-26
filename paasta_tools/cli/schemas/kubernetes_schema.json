@@ -864,7 +864,7 @@
                 },
                 "namespace": {
                     "type": "string",
-                    "pattern": "^(paasta|paastasvc-.*)$"
+                    "pattern": "^(paasta|jenkins|paastasvc-.*)$"
                 }
             }
         }
