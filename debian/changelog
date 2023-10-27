@@ -1,3 +1,12 @@
+paasta-tools (0.207.1) xenial; urgency=medium
+
+  * 0.207.1 tagged with 'make release'
+    Commit: Merge pull request #3733 from
+    Yelp/jfong/bounce_status_relay_404  Catch statefulset missing as 404
+    in API bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 27 Oct 2023 09:49:30 -0700
+
 paasta-tools (0.207.0) xenial; urgency=medium
 
   * 0.207.0 tagged with 'make release'
