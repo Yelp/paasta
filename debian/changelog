@@ -1,3 +1,10 @@
+paasta-tools (0.207.2) xenial; urgency=medium
+
+  * 0.207.2 tagged with 'make release'
+    Commit: Merge branch "u/krall/limitrange_paastasvc-"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 27 Oct 2023 11:29:04 -0700
+
 paasta-tools (0.207.1) xenial; urgency=medium
 
   * 0.207.1 tagged with 'make release'
