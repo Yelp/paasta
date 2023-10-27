@@ -881,8 +881,13 @@ def bounce_status(request):
         raise ApiFailure(
             "Temporary issue fetching bounce status. Please try again.", 599
         )
-    except Exception:
+    except Exception as e:
         error_message = traceback.format_exc()
+        if getattr(e, "status") == 404:
+            # some bounces delete the app & recreate
+            # in this case, we relay the 404 and cli handles gracefully
+            raise ApiFailure(error_message, 404)
+        # for all others, treat as a 500
         raise ApiFailure(error_message, 500)
 
 
