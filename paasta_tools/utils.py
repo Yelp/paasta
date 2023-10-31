@@ -542,6 +542,19 @@ class InstanceConfig:
         for cap in CAPS_DROP:
             yield {"key": "cap-drop", "value": cap}
 
+    def get_cap_args(self) -> Iterable[DockerParameter]:
+        """Generate all --cap-add/--cap-drop parameters, ensuring not to have overlapping settings"""
+        cap_adds = list(self.get_cap_add())
+        if cap_adds and is_using_unprivileged_containers():
+            log.warning(
+                "Unprivileged containerizer detected, adding capabilities will not work properly"
+            )
+        yield from cap_adds
+        added_caps = [cap["value"] for cap in cap_adds]
+        for cap in self.get_cap_drop():
+            if cap["value"] not in added_caps:
+                yield cap
+
     def format_docker_parameters(
         self,
         with_labels: bool = True,
@@ -576,9 +589,8 @@ class InstanceConfig:
         if extra_docker_args:
             for key, value in extra_docker_args.items():
                 parameters.extend([{"key": key, "value": value}])
-        parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
-        parameters.extend(self.get_cap_drop())
+        parameters.extend(self.get_cap_args())
         return parameters
 
     def use_docker_disk_quota(
@@ -4288,3 +4300,8 @@ def get_runtimeenv() -> str:
         # we could also just crash or return None, but this seems a little easier to find
         # should we somehow run into this at Yelp
         return "unknown"
+
+
+@lru_cache(maxsize=1)
+def is_using_unprivileged_containers() -> bool:
+    return "podman" in os.getenv("DOCKER_HOST", "")

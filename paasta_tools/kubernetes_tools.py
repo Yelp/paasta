@@ -2712,6 +2712,12 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
 
 
 def ensure_paasta_namespace_limits(kube_client: KubeClient, namespace: str) -> None:
+    if not namespace.startswith("paastasvc-"):
+        log.debug(
+            f"Not creating LimitRange because {namespace} does not start with paastasvc-"
+        )
+        return
+
     limits = get_all_limit_ranges(kube_client, namespace=namespace)
     limits_names = {item.metadata.name for item in limits}
     if "limit-mem-cpu-disk-per-container" not in limits_names:

@@ -1,3 +1,51 @@
+paasta-tools (0.207.4) xenial; urgency=medium
+
+  * 0.207.4 tagged with 'make release'
+    Commit: Merge pull request #3736 from
+    Yelp/d/manpreet/limit_spark_app_name_to_63_characters  Upgrade
+    service-configuration-lib to limit character count in spark a…
+
+ -- Manpreet Singh <manpreet@yelp.com>  Tue, 31 Oct 2023 09:21:36 -0700
+
+paasta-tools (0.207.3) xenial; urgency=medium
+
+  * 0.207.3 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SECNESS-1787"
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 31 Oct 2023 06:48:08 -0700
+
+paasta-tools (0.207.2) xenial; urgency=medium
+
+  * 0.207.2 tagged with 'make release'
+    Commit: Merge branch "u/krall/limitrange_paastasvc-"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 27 Oct 2023 11:29:04 -0700
+
+paasta-tools (0.207.1) xenial; urgency=medium
+
+  * 0.207.1 tagged with 'make release'
+    Commit: Merge pull request #3733 from
+    Yelp/jfong/bounce_status_relay_404  Catch statefulset missing as 404
+    in API bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 27 Oct 2023 09:49:30 -0700
+
+paasta-tools (0.207.0) xenial; urgency=medium
+
+  * 0.207.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/allow_non_paastasvc"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Oct 2023 11:18:27 -0700
+
+paasta-tools (0.206.0) xenial; urgency=medium
+
+  * 0.206.0 tagged with 'make release'
+    Commit: Merge pull request #3729 from Yelp/u/cuza/making-skj-and-ckj-
+    aware-of-downthenup-bounces-across-namespaces  making skj and ckj
+    aware of downthenup bounces across namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 25 Oct 2023 10:18:25 -0700
+
 paasta-tools (0.205.1) xenial; urgency=medium
 
   * 0.205.1 tagged with 'make release'

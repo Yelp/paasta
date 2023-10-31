@@ -221,6 +221,8 @@ async def pod_info(
     }
 
 
+# TODO: Cleanup
+# Only used in old kubernetes_status
 async def job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
@@ -1108,6 +1110,7 @@ async def get_version_for_controller_revision(
     }
 
 
+# TODO: Cleanup old kubernetes status
 @a_sync.to_blocking
 async def kubernetes_status(
     service: str,

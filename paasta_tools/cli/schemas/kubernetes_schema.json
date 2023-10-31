@@ -863,8 +863,7 @@
                     "minimum": 1
                 },
                 "namespace": {
-                    "type": "string",
-                    "pattern": "^(paasta|paastasvc-.*)$"
+                    "type": "string"
                 }
             }
         }

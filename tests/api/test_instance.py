@@ -18,6 +18,7 @@ import asynctest
 import mock
 import pytest
 from kubernetes.client import V1Pod
+from kubernetes.client.rest import ApiException
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from pyramid import testing
@@ -1317,6 +1318,18 @@ class TestBounceStatus:
         mock_request,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 404
+
+    def test_app_not_found(
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_pik_bounce_status.side_effect = [ApiException(status=404)]
         with pytest.raises(ApiFailure) as excinfo:
             instance.bounce_status(mock_request)
         assert excinfo.value.err == 404
