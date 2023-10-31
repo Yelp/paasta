@@ -56,6 +56,7 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import SHARED_SECRETS_K8S_NAMESPACES
 
 log = logging.getLogger(__name__)
@@ -244,7 +245,7 @@ def get_services_to_k8s_namespaces_to_allowlist(
                         shared_allowlist.update(shared_secrets_used)
 
         for instance_type in INSTANCE_TYPES:
-            if instance_type == "kubernetes":
+            if instance_type in PAASTA_K8S_INSTANCE_TYPES:
                 continue  # handled above.
 
             instances = get_service_instance_list(
