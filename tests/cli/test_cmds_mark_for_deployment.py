@@ -878,11 +878,16 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
 
 
 @patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
     "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.any_slo_failing",
     autospec=True,
 )
 def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_rollback(
     mock_any_slo_failing,
+    mock_get_instance_configs,
 ):
     mock_any_slo_failing.return_value = True
     mfdp = WrappedMarkForDeploymentProcess(
