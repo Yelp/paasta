@@ -43,6 +43,10 @@ class FakeArgs:
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
     authors = None
+    warn = 17
+    polling_interval = None
+    diagnosis_interval = None
+    time_before_first_diagnosis = None
 
 
 @fixture
@@ -137,31 +141,44 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     mock_is_docker_image_already_in_registry.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
+    mock_is_docker_image_already_in_registry.assert_called_with(
+        "test_service",
+        "fake_soa_dir",
+        "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+        "extrastuff",
+    )
 
 
-@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
-    autospec=True,
+    "paasta_tools.cli.cmds.mark_for_deployment.can_user_deploy_service", autospec=True
 )
+@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
-def test_paasta_mark_for_deployment_when_verify_image_succeeds(
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
+    autospec=True,
+)
+def test_paasta_mark_for_deployment_when_verify_image_succeeds_no_privs(
+    mock_is_docker_image_already_in_registry,
     mock_list_deploy_groups,
     mock_get_currently_deployed_version,
-    mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
+    mock_can_user_deploy,
 ):
     class FakeArgsRollback(FakeArgs):
         verify_image = True
 
     mock_list_deploy_groups.return_value = ["test_deploy_groups"]
-    mock_is_docker_image_already_in_registry.return_value = False
-    with raises(ValueError):
+    mock_is_docker_image_already_in_registry.return_value = True
+    mock_can_user_deploy.return_value = False  # we just want to test verify_image logic
+
+    with raises(SystemExit) as sysexit:
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
+        assert sysexit.exception.code == 1
     mock_is_docker_image_already_in_registry.assert_called_with(
         "test_service",
         "fake_soa_dir",
@@ -858,3 +875,60 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     assert mfdp.run() == 0
     assert mfdp.trigger_history == ["start_deploy", "mfd_succeeded", "deploy_finished"]
     assert mfdp.state_history == ["start_deploy", "deploying", "deployed"]
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.any_slo_failing",
+    autospec=True,
+)
+def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_rollback(
+    mock_any_slo_failing,
+):
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    # Test only get_available_buttons
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" not in mfdp.get_available_buttons()
+
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" not in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" in mfdp.get_available_buttons()
