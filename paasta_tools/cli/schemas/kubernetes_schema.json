@@ -863,7 +863,9 @@
                     "minimum": 1
                 },
                 "namespace": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                    "maxLength": 63
                 }
             }
         }
