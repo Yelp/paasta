@@ -1,3 +1,10 @@
+paasta-tools (0.207.7) xenial; urgency=medium
+
+  * 0.207.7 tagged with 'make release'
+    Commit: Released 0.207.6 via make release
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Nov 2023 12:23:29 -0800
+
 paasta-tools (0.207.6) xenial; urgency=medium
 
   * 0.207.6 tagged with 'make release'
