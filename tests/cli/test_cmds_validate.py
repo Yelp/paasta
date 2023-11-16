@@ -246,6 +246,32 @@ def test_get_schema_missing():
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_k8s_namespace_schema_good(mock_get_file_contents, capsys):
+    mock_get_file_contents.return_value = """
+main:
+    namespace: this-is-good
+"""
+    for schema_type in ["kubernetes", "eks"]:
+        assert validate_schema("unused_service_path.yaml", schema_type)
+
+    output, _ = capsys.readouterr()
+    assert SCHEMA_VALID in output
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
+def test_k8s_namespace_schema_bad(mock_get_file_contents, capsys):
+    mock_get_file_contents.return_value = """
+main:
+    namspace: bad_namespace
+"""
+    for schema_type in ["kubernetes", "eks"]:
+        assert not validate_schema("unused_service_path.yaml", schema_type)
+
+        output, _ = capsys.readouterr()
+        assert SCHEMA_INVALID in output
+
+
+@patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
 def test_marathon_validate_schema_list_hashes_good(mock_get_file_contents, capsys):
     marathon_content = """
 ---
