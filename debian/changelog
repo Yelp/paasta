@@ -1,3 +1,10 @@
+paasta-tools (0.207.8) xenial; urgency=medium
+
+  * 0.207.8 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1815"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 20 Nov 2023 01:22:55 -0800
+
 paasta-tools (0.207.7) xenial; urgency=medium
 
   * 0.207.7 tagged with 'make release'
