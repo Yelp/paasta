@@ -986,8 +986,7 @@ class MarkForDeploymentProcess(RollbackSlackDeploymentProcess):
                 "dest": None,  # Don't actually change state, just call the before function.
                 "trigger": "disable_auto_rollbacks_button_clicked",
                 "conditions": [
-                    self.any_slo_failing,
-                    self.any_metric_failing,
+                    self.any_rollback_condition_failing,
                     self.auto_rollbacks_enabled,
                 ],
                 "before": self.disable_auto_rollbacks,

@@ -1,3 +1,26 @@
+paasta-tools (0.207.8) xenial; urgency=medium
+
+  * 0.207.8 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1815"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 20 Nov 2023 01:22:55 -0800
+
+paasta-tools (0.207.7) xenial; urgency=medium
+
+  * 0.207.7 tagged with 'make release'
+    Commit: Released 0.207.6 via make release
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Nov 2023 12:23:29 -0800
+
+paasta-tools (0.207.6) xenial; urgency=medium
+
+  * 0.207.6 tagged with 'make release'
+    Commit: Merge pull request #3738 from
+    Yelp/jfong/rollback_conditions_fix  Fix conditions for displaying
+    disable auto rollbacks button
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 16 Nov 2023 12:02:54 -0800
+
 paasta-tools (0.207.5) xenial; urgency=medium
 
   * 0.207.5 tagged with 'make release'
