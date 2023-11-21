@@ -483,8 +483,8 @@ class TronActionConfig(InstanceConfig):
 
     def get_spark_executor_iam_role(self) -> str:
         if self.get_iam_role():
-            return self.get_iam_role()
-        return load_system_paasta_config().get_spark_executor_iam_role()
+            return self.get_iam_role() + "-eks"
+        return load_system_paasta_config().get_spark_executor_iam_role() + "-eks"
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
