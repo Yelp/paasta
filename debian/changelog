@@ -1,3 +1,12 @@
+paasta-tools (0.207.9) xenial; urgency=medium
+
+  * 0.207.9 tagged with 'make release'
+    Commit: Merge pull request #3741 from Yelp/MLCOMPUTE-
+    1098_fix_parsing_error  MLCOMPUTE-1098 | fix error in parsing user
+    spark args
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 22 Nov 2023 10:12:30 -0800
+
 paasta-tools (0.207.8) xenial; urgency=medium
 
   * 0.207.8 tagged with 'make release'
