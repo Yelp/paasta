@@ -699,21 +699,20 @@ def _parse_user_spark_args(
     enable_compact_bin_packing: bool = False,
     enable_spark_dra: bool = False,
 ) -> Dict[str, str]:
-    if not spark_args:
-        return {}
 
     user_spark_opts = {}
-    for spark_arg in spark_args.split():
-        fields = spark_arg.split("=", 1)
-        if len(fields) != 2:
-            print(
-                PaastaColors.red(
-                    "Spark option %s is not in format option=value." % spark_arg
-                ),
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        user_spark_opts[fields[0]] = fields[1]
+    if spark_args:
+        for spark_arg in spark_args.split():
+            fields = spark_arg.split("=", 1)
+            if len(fields) != 2:
+                print(
+                    PaastaColors.red(
+                        "Spark option %s is not in format option=value." % spark_arg
+                    ),
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            user_spark_opts[fields[0]] = fields[1]
 
     if enable_compact_bin_packing:
         user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
