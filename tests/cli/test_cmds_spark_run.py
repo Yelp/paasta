@@ -343,6 +343,7 @@ def test_get_spark_env(
         ),
         ("spark.cores.max", False, None),
         (None, False, {}),
+        (None, True, {"spark.dynamicAllocation.enabled": "true"}),
     ],
 )
 def test_parse_user_spark_args(spark_args, enable_spark_dra, expected, capsys):
