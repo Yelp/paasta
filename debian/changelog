@@ -1,3 +1,10 @@
+paasta-tools (0.207.10) xenial; urgency=medium
+
+  * 0.207.10 tagged with 'make release'
+    Commit: MLCOMPUTE-1035 Update dnsPolicy (#3742)
+
+ -- Li Rong <lirong@yelp.com>  Fri, 24 Nov 2023 09:17:41 -0800
+
 paasta-tools (0.207.9) xenial; urgency=medium
 
   * 0.207.9 tagged with 'make release'
