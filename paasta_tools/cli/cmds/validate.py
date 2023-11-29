@@ -715,7 +715,7 @@ def validate_min_max_instances(service_path):
 
 def check_secrets_for_instance(
     instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
-):
+) -> bool:
     return_value = True
     # If the service: directive is used, look for the secret there, rather than where the instance config is defined.
     service_containing_secret = instance_config_dict.get("service", service)
