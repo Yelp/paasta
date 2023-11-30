@@ -1,3 +1,12 @@
+paasta-tools (0.207.11) xenial; urgency=medium
+
+  * 0.207.11 tagged with 'make release'
+    Commit: Merge pull request #3743 from Yelp/u/vit/PAASTA-18111-fix-
+    secret-validation  Secret validation now take into account service:
+    override.
+
+ -- Vincent Thibault <vit@yelp.com>  Thu, 30 Nov 2023 06:30:56 -0800
+
 paasta-tools (0.207.10) xenial; urgency=medium
 
   * 0.207.10 tagged with 'make release'
