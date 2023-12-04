@@ -971,8 +971,9 @@ def test_validate_secrets(
 @patch("paasta_tools.cli.cmds.validate.os.path.isfile", autospec=True)
 def test_check_secrets_for_instance(mock_isfile, mock_get_file_contents):
     instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
+    overriding_service = "fake-other-service-name"
     soa_dir = "fake_soa_dir"
-    service_path = "fake-service-path"
+    service = "fake-service-name"
     vault_env = "fake_vault_env"
     secret_content = """
 {
@@ -985,16 +986,26 @@ def test_check_secrets_for_instance(mock_isfile, mock_get_file_contents):
 """
     mock_get_file_contents.return_value = secret_content
     mock_isfile.return_value = True
-    assert check_secrets_for_instance(
-        instance_config_dict, soa_dir, service_path, vault_env
+    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
+    mock_get_file_contents.assert_called_with(
+        "fake_soa_dir/fake-service-name/secrets/secret1.json"
     )
-    mock_get_file_contents.assert_called_with("fake-service-path/secrets/secret1.json")
     instance_config_dict = {"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
-    assert check_secrets_for_instance(
-        instance_config_dict, soa_dir, service_path, vault_env
-    )
+    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
     mock_get_file_contents.assert_called_with(
         "fake_soa_dir/_shared/secrets/secret1.json"
+    )
+
+    # validation should also work on instances with service: override.
+    instance_config_dict = {
+        "env": {"SUPER_SECRET1": "SECRET(secret1)"},
+        "service": overriding_service,
+    }
+    mock_get_file_contents.return_value = secret_content
+    mock_isfile.return_value = True
+    assert check_secrets_for_instance(instance_config_dict, soa_dir, service, vault_env)
+    mock_get_file_contents.assert_called_with(
+        f"{soa_dir}/{overriding_service}/secrets/secret1.json"
     )
 
 
@@ -1005,7 +1016,7 @@ def test_check_secrets_for_instance_missing_secret(
 ):
     instance_config_dict = {"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
     soa_dir = "fake_soa_dir"
-    service_path = "fake-service-path"
+    service = "fake-service-name"
     vault_env = "even_more_fake_vault_env"
     secret_content = """
 {
@@ -1019,11 +1030,11 @@ def test_check_secrets_for_instance_missing_secret(
     mock_get_file_contents.return_value = secret_content
     mock_isfile.return_value = True
     assert not check_secrets_for_instance(
-        instance_config_dict, soa_dir, service_path, vault_env
+        instance_config_dict, soa_dir, service, vault_env
     ), capsys
     captured = capsys.readouterr()
     assert (
-        "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake-service-path/secrets/secret1.json"
+        "Secret secret1 not defined for ecosystem even_more_fake_vault_env on secret file fake_soa_dir/fake-service-name/secrets/secret1.json"
         in captured.out
     )
 

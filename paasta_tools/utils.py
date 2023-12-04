@@ -336,6 +336,7 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
+    service: str
 
 
 class BranchDictV1(TypedDict, total=False):

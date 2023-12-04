@@ -61,6 +61,7 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -712,15 +713,21 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
-def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vault_env):
+def check_secrets_for_instance(
+    instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
+) -> bool:
     return_value = True
+    # If the service: directive is used, look for the secret there, rather than where the instance config is defined.
+    service_containing_secret = instance_config_dict.get("service", service)
     for env_value in instance_config_dict.get("env", {}).values():
         if is_secret_ref(env_value):
             secret_name = get_secret_name_from_ref(env_value)
             if is_shared_secret(env_value):
                 secret_file_name = f"{soa_dir}/_shared/secrets/{secret_name}.json"
             else:
-                secret_file_name = f"{service_path}/secrets/{secret_name}.json"
+                secret_file_name = (
+                    f"{soa_dir}/{service_containing_secret}/secrets/{secret_name}.json"
+                )
             if os.path.isfile(secret_file_name):
                 secret_json = get_config_file_dict(secret_file_name)
                 if "ciphertext" not in secret_json["environments"].get(vault_env, {}):
@@ -767,7 +774,7 @@ def validate_secrets(service_path):
                 soa_dir=soa_dir,
             )
             if not check_secrets_for_instance(
-                instance_config.config_dict, soa_dir, service_path, vault_env
+                instance_config.config_dict, soa_dir, service, vault_env
             ):
                 return_value = False
     if return_value:
