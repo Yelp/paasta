@@ -317,3 +317,50 @@ def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater)
         mock_push.assert_called_once_with(updater.branch)
     else:
         assert mock_push.call_count == 0
+
+
+def test_auto_config_updater_merge_recommendations_limits(updater):
+    service = "foo"
+    conf_file = "notk8s-euwest-prod"
+    instance = "some_instance"
+    autotune_data = {
+        instance: {"cpus": 0.1, "mem": 167, "disk": 256, "cpu_burst_add": 0.5}
+    }
+    user_data = {
+        instance: {
+            "autotune_limits": {
+                "cpus": {"min": 1, "max": 2},
+                "mem": {"min": 1024, "max": 2048},
+                "disk": {"min": 512, "max": 1024},
+            }
+        }
+    }
+
+    recs = {
+        (service, conf_file): {
+            instance: {
+                "mem": 1,
+                "disk": 700,
+                "cpus": 3,
+            }
+        }
+    }
+
+    with mock.patch.object(
+        updater,
+        "get_existing_configs",
+        autospec=True,
+        side_effect=[autotune_data, user_data],
+    ):
+        assert updater.merge_recommendations(recs) == [
+            {
+                (service, conf_file): {
+                    instance: {
+                        "mem": 1024,  # use lower bound
+                        "disk": 700,  # unchanged
+                        "cpus": 2,  # use upper bound
+                        "cpu_burst_add": 0.5,  # no updated rec or limit, leave alone
+                    }
+                }
+            }
+        ]
