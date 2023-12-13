@@ -866,6 +866,29 @@
                     "type": "string",
                     "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                     "maxLength": 63
+                },
+                "topology_spread_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "topology_key": {
+                                "type": "string"
+                            },
+                            "when_unsatisfiable": {
+                                "type": "string",
+                                "enum": [
+                                    "ScheduleAnyway",
+                                    "DoNotSchedule"
+                                ]
+                            },
+                            "max_skew": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": []
+                    },
+                    "uniqueItems": true
                 }
             }
         }

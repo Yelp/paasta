@@ -57,6 +57,7 @@ from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NamedTuple
 from typing import Optional
@@ -1929,6 +1930,12 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
     label_renames: Dict[str, str]
 
 
+class TopologySpreadConstraintDict(TypedDict, total=False):
+    topology_key: str
+    when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
+    max_skew: int
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
@@ -2008,7 +2015,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    topology_spread_constraints: List[Dict[str, Any]]
+    topology_spread_constraints: List[TopologySpreadConstraintDict]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2610,7 +2617,7 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
-    def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
+    def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
 
