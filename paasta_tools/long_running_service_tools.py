@@ -54,6 +54,7 @@ class AutoscalingParamsDict(TypedDict, total=False):
     scaledown_policies: Optional[dict]
     good_enough_window: List[float]
     prometheus_adapter_config: Optional[dict]
+    max_instances_alert_threshold: float
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
@@ -355,6 +356,12 @@ class LongRunningServiceConfig(InstanceConfig):
         return deep_merge_dictionaries(
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
             defaults=default_params,
+        )
+
+    def get_autoscaling_max_instances_alert_threshold(self) -> float:
+        autoscaling_params = self.get_autoscaling_params()
+        return autoscaling_params.get(
+            "max_instances_alert_threshold", autoscaling_params["setpoint"]
         )
 
     def validate(
