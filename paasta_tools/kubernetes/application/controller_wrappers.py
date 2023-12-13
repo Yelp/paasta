@@ -1,8 +1,6 @@
 import logging
-import threading
 from abc import ABC
 from abc import abstractmethod
-from time import sleep
 from typing import Optional
 from typing import Union
 
@@ -17,11 +15,9 @@ from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
@@ -248,65 +244,9 @@ class DeploymentWrapper(Application):
         self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
         self.sync_horizontal_pod_autoscaler(kube_client)
 
-    def deep_delete_and_create(self, kube_client: KubeClient) -> None:
-        self.deep_delete(kube_client)
-        timer = 0
-        while (
-            self.kube_deployment
-            in set(list_all_deployments(kube_client, self.soa_config.get_namespace()))
-            and timer < 60
-        ):
-            sleep(1)
-            timer += 1
-
-        if timer >= 60 and self.kube_deployment in set(
-            list_all_deployments(kube_client, self.soa_config.get_namespace())
-        ):
-            # When deleting then immediately creating, we need to use Background
-            # deletion to ensure we can create the deployment immediately
-            self.deep_delete(kube_client, propagation_policy="Background")
-
-            try:
-                force_delete_pods(
-                    self.item.metadata.name,
-                    self.kube_deployment.service,
-                    self.kube_deployment.instance,
-                    self.item.metadata.namespace,
-                    kube_client,
-                )
-            except ApiException as e:
-                if e.status == 404:
-                    # Pod(s) may have been deleted by GC before we got to it
-                    # We can consider this a success
-                    self.logging.debug(
-                        "pods already deleted for {} from namespace/{}. Continuing.".format(
-                            self.kube_deployment.service, self.item.metadata.namespace
-                        )
-                    )
-                else:
-                    raise
-
-        if self.kube_deployment in set(
-            list_all_deployments(kube_client, self.soa_config.get_namespace())
-        ):
-            # deployment deletion failed, we cannot continue
-            raise Exception(f"Could not delete deployment {self.item.metadata.name}")
-        else:
-            self.logging.info(
-                "deleted deploy/{} from namespace/{}".format(
-                    self.kube_deployment.service, self.item.metadata.namespace
-                )
-            )
-        self.create(kube_client=kube_client)
-
     def update(self, kube_client: KubeClient) -> None:
         # If HPA is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
-        if self.soa_config.config_dict.get("bounce_method", "") == "brutal":
-            threading.Thread(
-                target=self.deep_delete_and_create, args=[KubeClient()]
-            ).start()
-            return
         update_deployment(
             kube_client=kube_client,
             formatted_deployment=self.item,
