@@ -354,25 +354,53 @@ class TestKubernetesDeploymentConfig:
             with pytest.raises(Exception):
                 self.deployment.get_bounce_method()
 
-    def test_get_deployment_strategy(self):
+    @pytest.mark.parametrize(
+        "bounce_method,bounce_margin_factor,expected_strategy,expected_rolling_update_deploy",
+        [
+            (
+                "crossover",
+                1,
+                "RollingUpdate",
+                V1RollingUpdateDeployment(max_surge="100%", max_unavailable="0%"),
+            ),
+            (
+                "crossover",
+                0.3,
+                "RollingUpdate",
+                V1RollingUpdateDeployment(max_surge="100%", max_unavailable="70%"),
+            ),
+            # b_m_f does not actually contribute to settings for brutal
+            (
+                "brutal",
+                0.5,
+                "RollingUpdate",
+                V1RollingUpdateDeployment(max_surge="100%", max_unavailable="100%"),
+            ),
+            ("downthenup", 1, "Recreate", None),
+        ],
+    )
+    def test_get_deployment_strategy(
+        self,
+        bounce_method,
+        bounce_margin_factor,
+        expected_strategy,
+        expected_rolling_update_deploy,
+    ):
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_method",
             autospec=True,
-            return_value="crossover",
-        ) as mock_get_bounce_method:
+            return_value=bounce_method,
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_bounce_margin_factor",
+            autospec=True,
+            return_value=bounce_margin_factor,
+        ):
             assert (
                 self.deployment.get_deployment_strategy_config()
                 == V1DeploymentStrategy(
-                    type="RollingUpdate",
-                    rolling_update=V1RollingUpdateDeployment(
-                        max_surge="100%", max_unavailable="0%"
-                    ),
+                    type=expected_strategy,
+                    rolling_update=expected_rolling_update_deploy,
                 )
-            )
-            mock_get_bounce_method.return_value = "downthenup"
-            assert (
-                self.deployment.get_deployment_strategy_config()
-                == V1DeploymentStrategy(type="Recreate")
             )
 
     def test_get_sanitised_volume_name(self):
