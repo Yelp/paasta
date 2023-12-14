@@ -263,7 +263,9 @@ class AutoConfigUpdater:
         else:
             log.info("No files changed, no push required.")
 
-    def _clamp_recommendations(self, merged_recommendation, config):
+    def _clamp_recommendations(
+        self, merged_recommendation: Dict[str, Any], config: Dict[str, Any]
+    ) -> Dict[str, Any]:
         clamped_recomendation = copy.deepcopy(merged_recommendation)
         for limit_type, limits in config.get("autotune_limits", {}).items():
             log.debug(f"Processing {limit_type} autotune limits...")
