@@ -88,9 +88,9 @@ async def check_max_instances(
             if (
                 autoscaling_status["min_instances"]
                 == autoscaling_status["max_instances"]
-            ):
+            ) and "canary" in instance:
                 status = pysensu_yelp.Status.OK
-                output = f"Not checking {service}.{instance} as min_instances == max_instances == {autoscaling_status['max_instances']}. This is probably a canary instance."
+                output = f'Not checking {service}.{instance} as the instance name contains "canary" and min_instances == max_instances.'
             elif (
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
