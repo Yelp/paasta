@@ -1,3 +1,11 @@
+paasta-tools (0.207.12) xenial; urgency=medium
+
+  * 0.207.12 tagged with 'make release'
+    Commit: Merge pull request #3746 from Yelp/jfong/PAASTA-18122  Stop
+    deleting brutal deployments
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 14 Dec 2023 10:52:01 -0800
+
 paasta-tools (0.207.11) xenial; urgency=medium
 
   * 0.207.11 tagged with 'make release'
