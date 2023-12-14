@@ -1,3 +1,17 @@
+paasta-tools (0.208.0) xenial; urgency=medium
+
+  * 0.208.0 tagged with 'make release'
+    Commit: Add support for setting lower/upper-bounds for autotuned
+    resources (#3744)  At the moment this only supports a specific
+    subset of top-level resource keys: * cpus * mem * disk  Supporting
+    {min,max}_instances should be pretty trivial (but I"m not quite sure
+    when we"d want to use that yet, so I left those out of the
+    allowlist).  I"m explicitly not supporting these values for sidecars
+    since: a) it seemed like it would complicate things a bit and, b)
+    I"m not sure we have a usecase for this :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Dec 2023 11:46:59 -0800
+
 paasta-tools (0.207.12) xenial; urgency=medium
 
   * 0.207.12 tagged with 'make release'
