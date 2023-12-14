@@ -4,6 +4,8 @@ import asyncio
 import logging
 from typing import Type
 
+import pysensu_yelp
+
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.instance import kubernetes as pik
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
@@ -87,7 +89,7 @@ async def check_max_instances(
                 autoscaling_status["min_instances"]
                 == autoscaling_status["max_instances"]
             ):
-                status = 0
+                status = pysensu_yelp.Status.OK
                 output = f"Not checking {service}.{instance} as min_instances == max_instances == {autoscaling_status['max_instances']}. This is probably a canary instance."
             elif (
                 autoscaling_status["desired_replicas"]
@@ -97,20 +99,20 @@ async def check_max_instances(
                 setpoint = job_config.get_autoscaling_params()["setpoint"]
                 metric_threshold_target_ratio = threshold / setpoint
 
-                status = 3
+                status = pysensu_yelp.Status.UNKNOWN
                 output = "how are there no metrics for this thing?"
                 for metric in autoscaling_status["metrics"]:
                     current_value = suffixed_number_value(metric["current_value"])
                     target_value = suffixed_number_value(metric["target_value"])
 
                     if current_value / target_value > metric_threshold_target_ratio:
-                        status = 2
+                        status = pysensu_yelp.Status.CRITICAL
                         output = f"{service}.{instance}: Ratio of current value to target value ({current_value} / {target_value}) is greater than the ratio of max_instances_alert_threshold to setpoint ({threshold} / {setpoint})"
                     else:
-                        status = 0
+                        status = pysensu_yelp.Status.OK
                         output = f"{service}.{instance}: Ratio of current value to target value ({current_value} / {target_value}) is below the ratio of max_instances_alert_threshold to setpoint ({threshold} / {setpoint})"
             else:
-                status = 0
+                status = pysensu_yelp.Status.OK
                 output = f"{service}.{instance} is below max_instances."
 
             monitoring_overrides = job_config.get_monitoring()
