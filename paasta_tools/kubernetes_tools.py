@@ -161,6 +161,7 @@ from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
+from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
 
 
@@ -380,6 +381,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
     datastore_credentials: DatastoreCredentialsConfig
+    topology_spread_constraints: List[TopologySpreadConstraintDict]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -2167,7 +2169,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         pod_topology_spread_constraints = create_pod_topology_spread_constraints(
             service=self.get_service(),
             instance=self.get_instance(),
-            topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
+            topology_spread_constraints=self.get_topology_spread_constraints(
+                system_paasta_config.get_topology_spread_constraints()
+            ),
         )
         if pod_topology_spread_constraints:
             constraints = pod_spec_kwargs.get("topology_spread_constraints", [])
@@ -2465,6 +2469,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_prometheus_port(self) -> Optional[int]:
         return self.config_dict.get("prometheus_port")
+
+    def get_topology_spread_constraints(
+        self,
+        default_pod_topology_spread_constraints: List[TopologySpreadConstraintDict],
+    ) -> List[TopologySpreadConstraintDict]:
+        return self.config_dict.get(
+            "topology_spread_constraints", default_pod_topology_spread_constraints
+        )
 
 
 def get_kubernetes_secret_hashes(
@@ -3812,7 +3824,7 @@ def load_custom_resource_definitions(
 def create_pod_topology_spread_constraints(
     service: str,
     instance: str,
-    topology_spread_constraints: List[Dict[str, Any]],
+    topology_spread_constraints: List[TopologySpreadConstraintDict],
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod template.

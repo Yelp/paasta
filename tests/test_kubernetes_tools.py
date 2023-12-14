@@ -2,6 +2,7 @@ import functools
 from base64 import b64encode
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import Sequence
 
 import asynctest
@@ -150,6 +151,7 @@ from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import TopologySpreadConstraintDict
 
 
 def test_force_delete_pods():
@@ -2019,7 +2021,7 @@ class TestKubernetesDeploymentConfig:
         assert ret == expected
 
     def test_create_pod_topology_spread_constraints(self):
-        configured_constraints = [
+        configured_constraints: List[TopologySpreadConstraintDict] = [
             {
                 "topology_key": "kubernetes.io/hostname",
                 "max_skew": 1,
