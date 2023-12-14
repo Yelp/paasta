@@ -120,7 +120,6 @@ def instance_status_kwargs():
         include_smartstack=False,
         include_envoy=False,
         settings=mock.Mock(),
-        use_new=False,
     )
 
 
