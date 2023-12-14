@@ -33,6 +33,7 @@ Submodules
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
+   paasta_tools.check_autoscaler_max_instances
    paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
