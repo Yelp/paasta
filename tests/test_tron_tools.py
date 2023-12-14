@@ -32,7 +32,6 @@ MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES = utils.SystemPaastaConfig(
         "volumes": [],
         "dockercfg_location": "/mock/dockercfg",
         "tron_default_pool_override": "big_pool",
-        "tron_use_k8s": True,
         "tron_k8s_cluster_overrides": {
             "paasta-dev-test": "paasta-dev",
         },
@@ -231,32 +230,20 @@ class TestTronJobConfig:
             yield f
 
     @pytest.mark.parametrize(
-        "action_service,action_deploy,cluster,expected_cluster,use_k8s",
+        "action_service,action_deploy,cluster,expected_cluster",
         [
             # normal case - no cluster override present and k8s enabled
-            (None, None, "paasta-dev", "paasta-dev", True),
-            (None, "special_deploy", "paasta-dev", "paasta-dev", True),
-            ("other_service", None, "paasta-dev", "paasta-dev", True),
-            (None, None, "paasta-dev", "paasta-dev", True),
-            (None, None, "paasta-dev", "paasta-dev", True),
+            (None, None, "paasta-dev", "paasta-dev"),
+            (None, "special_deploy", "paasta-dev", "paasta-dev"),
+            ("other_service", None, "paasta-dev", "paasta-dev"),
+            (None, None, "paasta-dev", "paasta-dev"),
+            (None, None, "paasta-dev", "paasta-dev"),
             # cluster override present and k8s enabled
-            (None, None, "paasta-dev-test", "paasta-dev", True),
-            (None, "special_deploy", "paasta-dev-test", "paasta-dev", True),
-            ("other_service", None, "paasta-dev-test", "paasta-dev", True),
-            (None, None, "paasta-dev-test", "paasta-dev", True),
-            (None, None, "paasta-dev-test", "paasta-dev", True),
-            # no cluster override present and k8s disabled
-            (None, None, "paasta-dev", "paasta-dev", False),
-            (None, "special_deploy", "paasta-dev", "paasta-dev", False),
-            ("other_service", None, "paasta-dev", "paasta-dev", False),
-            (None, None, "paasta-dev", "paasta-dev", False),
-            (None, None, "paasta-dev", "paasta-dev", False),
-            # cluster override present and k8s disabled
-            (None, None, "paasta-dev-test", "paasta-dev-test", False),
-            (None, "special_deploy", "paasta-dev-test", "paasta-dev-test", False),
-            ("other_service", None, "paasta-dev-test", "paasta-dev-test", False),
-            (None, None, "paasta-dev-test", "paasta-dev-test", False),
-            (None, None, "paasta-dev-test", "paasta-dev-test", False),
+            (None, None, "paasta-dev-test", "paasta-dev"),
+            (None, "special_deploy", "paasta-dev-test", "paasta-dev"),
+            ("other_service", None, "paasta-dev-test", "paasta-dev"),
+            (None, None, "paasta-dev-test", "paasta-dev"),
+            (None, None, "paasta-dev-test", "paasta-dev"),
         ],
     )
     @mock.patch("paasta_tools.tron_tools.load_v2_deployments_json", autospec=True)
@@ -267,7 +254,6 @@ class TestTronJobConfig:
         action_deploy,
         cluster,
         expected_cluster,
-        use_k8s,
     ):
         """Check resulting action config with various overrides from the action."""
         action_dict = {"command": "echo first"}
@@ -289,7 +275,6 @@ class TestTronJobConfig:
             "max_runtime": "2h",
             "actions": {"normal": action_dict},
             "monitoring": {"team": "noop"},
-            "use_k8s": use_k8s,
         }
 
         soa_dir = "/other_dir"
@@ -429,7 +414,6 @@ class TestTronJobConfig:
         )
         mock_format_action.assert_called_once_with(
             action_config=mock_get_action_config.return_value,
-            use_k8s=False,
         )
 
         assert result == {
@@ -455,7 +439,6 @@ class TestTronJobConfig:
         actions = {action_name: action_dict}
 
         job_dict = {
-            "use_k8s": True,
             "node": "batch_server",
             "schedule": "daily 12:10:00",
             "service": "my_service",
@@ -484,7 +467,6 @@ class TestTronJobConfig:
         )
         mock_format_action.assert_called_once_with(
             action_config=mock_get_action_config.return_value,
-            use_k8s=True,
         )
 
         assert result == {
@@ -496,7 +478,6 @@ class TestTronJobConfig:
             },
             "expected_runtime": "1h",
             "monitoring": {"team": "noop"},
-            "use_k8s": True,
         }
 
     @mock.patch(
@@ -831,7 +812,7 @@ class TestTronTools:
             autospec=True,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
-        assert result["executor"] == "mesos"
+        assert result["executor"] == "kubernetes"
 
     def test_format_tron_action_dict_paasta(self):
         action_dict = {
@@ -898,7 +879,7 @@ class TestTronTools:
             "retries": 2,
             "retries_delay": "5m",
             "docker_image": mock.ANY,
-            "executor": "mesos",
+            "executor": "kubernetes",
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
@@ -915,10 +896,19 @@ class TestTronTools:
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
-            "docker_parameters": mock.ANY,
-            "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
-            ],
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "labels": {
+                "paasta.yelp.com/cluster": "test-cluster",
+                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "compute_infra_platform_experience",
+            },
+            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "cap_drop": CAPS_DROP,
+            "cap_add": [],
+            "secret_env": {},
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
             "trigger_timeout": "5m",
@@ -928,7 +918,6 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
-        assert isinstance(result["docker_parameters"], list)
 
     @mock.patch("paasta_tools.spark_tools.spark_config.SparkConfBuilder", autospec=True)
     def test_format_tron_action_dict_spark(self, mock_spark_conf_builder):
@@ -1035,7 +1024,7 @@ class TestTronTools:
                 "spark.sql.files.minPartitionNum": "12",
                 "spark.default.parallelism": "12",
             }
-            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+            result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             "command": "spark-submit "
@@ -1180,7 +1169,7 @@ class TestTronTools:
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
         ):
-            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+            result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             "command": "echo something",
@@ -1303,7 +1292,7 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ):
-            result = tron_tools.format_tron_action_dict(action_config, use_k8s=True)
+            result = tron_tools.format_tron_action_dict(action_config)
 
         assert result == {
             "command": "echo something",
@@ -1419,7 +1408,7 @@ class TestTronTools:
             "requires": ["required_action"],
             "retries": 2,
             "docker_image": "",
-            "executor": "mesos",
+            "executor": "kubernetes",
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
@@ -1436,13 +1425,21 @@ class TestTronTools:
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
             ],
-            "docker_parameters": mock.ANY,
-            "constraints": [
-                {"attribute": "pool", "operator": "LIKE", "value": "special_pool"}
-            ],
+            "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
+            "node_selectors": {"yelp.com/pool": "special_pool"},
+            "labels": {
+                "paasta.yelp.com/cluster": "paasta-dev",
+                "paasta.yelp.com/instance": "my_job.do_something",
+                "paasta.yelp.com/pool": "special_pool",
+                "paasta.yelp.com/service": "my_service",
+                "yelp.com/owner": "compute_infra_platform_experience",
+            },
+            "annotations": {"paasta.yelp.com/routable_ip": "false"},
+            "cap_drop": CAPS_DROP,
+            "cap_add": [],
+            "secret_env": {},
         }
         assert result["env"]["SHELL"] == "/bin/bash"
-        assert isinstance(result["docker_parameters"], list)
 
     @mock.patch("paasta_tools.tron_tools.read_extra_service_information", autospec=True)
     def test_load_tron_service_config(self, mock_read_extra_service_information):
@@ -1579,7 +1576,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "35972651618a848ac6bf7947245dbaea"
+        assert hasher.hexdigest() == "ba2ccfd2477b2ce2233de42619aa810a"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")

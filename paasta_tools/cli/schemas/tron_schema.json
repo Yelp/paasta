@@ -469,9 +469,6 @@
             ],
             "additionalProperties": false,
             "properties": {
-                "use_k8s": {
-                    "type": "boolean"
-                },
                 "name": {
                     "$ref": "#definitions/name"
                 },
