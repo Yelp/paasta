@@ -20,7 +20,6 @@ As an example, consider a service with the following deploy.yaml:
    - step: itest
    - step: security-check
    - step: push-to-registry
-   - step: performance-check
    - step: dev-stage.everything
      trigger_next_step_manually: true
    - step: prod.canary
@@ -29,7 +28,7 @@ As an example, consider a service with the following deploy.yaml:
 
 This pipeline will:
 
-1. Run ``itest``, ``security-check``, ``push-to-registry``, and ``performance-check`` steps, which are build and testing steps.
+1. Run ``itest``, ``security-check``, and ``push-to-registry`` steps, which are build and testing steps.
    During ``itest`` phase, a new container image is built (per the `Paasta Contract <about/contract.html>`_).
    This image is pushed to Paasta's Docker registry in the ``push-to-registry`` step.
 2. Deploy the new container image to all instances with ``deploy_group: dev-stage.everything``, and wait for someone to click a button in Jenkins before continuing.

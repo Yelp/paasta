@@ -99,7 +99,6 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "itest",
     "itest-and-push-to-registry",
     "security-check",
-    "performance-check",
     "push-to-registry",
 )
 # Default values for _log

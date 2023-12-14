@@ -118,7 +118,6 @@ PAASTA_SUBCOMMANDS = {
     "mesh-status": "mesh_status",
     "metastatus": "metastatus",
     "pause_service_autoscaler": "pause_service_autoscaler",
-    "performance-check": "performance_check",
     "push-to-registry": "push_to_registry",
     "remote-run": "remote_run",
     "rollback": "rollback",
