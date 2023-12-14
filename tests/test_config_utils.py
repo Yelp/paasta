@@ -322,27 +322,35 @@ def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater)
 def test_auto_config_updater_merge_recommendations_limits(updater):
     service = "foo"
     conf_file = "notk8s-euwest-prod"
-    instance = "some_instance"
+    limited_instance = "some_instance"
+    noop_instance = "other_instance"
     autotune_data = {
-        instance: {"cpus": 0.1, "mem": 167, "disk": 256, "cpu_burst_add": 0.5}
+        limited_instance: {"cpus": 0.1, "mem": 167, "disk": 256, "cpu_burst_add": 0.5}
     }
     user_data = {
-        instance: {
+        limited_instance: {
+            "cmd": "ls",
             "autotune_limits": {
                 "cpus": {"min": 1, "max": 2},
                 "mem": {"min": 1024, "max": 2048},
                 "disk": {"min": 512, "max": 1024},
-            }
-        }
+            },
+        },
+        noop_instance: {"cmd": "ls"},
     }
 
     recs = {
         (service, conf_file): {
-            instance: {
+            limited_instance: {
                 "mem": 1,
                 "disk": 700,
                 "cpus": 3,
-            }
+            },
+            noop_instance: {
+                "cpus": 100,
+                "mem": 10000,
+                "disk": 2048,
+            },
         }
     }
 
@@ -352,15 +360,19 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
         autospec=True,
         side_effect=[autotune_data, user_data],
     ):
-        assert updater.merge_recommendations(recs) == [
-            {
-                (service, conf_file): {
-                    instance: {
-                        "mem": 1024,  # use lower bound
-                        "disk": 700,  # unchanged
-                        "cpus": 2,  # use upper bound
-                        "cpu_burst_add": 0.5,  # no updated rec or limit, leave alone
-                    }
-                }
+        assert updater.merge_recommendations(recs) == {
+            (service, conf_file): {
+                limited_instance: {
+                    "mem": 1024,  # use lower bound
+                    "disk": 700,  # unchanged
+                    "cpus": 2,  # use upper bound
+                    "cpu_burst_add": 0.5,  # no updated rec or limit, leave alone
+                },
+                # this instances recommendations should be left untouched
+                noop_instance: {
+                    "cpus": 100,
+                    "mem": 10000,
+                    "disk": 2048,
+                },
             }
-        ]
+        }

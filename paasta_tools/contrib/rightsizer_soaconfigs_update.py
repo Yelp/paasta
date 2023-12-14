@@ -320,21 +320,20 @@ def main(args):
         validation_schema_path=AUTO_SOACONFIG_SUBDIR,
     )
     with updater:
-        for merged_recommendation in updater.merge_recommendations(results):
-            for (
+        for (
+            service,
+            instance_type_cluster,
+        ), instance_recommendations in updater.merge_recommendations(results).items():
+            log.info(
+                f"Writing configs for {service} to {AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
+            )
+            updater.write_configs(
                 service,
                 instance_type_cluster,
-            ), instance_recommendations in merged_recommendation.items():
-                log.info(
-                    "Writing configs for {service} to {AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
-                )
-                updater.write_configs(
-                    service,
-                    instance_type_cluster,
-                    instance_recommendations,
-                    AUTO_SOACONFIG_SUBDIR,
-                    HEADER_COMMENT,
-                )
+                instance_recommendations,
+                AUTO_SOACONFIG_SUBDIR,
+                HEADER_COMMENT,
+            )
 
         if args.push_to_remote:
             updater.commit_to_remote(extra_message=extra_message)
