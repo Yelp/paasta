@@ -14,7 +14,6 @@
 import asyncio
 import datetime
 
-import a_sync
 import asynctest
 import mock
 import pytest
@@ -124,7 +123,7 @@ def instance_status_kwargs():
 
 
 @mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status_v2", autospec=True)
 def test_instance_status_invalid_instance_type(mock_kubernetes_status, mock_cr_status):
     kwargs = instance_status_kwargs()
     with pytest.raises(RuntimeError) as excinfo:
@@ -135,7 +134,7 @@ def test_instance_status_invalid_instance_type(mock_kubernetes_status, mock_cr_s
 
 
 @mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status_v2", autospec=True)
 def test_instance_status_kubernetes_only(mock_kubernetes_status, mock_cr_status):
     kwargs = instance_status_kwargs()
     kwargs.update(instance_type="kubernetes")
@@ -145,7 +144,7 @@ def test_instance_status_kubernetes_only(mock_kubernetes_status, mock_cr_status)
 
 
 @mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status_v2", autospec=True)
 def test_instance_status_cr_only(mock_kubernetes_status, mock_cr_status):
     kwargs = instance_status_kwargs()
     kwargs.update(instance_type="flink")
@@ -155,48 +154,13 @@ def test_instance_status_cr_only(mock_kubernetes_status, mock_cr_status):
 
 
 @mock.patch("paasta_tools.instance.kubernetes.cr_status", autospec=True)
-@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status", autospec=True)
+@mock.patch("paasta_tools.instance.kubernetes.kubernetes_status_v2", autospec=True)
 def test_instance_status_cr_and_kubernetes(mock_kubernetes_status, mock_cr_status):
     kwargs = instance_status_kwargs()
     kwargs.update(instance_type="cassandracluster")
     pik.instance_status(**kwargs)
     assert len(mock_cr_status.mock_calls) == 1
     assert len(mock_kubernetes_status.mock_calls) == 1
-
-
-def test_kubernetes_status():
-    with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance",
-        autospec=True,
-    ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        autospec=True,
-    ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
-        mock_pods_for_service_instance.return_value = []
-        mock_replicasets_for_service_instance.return_value = []
-        status = pik.kubernetes_status(
-            service="",
-            instance="",
-            verbose=0,
-            include_smartstack=False,
-            include_envoy=False,
-            instance_type="flink",
-            settings=mock.Mock(),
-        )
-        assert "app_count" in status
-        assert "evicted_count" in status
-        assert "bounce_method" in status
-        assert "desired_state" in status
 
 
 class TestKubernetesStatusV2:
@@ -608,69 +572,6 @@ class TestKubernetesStatusV2:
         # Verify  we did not throw an exception
         assert status
         assert "Could not fetch instance data" in status["error_message"]
-
-
-@mock.patch("paasta_tools.kubernetes_tools.get_kubernetes_app_by_name", autospec=True)
-def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_name):
-    kstatus = {}
-    a_sync.block(
-        pik.job_status,
-        kstatus=kstatus,
-        client=mock.Mock(),
-        job_config=mock.Mock(),
-        pod_list=[],
-        replicaset_list=[mock.Mock(), mock.Mock(), mock.Mock()],
-        verbose=0,
-        namespace=mock.Mock(),
-    )
-
-    assert len(kstatus["replicasets"]) == 3
-
-
-def test_kubernetes_status_include_smartstack():
-    with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace_config, asynctest.patch(
-        "paasta_tools.instance.kubernetes.mesh_status",
-        autospec=True,
-    ) as mock_mesh_status, asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-    ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        autospec=True,
-    ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
-        mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
-        mock_pods_for_service_instance.return_value = []
-        mock_replicasets_for_service_instance.return_value = []
-        mock_service = mock.Mock()
-        status = pik.kubernetes_status(
-            service=mock_service,
-            instance="",
-            verbose=0,
-            include_smartstack=True,
-            include_envoy=False,
-            instance_type="flink",
-            settings=mock.Mock(),
-        )
-        assert (
-            mock_load_service_namespace_config.mock_calls[0][2]["service"]
-            is mock_service
-        )
-        assert mock_mesh_status.mock_calls[0][2]["service"] is mock_service
-        assert "app_count" in status
-        assert "evicted_count" in status
-        assert "bounce_method" in status
-        assert "desired_state" in status
 
 
 def test_cr_status_bad_instance_type():

@@ -347,7 +347,6 @@ def test_status_calls_sergeants(
     args.soa_dir = "/fake/soa/dir"
     args.registration = None
     args.service_instance = None
-    args.new = False
     return_value = paasta_status(args)
 
     assert return_value == 1776
@@ -362,7 +361,6 @@ def test_status_calls_sergeants(
         system_paasta_config=system_paasta_config,
         lock=mock.ANY,
         verbose=False,
-        new=False,
     )
 
 
@@ -396,8 +394,6 @@ class StatusArgs:
         registration,
         verbose,
         service_instance=None,
-        new=False,
-        old=False,
     ):
         self.service = service
         self.soa_dir = soa_dir
@@ -408,8 +404,6 @@ class StatusArgs:
         self.registration = registration
         self.verbose = verbose
         self.service_instance = service_instance
-        self.new = new
-        self.old = old
 
 
 @patch("paasta_tools.cli.cmds.status.get_instance_configs_for_service", autospec=True)
@@ -897,7 +891,6 @@ def test_status_with_registration(
         soa_dir="/fake/soa/dir",
         verbose=False,
         service_instance=None,
-        new=False,
     )
     return_value = paasta_status(args)
 
@@ -915,7 +908,6 @@ def test_status_with_registration(
         system_paasta_config=system_paasta_config,
         lock=mock.ANY,
         verbose=args.verbose,
-        new=False,
     )
 
 
