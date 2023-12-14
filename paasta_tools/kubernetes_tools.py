@@ -745,7 +745,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         max_replicas = self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
-                f"Invalid value for min or max_instances: {min_replicas}, {max_replicas}"
+                f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"
             )
             return None
 

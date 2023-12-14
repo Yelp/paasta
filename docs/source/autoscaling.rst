@@ -100,6 +100,17 @@ The currently available decicion policies are:
   :offset:
     Float between 0.0 and 1.0, representing expected baseline load for each container.
     Defaults to 0.0.
+
+    **DEPRECATED** - while it was previously more complicated, offset is now simply subtracted from your setpoint.
+    For example, ``setpoint: 0.6`` with ``offset: 0.25`` is equivalent to ``setpoint: 0.35`` with no ``offset``.
+    We recommend you just lower your setpoint by the same amount and remove the ``offset``.
+
+    Previously, offset was used to counteract the fake utilization that would be seen by our old uWSGI metrics provider.
+    Under the old system, the uWSGI metrics provider would always see 1 extra worker busy, because the metrics query was proxied through the actual uWSGI workers.
+    Having the autoscaler understand how much load was fake and how much was real helped it converge faster to your target load.
+    Nowadays, we measure uWSGI utilization in a different way that does not use a uWSGI worker, so this is no longer necessary.
+    Support for ``offset`` was only retained to provide a smooth transition from the old system to the new system.
+
   :good_enough_window:
     **Not currently supported**
     An array of two utilization values [low, high].
@@ -133,3 +144,18 @@ of instances PaaSTA thinks your service should have.
 Finally, remember to set the ``decision_policy`` of the ``autoscaling``
 parameter for each service instance to ``"bespoke"`` or else PaaSTA will
 attempt to autoscale your service with the default autoscaling method.
+
+
+``max_instances`` alerting
+--------------------------
+
+In order to make you aware of when your ``max_instances`` may be too low, causing issues with your service, paasta will send you alerts if all of the following conditions are true:
+
+  * The autoscaler has scaled your service to ``max_instances``.
+
+  * The load on your service (as measured by the ``metrics_provider`` you specified, e.g. your worker utilization or CPU utilization) is above ``max_instances_alert_threshold``.
+
+The default value for ``max_instances_alert_threshold`` is whatever your ``setpoint`` is.
+This means by default the alert will trigger when the autoscaler wants to scale up but is prevented from doing so by your ``max_instances`` setting.
+If this alert is noisy, you can try setting ``max_instances_alert_threshold`` to something a little higher than your ``setpoint``.
+Setting a very high value (a utilization value your metrics_provider would never measure) will effectively disable this alert.

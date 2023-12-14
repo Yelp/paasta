@@ -277,6 +277,9 @@
                             "required": [
                                 "metricsQuery"
                             ]
+                        },
+                        "max_instances_alert_threshold": {
+                            "type": "number"
                         }
                     },
                     "allOf": [
