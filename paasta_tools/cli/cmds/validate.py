@@ -100,10 +100,11 @@ UNKNOWN_SERVICE = (
 SCHEMA_TYPES = {
     "adhoc",
     "kubernetes",  # long-running services
-    "marathon",  # long-running services on mesos - no longer used
     "rollback",  # automatic rollbacks during deployments
     "tron",  # batch workloads
     "eks",  # eks workloads
+    "autotuned_defaults/kubernetes",
+    "autotuned_defaults/cassandracluster",
 }
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
@@ -321,15 +322,16 @@ def validate_all_schemas(service_path: str) -> bool:
     :param service_path: path to location of configuration files
     """
 
-    path = os.path.join(service_path, "*.yaml")
+    path = os.path.join(service_path, "**/*.yaml")
 
     returncode = True
-    for file_name in glob(path):
+    for file_name in glob(path, recursive=True):
         if os.path.islink(file_name):
             continue
-        basename = os.path.basename(file_name)
+
+        filename_without_service_path = os.path.relpath(file_name, start=service_path)
         for file_type in SCHEMA_TYPES:
-            if basename.startswith(file_type):
+            if filename_without_service_path.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
     return returncode
