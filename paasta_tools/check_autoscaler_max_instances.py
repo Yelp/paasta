@@ -119,8 +119,6 @@ async def check_max_instances(
             monitoring_overrides.update(
                 {
                     "page": False,  # TODO: remove this line once this alert has been deployed for a little while.
-                    "alert_after": "0m",
-                    "realert_every": -1,
                     "runbook": "y/check-autoscaler-max-instances",
                     "tip": (
                         "The autoscaler wants to scale up to handle additional load because your service is overloaded, but cannot scale any higher because of max_instances. You may want to bump max_instances. To make this alert quieter, adjust autoscaling.max_instances_alert_threshold in yelpsoa-configs."
