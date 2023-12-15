@@ -41,7 +41,6 @@ from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -1086,11 +1085,28 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
         command = "docker push %s" % docker_url
 
     print(PaastaColors.grey(command))
-    retcode, _ = _run(command, stream=True)
+    retcode, output = _run(command, stream=False)
     if retcode != 0:
         return None
 
-    return docker_url
+    # With unprivileged docker, the digest on the remote registry may not match the digest
+    # in the local environment. Because of this, we have to parse the digest message from the
+    # server response and use downstream when launching spark executors
+
+    # Output from `docker push` with unprivileged docker looks like
+    #  Using default tag: latest
+    #  The push refers to repository [docker-dev.yelpcorp.com/paasta-spark-run-dpopes:latest]
+    #  latest: digest: sha256:0a43aa65174a400bd280d48d460b73eb49b0ded4072c9e173f919543bf693557
+
+    # With privileged docker, the last line has an extra "size: 123"
+    #  latest: digest: sha256:0a43aa65174a400bd280d48d460b73eb49b0ded4072c9e173f919543bf693557 size: 52
+
+    digest_line = output.split("\n")[-1]
+    digest_match = re.match(r"[^:]*: [^:]*: (?P<digest>[^\s]*)", digest_line)
+    if not digest_match:
+        raise Exception(f"Could not determine digest from output: {output}")
+    digest = digest_match.group("digest")
+    return f"{docker_url}@{digest}"
 
 
 def validate_work_dir(s):
@@ -1259,17 +1275,9 @@ def paasta_spark_run(args):
         assume_aws_role_arn=args.assume_aws_role,
         session_duration=args.aws_role_duration,
     )
-    docker_image = get_docker_image(args, instance_config)
-    if docker_image is None:
+    docker_image_digest = get_docker_image(args, instance_config)
+    if docker_image_digest is None:
         return 1
-
-    # Get image digest
-    docker_client = get_docker_client()
-    image_details = docker_client.inspect_image(docker_image)
-    if len(image_details["RepoDigests"]) < 1:
-        print("Failed to get docker image digest", file=sys.stderr)
-        return None
-    docker_image_digest = image_details["RepoDigests"][0]
 
     pod_template_path = generate_pod_template_path()
     args.enable_compact_bin_packing = should_enable_compact_bin_packing(
