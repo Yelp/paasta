@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
 import json
 import os
 import pkgutil
@@ -26,6 +27,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import pytz
@@ -61,6 +63,7 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
@@ -136,6 +139,26 @@ class ConditionConfig(TypedDict, total=False):
 
     # truly optional
     dry_run: bool
+
+
+@functools.lru_cache()
+def load_all_instance_configs_for_service(
+    service: str, cluster: str, soa_dir: str
+) -> Tuple[Tuple[str, InstanceConfig], ...]:
+    ret = []
+    for instance in list_all_instances_for_service(
+        service=service, clusters=[cluster], soa_dir=soa_dir
+    ):
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        ret.append((instance, instance_config))
+
+    return tuple(ret)
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -474,16 +497,9 @@ def validate_paasta_objects(service_path):
     returncode = True
     messages = []
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             messages.extend(instance_config.validate())
     returncode = len(messages) == 0
 
@@ -568,16 +584,9 @@ def validate_autoscaling_configs(service_path):
     )
 
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
 
             if (
                 instance_config.get_instance_type() in K8S_TYPES
@@ -688,16 +697,9 @@ def validate_min_max_instances(service_path):
     returncode = True
 
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             if instance_config.get_instance_type() != "tron":
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
@@ -765,16 +767,9 @@ def validate_secrets(service_path):
             return_value = False
             continue
 
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             if not check_secrets_for_instance(
                 instance_config.config_dict, soa_dir, service, vault_env
             ):
@@ -798,16 +793,9 @@ def validate_cpu_burst(service_path: str) -> bool:
             # we should eventually make the python templates add the override comment
             # to the correspoding YAML line, but until then we just opt these out of that validation
             continue
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             is_k8s_service = (
                 instance_config.get_instance_type() == "kubernetes"
                 or instance_config.get_instance_type() == "eks"

@@ -99,15 +99,16 @@ def test_paasta_validate_calls_everything(
     assert mock_validate_cpu_burst.called
 
 
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_paasta_objects(
     mock_path_to_soa_dir_service,
-    mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     capsys,
 ):
 
@@ -120,8 +121,9 @@ def test_validate_paasta_objects(
 
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", fake_service)
     mock_list_clusters.return_value = [fake_cluster]
-    mock_list_all_instances_for_service.return_value = [fake_instance]
-    mock_get_instance_config.return_value = mock_paasta_instance
+    mock_load_all_instance_configs_for_service.return_value = [
+        (fake_instance, mock_paasta_instance)
+    ]
 
     assert validate_paasta_objects("fake-service-path") is False, capsys
     captured = capsys.readouterr()
@@ -159,26 +161,31 @@ def test_validate_unknown_service_service_path():
     assert not paasta_validate_soa_configs(service, service_path)
 
 
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_min_max_instances_success(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     capsys,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="fake_type"),
-        get_min_instances=mock.Mock(return_value=3),
-        get_max_instances=mock.Mock(return_value=1),
-    )
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value="fake_type"),
+                get_min_instances=mock.Mock(return_value=3),
+                get_max_instances=mock.Mock(return_value=1),
+            ),
+        )
+    ]
 
     assert validate_min_max_instances("fake-service-path") is False
     output, _ = capsys.readouterr()
@@ -922,9 +929,11 @@ def test_validate_unique_service_name_failure(
     assert "instance_1" in output
 
 
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.load_system_paasta_config", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.check_secrets_for_instance", autospec=True)
@@ -932,9 +941,8 @@ def test_validate_secrets(
     mock_check_secrets_for_instance,
     mock_load_system_paasta_config,
     mock_path_to_soa_dir_service,
-    mock_list_all_instances_for_service,
     mock_list_clusters,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     capsys,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
@@ -944,17 +952,16 @@ def test_validate_secrets(
             return_value={"fake_cluster": "fake_vault_env"}
         )
     )
-    mock_list_all_instances_for_service.return_value = [
-        "fake_instance",
-        "fake_instance2",
-    ]
     mock_paasta_instance = mock.Mock(
         config_dict={"env": {"SUPER_SECRET1": "SECRET(secret1)"}}
     )
     mock_paasta_instance2 = mock.Mock(
         config_dict={"env": {"SUPER_SECRET1": "SHARED_SECRET(secret1)"}}
     )
-    mock_get_instance_config.side_effect = [mock_paasta_instance, mock_paasta_instance2]
+    mock_load_all_instance_configs_for_service.return_value = [
+        ("fake_instance", mock_paasta_instance),
+        ("fake_instance", mock_paasta_instance2),
+    ]
     mock_check_secrets_for_instance.return_value = True
     assert validate_secrets("fake-service-path"), capsys
     captured = capsys.readouterr()
@@ -1045,15 +1052,16 @@ def test_check_secrets_for_instance_missing_secret(
         (0.8, 0.25, True, "eks"),
     ],
 )
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_autoscaling_configs(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     setpoint,
     offset,
     expected,
@@ -1061,19 +1069,23 @@ def test_validate_autoscaling_configs(
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value=instance_type),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
-                "metrics_provider": "uwsgi",
-                "setpoint": setpoint,
-                "offset": offset,
-            }
-        ),
-    )
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value=instance_type),
+                is_autoscaling_enabled=mock.Mock(return_value=True),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "uwsgi",
+                        "setpoint": setpoint,
+                        "offset": offset,
+                    }
+                ),
+            ),
+        )
+    ]
 
     with mock.patch(
         "paasta_tools.cli.cmds.validate.load_system_paasta_config",
@@ -1090,31 +1102,36 @@ def test_validate_autoscaling_configs(
     "instance_type",
     [("kubernetes"), ("eks")],
 )
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_autoscaling_configs_no_offset_specified(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     instance_type,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value=instance_type),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
-                "metrics_provider": "uwsgi",
-                "setpoint": 0.8,
-            }
-        ),
-    )
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value=instance_type),
+                is_autoscaling_enabled=mock.Mock(return_value=True),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "uwsgi",
+                        "setpoint": 0.8,
+                    }
+                ),
+            ),
+        )
+    ]
 
     with mock.patch(
         "paasta_tools.cli.cmds.validate.load_system_paasta_config",
@@ -1127,8 +1144,10 @@ def test_validate_autoscaling_configs_no_offset_specified(
         assert validate_autoscaling_configs("fake-service-path") is True
 
 
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 @pytest.mark.parametrize(
@@ -1178,22 +1197,25 @@ def test_validate_autoscaling_configs_no_offset_specified(
 def test_validate_autoscaling_configs_active_requests(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     autoscaling_config,
     registrations,
     expected,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value="kubernetes"),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
-        get_registrations=mock.Mock(return_value=registrations),
-    )
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value="kubernetes"),
+                is_autoscaling_enabled=mock.Mock(return_value=True),
+                get_autoscaling_params=mock.Mock(return_value=autoscaling_config),
+                get_registrations=mock.Mock(return_value=registrations),
+            ),
+        )
+    ]
 
     with mock.patch(
         "paasta_tools.cli.cmds.validate.load_system_paasta_config",
@@ -1220,15 +1242,16 @@ def test_validate_autoscaling_configs_active_requests(
     ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.get_instance_config", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.list_all_instances_for_service", autospec=True)
+@patch(
+    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
+    autospec=True,
+)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 def test_validate_cpu_autotune_override(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
-    mock_list_all_instances_for_service,
-    mock_get_instance_config,
+    mock_load_all_instance_configs_for_service,
     mock_get_file_contents,
     filecontents,
     expected,
@@ -1236,18 +1259,22 @@ def test_validate_cpu_autotune_override(
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
-    mock_list_all_instances_for_service.return_value = {"fake_instance1"}
-    mock_get_instance_config.return_value = mock.Mock(
-        get_instance=mock.Mock(return_value="fake_instance1"),
-        get_instance_type=mock.Mock(return_value=instance_type),
-        is_autoscaling_enabled=mock.Mock(return_value=True),
-        get_autoscaling_params=mock.Mock(
-            return_value={
-                "metrics_provider": "cpu",
-                "setpoint": 0.8,
-            }
-        ),
-    )
+    mock_load_all_instance_configs_for_service.return_value = [
+        (
+            "fake_instance1",
+            mock.Mock(
+                get_instance=mock.Mock(return_value="fake_instance1"),
+                get_instance_type=mock.Mock(return_value=instance_type),
+                is_autoscaling_enabled=mock.Mock(return_value=True),
+                get_autoscaling_params=mock.Mock(
+                    return_value={
+                        "metrics_provider": "cpu",
+                        "setpoint": 0.8,
+                    }
+                ),
+            ),
+        )
+    ]
     mock_get_file_contents.return_value = f"""
 ---
 fake_instance1:
