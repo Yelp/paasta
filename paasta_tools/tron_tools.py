@@ -731,7 +731,7 @@ class TronJobConfig:
     def get_expected_runtime(self):
         return self.config_dict.get("expected_runtime")
 
-    def _get_action_config(self, action_name, action_dict):
+    def _get_action_config(self, action_name, action_dict) -> TronActionConfig:
         action_service = action_dict.setdefault("service", self.get_service())
         action_deploy_group = action_dict.setdefault(
             "deploy_group", self.get_deploy_group()
@@ -784,7 +784,7 @@ class TronJobConfig:
             for_validation=self.for_validation,
         )
 
-    def get_actions(self):
+    def get_actions(self) -> List[TronActionConfig]:
         actions = self.config_dict.get("actions")
         return [
             self._get_action_config(name, action_dict)
@@ -1067,21 +1067,39 @@ def load_tron_instance_config(
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
+    for action in load_tron_instance_configs(
+        service=service,
+        cluster=cluster,
+        load_deployments=load_deployments,
+        soa_dir=soa_dir,
+    ):
+        if action.get_instance() == instance:
+            return action
+    raise NoConfigurationForServiceError(
+        f"No tron configuration found for {service} {instance}"
+    )
+
+
+@time_cache(ttl=5)
+def load_tron_instance_configs(
+    service: str,
+    cluster: str,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Tuple[TronActionConfig, ...]:
+    ret: List[TronActionConfig] = []
+
     jobs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
     )
-    requested_job, requested_action = instance.split(".")
+
     for job in jobs:
-        if job.get_name() == requested_job:
-            for action in job.get_actions():
-                if action.get_action_name() == requested_action:
-                    return action
-    raise NoConfigurationForServiceError(
-        f"No tron configuration found for {service} {instance}"
-    )
+        ret.extend(job.get_actions())
+
+    return tuple(ret)
 
 
 @time_cache(ttl=5)

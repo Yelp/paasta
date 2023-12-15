@@ -36,7 +36,7 @@ def test_write_auto_config_data_service_dne(tmpdir):
     ) as mock_open:
         result = config_utils.write_auto_config_data(
             service="something",
-            extra_info="marathon-norcal-devc",
+            extra_info="kubernetes-norcal-devc",
             data={"a": 1},
             soa_dir=tmpdir,
         )
@@ -46,7 +46,7 @@ def test_write_auto_config_data_service_dne(tmpdir):
 
 def test_write_auto_config_data_new_file(tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
     data = {"a": 1}
 
     tmpdir.mkdir(service)
@@ -65,7 +65,7 @@ def test_write_auto_config_data_new_file(tmpdir):
 
 def test_write_auto_config_data_file_exists(tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
 
     tmpdir.mkdir(service)
     config_utils.write_auto_config_data(
@@ -92,7 +92,6 @@ def test_write_auto_config_data_file_exists(tmpdir):
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
 def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
     for config_type in (
-        "marathon",
         "kubernetes",
         "deploy",
         "smartstack",
@@ -126,7 +125,7 @@ def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
 )
 def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
 
     tmpdir.mkdir(service)
     filepath = config_utils.write_auto_config_data(
@@ -232,11 +231,10 @@ def test_auto_config_updater_context_no_clone(
 def test_auto_config_updater_validate(mock_validate_file, all_valid, updater):
     mock_validate_file.side_effect = [True, all_valid, True]
 
-    updater.write_configs("foo", "marathon-norcal-devc", {"a": 2})
     updater.write_configs("foo", "kubernetes-norcal-devc", {"a": 2})
     updater.write_configs("foo", "kubernetes-pnw-devc", {"a": 2})
     assert updater.validate() == all_valid
-    assert mock_validate_file.call_count == 3
+    assert mock_validate_file.call_count == 2
 
 
 def test_auto_config_updater_read_write(updater):
