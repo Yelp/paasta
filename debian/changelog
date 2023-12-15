@@ -1,3 +1,10 @@
+paasta-tools (0.209.2) xenial; urgency=medium
+
+  * 0.209.2 tagged with 'make release'
+    Commit: remove use_k8s deprecated flag (#3749)
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 15 Dec 2023 05:53:59 -0800
+
 paasta-tools (0.209.1) xenial; urgency=medium
 
   * 0.209.1 tagged with 'make release'
