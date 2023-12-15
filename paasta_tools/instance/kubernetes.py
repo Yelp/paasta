@@ -1305,7 +1305,7 @@ async def kubernetes_mesh_status(
     instance: str,
     instance_type: str,
     settings: Any,
-    include_smartstack: bool = True,
+    include_smartstack: bool = False,
     include_envoy: bool = True,
 ) -> Mapping[str, Any]:
 

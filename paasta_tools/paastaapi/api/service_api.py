@@ -1186,7 +1186,7 @@ class ServiceApi(object):
                 instance (str): Instance name
 
             Keyword Args:
-                include_smartstack (bool): Include Smartstack information. [optional] if omitted the server will use the default value of True
+                include_smartstack (bool): Include Smartstack information. [optional] if omitted the server will use the default value of False
                 include_envoy (bool): Include Envoy information. [optional] if omitted the server will use the default value of True
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.

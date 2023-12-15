@@ -1831,7 +1831,7 @@ paths:
         required: false
         schema:
           type: boolean
-          default: true
+          default: false
       - description: Include Envoy information
         in: query
         name: include_envoy
