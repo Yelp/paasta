@@ -42,6 +42,7 @@ from kubernetes.client import V1PodAffinityTerm
 from kubernetes.client import V1PodAntiAffinity
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
@@ -2085,47 +2086,102 @@ class TestKubernetesDeploymentConfig:
         assert self.deployment.get_node_selector() == expected
 
     def test_get_node_affinity_with_reqs(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
-            return_value=[("habitat", "In", ["habitat_a"])],
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
-            return_value=[("instance_type", "In", ["a1.1xlarge"])],
-            autospec=True,
-        ):
-            assert self.deployment.get_node_affinity() == V1NodeAffinity(
-                required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                    node_selector_terms=[
-                        V1NodeSelectorTerm(
-                            match_expressions=[
-                                V1NodeSelectorRequirement(
-                                    key="habitat",
-                                    operator="In",
-                                    values=["habitat_a"],
-                                ),
-                                V1NodeSelectorRequirement(
-                                    key="instance_type",
-                                    operator="In",
-                                    values=["a1.1xlarge"],
-                                ),
-                            ]
-                        )
-                    ],
-                ),
-            )
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={
+                "deploy_whitelist": ["habitat", ["habitat_a"]],
+                "node_selectors": {
+                    "instance_type": ["a1.1xlarge"],
+                },
+            },
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        assert deployment.get_node_affinity() == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="yelp.com/habitat",
+                                operator="In",
+                                values=["habitat_a"],
+                            ),
+                            V1NodeSelectorRequirement(
+                                key="node.kubernetes.io/instance-type",
+                                operator="In",
+                                values=["a1.1xlarge"],
+                            ),
+                        ]
+                    )
+                ],
+            ),
+        )
 
     def test_get_node_affinity_no_reqs(self):
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.allowlist_denylist_to_requirements",
-            return_value=[],
-            autospec=True,
-        ), mock.patch(
-            "paasta_tools.kubernetes_tools.raw_selectors_to_requirements",
-            return_value=[],
-            autospec=True,
-        ):
-            assert self.deployment.get_node_affinity() is None
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={},
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        assert deployment.get_node_affinity() is None
+
+    def test_get_node_affinity_with_preferences(self):
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={
+                "deploy_whitelist": ["habitat", ["habitat_a"]],
+                "node_selectors_preferred": [
+                    {
+                        "weight": 1,
+                        "preferences": {
+                            "instance_type": ["a1.1xlarge"],
+                        },
+                    }
+                ],
+            },
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        assert deployment.get_node_affinity() == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="yelp.com/habitat",
+                                operator="In",
+                                values=["habitat_a"],
+                            ),
+                        ]
+                    )
+                ],
+            ),
+            preferred_during_scheduling_ignored_during_execution=[
+                V1PreferredSchedulingTerm(
+                    weight=1,
+                    preference=V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="node.kubernetes.io/instance-type",
+                                operator="In",
+                                values=["a1.1xlarge"],
+                            ),
+                        ]
+                    ),
+                )
+            ],
+        )
 
     @pytest.mark.parametrize(
         "anti_affinity,expected",
@@ -2257,7 +2313,7 @@ class TestKubernetesDeploymentConfig:
             "error_key": [{"operator": "BadOperator"}],  # type: ignore
         }
         with pytest.raises(ValueError):
-            raw_selectors_to_requirements(node_selectors)
+            raw_selectors_to_requirements(node_selectors)  # type: ignore
 
     @pytest.mark.parametrize(
         "is_autoscaled, autoscaled_label",
