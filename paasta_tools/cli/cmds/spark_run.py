@@ -1104,7 +1104,7 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     digest_line = output.split("\n")[-1]
     digest_match = re.match(r"[^:]*: [^:]*: (?P<digest>[^\s]*)", digest_line)
     if not digest_match:
-        raise Exception(f"Could not determine digest from output: {output}")
+        raise ValueError(f"Could not determine digest from output: {output}")
     digest = digest_match.group("digest")
     return f"{docker_url}@{digest}"
 

@@ -16,11 +16,11 @@ import argparse
 import mock
 import pytest
 from boto3.exceptions import Boto3Error
-from mock import Mock
 from service_configuration_lib import spark_config
 
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
+from paasta_tools.cli.cmds.spark_run import build_and_push_docker_image
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_MESOS
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
@@ -136,23 +136,6 @@ def mock_instance_config():
 @pytest.fixture
 def mock_run():
     with mock.patch.object(spark_run, "_run") as m:
-        yield m
-
-
-@pytest.fixture
-def mock_get_docker_client():
-    fake_image_info = {
-        "RepoDigests": [
-            DUMMY_DOCKER_IMAGE_DIGEST,
-        ],
-    }
-    docker_client = Mock(inspect_image=Mock(return_value=fake_image_info))
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.spark_run.get_docker_client",
-        return_value=docker_client,
-        autospec=True,
-    ) as m:
         yield m
 
 
@@ -1121,7 +1104,6 @@ def test_paasta_spark_run_bash(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
-    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1154,6 +1136,7 @@ def test_paasta_spark_run_bash(
         "test-cluster": ["test-pool"]
     }
     mock_should_enable_compact_bin_packing.return_value = True
+    mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "/bin/bash"
@@ -1235,7 +1218,6 @@ def test_paasta_spark_run(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
-    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1268,6 +1250,7 @@ def test_paasta_spark_run(
         "test-cluster": ["test-pool"]
     }
     mock_should_enable_compact_bin_packing.return_value = True
+    mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "USER=test timeout 1m spark-submit test.py"
@@ -1348,7 +1331,6 @@ def test_paasta_spark_run_pyspark(
     mock_load_system_paasta_config,
     mock_validate_work_dir,
     mock_generate_pod_template_path,
-    mock_get_docker_client,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1384,6 +1366,7 @@ def test_paasta_spark_run_pyspark(
         "test-cluster": ["test-pool"]
     }
 
+    mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "pyspark"
@@ -1482,3 +1465,96 @@ def test_decide_final_eks_toggle_state(override, default, expected):
         )
 
         assert decide_final_eks_toggle_state(override) is expected
+
+
+@mock.patch.object(spark_run, "makefile_responds_to", autospec=True)
+@mock.patch.object(spark_run, "paasta_cook_image", autospec=True)
+@mock.patch.object(spark_run, "get_username", autospec=True)
+def test_build_and_push_docker_image_unprivileged_output_format(
+    mock_get_username,
+    mock_paasta_cook_image,
+    mock_makefile_responds_to,
+    mock_run,
+):
+    args = mock.MagicMock(
+        docker_registry="MOCK-docker-dev.yelpcorp.com",
+        autospec=True,
+    )
+    mock_makefile_responds_to.return_value = True
+    mock_paasta_cook_image.return_value = 0
+    mock_run.side_effect = [
+        (0, None),
+        (
+            0,
+            (
+                "Using default tag: latest\n"
+                "The push refers to repository [MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user:latest]\n"
+                "latest: digest: sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
+            ),
+        ),
+    ]
+    mock_get_username.return_value = "user"
+    docker_image_digest = build_and_push_docker_image(args)
+    assert DUMMY_DOCKER_IMAGE_DIGEST == docker_image_digest
+
+
+@mock.patch.object(spark_run, "makefile_responds_to", autospec=True)
+@mock.patch.object(spark_run, "paasta_cook_image", autospec=True)
+@mock.patch.object(spark_run, "get_username", autospec=True)
+def test_build_and_push_docker_image_privileged_output_format(
+    mock_get_username,
+    mock_paasta_cook_image,
+    mock_makefile_responds_to,
+    mock_run,
+):
+    args = mock.MagicMock(
+        docker_registry="MOCK-docker-dev.yelpcorp.com",
+        autospec=True,
+    )
+    mock_makefile_responds_to.return_value = True
+    mock_paasta_cook_image.return_value = 0
+    mock_run.side_effect = [
+        (0, None),
+        (
+            0,
+            (
+                "Using default tag: latest\n"
+                "The push refers to repository [MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user:latest]\n"
+                "latest: digest: sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06 size: 1337"
+            ),
+        ),
+    ]
+    mock_get_username.return_value = "user"
+    docker_image_digest = build_and_push_docker_image(args)
+    assert DUMMY_DOCKER_IMAGE_DIGEST == docker_image_digest
+
+
+@mock.patch.object(spark_run, "makefile_responds_to", autospec=True)
+@mock.patch.object(spark_run, "paasta_cook_image", autospec=True)
+@mock.patch.object(spark_run, "get_username", autospec=True)
+def test_build_and_push_docker_image_unexpected_output_format(
+    mock_get_username,
+    mock_paasta_cook_image,
+    mock_makefile_responds_to,
+    mock_run,
+):
+    args = mock.MagicMock(
+        docker_registry="MOCK-docker-dev.yelpcorp.com",
+        autospec=True,
+    )
+    mock_makefile_responds_to.return_value = True
+    mock_paasta_cook_image.return_value = 0
+    mock_run.side_effect = [
+        (0, None),
+        (
+            0,
+            (
+                "Using default tag: latest\n"
+                "The push refers to repository [MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user:latest]\n"
+                "the regex will not match this"
+            ),
+        ),
+    ]
+    with pytest.raises(ValueError) as e:
+        build_and_push_docker_image(args)
+    assert "Could not determine digest from output" in str(e.value)
