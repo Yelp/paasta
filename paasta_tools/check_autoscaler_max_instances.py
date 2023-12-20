@@ -25,8 +25,9 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(
         description=(
-            "Check all autoscaled services to see if they're at their max_instances."
-            " If so, send an alert if their utilization is above max_instances_alert_threshold."
+            "Check all autoscaled services to see if they're at their max_instances. If"
+            " so, send an alert if their utilization is above"
+            " max_instances_alert_threshold."
         )
     )
     parser.add_argument(
@@ -90,7 +91,10 @@ async def check_max_instances(
                 == autoscaling_status["max_instances"]
             ) and "canary" in instance:
                 status = pysensu_yelp.Status.OK
-                output = f'Not checking {service}.{instance} as the instance name contains "canary" and min_instances == max_instances.'
+                output = (
+                    f"Not checking {service}.{instance} as the instance name contains"
+                    ' "canary" and min_instances == max_instances.'
+                )
             elif (
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
@@ -107,10 +111,22 @@ async def check_max_instances(
 
                     if current_value / target_value > metric_threshold_target_ratio:
                         status = pysensu_yelp.Status.CRITICAL
-                        output = f"{service}.{instance}: Ratio of current value to target value ({current_value} / {target_value}) is greater than the ratio of max_instances_alert_threshold to setpoint ({threshold} / {setpoint})"
+                        output = (
+                            f"{service}.{instance}: Service is at max_instances, and"
+                            " ratio of current value to target value"
+                            f" ({current_value} / {target_value}) is greater than the"
+                            " ratio of max_instances_alert_threshold to setpoint"
+                            f" ({threshold} / {setpoint})"
+                        )
                     else:
                         status = pysensu_yelp.Status.OK
-                        output = f"{service}.{instance}: Ratio of current value to target value ({current_value} / {target_value}) is below the ratio of max_instances_alert_threshold to setpoint ({threshold} / {setpoint})"
+                        output = (
+                            f"{service}.{instance}: Service is at max_instances, but"
+                            " ratio of current value to target value"
+                            f" ({current_value} / {target_value}) is below the ratio of"
+                            f" max_instances_alert_threshold to setpoint ({threshold} /"
+                            f" {setpoint})"
+                        )
             else:
                 status = pysensu_yelp.Status.OK
                 output = f"{service}.{instance} is below max_instances."
@@ -121,7 +137,11 @@ async def check_max_instances(
                     "page": False,  # TODO: remove this line once this alert has been deployed for a little while.
                     "runbook": "y/check-autoscaler-max-instances",
                     "tip": (
-                        "The autoscaler wants to scale up to handle additional load because your service is overloaded, but cannot scale any higher because of max_instances. You may want to bump max_instances. To make this alert quieter, adjust autoscaling.max_instances_alert_threshold in yelpsoa-configs."
+                        "The autoscaler wants to scale up to handle additional load"
+                        " because your service is overloaded, but cannot scale any"
+                        " higher because of max_instances. You may want to bump"
+                        " max_instances. To make this alert quieter, adjust"
+                        " autoscaling.max_instances_alert_threshold in yelpsoa-configs."
                     ),
                 }
             )
