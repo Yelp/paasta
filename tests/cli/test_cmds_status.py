@@ -920,7 +920,7 @@ def test_status_with_registration(
 
 
 @pytest.fixture
-def mock_marathon_status(include_envoy=True, include_smartstack=True):
+def mock_marathon_status(include_envoy=True):
     kwargs = dict(
         desired_state="start",
         desired_app_id="abc.def",
@@ -937,12 +937,6 @@ def mock_marathon_status(include_envoy=True, include_smartstack=True):
             non_running_tasks=[],
         ),
     )
-    if include_smartstack:
-        kwargs["smartstack"] = paastamodels.SmartstackStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
     if include_envoy:
         kwargs["envoy"] = paastamodels.EnvoyStatus(
             registration="fake_service.fake_instance",

@@ -151,7 +151,6 @@ def marathon_instance_status(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     include_mesos: bool,
 ) -> Mapping[str, Any]:
@@ -175,7 +174,7 @@ def marathon_instance_status(
         )
     )
 
-    if include_smartstack or include_envoy:
+    if include_envoy:
         service_namespace_config = marathon_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
@@ -185,26 +184,15 @@ def marathon_instance_status(
             tasks = [
                 task for app, _ in matching_apps_with_clients for task in app.tasks
             ]
-            if include_smartstack:
-                mstatus["smartstack"] = marathon_service_mesh_status(
-                    service,
-                    pik.ServiceMesh.SMARTSTACK,
-                    instance,
-                    job_config,
-                    service_namespace_config,
-                    tasks,
-                    should_return_individual_backends=verbose > 0,
-                )
-            if include_envoy:
-                mstatus["envoy"] = marathon_service_mesh_status(
-                    service,
-                    pik.ServiceMesh.ENVOY,
-                    instance,
-                    job_config,
-                    service_namespace_config,
-                    tasks,
-                    should_return_individual_backends=verbose > 0,
-                )
+            mstatus["envoy"] = marathon_service_mesh_status(
+                service,
+                pik.ServiceMesh.ENVOY,
+                instance,
+                job_config,
+                service_namespace_config,
+                tasks,
+                should_return_individual_backends=verbose > 0,
+            )
 
     if include_mesos:
         mstatus["mesos"] = marathon_mesos_status(service, instance, verbose)
@@ -641,9 +629,6 @@ def instance_status(request):
     instance = request.swagger_data.get("instance")
     verbose = request.swagger_data.get("verbose") or 0
     use_new = request.swagger_data.get("new") or False
-    include_smartstack = request.swagger_data.get("include_smartstack")
-    if include_smartstack is None:
-        include_smartstack = False
     include_envoy = request.swagger_data.get("include_envoy")
     if include_envoy is None:
         include_envoy = True
@@ -699,7 +684,6 @@ def instance_status(request):
                 service,
                 instance,
                 verbose,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
                 include_mesos=include_mesos,
             )
@@ -713,7 +697,6 @@ def instance_status(request):
                     service=service,
                     instance=instance,
                     verbose=verbose,
-                    include_smartstack=include_smartstack,
                     include_envoy=include_envoy,
                     use_new=use_new,
                     instance_type=instance_type,
@@ -933,7 +916,6 @@ def get_deployment_version(
 def instance_mesh_status(request):
     service = request.swagger_data.get("service")
     instance = request.swagger_data.get("instance")
-    include_smartstack = request.swagger_data.get("include_smartstack")
     include_envoy = request.swagger_data.get("include_envoy")
 
     instance_mesh: Dict[str, Any] = {}
@@ -961,7 +943,6 @@ def instance_mesh_status(request):
                 instance=instance,
                 instance_type=instance_type,
                 settings=settings,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
             )
         )
