@@ -18,7 +18,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
-KUBERNETES_NAMESPACE = "paasta-vitess"
+KUBERNETES_NAMESPACE = "paastasvc-vitessclusters"
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -31,7 +31,7 @@ class VitessDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
 class VitessDeploymentConfig(LongRunningServiceConfig):
     config_dict: VitessDeploymentConfigDict
 
-    config_filename_prefix = "vitess"
+    config_filename_prefix = "vitesscluster"
 
     def __init__(
         self,
@@ -52,60 +52,8 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
-    def get_service_name_smartstack(self) -> str:
-        """
-        We register in vitess.main
-        """
-        return "vitess_" + self.get_instance()
-
-    def get_nerve_namespace(self) -> str:
-        """
-        We register in vitess.main
-        """
-        return "main"
-
-    def get_registrations(self) -> List[str]:
-        """
-        We register in vitess.main
-        """
-        registrations = self.config_dict.get("registrations", [])
-        for registration in registrations:
-            try:
-                decompose_job_id(registration)
-            except InvalidJobNameError:
-                log.error(
-                    "Provided registration {} for service "
-                    "{} is invalid".format(registration, self.service)
-                )
-
-        return registrations or [
-            compose_job_id(self.get_service_name_smartstack(), "main")
-        ]
-
-    def get_kubernetes_namespace(self) -> str:
-        return KUBERNETES_NAMESPACE
-
-    def get_namespace(self) -> str:
-        """Get namespace from config, default to 'paasta'"""
-        return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
-
     def get_instances(self, with_limit: bool = True) -> int:
         return self.config_dict.get("replicas", 1)
-
-    def get_bounce_method(self) -> str:
-        """
-        Need to map to a paasta bounce method and crossover is the closest
-        """
-        return "crossover"
-
-    def get_sanitised_service_name(self) -> str:
-        return sanitise_kubernetes_name(self.get_service())
-
-    def get_sanitised_instance_name(self) -> str:
-        return sanitise_kubernetes_name(self.get_instance())
-
-    def get_sanitised_deployment_name(self) -> str:
-        return self.get_sanitised_instance_name()
 
     def validate(
         self,
@@ -139,7 +87,7 @@ def load_vitess_instance_config(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, " vitesscluster", cluster, soa_dir=soa_dir
+        service, instance, "vitesscluster", cluster, soa_dir=soa_dir
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
@@ -176,6 +124,6 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
         group="yelp.com",
         version="v1alpha1",
         namespace=KUBERNETES_NAMESPACE,
-        plural="vitess",
+        plural="vitessclusters",
         name=sanitised_cr_name(service, instance),
     )

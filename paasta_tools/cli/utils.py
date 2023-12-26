@@ -46,6 +46,7 @@ from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
+from paasta_tools.vitess_tools import load_vitess_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
@@ -785,6 +786,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     kafkacluster=InstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
+    vitesscluster=InstanceTypeHandler(
+        get_service_instance_list, load_vitess_instance_config
+    ),
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
@@ -811,6 +815,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     kafkacluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
+    ),
+    vitesscluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_vitess_instance_config
     ),
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
