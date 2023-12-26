@@ -56,6 +56,13 @@ def add_subparser(subparsers):
         help="Path to sqlite3 file which the data should be written into",
         default="paasta.sqlite3",
     )
+    parser.add_argument(
+        "-c",
+        "--clusters",
+        help="Clusters to include in the generated database (comma-separated). Defaults to all.",
+        default=list_clusters(),
+        type=lambda clusters: clusters.split(","),
+    )
 
     parser.set_defaults(command=paasta_sql)
 
@@ -252,18 +259,15 @@ def paasta_sql(args):
     with sqlite3.connect(args.database) as conn:
         create_table_for_class(conn.cursor(), KubernetesDeploymentConfig)
 
-    clusters = ["nova-prod"]
+    os.environ["KUBECONFIG"] = "~/.kube/config"
+    for cluster in args.clusters:
+        for service in list_services(args.soa_dir):
+            pscl = PaastaServiceConfigLoader(
+                service=service,
+                soa_dir=args.soa_dir,
+                load_deployments=True,
+            )
 
-    for service in list_services(args.soa_dir):
-        pscl = PaastaServiceConfigLoader(
-            service=service,
-            soa_dir=args.soa_dir,
-            load_deployments=True,
-        )
-
-        os.environ["KUBECONFIG"] = "~/.kube/config"
-
-        for cluster in clusters:
             os.environ["KUBECONTEXT"] = cluster
             with sqlite3.connect(args.database) as conn:
                 insert_instances(
