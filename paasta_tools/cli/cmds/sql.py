@@ -24,6 +24,7 @@ from typing import Iterable
 
 from service_configuration_lib import DEFAULT_SOA_DIR  # type: ignore
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -85,6 +86,11 @@ EXPAND_DICTS = {
     "get_autoscaling_params": "autoscaling",
     "get_monitoring": "monitoring",
 }
+
+PAASTA_K8S_INSTANCE_TYPE_CLASSES = (
+    EksDeploymentConfig,
+    KubernetesDeploymentConfig,
+)
 
 
 def removeprefix(text, prefix):
@@ -256,6 +262,7 @@ def paasta_sql(args):
 
     with sqlite3.connect(args.database) as conn:
         create_table_for_class(conn.cursor(), KubernetesDeploymentConfig)
+        create_table_for_class(conn.cursor(), EksDeploymentConfig)
 
     os.environ["KUBECONFIG"] = "~/.kube/config"
     for cluster in args.clusters:
@@ -268,11 +275,12 @@ def paasta_sql(args):
 
             os.environ["KUBECONTEXT"] = cluster
             with sqlite3.connect(args.database) as conn:
-                insert_instances(
-                    conn.cursor(),
-                    pscl.instance_configs(
-                        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-                    ),
-                    system_paasta_config=system_paasta_config,
-                    soa_dir=args.soa_dir,
-                )
+                for instance_type_class in PAASTA_K8S_INSTANCE_TYPE_CLASSES:
+                    insert_instances(
+                        conn.cursor(),
+                        pscl.instance_configs(
+                            cluster=cluster, instance_type_class=instance_type_class
+                        ),
+                        system_paasta_config=system_paasta_config,
+                        soa_dir=args.soa_dir,
+                    )
