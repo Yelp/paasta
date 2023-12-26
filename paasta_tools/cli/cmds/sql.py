@@ -192,6 +192,7 @@ def create_table_for_class(
         Type[EksDeploymentConfig],
     ],
 ) -> None:
+    print(f"Creating table for {cls.config_filename_prefix} instances...")
     column_names = list(column_names_and_getters_for_class(cls).keys())
     comma_newline = """,
             """
@@ -209,7 +210,7 @@ def format_for_sqlite(value: Any) -> Any:
         value = list(value)
 
     if hasattr(value, "to_dict"):
-        # kubernetes client lib objects
+        # e.g., kubernetes client lib objects
         value = value.to_dict()
 
     if isinstance(value, (list, tuple)):
@@ -248,6 +249,7 @@ def insert_instances(
         ]
     ) -> Any:
         assert isinstance(instance_config, cls)
+        print(f"\t\t\tProcessing {instance_config.instance}...")
         values = []
         service_namespace_config = load_service_namespace_config(
             instance_config.service,
@@ -274,35 +276,43 @@ def insert_instances(
         ]
         for future in concurrent.futures.as_completed(futures):
             try:
-                result = future.result()
                 cursor.execute(query, future.result())
-                print(result)
             except Exception:
                 traceback.print_exc()
 
 
 def paasta_sql(args: argparse.Namespace) -> None:
-    """Print a list of Yelp services currently running
+    """Create a sqlite db of Yelp services currently running
     :param args: argparse.Namespace obj created from sys.args by cli"""
 
     system_paasta_config = load_system_paasta_config()
 
     with sqlite3.connect(args.database) as conn:
-        create_table_for_class(conn.cursor(), KubernetesDeploymentConfig)
-        create_table_for_class(conn.cursor(), EksDeploymentConfig)
+        for instance_type_class in PAASTA_K8S_INSTANCE_TYPE_CLASSES:
+            create_table_for_class(conn.cursor(), instance_type_class)
 
     os.environ["KUBECONFIG"] = "~/.kube/config"
-    for cluster in args.clusters:
-        for service in list_services(args.soa_dir):
-            pscl = PaastaServiceConfigLoader(
-                service=service,
-                soa_dir=args.soa_dir,
-                load_deployments=True,
-            )
-
+    with sqlite3.connect(args.database) as conn:
+        for cluster in args.clusters:
             os.environ["KUBECONTEXT"] = cluster
-            with sqlite3.connect(args.database) as conn:
+            print(f"Processing instances in cluster={cluster}...")
+            for service in list_services(args.soa_dir):
+                # for some reason list_services is giving us metadata files
+                # from autotune as we;; as other arbitrary json/yam files.
+                # we can skip these.
+                if "." in service:
+                    continue
+                print(f"\tLoading config for {service}...")
+                pscl = PaastaServiceConfigLoader(
+                    service=service,
+                    soa_dir=args.soa_dir,
+                    load_deployments=True,
+                )
+
                 for instance_type_class in PAASTA_K8S_INSTANCE_TYPE_CLASSES:
+                    print(
+                        f"\t\tLooking for {instance_type_class.config_filename_prefix} instances..."
+                    )
                     insert_instances(
                         conn.cursor(),
                         pscl.instance_configs(
