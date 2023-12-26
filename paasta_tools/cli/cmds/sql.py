@@ -22,7 +22,7 @@ import traceback
 from typing import Collection
 from typing import Iterable
 
-from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import DEFAULT_SOA_DIR  # type: ignore
 
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import load_service_namespace_config
@@ -132,9 +132,7 @@ def column_names_and_getters_for_class(
 ):
 
     column_names_and_getters = {}
-    for method_name, method in inspect.getmembers(
-        KubernetesDeploymentConfig, predicate=inspect.isfunction
-    ):
+    for method_name, method in inspect.getmembers(cls, predicate=inspect.isfunction):
         if (
             method_name.startswith("get_")
             and method_name not in IGNORED_METHODS
