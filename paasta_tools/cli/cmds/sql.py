@@ -20,6 +20,7 @@ import json
 import os
 import sqlite3
 import traceback
+from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Collection
@@ -28,6 +29,7 @@ from typing import Iterable
 from typing import Type
 from typing import Union
 
+import choice
 from service_configuration_lib import DEFAULT_SOA_DIR  # type: ignore
 
 from paasta_tools.eks_tools import EksDeploymentConfig
@@ -70,6 +72,12 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Clusters to include in the generated database (comma-separated). Defaults to all.",
         default=list_clusters(),
         type=lambda clusters: clusters.split(","),
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        help="Force creates a sqlite db even if one already exists",
+        action="store_true",
     )
 
     parser.set_defaults(command=paasta_sql)
@@ -281,11 +289,27 @@ def insert_instances(
                 traceback.print_exc()
 
 
+def confirm_to_continue(message: str) -> bool:
+    return choice.Binary(
+        prompt=message,
+        default=False,
+    ).ask()
+
+
 def paasta_sql(args: argparse.Namespace) -> None:
     """Create a sqlite db of Yelp services currently running
     :param args: argparse.Namespace obj created from sys.args by cli"""
 
     system_paasta_config = load_system_paasta_config()
+
+    if Path(args.database).exists():
+        message = f"Existing db found at {args.database} - overwrite it?"
+        if args.force or confirm_to_continue(message):
+            print(f"Deleting DB at {args.database}")
+            Path(args.database).unlink()
+        else:
+            print("DB overwrite refused, exiting.")
+            return
 
     with sqlite3.connect(args.database) as conn:
         for instance_type_class in PAASTA_K8S_INSTANCE_TYPE_CLASSES:
