@@ -18,7 +18,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_v2_deployments_json
 
-KUBERNETES_NAMESPACE = "paastasvc-vitessclusters"
+KUBERNETES_NAMESPACE = "paasta-vitessclusters"
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())

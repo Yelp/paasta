@@ -151,7 +151,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
-    "vitesscluster": "paastasvc-vitessclusters",
+    "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
