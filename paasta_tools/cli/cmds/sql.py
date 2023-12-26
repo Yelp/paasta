@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import collections.abc
 import concurrent.futures
 import inspect
@@ -19,8 +20,13 @@ import json
 import os
 import sqlite3
 import traceback
+from typing import Any
+from typing import Callable
 from typing import Collection
+from typing import Dict
 from typing import Iterable
+from typing import Type
+from typing import Union
 
 from service_configuration_lib import DEFAULT_SOA_DIR  # type: ignore
 
@@ -33,9 +39,10 @@ from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 
-def add_subparser(subparsers):
+def add_subparser(subparsers: argparse._SubParsersAction) -> None:
     parser = subparsers.add_parser(
         "sql",
         help="Produce a sqlite3 database of all paasta service.instances",
@@ -93,15 +100,17 @@ PAASTA_K8S_INSTANCE_TYPE_CLASSES = (
 )
 
 
-def removeprefix(text, prefix):
+def removeprefix(text: str, prefix: str) -> str:
     if text.startswith(prefix):
         return text[len(prefix) :]
     else:
         return text
 
 
-def make_getter(method, required_params):
-    def getter(instance_config, **kwargs):
+# TODO: fully type this
+def make_getter(method: Callable, required_params: Collection[str]) -> Callable:
+    # TODO: fully type this
+    def getter(instance_config: InstanceConfig, **kwargs: Any) -> Any:
         subset_kwargs = {
             key: value for key, value in kwargs.items() if key in required_params
         }
@@ -113,8 +122,12 @@ def make_getter(method, required_params):
     return getter
 
 
-def make_dict_getter(method, required_params, key):
-    def dict_getter(instance_config, **kwargs):
+# TODO: fully type this
+def make_dict_getter(
+    method: Callable, required_params: Collection[str], key: Any
+) -> Callable:
+    # TODO: fully type this
+    def dict_getter(instance_config: InstanceConfig, **kwargs: Any) -> Any:
         subset_kwargs = {
             key: value for key, value in kwargs.items() if key in required_params
         }
@@ -128,14 +141,15 @@ def make_dict_getter(method, required_params, key):
 
 
 def column_names_and_getters_for_class(
-    cls,
+    cls: Type[InstanceConfig],
     allowed_params: Collection[str] = (
         "self",
         "system_paasta_config",
         "service_namespace_config",
         "soa_dir",
     ),
-):
+    # TODO: better type this Callable
+) -> Dict[str, Callable]:
 
     column_names_and_getters = {}
     for method_name, method in inspect.getmembers(cls, predicate=inspect.isfunction):
@@ -154,7 +168,8 @@ def column_names_and_getters_for_class(
             if set(required_params).issubset(allowed_params):
                 if method_name in EXPAND_DICTS:
                     column_name_prefix = EXPAND_DICTS[method_name]
-                    retval_keys = sig._return_annotation.__annotations__.keys()
+                    # TODO: we should refactor this to use typing.get_type_hints()
+                    retval_keys = sig._return_annotation.__annotations__.keys()  # type: ignore
                     for retval_key in retval_keys:
                         column_name = f"{column_name_prefix}_{retval_key}"
                         column_names_and_getters[column_name] = make_dict_getter(
@@ -170,7 +185,13 @@ def column_names_and_getters_for_class(
     return column_names_and_getters
 
 
-def create_table_for_class(cursor, cls):
+def create_table_for_class(
+    cursor: sqlite3.Cursor,
+    cls: Union[
+        Type[KubernetesDeploymentConfig],
+        Type[EksDeploymentConfig],
+    ],
+) -> None:
     column_names = list(column_names_and_getters_for_class(cls).keys())
     comma_newline = """,
             """
@@ -179,11 +200,11 @@ def create_table_for_class(cursor, cls):
             {comma_newline.join(column_names)}
         )
     """
-    print(query)
     cursor.execute(query)
 
 
-def format_for_sqlite(value):
+# TODO: fully type this
+def format_for_sqlite(value: Any) -> Any:
     if isinstance(value, collections.abc.Iterator):
         value = list(value)
 
@@ -204,14 +225,15 @@ def format_for_sqlite(value):
 
 
 def insert_instances(
-    cursor,
+    cursor: sqlite3.Cursor,
     instance_configs: Iterable[InstanceConfig],
-    system_paasta_config,
-    soa_dir,
+    system_paasta_config: SystemPaastaConfig,
+    soa_dir: str,
 ) -> None:
     instance_configs = list(instance_configs)
     if not instance_configs:
         return
+
     cls = type(instance_configs[0])
 
     column_names_and_getters = column_names_and_getters_for_class(cls)
@@ -219,7 +241,12 @@ def insert_instances(
         INSERT INTO {cls.config_filename_prefix}_instance VALUES ({('?, ' * len(column_names_and_getters))[:-2]})
     """
 
-    def calculate_values_for_instance(instance_config):
+    def calculate_values_for_instance(
+        instance_config: Union[
+            KubernetesDeploymentConfig,
+            EksDeploymentConfig,
+        ]
+    ) -> Any:
         assert isinstance(instance_config, cls)
         values = []
         service_namespace_config = load_service_namespace_config(
@@ -254,7 +281,7 @@ def insert_instances(
                 traceback.print_exc()
 
 
-def paasta_sql(args):
+def paasta_sql(args: argparse.Namespace) -> None:
     """Print a list of Yelp services currently running
     :param args: argparse.Namespace obj created from sys.args by cli"""
 
