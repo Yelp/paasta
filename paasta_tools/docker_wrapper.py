@@ -340,15 +340,14 @@ def main(argv=None):
     # Marathon sets MESOS_TASK_ID
     mesos_task_id = env_args.get("MESOS_TASK_ID")
 
-    hostname = socket.getfqdn()
+    fqdn = socket.getfqdn()
+    hostname = fqdn.partition(".")[0]
     if mesos_task_id and can_add_hostname(argv):
-        argv = add_argument(argv, f"-e=PAASTA_HOST={hostname}")
-        hostname_task_id = generate_hostname_task_id(
-            hostname.partition(".")[0], mesos_task_id
-        )
+        argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
+        hostname_task_id = generate_hostname_task_id(hostname, mesos_task_id)
         argv = add_argument(argv, f"--hostname={hostname_task_id }")
     elif can_add_hostname(argv):
-        argv = add_argument(argv, f"-e=PAASTA_HOST={hostname}")
+        argv = add_argument(argv, f"-e=PAASTA_HOST={fqdn}")
         argv = add_argument(argv, f"--hostname={hostname}")
 
     paasta_firewall = env_args.get("PAASTA_FIREWALL")
