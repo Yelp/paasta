@@ -107,6 +107,7 @@ setup(
             "paasta_oom_logger=paasta_tools.oom_logger:main",
             "paasta_broadcast_log=paasta_tools.broadcast_log_to_services:main",
             "paasta_dump_locally_running_services=paasta_tools.dump_locally_running_services:main",
+            "paasta_habitat_fixer=paasta_tools.contrib.habitat_fixer:main",
         ],
         "paste.app_factory": ["paasta-api-config=paasta_tools.api.api:make_app"],
     },
