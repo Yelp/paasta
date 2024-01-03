@@ -23,6 +23,7 @@ Command line options:
 import argparse
 import logging
 import sys
+import traceback
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -321,8 +322,8 @@ def create_application_object(
 ) -> Tuple[bool, Optional[Application]]:
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
-    except InvalidKubernetesConfig as e:
-        log.error(str(e))
+    except InvalidKubernetesConfig:
+        log.error(traceback.format_exc())
         return False, None
 
     app = get_application_wrapper(formatted_application)

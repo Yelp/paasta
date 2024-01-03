@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
+import functools
 import hashlib
 import itertools
 import json
@@ -538,6 +539,19 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
+    @functools.lru_cache()  # type: ignore
+    def __new__(
+        cls,
+        component: Optional[str] = None,
+        config_file: Optional[str] = None,
+        context: Optional[str] = None,
+    ) -> "KubeClient":
+        """By @lru_cache'ing this function, repeated instantiations of KubeClient with the same arguments will return the
+        exact same object. This makes it possible to effectively cache function calls that take a KubeClient as an
+        argument."""
+        return super().__new__(cls)
+
+    @functools.lru_cache()  # type: ignore
     def __init__(
         self,
         component: Optional[str] = None,
@@ -2724,6 +2738,7 @@ def force_delete_pods(
         )
 
 
+@time_cache(ttl=60)
 def get_all_namespaces(
     kube_client: KubeClient, label_selector: Optional[str] = None
 ) -> List[str]:
@@ -2750,6 +2765,7 @@ def get_matching_namespaces(
     ]
 
 
+@functools.lru_cache()
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(
@@ -2761,11 +2777,18 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
             },
         )
     )
-    namespaces = kube_client.core.list_namespace()
-    namespace_names = [item.metadata.name for item in namespaces.items]
+    namespace_names = get_all_namespaces(kube_client)
     if namespace not in namespace_names:
         log.warning(f"Creating namespace: {namespace} as it does not exist")
-        kube_client.core.create_namespace(body=paasta_namespace)
+        try:
+            kube_client.core.create_namespace(body=paasta_namespace)
+        except ApiException as e:
+            if e.status == 409:
+                log.warning(
+                    "Got HTTP 409 when creating namespace; it must already exist. Continuing."
+                )
+            else:
+                raise
 
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
@@ -3471,7 +3494,7 @@ def get_all_nodes(
     return kube_client.core.list_node().items
 
 
-@time_cache(ttl=300)
+@time_cache(ttl=60)
 def get_all_nodes_cached(kube_client: KubeClient) -> Sequence[V1Node]:
     nodes: Sequence[V1Node] = get_all_nodes(kube_client)
     return nodes
@@ -3789,6 +3812,7 @@ def update_secret(
     )
 
 
+@time_cache(ttl=300)
 def get_secret_signature(
     kube_client: KubeClient,
     signature_name: str,
