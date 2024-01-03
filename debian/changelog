@@ -1,3 +1,10 @@
+paasta-tools (0.210.0) xenial; urgency=medium
+
+  * 0.210.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/fix_local_run_docker_hostname"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Jan 2024 11:14:38 -0800
+
 paasta-tools (0.209.3) xenial; urgency=medium
 
   * 0.209.3 tagged with 'make release'
