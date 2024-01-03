@@ -23,11 +23,13 @@ from enum import Enum
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
+from typing import cast
 from typing import Collection
 from typing import Container
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -92,6 +94,7 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
@@ -361,11 +364,45 @@ class CryptoKeyConfig(TypedDict):
     decrypt: List[str]
 
 
+class NodeSelectorInNotIn(TypedDict):
+    operator: Literal["In", "NotIn"]
+    values: List[str]
+
+
+class NodeSelectorExistsDoesNotExist(TypedDict):
+    operator: Literal["Exists", "DoesNotExist"]
+
+
+class NodeSelectorGtLt(TypedDict):
+    operator: Literal["Gt", "Lt"]
+    value: int
+
+
+NodeSelectorOperator = Union[
+    NodeSelectorInNotIn,
+    NodeSelectorExistsDoesNotExist,
+    NodeSelectorGtLt,
+]
+
+
+NodeSelectorConfig = Union[
+    str,
+    List[str],
+    List[NodeSelectorOperator],
+]
+
+
+class NodeSelectorsPreferredConfigDict(TypedDict):
+    weight: int
+    preferences: Dict[str, NodeSelectorConfig]
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    node_selectors: Dict[str, Union[str, Dict[str, Any]]]
+    node_selectors: Dict[str, NodeSelectorConfig]
+    node_selectors_preferred: List[NodeSelectorsPreferredConfigDict]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
@@ -580,28 +617,40 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, Any]
+    raw_selectors: Mapping[str, NodeSelectorConfig]
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.
     """
-    requirements = []
+    requirements: List[Tuple[str, str, List[str]]] = []
 
     for label, configs in raw_selectors.items():
+        operator_configs: List[NodeSelectorOperator] = []
+
         if type(configs) is not list or len(configs) == 0:
             continue
         elif type(configs[0]) is str:
             # specifying an array/list of strings for a label is shorthand
             # for the "In" operator
-            configs = [{"operator": "In", "values": configs}]
+            operator_configs = [
+                NodeSelectorInNotIn(
+                    {"operator": "In", "values": cast(List[str], configs)}
+                )
+            ]
+        else:
+            # configs should already be a List[NodeSelectorOperator]
+            operator_configs = cast(List[NodeSelectorOperator], configs)
 
         label = to_node_label(label)
-        for config in configs:
+        for config in operator_configs:
             if config["operator"] in {"In", "NotIn"}:
+                config = cast(NodeSelectorInNotIn, config)
                 values = config["values"]
             elif config["operator"] in {"Exists", "DoesNotExist"}:
+                config = cast(NodeSelectorExistsDoesNotExist, config)
                 values = []
             elif config["operator"] in {"Gt", "Lt"}:
+                config = cast(NodeSelectorGtLt, config)
                 # config["value"] is validated by jsonschema to be an int. but,
                 # k8s expects singleton list of the int represented as a str
                 # for these operators.
@@ -2317,10 +2366,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 raw_selectors=self.config_dict.get("node_selectors", {}),
             )
         )
+
+        preferred_terms = []
+        for node_selectors_prefered_config_dict in self.config_dict.get(
+            "node_selectors_preferred", []
+        ):
+            preferred_terms.append(
+                V1PreferredSchedulingTerm(
+                    weight=node_selectors_prefered_config_dict["weight"],
+                    preference=V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key=key,
+                                operator=op,
+                                values=vs,
+                            )
+                            for key, op, vs in raw_selectors_to_requirements(
+                                raw_selectors=node_selectors_prefered_config_dict[
+                                    "preferences"
+                                ]
+                            )
+                        ]
+                    ),
+                )
+            )
+
         # package everything into a node affinity - lots of layers :P
-        if len(requirements) == 0:
+        if len(requirements) == 0 and len(preferred_terms) == 0:
             return None
-        term = V1NodeSelectorTerm(
+
+        required_term = V1NodeSelectorTerm(
             match_expressions=[
                 V1NodeSelectorRequirement(
                     key=key,
@@ -2330,13 +2405,15 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 for key, op, vs in requirements
             ]
         )
-        selector = V1NodeSelector(node_selector_terms=[term])
+
+        if not preferred_terms:
+            preferred_terms = None
+
         return V1NodeAffinity(
-            # this means that the selectors are only used during scheduling.
-            # changing it while the pod is running will not cause an eviction.
-            # this should be fine since if there are whitelist/blacklist config
-            # changes, we will bounce anyway.
-            required_during_scheduling_ignored_during_execution=selector,
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[required_term]
+            ),
+            preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
     def get_pod_required_anti_affinity_terms(
