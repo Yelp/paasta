@@ -38,7 +38,7 @@ def is_affected_node(node: V1Node) -> bool:
 
 def get_desired_habitat(node: V1Node) -> str:
     zone = node.metadata.labels["topology.kubernetes.io/zone"].replace("-", "")
-    _, ecosystem = node.metadata.labels["yelp.com/superregion"].rsplit("-")
+    ecosystem = node.metadata.labels["yelp.com/ecosystem"]
 
     return f"{zone}{ecosystem}"
 
