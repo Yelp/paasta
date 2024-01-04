@@ -57,4 +57,4 @@ opt/venvs/paasta-tools/bin/setup_kubernetes_cr.py usr/bin/setup_kubernetes_cr
 opt/venvs/paasta-tools/bin/setup_prometheus_adapter_config.py usr/bin/setup_prometheus_adapter_config
 opt/venvs/paasta-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact
 opt/venvs/paasta-tools/bin/paasta_update_soa_memcpu.py usr/bin/paasta_update_soa_memcpu
-opt/venvs/paasta-tools/bin/paasta_habitat_fixer.py usr/bin/paasta_habitat_fixer
+opt/venvs/paasta-tools/bin/habitat_fixer.py usr/bin/paasta_habitat_fixer
