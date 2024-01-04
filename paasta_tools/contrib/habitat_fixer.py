@@ -22,10 +22,25 @@ def parse_args() -> argparse.Namespace:
         else KUBE_CONFIG_USER_PATH,
     )
     parser.add_argument(
+        "-t", "--context", default=None  # -c is taken, so lets use the last letter :p
+    )
+    parser.add_argument(
         "--for-real",
         action="store_true",
     )
-    return parser.parse_args()
+    parsed_args = parser.parse_args()
+
+    if not parsed_args.context:
+        if parsed_args.kubeconfig == KUBE_CONFIG_USER_PATH:
+            # in the user kubeconfig, context names are just the cluster names
+            parsed_args.context = parsed_args.cluster
+        else:
+            print(
+                f"NOTE: no context specified - will use the current context selected in {parsed_args.kubeconfig} "
+                "(or the KUBECONTEXT environment variable if set)."
+            )
+
+    return parsed_args
 
 
 def is_affected_node(node: V1Node) -> bool:
@@ -45,7 +60,7 @@ def get_desired_habitat(node: V1Node) -> str:
 
 def main():
     args = parse_args()
-    client = KubeClient(config_file=args.kubeconfig, context=args.cluster)
+    client = KubeClient(config_file=args.kubeconfig, context=args.context)
     for node in client.core.list_node().items:
         if not is_affected_node(node):
             continue
