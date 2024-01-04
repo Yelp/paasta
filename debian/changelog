@@ -1,3 +1,14 @@
+paasta-tools (0.211.0) xenial; urgency=medium
+
+  * 0.211.0 tagged with 'make release'
+    Commit: Add workaround script to fix habitat labels (#3762)  We"re
+    seeing some weirdness with Karpenter where one of our custom labels
+    (yelp.com/habitat) is sometimes being set as a random integer.
+    While we debug this, we have enough information to write a script to
+    fix these.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 10:18:00 -0800
+
 paasta-tools (0.210.0) xenial; urgency=medium
 
   * 0.210.0 tagged with 'make release'
