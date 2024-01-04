@@ -22,10 +22,30 @@ def parse_args() -> argparse.Namespace:
         else KUBE_CONFIG_USER_PATH,
     )
     parser.add_argument(
+        "-t", "--context", default=None  # -c is taken, so lets use the last letter :p
+    )
+    parser.add_argument(
         "--for-real",
         action="store_true",
     )
-    return parser.parse_args()
+    parsed_args = parser.parse_args()
+
+    if not parsed_args.context:
+        if parsed_args.kubeconfig == KUBE_CONFIG_PATH:
+            # if we're using the default on a box with an admin kubeconf, we'll
+            # need to ensure that we're using the right context name - which
+            # interestingly enough has a different name than usual even though
+            # these kubeconfigs only ever have a single entry :p
+            parsed_args.context = f"kubernetes-admin@{parsed_args.cluster}"
+        elif parsed_args.kubeconfig == KUBE_CONFIG_USER_PATH:
+            # otherwise, the user kubeconfig context names are just the cluster names
+            parsed_args.context = parsed_args.cluster
+        else:
+            print(
+                "WARNING: unable to guess context: will fallback to KUBECONTEXT env var if present"
+            )
+
+    return parsed_args
 
 
 def is_affected_node(node: V1Node) -> bool:
@@ -45,7 +65,7 @@ def get_desired_habitat(node: V1Node) -> str:
 
 def main():
     args = parse_args()
-    client = KubeClient(config_file=args.kubeconfig, context=args.cluster)
+    client = KubeClient(config_file=args.kubeconfig, context=args.context)
     for node in client.core.list_node().items:
         if not is_affected_node(node):
             continue
