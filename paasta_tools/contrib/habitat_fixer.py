@@ -31,18 +31,13 @@ def parse_args() -> argparse.Namespace:
     parsed_args = parser.parse_args()
 
     if not parsed_args.context:
-        if parsed_args.kubeconfig == KUBE_CONFIG_PATH:
-            # if we're using the default on a box with an admin kubeconf, we'll
-            # need to ensure that we're using the right context name - which
-            # interestingly enough has a different name than usual even though
-            # these kubeconfigs only ever have a single entry :p
-            parsed_args.context = f"kubernetes-admin@{parsed_args.cluster}"
-        elif parsed_args.kubeconfig == KUBE_CONFIG_USER_PATH:
-            # otherwise, the user kubeconfig context names are just the cluster names
+        if parsed_args.kubeconfig == KUBE_CONFIG_USER_PATH:
+            # in the user kubeconfig, context names are just the cluster names
             parsed_args.context = parsed_args.cluster
         else:
             print(
-                "WARNING: unable to guess context: will fallback to KUBECONTEXT env var if present"
+                f"NOTE: no context specified - will use the current context selected in {parsed_args.kubeconfig} "
+                "(or the KUBECONTEXT environment variable if set)."
             )
 
     return parsed_args
