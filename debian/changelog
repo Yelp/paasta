@@ -1,3 +1,12 @@
+paasta-tools (0.211.1) xenial; urgency=medium
+
+  * 0.211.1 tagged with 'make release'
+    Commit: Fix debian link (#3765)  This is what I get for naming the
+    file differently from the command - `paasta_habitat_fixer` does not
+    work as bin/ does not contain a paasta_habitat_fixer.py
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 13:49:39 -0800
+
 paasta-tools (0.211.0) xenial; urgency=medium
 
   * 0.211.0 tagged with 'make release'
