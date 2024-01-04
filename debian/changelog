@@ -1,3 +1,13 @@
+paasta-tools (0.211.2) xenial; urgency=medium
+
+  * 0.211.2 tagged with 'make release'
+    Commit: Guess the correct context (or allow override) in
+    paasta_habitat_fixer (#3766)  Turns out that I didn"t read the admin
+    kubeconf closely enough and missed that the context names there are
+    prefixed with kubernetes-admin@
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 15:46:52 -0800
+
 paasta-tools (0.211.1) xenial; urgency=medium
 
   * 0.211.1 tagged with 'make release'
