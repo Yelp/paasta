@@ -1066,7 +1066,7 @@ def get_instance_configs_for_service(
     if type_filter is None:
         type_filter = INSTANCE_TYPE_HANDLERS.keys()
 
-    for cluster in list_clusters(service=service, soa_dir=soa_dir):
+    for cluster in clusters:
         for instance_type, instance_handlers in INSTANCE_TYPE_HANDLERS.items():
             if instance_type not in type_filter:
                 continue
