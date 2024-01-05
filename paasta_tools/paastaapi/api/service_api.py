@@ -1186,7 +1186,6 @@ class ServiceApi(object):
                 instance (str): Instance name
 
             Keyword Args:
-                include_smartstack (bool): Include Smartstack information. [optional] if omitted the server will use the default value of False
                 include_envoy (bool): Include Envoy information. [optional] if omitted the server will use the default value of True
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -1251,7 +1250,6 @@ class ServiceApi(object):
                 'all': [
                     'service',
                     'instance',
-                    'include_smartstack',
                     'include_envoy',
                 ],
                 'required': [
@@ -1275,21 +1273,17 @@ class ServiceApi(object):
                         (str,),
                     'instance':
                         (str,),
-                    'include_smartstack':
-                        (bool,),
                     'include_envoy':
                         (bool,),
                 },
                 'attribute_map': {
                     'service': 'service',
                     'instance': 'instance',
-                    'include_smartstack': 'include_smartstack',
                     'include_envoy': 'include_envoy',
                 },
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
-                    'include_smartstack': 'query',
                     'include_envoy': 'query',
                 },
                 'collection_format_map': {
@@ -1325,7 +1319,6 @@ class ServiceApi(object):
 
             Keyword Args:
                 verbose (int): Include verbose status information. [optional]
-                include_smartstack (bool): Include Smartstack information. [optional]
                 include_envoy (bool): Include Envoy information. [optional]
                 include_mesos (bool): Include Mesos information. [optional]
                 new (bool): Use new version of paasta status for services. [optional]
@@ -1393,7 +1386,6 @@ class ServiceApi(object):
                     'service',
                     'instance',
                     'verbose',
-                    'include_smartstack',
                     'include_envoy',
                     'include_mesos',
                     'new',
@@ -1421,8 +1413,6 @@ class ServiceApi(object):
                         (str,),
                     'verbose':
                         (int,),
-                    'include_smartstack':
-                        (bool,),
                     'include_envoy':
                         (bool,),
                     'include_mesos':
@@ -1434,7 +1424,6 @@ class ServiceApi(object):
                     'service': 'service',
                     'instance': 'instance',
                     'verbose': 'verbose',
-                    'include_smartstack': 'include_smartstack',
                     'include_envoy': 'include_envoy',
                     'include_mesos': 'include_mesos',
                     'new': 'new',
@@ -1443,7 +1432,6 @@ class ServiceApi(object):
                     'service': 'path',
                     'instance': 'path',
                     'verbose': 'query',
-                    'include_smartstack': 'query',
                     'include_envoy': 'query',
                     'include_mesos': 'query',
                     'new': 'query',

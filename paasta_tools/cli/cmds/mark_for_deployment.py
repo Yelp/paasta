@@ -1507,7 +1507,6 @@ def diagnose_why_instance_is_stuck(
         status = api.service.status_instance(
             service=service,
             instance=instance,
-            include_smartstack=False,
             include_envoy=False,
             include_mesos=False,
             new=True,
