@@ -1,3 +1,11 @@
+paasta-tools (0.212.0) xenial; urgency=medium
+
+  * 0.212.0 tagged with 'make release'
+    Commit: Merge pull request #3763 from
+    Yelp/u/jfong/no_include_smartstack  Remove include_smartstack
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 05 Jan 2024 09:40:59 -0800
+
 paasta-tools (0.211.2) xenial; urgency=medium
 
   * 0.211.2 tagged with 'make release'
