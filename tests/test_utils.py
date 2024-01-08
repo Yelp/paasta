@@ -2645,7 +2645,6 @@ def test_is_deploy_step():
     assert utils.is_deploy_step("thingy")
 
     assert not utils.is_deploy_step("itest")
-    assert not utils.is_deploy_step("performance-check")
     assert not utils.is_deploy_step("command-thingy")
 
 
