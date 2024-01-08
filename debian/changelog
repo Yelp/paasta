@@ -1,3 +1,13 @@
+paasta-tools (0.213.0) xenial; urgency=medium
+
+  * 0.213.0 tagged with 'make release'
+    Commit: Remove paasta performance-check (#3750)  This was never
+    really utilized as intended and the necessary infra to run this was
+    torn down long ago - let"s delete this until someone has the desire
+    and will to bring it back :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 11:43:25 -0800
+
 paasta-tools (0.212.1) xenial; urgency=medium
 
   * 0.212.1 tagged with 'make release'
