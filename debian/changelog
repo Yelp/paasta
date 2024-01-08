@@ -1,3 +1,11 @@
+paasta-tools (0.212.1) xenial; urgency=medium
+
+  * 0.212.1 tagged with 'make release'
+    Commit: Merge pull request #3767 from rockdog/master  Fix
+    NO_DESCRIPTION_MESSAGE used in paasta info cli command
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 08:08:15 -0800
+
 paasta-tools (0.212.0) xenial; urgency=medium
 
   * 0.212.0 tagged with 'make release'
