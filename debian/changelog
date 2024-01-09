@@ -1,3 +1,11 @@
+paasta-tools (0.213.1) xenial; urgency=medium
+
+  * 0.213.1 tagged with 'make release'
+    Commit: Merge pull request #3768 from Yelp/luisp/i-am-very-sorry
+    Load eks- and kubernetes- files in autotune merging
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 08 Jan 2024 17:04:39 -0800
+
 paasta-tools (0.213.0) xenial; urgency=medium
 
   * 0.213.0 tagged with 'make release'
