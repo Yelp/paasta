@@ -337,8 +337,8 @@ class AutoConfigUpdater:
             # and eks- files for the existing configs, as there are services that at any given time will
             # only exist on one of these or may have a mix (and the csv file that we get fakes the current
             # cluster type)
-            # NOTE: if an instance appears in both files, the counterpart will always "win" - this 
-            # should only be possible while an instance is being migrated from one instance type to 
+            # NOTE: if an instance appears in both files, the counterpart will always "win" - this
+            # should only be possible while an instance is being migrated from one instance type to
             # another
             instance_type, _ = instance_type_cluster.split("-", maxsplit=1)
             existing_configs = {
