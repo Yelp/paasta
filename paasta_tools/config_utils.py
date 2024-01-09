@@ -28,6 +28,11 @@ KNOWN_CONFIG_TYPES = (
     "cassandracluster",
 )
 
+# this could use a better name - but basically, this is for pairs of instance types
+# where you generally want to check both types (i.e.,g a status-quo and migration
+# instance type)
+INSTANCE_TYPE_COUNTERPARTS = {"eks": "kubernetes", "kubernetes": "eks"}
+
 
 def my_represent_none(self, data):
     return self.represent_scalar("tag:yaml.org,2002:null", "null")
@@ -327,10 +332,28 @@ class AutoConfigUpdater:
             log.debug(
                 f"Getting current configs for {service}/{instance_type_cluster}.yaml..."
             )
-            existing_configs = self.get_existing_configs(
-                service=service,
-                file_name=instance_type_cluster,
-            )
+            # i'm so sorry.
+            # basically, we need to make sure that for every autotuned service, we load both kubernetes-
+            # and eks- files for the existing configs, as there are services that at any given time will
+            # only exist on one of these or may have a mix (and the csv file that we get fakes the current
+            # cluster type)
+            # NOTE: if an instance appears in both files, the counterpart will always "win" - this
+            # should only be possible while an instance is being migrated from one instance type to
+            # another
+            instance_type, _ = instance_type_cluster.split("-", maxsplit=1)
+            existing_configs = {
+                # if we upgrate to py3.9 before getting rid of this code, this should use PEP-584-style dict merging
+                **self.get_existing_configs(
+                    service=service,
+                    file_name=instance_type_cluster,
+                ),
+                **self.get_existing_configs(
+                    service=service,
+                    file_name=instance_type_cluster.replace(
+                        instance_type, INSTANCE_TYPE_COUNTERPARTS.get(instance_type, "")
+                    ),
+                ),
+            }
 
             for instance_name, recommendation in recommendations_by_instance.items():
                 log.debug(

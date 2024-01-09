@@ -356,7 +356,16 @@ def test_auto_config_updater_merge_recommendations_limits(updater):
         updater,
         "get_existing_configs",
         autospec=True,
-        side_effect=[autotune_data, user_data],
+        side_effect=[
+            # first get the autotune data
+            autotune_data,
+            # then we get both the eks- and kuberentes- data
+            user_data,
+            # there could be data in both of these, but for a
+            # simpler test, we just assume that we're looking
+            # at something that's 100% on Yelp-managed k8s
+            {},
+        ],
     ):
         assert updater.merge_recommendations(recs) == {
             (service, conf_file): {
