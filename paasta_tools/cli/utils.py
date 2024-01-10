@@ -72,7 +72,7 @@ from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
-from paasta_tools.vitess_tools import load_vitess_instance_config
+from paasta_tools.vitesscluster_tools import load_vitess_instance_config
 
 log = logging.getLogger(__name__)
 
