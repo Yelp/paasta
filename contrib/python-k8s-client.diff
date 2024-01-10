@@ -1,0 +1,11 @@
+--- a/debian/paasta/opt/venvs/paasta/lib/python3.8/site-packages/kubernetes/client/api_client.py
++++ b/debian/paasta/opt/venvs/paasta/lib/python3.8/site-packages/kubernetes/client/api_client.py
+@@ -629,7 +629,7 @@
+                                                    'get_real_child_model'):
+             return data
+
+-        kwargs = {}
++        kwargs = {"local_vars_configuration": self.configuration}
+         if (data is not None and
+                 klass.openapi_types is not None and
+                 isinstance(data, (list, dict))):
