@@ -149,7 +149,7 @@ attempt to autoscale your service with the default autoscaling method.
 ``max_instances`` alerting
 --------------------------
 
-In order to make you aware of when your ``max_instances`` may be too low, causing issues with your service, paasta will send you alerts if all of the following conditions are true:
+In order to make you aware of when your ``max_instances`` may be too low, causing issues with your service, Paasta will send you ``check_autoscaler_max_instances`` alerts if all of the following conditions are true:
 
   * The autoscaler has scaled your service to ``max_instances``.
 
