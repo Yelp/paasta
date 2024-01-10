@@ -2409,15 +2409,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if len(requirements) == 0 and len(preferred_terms) == 0:
             return None
 
-        required_term = V1NodeSelectorTerm(
-            match_expressions=[
-                V1NodeSelectorRequirement(
-                    key=key,
-                    operator=op,
-                    values=vs,
-                )
-                for key, op, vs in requirements
-            ]
+        required_term = (
+            V1NodeSelectorTerm(
+                match_expressions=[
+                    V1NodeSelectorRequirement(
+                        key=key,
+                        operator=op,
+                        values=vs,
+                    )
+                    for key, op, vs in requirements
+                ]
+            )
+            if requirements
+            else None
         )
 
         if not preferred_terms:
@@ -2426,7 +2430,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[required_term]
-            ),
+            )
+            if required_term
+            else None,
             preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
