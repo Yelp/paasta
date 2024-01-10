@@ -1,3 +1,11 @@
+paasta-tools (0.214.0) xenial; urgency=medium
+
+  * 0.214.0 tagged with 'make release'
+    Commit: Merge pull request #3761 from Yelp/u/cuza/patching-python-
+    k8s-client  Patching python-k8s-client at build time
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Jan 2024 12:24:51 -0800
+
 paasta-tools (0.213.1) xenial; urgency=medium
 
   * 0.213.1 tagged with 'make release'
