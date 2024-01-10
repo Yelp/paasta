@@ -96,8 +96,8 @@ def parse_args():
     )
     parser.add_argument(
         "--branch",
-        help="Branch name to push to. Defaults to master",
-        default="master",
+        help="Branch name to push to. Defaults to main",
+        default="main",
         required=False,
         dest="branch",
     )
