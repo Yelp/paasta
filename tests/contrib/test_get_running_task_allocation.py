@@ -4,7 +4,7 @@ from kubernetes.client import V1ResourceRequirements
 from paasta_tools.contrib.get_running_task_allocation import (
     get_kubernetes_resource_request_limit,
 )
-from paasta_tools.contrib.get_running_task_allocation import get_matching_namespaces
+from paasta_tools.contrib.get_running_task_allocation import get_unexcluded_namespaces
 
 
 def test_get_kubernetes_resource_request_limit():
@@ -26,25 +26,26 @@ def test_get_kubernetes_resource_request_limit():
 
 
 @pytest.mark.parametrize(
-    "namespaces, namespace_prefix, additional_namespaces, expected",
+    "namespaces, namespaces_to_exclude, expected",
     (
         (
             ["paasta", "paasta-flink", "paasta-spark", "luisp-was-here", "tron"],
-            "paasta",
             ["tron"],
-            ["paasta", "paasta-flink", "paasta-spark", "tron"],
+            ["paasta", "paasta-flink", "paasta-spark", "luisp-was-here"],
         ),
         (
             ["paasta", "paasta-flink", "paasta-spark", "luisp-was-here", "tron"],
-            "paasta",
-            [""],
-            ["paasta", "paasta-flink", "paasta-spark"],
+            [],
+            ["paasta", "paasta-flink", "paasta-spark", "luisp-was-here", "tron"],
+        ),
+        (
+            ["paasta", "paasta-flink", "paasta-spark", "luisp-was-here", "tron"],
+            ["tron", "paasta"],
+            ["paasta-flink", "paasta-spark", "luisp-was-here"],
         ),
     ),
 )
-def test_get_matching_namespaces(
-    namespaces, namespace_prefix, additional_namespaces, expected
-):
+def test_get_matching_namespaces(namespaces, namespaces_to_exclude, expected):
     assert sorted(
-        get_matching_namespaces(namespaces, namespace_prefix, additional_namespaces)
+        get_unexcluded_namespaces(namespaces, namespaces_to_exclude)
     ) == sorted(expected)
