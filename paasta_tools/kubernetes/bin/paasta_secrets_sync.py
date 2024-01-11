@@ -633,6 +633,9 @@ def sync_boto_secrets(
                         log.warning(
                             f"Boto key {this_key} required for {service} could not be found."
                         )
+                        secret_data[
+                            sanitised_key
+                        ] = "This user no longer exists. Remove it from boto_keys."
 
             if not secret_data:
                 continue
