@@ -294,7 +294,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--additional-namespaces",
-        help="[UNUSED] full names of namespaces to fetch allocation info for that don't match --namespace-prefix\n"
+        help=argparse.SUPPRESS,
         "Used only when scheduler is kubernetes",
         dest="additional_namespaces",
         nargs="+",
