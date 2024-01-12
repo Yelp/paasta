@@ -65,20 +65,13 @@ The currently available metrics providers are:
   Measures the CPU usage of your service's container.
 
 :uwsgi:
-  With the ``uwsgi`` metrics provider, Paasta will configure your pods to run an additional container with the `uwsgi_exporter <https://github.com/timonwong/uwsgi_exporter>`_ image.
-  This sidecar will listen on port 9117, and will request metrics from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
-  The uwsgi_exporter container needs to know what port your uWSGI master's stats server is on - you can configure this with the ``uwsgi_stats_port`` key in the ``autoscaling`` dictionary.
-  ``uwsgi_exporter`` will translate the uWSGI stats into Prometheus format, which Prometheus will scrape.
+  With the ``uwsgi`` metrics provider, Paasta will configure your pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
+  We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
 
   .. note::
 
-    If you have configured your service to use a non-default stats port (8889), you need to explicity set ``uwsgi_stats_port`` in your autoscaling config with the same value to ensure that metrics are being exported.
+    If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
 
-  Extra parameters:
-
-  :uwsgi_stats_port:
-    the port that your uWSGI master process will respond to with stats.
-    Defaults to 8889.
 
 :gunicorn:
   With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.

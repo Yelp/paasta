@@ -229,9 +229,6 @@
                         "use_resource_metrics": {
                             "type": "boolean"
                         },
-                        "uwsgi_stats_port": {
-                            "type": "integer"
-                        },
                         "scaledown_policies": {
                             "type": "object"
                         },
