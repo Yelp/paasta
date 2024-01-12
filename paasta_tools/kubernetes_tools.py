@@ -1136,16 +1136,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         system_paasta_config: SystemPaastaConfig,
     ) -> bool:
-        if self.is_autoscaling_enabled():
-            autoscaling_params = self.get_autoscaling_params()
-            if autoscaling_params["metrics_provider"] == "uwsgi":
-                if autoscaling_params.get(
-                    "use_prometheus",
-                    DEFAULT_USE_PROMETHEUS_UWSGI
-                    or system_paasta_config.default_should_use_uwsgi_exporter(),
-                ):
-                    return True
-        return False
+        return (
+            self.is_autoscaling_enabled()
+            and self.get_autoscaling_params()["metrics_provider"] == "uwsgi"
+        )
 
     def get_gunicorn_exporter_sidecar_container(
         self,
@@ -2288,7 +2282,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
-        if self.should_setup_piscina_prometheus_scraping():
+        elif self.should_setup_piscina_prometheus_scraping():
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
