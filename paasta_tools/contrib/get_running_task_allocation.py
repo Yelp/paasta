@@ -287,7 +287,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--namespace-prefix",
-        help="[UNUSED] prefix of the namespace to fetch the logs for"
+        help=argparse.SUPPRESS,
         "Used only when scheduler is kubernetes",
         dest="namespace_prefix",
         default="paasta",
