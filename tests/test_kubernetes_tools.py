@@ -783,7 +783,7 @@ class TestKubernetesDeploymentConfig:
             requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
 
-    def test_should_use_uwsgi_exporter_explicit(self):
+    def test_should_run_uwsgi_exporter_sidecar_explicit(self):
         self.deployment.config_dict.update(
             {
                 "max_instances": 5,
@@ -798,7 +798,7 @@ class TestKubernetesDeploymentConfig:
 
         assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is True
 
-        self.deployment.config_dict["autoscaling"]["metrics_provider"] = "cpu"
+        self.deployment.config_dict["autoscaling"]["use_prometheus"] = False
         assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is False
 
     def test_get_gunicorn_exporter_sidecar_container_should_run(self):
