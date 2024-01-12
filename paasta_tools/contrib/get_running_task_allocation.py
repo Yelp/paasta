@@ -288,14 +288,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--namespace-prefix",
         help=argparse.SUPPRESS,
-        "Used only when scheduler is kubernetes",
         dest="namespace_prefix",
         default="paasta",
     )
     parser.add_argument(
         "--additional-namespaces",
         help=argparse.SUPPRESS,
-        "Used only when scheduler is kubernetes",
         dest="additional_namespaces",
         nargs="+",
         # we default this to tron since this is really the only non-paasta-prefix namespaced that is part of paasta
