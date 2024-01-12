@@ -1,3 +1,17 @@
+paasta-tools (0.215.0) xenial; urgency=medium
+
+  * 0.215.0 tagged with 'make release'
+    Commit: Make get_running_task_allocation include all namespaces by
+    default (#3774)  For the most part, we"re not really excluding many
+    namespaces (most of our namespaces start with paasta).  That said,
+    now that we allow folks to use any arbitrary namespace, we can run
+    into issues where a namespace is not in our allowlist and then
+    autotune silently stops working.  I don"t foresee this adding too
+    much additional data (and if it does, we can filter out noisy
+    namespaces).  Co-authored-by: tzhu
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 12 Jan 2024 08:18:55 -0800
+
 paasta-tools (0.214.0) xenial; urgency=medium
 
   * 0.214.0 tagged with 'make release'
