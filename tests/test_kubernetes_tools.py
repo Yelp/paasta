@@ -746,11 +746,6 @@ class TestKubernetesDeploymentConfig:
                         "memory": "512Mi",
                         "ephemeral-storage": "256Mi",
                     },
-                    "uwsgi_exporter": {
-                        "cpu": 0.1,
-                        "memory": "512Mi",
-                        "ephemeral-storage": "256Mi",
-                    },
                 }
             )
         )
@@ -778,11 +773,6 @@ class TestKubernetesDeploymentConfig:
                         "memory": "1024Mi",
                         "ephemeral-storage": "256Mi",
                     },
-                    "uwsgi_exporter": {
-                        "cpu": 0.1,
-                        "memory": "1024Mi",
-                        "ephemeral-storage": "256Mi",
-                    },
                 }
             )
         )
@@ -793,72 +783,7 @@ class TestKubernetesDeploymentConfig:
             requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
 
-    def test_get_uwsgi_exporter_sidecar_container_should_run(self):
-        system_paasta_config = mock.Mock(
-            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
-                return_value="uwsgi_exporter_image"
-            )
-        )
-        with mock.patch.object(
-            self.deployment, "should_run_uwsgi_exporter_sidecar", return_value=True
-        ):
-            ret = self.deployment.get_uwsgi_exporter_sidecar_container(
-                system_paasta_config
-            )
-            assert ret is not None
-            assert ret.image == "uwsgi_exporter_image"
-            assert ret.ports[0].container_port == 9117
-
-    @pytest.mark.parametrize(
-        "uwsgi_stats_port,expected_port",
-        [
-            (None, "8889"),
-            (31337, "31337"),
-        ],
-    )
-    def test_get_uwsgi_exporter_sidecar_container_stats_port(
-        self, uwsgi_stats_port, expected_port
-    ):
-        system_paasta_config = mock.Mock(
-            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
-                return_value="uwsgi_exporter_image"
-            )
-        )
-        self.deployment.config_dict.update(
-            {
-                "max_instances": 5,
-                "autoscaling": {
-                    "metrics_provider": "uwsgi",
-                    "use_prometheus": True,
-                },
-            }
-        )
-        if uwsgi_stats_port is not None:
-            self.deployment.config_dict["autoscaling"][
-                "uwsgi_stats_port"
-            ] = uwsgi_stats_port
-
-        ret = self.deployment.get_uwsgi_exporter_sidecar_container(system_paasta_config)
-        expected_env_var = V1EnvVar(name="STATS_PORT", value=expected_port)
-        assert expected_env_var in ret.env
-
-    def test_get_uwsgi_exporter_sidecar_container_shouldnt_run(self):
-        system_paasta_config = mock.Mock(
-            get_uwsgi_exporter_sidecar_image_url=mock.Mock(
-                return_value="uwsgi_exporter_image"
-            )
-        )
-        with mock.patch.object(
-            self.deployment, "should_run_uwsgi_exporter_sidecar", return_value=False
-        ):
-            assert (
-                self.deployment.get_uwsgi_exporter_sidecar_container(
-                    system_paasta_config
-                )
-                is None
-            )
-
-    def test_should_run_uwsgi_exporter_sidecar_explicit(self):
+    def test_should_use_uwsgi_exporter_explicit(self):
         self.deployment.config_dict.update(
             {
                 "max_instances": 5,
@@ -871,71 +796,10 @@ class TestKubernetesDeploymentConfig:
 
         system_paasta_config = mock.Mock()
 
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(system_paasta_config)
-            is True
-        )
+        assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is True
 
-        self.deployment.config_dict["autoscaling"]["use_prometheus"] = False
-        assert (
-            self.deployment.should_run_uwsgi_exporter_sidecar(system_paasta_config)
-            is False
-        )
-
-    def test_should_run_uwsgi_exporter_sidecar_defaults(self):
-        self.deployment.config_dict.update(
-            {
-                "max_instances": 5,
-                "autoscaling": {
-                    "metrics_provider": "uwsgi",
-                },
-            }
-        )
-
-        system_paasta_config_enabled = mock.Mock(
-            default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=True)
-        )
-        system_paasta_config_disabled = mock.Mock(
-            default_should_run_uwsgi_exporter_sidecar=mock.Mock(return_value=False)
-        )
-
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
-            autospec=False,
-            new=False,
-        ):
-            assert (
-                self.deployment.should_run_uwsgi_exporter_sidecar(
-                    system_paasta_config_enabled
-                )
-                is True
-            )
-            assert (
-                self.deployment.should_run_uwsgi_exporter_sidecar(
-                    system_paasta_config_disabled
-                )
-                is False
-            )
-
-        # If the default for use_prometheus is True and config_dict doesn't specify use_prometheus, we should run
-        # uwsgi_exporter regardless of default_should_run_uwsgi_exporter_sidecar.
-        with mock.patch(
-            "paasta_tools.kubernetes_tools.DEFAULT_USE_PROMETHEUS_UWSGI",
-            autospec=False,
-            new=True,
-        ):
-            assert (
-                self.deployment.should_run_uwsgi_exporter_sidecar(
-                    system_paasta_config_enabled
-                )
-                is True
-            )
-            assert (
-                self.deployment.should_run_uwsgi_exporter_sidecar(
-                    system_paasta_config_disabled
-                )
-                is True
-            )
+        self.deployment.config_dict["autoscaling"]["metrics_provider"] = "cpu"
+        assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is False
 
     def test_get_gunicorn_exporter_sidecar_container_should_run(self):
         system_paasta_config = mock.Mock(
@@ -1943,9 +1807,10 @@ class TestKubernetesDeploymentConfig:
 
         if autoscaling_metric_provider:
             expected_labels["paasta.yelp.com/deploy_group"] = "fake_group"
-            expected_labels[
-                f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
-            ] = "true"
+            if autoscaling_metric_provider != "uwsgi":
+                expected_labels[
+                    f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
+                ] = "true"
         if autoscaling_metric_provider in ("uwsgi", "gunicorn"):
             routable_ip = "true"
 
@@ -1972,7 +1837,7 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_run_uwsgi_exporter_sidecar",
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_use_uwsgi_exporter",
         autospec=True,
     )
     @mock.patch(
@@ -1980,7 +1845,7 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "ip_configured,in_smtstk,prometheus_port,should_run_uwsgi_exporter_sidecar_retval,should_run_gunicorn_exporter_sidecar_retval,expected",
+        "ip_configured,in_smtstk,prometheus_port,should_use_uwsgi_exporter_retval,should_run_gunicorn_exporter_sidecar_retval,expected",
         [
             (False, True, 8888, False, False, "true"),
             (False, False, 8888, False, False, "true"),
@@ -1993,20 +1858,18 @@ class TestKubernetesDeploymentConfig:
     )
     def test_routable_ip(
         self,
-        mock_should_run_uwsgi_exporter_sidecar,
+        mock_should_use_uwsgi_exporter,
         mock_should_run_gunicorn_exporter_sidecar,
         mock_get_prometheus_port,
         ip_configured,
         in_smtstk,
         prometheus_port,
-        should_run_uwsgi_exporter_sidecar_retval,
+        should_use_uwsgi_exporter_retval,
         should_run_gunicorn_exporter_sidecar_retval,
         expected,
     ):
         mock_get_prometheus_port.return_value = prometheus_port
-        mock_should_run_uwsgi_exporter_sidecar.return_value = (
-            should_run_uwsgi_exporter_sidecar_retval
-        )
+        mock_should_use_uwsgi_exporter.return_value = should_use_uwsgi_exporter_retval
         mock_should_run_gunicorn_exporter_sidecar.return_value = (
             should_run_gunicorn_exporter_sidecar_retval
         )

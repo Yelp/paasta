@@ -181,11 +181,9 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
-UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
 SIDECAR_CONTAINER_NAMES = [
     HACHECK_POD_NAME,
-    UWSGI_EXPORTER_POD_NAME,
     GUNICORN_EXPORTER_POD_NAME,
 ]
 KUBERNETES_NAMESPACE = "paasta"
@@ -341,7 +339,6 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/image_version": str,
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
-        "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/scrape_gunicorn_prometheus": str,
         "paasta.yelp.com/service": str,
@@ -1040,9 +1037,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config,
             hacheck_sidecar_volumes,
         )
-        uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
-            system_paasta_config
-        )
         gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
             system_paasta_config
         )
@@ -1050,8 +1044,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
-        if uwsgi_exporter_container:
-            sidecars.append(uwsgi_exporter_container)
         if gunicorn_exporter_container:
             sidecars.append(gunicorn_exporter_container)
         return sidecars
@@ -1140,57 +1132,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return None
 
-    def get_uwsgi_exporter_sidecar_container(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> Optional[V1Container]:
-
-        if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
-            stats_port_env = V1EnvVar(
-                name="STATS_PORT",
-                value=str(self.get_autoscaling_params().get("uwsgi_stats_port", 8889)),
-            )
-
-            return V1Container(
-                image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements(
-                    "uwsgi_exporter",
-                    system_paasta_config,
-                ),
-                name=UWSGI_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment() + [stats_port_env],
-                ports=[V1ContainerPort(container_port=9117)],
-                lifecycle=V1Lifecycle(
-                    pre_stop=V1Handler(
-                        _exec=V1ExecAction(
-                            command=[
-                                "/bin/sh",
-                                "-c",
-                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
-                                # metrics up until our Pod dies
-                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
-                            ]
-                        )
-                    )
-                ),
-            )
-
-        return None
-
-    def should_run_uwsgi_exporter_sidecar(
+    def should_use_uwsgi_exporter(
         self,
         system_paasta_config: SystemPaastaConfig,
     ) -> bool:
-        if self.is_autoscaling_enabled():
-            autoscaling_params = self.get_autoscaling_params()
-            if autoscaling_params["metrics_provider"] == "uwsgi":
-                if autoscaling_params.get(
-                    "use_prometheus",
-                    DEFAULT_USE_PROMETHEUS_UWSGI
-                    or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
-                ):
-                    return True
-        return False
+        return (
+            self.is_autoscaling_enabled()
+            and self.get_autoscaling_params()["metrics_provider"] == "uwsgi"
+        )
 
     def get_gunicorn_exporter_sidecar_container(
         self,
@@ -2164,7 +2113,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.config_dict.get("routable_ip", False)
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
-            or self.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            or self.should_use_uwsgi_exporter(system_paasta_config)
             or self.should_run_gunicorn_exporter_sidecar()
         ):
             return "true"
@@ -2321,16 +2270,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
 
-        # not all services use uwsgi autoscaling, so we label those that do in order to have
+        # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_run_uwsgi_exporter_sidecar(
-            system_paasta_config=system_paasta_config
-        ):
-            # this is kinda silly, but k8s labels must be strings
-            labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
-
+        if self.should_use_uwsgi_exporter(system_paasta_config=system_paasta_config):
+            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
+            # But we do still need deploy_group for relabeling properly
             # this should probably eventually be made into a default label,
-            # but for now we're fine with it being behind this feature toggle.
+            # but for now we're fine with it being behind these feature toggles.
             # ideally, we'd also have the docker image here for ease-of-use
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)

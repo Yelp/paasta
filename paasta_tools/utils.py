@@ -1956,7 +1956,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
-    default_should_run_uwsgi_exporter_sidecar: bool
+    default_should_use_uwsgi_exporter: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -2035,7 +2035,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    uwsgi_exporter_sidecar_image_url: str
     gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
@@ -2722,15 +2721,8 @@ class SystemPaastaConfig:
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
 
-    def get_uwsgi_exporter_sidecar_image_url(self) -> str:
-        """Get the docker image URL for the uwsgi_exporter sidecar container"""
-        return self.config_dict.get(
-            "uwsgi_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.3.0-yelp0",
-        )
-
-    def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
-        return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+    def default_should_use_uwsgi_exporter(self) -> bool:
+        return self.config_dict.get("default_should_use_uwsgi_exporter", False)
 
     def get_gunicorn_exporter_sidecar_image_url(self) -> str:
         """Get the docker image URL for the gunicorn_exporter sidecar container"""
