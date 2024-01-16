@@ -25,6 +25,7 @@ Command line options:
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 import service_configuration_lib
 from kubernetes.client import V1DeleteOptions
@@ -106,10 +107,18 @@ def cleanup_kube_crd(
             log.error(f"CRD {crd.metadata.name} has empty {service_attr} label")
             continue
 
-        crd_config = service_configuration_lib.read_extra_service_information(
-            service, f"crd-{cluster}", soa_dir=soa_dir
-        )
-        if crd_config:
+        crd_configs = [
+            service_configuration_lib.read_extra_service_information(
+                service, file.name, soa_dir=soa_dir
+            )
+            for file in (Path(soa_dir) / service).glob(f"crd-{cluster}*.yaml")
+        ]
+        crd_config_names = {
+            config["metadata"]["name"]
+            for config in crd_configs
+            if config.get("metadata", {}).get("name")
+        }
+        if crd.metadata.name in crd_config_names:
             log.debug(f"CRD {crd.metadata.name} declaration found in {service}")
             continue
 
