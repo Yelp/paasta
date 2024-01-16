@@ -1,3 +1,17 @@
+paasta-tools (0.215.1) xenial; urgency=medium
+
+  * 0.215.1 tagged with 'make release'
+    Commit: Add placeholder value for non-existent boto_keys (#3773)
+    Previously, using an invalid value here would cause the service to
+    fail to launch. Now that we"re migrating away from using AWS users,
+    people mess this up more often, and it may be desirable to let the
+    pod launch with placeholder values.  Placeholder values instead just
+    ignoring them and not placing keys was much simpler to implement,
+    and only very marginally less desirable IMO.  We still get a log
+    line that we can alert on when this happens.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Jan 2024 09:56:23 -0800
+
 paasta-tools (0.215.0) xenial; urgency=medium
 
   * 0.215.0 tagged with 'make release'
