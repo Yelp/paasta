@@ -7,6 +7,7 @@ cfgv==2.0.1
 coverage==6.5.0
 debugpy==1.8.0
 distlib==0.3.4
+docutils==0.12
 exceptiongroup==1.1.2
 filelock==3.0.12
 flake8==3.5.0
