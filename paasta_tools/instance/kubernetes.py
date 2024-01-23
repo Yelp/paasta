@@ -34,6 +34,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
+from paasta_tools import vitesscluster_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
@@ -48,7 +49,7 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
 
-INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
+INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster", "vitesscluster"}
 INSTANCE_TYPES_K8S = {
     "cassandracluster",
     "eks",
@@ -61,6 +62,7 @@ INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
+    vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
