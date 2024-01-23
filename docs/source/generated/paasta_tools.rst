@@ -108,7 +108,7 @@ Submodules
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils
-   paasta_tools.vitess_tools
+   paasta_tools.vitesscluster_tools
 
 Module contents
 ---------------
