@@ -1,3 +1,11 @@
+paasta-tools (0.217.1) xenial; urgency=medium
+
+  * 0.217.1 tagged with 'make release'
+    Commit: Merge pull request #3782 from Yelp/u/vit/SEC-18515-bump-
+    boto3  SEC-18515: Bump boto3 to enable IMDSv2 usage
+
+ -- Vincent Thibault <vit@yelp.com>  Wed, 24 Jan 2024 13:02:25 -0800
+
 paasta-tools (0.217.0) xenial; urgency=medium
 
   * 0.217.0 tagged with 'make release'
