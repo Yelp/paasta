@@ -860,13 +860,21 @@ def bounce_status(request):
         return pik.bounce_status(
             service, instance, settings, is_eks=(instance_type == "eks")
         )
+    except NoConfigurationForServiceError:
+        # Handle race condition where instance has been removed since the above validation
+        error_message = no_configuration_for_service_message(
+            settings.cluster,
+            service,
+            instance,
+        )
+        raise ApiFailure(error_message, 404)
     except asyncio.TimeoutError:
         raise ApiFailure(
             "Temporary issue fetching bounce status. Please try again.", 599
         )
     except Exception as e:
         error_message = traceback.format_exc()
-        if getattr(e, "status") == 404:
+        if getattr(e, "status", None) == 404:
             # some bounces delete the app & recreate
             # in this case, we relay the 404 and cli handles gracefully
             raise ApiFailure(error_message, 404)
