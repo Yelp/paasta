@@ -967,6 +967,14 @@ def create_prometheus_adapter_config(
             cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
         )
     }
+    services.update(
+        {
+            service_name
+            for service_name, _ in get_services_for_cluster(
+                cluster=paasta_cluster, instance_type="eks", soa_dir=str(soa_dir)
+            )
+        }
+    )
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
