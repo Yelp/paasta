@@ -106,6 +106,7 @@ clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
 SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
 SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
+SPARK_DRIVER_POOL = "stable"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -322,8 +323,8 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
             "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
             "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
-            "spark.kubernetes.node.selector.yelp.com/pool": self.get_pool(),
-            "spark.kubernetes.executor.label.yelp.com/pool": self.get_pool(),
+            "spark.kubernetes.node.selector.yelp.com/pool": self.get_spark_executor_pool(),
+            "spark.kubernetes.executor.label.yelp.com/pool": self.get_spark_executor_pool(),
             # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
             # will be, drumroll please, the routable IP for the Pod - this allows us to
             # not need to worry about DNS
@@ -373,7 +374,8 @@ class TronActionConfig(InstanceConfig):
         # Core ML has some translation logic to go from Mesos->k8s options for people living in the past
         conf.update(
             adjust_spark_resources(
-                spark_args=stringified_spark_args, desired_pool=self.get_pool()
+                spark_args=stringified_spark_args,
+                desired_pool=self.get_spark_executor_pool(),
             )
         )
         # as well as some QoL tweaks for other options
@@ -630,6 +632,15 @@ class TronActionConfig(InstanceConfig):
         override this value. To control this, we have an optional config item that we'll puppet onto Tron masters
         which this function will read.
         """
+        return (
+            self.config_dict.get(
+                "pool", load_system_paasta_config().get_tron_default_pool_override()
+            )
+            if not self.get_executor() == "spark"
+            else SPARK_DRIVER_POOL
+        )
+
+    def get_spark_executor_pool(self) -> str:
         return self.config_dict.get(
             "pool", load_system_paasta_config().get_tron_default_pool_override()
         )
