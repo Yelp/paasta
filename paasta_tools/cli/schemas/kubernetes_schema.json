@@ -229,9 +229,6 @@
                         "use_resource_metrics": {
                             "type": "boolean"
                         },
-                        "uwsgi_stats_port": {
-                            "type": "integer"
-                        },
                         "scaledown_policies": {
                             "type": "object"
                         },
@@ -277,6 +274,9 @@
                             "required": [
                                 "metricsQuery"
                             ]
+                        },
+                        "max_instances_alert_threshold": {
+                            "type": "number"
                         }
                     },
                     "allOf": [
@@ -426,6 +426,101 @@
                                     }
                                 }
                             ]
+                        }
+                    }
+                },
+                "node_selectors_preferred": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "weight": {
+                                "type": "integer"
+                            },
+                            "preferences": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "patternProperties": {
+                                    "^[a-zA-Z0-9]+[a-zA-Z0-9-_./]*[a-zA-Z0-9]+$": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                },
+                                                "uniqueItems": true
+                                            },
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "operator": {
+                                                                    "enum": [
+                                                                        "In",
+                                                                        "NotIn"
+                                                                    ]
+                                                                },
+                                                                "values": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "uniqueItems": true
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "operator",
+                                                                "values"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "operator": {
+                                                                    "enum": [
+                                                                        "Exists",
+                                                                        "DoesNotExist"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "operator"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "operator": {
+                                                                    "enum": [
+                                                                        "Gt",
+                                                                        "Lt"
+                                                                    ]
+                                                                },
+                                                                "value": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "operator",
+                                                                "value"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -866,6 +961,79 @@
                     "type": "string",
                     "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
                     "maxLength": 63
+                },
+                "autotune_limits": {
+                    "type": "object",
+                    "properties": {
+                        "cpus": {
+                            "type": "object",
+                            "properties": {
+                                "min": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                },
+                                "max": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true
+                                }
+                            }
+                        },
+                        "mem": {
+                            "type": "object",
+                            "properties": {
+                                "min": {
+                                    "type": "integer",
+                                    "minimum": 32,
+                                    "exclusiveMinimum": false
+                                },
+                                "max": {
+                                    "type": "integer",
+                                    "minimum": 32,
+                                    "exclusiveMinimum": false
+                                }
+                            }
+                        },
+                        "disk": {
+                            "type": "object",
+                            "properties": {
+                                "min": {
+                                    "type": "integer",
+                                    "minimum": 128,
+                                    "exclusiveMinimum": false
+                                },
+                                "max": {
+                                    "type": "integer",
+                                    "minimum": 128,
+                                    "exclusiveMinimum": false
+                                }
+                            }
+                        }
+                    }
+                },
+                "topology_spread_constraints": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "topology_key": {
+                                "type": "string"
+                            },
+                            "when_unsatisfiable": {
+                                "type": "string",
+                                "enum": [
+                                    "ScheduleAnyway",
+                                    "DoNotSchedule"
+                                ]
+                            },
+                            "max_skew": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": []
+                    },
+                    "uniqueItems": true
                 }
             }
         }

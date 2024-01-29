@@ -36,7 +36,7 @@ def test_write_auto_config_data_service_dne(tmpdir):
     ) as mock_open:
         result = config_utils.write_auto_config_data(
             service="something",
-            extra_info="marathon-norcal-devc",
+            extra_info="kubernetes-norcal-devc",
             data={"a": 1},
             soa_dir=tmpdir,
         )
@@ -46,7 +46,7 @@ def test_write_auto_config_data_service_dne(tmpdir):
 
 def test_write_auto_config_data_new_file(tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
     data = {"a": 1}
 
     tmpdir.mkdir(service)
@@ -65,7 +65,7 @@ def test_write_auto_config_data_new_file(tmpdir):
 
 def test_write_auto_config_data_file_exists(tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
 
     tmpdir.mkdir(service)
     config_utils.write_auto_config_data(
@@ -92,7 +92,6 @@ def test_write_auto_config_data_file_exists(tmpdir):
 @mock.patch("paasta_tools.config_utils.validate_schema", autospec=True)
 def test_validate_auto_config_file_config_types(mock_validate, tmpdir):
     for config_type in (
-        "marathon",
         "kubernetes",
         "deploy",
         "smartstack",
@@ -126,7 +125,7 @@ def test_validate_auto_config_file_unknown_type(mock_validate, tmpdir):
 )
 def test_validate_auto_config_file_e2e(data, is_valid, tmpdir):
     service = "foo"
-    conf_file = "marathon-norcal-devc"
+    conf_file = "kubernetes-norcal-devc"
 
     tmpdir.mkdir(service)
     filepath = config_utils.write_auto_config_data(
@@ -232,11 +231,10 @@ def test_auto_config_updater_context_no_clone(
 def test_auto_config_updater_validate(mock_validate_file, all_valid, updater):
     mock_validate_file.side_effect = [True, all_valid, True]
 
-    updater.write_configs("foo", "marathon-norcal-devc", {"a": 2})
     updater.write_configs("foo", "kubernetes-norcal-devc", {"a": 2})
     updater.write_configs("foo", "kubernetes-pnw-devc", {"a": 2})
     assert updater.validate() == all_valid
-    assert mock_validate_file.call_count == 3
+    assert mock_validate_file.call_count == 2
 
 
 def test_auto_config_updater_read_write(updater):
@@ -317,3 +315,71 @@ def test_auto_config_updater_commit(mock_push, mock_commit, did_commit, updater)
         mock_push.assert_called_once_with(updater.branch)
     else:
         assert mock_push.call_count == 0
+
+
+def test_auto_config_updater_merge_recommendations_limits(updater):
+    service = "foo"
+    conf_file = "notk8s-euwest-prod"
+    limited_instance = "some_instance"
+    noop_instance = "other_instance"
+    autotune_data = {
+        limited_instance: {"cpus": 0.1, "mem": 167, "disk": 256, "cpu_burst_add": 0.5}
+    }
+    user_data = {
+        limited_instance: {
+            "cmd": "ls",
+            "autotune_limits": {
+                "cpus": {"min": 1, "max": 2},
+                "mem": {"min": 1024, "max": 2048},
+                "disk": {"min": 512, "max": 1024},
+            },
+        },
+        noop_instance: {"cmd": "ls"},
+    }
+
+    recs = {
+        (service, conf_file): {
+            limited_instance: {
+                "mem": 1,
+                "disk": 700,
+                "cpus": 3,
+            },
+            noop_instance: {
+                "cpus": 100,
+                "mem": 10000,
+                "disk": 2048,
+            },
+        }
+    }
+
+    with mock.patch.object(
+        updater,
+        "get_existing_configs",
+        autospec=True,
+        side_effect=[
+            # first get the autotune data
+            autotune_data,
+            # then we get both the eks- and kuberentes- data
+            user_data,
+            # there could be data in both of these, but for a
+            # simpler test, we just assume that we're looking
+            # at something that's 100% on Yelp-managed k8s
+            {},
+        ],
+    ):
+        assert updater.merge_recommendations(recs) == {
+            (service, conf_file): {
+                limited_instance: {
+                    "mem": 1024,  # use lower bound
+                    "disk": 700,  # unchanged
+                    "cpus": 2,  # use upper bound
+                    "cpu_burst_add": 0.5,  # no updated rec or limit, leave alone
+                },
+                # this instances recommendations should be left untouched
+                noop_instance: {
+                    "cpus": 100,
+                    "mem": 10000,
+                    "disk": 2048,
+                },
+            }
+        }

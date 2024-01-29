@@ -2365,6 +2365,7 @@ def test_validate_service_instance_invalid():
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
     mock_monkrelaycluster_instances = [("service1", "monkrelays")]
+    mock_vitesscluster_instances = [("service1", "vitesscluster")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2384,6 +2385,7 @@ def test_validate_service_instance_invalid():
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
             mock_monkrelaycluster_instances,
+            mock_vitesscluster_instances,
         ],
     ):
         with raises(
@@ -2645,7 +2647,6 @@ def test_is_deploy_step():
     assert utils.is_deploy_step("thingy")
 
     assert not utils.is_deploy_step("itest")
-    assert not utils.is_deploy_step("performance-check")
     assert not utils.is_deploy_step("command-thingy")
 
 

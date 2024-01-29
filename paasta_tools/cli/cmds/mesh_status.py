@@ -110,7 +110,6 @@ def paasta_mesh_status_on_api_endpoint(
         mesh_status = client.service.mesh_instance(
             service=service,
             instance=instance,
-            include_smartstack=False,
         )
     except client.api_error as exc:
         # 405 (method not allowed) is returned for instances that are not configured

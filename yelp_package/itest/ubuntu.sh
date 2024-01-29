@@ -51,7 +51,6 @@ itest
 local-run
 mark-for-deployment
 metastatus
-performance-check
 push-to-registry
 security-check
 status

@@ -8,6 +8,7 @@ opt/venvs/paasta-tools/bin/check_marathon_has_apps.py usr/bin/check_marathon_has
 opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 opt/venvs/paasta-tools/bin/check_kubernetes_api.py usr/bin/check_kubernetes_api
 opt/venvs/paasta-tools/bin/check_kubernetes_services_replication.py usr/bin/check_kubernetes_services_replication
+opt/venvs/paasta-tools/bin/check_autoscaler_max_instances.py usr/bin/check_autoscaler_max_instances
 opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
@@ -56,3 +57,4 @@ opt/venvs/paasta-tools/bin/setup_kubernetes_cr.py usr/bin/setup_kubernetes_cr
 opt/venvs/paasta-tools/bin/setup_prometheus_adapter_config.py usr/bin/setup_prometheus_adapter_config
 opt/venvs/paasta-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact
 opt/venvs/paasta-tools/bin/paasta_update_soa_memcpu.py usr/bin/paasta_update_soa_memcpu
+opt/venvs/paasta-tools/bin/habitat_fixer.py usr/bin/paasta_habitat_fixer

@@ -57,6 +57,7 @@ from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NamedTuple
 from typing import Optional
@@ -98,7 +99,6 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "itest",
     "itest-and-push-to-registry",
     "security-check",
-    "performance-check",
     "push-to-registry",
 )
 # Default values for _log
@@ -134,6 +134,7 @@ INSTANCE_TYPES = (
     "flink",
     "cassandracluster",
     "kafkacluster",
+    "vitesscluster",
     "monkrelays",
     "nrtsearchservice",
 )
@@ -150,6 +151,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
+    "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
@@ -1930,6 +1932,12 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
     label_renames: Dict[str, str]
 
 
+class TopologySpreadConstraintDict(TypedDict, total=False):
+    topology_key: str
+    when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
+    max_skew: int
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
     api_endpoints: Dict[str, str]
@@ -1951,7 +1959,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
-    default_should_run_uwsgi_exporter_sidecar: bool
+    default_should_use_uwsgi_exporter: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -2009,7 +2017,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    topology_spread_constraints: List[Dict[str, Any]]
+    topology_spread_constraints: List[TopologySpreadConstraintDict]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2030,7 +2038,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    uwsgi_exporter_sidecar_image_url: str
     gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
@@ -2610,7 +2617,7 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
-    def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
+    def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
 
@@ -2717,15 +2724,8 @@ class SystemPaastaConfig:
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
 
-    def get_uwsgi_exporter_sidecar_image_url(self) -> str:
-        """Get the docker image URL for the uwsgi_exporter sidecar container"""
-        return self.config_dict.get(
-            "uwsgi_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.3.0-yelp0",
-        )
-
-    def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
-        return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+    def default_should_use_uwsgi_exporter(self) -> bool:
+        return self.config_dict.get("default_should_use_uwsgi_exporter", False)
 
     def get_gunicorn_exporter_sidecar_image_url(self) -> str:
         """Get the docker image URL for the gunicorn_exporter sidecar container"""

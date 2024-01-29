@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
+import functools
 import hashlib
 import itertools
 import json
@@ -23,11 +24,13 @@ from enum import Enum
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
+from typing import cast
 from typing import Collection
 from typing import Container
 from typing import Dict
 from typing import Iterable
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -92,6 +95,7 @@ from kubernetes.client import V1PodCondition
 from kubernetes.client import V1PodSecurityContext
 from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
+from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
@@ -161,6 +165,7 @@ from paasta_tools.utils import PersistentVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
+from paasta_tools.utils import TopologySpreadConstraintDict
 from paasta_tools.utils import VolumeWithMode
 
 
@@ -176,11 +181,9 @@ KUBE_DEPLOY_STATEGY_MAP = {
     "brutal": "RollingUpdate",
 }
 HACHECK_POD_NAME = "hacheck"
-UWSGI_EXPORTER_POD_NAME = "uwsgi--exporter"
 GUNICORN_EXPORTER_POD_NAME = "gunicorn--exporter"
 SIDECAR_CONTAINER_NAMES = [
     HACHECK_POD_NAME,
-    UWSGI_EXPORTER_POD_NAME,
     GUNICORN_EXPORTER_POD_NAME,
 ]
 KUBERNETES_NAMESPACE = "paasta"
@@ -336,7 +339,6 @@ KubePodLabels = TypedDict(
         "paasta.yelp.com/image_version": str,
         "paasta.yelp.com/instance": str,
         "paasta.yelp.com/prometheus_shard": str,
-        "paasta.yelp.com/scrape_uwsgi_prometheus": str,
         "paasta.yelp.com/scrape_piscina_prometheus": str,
         "paasta.yelp.com/scrape_gunicorn_prometheus": str,
         "paasta.yelp.com/service": str,
@@ -360,11 +362,45 @@ class CryptoKeyConfig(TypedDict):
     decrypt: List[str]
 
 
+class NodeSelectorInNotIn(TypedDict):
+    operator: Literal["In", "NotIn"]
+    values: List[str]
+
+
+class NodeSelectorExistsDoesNotExist(TypedDict):
+    operator: Literal["Exists", "DoesNotExist"]
+
+
+class NodeSelectorGtLt(TypedDict):
+    operator: Literal["Gt", "Lt"]
+    value: int
+
+
+NodeSelectorOperator = Union[
+    NodeSelectorInNotIn,
+    NodeSelectorExistsDoesNotExist,
+    NodeSelectorGtLt,
+]
+
+
+NodeSelectorConfig = Union[
+    str,
+    List[str],
+    List[NodeSelectorOperator],
+]
+
+
+class NodeSelectorsPreferredConfigDict(TypedDict):
+    weight: int
+    preferences: Dict[str, NodeSelectorConfig]
+
+
 class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     bounce_method: str
     bounce_health_params: Dict[str, Any]
     service_account_name: str
-    node_selectors: Dict[str, Union[str, Dict[str, Any]]]
+    node_selectors: Dict[str, NodeSelectorConfig]
+    node_selectors_preferred: List[NodeSelectorsPreferredConfigDict]
     sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
     lifecycle: KubeLifecycleDict
     anti_affinity: Union[KubeAffinityCondition, List[KubeAffinityCondition]]
@@ -380,6 +416,7 @@ class KubernetesDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     boto_keys: List[str]
     crypto_keys: CryptoKeyConfig
     datastore_credentials: DatastoreCredentialsConfig
+    topology_spread_constraints: List[TopologySpreadConstraintDict]
 
 
 def load_kubernetes_service_config_no_cache(
@@ -499,6 +536,19 @@ class InvalidKubernetesConfig(Exception):
 
 
 class KubeClient:
+    @functools.lru_cache()  # type: ignore
+    def __new__(
+        cls,
+        component: Optional[str] = None,
+        config_file: Optional[str] = None,
+        context: Optional[str] = None,
+    ) -> "KubeClient":
+        """By @lru_cache'ing this function, repeated instantiations of KubeClient with the same arguments will return the
+        exact same object. This makes it possible to effectively cache function calls that take a KubeClient as an
+        argument."""
+        return super().__new__(cls)
+
+    @functools.lru_cache()  # type: ignore
     def __init__(
         self,
         component: Optional[str] = None,
@@ -578,28 +628,40 @@ def allowlist_denylist_to_requirements(
 
 
 def raw_selectors_to_requirements(
-    raw_selectors: Mapping[str, Any]
+    raw_selectors: Mapping[str, NodeSelectorConfig]
 ) -> List[Tuple[str, str, List[str]]]:
     """Converts certain node_selectors into requirements, which can be
     converted to node affinities.
     """
-    requirements = []
+    requirements: List[Tuple[str, str, List[str]]] = []
 
     for label, configs in raw_selectors.items():
+        operator_configs: List[NodeSelectorOperator] = []
+
         if type(configs) is not list or len(configs) == 0:
             continue
         elif type(configs[0]) is str:
             # specifying an array/list of strings for a label is shorthand
             # for the "In" operator
-            configs = [{"operator": "In", "values": configs}]
+            operator_configs = [
+                NodeSelectorInNotIn(
+                    {"operator": "In", "values": cast(List[str], configs)}
+                )
+            ]
+        else:
+            # configs should already be a List[NodeSelectorOperator]
+            operator_configs = cast(List[NodeSelectorOperator], configs)
 
         label = to_node_label(label)
-        for config in configs:
+        for config in operator_configs:
             if config["operator"] in {"In", "NotIn"}:
+                config = cast(NodeSelectorInNotIn, config)
                 values = config["values"]
             elif config["operator"] in {"Exists", "DoesNotExist"}:
+                config = cast(NodeSelectorExistsDoesNotExist, config)
                 values = []
             elif config["operator"] in {"Gt", "Lt"}:
+                config = cast(NodeSelectorGtLt, config)
                 # config["value"] is validated by jsonschema to be an int. but,
                 # k8s expects singleton list of the int represented as a str
                 # for these operators.
@@ -745,7 +807,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         max_replicas = self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
-                f"Invalid value for min or max_instances: {min_replicas}, {max_replicas}"
+                f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"
             )
             return None
 
@@ -975,9 +1037,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service_namespace_config,
             hacheck_sidecar_volumes,
         )
-        uwsgi_exporter_container = self.get_uwsgi_exporter_sidecar_container(
-            system_paasta_config
-        )
         gunicorn_exporter_container = self.get_gunicorn_exporter_sidecar_container(
             system_paasta_config
         )
@@ -985,8 +1044,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         sidecars = []
         if hacheck_container:
             sidecars.append(hacheck_container)
-        if uwsgi_exporter_container:
-            sidecars.append(uwsgi_exporter_container)
         if gunicorn_exporter_container:
             sidecars.append(gunicorn_exporter_container)
         return sidecars
@@ -1075,57 +1132,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         return None
 
-    def get_uwsgi_exporter_sidecar_container(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> Optional[V1Container]:
-
-        if self.should_run_uwsgi_exporter_sidecar(system_paasta_config):
-            stats_port_env = V1EnvVar(
-                name="STATS_PORT",
-                value=str(self.get_autoscaling_params().get("uwsgi_stats_port", 8889)),
-            )
-
-            return V1Container(
-                image=system_paasta_config.get_uwsgi_exporter_sidecar_image_url(),
-                resources=self.get_sidecar_resource_requirements(
-                    "uwsgi_exporter",
-                    system_paasta_config,
-                ),
-                name=UWSGI_EXPORTER_POD_NAME,
-                env=self.get_kubernetes_environment() + [stats_port_env],
-                ports=[V1ContainerPort(container_port=9117)],
-                lifecycle=V1Lifecycle(
-                    pre_stop=V1Handler(
-                        _exec=V1ExecAction(
-                            command=[
-                                "/bin/sh",
-                                "-c",
-                                # we sleep for the same amount of time as we do after an hadown to ensure that we have accurate
-                                # metrics up until our Pod dies
-                                f"sleep {DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS}",
-                            ]
-                        )
-                    )
-                ),
-            )
-
-        return None
-
-    def should_run_uwsgi_exporter_sidecar(
+    def should_use_uwsgi_exporter(
         self,
         system_paasta_config: SystemPaastaConfig,
     ) -> bool:
-        if self.is_autoscaling_enabled():
-            autoscaling_params = self.get_autoscaling_params()
-            if autoscaling_params["metrics_provider"] == "uwsgi":
-                if autoscaling_params.get(
-                    "use_prometheus",
-                    DEFAULT_USE_PROMETHEUS_UWSGI
-                    or system_paasta_config.default_should_run_uwsgi_exporter_sidecar(),
-                ):
-                    return True
-        return False
+        return (
+            self.is_autoscaling_enabled()
+            and self.get_autoscaling_params()["metrics_provider"] == "uwsgi"
+        )
 
     def get_gunicorn_exporter_sidecar_container(
         self,
@@ -2099,7 +2113,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.config_dict.get("routable_ip", False)
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
-            or self.should_run_uwsgi_exporter_sidecar(system_paasta_config)
+            or self.should_use_uwsgi_exporter(system_paasta_config)
             or self.should_run_gunicorn_exporter_sidecar()
         ):
             return "true"
@@ -2167,7 +2181,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         pod_topology_spread_constraints = create_pod_topology_spread_constraints(
             service=self.get_service(),
             instance=self.get_instance(),
-            topology_spread_constraints=system_paasta_config.get_topology_spread_constraints(),
+            topology_spread_constraints=self.get_topology_spread_constraints(
+                system_paasta_config.get_topology_spread_constraints()
+            ),
         )
         if pod_topology_spread_constraints:
             constraints = pod_spec_kwargs.get("topology_spread_constraints", [])
@@ -2254,16 +2270,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if self.is_istio_sidecar_injection_enabled():
             labels["sidecar.istio.io/inject"] = "true"
 
-        # not all services use uwsgi autoscaling, so we label those that do in order to have
+        # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_run_uwsgi_exporter_sidecar(
-            system_paasta_config=system_paasta_config
-        ):
-            # this is kinda silly, but k8s labels must be strings
-            labels["paasta.yelp.com/scrape_uwsgi_prometheus"] = "true"
-
+        if self.should_use_uwsgi_exporter(system_paasta_config=system_paasta_config):
+            # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
+            # But we do still need deploy_group for relabeling properly
             # this should probably eventually be made into a default label,
-            # but for now we're fine with it being behind this feature toggle.
+            # but for now we're fine with it being behind these feature toggles.
             # ideally, we'd also have the docker image here for ease-of-use
             # in Prometheus relabeling, but that information is over the
             # character limit for k8s labels (63 chars)
@@ -2313,26 +2326,60 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 raw_selectors=self.config_dict.get("node_selectors", {}),
             )
         )
-        # package everything into a node affinity - lots of layers :P
-        if len(requirements) == 0:
-            return None
-        term = V1NodeSelectorTerm(
-            match_expressions=[
-                V1NodeSelectorRequirement(
-                    key=key,
-                    operator=op,
-                    values=vs,
+
+        preferred_terms = []
+        for node_selectors_prefered_config_dict in self.config_dict.get(
+            "node_selectors_preferred", []
+        ):
+            preferred_terms.append(
+                V1PreferredSchedulingTerm(
+                    weight=node_selectors_prefered_config_dict["weight"],
+                    preference=V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key=key,
+                                operator=op,
+                                values=vs,
+                            )
+                            for key, op, vs in raw_selectors_to_requirements(
+                                raw_selectors=node_selectors_prefered_config_dict[
+                                    "preferences"
+                                ]
+                            )
+                        ]
+                    ),
                 )
-                for key, op, vs in requirements
-            ]
+            )
+
+        # package everything into a node affinity - lots of layers :P
+        if len(requirements) == 0 and len(preferred_terms) == 0:
+            return None
+
+        required_term = (
+            V1NodeSelectorTerm(
+                match_expressions=[
+                    V1NodeSelectorRequirement(
+                        key=key,
+                        operator=op,
+                        values=vs,
+                    )
+                    for key, op, vs in requirements
+                ]
+            )
+            if requirements
+            else None
         )
-        selector = V1NodeSelector(node_selector_terms=[term])
+
+        if not preferred_terms:
+            preferred_terms = None
+
         return V1NodeAffinity(
-            # this means that the selectors are only used during scheduling.
-            # changing it while the pod is running will not cause an eviction.
-            # this should be fine since if there are whitelist/blacklist config
-            # changes, we will bounce anyway.
-            required_during_scheduling_ignored_during_execution=selector,
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[required_term]
+            )
+            if required_term
+            else None,
+            preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
     def get_pod_required_anti_affinity_terms(
@@ -2465,6 +2512,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_prometheus_port(self) -> Optional[int]:
         return self.config_dict.get("prometheus_port")
+
+    def get_topology_spread_constraints(
+        self,
+        default_pod_topology_spread_constraints: List[TopologySpreadConstraintDict],
+    ) -> List[TopologySpreadConstraintDict]:
+        return self.config_dict.get(
+            "topology_spread_constraints", default_pod_topology_spread_constraints
+        )
 
 
 def get_kubernetes_secret_hashes(
@@ -2635,6 +2690,7 @@ def force_delete_pods(
         )
 
 
+@time_cache(ttl=60)
 def get_all_namespaces(
     kube_client: KubeClient, label_selector: Optional[str] = None
 ) -> List[str]:
@@ -2661,6 +2717,7 @@ def get_matching_namespaces(
     ]
 
 
+@functools.lru_cache()
 def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     paasta_namespace = V1Namespace(
         metadata=V1ObjectMeta(
@@ -2672,11 +2729,18 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
             },
         )
     )
-    namespaces = kube_client.core.list_namespace()
-    namespace_names = [item.metadata.name for item in namespaces.items]
+    namespace_names = get_all_namespaces(kube_client)
     if namespace not in namespace_names:
         log.warning(f"Creating namespace: {namespace} as it does not exist")
-        kube_client.core.create_namespace(body=paasta_namespace)
+        try:
+            kube_client.core.create_namespace(body=paasta_namespace)
+        except ApiException as e:
+            if e.status == 409:
+                log.warning(
+                    "Got HTTP 409 when creating namespace; it must already exist. Continuing."
+                )
+            else:
+                raise
 
     ensure_paasta_api_rolebinding(kube_client, namespace)
     ensure_paasta_namespace_limits(kube_client, namespace)
@@ -3382,7 +3446,7 @@ def get_all_nodes(
     return kube_client.core.list_node().items
 
 
-@time_cache(ttl=300)
+@time_cache(ttl=60)
 def get_all_nodes_cached(kube_client: KubeClient) -> Sequence[V1Node]:
     nodes: Sequence[V1Node] = get_all_nodes(kube_client)
     return nodes
@@ -3700,6 +3764,7 @@ def update_secret(
     )
 
 
+@time_cache(ttl=300)
 def get_secret_signature(
     kube_client: KubeClient,
     signature_name: str,
@@ -3812,7 +3877,7 @@ def load_custom_resource_definitions(
 def create_pod_topology_spread_constraints(
     service: str,
     instance: str,
-    topology_spread_constraints: List[Dict[str, Any]],
+    topology_spread_constraints: List[TopologySpreadConstraintDict],
 ) -> List[V1TopologySpreadConstraint]:
     """
     Applies cluster-level topology spread constraints to every Pod template.

@@ -50,7 +50,6 @@ from tests.conftest import wrap_value_in_task
 
 @pytest.mark.parametrize("include_mesos", [False, True])
 @pytest.mark.parametrize("include_envoy", [False, True])
-@pytest.mark.parametrize("include_smartstack", [False, True])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_service_mesh_status", autospec=True
@@ -84,7 +83,6 @@ def test_instance_status_marathon(
     mock_load_service_namespace_config,
     mock_marathon_service_mesh_status,
     mock_marathon_mesos_status,
-    include_smartstack,
     include_envoy,
     include_mesos,
 ):
@@ -123,7 +121,6 @@ def test_instance_status_marathon(
         "service": "fake_service",
         "instance": "fake_instance",
         "verbose": 2,
-        "include_smartstack": include_smartstack,
         "include_envoy": include_envoy,
         "include_mesos": include_mesos,
     }
@@ -133,8 +130,6 @@ def test_instance_status_marathon(
         "marathon_job_status_field1": "field1_value",
         "marathon_job_status_field2": "field2_value",
     }
-    if include_smartstack:
-        expected_response["smartstack"] = mock_marathon_service_mesh_status.return_value
     if include_envoy:
         expected_response["envoy"] = mock_marathon_service_mesh_status.return_value
     if include_mesos:
@@ -153,18 +148,6 @@ def test_instance_status_marathon(
             "fake_service", "fake_instance", 2
         )
     expected_marathon_service_mesh_status_calls = []
-    if include_smartstack:
-        expected_marathon_service_mesh_status_calls.append(
-            mock.call(
-                "fake_service",
-                ServiceMesh.SMARTSTACK,
-                "fake_instance",
-                mock_service_config,
-                mock_load_service_namespace_config.return_value,
-                mock_app.tasks,
-                should_return_individual_backends=True,
-            ),
-        )
     if include_envoy:
         expected_marathon_service_mesh_status_calls.append(
             mock.call(
@@ -1114,7 +1097,6 @@ def test_kubernetes_instance_status_bounce_method():
             instance=inst,
             instance_type="kubernetes",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             settings=settings,
         )
@@ -1149,7 +1131,6 @@ def test_kubernetes_instance_status_evicted_nodes():
             instance="fake-inst",
             instance_type="kubernetes",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             settings=mock_settings,
         )
@@ -1210,7 +1191,6 @@ def test_instance_mesh_status(
     request.swagger_data = {
         "service": "fake_service",
         "instance": "fake_inst",
-        "include_smartstack": False,
     }
     instance_mesh = instance.instance_mesh_status(request)
 
@@ -1226,7 +1206,6 @@ def test_instance_mesh_status(
             instance="fake_inst",
             instance_type="flink",
             settings=settings,
-            include_smartstack=False,
             include_envoy=None,  # default of true in api specs
         ),
     ]
@@ -1263,7 +1242,6 @@ def test_instance_mesh_status_error(
     request.swagger_data = {
         "service": "fake_service",
         "instance": "fake_inst",
-        "include_smartstack": False,
     }
 
     with pytest.raises(ApiFailure) as excinfo:

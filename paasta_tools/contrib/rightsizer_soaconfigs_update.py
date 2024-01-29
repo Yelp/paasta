@@ -19,6 +19,9 @@ from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
 
+
+log = logging.getLogger(__name__)
+
 NULL = "null"
 SUPPORTED_CSV_KEYS = (
     "cpus",
@@ -276,7 +279,7 @@ def get_recommendations_by_service_file(
             result["cluster"],
         )  # e.g. (foo, marathon-norcal-stagef)
         instance_type = result["cluster"].split("-", 1)[0]
-        rec: Union[KubernetesRecommendation, CassandraRecommendation]
+        rec: Union[KubernetesRecommendation, CassandraRecommendation] = {}
         if instance_type == "cassandracluster":
             rec = get_cassandra_recommendation_from_result(result, keys_to_apply)
         elif instance_type == "kubernetes":
@@ -317,17 +320,17 @@ def main(args):
         validation_schema_path=AUTO_SOACONFIG_SUBDIR,
     )
     with updater:
-        for (service, extra_info), instance_recommendations in results.items():
-            existing_recommendations = updater.get_existing_configs(
-                service, extra_info, AUTO_SOACONFIG_SUBDIR
+        for (
+            service,
+            instance_type_cluster,
+        ), instance_recommendations in updater.merge_recommendations(results).items():
+            log.info(
+                f"Writing configs for {service} to {AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
             )
-            for instance_name, recommendation in instance_recommendations.items():
-                existing_recommendations.setdefault(instance_name, {})
-                existing_recommendations[instance_name].update(recommendation)
             updater.write_configs(
                 service,
-                extra_info,
-                existing_recommendations,
+                instance_type_cluster,
+                instance_recommendations,
                 AUTO_SOACONFIG_SUBDIR,
                 HEADER_COMMENT,
             )

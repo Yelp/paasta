@@ -5,6 +5,7 @@ import time
 import mock
 import pytest
 
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -58,6 +59,12 @@ def mock_ktools_read_soa_metadata(mock_read_soa_metadata):
         autospec=None,
     ):
         yield mock_read_soa_metadata
+
+
+@pytest.fixture(autouse=True)
+def cache_clear_KubeClient():
+    KubeClient.__new__.cache_clear()
+    KubeClient.__init__.cache_clear()
 
 
 class Struct:

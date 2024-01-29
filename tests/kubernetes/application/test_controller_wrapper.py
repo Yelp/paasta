@@ -1,7 +1,5 @@
-import kubernetes.client
 import mock
 import pytest
-from kubernetes.client import V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes.application.controller_wrappers import Application
@@ -25,75 +23,6 @@ def mock_load_system_paasta_config():
         autospec=True,
     ) as mock_load_system_paasta_config:
         yield mock_load_system_paasta_config
-
-
-def test_brutal_bounce(mock_load_system_paasta_config):
-    # mock the new client used to brutal bounce in the background using threading.
-    mock_cloned_client = mock.MagicMock()
-
-    with mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.KubeClient",
-        return_value=mock_cloned_client,
-        autospec=True,
-    ):
-        with mock.patch(
-            "paasta_tools.kubernetes.application.controller_wrappers.threading.Thread",
-            autospec=True,
-        ) as mock_deep_delete_and_create:
-            mock_client = mock.MagicMock()
-
-            app = mock.MagicMock()
-            app.item.metadata.name = "fake_name"
-            app.item.metadata.namespace = "faasta"
-
-            # we do NOT call deep_delete_and_create
-            app = setup_app({}, True)
-            DeploymentWrapper.update(self=app, kube_client=mock_client)
-
-            assert mock_deep_delete_and_create.call_count == 0
-
-            # we call deep_delete_and_create: when bounce_method is brutal
-            config_dict = {"instances": 1, "bounce_method": "brutal"}
-
-            app = setup_app(config_dict, True)
-            app.update(kube_client=mock_client)
-
-            mock_deep_delete_and_create.assert_called_once_with(
-                target=app.deep_delete_and_create, args=[mock_cloned_client]
-            )
-
-
-def test_deep_delete_and_create(mock_load_system_paasta_config):
-    with mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.sleep", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.list_all_deployments",
-        autospec=True,
-    ) as mock_list_deployments, mock.patch(
-        "paasta_tools.kubernetes.application.controller_wrappers.force_delete_pods",
-        autospec=True,
-    ) as mock_force_delete_pods:
-        mock_kube_client = mock.MagicMock()
-        mock_kube_client.deployments = mock.Mock(spec=kubernetes.client.AppsV1Api)
-        config_dict = {"instances": 1, "bounce_method": "brutal"}
-        app = setup_app(config_dict, True)
-        # This mocks being unable to delete the deployment
-        mock_list_deployments.return_value = [app.kube_deployment]
-        delete_options = V1DeleteOptions(propagation_policy="Background")
-
-        with pytest.raises(Exception):
-            # test deep_delete_and_create makes kubeclient calls correctly
-            app.deep_delete_and_create(mock_kube_client)
-        mock_force_delete_pods.assert_called_with(
-            app.item.metadata.name,
-            app.kube_deployment.service,
-            app.kube_deployment.instance,
-            app.item.metadata.namespace,
-            mock_kube_client,
-        )
-        mock_kube_client.deployments.delete_namespaced_deployment.assert_called_with(
-            app.item.metadata.name, app.item.metadata.namespace, body=delete_options
-        )
 
 
 @pytest.mark.parametrize("bounce_margin_factor_set", [True, False])

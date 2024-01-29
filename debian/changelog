@@ -1,3 +1,197 @@
+paasta-tools (0.217.2) xenial; urgency=medium
+
+  * 0.217.2 tagged with 'make release'
+    Commit: Merge pull request #3784 from
+    Yelp/jfong/fix_noconfiguration_race_condition  Catch NoConfiguration
+    exceptions in bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 25 Jan 2024 12:59:59 -0800
+
+paasta-tools (0.217.1) xenial; urgency=medium
+
+  * 0.217.1 tagged with 'make release'
+    Commit: Merge pull request #3782 from Yelp/u/vit/SEC-18515-bump-
+    boto3  SEC-18515: Bump boto3 to enable IMDSv2 usage
+
+ -- Vincent Thibault <vit@yelp.com>  Wed, 24 Jan 2024 13:02:25 -0800
+
+paasta-tools (0.217.0) xenial; urgency=medium
+
+  * 0.217.0 tagged with 'make release'
+    Commit: Merge pull request #3758 from Yelp/u/gonabavi/DREIMP-
+    10204_vitess_deployment_poc  Setup scaffolding for Vitess deployment
+    PoC
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Jan 2024 09:08:49 -0800
+
+paasta-tools (0.216.0) xenial; urgency=medium
+
+  * 0.216.0 tagged with 'make release'
+    Commit: Merge pull request #3776 from
+    Yelp/u/jfong/remove_uwsgi_sidecar  Stop using uwsgi sidecars and
+    supporting custom stats port (Again)
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 16 Jan 2024 14:00:16 -0800
+
+paasta-tools (0.215.1) xenial; urgency=medium
+
+  * 0.215.1 tagged with 'make release'
+    Commit: Add placeholder value for non-existent boto_keys (#3773)
+    Previously, using an invalid value here would cause the service to
+    fail to launch. Now that we"re migrating away from using AWS users,
+    people mess this up more often, and it may be desirable to let the
+    pod launch with placeholder values.  Placeholder values instead just
+    ignoring them and not placing keys was much simpler to implement,
+    and only very marginally less desirable IMO.  We still get a log
+    line that we can alert on when this happens.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Jan 2024 09:56:23 -0800
+
+paasta-tools (0.215.0) xenial; urgency=medium
+
+  * 0.215.0 tagged with 'make release'
+    Commit: Make get_running_task_allocation include all namespaces by
+    default (#3774)  For the most part, we"re not really excluding many
+    namespaces (most of our namespaces start with paasta).  That said,
+    now that we allow folks to use any arbitrary namespace, we can run
+    into issues where a namespace is not in our allowlist and then
+    autotune silently stops working.  I don"t foresee this adding too
+    much additional data (and if it does, we can filter out noisy
+    namespaces).  Co-authored-by: tzhu
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 12 Jan 2024 08:18:55 -0800
+
+paasta-tools (0.214.0) xenial; urgency=medium
+
+  * 0.214.0 tagged with 'make release'
+    Commit: Merge pull request #3761 from Yelp/u/cuza/patching-python-
+    k8s-client  Patching python-k8s-client at build time
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Jan 2024 12:24:51 -0800
+
+paasta-tools (0.213.1) xenial; urgency=medium
+
+  * 0.213.1 tagged with 'make release'
+    Commit: Merge pull request #3768 from Yelp/luisp/i-am-very-sorry
+    Load eks- and kubernetes- files in autotune merging
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 08 Jan 2024 17:04:39 -0800
+
+paasta-tools (0.213.0) xenial; urgency=medium
+
+  * 0.213.0 tagged with 'make release'
+    Commit: Remove paasta performance-check (#3750)  This was never
+    really utilized as intended and the necessary infra to run this was
+    torn down long ago - let"s delete this until someone has the desire
+    and will to bring it back :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 11:43:25 -0800
+
+paasta-tools (0.212.1) xenial; urgency=medium
+
+  * 0.212.1 tagged with 'make release'
+    Commit: Merge pull request #3767 from rockdog/master  Fix
+    NO_DESCRIPTION_MESSAGE used in paasta info cli command
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 08:08:15 -0800
+
+paasta-tools (0.212.0) xenial; urgency=medium
+
+  * 0.212.0 tagged with 'make release'
+    Commit: Merge pull request #3763 from
+    Yelp/u/jfong/no_include_smartstack  Remove include_smartstack
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 05 Jan 2024 09:40:59 -0800
+
+paasta-tools (0.211.2) xenial; urgency=medium
+
+  * 0.211.2 tagged with 'make release'
+    Commit: Guess the correct context (or allow override) in
+    paasta_habitat_fixer (#3766)  Turns out that I didn"t read the admin
+    kubeconf closely enough and missed that the context names there are
+    prefixed with kubernetes-admin@
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 15:46:52 -0800
+
+paasta-tools (0.211.1) xenial; urgency=medium
+
+  * 0.211.1 tagged with 'make release'
+    Commit: Fix debian link (#3765)  This is what I get for naming the
+    file differently from the command - `paasta_habitat_fixer` does not
+    work as bin/ does not contain a paasta_habitat_fixer.py
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 13:49:39 -0800
+
+paasta-tools (0.211.0) xenial; urgency=medium
+
+  * 0.211.0 tagged with 'make release'
+    Commit: Add workaround script to fix habitat labels (#3762)  We"re
+    seeing some weirdness with Karpenter where one of our custom labels
+    (yelp.com/habitat) is sometimes being set as a random integer.
+    While we debug this, we have enough information to write a script to
+    fix these.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 10:18:00 -0800
+
+paasta-tools (0.210.0) xenial; urgency=medium
+
+  * 0.210.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/fix_local_run_docker_hostname"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Jan 2024 11:14:38 -0800
+
+paasta-tools (0.209.3) xenial; urgency=medium
+
+  * 0.209.3 tagged with 'make release'
+    Commit: Merge branch "u/krall/optimize_paasta_validate"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 15 Dec 2023 13:36:26 -0800
+
+paasta-tools (0.209.2) xenial; urgency=medium
+
+  * 0.209.2 tagged with 'make release'
+    Commit: remove use_k8s deprecated flag (#3749)
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 15 Dec 2023 05:53:59 -0800
+
+paasta-tools (0.209.1) xenial; urgency=medium
+
+  * 0.209.1 tagged with 'make release'
+    Commit: Merge pull request #3751 from
+    Yelp/fix_autoscaler_check_symlink  Add missing symlink for
+    check_autoscaler_max_instances
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 14 Dec 2023 16:31:41 -0800
+
+paasta-tools (0.209.0) xenial; urgency=medium
+
+  * 0.209.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/podtopologyspread"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 14 Dec 2023 13:08:44 -0800
+
+paasta-tools (0.208.0) xenial; urgency=medium
+
+  * 0.208.0 tagged with 'make release'
+    Commit: Add support for setting lower/upper-bounds for autotuned
+    resources (#3744)  At the moment this only supports a specific
+    subset of top-level resource keys: * cpus * mem * disk  Supporting
+    {min,max}_instances should be pretty trivial (but I"m not quite sure
+    when we"d want to use that yet, so I left those out of the
+    allowlist).  I"m explicitly not supporting these values for sidecars
+    since: a) it seemed like it would complicate things a bit and, b)
+    I"m not sure we have a usecase for this :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Dec 2023 11:46:59 -0800
+
+paasta-tools (0.207.12) xenial; urgency=medium
+
+  * 0.207.12 tagged with 'make release'
+    Commit: Merge pull request #3746 from Yelp/jfong/PAASTA-18122  Stop
+    deleting brutal deployments
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 14 Dec 2023 10:52:01 -0800
+
 paasta-tools (0.207.11) xenial; urgency=medium
 
   * 0.207.11 tagged with 'make release'

@@ -34,6 +34,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
+from paasta_tools import vitesscluster_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
@@ -48,7 +49,7 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
 
-INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
+INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster", "vitesscluster"}
 INSTANCE_TYPES_K8S = {
     "cassandracluster",
     "eks",
@@ -61,6 +62,7 @@ INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
+    vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
@@ -593,7 +595,6 @@ async def kubernetes_status_v2(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     instance_type: str,
     settings: Any,
@@ -1116,7 +1117,6 @@ async def kubernetes_status(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     instance_type: str,
     settings: Any,
@@ -1204,35 +1204,23 @@ async def kubernetes_status(
             evicted_count += 1
     kstatus["evicted_count"] = evicted_count
 
-    if include_smartstack or include_envoy:
+    if include_envoy:
         service_namespace_config = kubernetes_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
             soa_dir=settings.soa_dir,
         )
         if "proxy_port" in service_namespace_config:
-            if include_smartstack:
-                kstatus["smartstack"] = await mesh_status(
-                    service=service,
-                    service_mesh=ServiceMesh.SMARTSTACK,
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods_task=pods_task,
-                    should_return_individual_backends=verbose > 0,
-                    settings=settings,
-                )
-            if include_envoy:
-                kstatus["envoy"] = await mesh_status(
-                    service=service,
-                    service_mesh=ServiceMesh.ENVOY,
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods_task=pods_task,
-                    should_return_individual_backends=verbose > 0,
-                    settings=settings,
-                )
+            kstatus["envoy"] = await mesh_status(
+                service=service,
+                service_mesh=ServiceMesh.ENVOY,
+                instance=job_config.get_nerve_namespace(),
+                job_config=job_config,
+                service_namespace_config=service_namespace_config,
+                pods_task=pods_task,
+                should_return_individual_backends=verbose > 0,
+                settings=settings,
+            )
     return kstatus
 
 
@@ -1240,7 +1228,6 @@ def instance_status(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     use_new: bool,
     instance_type: str,
@@ -1270,7 +1257,6 @@ def instance_status(
                 instance=instance,
                 instance_type=instance_type,
                 verbose=verbose,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
                 settings=settings,
             )
@@ -1280,7 +1266,6 @@ def instance_status(
                 instance=instance,
                 instance_type=instance_type,
                 verbose=verbose,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
                 settings=settings,
             )
@@ -1305,11 +1290,10 @@ async def kubernetes_mesh_status(
     instance: str,
     instance_type: str,
     settings: Any,
-    include_smartstack: bool = True,
     include_envoy: bool = True,
 ) -> Mapping[str, Any]:
 
-    if not include_smartstack and not include_envoy:
+    if not include_envoy:
         raise RuntimeError("No mesh types specified when requesting mesh status")
     if instance_type not in LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
         raise RuntimeError(
@@ -1354,11 +1338,6 @@ async def kubernetes_mesh_status(
         should_return_individual_backends=True,
         settings=settings,
     )
-    if include_smartstack:
-        kmesh["smartstack"] = await mesh_status(
-            service_mesh=ServiceMesh.SMARTSTACK,
-            **mesh_status_kwargs,
-        )
     if include_envoy:
         kmesh["envoy"] = await mesh_status(
             service_mesh=ServiceMesh.ENVOY,
