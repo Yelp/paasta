@@ -727,10 +727,26 @@ def assume_aws_role(
         )
     elif use_okta_role:
         print(f"Calling aws-okta using account {aws_account}")
-    else:
-        # use_okta_role, assume_pod_identity, and assume_role are all empty. This shouldn't happen
+    elif "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ:
+        # Get a session using the current pod identity
         print(
-            "Error: assume_aws_role called without required arguments", file=sys.stderr
+            f"Found Pod Identity token in env. Assuming into role {os.environ['AWS_ROLE_ARN']}."
+        )
+        boto_session = boto3.Session()
+        credentials = boto_session.get_credentials()
+        creds_dict: AWSSessionCreds = {
+            "AWS_ACCESS_KEY_ID": credentials.access_key,
+            "AWS_SECRET_ACCESS_KEY": credentials.secret_key,
+            "AWS_SESSION_TOKEN": credentials.token,
+            "AWS_SECURITY_TOKEN": credentials.token,
+        }
+        return creds_dict
+    else:
+        # use_okta_role, assume_pod_identity, and assume_role are all empty, and there's no
+        # pod identity (web identity token) in the env. This shouldn't happen
+        print(
+            "Error: assume_aws_role called without required arguments and no pod identity env",
+            file=sys.stderr,
         )
         sys.exit(1)
     # local-run will sometimes run as root - make sure that we get the actual
@@ -876,7 +892,12 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
-    if assume_role_arn or assume_pod_identity or use_okta_role:
+    if (
+        assume_role_arn
+        or assume_pod_identity
+        or use_okta_role
+        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+    ):
         aws_creds = assume_aws_role(
             instance_config,
             service,
