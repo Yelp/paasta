@@ -734,13 +734,13 @@ def assume_aws_role(
         )
         boto_session = boto3.Session()
         credentials = boto_session.get_credentials()
-        creds_dict: AWSSessionCreds = {
+        assumed_creds_dict: AWSSessionCreds = {
             "AWS_ACCESS_KEY_ID": credentials.access_key,
             "AWS_SECRET_ACCESS_KEY": credentials.secret_key,
             "AWS_SESSION_TOKEN": credentials.token,
             "AWS_SECURITY_TOKEN": credentials.token,
         }
-        return creds_dict
+        return assumed_creds_dict
     else:
         # use_okta_role, assume_pod_identity, and assume_role are all empty, and there's no
         # pod identity (web identity token) in the env. This shouldn't happen
