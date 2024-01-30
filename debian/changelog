@@ -1,3 +1,10 @@
+paasta-tools (0.217.3) xenial; urgency=medium
+
+  * 0.217.3 tagged with 'make release'
+    Commit: Displays EKS in PaaSTA Status output (#3788)
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 30 Jan 2024 11:11:19 -0800
+
 paasta-tools (0.217.2) xenial; urgency=medium
 
   * 0.217.2 tagged with 'make release'
