@@ -439,7 +439,10 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--assume-aws-role",
-        help="Takes an AWS IAM role ARN and attempts to create a session",
+        help=(
+            "Takes an AWS IAM role ARN and attempts to create a session using "
+            "spark_role_assumer"
+        ),
     )
 
     aws_group.add_argument(
@@ -450,6 +453,18 @@ def add_subparser(subparsers):
         ),
         type=int,
         default=43200,
+    )
+
+    aws_group.add_argument(
+        "--use-web-identity",
+        help=(
+            "If the current environment contains AWS_ROLE_ARN and "
+            "AWS_WEB_IDENTITY_TOKEN_FILE, creates a session to use. These "
+            "ENV vars must be present, and will be in the context of a pod-"
+            "identity enabled pod."
+        ),
+        action="store_true",
+        default=False,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -1274,6 +1289,7 @@ def paasta_spark_run(args):
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
         session_duration=args.aws_role_duration,
+        use_web_identity=args.use_web_identity,
     )
     docker_image_digest = get_docker_image(args, instance_config)
     if docker_image_digest is None:
