@@ -473,6 +473,12 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--assume-role-aws-account",
+        "--aws-account",
+        "-a",
+        help="Specify AWS account from which to source credentials",
+    )
+    list_parser.add_argument(
         "--assume-role-arn",
         help=(
             "role ARN to assume before launching the service. "
@@ -688,12 +694,35 @@ def check_if_port_free(port):
     return True
 
 
+def resolve_aws_account_from_runtimeenv(aws_account: str = None) -> str:
+    if aws_account is not None:
+        return aws_account
+
+    try:
+        with open("/nail/etc/runtimeenv") as runtimeenv_file:
+            runtimeenv = runtimeenv_file.read()
+    except FileNotFoundError:
+        print(
+            "Unable to determine environment for AWS account name. Using 'dev'",
+            file=sys.stderr,
+        )
+        runtimeenv = "dev"
+
+    runtimeenv_to_account_overrides = {
+        "stage": "dev",
+        "corp": "corpprod",
+    }
+    aws_account = runtimeenv_to_account_overrides.get(runtimeenv, runtimeenv)
+    return aws_account
+
+
 def assume_aws_role(
     instance_config: InstanceConfig,
     service: str,
     assume_role_arn: str,
     assume_pod_identity: bool,
     use_okta_role: bool,
+    aws_account: str = None,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
@@ -705,20 +734,9 @@ def assume_aws_role(
             file=sys.stderr,
         )
         sys.exit(1)
-    try:
-        with open("/nail/etc/runtimeenv") as runtimeenv_file:
-            aws_account = runtimeenv_file.read()
-            # Map runtimeenv in special cases to proper aws account name
-            if aws_account == "stage":
-                aws_account = "dev"
-            elif aws_account == "corp":
-                aws_account = "corpprod"
-    except FileNotFoundError:
-        print(
-            "Unable to determine environment for AWS account name. Using 'dev'",
-            file=sys.stderr,
-        )
-        aws_account = "dev"
+
+    aws_account = resolve_aws_account_from_runtimeenv(aws_account)
+
     if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
             "Calling aws-okta to assume role {} using account {}".format(
@@ -819,6 +837,7 @@ def run_docker_container(
     assume_pod_identity=False,
     assume_role_arn="",
     use_okta_role=False,
+    assume_role_aws_account=None,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -904,6 +923,7 @@ def run_docker_container(
             assume_role_arn,
             assume_pod_identity,
             use_okta_role,
+            assume_role_aws_account,
         )
         environment.update(aws_creds)
 
@@ -1249,6 +1269,7 @@ def configure_and_run_docker_container(
         skip_secrets=args.skip_secrets,
         assume_pod_identity=args.assume_pod_identity,
         assume_role_arn=args.assume_role_arn,
+        assume_role_aws_account=args.assume_role_aws_account,
         use_okta_role=args.use_okta_role,
     )
 
