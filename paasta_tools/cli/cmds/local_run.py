@@ -712,8 +712,7 @@ def resolve_aws_account_from_runtimeenv(aws_account: str = None) -> str:
         "stage": "dev",
         "corp": "corpprod",
     }
-    aws_account = runtimeenv_to_account_overrides.get(runtimeenv, runtimeenv)
-    return aws_account
+    return runtimeenv_to_account_overrides.get(runtimeenv, runtimeenv)
 
 
 def assume_aws_role(
