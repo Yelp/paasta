@@ -25,6 +25,7 @@ import time
 import uuid
 from os import execlpe
 from random import randint
+from typing import Optional
 from urllib.parse import urlparse
 
 import boto3
@@ -694,10 +695,7 @@ def check_if_port_free(port):
     return True
 
 
-def resolve_aws_account_from_runtimeenv(aws_account: str = None) -> str:
-    if aws_account is not None:
-        return aws_account
-
+def resolve_aws_account_from_runtimeenv() -> str:
     try:
         with open("/nail/etc/runtimeenv") as runtimeenv_file:
             runtimeenv = runtimeenv_file.read()
@@ -721,7 +719,7 @@ def assume_aws_role(
     assume_role_arn: str,
     assume_pod_identity: bool,
     use_okta_role: bool,
-    aws_account: str = None,
+    aws_account: str,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
@@ -733,8 +731,6 @@ def assume_aws_role(
             file=sys.stderr,
         )
         sys.exit(1)
-
-    aws_account = resolve_aws_account_from_runtimeenv(aws_account)
 
     if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
@@ -836,7 +832,7 @@ def run_docker_container(
     assume_pod_identity=False,
     assume_role_arn="",
     use_okta_role=False,
-    assume_role_aws_account=None,
+    assume_role_aws_account: Optional[str] = None,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -1114,6 +1110,7 @@ def configure_and_run_docker_container(
     cluster,
     system_paasta_config,
     args,
+    assume_role_aws_account,
     pull_image=False,
     dry_run=False,
 ):
@@ -1268,7 +1265,7 @@ def configure_and_run_docker_container(
         skip_secrets=args.skip_secrets,
         assume_pod_identity=args.assume_pod_identity,
         assume_role_arn=args.assume_role_arn,
-        assume_role_aws_account=args.assume_role_aws_account,
+        assume_role_aws_account=assume_role_aws_account,
         use_okta_role=args.use_okta_role,
     )
 
@@ -1313,6 +1310,7 @@ def paasta_local_run(args):
     local_run_config = system_paasta_config.get_local_run_config()
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+
     if args.cluster:
         cluster = args.cluster
     else:
@@ -1328,6 +1326,12 @@ def paasta_local_run(args):
                 file=sys.stderr,
             )
             return 1
+    assume_role_aws_account = args.assume_role_aws_account or (
+        system_paasta_config.get_kube_clusters()
+        .get(cluster, {})
+        .get("aws_account", resolve_aws_account_from_runtimeenv())
+    )
+
     instance = args.instance
     docker_client = get_docker_client()
 
@@ -1365,6 +1369,7 @@ def paasta_local_run(args):
             pull_image=pull_image,
             system_paasta_config=system_paasta_config,
             dry_run=args.action == "dry_run",
+            assume_role_aws_account=assume_role_aws_account,
         )
     except errors.APIError as e:
         print("Can't run Docker container. Error: %s" % str(e), file=sys.stderr)
