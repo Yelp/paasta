@@ -25,6 +25,7 @@ import time
 import uuid
 from os import execlpe
 from random import randint
+from typing import Optional
 from urllib.parse import urlparse
 
 import boto3
@@ -473,6 +474,12 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--assume-role-aws-account",
+        "--aws-account",
+        "-a",
+        help="Specify AWS account from which to source credentials",
+    )
+    list_parser.add_argument(
         "--assume-role-arn",
         help=(
             "role ARN to assume before launching the service. "
@@ -688,12 +695,31 @@ def check_if_port_free(port):
     return True
 
 
+def resolve_aws_account_from_runtimeenv() -> str:
+    try:
+        with open("/nail/etc/runtimeenv") as runtimeenv_file:
+            runtimeenv = runtimeenv_file.read()
+    except FileNotFoundError:
+        print(
+            "Unable to determine environment for AWS account name. Using 'dev'",
+            file=sys.stderr,
+        )
+        runtimeenv = "dev"
+
+    runtimeenv_to_account_overrides = {
+        "stage": "dev",
+        "corp": "corpprod",
+    }
+    return runtimeenv_to_account_overrides.get(runtimeenv, runtimeenv)
+
+
 def assume_aws_role(
     instance_config: InstanceConfig,
     service: str,
     assume_role_arn: str,
     assume_pod_identity: bool,
     use_okta_role: bool,
+    aws_account: str,
 ) -> AWSSessionCreds:
     """Runs AWS cli to assume into the correct role, then extract and return the ENV variables from that session"""
     pod_identity = instance_config.get_iam_role()
@@ -705,20 +731,7 @@ def assume_aws_role(
             file=sys.stderr,
         )
         sys.exit(1)
-    try:
-        with open("/nail/etc/runtimeenv") as runtimeenv_file:
-            aws_account = runtimeenv_file.read()
-            # Map runtimeenv in special cases to proper aws account name
-            if aws_account == "stage":
-                aws_account = "dev"
-            elif aws_account == "corp":
-                aws_account = "corpprod"
-    except FileNotFoundError:
-        print(
-            "Unable to determine environment for AWS account name. Using 'dev'",
-            file=sys.stderr,
-        )
-        aws_account = "dev"
+
     if pod_identity and (assume_pod_identity or assume_role_arn):
         print(
             "Calling aws-okta to assume role {} using account {}".format(
@@ -727,10 +740,26 @@ def assume_aws_role(
         )
     elif use_okta_role:
         print(f"Calling aws-okta using account {aws_account}")
-    else:
-        # use_okta_role, assume_pod_identity, and assume_role are all empty. This shouldn't happen
+    elif "AWS_ROLE_ARN" in os.environ and "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ:
+        # Get a session using the current pod identity
         print(
-            "Error: assume_aws_role called without required arguments", file=sys.stderr
+            f"Found Pod Identity token in env. Assuming into role {os.environ['AWS_ROLE_ARN']}."
+        )
+        boto_session = boto3.Session()
+        credentials = boto_session.get_credentials()
+        assumed_creds_dict: AWSSessionCreds = {
+            "AWS_ACCESS_KEY_ID": credentials.access_key,
+            "AWS_SECRET_ACCESS_KEY": credentials.secret_key,
+            "AWS_SESSION_TOKEN": credentials.token,
+            "AWS_SECURITY_TOKEN": credentials.token,
+        }
+        return assumed_creds_dict
+    else:
+        # use_okta_role, assume_pod_identity, and assume_role are all empty, and there's no
+        # pod identity (web identity token) in the env. This shouldn't happen
+        print(
+            "Error: assume_aws_role called without required arguments and no pod identity env",
+            file=sys.stderr,
         )
         sys.exit(1)
     # local-run will sometimes run as root - make sure that we get the actual
@@ -803,6 +832,7 @@ def run_docker_container(
     assume_pod_identity=False,
     assume_role_arn="",
     use_okta_role=False,
+    assume_role_aws_account: Optional[str] = None,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -826,7 +856,7 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
-    secret_volumes = {}
+    secret_volumes = {}  # type: ignore
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service
         if is_secrets_for_teams_enabled(service, soa_dir):
@@ -876,13 +906,19 @@ def run_docker_container(
                 )
                 sys.exit(1)
         environment.update(secret_environment)
-    if assume_role_arn or assume_pod_identity or use_okta_role:
+    if (
+        assume_role_arn
+        or assume_pod_identity
+        or use_okta_role
+        or "AWS_WEB_IDENTITY_TOKEN_FILE" in os.environ
+    ):
         aws_creds = assume_aws_role(
             instance_config,
             service,
             assume_role_arn,
             assume_pod_identity,
             use_okta_role,
+            assume_role_aws_account,
         )
         environment.update(aws_creds)
 
@@ -929,8 +965,8 @@ def run_docker_container(
         except TypeError:
             # If that fails, try to write it as bytes
             # This is for binary files like TLS keys
-            with open(temp_secret_filename, "wb") as f:
-                f.write(secret_content)
+            with open(temp_secret_filename, "wb") as fb:
+                fb.write(secret_content)
 
         # Append this to the list of volumes passed to docker run
         volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
@@ -1074,6 +1110,7 @@ def configure_and_run_docker_container(
     cluster,
     system_paasta_config,
     args,
+    assume_role_aws_account,
     pull_image=False,
     dry_run=False,
 ):
@@ -1228,6 +1265,7 @@ def configure_and_run_docker_container(
         skip_secrets=args.skip_secrets,
         assume_pod_identity=args.assume_pod_identity,
         assume_role_arn=args.assume_role_arn,
+        assume_role_aws_account=assume_role_aws_account,
         use_okta_role=args.use_okta_role,
     )
 
@@ -1272,6 +1310,7 @@ def paasta_local_run(args):
     local_run_config = system_paasta_config.get_local_run_config()
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+
     if args.cluster:
         cluster = args.cluster
     else:
@@ -1287,6 +1326,12 @@ def paasta_local_run(args):
                 file=sys.stderr,
             )
             return 1
+    assume_role_aws_account = args.assume_role_aws_account or (
+        system_paasta_config.get_kube_clusters()
+        .get(cluster, {})
+        .get("aws_account", resolve_aws_account_from_runtimeenv())
+    )
+
     instance = args.instance
     docker_client = get_docker_client()
 
@@ -1324,6 +1369,7 @@ def paasta_local_run(args):
             pull_image=pull_image,
             system_paasta_config=system_paasta_config,
             dry_run=args.action == "dry_run",
+            assume_role_aws_account=assume_role_aws_account,
         )
     except errors.APIError as e:
         print("Can't run Docker container. Error: %s" % str(e), file=sys.stderr)
