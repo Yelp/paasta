@@ -17,6 +17,7 @@ import re
 
 import docker
 import mock
+import pytest
 from pytest import mark
 from pytest import raises
 
@@ -769,6 +770,38 @@ def test_run_success(
     args.interactive = False
     args.action = "pull"
     assert paasta_local_run(args) is None
+
+
+@pytest.mark.parametrize(
+    "cluster, aws_account, expected_aws_account",
+    [
+        ("pnw-devc", None, "dev"),
+        ("pnw-devc", "prod", "prod"),
+        ("pnw-prod", None, "prod"),
+        ("pnw-prod", "dev", "dev"),
+    ],
+)
+@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
+)
+def test_assume_role_aws_account(
+    mock_run_docker_container,
+    mock_validate_service_name,
+    mock_figure_out_service_name,
+    cluster,
+    aws_account,
+    expected_aws_account,
+):
+    args = mock.MagicMock()
+    args.cluster = cluster
+    args.assume_role_aws_account = aws_account
+
+    paasta_local_run(args)
+
+    _, kwargs = mock_run_docker_container.call_args
+    assert kwargs.get("assume_role_aws_account", "") == expected_aws_account
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
