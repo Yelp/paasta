@@ -856,7 +856,7 @@ def run_docker_container(
     else:
         chosen_port = pick_random_port(service)
     environment = instance_config.get_env_dictionary()
-    secret_volumes = {}
+    secret_volumes = {}  # type: ignore
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service
         if is_secrets_for_teams_enabled(service, soa_dir):
