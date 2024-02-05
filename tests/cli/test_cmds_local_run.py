@@ -2517,11 +2517,13 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
 )
 @mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.os.getuid", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.local_run.os.environ", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.get_username", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
 def test_assume_aws_role(
     mock_boto,
     mock_get_username,
+    mock_environ,
     mock_getuid,
     mock_subprocess_run,
     assume_role,
