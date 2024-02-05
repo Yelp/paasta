@@ -864,10 +864,6 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=True,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
         ):
@@ -982,10 +978,6 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.kubernetes_tools.kube_client",
             autospec=True,
-        ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=True,
         ), mock.patch(
             "paasta_tools.tron_tools._spark_k8s_role",
             autospec=True,
@@ -1122,7 +1114,6 @@ class TestTronTools:
         )
         assert result["docker_image"] == expected_docker
         assert result["env"]["SHELL"] == "/bin/bash"
-        assert result["env"]["STREAM_SUFFIX_LOGSPOUT"] == "spark"
 
     def test_format_tron_action_dict_paasta_k8s_service_account(self):
         action_dict = {
@@ -1151,10 +1142,6 @@ class TestTronTools:
             action_config, "get_docker_registry", return_value="docker-registry.com:400"
         ), mock.patch(
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
         ), mock.patch(
@@ -1273,10 +1260,6 @@ class TestTronTools:
             autospec=True,
             return_value="some--service--account",
         ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
         ), mock.patch(
@@ -1384,10 +1367,6 @@ class TestTronTools:
 
         with mock.patch(
             "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
-            autospec=True,
-            return_value=False,
-        ), mock.patch(
-            "paasta_tools.tron_tools._use_suffixed_log_streams_k8s",
             autospec=True,
             return_value=False,
         ), mock.patch(
