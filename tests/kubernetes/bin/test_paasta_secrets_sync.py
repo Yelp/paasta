@@ -64,6 +64,9 @@ def test_sync_all_secrets():
     ) as mock_sync_secrets, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.ensure_namespace",
+        autospec=True,
     ):
         services_to_k8s_namespaces_to_allowlist = {
             "foo": {"paastasvc-foo": None},
