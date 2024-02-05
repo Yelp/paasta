@@ -781,6 +781,7 @@ def test_run_success(
         ("pnw-prod", "dev", "dev"),
     ],
 )
+@mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
 @mock.patch(
@@ -790,10 +791,14 @@ def test_assume_role_aws_account(
     mock_run_docker_container,
     mock_validate_service_name,
     mock_figure_out_service_name,
+    mock_system_paasta_config,
     cluster,
     aws_account,
     expected_aws_account,
+    system_paasta_config,
 ):
+    mock_system_paasta_config.return_value = system_paasta_config
+
     args = mock.MagicMock()
     args.cluster = cluster
     args.assume_role_aws_account = aws_account
