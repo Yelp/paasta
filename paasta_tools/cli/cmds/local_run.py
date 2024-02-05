@@ -965,8 +965,8 @@ def run_docker_container(
         except TypeError:
             # If that fails, try to write it as bytes
             # This is for binary files like TLS keys
-            with open(temp_secret_filename, "wb") as f:
-                f.write(secret_content)
+            with open(temp_secret_filename, "wb") as fb:
+                fb.write(secret_content)
 
         # Append this to the list of volumes passed to docker run
         volumes.append(f"{temp_secret_filename}:{container_mount_path}:ro")
