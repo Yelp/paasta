@@ -17,7 +17,6 @@ import re
 
 import docker
 import mock
-import pytest
 from pytest import mark
 from pytest import raises
 
@@ -408,7 +407,6 @@ def test_configure_and_run_command_uses_cmd_from_config(
         cluster="fake_cluster",
         system_paasta_config=system_paasta_config,
         args=args,
-        assume_role_aws_account=None,
     )
     assert return_code == 0
     mock_run_docker_container.assert_called_once_with(
@@ -432,7 +430,6 @@ def test_configure_and_run_command_uses_cmd_from_config(
         skip_secrets=False,
         assume_role_arn="",
         assume_pod_identity=False,
-        assume_role_aws_account=None,
         use_okta_role=False,
     )
 
@@ -478,7 +475,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         cluster="fake_cluster",
         system_paasta_config=system_paasta_config,
         args=args,
-        assume_role_aws_account="dev",
     )
     assert return_code == 0
     mock_secret_provider_kwargs = {
@@ -506,7 +502,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         secret_provider_kwargs=mock_secret_provider_kwargs,
         skip_secrets=False,
         assume_role_arn="",
-        assume_role_aws_account="dev",
         assume_pod_identity=False,
         use_okta_role=False,
     )
@@ -560,7 +555,6 @@ def test_configure_and_run_pulls_image_when_asked(
         args=args,
         system_paasta_config=system_paasta_config,
         pull_image=True,
-        assume_role_aws_account="dev",
     )
     assert return_code == 0
     mock_docker_pull_image.assert_called_once_with("fake_registry/fake_image")
@@ -590,7 +584,6 @@ def test_configure_and_run_pulls_image_when_asked(
         skip_secrets=False,
         assume_role_arn="",
         assume_pod_identity=False,
-        assume_role_aws_account="dev",
         use_okta_role=False,
     )
 
@@ -640,7 +633,6 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             cluster="fake_cluster",
             args=args,
             system_paasta_config=system_paasta_config,
-            assume_role_aws_account="dev",
         )
         assert return_code == 0
         mock_secret_provider_kwargs = {
@@ -669,7 +661,6 @@ def test_configure_and_run_docker_container_defaults_to_interactive_instance(
             skip_secrets=False,
             assume_role_arn="",
             assume_pod_identity=False,
-            assume_role_aws_account="dev",
             use_okta_role=False,
         )
 
@@ -727,7 +718,6 @@ def test_configure_and_run_docker_container_respects_docker_sha(
             cluster="fake_cluster",
             args=args,
             system_paasta_config=system_paasta_config,
-            assume_role_aws_account="dev",
         )
         expected = "fake_registry/services-fake_service:paasta-abcdefg"
         assert mock_run_docker_container.call_args[1]["docker_url"] == expected
@@ -770,43 +760,6 @@ def test_run_success(
     args.interactive = False
     args.action = "pull"
     assert paasta_local_run(args) is None
-
-
-@pytest.mark.parametrize(
-    "cluster, aws_account, expected_aws_account",
-    [
-        ("pnw-devc", None, "dev"),
-        ("pnw-devc", "prod", "prod"),
-        ("pnw-prod", None, "prod"),
-        ("pnw-prod", "dev", "dev"),
-    ],
-)
-@mock.patch("paasta_tools.cli.cmds.local_run.load_system_paasta_config", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.cook_image.validate_service_name", autospec=True)
-@mock.patch(
-    "paasta_tools.cli.cmds.local_run.configure_and_run_docker_container", autospec=True
-)
-def test_assume_role_aws_account(
-    mock_run_docker_container,
-    mock_validate_service_name,
-    mock_figure_out_service_name,
-    mock_system_paasta_config,
-    cluster,
-    aws_account,
-    expected_aws_account,
-    system_paasta_config,
-):
-    mock_system_paasta_config.return_value = system_paasta_config
-
-    args = mock.MagicMock()
-    args.cluster = cluster
-    args.assume_role_aws_account = aws_account
-
-    paasta_local_run(args)
-
-    _, kwargs = mock_run_docker_container.call_args
-    assert kwargs.get("assume_role_aws_account", "") == expected_aws_account
 
 
 @mock.patch("paasta_tools.cli.cmds.local_run.figure_out_service_name", autospec=True)
@@ -1972,7 +1925,6 @@ def test_volumes_are_deduped(mock_exists):
                 "/etc/paasta",
             ),
             args=mock.Mock(yelpsoa_config_root="/blurp/durp", volumes=[]),
-            assume_role_aws_account="dev",
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs["volumes"] == ["/hostPath:/containerPath:ro"]
@@ -2028,7 +1980,6 @@ def test_missing_volumes_skipped(mock_exists):
                 "/etc/paasta",
             ),
             args=mock.Mock(yelpsoa_config_root="/blurp/durp", volumes=[]),
-            assume_role_aws_account="dev",
         )
         args, kwargs = mock_run_docker_container.call_args
         assert kwargs["volumes"] == []
@@ -2568,18 +2519,12 @@ def test_assume_aws_role(
                 assume_role,
                 assume_pod_identity,
                 use_okta_role,
-                "dev",
             )
         assert sys_exit.value.code == 1
         return
     else:
         env = assume_aws_role(
-            mock_config,
-            mock_service,
-            assume_role,
-            assume_pod_identity,
-            use_okta_role,
-            "dev",
+            mock_config, mock_service, assume_role, assume_pod_identity, use_okta_role
         )
 
     if as_root:
@@ -2618,7 +2563,7 @@ def test_assume_aws_role_with_web_identity(
     os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
     os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
 
-    env = assume_aws_role(mock_config, mock_service, False, False, False, "dev")
+    env = assume_aws_role(mock_config, mock_service, False, False, False)
 
     os.environ.pop("AWS_ROLE_ARN")
     os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")

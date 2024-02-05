@@ -36,10 +36,6 @@ def system_paasta_config():
                 }
             ],
             "service_discovery_providers": {"smartstack": {}, "envoy": {}},
-            "kube_clusters": {
-                "pnw-prod": {"aws_account": "prod"},
-                "pnw-devc": {"aws_account": "dev"},
-            },
         },
         "/fake_dir/",
     )
