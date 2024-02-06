@@ -38,6 +38,7 @@ from typing_extensions import Literal
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
@@ -318,6 +319,7 @@ def sync_all_secrets(
                 else namespaces_to_allowlist.get(overwrite_namespace, set()),
             }
         for namespace, secret_allowlist in namespaces_to_allowlist.items():
+            ensure_namespace(kube_client, namespace)
             sync_service_secrets["paasta-secret"].append(
                 partial(
                     sync_secrets,
