@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 import time
 
@@ -43,6 +44,14 @@ def system_paasta_config():
         },
         "/fake_dir/",
     )
+
+
+@pytest.fixture
+def empty_env_vars(autouse=True):
+    with mock.patch.dict(
+        os.environ, {"AWS_ROLE_ARN": "foo", "AWS_WEB_IDENTITY_TOKEN_FILE": "/foo"}
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)

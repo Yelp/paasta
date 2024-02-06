@@ -83,7 +83,7 @@ def test_dry_run(
     assert ret == 0
 
     # We don't care what the contents are, we just care that it is json loadable.
-    print(out)
+    print("Output:", out)
     expected_out = json.loads(out)
     assert isinstance(expected_out, list)
 
@@ -139,6 +139,7 @@ def test_dry_run_json_dict(
     assert ret == 0
 
     # Ensure it's a dict and check some keys
+    print("Output", out)
     expected_out = json.loads(out)
     assert isinstance(expected_out, dict)
     assert "docker_hash" in expected_out
@@ -2561,20 +2562,8 @@ def test_assume_aws_role(
     elif not assume_pod_identity and not assume_role and not use_okta_role:
         expect_exit = True
 
-    with mock.patch.dict(os.environ, {}):
-        if expect_exit:
-            with raises(SystemExit) as sys_exit:
-                env = assume_aws_role(
-                    mock_config,
-                    mock_service,
-                    assume_role,
-                    assume_pod_identity,
-                    use_okta_role,
-                    "dev",
-                )
-            assert sys_exit.value.code == 1
-            return
-        else:
+    if expect_exit:
+        with raises(SystemExit) as sys_exit:
             env = assume_aws_role(
                 mock_config,
                 mock_service,
@@ -2583,6 +2572,17 @@ def test_assume_aws_role(
                 use_okta_role,
                 "dev",
             )
+        assert sys_exit.value.code == 1
+        return
+    else:
+        env = assume_aws_role(
+            mock_config,
+            mock_service,
+            assume_role,
+            assume_pod_identity,
+            use_okta_role,
+            "dev",
+        )
 
     if as_root:
         assert "sudo" in mock_subprocess_run.call_args_list[0][0][0]
