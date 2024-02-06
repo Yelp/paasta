@@ -48,9 +48,7 @@ def system_paasta_config():
 
 @pytest.fixture
 def empty_env_vars(autouse=True):
-    with mock.patch.dict(
-        os.environ, {"AWS_ROLE_ARN": "foo", "AWS_WEB_IDENTITY_TOKEN_FILE": "/foo"}
-    ):
+    with mock.patch.dict(os.environ, {}):
         yield
 
 
