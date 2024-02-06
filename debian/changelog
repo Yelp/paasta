@@ -1,3 +1,17 @@
+paasta-tools (0.218.0) xenial; urgency=medium
+
+  * 0.218.0 tagged with 'make release'
+    Commit: Call ensure_namespace() in paasta_secrets_sync (#3792)  At
+    the moment, you cannot pre-create secrets on a new dual-name cluster
+    since the namespaces for services will not yet have been created by
+    setup_kubernetes_job (and they may not have been created by Flux yet
+    either).  We can fix this by calling ensure_namespace() in the
+    secret sync code - the caching we have on
+    ensure_namespace()/get_all_namespaces() means that this *should* be
+    pretty fast as it should be grabbing cached data most of the time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 06 Feb 2024 09:25:50 -0800
+
 paasta-tools (0.217.3) xenial; urgency=medium
 
   * 0.217.3 tagged with 'make release'
