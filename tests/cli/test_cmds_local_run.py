@@ -83,7 +83,6 @@ def test_dry_run(
     assert ret == 0
 
     # We don't care what the contents are, we just care that it is json loadable.
-    print("Output:", out)
     expected_out = json.loads(out)
     assert isinstance(expected_out, list)
 

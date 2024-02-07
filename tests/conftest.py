@@ -46,9 +46,9 @@ def system_paasta_config():
     )
 
 
-@pytest.fixture
-def empty_env_vars(autouse=True):
-    with mock.patch.dict(os.environ, {}):
+@pytest.fixture(scope="function", autouse=True)
+def empty_env_vars():
+    with mock.patch.dict(os.environ, {}, clear=True):
         yield
 
 
