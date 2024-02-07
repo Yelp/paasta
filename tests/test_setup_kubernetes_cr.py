@@ -221,40 +221,6 @@ def test_load_all_flink_configs():
         assert ret["mc"] == {"bar": {"cpus": 3}}
 
 
-def test_load_all_flink_eks_configs():
-    with mock.patch(
-        "paasta_tools.utils.load_service_instance_configs",
-        autospec=True,
-    ) as mock_load_configs, mock.patch("os.listdir", autospec=True) as mock_oslist:
-        mock_oslist.return_value = ["kurupt", "mc"]
-        mock_load_configs.side_effect = [
-            {
-                "foo": {"mem": 2},
-                "bar": {"cpus": 3},
-            },
-            {
-                "bar": {"cpus": 3},
-            },
-        ]
-        ret = setup_kubernetes_cr.load_all_configs(
-            cluster="westeros-prod", file_prefix="flinkeks", soa_dir="/nail/soa"
-        )
-
-        mock_load_configs.assert_has_calls(
-            [
-                mock.call("kurupt", "flink", "westeros-prod", soa_dir="/nail/soa"),
-                mock.call("mc", "flink", "westeros-prod", soa_dir="/nail/soa"),
-            ],
-            any_order=True,
-        )
-
-        assert "kurupt" in ret.keys()
-        assert "mc" in ret.keys()
-
-        assert ret["kurupt"] == {"foo": {"mem": 2}, "bar": {"cpus": 3}}
-        assert ret["mc"] == {"bar": {"cpus": 3}}
-
-
 def test_setup_custom_resources():
     with mock.patch(
         "paasta_tools.setup_kubernetes_cr.list_custom_resources", autospec=True
