@@ -16,7 +16,6 @@ from typing import Tuple
 from typing import Union
 
 import yaml
-from boto3.exceptions import Boto3Error
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
@@ -24,7 +23,6 @@ from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
 from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_hourly_cost
-from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -36,7 +34,6 @@ from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
-from paasta_tools.spark_tools import get_volumes_from_spark_mesos_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
@@ -60,10 +57,9 @@ DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
-CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
-CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
+CLUSTER_MANAGERS = {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
 DEFAULT_DOCKER_SHM_SIZE = "64m"
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
@@ -304,9 +300,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. "
-        r'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
-        'spark.executor.cores=4".',
+        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, separated by space. "
+        'For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -360,14 +355,6 @@ def add_subparser(subparsers):
         # the CI-provided default
         default=None,
     )
-
-    if clusterman_metrics:
-        list_parser.add_argument(
-            "--suppress-clusterman-metrics-errors",
-            help="Continue even if sending resource requirements to Clusterman fails. This may result in the job "
-            "failing to acquire resources.",
-            action="store_true",
-        )
 
     list_parser.add_argument(
         "-j", "--jars", help=argparse.SUPPRESS, action=DeprecatedAction
@@ -892,9 +879,7 @@ def configure_and_run_docker_container(
         args.docker_cpu_limit,
     )
 
-    if cluster_manager == CLUSTER_MANAGER_MESOS:
-        volumes = get_volumes_from_spark_mesos_configs(spark_conf)
-    elif cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
+    if cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
         # service_configuration_lib puts volumes into the k8s
         # configs for local mode
         volumes = get_volumes_from_spark_k8s_configs(spark_conf)
@@ -955,40 +940,21 @@ def configure_and_run_docker_container(
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
-        try:
-            if cluster_manager == CLUSTER_MANAGER_MESOS:
-                print("Sending resource request metrics to Clusterman")
-                hourly_cost, resources = send_and_calculate_resources_cost(
-                    clusterman_metrics, spark_conf, webui_url, args.pool
-                )
-            else:
-                resources = get_resources_requested(spark_conf)
-                hourly_cost = get_spark_hourly_cost(
-                    clusterman_metrics,
-                    resources,
-                    spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
-                    args.pool,
-                )
-            message = (
-                f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
-                f" is estimated to cost ${hourly_cost} per hour"
-            )
-            if clusterman_metrics.util.costs.should_warn(hourly_cost):
-                print(PaastaColors.red(f"WARNING: {message}"))
-            else:
-                print(message)
-        except Boto3Error as e:
-            print(
-                PaastaColors.red(
-                    f"Encountered {e} while attempting to send resource requirements to Clusterman."
-                )
-            )
-            if args.suppress_clusterman_metrics_errors:
-                print(
-                    "Continuing anyway since --suppress-clusterman-metrics-errors was passed"
-                )
-            else:
-                raise
+        resources = get_resources_requested(spark_conf)
+        hourly_cost = get_spark_hourly_cost(
+            clusterman_metrics,
+            resources,
+            spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
+            args.pool,
+        )
+        message = (
+            f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
+            f" is estimated to cost ${hourly_cost} per hour"
+        )
+        if clusterman_metrics.util.costs.should_warn(hourly_cost):
+            print(PaastaColors.red(f"WARNING: {message}"))
+        else:
+            print(message)
 
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
