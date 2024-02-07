@@ -1199,7 +1199,7 @@ def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
     )
 
 
-def parse_tronfig(tronfig_path: str, tronfig_target: str) -> Optional[Dict[str, str]]:
+def parse_tronfig(tronfig_path: str, tronfig_target: str) -> Optional[Dict[str, Any]]:
     splitted = tronfig_target.split(".")
     if len(splitted) != 2:
         return None
@@ -1289,7 +1289,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
 
 def paasta_spark_run(args: argparse.Namespace) -> int:
-    driver_envs_from_tronfig = dict()
+    driver_envs_from_tronfig: Dict[str, str] = dict()
     if args.tronfig is not None:
         if args.tronfig_target is None:
             print(
@@ -1297,9 +1297,10 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return False
-        driver_envs_from_tronfig = update_args_from_tronfig(args)
-        if driver_envs_from_tronfig is None:
+        result = update_args_from_tronfig(args)
+        if result is None:
             return False
+        driver_envs_from_tronfig = result
 
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
