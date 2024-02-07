@@ -781,7 +781,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     eks=InstanceTypeHandler(get_service_instance_list, load_eks_service_config),
     tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
     flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
-    flinkeks=LongRunningInstanceTypeHandler(
+    flinkeks=InstanceTypeHandler(
         get_service_instance_list, load_flink_eks_instance_config
     ),
     cassandracluster=InstanceTypeHandler(
