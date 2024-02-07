@@ -59,7 +59,7 @@ def load_flink_eks_instance_config(
         service, soa_dir=soa_dir
     )
     instance_config = load_service_instance_config(
-        service, instance, "flink-eks", cluster, soa_dir=soa_dir
+        service, instance, "flinkeks", cluster, soa_dir=soa_dir
     )
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config

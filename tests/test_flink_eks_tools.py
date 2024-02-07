@@ -63,7 +63,7 @@ class TestFlinkEksDeploymentConfig(unittest.TestCase):
         mock_load_service_instance_config.assert_called_once_with(
             "test_service",
             "test_instance",
-            "flink-eks",
+            "flinkeks",
             "test_cluster",
             soa_dir=DEFAULT_SOA_DIR,
         )
