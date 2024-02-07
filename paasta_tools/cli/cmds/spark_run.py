@@ -1106,7 +1106,22 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     if not digest_match:
         raise ValueError(f"Could not determine digest from output: {output}")
     digest = digest_match.group("digest")
-    return f"{docker_url}@{digest}"
+
+    image_url = f"{docker_url}@{digest}"
+
+    # If the local digest doesn't match the remote digest AND the registry is
+    # non-default (which requires requires authentication, and consequently sudo),
+    # downstream `docker run` commands will fail trying to authenticate.
+    # To work around this, we can proactively `sudo docker pull` here so that
+    # the image exists locally and can be `docker run` without sudo
+    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
+        command = f"sudo -H docker pull {image_url}"
+        print(PaastaColors.grey(command))
+        retcode, output = _run(command, stream=False)
+        if retcode != 0:
+            raise NoDockerImageError(f"Could not pull {image_url}: {output}")
+
+    return image_url
 
 
 def validate_work_dir(s):

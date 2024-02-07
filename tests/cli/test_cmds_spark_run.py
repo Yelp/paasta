@@ -1492,6 +1492,7 @@ def test_build_and_push_docker_image_unprivileged_output_format(
                 "latest: digest: sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
             ),
         ),
+        (0, None),
     ]
     mock_get_username.return_value = "user"
     docker_image_digest = build_and_push_docker_image(args)
@@ -1523,6 +1524,7 @@ def test_build_and_push_docker_image_privileged_output_format(
                 "latest: digest: sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06 size: 1337"
             ),
         ),
+        (0, None),
     ]
     mock_get_username.return_value = "user"
     docker_image_digest = build_and_push_docker_image(args)
@@ -1554,6 +1556,7 @@ def test_build_and_push_docker_image_unexpected_output_format(
                 "the regex will not match this"
             ),
         ),
+        (0, None),
     ]
     with pytest.raises(ValueError) as e:
         build_and_push_docker_image(args)
