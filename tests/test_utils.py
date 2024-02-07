@@ -2361,6 +2361,7 @@ def test_validate_service_instance_invalid():
     mock_eks_instances = [("service1", "eks")]
     mock_tron_instances = [("service1", "job.action")]
     mock_flink_instances = [("service1", "flink")]
+    mock_flink_eks_instances = [("service1", "flinkeks")]
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
@@ -2381,6 +2382,7 @@ def test_validate_service_instance_invalid():
             mock_eks_instances,
             mock_tron_instances,
             mock_flink_instances,
+            mock_flink_eks_instances,
             mock_cassandracluster_instances,
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
