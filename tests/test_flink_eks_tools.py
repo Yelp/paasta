@@ -25,9 +25,7 @@ class TestFlinkEksDeploymentConfig(unittest.TestCase):
         self.assertEqual(flink_eks_deployment_config.instance, "test_instance")
         self.assertEqual(flink_eks_deployment_config.config_dict, config_dict)
         self.assertEqual(flink_eks_deployment_config.branch_dict, branch_dict)
-        self.assertEqual(
-            flink_eks_deployment_config.config_filename_prefix, "flink-eks"
-        )
+        self.assertEqual(flink_eks_deployment_config.config_filename_prefix, "flinkeks")
 
     @patch("paasta_tools.flink_eks_tools.deep_merge_dictionaries")
     @patch("paasta_tools.flink_eks_tools.load_service_instance_config")

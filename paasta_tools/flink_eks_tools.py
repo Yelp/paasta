@@ -14,7 +14,7 @@ from paasta_tools.utils import load_v2_deployments_json
 class FlinkEksDeploymentConfig(FlinkDeploymentConfig):
     config_dict: FlinkDeploymentConfigDict
 
-    config_filename_prefix = "flink-eks"
+    config_filename_prefix = "flinkeks"
 
     def __init__(
         self,

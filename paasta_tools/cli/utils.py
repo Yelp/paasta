@@ -44,6 +44,7 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
+from paasta_tools.flink_eks_tools import load_flink_eks_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -809,6 +810,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     flink=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_flink_instance_config
+    ),
+    flinkeks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_flink_eks_instance_config
     ),
     cassandracluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
