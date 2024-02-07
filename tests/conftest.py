@@ -47,8 +47,16 @@ def system_paasta_config():
 
 
 @pytest.fixture(scope="function", autouse=True)
-def empty_env_vars():
-    with mock.patch.dict(os.environ, {}, clear=True):
+def remove_pod_identity_env_vars():
+    with mock.patch.dict(
+        os.environ,
+        {
+            k: v
+            for k, v in os.environ.items()
+            if k not in ["AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE"]
+        },
+        clear=True,
+    ):
         yield
 
 
