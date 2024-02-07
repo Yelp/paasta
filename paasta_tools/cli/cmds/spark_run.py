@@ -885,7 +885,7 @@ def configure_and_run_docker_container(
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     cluster_manager: str,
     pod_template_path: str,
-    extra_driver_envs: Dict[str, str],
+    extra_driver_envs: Dict[str, str] = dict(),
 ) -> int:
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
