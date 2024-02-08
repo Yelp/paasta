@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 import time
 
@@ -36,9 +37,27 @@ def system_paasta_config():
                 }
             ],
             "service_discovery_providers": {"smartstack": {}, "envoy": {}},
+            "kube_clusters": {
+                "pnw-prod": {"aws_account": "prod"},
+                "pnw-devc": {"aws_account": "dev"},
+            },
         },
         "/fake_dir/",
     )
+
+
+@pytest.fixture(scope="function", autouse=True)
+def remove_pod_identity_env_vars():
+    with mock.patch.dict(
+        os.environ,
+        {
+            k: v
+            for k, v in os.environ.items()
+            if k not in ["AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE"]
+        },
+        clear=True,
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
