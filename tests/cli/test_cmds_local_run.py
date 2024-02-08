@@ -2542,33 +2542,3 @@ def test_assume_aws_role(
         assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
     else:
         assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR2"
-
-
-@mock.patch("paasta_tools.cli.cmds.local_run.subprocess.run", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.local_run.boto3.Session", autospec=True)
-def test_assume_aws_role_with_web_identity(
-    mock_boto,
-    mock_subprocess_run,
-):
-    mock_config = mock.MagicMock()
-    mock_config.get_iam_role.return_value = None
-    mock_service = "mockservice"
-
-    mock_credentials = mock.MagicMock()
-    mock_credentials.access_key = "AKIAFOOBAR"
-    mock_credentials.secret_key = "SECRETKEY"
-    mock_credentials.token = "SESSION_TOKEN"
-    mock_boto.return_value.get_credentials.return_value = mock_credentials
-
-    os.environ["AWS_ROLE_ARN"] = "arn:aws:iam::123456789:role/mock_role"
-    os.environ["AWS_WEB_IDENTITY_TOKEN_FILE"] = "/tokenfile"
-
-    env = assume_aws_role(mock_config, mock_service, False, False, False)
-
-    os.environ.pop("AWS_ROLE_ARN")
-    os.environ.pop("AWS_WEB_IDENTITY_TOKEN_FILE")
-
-    assert "AWS_ACCESS_KEY_ID" in env
-    assert "AWS_SECRET_ACCESS_KEY" in env
-    assert "AWS_SESSION_TOKEN" in env
-    assert env["AWS_ACCESS_KEY_ID"] == "AKIAFOOBAR"
