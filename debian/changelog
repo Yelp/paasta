@@ -1,3 +1,10 @@
+paasta-tools (0.218.2) xenial; urgency=medium
+
+  * 0.218.2 tagged with 'make release'
+    Commit: Remove spark mesos logic (#3799)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 08 Feb 2024 09:07:55 -0800
+
 paasta-tools (0.218.1) xenial; urgency=medium
 
   * 0.218.1 tagged with 'make release'
