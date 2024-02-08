@@ -2120,6 +2120,22 @@ def parse_system_paasta_config(
     return SystemPaastaConfig(config, path)
 
 
+class PoolsNotConfiguredError(Exception):
+    pass
+
+
+def validate_pool(
+        cluster, pool, system_paasta_config
+):
+    if pool:
+        valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
+        if not valid_pools:
+            raise PoolsNotConfiguredError
+        if valid_pools and pool not in valid_pools:
+            return False
+    return True
+
+
 class SystemPaastaConfig:
     def __init__(self, config: SystemPaastaConfigDict, directory: str) -> None:
         self.directory = directory
@@ -2801,6 +2817,10 @@ class SystemPaastaConfig:
     def get_spark_executor_iam_role(self) -> str:
         # use the same IAM role as the Spark driver
         return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
+
+    def get_pools_for_cluster(self, cluster: str) -> List[str]:
+        # use the same IAM role as the Spark driver
+        return self.get_cluster_pools().get(cluster, [])
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
@@ -4285,18 +4305,6 @@ def get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
         .get(realized_cluster, {})
         .get("server")
     )
-
-
-@lru_cache(maxsize=1)
-def get_runtimeenv() -> str:
-    try:
-        with open("/nail/etc/runtimeenv", mode="r") as f:
-            return f.read()
-    except OSError:
-        log.error("Unable to read runtimeenv - this is not expected if inside Yelp.")
-        # we could also just crash or return None, but this seems a little easier to find
-        # should we somehow run into this at Yelp
-        return "unknown"
 
 
 @lru_cache(maxsize=1)

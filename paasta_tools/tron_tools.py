@@ -31,6 +31,7 @@ from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import _filter_user_spark_opts
 from service_configuration_lib.spark_config import stringify_spark_env
+from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools.mesos_tools import mesos_services_running_here
 
@@ -54,6 +55,13 @@ from paasta_tools.utils import time_cache
 from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import TronSecretVolume
 from paasta_tools.utils import get_k8s_url_for_cluster
+from paasta_tools.utils import validate_pool
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
+from paasta_tools.spark_tools import get_spark_ports
+from paasta_tools.spark_tools import get_spark_ports_from_cmd
+
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
     create_or_find_service_account_name,
@@ -62,10 +70,7 @@ from paasta_tools.kubernetes_tools import (
     to_node_label,
 )
 from paasta_tools.spark_tools import (
-    adjust_spark_resources,
     inject_spark_conf_str,
-    setup_event_log_configuration,
-    setup_shuffle_partitions,
     setup_volume_mounts,
 )
 from paasta_tools.secret_tools import is_secret_ref
@@ -118,6 +123,10 @@ class TronNotConfigured(Exception):
 
 
 class InvalidTronConfig(Exception):
+    pass
+
+
+class InvalidPoolError(Exception):
     pass
 
 
@@ -244,15 +253,6 @@ def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
 
-def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
-    return {
-        "spark.ui.port": system_paasta_config.get_spark_ui_port(),
-        "spark.driver.port": system_paasta_config.get_spark_driver_port(),
-        "spark.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-        "spark.driver.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-    }
-
-
 class TronActionConfigDict(InstanceConfigDict, total=False):
     # this is kinda confusing: long-running stuff is currently using cmd
     # ...but tron are using command - this is going to require a little
@@ -291,70 +291,59 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def _build_spark_config(self) -> Dict[str, str]:
-        # this is pretty similar to what's done in service_configuration_lib, but it doesn't seem
-        # worth refactoring things there when it's unlikely that other users of that library will
-        # have the k8s creds to deal with service account creation (or the role bindings for the
-        # driver service account as done above)
-        spark_args = self.config_dict.get("spark_args", {})
-        truncated_service = limit_size_with_hash(self.get_service())
-        truncated_instance = limit_size_with_hash(self.get_instance())
+
         system_paasta_config = load_system_paasta_config()
-        conf = {
-            "spark.app.name": spark_args.get(
-                "spark.app.name",
-                f"tron_spark_{self.get_service()}_{self.get_instance()}",
-            ),
-            # TODO: figure out how to handle dedicated spark cluster here
-            "spark.master": f"k8s://{get_k8s_url_for_cluster(self.get_cluster())}",
-            # TODO: add PAASTA_RESOURCE_* environment variables here
-            "spark.executorEnv.PAASTA_SERVICE": self.get_service(),
-            "spark.executorEnv.PAASTA_INSTANCE": self.get_instance(),
-            "spark.executorEnv.PAASTA_CLUSTER": self.get_cluster(),
-            "spark.executorEnv.PAASTA_INSTANCE_TYPE": "spark",
-            "spark.executorEnv.SPARK_EXECUTOR_DIRS": "/tmp",
-            "spark.kubernetes.pyspark.pythonVersion": "3",
-            "spark.kubernetes.container.image": self.get_docker_url(
-                system_paasta_config
-            ),
-            "spark.kubernetes.namespace": SPARK_KUBERNETES_NAMESPACE,
-            "spark.kubernetes.executor.label.yelp.com/paasta_service": truncated_service,
-            "spark.kubernetes.executor.label.yelp.com/paasta_instance": truncated_instance,
-            "spark.kubernetes.executor.label.yelp.com/paasta_cluster": self.get_cluster(),
-            "spark.kubernetes.executor.label.paasta.yelp.com/service": truncated_service,
-            "spark.kubernetes.executor.label.paasta.yelp.com/instance": truncated_instance,
-            "spark.kubernetes.executor.label.paasta.yelp.com/cluster": self.get_cluster(),
-            "spark.kubernetes.node.selector.yelp.com/pool": self.get_spark_executor_pool(),
-            "spark.kubernetes.executor.label.yelp.com/pool": self.get_spark_executor_pool(),
-            # this relies on the PaaSTA workload contract being followed - $PAASTA_POD_IP
-            # will be, drumroll please, the routable IP for the Pod - this allows us to
-            # not need to worry about DNS
-            "spark.driver.host": "$PAASTA_POD_IP",
-        }
+        resolved_cluster = system_paasta_config.get_eks_cluster_aliases().get(self.get_cluster(), self.get_cluster())
+        try:
+            if not validate_pool(resolved_cluster, self.get_spark_executor_pool(), system_paasta_config):
+                raise InvalidPoolError
+        except PoolsNotConfiguredError:
+            log.warning(
+                f"Could not fetch allowed_pools for `{resolved_cluster}`. Skipping pool validation.\n"
+            )
 
-        # required to tell Spark to use AWS_WEB_IDENTITY_TOKEN_FILE inside the pod
-        if self.get_executor() == "spark":
-            conf[
-                "spark.hadoop.fs.s3a.aws.credentials.provider"
-            ] = SPARK_AWS_CREDS_PROVIDER
-
+        spark_args = self.config_dict.get("spark_args", {})
         # most of the service_configuration_lib function expected string values only
         # so let's go ahead and convert the values now instead of once per-wrapper
         stringified_spark_args = {
             k: (str(v) if not isinstance(v, bool) else str(v).lower())
             for k, v in spark_args.items()
         }
-        # now that we've added all the required stuff, we can add in all the stuff that users have added
-        # themselves
-        conf.update(_filter_user_spark_opts(user_spark_opts=stringified_spark_args))
 
-        if self.get_team() is not None:
-            conf["spark.kubernetes.executor.label.yelp.com/owner"] = self.get_team()
+        spark_app_name = stringified_spark_args.get(
+            "spark.app.name",
+            f"tron_spark_{self.get_service()}_{self.get_instance()}",
+        )
 
-        conf.update(_get_spark_ports(system_paasta_config=system_paasta_config))
+        spark_conf_builder = SparkConfBuilder()
+        spark_conf = spark_conf_builder.get_spark_conf(
+            cluster_manager="kubernetes",
+            spark_app_base_name=spark_app_name,
+            user_spark_opts=stringified_spark_args,
+            paasta_cluster=resolved_cluster,
+            paasta_pool=self.get_spark_executor_pool(),
+            paasta_service=self.get_service(),
+            paasta_instance=self.get_instance(),
+            docker_img=self.get_docker_url(system_paasta_config),
+            extra_volumes=self.get_volumes(system_paasta_config.get_volumes()),
+            use_eks=True,
+            k8s_server_address=get_k8s_url_for_cluster(self.get_cluster()),
+        )
+
+        spark_conf.update({
+            "spark.hadoop.fs.s3a.aws.credentials.provider": SPARK_AWS_CREDS_PROVIDER,
+            "spark.driver.host": "$PAASTA_POD_IP",
+        })
+        spark_conf.setdefault("spark.kubernetes.executor.label.yelp.com/owner", self.get_team())
+        spark_ports = get_spark_ports(system_paasta_config=system_paasta_config)
+        spark_conf.update({
+            k: (str(v) if not isinstance(v, bool) else str(v).lower())
+            for k, v in spark_ports.items()
+        })
 
         # We need to make sure the Service Account used by the executors has been created.
         # We are using the Service Account created using the provided or default IAM role.
-        conf[
+        spark_conf[
             "spark.kubernetes.authenticate.executor.serviceAccountName"
         ] = create_or_find_service_account_name(
             iam_role=self.get_spark_executor_iam_role(),
@@ -363,32 +352,14 @@ class TronActionConfig(InstanceConfig):
             dry_run=self.for_validation,
         )
 
-        conf.update(
-            setup_volume_mounts(
-                volumes=self.get_volumes(
-                    system_volumes=system_paasta_config.get_volumes(),
-                ),
-            ),
-        )
-
-        # Core ML has some translation logic to go from Mesos->k8s options for people living in the past
-        conf.update(
-            adjust_spark_resources(
-                spark_args=stringified_spark_args,
-                desired_pool=self.get_spark_executor_pool(),
-            )
-        )
-        # as well as some QoL tweaks for other options
-        conf.update(setup_shuffle_partitions(spark_args=stringified_spark_args))
-        conf.update(setup_event_log_configuration(spark_args=stringified_spark_args))
-
-        return conf
+        return spark_conf
 
     def get_cmd(self):
         command = self.config_dict.get("command")
 
         if self.get_executor() == "spark":
             command = f"{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
+            command = auto_add_timeout_for_spark_job(command, self.config_dict.get("timeout_spark", DEFAULT_SPARK_RUNTIME_TIMEOUT))
 
         return command
 
@@ -1000,11 +971,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
-            result["ports"] = list(
-                set(
-                    _get_spark_ports(system_paasta_config=system_paasta_config).values()
-                )
-            )
+            result["ports"] = get_spark_ports_from_cmd(result["command"])
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
