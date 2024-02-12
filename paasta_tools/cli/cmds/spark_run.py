@@ -340,14 +340,14 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--tronfig",
-        help="Load the Tron config yaml. Use with --tronfig-target.",
+        help="Load the Tron config yaml. Use with --job-id.",
         type=str,
         default=None,
     )
 
     list_parser.add_argument(
-        "--tronfig-target",
-        help="Target <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
+        "--job-id",
+        help="Tron job id <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
         type=str,
         default=None,
     )
@@ -1199,8 +1199,8 @@ def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
     )
 
 
-def parse_tronfig(tronfig_path: str, tronfig_target: str) -> Optional[Dict[str, Any]]:
-    splitted = tronfig_target.split(".")
+def parse_tronfig(tronfig_path: str, job_id: str) -> Optional[Dict[str, Any]]:
+    splitted = job_id.split(".")
     if len(splitted) != 2:
         return None
     job_name, action_name = splitted
@@ -1225,12 +1225,10 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
     Returns: environment variables dictionary or None if failed.
     """
-    action_dict = parse_tronfig(args.tronfig, args.tronfig_target)
+    action_dict = parse_tronfig(args.tronfig, args.job_id)
     if action_dict is None:
         print(
-            PaastaColors.red(
-                f"Unable to get configs from tronfig-target: {args.tronfig_target}"
-            ),
+            PaastaColors.red(f"Unable to get configs from job-id: {args.job_id}"),
             file=sys.stderr,
         )
         return None
@@ -1291,9 +1289,9 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 def paasta_spark_run(args: argparse.Namespace) -> int:
     driver_envs_from_tronfig: Dict[str, str] = dict()
     if args.tronfig is not None:
-        if args.tronfig_target is None:
+        if args.job_id is None:
             print(
-                PaastaColors.red("Missing --tronfig-target when --tronfig is provided"),
+                PaastaColors.red("Missing --job-id when --tronfig is provided"),
                 file=sys.stderr,
             )
             return False

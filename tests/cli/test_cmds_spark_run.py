@@ -579,7 +579,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_shm_size = False
         args.use_eks_override = False
         args.tronfig = None
-        args.tronfig_target = None
+        args.job_id = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -1050,7 +1050,7 @@ def test_paasta_spark_run_bash(
         use_eks_override=False,
         k8s_server_address=None,
         tronfig=None,
-        tronfig_target=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1167,7 +1167,7 @@ def test_paasta_spark_run(
         use_eks_override=False,
         k8s_server_address=None,
         tronfig=None,
-        tronfig_target=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1283,7 +1283,7 @@ def test_paasta_spark_run_pyspark(
         use_eks_override=False,
         k8s_server_address=None,
         tronfig=None,
-        tronfig_target=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
         False
