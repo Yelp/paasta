@@ -397,20 +397,6 @@ def create_instance_uwsgi_scaling_rule(
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
     replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
-    current_replicas = f"""
-        sum(
-            label_join(
-                (
-                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
-                    or
-                    max_over_time(
-                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
-                    )
-                ),
-                "kube_deployment", "", "deployment"
-            )
-        ) by (kube_deployment)
-    """
     # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
     # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
     # deployment.
@@ -420,6 +406,17 @@ def create_instance_uwsgi_scaling_rule(
             or
             max_over_time(
                 k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    # as mentioned above: we want to get the overload by counting load across namespces - but we need
+    # to divide by the ready pods in the target namespace - which is done by using a namespace filter here
+    ready_pods_namespaced = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{replica_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
             )
         ) by (kube_deployment))
     """
@@ -453,8 +450,14 @@ def create_instance_uwsgi_scaling_rule(
             )[{moving_average_window}s:]
         )
     """
+
+    # our Prometheus query is calculating a desired number of replicas, and then k8s wants that expressed as an average utilization
+    # so as long as we divide by the number that k8s ends up multiplying by, we should be able to convince k8s to run any arbitrary
+    # number of replicas.
+    # k8s happens to multiply by the # of ready pods - so we divide by that rather than by the amount of current replicas (which may
+    # include non-ready pods)
     metrics_query = f"""
-        {desired_instances} / {current_replicas}
+        {desired_instances} / {ready_pods_namespaced}
     """
 
     metric_name = f"{deployment_name}-uwsgi-prom"
