@@ -72,6 +72,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 DEFAULT_RUNTIME_TIMEOUT = "12h"
+DEFAILT_AWS_PROFILE = "default"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -422,7 +423,7 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default="default",
+        default=DEFAILT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -1259,13 +1260,17 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
     for field_name, arg_name in fields_to_args.items():
         if field_name in action_dict:
             value = action_dict[field_name]
+
+            # Convert spark_args values from dict to a string "k1=v1 k2=v2"
             if field_name == "spark_args":
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
+            # Befutify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(20, " ")
             field_name_str = field_name.ljust(12)
 
-            if field_name == "iam_role" and args.aws_profile != "default":
+            # Only load iam_role value if --aws-profile is not set
+            if field_name == "iam_role" and args.aws_profile != DEFAILT_AWS_PROFILE:
                 print(
                     PaastaColors.yellow(
                         f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
@@ -1295,10 +1300,9 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return False
-        result = update_args_from_tronfig(args)
-        if result is None:
+        driver_envs_from_tronfig = update_args_from_tronfig(args)
+        if driver_envs_from_tronfig is None:
             return False
-        driver_envs_from_tronfig = result
 
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
