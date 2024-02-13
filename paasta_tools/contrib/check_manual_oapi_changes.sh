@@ -15,7 +15,7 @@ if [ ! -z "$api_touched" -a -z "$schema_touched" ]; then
     exit 1
 fi
 
-make openapi-codegen
+make openapi-codegen &>/dev/null
 diff=$(git diff --name-only | grep paasta_tools/paastaapi)
 if [ ! -z "$diff" ]; then
     echo "paasta_tools/paastaapi codegen has a diff, either commit the changes or fix oapi.yaml:" >&2
