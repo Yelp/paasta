@@ -25,7 +25,7 @@ ifeq ($(PAASTA_ENV),YELP)
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 	export DOCKER_OPT_ARGS ?=
 else
-	export DOCKER_REGISTRY ?= ""
+	export DOCKER_REGISTRY ?= docker.io/
 	export DOCKER_OPT_ARGS ?= --user `id -u`:`id -g`
 	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
 endif
