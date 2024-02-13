@@ -28,6 +28,9 @@ else
 	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
 endif
 
+# Use this variable for the docker run command
+DOCKER_REGISTRY_ARG=$(if [ "$(DOCKER_REGISTRY)" != "" ]; then echo "$(DOCKER_REGISTRY)"; fi)
+
 .PHONY: all docs test itest k8s_itests quick-test
 
 dev: .paasta/bin/activate
@@ -116,7 +119,7 @@ k8s_clean: .paasta/bin/activate
 openapi-codegen:
 	rm -rf paasta_tools/paastaapi
 	docker run --rm -i -v `pwd`:/src -w /src \
-		registry.hub.docker.com/yelp/openapi-generator-cli:20201026 \
+		${DOCKER_REGISTRY_ARG}yelp/openapi-generator-cli:20201026 \
 		generate \
 		-i paasta_tools/api/api_docs/oapi.yaml \
 		-g python-experimental \
@@ -128,7 +131,7 @@ openapi-codegen:
 
 swagger-validate:
 	docker run --rm -i -v `pwd`:/src -w /src \
-		registry.hub.docker.com/yelp/openapi-generator-cli:20201026 \
+		${DOCKER_REGISTRY_ARG}yelp/openapi-generator-cli:20201026 \
 		validate \
 		-i paasta_tools/api/api_docs/swagger.json
 
