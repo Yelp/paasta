@@ -24,7 +24,7 @@ endif
 ifeq ($(PAASTA_ENV),YELP)
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
 else
-	export DOCKER_REGISTRY ?= ""
+	export DOCKER_REGISTRY ?= docker.io/
 	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
 endif
 
