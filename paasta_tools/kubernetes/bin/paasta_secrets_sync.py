@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import base64
+import concurrent.futures
 import contextlib
 import hashlib
 import json
@@ -23,6 +24,7 @@ import sys
 import time
 from collections import defaultdict
 from functools import partial
+from itertools import chain
 from typing import Callable
 from typing import Dict
 from typing import Generator
@@ -370,15 +372,34 @@ def sync_all_secrets(
             )
         )
 
-        if secret_type == "all":
-            results.append(
-                all(sync() for sync in sync_service_secrets["paasta-secret"])
-            )
-            results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
-            results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
-            # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
-        else:
-            results.append(all(sync() for sync in sync_service_secrets[secret_type]))
+        # 5 is an arbitrary number: that said, keep in mind that there may potentially
+        # be multiple invocations of this script running at the same time on boxes
+        # where we don't use the "all" secret type and instead sync types independently
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            if secret_type == "all":
+                tasks = [
+                    executor.submit(func)
+                    for func in chain(
+                        # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
+                        sync_service_secrets["paasta-secret"],
+                        sync_service_secrets["boto-key"],
+                        sync_service_secrets["crypto-key"],
+                    )
+                ]  # type: ignore
+            else:
+                tasks = [executor.submit(func) for func in sync_service_secrets[secret_type]]  # type: ignore
+
+            try:
+                for future in concurrent.futures.as_completed(tasks):  # type: ignore
+                    result = future.result()
+                    results.append(result)
+            except KeyboardInterrupt:
+                # ideally we wouldn't need to reach into `ThreadPoolExecutor`
+                # internals, but so far this is the best way to stop all these
+                # threads until a public interface is added
+                executor._threads.clear()  # type: ignore
+                concurrent.futures.thread._threads_queues.clear()  # type: ignore
+                raise KeyboardInterrupt
 
     return all(results)
 
