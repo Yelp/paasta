@@ -456,6 +456,7 @@ def create_instance_uwsgi_scaling_rule(
     # number of replicas.
     # k8s happens to multiply by the # of ready pods - so we divide by that rather than by the amount of current replicas (which may
     # include non-ready pods)
+    # ref: https://github.com/kubernetes/kubernetes/blob/7ec1a89a509906dad9fd6a4635d7bfc157b47790/pkg/controller/podautoscaler/replica_calculator.go#L278
     metrics_query = f"""
         {desired_instances} / {ready_pods_namespaced}
     """
