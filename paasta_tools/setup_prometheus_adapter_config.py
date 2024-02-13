@@ -395,7 +395,7 @@ def create_instance_uwsgi_scaling_rule(
     # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
     # by (desired_instances / current_replicas) is meaningful for each namespace.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',kube_deployment='{deployment_name}',namespace='{namespace}'"
 
     # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
     # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
