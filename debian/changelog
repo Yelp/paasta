@@ -1,3 +1,20 @@
+paasta-tools (0.218.4) xenial; urgency=medium
+
+  * 0.218.4 tagged with 'make release'
+    Commit: Scale with ready pods count rather current replicas for
+    uwsgi (#3802)  We had some surprising behavior recently where an
+    autoscaled app was crashlooping and the HPA did not keep the desired
+    scale as-is - we believe that this is due to a mismatch in how we
+    calculate the value we send to k8s:  The existing PromQL divides by
+    current replica to turn things into a utilization percentage such
+    that when the HPA multiplies later on by the number of current
+    replicas, we reach our target replicas.  However, the HPA will
+    actually multiply by the number of ready replicas, leading to a
+    mismatch.  (h/t to @krall for wording things much better than I
+    could)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 14 Feb 2024 10:06:51 -0800
+
 paasta-tools (0.218.3) xenial; urgency=medium
 
   * 0.218.3 tagged with 'make release'
