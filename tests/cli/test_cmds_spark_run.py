@@ -578,6 +578,8 @@ class TestConfigureAndRunDockerContainer:
         args.docker_memory_limit = False
         args.docker_shm_size = False
         args.use_eks_override = False
+        args.tronfig = None
+        args.job_id = None
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -1047,6 +1049,8 @@ def test_paasta_spark_run_bash(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1105,6 +1109,7 @@ def test_paasta_spark_run_bash(
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="unique-run",
+        extra_driver_envs=dict(),
     )
     mock_generate_pod_template_path.assert_called_once()
 
@@ -1161,6 +1166,8 @@ def test_paasta_spark_run(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
     mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
@@ -1218,6 +1225,7 @@ def test_paasta_spark_run(
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="unique-run",
+        extra_driver_envs=dict(),
     )
     mock_generate_pod_template_path.assert_called_once()
 
@@ -1274,6 +1282,8 @@ def test_paasta_spark_run_pyspark(
         aws_role_duration=3600,
         use_eks_override=False,
         k8s_server_address=None,
+        tronfig=None,
+        job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
         False
@@ -1340,6 +1350,7 @@ def test_paasta_spark_run_pyspark(
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
         pod_template_path="unique-run",
+        extra_driver_envs=dict(),
     )
     mock_generate_pod_template_path.assert_called_once()
 

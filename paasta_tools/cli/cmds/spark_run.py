@@ -17,6 +17,7 @@ from typing import Union
 
 import yaml
 from service_configuration_lib import read_service_configuration
+from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
@@ -38,6 +39,7 @@ from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -70,6 +72,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 DEFAULT_RUNTIME_TIMEOUT = "12h"
+DEFAILT_AWS_PROFILE = "default"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -336,6 +339,20 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--tronfig",
+        help="Load the Tron config yaml. Use with --job-id.",
+        type=str,
+        default=None,
+    )
+
+    list_parser.add_argument(
+        "--job-id",
+        help="Tron job id <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
+        type=str,
+        default=None,
+    )
+
     k8s_target_cluster_type_group = list_parser.add_mutually_exclusive_group()
     k8s_target_cluster_type_group.add_argument(
         "--force-use-eks",
@@ -406,7 +423,7 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default="default",
+        default=DEFAILT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -869,6 +886,7 @@ def configure_and_run_docker_container(
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     cluster_manager: str,
     pod_template_path: str,
+    extra_driver_envs: Dict[str, str] = dict(),
 ) -> int:
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
@@ -908,6 +926,7 @@ def configure_and_run_docker_container(
             system_paasta_config=system_paasta_config,
         )
     )  # type:ignore
+    environment.update(extra_driver_envs)
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
@@ -1181,7 +1200,110 @@ def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
     )
 
 
-def paasta_spark_run(args):
+def parse_tronfig(tronfig_path: str, job_id: str) -> Optional[Dict[str, Any]]:
+    splitted = job_id.split(".")
+    if len(splitted) != 2:
+        return None
+    job_name, action_name = splitted
+
+    file_content = read_yaml_file(tronfig_path)
+    jobs = filter_templates_from_config(file_content)
+    if job_name not in jobs or action_name not in jobs[job_name].get("actions", {}):
+        return None
+    return jobs[job_name]["actions"][action_name]
+
+
+def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str]]:
+    """
+    Load and check the following config fields from the provided Tronfig.
+      - executor
+      - pool
+      - iam_role
+      - iam_role_provider
+      - command
+      - env
+      - spark_args
+
+    Returns: environment variables dictionary or None if failed.
+    """
+    action_dict = parse_tronfig(args.tronfig, args.job_id)
+    if action_dict is None:
+        print(
+            PaastaColors.red(f"Unable to get configs from job-id: {args.job_id}"),
+            file=sys.stderr,
+        )
+        return None
+
+    # executor === spark
+    if action_dict.get("executor", "") != "spark":
+        print(
+            PaastaColors.red("Invalid Tronfig: executor should be 'spark'"),
+            file=sys.stderr,
+        )
+        return None
+
+    # iam_role / aws_profile
+    if "iam_role" in action_dict and action_dict.get("iam_role_provider", "") != "aws":
+        print(
+            PaastaColors.red("Invalid Tronfig: iam_role_provider should be 'aws'"),
+            file=sys.stderr,
+        )
+        return None
+
+    # Other args
+    fields_to_args = {
+        "pool": "pool",
+        "iam_role": "assume_aws_role",
+        "command": "cmd",
+        "spark_args": "spark_args",
+    }
+    for field_name, arg_name in fields_to_args.items():
+        if field_name in action_dict:
+            value = action_dict[field_name]
+
+            # Convert spark_args values from dict to a string "k1=v1 k2=v2"
+            if field_name == "spark_args":
+                value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
+
+            # Befutify for printing
+            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(20, " ")
+            field_name_str = field_name.ljust(12)
+
+            # Only load iam_role value if --aws-profile is not set
+            if field_name == "iam_role" and args.aws_profile != DEFAILT_AWS_PROFILE:
+                print(
+                    PaastaColors.yellow(
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
+                        "since --aws-profile is provided"
+                    ),
+                )
+                continue
+
+            if hasattr(args, arg_name):
+                print(
+                    PaastaColors.yellow(
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                    ),
+                )
+            setattr(args, arg_name, value)
+
+    # env (currently paasta spark-run does not support Spark driver secrets environment variables)
+    return action_dict.get("env", dict())
+
+
+def paasta_spark_run(args: argparse.Namespace) -> int:
+    driver_envs_from_tronfig: Dict[str, str] = dict()
+    if args.tronfig is not None:
+        if args.job_id is None:
+            print(
+                PaastaColors.red("Missing --job-id when --tronfig is provided"),
+                file=sys.stderr,
+            )
+            return False
+        driver_envs_from_tronfig = update_args_from_tronfig(args)
+        if driver_envs_from_tronfig is None:
+            return False
+
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
     validate_work_dir(args.work_dir)
@@ -1338,4 +1460,5 @@ def paasta_spark_run(args):
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
         pod_template_path=pod_template_path,
+        extra_driver_envs=driver_envs_from_tronfig,
     )
