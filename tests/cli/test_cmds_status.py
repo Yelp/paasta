@@ -2485,12 +2485,15 @@ class TestPrintKafkaStatus:
 
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
     def test_error_no_flink(
         self,
+        mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
+        mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
         output = []

@@ -28,6 +28,7 @@ def system_paasta_config():
         {
             "cluster": "fake_cluster",
             "api_endpoints": {"fake_cluster": "http://fake_cluster:5054"},
+            "api_client_timeout": 120,
             "docker_registry": "fake_registry",
             "volumes": [
                 {
