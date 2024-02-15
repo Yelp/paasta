@@ -1,3 +1,10 @@
+paasta-tools (0.218.5) xenial; urgency=medium
+
+  * 0.218.5 tagged with 'make release'
+    Commit: PAASTA-18005: Add default timeout to paasta-api (#3800)
+
+ -- Jon Lee <jonlee@yelp.com>  Thu, 15 Feb 2024 06:09:53 -0800
+
 paasta-tools (0.218.4) xenial; urgency=medium
 
   * 0.218.4 tagged with 'make release'
