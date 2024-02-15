@@ -264,7 +264,11 @@ def paasta_secrets_patches():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
     ), mock.patch(
         "os.path.isdir", autospec=True, return_value=True
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
     ):
+
         yield (
             mock_get_secret_provider,
             mock_scandir,
@@ -623,7 +627,10 @@ def boto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         yield (
             mock_open,
             mock_open.return_value.__enter__.return_value,
@@ -857,7 +864,10 @@ def crypto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         yield (
             provider,
             mock_get_kubernetes_secret_signature,

@@ -2138,7 +2138,7 @@ class SystemPaastaConfig:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
 
     def get_secret_sync_delay_seconds(self) -> float:
-        return self.config_dict.get("secret_sync_delay_seconds", 0.0)
+        return self.config_dict.get("secret_sync_delay_seconds", 0)
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
