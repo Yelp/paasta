@@ -1940,6 +1940,7 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
 
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
+    api_client_timeout: int
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
@@ -2262,6 +2263,13 @@ class SystemPaastaConfig:
         type-wise as it allows us to avoid data races/issues with the autotuned recommendations generator/updater.
         """
         return self.config_dict.get("auto_config_instance_type_aliases", {})
+
+    def get_api_client_timeout(self) -> int:
+        """
+        We've seen the Paasta API get hung up sometimes and the client not realizing this will sit idle forever.
+        This will be used to specify the default timeout
+        """
+        return self.config_dict.get("api_client_timeout", 120)
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]

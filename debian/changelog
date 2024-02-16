@@ -1,3 +1,62 @@
+paasta-tools (0.218.5) xenial; urgency=medium
+
+  * 0.218.5 tagged with 'make release'
+    Commit: PAASTA-18005: Add default timeout to paasta-api (#3800)
+
+ -- Jon Lee <jonlee@yelp.com>  Thu, 15 Feb 2024 06:09:53 -0800
+
+paasta-tools (0.218.4) xenial; urgency=medium
+
+  * 0.218.4 tagged with 'make release'
+    Commit: Scale with ready pods count rather current replicas for
+    uwsgi (#3802)  We had some surprising behavior recently where an
+    autoscaled app was crashlooping and the HPA did not keep the desired
+    scale as-is - we believe that this is due to a mismatch in how we
+    calculate the value we send to k8s:  The existing PromQL divides by
+    current replica to turn things into a utilization percentage such
+    that when the HPA multiplies later on by the number of current
+    replicas, we reach our target replicas.  However, the HPA will
+    actually multiply by the number of ready replicas, leading to a
+    mismatch.  (h/t to @krall for wording things much better than I
+    could)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 14 Feb 2024 10:06:51 -0800
+
+paasta-tools (0.218.3) xenial; urgency=medium
+
+  * 0.218.3 tagged with 'make release'
+    Commit: Fixes local tests and openapi-codegen (#3801)
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 13 Feb 2024 13:49:03 -0800
+
+paasta-tools (0.218.2) xenial; urgency=medium
+
+  * 0.218.2 tagged with 'make release'
+    Commit: Remove spark mesos logic (#3799)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 08 Feb 2024 09:07:55 -0800
+
+paasta-tools (0.218.1) xenial; urgency=medium
+
+  * 0.218.1 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1911"
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 07 Feb 2024 02:03:23 -0800
+
+paasta-tools (0.218.0) xenial; urgency=medium
+
+  * 0.218.0 tagged with 'make release'
+    Commit: Call ensure_namespace() in paasta_secrets_sync (#3792)  At
+    the moment, you cannot pre-create secrets on a new dual-name cluster
+    since the namespaces for services will not yet have been created by
+    setup_kubernetes_job (and they may not have been created by Flux yet
+    either).  We can fix this by calling ensure_namespace() in the
+    secret sync code - the caching we have on
+    ensure_namespace()/get_all_namespaces() means that this *should* be
+    pretty fast as it should be grabbing cached data most of the time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 06 Feb 2024 09:25:50 -0800
+
 paasta-tools (0.217.3) xenial; urgency=medium
 
   * 0.217.3 tagged with 'make release'
