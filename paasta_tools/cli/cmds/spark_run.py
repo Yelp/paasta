@@ -14,7 +14,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import yaml
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
@@ -73,7 +72,7 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
-DEFAILT_AWS_PROFILE = "default"
+DEFAULT_AWS_PROFILE = "default"
 
 deprecated_opts = {
     "j": "spark.jars",
@@ -268,7 +267,7 @@ def add_subparser(subparsers):
         "--timeout-job-runtime",
         type=str,
         help="Timeout value which will be added before spark-submit. Job will exit if it doesn't finish in given "
-             "runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
+             f"runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
         default=DEFAULT_SPARK_RUNTIME_TIMEOUT,
     )
 
@@ -282,8 +281,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, separated by space. "
-        'For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
+        help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, '
+             'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -392,7 +391,7 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default=DEFAILT_AWS_PROFILE,
+        default=DEFAULT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -1098,7 +1097,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             field_name_str = field_name.ljust(12)
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile != DEFAILT_AWS_PROFILE:
+            if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
                 print(
                     PaastaColors.yellow(
                         f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "

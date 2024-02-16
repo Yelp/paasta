@@ -29,7 +29,6 @@ import yaml
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
-from service_configuration_lib.spark_config import _filter_user_spark_opts
 from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -69,17 +68,13 @@ from paasta_tools.kubernetes_tools import (
     raw_selectors_to_requirements,
     to_node_label,
 )
-from paasta_tools.spark_tools import (
-    inject_spark_conf_str,
-    setup_volume_mounts,
-)
+from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import is_shared_secret_from_secret_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
-from paasta_tools.spark_tools import KUBERNETES_NAMESPACE as SPARK_KUBERNETES_NAMESPACE
 
 from paasta_tools import monitoring_tools
 from paasta_tools.monitoring_tools import list_teams
@@ -372,7 +367,7 @@ class TronActionConfig(InstanceConfig):
     # mypy does not like the SecretVolume -> TronSecretVolume conversion, because TypedDict inheritence is broken.
     # Until this is fixed, let's ignore this issue.
     def get_secret_volumes(self) -> List[TronSecretVolume]:  # type: ignore
-        """Adds the secret_volume_name to the objet so tron/task_processing can load it downstream without replicating code."""
+        """Adds the secret_volume_name to the object so tron/task_processing can load it downstream without replicating code."""
         secret_volumes = super().get_secret_volumes()
         tron_secret_volumes = []
         for secret_volume in secret_volumes:
