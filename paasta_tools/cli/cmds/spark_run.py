@@ -53,6 +53,7 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import create_spark_config_str
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 
 
@@ -654,25 +655,6 @@ def _parse_user_spark_args(
             user_spark_opts[fields[0]] = fields[1]
 
     return user_spark_opts
-
-
-def create_spark_config_str(spark_config_dict, is_mrjob):
-    conf_option = "--jobconf" if is_mrjob else "--conf"
-    spark_config_entries = list()
-
-    if is_mrjob:
-        spark_master = spark_config_dict["spark.master"]
-        spark_config_entries.append(f"--spark-master={spark_master}")
-
-    for opt, val in spark_config_dict.items():
-        # mrjob use separate options to configure master
-        if is_mrjob and opt == "spark.master":
-            continue
-        # Process Spark configs with multiple space separated values to be in single quotes
-        if isinstance(val, str) and " " in val:
-            val = f"'{val}'"
-        spark_config_entries.append(f"{conf_option} {opt}={val}")
-    return " ".join(spark_config_entries)
 
 
 def run_docker_container(

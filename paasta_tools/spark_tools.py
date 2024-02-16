@@ -144,6 +144,25 @@ def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
     return conf
 
 
+def create_spark_config_str(spark_config_dict, is_mrjob):
+    conf_option = "--jobconf" if is_mrjob else "--conf"
+    spark_config_entries = list()
+
+    if is_mrjob:
+        spark_master = spark_config_dict["spark.master"]
+        spark_config_entries.append(f"--spark-master={spark_master}")
+
+    for opt, val in spark_config_dict.items():
+        # mrjob use separate options to configure master
+        if is_mrjob and opt == "spark.master":
+            continue
+        # Process Spark configs with multiple space separated values to be in single quotes
+        if isinstance(val, str) and " " in val:
+            val = f"'{val}'"
+        spark_config_entries.append(f"{conf_option} {opt}={val}")
+    return " ".join(spark_config_entries)
+
+
 def inject_spark_conf_str(original_docker_cmd: str, spark_conf_str: str) -> str:
     for base_cmd in ("pyspark", "spark-shell", "spark-submit"):
         if base_cmd in original_docker_cmd:

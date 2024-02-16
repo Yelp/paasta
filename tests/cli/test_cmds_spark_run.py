@@ -35,6 +35,7 @@ from paasta_tools.cli.cmds.spark_run import sanitize_container_name
 from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools import spark_tools
 
 
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
@@ -203,7 +204,7 @@ def test_get_smart_paasta_instance_name_tron():
 
 @pytest.fixture
 def mock_create_spark_config_str():
-    with mock.patch.object(spark_run, "create_spark_config_str") as m:
+    with mock.patch.object(spark_tools, "create_spark_config_str") as m:
         yield m
 
 
@@ -400,7 +401,7 @@ def test_create_spark_config_str(is_mrjob):
         "spark.executor.memory": "4g",
         "spark.max.cores": "10",
     }
-    output = spark_run.create_spark_config_str(spark_opts, is_mrjob)
+    output = spark_tools.create_spark_config_str(spark_opts, is_mrjob)
     if is_mrjob:
         assert output == (
             "--spark-master=mesos://some-host:5050 "
@@ -495,7 +496,7 @@ def test_run_docker_container(
     return_value=(10, {"cpus": 10, "mem": 1024}),
 )
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_webui_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
+@mock.patch("paasta_tools.spark_tools.create_spark_config_str", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_docker_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_signalfx_url", autospec=True)
 @mock.patch.object(spark_config.SparkConfBuilder(), "get_history_url", autospec=True)
@@ -519,7 +520,7 @@ class TestConfigureAndRunDockerContainer:
     @pytest.fixture
     def mock_create_spark_config_str(self):
         with mock.patch(
-            "paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True
+            "paasta_tools.spark_tools.create_spark_config_str", autospec=True
         ) as _mock_create_spark_config_str:
             yield _mock_create_spark_config_str
 

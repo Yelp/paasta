@@ -30,7 +30,6 @@ from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import _filter_user_spark_opts
-from service_configuration_lib.spark_config import stringify_spark_env
 from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -61,6 +60,7 @@ from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import get_spark_ports
 from paasta_tools.spark_tools import get_spark_ports_from_cmd
+from paasta_tools.spark_tools import create_spark_config_str
 
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
@@ -358,7 +358,7 @@ class TronActionConfig(InstanceConfig):
         command = self.config_dict.get("command")
 
         if self.get_executor() == "spark":
-            command = f"{inject_spark_conf_str(command, stringify_spark_env(self._build_spark_config()))}"
+            command = f"{inject_spark_conf_str(command, create_spark_config_str(self._build_spark_config(), False))}"
             command = auto_add_timeout_for_spark_job(command, self.config_dict.get("timeout_spark", DEFAULT_SPARK_RUNTIME_TIMEOUT))
 
         return command
