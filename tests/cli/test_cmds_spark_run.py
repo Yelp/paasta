@@ -38,6 +38,11 @@ from paasta_tools.utils import SystemPaastaConfig
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
 
 
+@mock.patch(
+    "paasta_tools.cli.cmds.spark_run.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
 @mock.patch("paasta_tools.cli.cmds.spark_run.os.geteuid", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.os.getegid", autospec=True)
 def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
