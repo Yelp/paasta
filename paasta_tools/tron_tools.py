@@ -285,7 +285,7 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
-    def _build_spark_config(self) -> Dict[str, str]:
+    def build_spark_config(self) -> Dict[str, str]:
 
         system_paasta_config = load_system_paasta_config()
         resolved_cluster = system_paasta_config.get_eks_cluster_aliases().get(self.get_cluster(), self.get_cluster())
@@ -310,6 +310,8 @@ class TronActionConfig(InstanceConfig):
             f"tron_spark_{self.get_service()}_{self.get_instance()}",
         )
 
+        docker_img_url = self.config_dict.get("image", self.get_docker_url(system_paasta_config))
+
         spark_conf_builder = SparkConfBuilder()
         spark_conf = spark_conf_builder.get_spark_conf(
             cluster_manager="kubernetes",
@@ -319,10 +321,11 @@ class TronActionConfig(InstanceConfig):
             paasta_pool=self.get_spark_executor_pool(),
             paasta_service=self.get_service(),
             paasta_instance=self.get_instance(),
-            docker_img=self.get_docker_url(system_paasta_config),
+            docker_img=docker_img_url,
             extra_volumes=self.get_volumes(system_paasta_config.get_volumes()),
             use_eks=True,
             k8s_server_address=get_k8s_url_for_cluster(self.get_cluster()),
+            force_spark_resource_configs=self.config_dict.get("force_spark_resource_configs", False),
         )
 
         spark_conf.update({
@@ -351,11 +354,6 @@ class TronActionConfig(InstanceConfig):
 
     def get_cmd(self):
         command = self.config_dict.get("command")
-
-        if self.get_executor() == "spark":
-            command = f"{inject_spark_conf_str(command, create_spark_config_str(self._build_spark_config(), False))}"
-            command = auto_add_timeout_for_spark_job(command, self.config_dict.get("timeout_spark", DEFAULT_SPARK_RUNTIME_TIMEOUT))
-
         return command
 
     def get_job_name(self):

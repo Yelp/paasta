@@ -320,6 +320,12 @@
                     "type": "string",
                     "pattern": "^[1-9]+[0-9]*(s|min)$"
                 },
+                "image": {
+                    "type": "string"
+                },
+                "force_spark_resource_configs": {
+                    "type": "boolean"
+                },
                 "spark_args": {
                     "type": "object",
                     "additionalProperties": true,

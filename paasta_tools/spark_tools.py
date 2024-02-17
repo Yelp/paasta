@@ -210,6 +210,6 @@ def get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
     }
 
 
-def get_spark_ports_from_cmd(cmd: str) -> List[int]:
-    ports = [int(kv[1]) for arg in cmd.split(" ") for kv in arg.split("=") if kv[0].endswith(".port")]
+def get_spark_ports_from_config(spark_conf: Dict[str, str]) -> List[int]:
+    ports = [int(v) for k, v in spark_conf.items() if k.endswith(".port")]
     return ports

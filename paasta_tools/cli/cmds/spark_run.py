@@ -129,6 +129,7 @@ def add_subparser(subparsers):
         help="Use the provided image to start the Spark driver and executors.",
     )
 
+    # TODO: Deprecated. Remove this
     list_parser.add_argument(
         "-e",
         "--enable-compact-bin-packing",
@@ -138,15 +139,6 @@ def add_subparser(subparsers):
         ),
         action="store_true",
         default=True,
-    )
-    list_parser.add_argument(
-        "--disable-compact-bin-packing",
-        help=(
-            "Disable compact bin packing. Requires --cluster-manager to be kubernetes. Note: this option is only for advanced Spark configurations,"
-            " don't use it unless you've been instructed to do so."
-        ),
-        action="store_true",
-        default=False,
     )
     list_parser.add_argument(
         "--docker-memory-limit",
@@ -392,14 +384,6 @@ def add_subparser(subparsers):
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
         default=DEFAULT_AWS_PROFILE,
-    )
-
-    aws_group.add_argument(
-        "--no-aws-credentials",
-        help="Do not load any AWS credentials; allow the Spark job to use its "
-        "own logic to load credentials",
-        action="store_true",
-        default=False,
     )
 
     aws_group.add_argument(
@@ -810,8 +794,7 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    if args.enable_compact_bin_packing:
-        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
+    volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     if decide_final_eks_toggle_state(args.use_eks_override):
         volumes.append(
@@ -1213,7 +1196,6 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
 
     aws_creds = get_aws_credentials(
         service=args.service,
-        no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
