@@ -58,7 +58,7 @@ from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import get_spark_ports
-from paasta_tools.spark_tools import get_spark_ports_from_cmd
+from paasta_tools.spark_tools import get_spark_ports_from_config
 from paasta_tools.spark_tools import create_spark_config_str
 
 from paasta_tools.kubernetes_tools import (
@@ -953,18 +953,30 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         if executor == "spark":
             system_paasta_config = load_system_paasta_config()
-            # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
+            # inject spark configs to the original spark-submit command
+            spark_config = action_config.build_spark_config()
+            command = f"{inject_spark_conf_str(result['command'], create_spark_config_str(spark_config, False))}"
+            result['command'] = auto_add_timeout_for_spark_job(command, action_config.config_dict.get(
+                "timeout_spark", DEFAULT_SPARK_RUNTIME_TIMEOUT
+            ))
             result["extra_volumes"] = [
+                # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
                 {
                     "container_path": system_paasta_config.get_spark_kubeconfig(),
                     "host_path": system_paasta_config.get_spark_kubeconfig(),
+                    "mode": "RO",
+                },
+                # mount pod template file used for executors
+                {
+                    "container_path": spark_config.get("spark.kubernetes.executor.podTemplateFile", ""),
+                    "host_path": spark_config.get("spark.kubernetes.executor.podTemplateFile", ""),
                     "mode": "RO",
                 }
             ]
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
-            result["ports"] = get_spark_ports_from_cmd(result["command"])
+            result["ports"] = get_spark_ports_from_config(spark_config)
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
