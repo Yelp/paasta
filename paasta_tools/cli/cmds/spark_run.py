@@ -30,14 +30,17 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import create_spark_config_str
+from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -48,12 +51,9 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_pool
-from paasta_tools.utils import PoolsNotConfiguredError
-from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
-from paasta_tools.spark_tools import create_spark_config_str
-from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 
 
 DEFAULT_AWS_REGION = "us-west-2"
@@ -259,7 +259,7 @@ def add_subparser(subparsers):
         "--timeout-job-runtime",
         type=str,
         help="Timeout value which will be added before spark-submit. Job will exit if it doesn't finish in given "
-             f"runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
+        f"runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
         default=DEFAULT_SPARK_RUNTIME_TIMEOUT,
     )
 
@@ -273,8 +273,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, '
-             'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
+        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, "
+        'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -1264,6 +1264,8 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         spark_conf=spark_conf,
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
-        pod_template_path=spark_conf.get("spark.kubernetes.executor.podTemplateFile", ""),
+        pod_template_path=spark_conf.get(
+            "spark.kubernetes.executor.podTemplateFile", ""
+        ),
         extra_driver_envs=driver_envs_from_tronfig,
     )

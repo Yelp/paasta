@@ -2125,9 +2125,7 @@ class PoolsNotConfiguredError(Exception):
     pass
 
 
-def validate_pool(
-        cluster, pool, system_paasta_config
-):
+def validate_pool(cluster, pool, system_paasta_config):
     if pool:
         valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
         if not valid_pools:
