@@ -2060,6 +2060,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
+    secret_sync_delay_seconds: float
 
 
 def load_system_paasta_config(
@@ -2135,6 +2136,9 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_secret_sync_delay_seconds(self) -> float:
+        return self.config_dict.get("secret_sync_delay_seconds", 0)
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
