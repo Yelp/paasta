@@ -5,16 +5,22 @@
 ![PaaSTA Logo](http://engineeringblog.yelp.com/images/previews/paasta_preview.png)
 
 PaaSTA is a highly-available, distributed system for building, deploying, and
-running services using containers and Apache Mesos!
+running services using containers and Kubernetes.
+
+PaaSTA has been running production services at Yelp since 2016. It was
+originally designed to run on top of Apache Mesos but has subsequently been
+updated to use Kubernetes. Over time the features and functionality that
+PaaSTA provides have increased but the principal design remains the same.
+
+PaaSTA aims to take a declarative description of the services that teams need
+to run and then ensures that those services are deployed safely, efficiently,
+and in a manner that is easy for the teams to maintain. Rather than managing
+Kubernetes YAML files, PaaSTA provides a simplified schema to describe your service
+and in addition to configuring Kubernetes it can also configure other infrastructure
+tools to provide monitoring, logging, cost management etc.
 
 Want to know more about the opinions behind what makes PaaSTA special? Check
 out the [PaaSTA Principles](http://paasta.readthedocs.io/en/latest/about/paasta_principles.html).
-
-*Note*: PaaSTA has been running in production at Yelp for years,
-and has a number of "Yelpisms" still lingering in the codebase. We have made
-efforts to excise them, but there are bound to be lingering issues. Please help us
-by opening an [issue](https://github.com/Yelp/paasta/issues/new) or
-better yet a [pull request](https://github.com/Yelp/paasta/pulls).
 
 ## Components
 
@@ -23,27 +29,37 @@ tools. It requires a non-trivial amount of infrastructure to be in place
 before it works completely:
 
  * [Docker](http://www.docker.com/) for code delivery and containment
- * [Mesos](http://mesos.apache.org/) / [Kubernetes](https://kubernetes.io/) for code execution and scheduling (runs Docker containers)
- * [Marathon](https://mesosphere.github.io/marathon/) for managing long-running services
+ * [Kubernetes](https://kubernetes.io/) for code execution and scheduling (runs Docker containers)
  * [Tron](https://tron.readthedocs.io/en/latest/) for running things on a timer (nightly batches)
- * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) / [Envoy](https://www.envoyproxy.io/) for service registration and discovery
+ * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) and [Envoy](https://www.envoyproxy.io/) for service registration and discovery
  * [Sensu](https://sensuapp.org/) for monitoring/alerting
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
+ * [Prometheus](https://prometheus.io/) and [HPA](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) for autoscaling services
 
-The main advantage to having a PaaS composed of components like these is you
-get to reuse them for other purposes. For example at Yelp Sensu is not just for
-PaaSTA, it can be used to monitor all sorts of things. Also Mesos can be
-re-used for things like custom frameworks. For example at Yelp we use the Mesos
-infrastructure to run our large-scale testing framework:
-[Jolt](https://dcos.io/events/2017/jolt-distributed-fault-tolerant-tests-at-scale-on-mesos/).
-SmartStack is used at Yelp for service discovery for Non-PaaSTA things as well,
-like databases, legacy apps, and Puppet-defined apps. Most PaaS's do not
-allow for this type of component re-use.
+One advantage to having a PaaS composed of components like these is you
+get to reuse them for other purposes. For example, at Yelp Sensu is not just for
+PaaSTA, it can be used to monitor all sorts of things. We also use Kubernetes to run
+other more complex workloads like [Jolt](https://dcos.io/events/2017/jolt-distributed-fault-tolerant-tests-at-scale-on-mesos/) and [Cassandra](https://engineeringblog.yelp.com/2020/11/orchestrating-cassandra-on-kubernetes-with-operators.html). Our service mesh, which
+is a heavily customised version of SmartStack and Envoy, allows many systems at Yelp
+to communicate with PaaSTA services and each other.
 
-On the other hand, requiring lots of components means lots of infrastructure to
-setup before PaaSTA is fully baked. If you are looking for a project that
-doesn't require external components, we encourage you to look at the doc
-[comparing PaaSTA to other tools](https://github.com/Yelp/paasta/blob/master/comparison.md).
+On the other hand, requiring lots of components, means lots of infrastructure to
+setup before PaaSTA can work effectively! Realistacally, running PaaSTA outside of Yelp
+would not be sensible, because in addition to the integrations mentioned above we also
+have strong opinions encoded in other tooling that you would need to replicate. Nevertheless,
+we code PaaSTA in the open because we think it is useful to share our approach and hope that
+the code can at least help others understand or solve similar problems.
+
+## Integrations and Features
+
+In addition to the direct integrations above PaaSTA also relies on other components
+to provide PaaSTA users with other features and to manage compute capacity at Yelp.
+
+* We use [Karpenter](https://karpenter.sh/) to autoscale pools of EC2 instances to run PaaSTA. Formerly we used our own autoscaler [Clusterman](https://engineeringblog.yelp.com/2019/11/open-source-clusterman.html)
+* We bake AMIs using [Packer](https://www.packer.io/)
+* We collect logs from services and send them via [Monk](https://engineeringblog.yelp.com/2020/01/streams-and-monk-how-yelp-approaches-kafka-in-2020.html) to [Kafka](https://kafka.apache.org/)
+* We use [StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) to run a few stateful PaaSTA services
+* We autotune the resources needed by each service by monitoring usage (similar to [VPA](https://github.com/kubernetes/autoscaler/tree/master/vertical-pod-autoscaler))
 
 ## Design Goals
 
@@ -54,16 +70,11 @@ doesn't require external components, we encourage you to look at the doc
  * No single points of failure
  * Pleasant interface
 
-PaaSTA is an opinionated platform, and it is not designed to interoperate with
-every possible backend service out there.
-
-Think of it as an example of how we have integrated these technologies together
-to build a cohesive PaaS. It is not a turn-key PaaS solution.
-
 ## Getting Started
 
 See the [getting started](http://paasta.readthedocs.io/en/latest/installation/getting_started.html)
-documentation for how to deploy PaaSTA.
+documentation for how to deploy PaaSTA. This reference is intended to help understand how PaaSTA
+works but we don't advise that you use PaaSTA in production.
 
 ## Debugging PaaSTA (in VS Code)
 
