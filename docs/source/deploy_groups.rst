@@ -128,9 +128,9 @@ Deploy groups support string interpolation for the following variables: ``cluste
 Parallel steps
 --------------------
 
-Parallel steps are supported in ``deploy.yaml`` to allow steps that aren't reliant on each other to be executed at the same time. The parallel block also supports waiting before moving on to the next step. 
+Parallel steps are supported in ``deploy.yaml`` to allow steps that aren't reliant on each other to be executed at the same time. The parallel block also supports waiting before moving on to the next step.
 
-As an example the following deploy.yaml will execute steps ``security-check`` & ``command-test`` together. It will then wait for user input before moving on to the ``performance-check`` step. 
+As an example the following deploy.yaml will execute steps ``security-check`` & ``command-test`` together. It will then wait for user input before moving on to the ``performance-check`` step.
 
 .. sourcecode:: yaml
 
