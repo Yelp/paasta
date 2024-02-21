@@ -57,6 +57,7 @@ from typing import IO
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import NamedTuple
 from typing import Optional
@@ -98,7 +99,6 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     "itest",
     "itest-and-push-to-registry",
     "security-check",
-    "performance-check",
     "push-to-registry",
 )
 # Default values for _log
@@ -129,13 +129,20 @@ INSTANCE_TYPES = (
     "paasta_native",
     "adhoc",
     "kubernetes",
+    "eks",
     "tron",
     "flink",
     "cassandracluster",
     "kafkacluster",
+    "vitesscluster",
     "monkrelays",
     "nrtsearchservice",
 )
+
+PAASTA_K8S_INSTANCE_TYPES = {
+    "kubernetes",
+    "eks",
+}
 
 INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "marathon": "paasta",
@@ -144,6 +151,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "flink": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
+    "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
 }
 
@@ -330,6 +338,7 @@ class InstanceConfigDict(TypedDict, total=False):
     branch: str
     iam_role: str
     iam_role_provider: str
+    service: str
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -536,6 +545,19 @@ class InstanceConfig:
         for cap in CAPS_DROP:
             yield {"key": "cap-drop", "value": cap}
 
+    def get_cap_args(self) -> Iterable[DockerParameter]:
+        """Generate all --cap-add/--cap-drop parameters, ensuring not to have overlapping settings"""
+        cap_adds = list(self.get_cap_add())
+        if cap_adds and is_using_unprivileged_containers():
+            log.warning(
+                "Unprivileged containerizer detected, adding capabilities will not work properly"
+            )
+        yield from cap_adds
+        added_caps = [cap["value"] for cap in cap_adds]
+        for cap in self.get_cap_drop():
+            if cap["value"] not in added_caps:
+                yield cap
+
     def format_docker_parameters(
         self,
         with_labels: bool = True,
@@ -570,9 +592,8 @@ class InstanceConfig:
         if extra_docker_args:
             for key, value in extra_docker_args.items():
                 parameters.extend([{"key": key, "value": value}])
-        parameters.extend(self.get_cap_add())
         parameters.extend(self.get_docker_init())
-        parameters.extend(self.get_cap_drop())
+        parameters.extend(self.get_cap_args())
         return parameters
 
     def use_docker_disk_quota(
@@ -918,7 +939,7 @@ class InstanceConfig:
             if deploy_group not in pipeline_deploy_groups:
                 return (
                     False,
-                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but it is not deploy.yaml",
+                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but {deploy_group} is not deployed to in deploy.yaml",
                 )  # noqa: E501
         return True, ""
 
@@ -939,7 +960,7 @@ class InstanceConfig:
         return self.config_dict.get("iam_role", "")
 
     def get_iam_role_provider(self) -> str:
-        return self.config_dict.get("iam_role_provider", "kiam")
+        return self.config_dict.get("iam_role_provider", "aws")
 
     def get_role(self) -> Optional[str]:
         """Which mesos role of nodes this job should run on."""
@@ -1910,12 +1931,20 @@ class KubeStateMetricsCollectorConfigDict(TypedDict, total=False):
     label_renames: Dict[str, str]
 
 
+class TopologySpreadConstraintDict(TypedDict, total=False):
+    topology_key: str
+    when_unsatisfiable: Literal["ScheduleAnyway", "DoNotSchedule"]
+    max_skew: int
+
+
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
+    api_client_timeout: int
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
     auto_config_instance_types_enabled: Dict[str, bool]
+    auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
     boost_regions: List[str]
     cluster_autoscaler_max_decrease: float
@@ -1930,7 +1959,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     dashboard_links: Dict[str, Dict[str, str]]
     datastore_credentials_vault_env_overrides: Dict[str, str]
     default_push_groups: List
-    default_should_run_uwsgi_exporter_sidecar: bool
+    default_should_use_uwsgi_exporter: bool
     deploy_blacklist: UnsafeDeployBlacklist
     deployd_big_bounce_deadline: float
     deployd_log_level: str
@@ -1988,7 +2017,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    topology_spread_constraints: List[Dict[str, Any]]
+    topology_spread_constraints: List[TopologySpreadConstraintDict]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2009,13 +2038,11 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     synapse_port: int
     taskproc: Dict
     tron: Dict
-    uwsgi_exporter_sidecar_image_url: str
     gunicorn_exporter_sidecar_image_url: str
     vault_cluster_map: Dict
     vault_environment: str
     volumes: List[DockerVolume]
     zookeeper: str
-    tron_use_k8s: bool
     tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
@@ -2033,6 +2060,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
+    secret_sync_delay_seconds: float
 
 
 def load_system_paasta_config(
@@ -2108,6 +2136,9 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_secret_sync_delay_seconds(self) -> float:
+        return self.config_dict.get("secret_sync_delay_seconds", 0)
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
@@ -2212,6 +2243,20 @@ class SystemPaastaConfig:
 
     def get_auto_config_instance_types_enabled(self) -> Dict[str, bool]:
         return self.config_dict.get("auto_config_instance_types_enabled", {})
+
+    def get_auto_config_instance_type_aliases(self) -> Dict[str, str]:
+        """
+        Allow re-using another instance type's autotuned data. This is useful when an instance can be trivially moved around
+        type-wise as it allows us to avoid data races/issues with the autotuned recommendations generator/updater.
+        """
+        return self.config_dict.get("auto_config_instance_type_aliases", {})
+
+    def get_api_client_timeout(self) -> int:
+        """
+        We've seen the Paasta API get hung up sometimes and the client not realizing this will sit idle forever.
+        This will be used to specify the default timeout
+        """
+        return self.config_dict.get("api_client_timeout", 120)
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]
@@ -2583,7 +2628,7 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
-    def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
+    def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
 
@@ -2690,15 +2735,8 @@ class SystemPaastaConfig:
         """
         return self.get_git_config().get("repos", {}).get(repo_name, {})
 
-    def get_uwsgi_exporter_sidecar_image_url(self) -> str:
-        """Get the docker image URL for the uwsgi_exporter sidecar container"""
-        return self.config_dict.get(
-            "uwsgi_exporter_sidecar_image_url",
-            "docker-paasta.yelpcorp.com:443/uwsgi_exporter-k8s-sidecar:v1.3.0-yelp0",
-        )
-
-    def default_should_run_uwsgi_exporter_sidecar(self) -> bool:
-        return self.config_dict.get("default_should_run_uwsgi_exporter_sidecar", False)
+    def default_should_use_uwsgi_exporter(self) -> bool:
+        return self.config_dict.get("default_should_use_uwsgi_exporter", False)
 
     def get_gunicorn_exporter_sidecar_image_url(self) -> str:
         """Get the docker image URL for the gunicorn_exporter sidecar container"""
@@ -2727,9 +2765,6 @@ class SystemPaastaConfig:
         return self.config_dict.get(
             "mark_for_deployment_should_ping_for_unhealthy_pods", True
         )
-
-    def get_tron_use_k8s_default(self) -> bool:
-        return self.config_dict.get("tron_use_k8s", False)
 
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
@@ -3405,8 +3440,18 @@ def load_service_instance_auto_configs(
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> Dict[str, Dict[str, Any]]:
     enabled_types = load_system_paasta_config().get_auto_config_instance_types_enabled()
-    conf_file = f"{instance_type}-{cluster}"
-    if enabled_types.get(instance_type):
+    # this looks a little funky: but what we're generally trying to do here is ensure that
+    # certain types of instances can be moved between instance types without having to worry
+    # about any sort of data races (or data weirdness) in autotune.
+    # instead, what we do is map certain instance types to whatever we've picked as the "canonical"
+    # instance type in autotune and always merge from there.
+    realized_type = (
+        load_system_paasta_config()
+        .get_auto_config_instance_type_aliases()
+        .get(instance_type, instance_type)
+    )
+    conf_file = f"{realized_type}-{cluster}"
+    if enabled_types.get(realized_type):
         return service_configuration_lib.read_extra_service_information(
             service,
             f"{AUTO_SOACONFIG_SUBDIR}/{conf_file}",
@@ -4230,3 +4275,8 @@ def get_runtimeenv() -> str:
         # we could also just crash or return None, but this seems a little easier to find
         # should we somehow run into this at Yelp
         return "unknown"
+
+
+@lru_cache(maxsize=1)
+def is_using_unprivileged_containers() -> bool:
+    return "podman" in os.getenv("DOCKER_HOST", "")

@@ -423,7 +423,8 @@ def paasta_secret(args):
                 get_secret(
                     kube_client,
                     get_paasta_secret_name(namespace, service, args.secret_name),
-                    namespace,
+                    key_name=args.secret_name,
+                    namespace=namespace,
                 )
             )
         # fallback to default in case mapping fails
@@ -432,7 +433,8 @@ def paasta_secret(args):
                 get_secret(
                     kube_client,
                     get_paasta_secret_name("paasta", service, args.secret_name),
-                    "paasta",
+                    key_name=args.secret_name,
+                    namespace="paasta",
                 )
             )
         return

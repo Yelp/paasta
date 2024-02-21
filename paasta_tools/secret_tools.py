@@ -219,7 +219,7 @@ def decrypt_secret_volumes(
     # This ^ should result in 2 files (/nail/foo/bar.yaml, /nail/foo/baz.yaml)
     # We need to support both cases
     for secret_volume in secret_volumes_config:
-        if "items" not in secret_volume:
+        if not secret_volume.get("items"):
             secret_contents = decrypt_secret(
                 secret_provider_name=secret_provider_name,
                 soa_dir=soa_dir,

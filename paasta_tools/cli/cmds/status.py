@@ -52,11 +52,13 @@ from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
@@ -101,6 +103,7 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
@@ -112,6 +115,7 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
 ]
@@ -278,9 +282,16 @@ def paasta_status_on_api_endpoint(
     lock: Lock,
     verbose: int,
     new: bool = False,
+    is_eks: bool = False,
 ) -> int:
-    output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    output = [
+        "",
+        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
+    ]
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        system_paasta_config=system_paasta_config,
+    )
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
@@ -290,7 +301,6 @@ def paasta_status_on_api_endpoint(
             instance=instance,
             verbose=verbose,
             new=new,
-            include_smartstack=False,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
@@ -1716,7 +1726,6 @@ def get_autoscaling_table(
             f"       Desired instances: {autoscaling_status['desired_replicas']}"
         )
         table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
-        table.append(f"       Dashboard: y/sfx-autoscaling")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             table.append(f"       Metrics:")
@@ -2138,7 +2147,7 @@ def report_status_for_cluster(
     output = ["", "service: %s" % service, "cluster: %s" % cluster]
     deployed_instances = []
     instances = [
-        instance
+        (instance, instance_config_class)
         for instance, instance_config_class in instance_whitelist.items()
         if instance_config_class in ALLOWED_INSTANCE_CONFIG
     ]
@@ -2175,7 +2184,7 @@ def report_status_for_cluster(
 
     return_code = 0
     return_codes = []
-    for deployed_instance in instances:
+    for deployed_instance, instance_config_class in instances:
         return_codes.append(
             paasta_status_on_api_endpoint(
                 cluster=cluster,
@@ -2185,6 +2194,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
+                is_eks=(instance_config_class == EksDeploymentConfig),
             )
         )
 
@@ -2192,7 +2202,11 @@ def report_status_for_cluster(
         return_code = 1
 
     output.append(
-        report_invalid_whitelist_values(instances, seen_instances, "instance")
+        report_invalid_whitelist_values(
+            whitelist=[instance[0] for instance in instances],
+            items=seen_instances,
+            item_type="instance",
+        )
     )
 
     return return_code, output
@@ -2569,6 +2583,7 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
     kubernetes_v2=print_kubernetes_status_v2,
+    eks=print_kubernetes_status,
     tron=print_tron_status,
     adhoc=print_adhoc_status,
     flink=print_flink_status,

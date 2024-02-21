@@ -32,6 +32,7 @@ from contextlib import contextmanager
 
 from paasta_tools.mesos_tools import get_container_id_for_mesos_id
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import is_using_unprivileged_containers
 
 
 def parse_args():
@@ -68,7 +69,11 @@ def time_limit(seconds):  # From http://stackoverflow.com/a/601168/1576438
 
 def execute_in_container(docker_client, container_id, cmd, timeout):
     container_info = docker_client.inspect_container(container_id)
-    if container_info["ExecIDs"] and len(container_info["ExecIDs"]) > 0:
+    if (
+        container_info["ExecIDs"]
+        and len(container_info["ExecIDs"]) > 0
+        and not is_using_unprivileged_containers()
+    ):
         for possible_exec_id in container_info["ExecIDs"]:
             exec_info = docker_client.exec_inspect(possible_exec_id)["ProcessConfig"]
             if exec_info["entrypoint"] == "/bin/sh" and exec_info["arguments"] == [

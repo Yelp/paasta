@@ -210,10 +210,6 @@ def parse_time_variables(command: str, parse_time: datetime.datetime = None) -> 
     return StringFormatter(job_context).format(command)
 
 
-def _use_k8s_default() -> bool:
-    return load_system_paasta_config().get_tron_use_k8s_default()
-
-
 def _get_tron_k8s_cluster_override(cluster: str) -> Optional[str]:
     """
     Return the name of a compute cluster if there's a different compute cluster that should be used to run a Tronjob.
@@ -665,9 +661,6 @@ class TronJobConfig:
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
 
-    def get_use_k8s(self) -> bool:
-        return self.config_dict.get("use_k8s", _use_k8s_default())
-
     def get_name(self):
         return self.name
 
@@ -738,7 +731,7 @@ class TronJobConfig:
     def get_expected_runtime(self):
         return self.config_dict.get("expected_runtime")
 
-    def _get_action_config(self, action_name, action_dict):
+    def _get_action_config(self, action_name, action_dict) -> TronActionConfig:
         action_service = action_dict.setdefault("service", self.get_service())
         action_deploy_group = action_dict.setdefault(
             "deploy_group", self.get_deploy_group()
@@ -781,24 +774,17 @@ class TronJobConfig:
         action_dict["monitoring"] = self.get_monitoring()
 
         cluster_override = _get_tron_k8s_cluster_override(self.get_cluster())
-        # technically, we should also be checking if k8s is enabled, but at this stage
-        # of our migration we're not expecting any issues and when we clean up all the
-        # Mesos remnants on-completion we can also rip out all the code that fallsback
-        # to Mesos and just do this unconditionally.
-        use_k8s_cluster_override = cluster_override is not None and self.get_use_k8s()
         return TronActionConfig(
             service=action_service,
             instance=compose_instance(self.get_name(), action_name),
-            cluster=cluster_override
-            if use_k8s_cluster_override
-            else self.get_cluster(),
+            cluster=cluster_override or self.get_cluster(),
             config_dict=action_dict,
             branch_dict=branch_dict,
             soa_dir=self.soa_dir,
             for_validation=self.for_validation,
         )
 
-    def get_actions(self):
+    def get_actions(self) -> List[TronActionConfig]:
         actions = self.config_dict.get("actions")
         return [
             self._get_action_config(name, action_dict)
@@ -893,7 +879,7 @@ def format_master_config(master_config, default_volumes, dockercfg_location):
     return master_config
 
 
-def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = False):
+def format_tron_action_dict(action_config: TronActionConfig):
     """Generate a dict of tronfig for an action, from the TronActionConfig.
 
     :param job_config: TronActionConfig
@@ -921,12 +907,7 @@ def format_tron_action_dict(action_config: TronActionConfig, use_k8s: bool = Fal
         "service_account_name": action_config.get_service_account_name(),
     }
 
-    # while we're tranisitioning, we want to be able to cleanly fallback to Mesos
-    # so we'll default to Mesos unless k8s usage is enabled for both the cluster
-    # and job.
-    # there are slight differences between k8s and Mesos configs, so we'll translate
-    # whatever is in soaconfigs to the k8s equivalent here as well.
-    if executor in KUBERNETES_EXECUTOR_NAMES and use_k8s:
+    if executor in KUBERNETES_EXECUTOR_NAMES:
         # we'd like Tron to be able to distinguish between spark and normal actions
         # even though they both run on k8s
         result["executor"] = EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE.get(
@@ -1046,11 +1027,9 @@ def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
 
     :param job_config: TronJobConfig
     """
-    # TODO: this use_k8s flag should be removed once we've fully migrated off of mesos
-    use_k8s = job_config.get_use_k8s() and k8s_enabled
     action_dict = {
         action_config.get_action_name(): format_tron_action_dict(
-            action_config=action_config, use_k8s=use_k8s
+            action_config=action_config,
         )
         for action_config in job_config.get_actions()
     }
@@ -1069,16 +1048,11 @@ def format_tron_job_dict(job_config: TronJobConfig, k8s_enabled: bool = False):
         "time_zone": job_config.get_time_zone(),
         "expected_runtime": job_config.get_expected_runtime(),
     }
-    # TODO: this should be directly inlined, but we need to update tron everywhere first so it'll
-    # be slightly less tedious to just conditionally send this now until we clean things up on the
-    # removal of all the Mesos code
-    if job_config.get_use_k8s():
-        result["use_k8s"] = job_config.get_use_k8s()
 
     cleanup_config = job_config.get_cleanup_action()
     if cleanup_config:
         cleanup_action = format_tron_action_dict(
-            action_config=cleanup_config, use_k8s=use_k8s
+            action_config=cleanup_config,
         )
         result["cleanup_action"] = cleanup_action
 
@@ -1093,21 +1067,39 @@ def load_tron_instance_config(
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
 ) -> TronActionConfig:
+    for action in load_tron_instance_configs(
+        service=service,
+        cluster=cluster,
+        load_deployments=load_deployments,
+        soa_dir=soa_dir,
+    ):
+        if action.get_instance() == instance:
+            return action
+    raise NoConfigurationForServiceError(
+        f"No tron configuration found for {service} {instance}"
+    )
+
+
+@time_cache(ttl=5)
+def load_tron_instance_configs(
+    service: str,
+    cluster: str,
+    load_deployments: bool = True,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Tuple[TronActionConfig, ...]:
+    ret: List[TronActionConfig] = []
+
     jobs = load_tron_service_config(
         service=service,
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
     )
-    requested_job, requested_action = instance.split(".")
+
     for job in jobs:
-        if job.get_name() == requested_job:
-            for action in job.get_actions():
-                if action.get_action_name() == requested_action:
-                    return action
-    raise NoConfigurationForServiceError(
-        f"No tron configuration found for {service} {instance}"
-    )
+        ret.extend(job.get_actions())
+
+    return tuple(ret)
 
 
 @time_cache(ttl=5)

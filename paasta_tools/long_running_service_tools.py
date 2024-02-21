@@ -29,6 +29,8 @@ ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
 
 DEFAULT_AUTOSCALING_SETPOINT = 0.8
+DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA = 1
+DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
@@ -42,15 +44,16 @@ class AutoscalingParamsDict(TypedDict, total=False):
     metrics_provider: str
     decision_policy: str
     setpoint: float
+    desired_active_requests_per_replica: int
     forecast_policy: Optional[str]
     offset: Optional[float]
     moving_average_window_seconds: Optional[int]
     use_prometheus: bool
     use_resource_metrics: bool
-    uwsgi_stats_port: int
     scaledown_policies: Optional[dict]
     good_enough_window: List[float]
     prometheus_adapter_config: Optional[dict]
+    max_instances_alert_threshold: float
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
@@ -352,6 +355,12 @@ class LongRunningServiceConfig(InstanceConfig):
         return deep_merge_dictionaries(
             overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
             defaults=default_params,
+        )
+
+    def get_autoscaling_max_instances_alert_threshold(self) -> float:
+        autoscaling_params = self.get_autoscaling_params()
+        return autoscaling_params.get(
+            "max_instances_alert_threshold", autoscaling_params["setpoint"]
         )
 
     def validate(

@@ -392,6 +392,13 @@ instance MAY have:
     * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
       Should be ``proportional`` or ``bespoke``.
 
+    * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
+    Default value is 0.8.
+
+    * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
+    and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
+    The default is the same as your ``setpoint``.
+
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value
     to determine the order in which to build & deploy deploy groups. Defaults to
@@ -483,8 +490,7 @@ instance MAY have:
   * ``namespace``:
     **Currently in development, do not use.**
     The Kubernetes namespace where Paasta will create objects related to this service.
-    Defaults to ``paasta``.
-    Currently, only ``paasta`` and namespaces starting with ``paastasvc-`` are permitted.
+    Defaults to ``paastasvc-service--name`` (that is, the service name will have underscores replaced with ``--``.)
 
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control

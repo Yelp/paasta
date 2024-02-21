@@ -43,12 +43,14 @@ paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/gopath
 .mypy_cache/
 .pytest_cache/
+.hypothesis/
 debian/.debhelper
 example_cluster/paasta/docker_registry.json
 general_itests/fake_etc_paasta/clusters.json
 pip-wheel-metadata
 debian/debhelper-build-stamp
 unique-run
+.vault-token
 
 # Coverage artifacts
 .coverage

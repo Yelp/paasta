@@ -18,11 +18,13 @@ import asynctest
 import mock
 import pytest
 from kubernetes.client import V1Pod
+from kubernetes.client.rest import ApiException
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
 from pyramid import testing
 from requests.exceptions import ReadTimeout
 
+from paasta_tools import eks_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import marathon_tools
 from paasta_tools.api import settings
@@ -48,7 +50,6 @@ from tests.conftest import wrap_value_in_task
 
 @pytest.mark.parametrize("include_mesos", [False, True])
 @pytest.mark.parametrize("include_envoy", [False, True])
-@pytest.mark.parametrize("include_smartstack", [False, True])
 @mock.patch("paasta_tools.api.views.instance.marathon_mesos_status", autospec=True)
 @mock.patch(
     "paasta_tools.api.views.instance.marathon_service_mesh_status", autospec=True
@@ -82,7 +83,6 @@ def test_instance_status_marathon(
     mock_load_service_namespace_config,
     mock_marathon_service_mesh_status,
     mock_marathon_mesos_status,
-    include_smartstack,
     include_envoy,
     include_mesos,
 ):
@@ -121,7 +121,6 @@ def test_instance_status_marathon(
         "service": "fake_service",
         "instance": "fake_instance",
         "verbose": 2,
-        "include_smartstack": include_smartstack,
         "include_envoy": include_envoy,
         "include_mesos": include_mesos,
     }
@@ -131,8 +130,6 @@ def test_instance_status_marathon(
         "marathon_job_status_field1": "field1_value",
         "marathon_job_status_field2": "field2_value",
     }
-    if include_smartstack:
-        expected_response["smartstack"] = mock_marathon_service_mesh_status.return_value
     if include_envoy:
         expected_response["envoy"] = mock_marathon_service_mesh_status.return_value
     if include_mesos:
@@ -151,18 +148,6 @@ def test_instance_status_marathon(
             "fake_service", "fake_instance", 2
         )
     expected_marathon_service_mesh_status_calls = []
-    if include_smartstack:
-        expected_marathon_service_mesh_status_calls.append(
-            mock.call(
-                "fake_service",
-                ServiceMesh.SMARTSTACK,
-                "fake_instance",
-                mock_service_config,
-                mock_load_service_namespace_config.return_value,
-                mock_app.tasks,
-                should_return_individual_backends=True,
-            ),
-        )
     if include_envoy:
         expected_marathon_service_mesh_status_calls.append(
             mock.call(
@@ -530,7 +515,26 @@ def test_marathon_service_mesh_status(
 
 
 @pytest.mark.asyncio
-async def test_kubernetes_smartstack_status():
+@pytest.mark.parametrize(
+    "mock_job_config",
+    (
+        kubernetes_tools.KubernetesDeploymentConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"bounce_method": "fake_bounce"},
+            branch_dict=None,
+        ),
+        eks_tools.EksDeploymentConfig(
+            service="fake_service",
+            cluster="fake_cluster",
+            instance="fake_instance",
+            config_dict={"bounce_method": "fake_bounce"},
+            branch_dict=None,
+        ),
+    ),
+)
+async def test_kubernetes_smartstack_status(mock_job_config):
     with asynctest.patch(
         "paasta_tools.api.views.instance.pik.match_backends_and_pods", autospec=True
     ) as mock_match_backends_and_pods, asynctest.patch(
@@ -568,13 +572,6 @@ async def test_kubernetes_smartstack_status():
         mock_pod = mock.create_autospec(V1Pod)
         mock_match_backends_and_pods.return_value = [(mock_backend, mock_pod)]
 
-        mock_job_config = kubernetes_tools.KubernetesDeploymentConfig(
-            service="fake_service",
-            cluster="fake_cluster",
-            instance="fake_instance",
-            config_dict={"bounce_method": "fake_bounce"},
-            branch_dict=None,
-        )
         mock_service_namespace_config = ServiceNamespaceConfig()
         mock_settings = mock.Mock()
 
@@ -1100,7 +1097,6 @@ def test_kubernetes_instance_status_bounce_method():
             instance=inst,
             instance_type="kubernetes",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             settings=settings,
         )
@@ -1135,7 +1131,6 @@ def test_kubernetes_instance_status_evicted_nodes():
             instance="fake-inst",
             instance_type="kubernetes",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             settings=mock_settings,
         )
@@ -1196,7 +1191,6 @@ def test_instance_mesh_status(
     request.swagger_data = {
         "service": "fake_service",
         "instance": "fake_inst",
-        "include_smartstack": False,
     }
     instance_mesh = instance.instance_mesh_status(request)
 
@@ -1212,7 +1206,6 @@ def test_instance_mesh_status(
             instance="fake_inst",
             instance_type="flink",
             settings=settings,
-            include_smartstack=False,
             include_envoy=None,  # default of true in api specs
         ),
     ]
@@ -1249,7 +1242,6 @@ def test_instance_mesh_status_error(
     request.swagger_data = {
         "service": "fake_service",
         "instance": "fake_inst",
-        "include_smartstack": False,
     }
 
     with pytest.raises(ApiFailure) as excinfo:
@@ -1279,13 +1271,21 @@ class TestBounceStatus:
         }
         return request
 
+    @pytest.mark.parametrize(
+        "instance_type",
+        (
+            "kubernetes",
+            "eks",
+        ),
+    )
     def test_success(
         self,
         mock_pik_bounce_status,
         mock_validate_service_instance,
         mock_request,
+        instance_type,
     ):
-        mock_validate_service_instance.return_value = "kubernetes"
+        mock_validate_service_instance.return_value = instance_type
         response = instance.bounce_status(mock_request)
         assert response == mock_pik_bounce_status.return_value
 
@@ -1296,6 +1296,18 @@ class TestBounceStatus:
         mock_request,
     ):
         mock_validate_service_instance.side_effect = NoConfigurationForServiceError
+        with pytest.raises(ApiFailure) as excinfo:
+            instance.bounce_status(mock_request)
+        assert excinfo.value.err == 404
+
+    def test_app_not_found(
+        self,
+        mock_pik_bounce_status,
+        mock_validate_service_instance,
+        mock_request,
+    ):
+        mock_validate_service_instance.return_value = "kubernetes"
+        mock_pik_bounce_status.side_effect = [ApiException(status=404)]
         with pytest.raises(ApiFailure) as excinfo:
             instance.bounce_status(mock_request)
         assert excinfo.value.err == 404

@@ -275,54 +275,55 @@ def parse_args() -> argparse.Namespace:
         "--scheduler",
         help="Scheduler to get task info from",
         dest="scheduler",
-        default="mesos",
+        default="kubernetes",
         choices=["mesos", "kubernetes"],
     )
     parser.add_argument(
+        "--additional-namespaces-exclude",
+        help="full names of namespaces to not fetch allocation info for those that don't match --namespace-prefix-exlude",
+        dest="additional_namespaces_exclude",
+        nargs="+",
+        default=[],
+    )
+    parser.add_argument(
         "--namespace-prefix",
-        help="prefix of the namespace to fetch the logs for"
-        "Used only when scheduler is kubernetes",
+        help=argparse.SUPPRESS,
         dest="namespace_prefix",
         default="paasta",
     )
     parser.add_argument(
         "--additional-namespaces",
-        help="full names of namespaces to fetch allocation info for that don't match --namespace-prefix"
-        "Used only when scheduler is kubernetes",
+        help=argparse.SUPPRESS,
         dest="additional_namespaces",
         nargs="+",
         # we default this to tron since this is really the only non-paasta-prefix namespaced that is part of paasta
         # and we'd like to not run two cronjobs to get this information :p
         default=["tron"],
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+
+    args.additional_namespaces_exclude = set(args.additional_namespaces_exclude)
+
+    return args
 
 
-def get_matching_namespaces(
-    namespaces: List[str], namespace_prefix: str, additional_namespaces: List[str]
+def get_unexcluded_namespaces(
+    namespaces: List[str], excluded_namespaces: List[str]
 ) -> List[str]:
-    return [
-        n
-        for n in namespaces
-        if n.startswith(namespace_prefix) or n in additional_namespaces
-    ]
+    return [n for n in namespaces if n not in excluded_namespaces]
 
 
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
-    if args.scheduler == "mesos":
+    kube_client = KubeClient()
+    all_namespaces = kubernetes_tools.get_all_namespaces(kube_client)
+    for matching_namespace in get_unexcluded_namespaces(
+        all_namespaces,
+        args.additional_namespaces_exclude,
+    ):
         display_task_allocation_info(
-            cluster, args.scheduler, args.namespace_prefix, kube_client=None
+            cluster, args.scheduler, matching_namespace, kube_client
         )
-    else:
-        kube_client = KubeClient()
-        all_namespaces = kubernetes_tools.get_all_namespaces(kube_client)
-        for matching_namespace in get_matching_namespaces(
-            all_namespaces, args.namespace_prefix, args.additional_namespaces
-        ):
-            display_task_allocation_info(
-                cluster, args.scheduler, matching_namespace, kube_client
-            )
 
 
 def display_task_allocation_info(

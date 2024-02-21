@@ -73,7 +73,11 @@ def main(args=None) -> None:
     for deployment_name in deployment_names:
         try:
             log.debug(f"Deleting {deployment_name}")
-            delete_deployment(kube_client=kube_client, deployment_name=deployment_name)
+            delete_deployment(
+                kube_client=kube_client,
+                deployment_name=deployment_name,
+                namespace="paasta",
+            )
         except Exception as err:
             log.error(f"Unable to delete {deployment_name}: {err}")
             sys.exit(1)

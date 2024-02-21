@@ -23,11 +23,15 @@ Command line options:
 import argparse
 import logging
 import sys
+import traceback
 from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import Union
 
+from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes.application.controller_wrappers import Application
 from paasta_tools.kubernetes.application.controller_wrappers import (
     get_application_wrapper,
@@ -88,6 +92,13 @@ def parse_args() -> argparse.Namespace:
         type=int,
         help="Update or create up to this number of service instances. Default is 0 (no limit).",
     )
+    parser.add_argument(
+        "--eks",
+        help="This flag deploys only k8 services that should run on EKS",
+        dest="eks",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
     return args
 
@@ -112,11 +123,12 @@ def main() -> None:
         service_instances=args.service_instance_list
     )
 
-    # returns a list of pairs of (No error?, KubernetesDeploymentConfig) for every service_instance
+    # returns a list of pairs of (No error?, KubernetesDeploymentConfig | EksDeploymentConfig) for every service_instance
     service_instance_configs_list = get_kubernetes_deployment_config(
         service_instances_with_valid_names=service_instances_with_valid_names,
         cluster=args.cluster or load_system_paasta_config().get_cluster(),
         soa_dir=soa_dir,
+        eks=args.eks,
     )
 
     if ((False, None) in service_instance_configs_list) or (
@@ -138,6 +150,7 @@ def main() -> None:
             rate_limit=args.rate_limit,
             soa_dir=soa_dir,
             metrics_interface=deploy_metrics,
+            eks=args.eks,
         )
     else:
         setup_kube_succeeded = False
@@ -170,16 +183,28 @@ def get_kubernetes_deployment_config(
     service_instances_with_valid_names: list,
     cluster: str,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> List[Tuple[bool, KubernetesDeploymentConfig]]:
+    eks: bool = False,
+) -> List[Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]]:
     service_instance_configs_list = []
     for service_instance in service_instances_with_valid_names:
         try:
-            service_instance_config = load_kubernetes_service_config_no_cache(
-                service=service_instance[0],
-                instance=service_instance[1],
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
+            service_instance_config: Union[
+                KubernetesDeploymentConfig, EksDeploymentConfig
+            ]
+            if eks:
+                service_instance_config = load_eks_service_config_no_cache(
+                    service=service_instance[0],
+                    instance=service_instance[1],
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            else:
+                service_instance_config = load_kubernetes_service_config_no_cache(
+                    service=service_instance[0],
+                    instance=service_instance[1],
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
             service_instance_configs_list.append((True, service_instance_config))
         except NoDeploymentsAvailable:
             log.debug(
@@ -200,24 +225,30 @@ def get_kubernetes_deployment_config(
 def setup_kube_deployments(
     kube_client: KubeClient,
     cluster: str,
-    service_instance_configs_list: List[Tuple[bool, KubernetesDeploymentConfig]],
+    service_instance_configs_list: List[
+        Tuple[bool, Union[KubernetesDeploymentConfig, EksDeploymentConfig]]
+    ],
     rate_limit: int = 0,
     soa_dir: str = DEFAULT_SOA_DIR,
     metrics_interface: metrics_lib.BaseMetrics = metrics_lib.NoMetrics("paasta"),
+    eks: bool = False,
 ) -> bool:
 
-    if service_instance_configs_list:
-        existing_kube_deployments = set(list_all_paasta_deployments(kube_client))
-        existing_apps = {
-            (deployment.service, deployment.instance, deployment.namespace)
-            for deployment in existing_kube_deployments
-        }
+    if not service_instance_configs_list:
+        return True
+
+    existing_kube_deployments = set(list_all_paasta_deployments(kube_client))
+    existing_apps = {
+        (deployment.service, deployment.instance, deployment.namespace)
+        for deployment in existing_kube_deployments
+    }
 
     applications = [
         create_application_object(
             cluster=cluster,
             soa_dir=soa_dir,
             service_instance_config=service_instance,
+            eks=eks,
         )
         if service_instance
         else (_, None)
@@ -238,6 +269,19 @@ def setup_kube_deployments(
                     app.kube_deployment.instance,
                     app.kube_deployment.namespace,
                 ) not in existing_apps:
+                    if app.soa_config.get_bounce_method() == "downthenup":
+                        if any(
+                            (
+                                existing_app[:2]
+                                == (
+                                    app.kube_deployment.service,
+                                    app.kube_deployment.instance,
+                                )
+                            )
+                            for existing_app in existing_apps
+                        ):
+                            # For downthenup, we don't want to create until cleanup_kubernetes_job has cleaned up the instance in the other namespace.
+                            continue
                     log.info(f"Creating {app} because it does not exist yet.")
                     app.create(kube_client)
                     app_dimensions["deploy_event"] = "create"
@@ -273,16 +317,17 @@ def setup_kube_deployments(
 def create_application_object(
     cluster: str,
     soa_dir: str,
-    service_instance_config: KubernetesDeploymentConfig,
+    service_instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
+    eks: bool = False,
 ) -> Tuple[bool, Optional[Application]]:
     try:
         formatted_application = service_instance_config.format_kubernetes_app()
-    except InvalidKubernetesConfig as e:
-        log.error(str(e))
+    except InvalidKubernetesConfig:
+        log.error(traceback.format_exc())
         return False, None
 
     app = get_application_wrapper(formatted_application)
-    app.load_local_config(soa_dir, cluster)
+    app.load_local_config(soa_dir, cluster, eks)
     return True, app
 
 

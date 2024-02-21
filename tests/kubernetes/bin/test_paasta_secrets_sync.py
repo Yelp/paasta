@@ -64,6 +64,9 @@ def test_sync_all_secrets():
     ) as mock_sync_secrets, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.ensure_namespace",
+        autospec=True,
     ):
         services_to_k8s_namespaces_to_allowlist = {
             "foo": {"paastasvc-foo": None},
@@ -261,7 +264,11 @@ def paasta_secrets_patches():
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.json.load", autospec=True
     ), mock.patch(
         "os.path.isdir", autospec=True, return_value=True
+    ), mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
     ):
+
         yield (
             mock_get_secret_provider,
             mock_scandir,
@@ -620,7 +627,10 @@ def boto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         yield (
             mock_open,
             mock_open.return_value.__enter__.return_value,
@@ -665,7 +675,16 @@ def test_sync_boto_secrets_create(boto_keys_patches):
         "scribereader-cfg": "ZmlsZTQ=",
     }
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = None
     assert sync_boto_secrets(
         kube_client=mock.Mock(),
@@ -711,7 +730,16 @@ def test_sync_boto_secrets_update(boto_keys_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = "1235abc"
     assert sync_boto_secrets(
         kube_client=mock.Mock(),
@@ -738,7 +766,16 @@ def test_sync_boto_secrets_noop(boto_keys_patches):
         mock_config_loader_instances,
     ) = boto_keys_patches
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = (
         "4c3da4da5d97294f69527dc92c2b930ce127522c"
     )
@@ -778,7 +815,16 @@ def test_sync_boto_secrets_exists_but_no_signature(boto_keys_patches):
     )
     mock_config_loader_instances.return_value = [deployment]
 
-    mock_open_handle.read.side_effect = ["file1", "file2", "file3", "file4"]
+    mock_open_handle.read.side_effect = [
+        "file1",
+        "file2",
+        "file3",
+        "file4",
+        "eksfile1",
+        "eksfile2",
+        "eksfile3",
+        "eksfile4",
+    ]
     mock_get_kubernetes_secret_signature.return_value = None
     mock_create_secret.side_effect = ApiException(409)
 
@@ -818,7 +864,10 @@ def crypto_keys_patches():
     ) as mock_update_kubernetes_secret_signature, mock.patch(
         "paasta_tools.kubernetes.bin.paasta_secrets_sync.PaastaServiceConfigLoader",
         autospec=True,
-    ) as mock_config_loader:
+    ) as mock_config_loader, mock.patch(
+        "paasta_tools.kubernetes.bin.paasta_secrets_sync.load_system_paasta_config",
+        autospec=True,
+    ):
         yield (
             provider,
             mock_get_kubernetes_secret_signature,
