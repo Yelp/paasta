@@ -1,0 +1,8 @@
+{
+    "vault_environment": "devc",
+    "secret_provider": "paasta_tools.secret_providers.vault",
+    "vault_cluster_map": {
+        "<%cluster%>": "devc"
+    },
+    "vault_token_file": "/var/spool/.paasta_vault_token"
+}

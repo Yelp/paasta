@@ -8,9 +8,11 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 import a_sync
 import pytz
@@ -23,6 +25,7 @@ from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
 from paasta_tools import cassandracluster_tools
+from paasta_tools import eks_tools
 from paasta_tools import envoy_tools
 from paasta_tools import flink_tools
 from paasta_tools import kafkacluster_tools
@@ -31,12 +34,14 @@ from paasta_tools import marathon_tools
 from paasta_tools import monkrelaycluster_tools
 from paasta_tools import nrtsearchservice_tools
 from paasta_tools import smartstack_tools
+from paasta_tools import vitesscluster_tools
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsDict
 from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
@@ -44,10 +49,12 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
 
-INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster"}
-# TODO: remove "cassandracluster" from INSTANCE_TYPES_K8S after
-# print_cassandra_status proves to be stable.
-INSTANCE_TYPES_K8S = {"kubernetes", "cassandracluster"}
+INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster", "vitesscluster"}
+INSTANCE_TYPES_K8S = {
+    "cassandracluster",
+    "eks",
+    "kubernetes",
+}
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
 INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
@@ -55,6 +62,7 @@ INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
+    vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
@@ -80,8 +88,10 @@ class KubernetesVersionDict(TypedDict, total=False):
     ready_replicas: int
     create_timestamp: int
     git_sha: str
+    image_version: Optional[str]
     config_sha: str
     pods: Sequence[Mapping[str, Any]]
+    namespace: str
 
 
 def cr_id(service: str, instance: str, instance_type: str) -> Mapping[str, str]:
@@ -105,7 +115,7 @@ def set_cr_desired_state(
     instance: str,
     instance_type: str,
     desired_state: str,
-):
+) -> None:
     try:
         kubernetes_tools.set_cr_desired_state(
             kube_client=kube_client,
@@ -180,7 +190,7 @@ async def pod_info(
     pod: V1Pod,
     client: kubernetes_tools.KubeClient,
     num_tail_lines: int,
-):
+) -> Dict[str, Any]:
     container_statuses = pod.status.container_statuses or []
     try:
         pod_event_messages = await get_pod_event_messages(client, pod)
@@ -213,6 +223,8 @@ async def pod_info(
     }
 
 
+# TODO: Cleanup
+# Only used in old kubernetes_status
 async def job_status(
     kstatus: MutableMapping[str, Any],
     client: kubernetes_tools.KubeClient,
@@ -325,7 +337,7 @@ async def mesh_status(
 
     pods = await pods_task
     for location, hosts in node_hostname_by_location.items():
-        host = replication_checker.get_first_host_in_pool(hosts, instance_pool)
+        host = replication_checker.get_hostname_in_pool(hosts, instance_pool)
         if service_mesh == ServiceMesh.SMARTSTACK:
             mesh_status["locations"].append(
                 _build_smartstack_location_dict(
@@ -457,18 +469,29 @@ def filter_actually_running_replicasets(
 
 
 def bounce_status(
-    service: str,
-    instance: str,
-    settings: Any,
-):
+    service: str, instance: str, settings: Any, is_eks: bool = False
+) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
-    job_config = kubernetes_tools.load_kubernetes_service_config(
-        service=service,
-        instance=instance,
-        cluster=settings.cluster,
-        soa_dir=settings.soa_dir,
-        load_deployments=True,
-    )
+    # this should be the only place where it matters that we use eks_tools.
+    # apart from loading config files, we should be using kubernetes_tools
+    # everywhere.
+    job_config: Union[KubernetesDeploymentConfig, eks_tools.EksDeploymentConfig]
+    if is_eks:
+        job_config = eks_tools.load_eks_service_config(
+            service=service,
+            instance=instance,
+            cluster=settings.cluster,
+            soa_dir=settings.soa_dir,
+            load_deployments=True,
+        )
+    else:
+        job_config = kubernetes_tools.load_kubernetes_service_config(
+            service=service,
+            instance=instance,
+            cluster=settings.cluster,
+            soa_dir=settings.soa_dir,
+            load_deployments=True,
+        )
     expected_instance_count = job_config.get_instances()
     status["expected_instance_count"] = expected_instance_count
     desired_state = job_config.get_desired_state()
@@ -513,12 +536,58 @@ def bounce_status(
         )
         version_objects = filter_actually_running_replicasets(replicasets)
 
-    active_shas = kubernetes_tools.get_active_shas_for_service(
+    active_versions = kubernetes_tools.get_active_versions_for_service(
         [app, *version_objects],
     )
-    status["active_shas"] = list(active_shas)
-    status["app_count"] = len(active_shas)
+    status["active_shas"] = [
+        (deployment_version.sha, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
+    status["active_versions"] = [
+        (deployment_version.sha, deployment_version.image_version, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
+    status["app_count"] = len(active_versions)
     return status
+
+
+async def get_pods_for_service_instance_multiple_namespaces(
+    service: str,
+    instance: str,
+    kube_client: kubernetes_tools.KubeClient,
+    namespaces: Iterable[str],
+) -> Sequence[V1Pod]:
+    ret: List[V1Pod] = []
+
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.pods_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        ret.extend(await coro)
+
+    return ret
+
+
+def find_all_relevant_namespaces(
+    service: str,
+    instance: str,
+    kube_client: kubernetes_tools.KubeClient,
+    job_config: LongRunningServiceConfig,
+) -> Set[str]:
+    return {job_config.get_kubernetes_namespace()} | {
+        deployment.namespace
+        for deployment in kubernetes_tools.list_deployments_in_managed_namespaces(
+            kube_client=kube_client,
+            label_selector=f"{paasta_prefixed('service')}={service},{paasta_prefixed('instance')}={instance}",
+        )
+    }
 
 
 @a_sync.to_blocking
@@ -526,11 +595,10 @@ async def kubernetes_status_v2(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     instance_type: str,
     settings: Any,
-):
+) -> Dict[str, Any]:
     status: Dict[str, Any] = {}
     config_loader = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[instance_type].loader
     job_config = config_loader(
@@ -543,6 +611,10 @@ async def kubernetes_status_v2(
     kube_client = settings.kubernetes_client
     if kube_client is None:
         return status
+
+    relevant_namespaces = await a_sync.to_async(find_all_relevant_namespaces)(
+        service, instance, kube_client, job_config
+    )
 
     tasks: List["asyncio.Future[Dict[str, Any]]"] = []
 
@@ -561,11 +633,11 @@ async def kubernetes_status_v2(
         autoscaling_task = None
 
     pods_task = asyncio.create_task(
-        kubernetes_tools.pods_for_service_instance(
+        get_pods_for_service_instance_multiple_namespaces(
             service=service,
             instance=instance,
             kube_client=kube_client,
-            namespace=job_config.get_kubernetes_namespace(),
+            namespaces=relevant_namespaces,
         )
     )
     tasks.append(pods_task)
@@ -610,7 +682,7 @@ async def kubernetes_status_v2(
                 kube_client=kube_client,
                 service=service,
                 instance=instance,
-                namespace=job_config.get_kubernetes_namespace(),
+                namespaces=relevant_namespaces,
                 pod_status_by_sha_and_readiness_task=pod_status_by_sha_and_readiness_task,
             )
         )
@@ -629,7 +701,7 @@ async def kubernetes_status_v2(
                 kube_client=kube_client,
                 service=service,
                 instance=instance,
-                namespace=job_config.get_kubernetes_namespace(),
+                namespaces=relevant_namespaces,
                 pod_status_by_replicaset_task=pod_status_by_replicaset_task,
             )
         )
@@ -700,16 +772,25 @@ async def get_versions_for_replicasets(
     kube_client: kubernetes_tools.KubeClient,
     service: str,
     instance: str,
-    namespace: str,
+    namespaces: Iterable[str],
     pod_status_by_replicaset_task: "asyncio.Future[Mapping[str, Sequence[asyncio.Future[Dict[str, Any]]]]]",
 ) -> List[KubernetesVersionDict]:
-    replicaset_list = await kubernetes_tools.replicasets_for_service_instance(
-        service=service,
-        instance=instance,
-        kube_client=kube_client,
-        namespace=namespace,
-    )
-    # For the purpose of active_shas/app_count, don't count replicasets that
+
+    replicaset_list: List[V1ReplicaSet] = []
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.replicasets_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        replicaset_list.extend(await coro)
+
+    # For the purpose of active_versions/app_count, don't count replicasets that
     # are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
 
@@ -739,8 +820,12 @@ async def get_replicaset_status(
         "ready_replicas": ready_replicas_from_replicaset(replicaset),
         "create_timestamp": replicaset.metadata.creation_timestamp.timestamp(),
         "git_sha": replicaset.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "image_version": replicaset.metadata.labels.get(
+            "paasta.yelp.com/image_version", None
+        ),
         "config_sha": replicaset.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": await asyncio.gather(*pod_status_tasks) if pod_status_tasks else [],
+        "namespace": replicaset.metadata.namespace,
     }
 
 
@@ -874,7 +959,7 @@ async def get_pod_containers(
 
                     last_timestamp = this_state["started_at"].timestamp()
 
-        async def get_tail_lines():
+        async def get_tail_lines() -> MutableMapping[str, Any]:
             try:
                 return await get_tail_lines_for_kubernetes_container(
                     client,
@@ -887,8 +972,7 @@ async def get_pod_containers(
                 return {"error_message": f"Could not fetch logs for {cs.name}"}
 
         # get previous log lines as well if this container restarted recently
-        async def get_previous_tail_lines():
-            nonlocal previous_tail_lines
+        async def get_previous_tail_lines() -> MutableMapping[str, Any]:
             if state == "running" and kubernetes_tools.recent_container_restart(
                 cs.restart_count, last_state, last_timestamp
             ):
@@ -963,17 +1047,23 @@ async def get_versions_for_controller_revisions(
     kube_client: kubernetes_tools.KubeClient,
     service: str,
     instance: str,
-    namespace: str,
+    namespaces: Iterable[str],
     pod_status_by_sha_and_readiness_task: "asyncio.Future[Mapping[Tuple[str, str], Mapping[bool, Sequence[asyncio.Future[Mapping[str, Any]]]]]]",
 ) -> List[KubernetesVersionDict]:
-    controller_revision_list = (
-        await kubernetes_tools.controller_revisions_for_service_instance(
-            service=service,
-            instance=instance,
-            kube_client=kube_client,
-            namespace=namespace,
-        )
-    )
+    controller_revision_list: List[V1ControllerRevision] = []
+
+    for coro in asyncio.as_completed(
+        [
+            kubernetes_tools.controller_revisions_for_service_instance(
+                service=service,
+                instance=instance,
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+            for namespace in namespaces
+        ]
+    ):
+        controller_revision_list.extend(await coro)
 
     cr_by_shas: Dict[Tuple[str, str], V1ControllerRevision] = {}
     for cr in controller_revision_list:
@@ -1014,17 +1104,19 @@ async def get_version_for_controller_revision(
         "ready_replicas": len(pod_status_tasks_by_readiness[True]),
         "create_timestamp": cr.metadata.creation_timestamp.timestamp(),
         "git_sha": cr.metadata.labels.get("paasta.yelp.com/git_sha"),
+        "image_version": cr.metadata.labels.get("paasta.yelp.com/image_version", None),
         "config_sha": cr.metadata.labels.get("paasta.yelp.com/config_sha"),
         "pods": [task.result() for task in all_pod_status_tasks],
+        "namespace": cr.metadata.namespace,
     }
 
 
+# TODO: Cleanup old kubernetes status
 @a_sync.to_blocking
 async def kubernetes_status(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     instance_type: str,
     settings: Any,
@@ -1066,15 +1158,22 @@ async def kubernetes_status(
         kube_client=kube_client,
         namespace=job_config.get_kubernetes_namespace(),
     )
-    # For the purpose of active_shas/app_count, don't count replicasets that are at 0/0.
+    # For the purpose of active_versions/app_count, don't count replicasets that are at 0/0.
     actually_running_replicasets = filter_actually_running_replicasets(replicaset_list)
-    active_shas = kubernetes_tools.get_active_shas_for_service(
+    active_versions = kubernetes_tools.get_active_versions_for_service(
         [app, *pod_list, *actually_running_replicasets]
     )
-    kstatus["app_count"] = len(active_shas)
+    kstatus["app_count"] = len(active_versions)
     kstatus["desired_state"] = job_config.get_desired_state()
     kstatus["bounce_method"] = job_config.get_bounce_method()
-    kstatus["active_shas"] = list(active_shas)
+    kstatus["active_shas"] = [
+        (deployment_version.sha, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
+    kstatus["active_versions"] = [
+        (deployment_version.sha, deployment_version.image_version, config_sha)
+        for deployment_version, config_sha in active_versions
+    ]
 
     await job_status(
         kstatus=kstatus,
@@ -1105,35 +1204,23 @@ async def kubernetes_status(
             evicted_count += 1
     kstatus["evicted_count"] = evicted_count
 
-    if include_smartstack or include_envoy:
+    if include_envoy:
         service_namespace_config = kubernetes_tools.load_service_namespace_config(
             service=service,
             namespace=job_config.get_nerve_namespace(),
             soa_dir=settings.soa_dir,
         )
         if "proxy_port" in service_namespace_config:
-            if include_smartstack:
-                kstatus["smartstack"] = await mesh_status(
-                    service=service,
-                    service_mesh=ServiceMesh.SMARTSTACK,
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods_task=pods_task,
-                    should_return_individual_backends=verbose > 0,
-                    settings=settings,
-                )
-            if include_envoy:
-                kstatus["envoy"] = await mesh_status(
-                    service=service,
-                    service_mesh=ServiceMesh.ENVOY,
-                    instance=job_config.get_nerve_namespace(),
-                    job_config=job_config,
-                    service_namespace_config=service_namespace_config,
-                    pods_task=pods_task,
-                    should_return_individual_backends=verbose > 0,
-                    settings=settings,
-                )
+            kstatus["envoy"] = await mesh_status(
+                service=service,
+                service_mesh=ServiceMesh.ENVOY,
+                instance=job_config.get_nerve_namespace(),
+                job_config=job_config,
+                service_namespace_config=service_namespace_config,
+                pods_task=pods_task,
+                should_return_individual_backends=verbose > 0,
+                settings=settings,
+            )
     return kstatus
 
 
@@ -1141,7 +1228,6 @@ def instance_status(
     service: str,
     instance: str,
     verbose: int,
-    include_smartstack: bool,
     include_envoy: bool,
     use_new: bool,
     instance_type: str,
@@ -1171,7 +1257,6 @@ def instance_status(
                 instance=instance,
                 instance_type=instance_type,
                 verbose=verbose,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
                 settings=settings,
             )
@@ -1181,7 +1266,6 @@ def instance_status(
                 instance=instance,
                 instance_type=instance_type,
                 verbose=verbose,
-                include_smartstack=include_smartstack,
                 include_envoy=include_envoy,
                 settings=settings,
             )
@@ -1206,11 +1290,10 @@ async def kubernetes_mesh_status(
     instance: str,
     instance_type: str,
     settings: Any,
-    include_smartstack: bool = True,
     include_envoy: bool = True,
 ) -> Mapping[str, Any]:
 
-    if not include_smartstack and not include_envoy:
+    if not include_envoy:
         raise RuntimeError("No mesh types specified when requesting mesh status")
     if instance_type not in LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
         raise RuntimeError(
@@ -1255,11 +1338,6 @@ async def kubernetes_mesh_status(
         should_return_individual_backends=True,
         settings=settings,
     )
-    if include_smartstack:
-        kmesh["smartstack"] = await mesh_status(
-            service_mesh=ServiceMesh.SMARTSTACK,
-            **mesh_status_kwargs,
-        )
     if include_envoy:
         kmesh["envoy"] = await mesh_status(
             service_mesh=ServiceMesh.ENVOY,

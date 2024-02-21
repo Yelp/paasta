@@ -9,8 +9,10 @@ dist/
 !*.pyi
 .*.sw?
 .idea
+.fleet
 .vscode
 .create_cluster
+.fake_cluster
 .tmp
 kind
 .kube
@@ -21,6 +23,9 @@ venv
 .bash_history
 .lesshst
 etc_paasta_for_development/
+etc_paasta_playground/
+soa_config_playground/
+k8s_itests/kubeconfig
 
 # Generated debian artifacts
 debian/paasta-tools/
@@ -28,6 +33,7 @@ debian/files
 debian/paasta-tools.substvars
 debian/paasta-tools.debhelper.log
 debian/paasta-tools.postinst.debhelper
+debian/paasta-tools.prerm.debhelper
 
 # Itest artifacts
 fake_service_uno/
@@ -36,8 +42,17 @@ paasta_itests/fake_etc_paasta/chronos.json
 paasta_itests/fake_etc_paasta/marathon.json
 yelp_package/gopath
 .mypy_cache/
+.pytest_cache/
+.hypothesis/
 debian/.debhelper
 example_cluster/paasta/docker_registry.json
 general_itests/fake_etc_paasta/clusters.json
 pip-wheel-metadata
 debian/debhelper-build-stamp
+unique-run
+.vault-token
+
+# Coverage artifacts
+.coverage
+
+unique-run

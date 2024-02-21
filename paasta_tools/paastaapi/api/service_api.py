@@ -23,6 +23,10 @@ from paasta_tools.paastaapi.model_utils import (  # noqa: F401
     none_type,
     validate_and_convert_types
 )
+from paasta_tools.paastaapi.model.flink_cluster_overview import FlinkClusterOverview
+from paasta_tools.paastaapi.model.flink_config import FlinkConfig
+from paasta_tools.paastaapi.model.flink_job_details import FlinkJobDetails
+from paasta_tools.paastaapi.model.flink_jobs import FlinkJobs
 from paasta_tools.paastaapi.model.inline_response200 import InlineResponse200
 from paasta_tools.paastaapi.model.inline_response2001 import InlineResponse2001
 from paasta_tools.paastaapi.model.instance_bounce_status import InstanceBounceStatus
@@ -295,6 +299,394 @@ class ServiceApi(object):
             callable=__delay_instance
         )
 
+        def __get_flink_cluster_config(
+            self,
+            service,
+            instance,
+            **kwargs
+        ):
+            """Get config of a flink cluster  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.get_flink_cluster_config(service, instance, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+
+            Keyword Args:
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                FlinkConfig
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            return self.call_with_http_info(**kwargs)
+
+        self.get_flink_cluster_config = Endpoint(
+            settings={
+                'response_type': (FlinkConfig,),
+                'auth': [],
+                'endpoint_path': '/flink/{service}/{instance}/config',
+                'operation_id': 'get_flink_cluster_config',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__get_flink_cluster_config
+        )
+
+        def __get_flink_cluster_job_details(
+            self,
+            service,
+            instance,
+            job_id,
+            **kwargs
+        ):
+            """Get details of a flink job in a flink cluster  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.get_flink_cluster_job_details(service, instance, job_id, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+                job_id (str): Job id
+
+            Keyword Args:
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                FlinkJobDetails
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            kwargs['job_id'] = \
+                job_id
+            return self.call_with_http_info(**kwargs)
+
+        self.get_flink_cluster_job_details = Endpoint(
+            settings={
+                'response_type': (FlinkJobDetails,),
+                'auth': [],
+                'endpoint_path': '/flink/{service}/{instance}/jobs/{job_id}',
+                'operation_id': 'get_flink_cluster_job_details',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                    'job_id',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                    'job_id',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                    'job_id':
+                        (str,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                    'job_id': 'job_id',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                    'job_id': 'path',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__get_flink_cluster_job_details
+        )
+
+        def __get_flink_cluster_overview(
+            self,
+            service,
+            instance,
+            **kwargs
+        ):
+            """Get overview of a flink cluster  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.get_flink_cluster_overview(service, instance, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+
+            Keyword Args:
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                FlinkClusterOverview
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            return self.call_with_http_info(**kwargs)
+
+        self.get_flink_cluster_overview = Endpoint(
+            settings={
+                'response_type': (FlinkClusterOverview,),
+                'auth': [],
+                'endpoint_path': '/flink/{service}/{instance}/overview',
+                'operation_id': 'get_flink_cluster_overview',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__get_flink_cluster_overview
+        )
+
         def __instance_set_state(
             self,
             service,
@@ -427,6 +819,132 @@ class ServiceApi(object):
             },
             api_client=api_client,
             callable=__instance_set_state
+        )
+
+        def __list_flink_cluster_jobs(
+            self,
+            service,
+            instance,
+            **kwargs
+        ):
+            """Get list of flink jobs in a flink cluster  # noqa: E501
+
+            This method makes a synchronous HTTP request by default. To make an
+            asynchronous HTTP request, please pass async_req=True
+
+            >>> thread = api.list_flink_cluster_jobs(service, instance, async_req=True)
+            >>> result = thread.get()
+
+            Args:
+                service (str): Service name
+                instance (str): Instance name
+
+            Keyword Args:
+                _return_http_data_only (bool): response data without head status
+                    code and headers. Default is True.
+                _preload_content (bool): if False, the urllib3.HTTPResponse object
+                    will be returned without reading/decoding response data.
+                    Default is True.
+                _request_timeout (float/tuple): timeout setting for this request. If one
+                    number provided, it will be total request timeout. It can also
+                    be a pair (tuple) of (connection, read) timeouts.
+                    Default is None.
+                _check_input_type (bool): specifies if type checking
+                    should be done one the data sent to the server.
+                    Default is True.
+                _check_return_type (bool): specifies if type checking
+                    should be done one the data received from the server.
+                    Default is True.
+                _host_index (int/None): specifies the index of the server
+                    that we want to use.
+                    Default is read from the configuration.
+                async_req (bool): execute request asynchronously
+
+            Returns:
+                FlinkJobs
+                    If the method is called asynchronously, returns the request
+                    thread.
+            """
+            kwargs['async_req'] = kwargs.get(
+                'async_req', False
+            )
+            kwargs['_return_http_data_only'] = kwargs.get(
+                '_return_http_data_only', True
+            )
+            kwargs['_preload_content'] = kwargs.get(
+                '_preload_content', True
+            )
+            kwargs['_request_timeout'] = kwargs.get(
+                '_request_timeout', None
+            )
+            kwargs['_check_input_type'] = kwargs.get(
+                '_check_input_type', True
+            )
+            kwargs['_check_return_type'] = kwargs.get(
+                '_check_return_type', True
+            )
+            kwargs['_host_index'] = kwargs.get('_host_index')
+            kwargs['service'] = \
+                service
+            kwargs['instance'] = \
+                instance
+            return self.call_with_http_info(**kwargs)
+
+        self.list_flink_cluster_jobs = Endpoint(
+            settings={
+                'response_type': (FlinkJobs,),
+                'auth': [],
+                'endpoint_path': '/flink/{service}/{instance}/jobs',
+                'operation_id': 'list_flink_cluster_jobs',
+                'http_method': 'GET',
+                'servers': None,
+            },
+            params_map={
+                'all': [
+                    'service',
+                    'instance',
+                ],
+                'required': [
+                    'service',
+                    'instance',
+                ],
+                'nullable': [
+                ],
+                'enum': [
+                ],
+                'validation': [
+                ]
+            },
+            root_map={
+                'validations': {
+                },
+                'allowed_values': {
+                },
+                'openapi_types': {
+                    'service':
+                        (str,),
+                    'instance':
+                        (str,),
+                },
+                'attribute_map': {
+                    'service': 'service',
+                    'instance': 'instance',
+                },
+                'location_map': {
+                    'service': 'path',
+                    'instance': 'path',
+                },
+                'collection_format_map': {
+                }
+            },
+            headers_map={
+                'accept': [
+                    'application/json'
+                ],
+                'content_type': [],
+            },
+            api_client=api_client,
+            callable=__list_flink_cluster_jobs
         )
 
         def __list_instances(
@@ -668,7 +1186,6 @@ class ServiceApi(object):
                 instance (str): Instance name
 
             Keyword Args:
-                include_smartstack (bool): Include Smartstack information. [optional] if omitted the server will use the default value of True
                 include_envoy (bool): Include Envoy information. [optional] if omitted the server will use the default value of True
                 _return_http_data_only (bool): response data without head status
                     code and headers. Default is True.
@@ -733,7 +1250,6 @@ class ServiceApi(object):
                 'all': [
                     'service',
                     'instance',
-                    'include_smartstack',
                     'include_envoy',
                 ],
                 'required': [
@@ -757,21 +1273,17 @@ class ServiceApi(object):
                         (str,),
                     'instance':
                         (str,),
-                    'include_smartstack':
-                        (bool,),
                     'include_envoy':
                         (bool,),
                 },
                 'attribute_map': {
                     'service': 'service',
                     'instance': 'instance',
-                    'include_smartstack': 'include_smartstack',
                     'include_envoy': 'include_envoy',
                 },
                 'location_map': {
                     'service': 'path',
                     'instance': 'path',
-                    'include_smartstack': 'query',
                     'include_envoy': 'query',
                 },
                 'collection_format_map': {
@@ -807,7 +1319,6 @@ class ServiceApi(object):
 
             Keyword Args:
                 verbose (int): Include verbose status information. [optional]
-                include_smartstack (bool): Include Smartstack information. [optional]
                 include_envoy (bool): Include Envoy information. [optional]
                 include_mesos (bool): Include Mesos information. [optional]
                 new (bool): Use new version of paasta status for services. [optional]
@@ -875,7 +1386,6 @@ class ServiceApi(object):
                     'service',
                     'instance',
                     'verbose',
-                    'include_smartstack',
                     'include_envoy',
                     'include_mesos',
                     'new',
@@ -903,8 +1413,6 @@ class ServiceApi(object):
                         (str,),
                     'verbose':
                         (int,),
-                    'include_smartstack':
-                        (bool,),
                     'include_envoy':
                         (bool,),
                     'include_mesos':
@@ -916,7 +1424,6 @@ class ServiceApi(object):
                     'service': 'service',
                     'instance': 'instance',
                     'verbose': 'verbose',
-                    'include_smartstack': 'include_smartstack',
                     'include_envoy': 'include_envoy',
                     'include_mesos': 'include_mesos',
                     'new': 'new',
@@ -925,7 +1432,6 @@ class ServiceApi(object):
                     'service': 'path',
                     'instance': 'path',
                     'verbose': 'query',
-                    'include_smartstack': 'query',
                     'include_envoy': 'query',
                     'include_mesos': 'query',
                     'new': 'query',

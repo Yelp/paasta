@@ -15,10 +15,8 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:bionic
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
-
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -26,7 +24,7 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.7-dev \
+        python3.8-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -36,7 +34,7 @@ RUN apt-get update > /dev/null && \
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.7 --no-download
+RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 

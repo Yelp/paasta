@@ -39,7 +39,7 @@ def add_subparser(subparsers):
         "-c",
         "--cluster",
         dest="cluster",
-        help="which cluster to pause autoscaling in. ie. norcal-prod",
+        help="which cluster to pause autoscaling in. ie. pnw-prod",
     )
     status_parser.add_argument(
         "-d",

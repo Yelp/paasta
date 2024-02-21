@@ -31,6 +31,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import ensure_namespace
@@ -41,7 +42,16 @@ from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import (
+    DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
     DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+)
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
 from paasta_tools.long_running_service_tools import (
     DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
@@ -52,6 +62,7 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -69,7 +80,12 @@ DEFAULT_SCRAPE_PERIOD_S = 10
 DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
 
-CPU_METRICS_PROVIDERS = ("mesos_cpu", "cpu")
+CPU_METRICS_PROVIDER = "cpu"
+
+K8S_INSTANCE_TYPE_CLASSES = (
+    KubernetesDeploymentConfig,
+    EksDeploymentConfig,
+)
 
 
 class PrometheusAdapterResourceConfig(TypedDict, total=False):
@@ -199,6 +215,19 @@ def should_create_uwsgi_scaling_rule(
     return False, "did not request uwsgi autoscaling"
 
 
+def should_create_gunicorn_scaling_rule(
+    autoscaling_config: AutoscalingParamsDict,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determines whether we should configure the prometheus adapter for a given service.
+    Returns a 2-tuple of (should_create, reason_to_skip)
+    """
+    if autoscaling_config["metrics_provider"] == "gunicorn":
+        return True, None
+
+    return False, "did not request gunicorn autoscaling"
+
+
 def should_create_piscina_scaling_rule(
     autoscaling_config: AutoscalingParamsDict,
 ) -> Tuple[bool, Optional[str]]:
@@ -211,27 +240,50 @@ def should_create_piscina_scaling_rule(
     return False, "did not request piscina autoscaling"
 
 
-def create_instance_uwsgi_scaling_rule(
-    service: str,
-    instance: str,
+def should_create_active_requests_scaling_rule(
     autoscaling_config: AutoscalingParamsDict,
+) -> Tuple[bool, Optional[str]]:
+    """
+    Determines whether we should configure the prometheus adapter for a given service.
+    Returns a 2-tuple of (should_create, reason_to_skip)
+    """
+    if autoscaling_config["metrics_provider"] == "active-requests":
+        return True, None
+    return False, "did not request active-requests autoscaling"
+
+
+def create_instance_active_requests_scaling_rule(
+    service: str,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    setpoint = autoscaling_config["setpoint"]
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
+    desired_active_requests_per_replica = autoscaling_config.get(
+        "desired_active_requests_per_replica",
+        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+    )
     moving_average_window = autoscaling_config.get(
-        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+        "moving_average_window_seconds",
+        DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
-    # this should always be set, but we default to 0 for safety as the worst thing that would happen
-    # is that we take a couple more iterations than required to hit the desired setpoint
-    offset = autoscaling_config.get("offset", 0)
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    replica_filter_terms = (
-        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
-    )
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
         sum(
@@ -247,6 +299,104 @@ def create_instance_uwsgi_scaling_rule(
             )
         ) by (kube_deployment)
     """
+
+    # Envoy tracks metrics at the smartstack namespace level. In most cases the paasta instance name matches the smartstack namespace.
+    # In rare cases, there are custom registration added to instance configs.
+    # If there is no custom registration the envoy and instance names match and no need to update the worker_filter_terms.
+    # If there is a single custom registration for an instance, we will process the registration value and extract the value to be used.
+    # The registrations usually follow the format of {service_name}.{smartstack_name}. Hence we split the string by dot and extract the last token.
+    # More than one custom registrations are not supported and config validation takes care of rejecting such configs.
+    registrations = instance_config.get_registrations()
+
+    mesh_instance = registrations[0].split(".")[-1] if len(registrations) == 1 else None
+    envoy_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{mesh_instance or instance}'"
+
+    # envoy-based metrics have no labels corresponding to the k8s resources that they
+    # front, but we can trivially add one in since our deployment names are of the form
+    # {service_name}-{instance_name} - which are both things in `worker_filter_terms` so
+    # it's safe to unconditionally add.
+    # This is necessary as otherwise the HPA/prometheus adapter does not know what these
+    # metrics are for.
+    total_load = f"""
+    (
+        sum(
+            label_replace(
+                paasta_instance:envoy_cluster__egress_cluster_upstream_rq_active{{{envoy_filter_terms}}},
+                "kube_deployment", "{deployment_name}", "", ""
+            )
+        ) by (kube_deployment)
+    )
+    """
+    desired_instances_at_each_point_in_time = f"""
+        {total_load} / {desired_active_requests_per_replica}
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {desired_instances_at_each_point_in_time}
+            )[{moving_average_window}s:]
+        )
+    """
+
+    # The prometheus HPA adapter needs kube_deployment and kube_namespace labels attached to the metrics its scaling on.
+    # The envoy-based metrics have no labels corresponding to the k8s resources, so we can add them in.
+    metrics_query = f"""
+        label_replace(
+            label_replace(
+                {desired_instances} / {current_replicas},
+                "kube_deployment", "{deployment_name}", "", ""
+            ),
+            "kube_namespace", "{namespace}", "", ""
+        )
+    """
+    series_query = f"""
+        k8s:deployment:pods_status_ready{{{worker_filter_terms}}}
+    """
+
+    metric_name = f"{deployment_name}-active-requests-prom"
+
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": _minify_promql(series_query),
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
+def create_instance_uwsgi_scaling_rule(
+    service: str,
+    instance_config: KubernetesDeploymentConfig,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    """
+    Creates a Prometheus adapter rule config for a given service instance.
+    """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
+    setpoint = autoscaling_config["setpoint"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
+    )
+    # this should always be set, but we default to 0 for safety as the worst thing that would happen
+    # is that we take a couple more iterations than required to hit the desired setpoint
+    offset = autoscaling_config.get("offset", 0)
+    offset_multiplier = load_system_paasta_config().get_uwsgi_offset_multiplier()
+
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',kube_deployment='{deployment_name}',namespace='{namespace}'"
+
     # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
     # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
     # deployment.
@@ -256,6 +406,17 @@ def create_instance_uwsgi_scaling_rule(
             or
             max_over_time(
                 k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    # as mentioned above: we want to get the overload by counting load across namespces - but we need
+    # to divide by the ready pods in the target namespace - which is done by using a namespace filter here
+    ready_pods_namespaced = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{replica_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
             )
         ) by (kube_deployment))
     """
@@ -280,7 +441,7 @@ def create_instance_uwsgi_scaling_rule(
     )
     """
     desired_instances_at_each_point_in_time = f"""
-        {total_load} / {setpoint - offset}
+        {total_load} / {setpoint - (offset * offset_multiplier)}
     """
     desired_instances = f"""
         avg_over_time(
@@ -289,8 +450,15 @@ def create_instance_uwsgi_scaling_rule(
             )[{moving_average_window}s:]
         )
     """
+
+    # our Prometheus query is calculating a desired number of replicas, and then k8s wants that expressed as an average utilization
+    # so as long as we divide by the number that k8s ends up multiplying by, we should be able to convince k8s to run any arbitrary
+    # number of replicas.
+    # k8s happens to multiply by the # of ready pods - so we divide by that rather than by the amount of current replicas (which may
+    # include non-ready pods)
+    # ref: https://github.com/kubernetes/kubernetes/blob/7ec1a89a509906dad9fd6a4635d7bfc157b47790/pkg/controller/podautoscaler/replica_calculator.go#L278
     metrics_query = f"""
-        {desired_instances} / {current_replicas}
+        {desired_instances} / {ready_pods_namespaced}
     """
 
     metric_name = f"{deployment_name}-uwsgi-prom"
@@ -305,23 +473,33 @@ def create_instance_uwsgi_scaling_rule(
 
 def create_instance_piscina_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     setpoint = autoscaling_config["setpoint"]
     moving_average_window = autoscaling_config.get(
         "moving_average_window_seconds",
         DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
     worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
-    replica_filter_terms = (
-        f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}'"
-    )
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
 
     current_replicas = f"""
         sum(
@@ -396,7 +574,7 @@ def should_create_cpu_scaling_rule(
     Determines whether we should configure the prometheus adapter for a given service.
     Returns a 2-tuple of (should_create, reason_to_skip)
     """
-    if autoscaling_config["metrics_provider"] in CPU_METRICS_PROVIDERS:
+    if autoscaling_config["metrics_provider"] == CPU_METRICS_PROVIDER:
         if not autoscaling_config.get("use_prometheus", DEFAULT_USE_PROMETHEUS_CPU):
             return False, "requested cpu autoscaling, but not using Prometheus"
 
@@ -407,13 +585,15 @@ def should_create_cpu_scaling_rule(
 
 def create_instance_cpu_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
     sanitized_instance_name = sanitise_kubernetes_name(instance)
     metric_name = f"{deployment_name}-cpu-prom"
@@ -429,7 +609,7 @@ def create_instance_cpu_scaling_rule(
         kube_deployment_labels{{
             deployment='{deployment_name}',
             paasta_cluster='{paasta_cluster}',
-            namespace='paasta'
+            namespace='{namespace}'
         }}
     """
 
@@ -437,7 +617,7 @@ def create_instance_cpu_scaling_rule(
         avg(
             irate(
                 container_cpu_usage_seconds_total{{
-                    namespace='paasta',
+                    namespace='{namespace}',
                     container='{sanitized_instance_name}',
                     paasta_cluster='{paasta_cluster}'
                 }}[1m]
@@ -448,12 +628,12 @@ def create_instance_cpu_scaling_rule(
     cpus_available = f"""
         sum(
             container_spec_cpu_quota{{
-                namespace='paasta',
+                namespace='{namespace}',
                 container='{sanitized_instance_name}',
                 paasta_cluster='{paasta_cluster}'
             }}
             / container_spec_cpu_period{{
-                namespace='paasta',
+                namespace='{namespace}',
                 paasta_cluster='{paasta_cluster}'
             }}
         ) by (pod, container)
@@ -473,7 +653,7 @@ def create_instance_cpu_scaling_rule(
             k8s:pod:info{{
                 created_by_name=~'{deployment_name}.*',
                 created_by_kind='ReplicaSet',
-                namespace='paasta',
+                namespace='{namespace}',
                 paasta_cluster='{paasta_cluster}',
                 phase='Running'
             }},
@@ -533,7 +713,7 @@ def create_instance_cpu_scaling_rule(
                 ''
             ),
             'namespace',
-            'paasta',
+            '{namespace}',
             '',
             ''
         )
@@ -552,6 +732,107 @@ def create_instance_cpu_scaling_rule(
     }
 
 
+def create_instance_gunicorn_scaling_rule(
+    service: str,
+    instance_config: KubernetesDeploymentConfig,
+    paasta_cluster: str,
+) -> PrometheusAdapterRule:
+    """
+    Creates a Prometheus adapter rule config for a given service instance.
+    """
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
+    setpoint = autoscaling_config["setpoint"]
+    moving_average_window = autoscaling_config.get(
+        "moving_average_window_seconds",
+        DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
+    )
+
+    deployment_name = get_kubernetes_app_name(service=service, instance=instance)
+
+    # In order for autoscaling to work safely while a service migrates from one namespace to another, the HPA needs to
+    # make sure that the deployment in the new namespace is scaled up enough to handle _all_ the load.
+    # This is because once the new deployment is 100% healthy, cleanup_kubernetes_job will delete the deployment out of
+    # the old namespace all at once, suddenly putting all the load onto the deployment in the new namespace.
+    # To ensure this, we must:
+    #  - DO NOT filter on namespace in worker_filter_terms (which is used when calculating desired_instances).
+    #  - DO filter on namespace in replica_filter_terms (which is used to calculate current_replicas).
+    # This makes sure that desired_instances includes load from all namespaces, but that the scaling ratio calculated
+    # by (desired_instances / current_replicas) is meaningful for each namespace.
+    worker_filter_terms = f"paasta_cluster='{paasta_cluster}',paasta_service='{service}',paasta_instance='{instance}'"
+    replica_filter_terms = f"paasta_cluster='{paasta_cluster}',deployment='{deployment_name}',namespace='{namespace}'"
+
+    current_replicas = f"""
+        sum(
+            label_join(
+                (
+                    kube_deployment_spec_replicas{{{replica_filter_terms}}} >= 0
+                    or
+                    max_over_time(
+                        kube_deployment_spec_replicas{{{replica_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+                    )
+                ),
+                "kube_deployment", "", "deployment"
+            )
+        ) by (kube_deployment)
+    """
+    # k8s:deployment:pods_status_ready is a metric created by summing kube_pod_status_ready
+    # over paasta service/instance/cluster. it counts the number of ready pods in a paasta
+    # deployment.
+    ready_pods = f"""
+        (sum(
+            k8s:deployment:pods_status_ready{{{worker_filter_terms}}} >= 0
+            or
+            max_over_time(
+                k8s:deployment:pods_status_ready{{{worker_filter_terms}}}[{DEFAULT_EXTRAPOLATION_TIME}s]
+            )
+        ) by (kube_deployment))
+    """
+    load_per_instance = f"""
+        avg(
+            gunicorn_worker_busy{{{worker_filter_terms}}}
+        ) by (kube_pod, kube_deployment)
+    """
+    missing_instances = f"""
+        clamp_min(
+            {ready_pods} - count({load_per_instance}) by (kube_deployment),
+            0
+        )
+    """
+    total_load = f"""
+    (
+        sum(
+            {load_per_instance}
+        ) by (kube_deployment)
+        +
+        {missing_instances}
+    )
+    """
+    desired_instances_at_each_point_in_time = f"""
+        {total_load} / {setpoint}
+    """
+    desired_instances = f"""
+        avg_over_time(
+            (
+                {desired_instances_at_each_point_in_time}
+            )[{moving_average_window}s:]
+        )
+    """
+    metrics_query = f"""
+        {desired_instances} / {current_replicas}
+    """
+
+    metric_name = f"{deployment_name}-gunicorn-prom"
+
+    return {
+        "name": {"as": metric_name},
+        "seriesQuery": f"gunicorn_worker_busy{{{worker_filter_terms}}}",
+        "resources": {"template": "kube_<<.Resource>>"},
+        "metricsQuery": _minify_promql(metrics_query),
+    }
+
+
 def should_create_arbitrary_promql_scaling_rule(
     autoscaling_config: AutoscalingParamsDict,
 ) -> Tuple[bool, Optional[str]]:
@@ -566,10 +847,12 @@ def should_create_arbitrary_promql_scaling_rule(
 
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
-    instance: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
+    autoscaling_config = instance_config.get_autoscaling_params()
+    instance = instance_config.instance
+    namespace = instance_config.get_namespace()
     prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
@@ -585,7 +868,7 @@ def create_instance_arbitrary_promql_scaling_rule(
             kube_deployment_labels{{
                 deployment='{deployment_name}',
                 paasta_cluster='{paasta_cluster}',
-                namespace='paasta'
+                namespace='{namespace}'
             }}
         """
         # Wrap their promql with label_replace() calls that add `deployment` / `namespace` labels which match the default `resources`.
@@ -599,7 +882,7 @@ def create_instance_arbitrary_promql_scaling_rule(
                     ''
                 ),
                 'namespace',
-                'paasta',
+                '{namespace}',
                 '',
                 ''
             )
@@ -625,8 +908,7 @@ def create_instance_arbitrary_promql_scaling_rule(
 
 def get_rules_for_service_instance(
     service_name: str,
-    instance_name: str,
-    autoscaling_config: AutoscalingParamsDict,
+    instance_config: KubernetesDeploymentConfig,
     paasta_cluster: str,
 ) -> List[PrometheusAdapterRule]:
     """
@@ -637,19 +919,23 @@ def get_rules_for_service_instance(
     rules: List[PrometheusAdapterRule] = []
 
     for should_create_scaling_rule, create_instance_scaling_rule in (
+        (
+            should_create_active_requests_scaling_rule,
+            create_instance_active_requests_scaling_rule,
+        ),
         (should_create_uwsgi_scaling_rule, create_instance_uwsgi_scaling_rule),
         (should_create_piscina_scaling_rule, create_instance_piscina_scaling_rule),
         (should_create_cpu_scaling_rule, create_instance_cpu_scaling_rule),
+        (should_create_gunicorn_scaling_rule, create_instance_gunicorn_scaling_rule),
     ):
         should_create, skip_reason = should_create_scaling_rule(
-            autoscaling_config=autoscaling_config,
+            autoscaling_config=instance_config.get_autoscaling_params(),
         )
         if should_create:
             rules.append(
                 create_instance_scaling_rule(
                     service=service_name,
-                    instance=instance_name,
-                    autoscaling_config=autoscaling_config,
+                    instance_config=instance_config,
                     paasta_cluster=paasta_cluster,
                 )
             )
@@ -657,7 +943,7 @@ def get_rules_for_service_instance(
             log.debug(
                 "Skipping %s.%s - %s.",
                 service_name,
-                instance_name,
+                instance_config.instance,
                 skip_reason,
             )
 
@@ -685,22 +971,30 @@ def create_prometheus_adapter_config(
             cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
         )
     }
+    services.update(
+        {
+            service_name
+            for service_name, _ in get_services_for_cluster(
+                cluster=paasta_cluster, instance_type="eks", soa_dir=str(soa_dir)
+            )
+        }
+    )
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
         )
-        for instance_config in config_loader.instance_configs(
-            cluster=paasta_cluster,
-            instance_type_class=KubernetesDeploymentConfig,
-        ):
-            rules.extend(
-                get_rules_for_service_instance(
-                    service_name=service_name,
-                    instance_name=instance_config.instance,
-                    autoscaling_config=instance_config.get_autoscaling_params(),
-                    paasta_cluster=paasta_cluster,
+        for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+            for instance_config in config_loader.instance_configs(
+                cluster=paasta_cluster,
+                instance_type_class=instance_type_class,
+            ):
+                rules.extend(
+                    get_rules_for_service_instance(
+                        service_name=service_name,
+                        instance_config=instance_config,
+                        paasta_cluster=paasta_cluster,
+                    )
                 )
-            )
 
     return {
         # we sort our rules so that we can easily compare between two different configmaps
@@ -814,7 +1108,8 @@ def main() -> int:
 
     log.info("Generating adapter config from soaconfigs.")
     config = create_prometheus_adapter_config(
-        paasta_cluster=args.cluster, soa_dir=args.soa_dir
+        paasta_cluster=args.cluster,
+        soa_dir=args.soa_dir,
     )
     log.info("Generated adapter config from soaconfigs.")
     if args.dry_run:
@@ -839,8 +1134,7 @@ def main() -> int:
 
     kube_client = KubeClient()
     if not args.dry_run:
-        ensure_namespace(kube_client, namespace="paasta")
-        ensure_namespace(kube_client, namespace="custom-metrics")
+        ensure_namespace(kube_client, namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE)
 
     existing_config = get_prometheus_adapter_configmap(kube_client=kube_client)
     if existing_config and existing_config != config:

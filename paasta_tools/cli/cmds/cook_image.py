@@ -112,8 +112,8 @@ def paasta_cook_image(
 
     if not makefile_responds_to("cook-image"):
         print(
-            "ERROR: local-run now requires a cook-image target to be present in the Makefile. See"
-            "http://paasta.readthedocs.io/en/latest/about/contract.html",
+            "ERROR: local-run now requires a cook-image target to be present in the Makefile. See "
+            "http://paasta.readthedocs.io/en/latest/about/contract.html.",
             file=sys.stderr,
         )
         return 1

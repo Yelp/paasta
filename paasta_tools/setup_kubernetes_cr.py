@@ -29,6 +29,7 @@ from typing import Optional
 from typing import Sequence
 
 import yaml
+from kubernetes.client.exceptions import ApiException
 
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
@@ -48,6 +49,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger(__name__)
 
@@ -151,50 +153,68 @@ def setup_all_custom_resources(
     service: str = None,
     instance: str = None,
 ) -> bool:
-    cluster_crds = {
-        crd.spec.names.kind
-        for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector=paasta_prefixed("service")
-        ).items
-    }
-    log.debug(f"CRDs found: {cluster_crds}")
-    results = []
-    for crd in custom_resource_definitions:
-        if crd.kube_kind.singular not in cluster_crds:
-            # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
-            # and not `crd.names.singular`
-            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
-            continue
 
-        # by convention, entries where key begins with _ are used as templates
-        raw_config_dicts = load_all_configs(
-            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
-        )
-        config_dicts = {}
-        for svc, raw_sdict in raw_config_dicts.items():
-            sdict = {inst: idict for inst, idict in raw_sdict.items() if inst[0] != "_"}
-            if sdict:
-                config_dicts[svc] = sdict
-        if not config_dicts:
-            continue
+    got_results = False
+    succeeded = False
+    # We support two versions due to our upgrade to 1.22
+    # this functions runs succefully when any of the two apiextensions
+    # succeed to update the CRDs as the cluster could be in any version
+    # we need to try both possibilities
+    for apiextension in [
+        kube_client.apiextensions,
+        kube_client.apiextensions_v1_beta1,
+    ]:
 
-        ensure_namespace(
-            kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
-        )
-        results.append(
-            setup_custom_resources(
-                kube_client=kube_client,
-                kind=crd.kube_kind,
-                crd=crd,
-                config_dicts=config_dicts,
-                version=crd.version,
-                group=crd.group,
-                cluster=cluster,
-                service=service,
-                instance=instance,
+        try:
+            crds_list = apiextension.list_custom_resource_definition(
+                label_selector=paasta_prefixed("service")
+            ).items
+        except ApiException:
+            log.debug(
+                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
             )
-        )
-    return any(results) if results else True
+            crds_list = []
+
+        cluster_crds = {crd.spec.names.kind for crd in crds_list}
+        log.debug(f"CRDs found: {cluster_crds}")
+        results = []
+        for crd in custom_resource_definitions:
+            if crd.kube_kind.singular not in cluster_crds:
+                # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
+                # and not `crd.names.singular`
+                log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
+                continue
+
+            # by convention, entries where key begins with _ are used as templates
+            # and will be filter out here
+            config_dicts = load_all_configs(
+                cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
+            )
+
+            ensure_namespace(
+                kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
+            )
+            results.append(
+                setup_custom_resources(
+                    kube_client=kube_client,
+                    kind=crd.kube_kind,
+                    crd=crd,
+                    config_dicts=config_dicts,
+                    version=crd.version,
+                    group=crd.group,
+                    cluster=cluster,
+                    service=service,
+                    instance=instance,
+                )
+            )
+        if results:
+            got_results = True
+            if any(results):
+                succeeded = True
+    # we want to return True if we never called `setup_custom_resources`
+    # (i.e., we noop'd) or if any call to `setup_custom_resources`
+    # succeed (handled above) - otherwise, we want to return False
+    return succeeded or not got_results
 
 
 def setup_custom_resources(
@@ -245,6 +265,12 @@ def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
     return None
 
 
+def get_cr_owner(kind: str) -> Optional[str]:
+    system_paasta_config = load_system_paasta_config()
+    owners = system_paasta_config.get_cr_owners()
+    return owners.get(kind.lower())
+
+
 def format_custom_resource(
     instance_config: Mapping[str, Any],
     service: str,
@@ -280,7 +306,9 @@ def format_custom_resource(
     url = get_dashboard_base_url(kind, cluster)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
-
+    owner = get_cr_owner(kind)
+    if owner:
+        resource["metadata"]["labels"]["yelp.com/owner"] = owner
     config_hash = get_config_hash(resource)
 
     resource["metadata"]["annotations"]["yelp.com/desired_state"] = "running"

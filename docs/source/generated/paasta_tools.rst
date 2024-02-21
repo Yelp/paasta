@@ -33,11 +33,11 @@ Submodules
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
+   paasta_tools.check_autoscaler_max_instances
    paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
    paasta_tools.check_kubernetes_services_replication
-   paasta_tools.check_marathon_services_replication
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
    paasta_tools.check_spark_jobs
@@ -54,6 +54,7 @@ Submodules
    paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
+   paasta_tools.eks_tools
    paasta_tools.envoy_tools
    paasta_tools.firewall
    paasta_tools.firewall_logging
@@ -92,10 +93,12 @@ Submodules
    paasta_tools.prune_completed_pods
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
+   paasta_tools.run-paasta-api-playground
    paasta_tools.secret_tools
    paasta_tools.setup_istio_mesh
    paasta_tools.setup_kubernetes_cr
    paasta_tools.setup_kubernetes_crd
+   paasta_tools.setup_kubernetes_internal_crd
    paasta_tools.setup_kubernetes_job
    paasta_tools.setup_prometheus_adapter_config
    paasta_tools.setup_tron_namespace
@@ -105,7 +108,7 @@ Submodules
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils
-   paasta_tools.vitess_tools
+   paasta_tools.vitesscluster_tools
 
 Module contents
 ---------------

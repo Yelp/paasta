@@ -24,6 +24,7 @@ from pytest import raises
 from slackclient import SlackClient
 
 from paasta_tools.cli.cmds import mark_for_deployment
+from paasta_tools.utils import DeploymentVersion
 
 
 class FakeArgs:
@@ -31,6 +32,7 @@ class FakeArgs:
     service = "test_service"
     git_url = "git://false.repo/services/test_services"
     commit = "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+    image_version = "extrastuff"
     soa_dir = "fake_soa_dir"
     block = False
     verbose = False
@@ -41,6 +43,10 @@ class FakeArgs:
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
     authors = None
+    warn = 17
+    polling_interval = None
+    diagnosis_interval = None
+    time_before_first_diagnosis = None
 
 
 @fixture
@@ -70,6 +76,7 @@ def test_mark_for_deployment_happy(
         deploy_group="fake_deploy_group",
         service="fake_service",
         commit="fake_commit",
+        image_version="extrastuff",
     )
     assert actual == 0
     mock_create_remote_refs.assert_called_once_with(
@@ -77,7 +84,11 @@ def test_mark_for_deployment_happy(
     )
     mock__log_audit.assert_called_once_with(
         action="mark-for-deployment",
-        action_details={"deploy_group": "fake_deploy_group", "commit": "fake_commit"},
+        action_details={
+            "deploy_group": "fake_deploy_group",
+            "commit": "fake_commit",
+            "image_version": "extrastuff",
+        },
         service="fake_service",
     )
 
@@ -130,33 +141,11 @@ def test_paasta_mark_for_deployment_when_verify_image_fails(
     mock_is_docker_image_already_in_registry.return_value = False
     with raises(ValueError):
         mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
-
-
-@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
-    autospec=True,
-)
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
-def test_paasta_mark_for_deployment_when_verify_image_succeeds(
-    mock_list_deploy_groups,
-    mock_get_currently_deployed_sha,
-    mock_is_docker_image_already_in_registry,
-    mock_validate_service_name,
-):
-    class FakeArgsRollback(FakeArgs):
-        verify_image = True
-
-    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
-    mock_is_docker_image_already_in_registry.return_value = False
-    with raises(ValueError):
-        mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
     mock_is_docker_image_already_in_registry.assert_called_with(
-        "test_service", "fake_soa_dir", "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+        "test_service",
+        "fake_soa_dir",
+        "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+        "extrastuff",
     )
 
 
@@ -178,7 +167,7 @@ def test_paasta_mark_for_deployment_when_verify_image_succeeds(
     autospec=True,
 )
 @patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_sha",
+    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
     autospec=True,
 )
 @patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
@@ -190,7 +179,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_metrics,
     mock_load_system_paasta_config,
     mock_list_deploy_groups,
-    mock_get_currently_deployed_sha,
+    mock_get_currently_deployed_version,
     mock_do_wait_for_deployment,
     mock_mark_for_deployment,
     mock_validate_service_name,
@@ -215,8 +204,11 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     mock_get_instance_configs.return_value = {"fake_cluster": [], "fake_cluster2": []}
     mock_mark_for_deployment.return_value = 0
 
-    def do_wait_for_deployment_side_effect(self, target_commit):
-        if target_commit == FakeArgs.commit:
+    def do_wait_for_deployment_side_effect(self, target_commit, target_image_version):
+        if (
+            target_commit == FakeArgs.commit
+            and target_image_version == FakeArgs.image_version
+        ):
             self.trigger("rollback_button_clicked")
         else:
             self.trigger("deploy_finished")
@@ -226,7 +218,9 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     def on_enter_rolled_back_side_effect(self):
         self.trigger("abandon_button_clicked")
 
-    mock_get_currently_deployed_sha.return_value = "old-sha"
+    mock_get_currently_deployed_version.return_value = DeploymentVersion(
+        "old-sha", None
+    )
     with patch(
         "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.on_enter_rolled_back",
         autospec=True,
@@ -240,19 +234,21 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         deploy_group="test_deploy_group",
         commit="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
         git_url="git://false.repo/services/test_services",
+        image_version="extrastuff",
     )
     mock_mark_for_deployment.assert_any_call(
         service="test_service",
         deploy_group="test_deploy_group",
         commit="old-sha",
         git_url="git://false.repo/services/test_services",
+        image_version=None,
     )
     assert mock_mark_for_deployment.call_count == 2
 
     mock_do_wait_for_deployment.assert_any_call(
-        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4"
+        mock.ANY, "d670460b4b4aece5915caf5c68d12f560a9fe3e4", "extrastuff"
     )
-    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha")
+    mock_do_wait_for_deployment.assert_any_call(mock.ANY, "old-sha", None)
     assert mock_do_wait_for_deployment.call_count == 2
     # in normal usage, this would also be called once per m-f-d, but we mock that out above
     # so _log_audit is only called as part of handling the rollback
@@ -261,7 +257,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
         action="rollback",
         action_details={
             "deploy_group": "test_deploy_group",
-            "rolled_back_from": "d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            "rolled_back_from": "DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             "rolled_back_to": "old-sha",
             "rollback_type": "user_initiated_rollback",
         },
@@ -275,7 +271,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
             paasta_service="test_service",
             deploy_group="test_deploy_group",
             old_version="old-sha",
-            new_version="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+            new_version="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
             deploy_timeout=600,
         ),
     )
@@ -286,7 +282,7 @@ def test_paasta_mark_for_deployment_with_good_rollback(
     event_dimensions = dict(
         paasta_service="test_service",
         deploy_group="test_deploy_group",
-        rolled_back_from="d670460b4b4aece5915caf5c68d12f560a9fe3e4",
+        rolled_back_from="DeploymentVersion(sha=d670460b4b4aece5915caf5c68d12f560a9fe3e4, image_version=extrastuff)",
         rolled_back_to="old-sha",
         rollback_type="user_initiated_rollback",
     )
@@ -364,7 +360,7 @@ def test_mark_for_deployment_nonyelpy_repo(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -419,7 +415,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_failure(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_first_time_deploys(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -468,7 +464,7 @@ def test_MarkForDeployProcess_handles_first_time_deploys(
 @patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
 @patch.object(mark_for_deployment, "get_slack_client", autospec=True)
 @patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -515,7 +511,7 @@ def test_MarkForDeployProcess_get_authors_diffs_against_prod_deploy_group(
 @patch.object(mark_for_deployment, "get_currently_deployed_sha", autospec=True)
 @patch.object(mark_for_deployment, "get_slack_client", autospec=True)
 @patch.object(mark_for_deployment, "load_system_paasta_config", autospec=True)
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -565,7 +561,7 @@ def test_MarkForDeployProcess_get_authors_falls_back_to_current_deploy_group(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -616,7 +612,7 @@ def test_MarkForDeployProcess_handles_wait_for_deployment_cancelled(
 @patch("paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment", autospec=True)
 @patch("paasta_tools.cli.cmds.mark_for_deployment.wait_for_deployment", autospec=True)
 @patch("sticht.slack.get_slack_events", autospec=True)
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
@@ -671,7 +667,7 @@ def test_MarkForDeployProcess_skips_wait_for_deployment_when_block_is_False(
 @patch(
     "paasta_tools.cli.cmds.mark_for_deployment.load_system_paasta_config", autospec=True
 )
-@patch("sticht.slo.get_slos_for_service", autospec=True)
+@patch("sticht.rollbacks.slo.get_slos_for_service", autospec=True)
 def test_MarkForDeployProcess_goes_to_mfd_failed_when_mark_for_deployment_fails(
     mock_get_slos_for_service,
     mock_load_system_paasta_config,
@@ -841,3 +837,65 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     assert mfdp.run() == 0
     assert mfdp.trigger_history == ["start_deploy", "mfd_succeeded", "deploy_finished"]
     assert mfdp.state_history == ["start_deploy", "deploying", "deployed"]
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.any_slo_failing",
+    autospec=True,
+)
+def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_rollback(
+    mock_any_slo_failing,
+    mock_get_instance_configs,
+):
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    # Test only get_available_buttons
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" not in mfdp.get_available_buttons()
+
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" not in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" in mfdp.get_available_buttons()

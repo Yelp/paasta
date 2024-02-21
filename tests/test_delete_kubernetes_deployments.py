@@ -22,18 +22,19 @@ def test_main():
         # Test main() success
         mock_get_deployment_names_from_list.return_value = ["fake_pcm_deployment"]
         with raises(SystemExit) as e:
-            main()
+            main(args=["fake_pcm_deployment"])
         assert e.value.code == 0
         assert mock_ensure_namespace.called
         mock_delete_deployment.assert_called_with(
             kube_client=mock_kube_client.return_value,
             deployment_name="fake_pcm_deployment",
+            namespace="paasta",
         )
 
         # Test main() failed
         mock_delete_deployment.side_effect = Exception("Delete Error")
         with raises(SystemExit) as e:
-            main()
+            main(args=["fake_pcm_deployment"])
         assert e.value.code == 1
 
 

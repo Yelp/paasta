@@ -15,15 +15,13 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:bionic
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
-
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         git \
-        python3.7-dev \
+        python3.8-dev \
         libyaml-dev \
         virtualenv > /dev/null && \
     apt-get clean
@@ -31,7 +29,7 @@ RUN apt-get update > /dev/null && \
 RUN git clone https://github.com/Yelp/hacheck
 WORKDIR /hacheck
 
-RUN virtualenv --python=python3.7 venv && \
+RUN virtualenv --python=python3.8 venv && \
     venv/bin/pip install setuptools==53.0.0 && \
     venv/bin/pip install -r requirements.txt && \
     venv/bin/pip install -e .

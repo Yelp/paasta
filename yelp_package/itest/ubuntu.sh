@@ -17,7 +17,6 @@ set -eu
 
 SCRIPTS="am_i_mesos_leader
 autoscale_all_services
-check_marathon_services_replication
 check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
@@ -52,7 +51,6 @@ itest
 local-run
 mark-for-deployment
 metastatus
-performance-check
 push-to-registry
 security-check
 status

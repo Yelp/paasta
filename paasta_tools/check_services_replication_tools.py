@@ -16,6 +16,7 @@ import logging
 import sys
 from typing import Any
 from typing import Callable
+from typing import Container
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -29,6 +30,7 @@ from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
+from paasta_tools.kubernetes_tools import get_all_managed_namespaces
 from paasta_tools.kubernetes_tools import get_all_nodes
 from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
@@ -40,7 +42,6 @@ from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
-from paasta_tools.smartstack_tools import MesosSmartstackEnvoyReplicationChecker
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
@@ -107,6 +108,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         dest="dry_run",
         help="Print Sensu alert events and metrics instead of sending them",
+    )
+    parser.add_argument(
+        "--additional-namespaces",
+        help="full names of namespaces to check services replication for that don't match --namespace-prefix"
+        "Used only when service is kubernetes",
+        dest="additional_namespaces",
+        nargs="+",
+        # we default this to paasta since we always want to run this check on paasta namespace
+        # to avoid having two cron jobs running with two different namespace-prefix
+        default=["paasta"],
+    )
+    parser.add_argument(
+        "--eks",
+        help="This flag checks k8 services running on EKS",
+        dest="eks",
+        action="store_true",
+        default=False,
     )
     options = parser.parse_args()
 
@@ -177,8 +195,7 @@ def emit_cluster_replication_metrics(
 def main(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
-    namespace: str,
-    mesos: bool = False,
+    namespace: str = None,
 ) -> None:
     args = parse_args()
     if args.verbose:
@@ -190,14 +207,16 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    if mesos:
-        tasks_or_pods, slaves = get_mesos_tasks_and_slaves(system_paasta_config)
-        replication_checker = MesosSmartstackEnvoyReplicationChecker(
-            mesos_slaves=slaves,
+    if namespace:
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
+        replication_checker = KubeSmartstackEnvoyReplicationChecker(
+            nodes=nodes,
             system_paasta_config=system_paasta_config,
         )
     else:
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace)
+        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
+            additional_namespaces=args.additional_namespaces,
+        )
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
@@ -218,7 +237,7 @@ def main(
         emit_cluster_replication_metrics(
             pct_under_replicated,
             cluster,
-            scheduler="mesos" if mesos else "kubernetes",
+            scheduler="kubernetes",
             dry_run=args.dry_run,
         )
 
@@ -249,10 +268,21 @@ def get_mesos_tasks_and_slaves(
 
 
 def get_kubernetes_pods_and_nodes(
-    namespace: str,
-) -> Tuple[Sequence[V1Pod], Sequence[V1Node]]:
+    namespace: Optional[str] = None,
+    additional_namespaces: Optional[Container[str]] = None,
+) -> Tuple[List[V1Pod], List[V1Node]]:
     kube_client = KubeClient()
-    all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
+
+    all_pods: List[V1Pod] = []
+    if namespace:
+        all_pods = get_all_pods(kube_client=kube_client, namespace=namespace)
+    else:
+        all_managed_namespaces = get_all_managed_namespaces(kube_client)
+        for managed_namespace in all_managed_namespaces:
+            all_pods.extend(
+                get_all_pods(kube_client=kube_client, namespace=managed_namespace)
+            )
+
     all_nodes = get_all_nodes(kube_client)
 
     return all_pods, all_nodes

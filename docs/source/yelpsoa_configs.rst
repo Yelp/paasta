@@ -149,6 +149,24 @@ Kubernetes
 
 These options are only applicable to tasks scheduled on Kubernetes.
 
+  * ``topology_spread_constraints``: A set of rules to spread Pods across topologies, for example to try spreading Pods evenly across both nodes and availability zones::
+
+      topology_spread_constraints:
+        - max_skew: 1
+          topology_key: "topology.kubernetes.io/zone"
+          when_unsatisfiable: "ScheduleAnyway"
+        - max_skew: 1
+          topology_key: "kubernetes.io/hostname"
+          when_unsatisfiable: "ScheduleAnyway"
+
+    These can be configured per cluster (or globally) and will be added to every Pod Spec template, using `paasta.yelp.com/service` and `paasta.yelp.com/instance` as selectors.
+
+    To avoid conflicts with the `deploy_whitelist` and `deploy_blacklist`, please only use `when_unsatisfiable: "ScheduleAnyway"` (at least until PAASTA-17951 is resolved).
+
+    For more information, see the official Kubernetes
+    documentation on `topology spread constraints
+    <https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/>`_.
+
   * ``node_selectors``: A map of labels a node is required to have for a task
     to be launched on said node. There are several ways to define a selector.
     The simplest is a key-value pair. For example, this selector restricts a
@@ -369,10 +387,17 @@ instance MAY have:
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for details
 
     * ``metrics_provider``: Which method the autoscaler will use to determine a service's utilization.
-      Should be ``cpu`` or ``uwsgi``.
+      Should be ``cpu``, ``uwsgi``, or ``gunicorn``.
 
     * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
       Should be ``proportional`` or ``bespoke``.
+
+    * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
+    Default value is 0.8.
+
+    * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
+    and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
+    The default is the same as your ``setpoint``.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value
@@ -407,8 +432,16 @@ instance MAY have:
     is ``cmd``.
 
   * ``healthcheck_grace_period_seconds``: Kubernetes will wait this long
-    after the container has started before liveness or readiness probes are
-    initiated. Defaults to 60 seconds.
+    after the container has started before liveness probe is initiated.
+    Defaults to 60 seconds. Readiness probes will always start after 10 seconds.
+    The application should able to receive traffic as soon as the readiness probe
+    is successful. Keep this in mind for any expensive "warm-up" requests.
+
+    A failing readiness probe will not restart the instance, it will however be
+    removed from the mesh and not receive any new traffic.
+
+    To add an additional delay after the pod has started and before probes should
+    start, see ``min_task_uptime``.
 
   * ``healthcheck_interval_seconds``: Kubernetes will wait this long between
     healthchecks. Defaults to 10 seconds.
@@ -439,6 +472,26 @@ instance MAY have:
     accessed externally. This option is implied when registered to smartstack or
     when specifying a ``prometheus_port``. Defaults to ``false``
 
+  * ``weight``: Load balancer/service mesh weight to assign to pods belonging to this instance.
+    Pods should receive traffic proportional to their weight, i.e. a pod with
+    weight 20 should receive 2x as much traffic as a pod with weight 10.
+    Defaults to 10.
+    Must be an integer.
+    This only makes a difference when some pods in the same load balancer have different weights than others, such as when you have two or more instances with the same ``registration`` but different ``weight``.
+
+  * ``lifecycle``: A dictionary of additional options that adjust the termination phase of the `pod lifecycle <https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination>`_:
+    This currently supports two sub-keys:
+
+    * ``pre_stop_command``: The command to run in your container before stopping.  This could handle gracefully stopping or checkpointing your worker, for example.
+      This can be a list of strings (command + arguments) or a single string (which gets turned into a single-element list by Paasta.)
+
+    * ``termination_grace_period_seconds``: the number of seconds to allow before forcibly killing your instance.  Note that the instance will be forcibly killed after this period, so your pre_stop_command should complete well within this time period!
+
+  * ``namespace``:
+    **Currently in development, do not use.**
+    The Kubernetes namespace where Paasta will create objects related to this service.
+    Defaults to ``paastasvc-service--name`` (that is, the service name will have underscores replaced with ``--``.)
+
 **Note**: Although many of these settings are inherited from ``smartstack.yaml``,
 their thresholds are not the same. The reason for this has to do with control
 loops and infrastructure stability. The load balancer tier can be pickier
@@ -455,9 +508,9 @@ out of the load balancer, so it justifies having less sensitive thresholds.
 ``marathon-[clustername].yaml``
 -------------------------------
 
-e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
+e.g. ``marathon-pnw-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
-lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
+lives (``pnw-prod``), but not always (``mesosstage``). It MUST be all
 lowercase. (non alphanumeric lowercase characters are ignored)
 
 **Note:** All values in this file except the following will cause PaaSTA to
@@ -950,8 +1003,8 @@ Routing and Reliability
    in milliseconds, defaults to 200.
  * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
    in milliseconds, defaults to 1000.
- * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
-   in milliseconds, defaults to 1000.
+ * ``lb_policy``: Envoy `lb_policy https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/cluster/v3/cluster.proto#envoy-v3-api-enum-config-cluster-v3-cluster-lbpolicy`_
+    Defaults to `"ROUND_ROBIN"`.
  * ``endpoint_timeouts``: Allows you to specify non-default server timeouts for
    specific endpoints. This is useful for when there is a long running endpoint
    that requires a large timeout value but you would like to keep the default

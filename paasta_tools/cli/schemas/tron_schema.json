@@ -97,8 +97,13 @@
                 "pool": {
                     "type": "string"
                 },
-                "iam_role": {
+                "service_account_name": {
                     "type": "string"
+                },
+                "iam_role": {
+                    "type": "string",
+                    "pattern": "^arn:aws:iam::[0-9]+:role/[a-zA-Z0-9+=,.@_-]+$",
+                    "$comment": "This should be a valid AWS IAM role ARN, see https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-names"
                 },
                 "iam_role_provider": {
                     "enum": [
@@ -204,10 +209,77 @@
                         "type": "string"
                     }
                 },
+                "crypto_keys": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "encrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        },
+                        "decrypt": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_.-]+$"
+                            },
+                            "uniqueItems": true
+                        }
+                    }
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
                         "type": "object"
+                    },
+                    "uniqueItems": true
+                },
+                "secret_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "secret_name": {
+                                "type": "string"
+                            },
+                            "default_mode": {
+                                "type": "string"
+                            },
+                            "items": {
+                                "type": "array",
+                                "maxItems": 1,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "mode": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "path"
+                                    ]
+                                },
+                                "uniqueItems": true
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "secret_name"
+                        ]
                     },
                     "uniqueItems": true
                 },
@@ -397,9 +469,6 @@
             ],
             "additionalProperties": false,
             "properties": {
-                "use_k8s": {
-                    "type": "boolean"
-                },
                 "name": {
                     "$ref": "#definitions/name"
                 },

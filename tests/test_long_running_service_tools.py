@@ -234,6 +234,7 @@ class TestLongRunningServiceConfig:
                 "desired_state": "start",
                 "git_sha": "c0ded00d",
                 "docker_image": "docker_image",
+                "image_version": None,
                 "force_bounce": None,
             },
         )
@@ -259,6 +260,7 @@ class TestLongRunningServiceConfig:
                 "desired_state": "start",
                 "git_sha": "c0debabe",
                 "docker_image": "docker_image",
+                "image_version": None,
                 "force_bounce": None,
             },
         )

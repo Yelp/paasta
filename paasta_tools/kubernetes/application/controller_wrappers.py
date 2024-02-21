@@ -1,8 +1,6 @@
 import logging
-import threading
 from abc import ABC
 from abc import abstractmethod
-from time import sleep
 from typing import Optional
 from typing import Union
 
@@ -13,14 +11,13 @@ from kubernetes.client import V1StatefulSet
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import force_delete_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cache
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import pod_disruption_budget_for_service_instance
@@ -44,8 +41,14 @@ class Application(ABC):
         if not item.metadata.namespace:
             item.metadata.namespace = "paasta"
         attrs = {
-            attr: item.metadata.labels[paasta_prefixed(attr)]
-            for attr in ["service", "instance", "git_sha", "config_sha"]
+            attr: item.metadata.labels.get(paasta_prefixed(attr))
+            for attr in [
+                "service",
+                "instance",
+                "git_sha",
+                "image_version",
+                "config_sha",
+            ]
         }
 
         replicas = (
@@ -54,21 +57,31 @@ class Application(ABC):
             == "false"
             else None
         )
-        self.kube_deployment = KubeDeployment(replicas=replicas, **attrs)
+        self.kube_deployment = KubeDeployment(
+            replicas=replicas, namespace=item.metadata.namespace, **attrs
+        )
         self.item = item
         self.soa_config = None  # type: KubernetesDeploymentConfig
         self.logging = logging
 
     def load_local_config(
-        self, soa_dir: str, cluster: str
+        self, soa_dir: str, cluster: str, eks: bool = False
     ) -> Optional[KubernetesDeploymentConfig]:
         if not self.soa_config:
-            self.soa_config = load_kubernetes_service_config_no_cache(
-                service=self.kube_deployment.service,
-                instance=self.kube_deployment.instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-            )
+            if eks:
+                self.soa_config = load_eks_service_config_no_cache(
+                    service=self.kube_deployment.service,
+                    instance=self.kube_deployment.instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            else:
+                self.soa_config = load_kubernetes_service_config_no_cache(
+                    service=self.kube_deployment.service,
+                    instance=self.kube_deployment.instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
         return self.soa_config
 
     def __str__(self):
@@ -105,7 +118,7 @@ class Application(ABC):
         Update related Kubernetes API objects such as HPAs and Pod Disruption Budgets
         :param kube_client:
         """
-        self.ensure_pod_disruption_budget(kube_client)
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
@@ -133,7 +146,7 @@ class Application(ABC):
             )
 
     def ensure_pod_disruption_budget(
-        self, kube_client: KubeClient
+        self, kube_client: KubeClient, namespace: str
     ) -> V1beta1PodDisruptionBudget:
         max_unavailable: Union[str, int]
         if "bounce_margin_factor" in self.soa_config.config_dict:
@@ -148,6 +161,7 @@ class Application(ABC):
             service=self.kube_deployment.service,
             instance=self.kube_deployment.instance,
             max_unavailable=max_unavailable,
+            namespace=namespace,
         )
         try:
             existing_pdr = kube_client.policy.read_namespaced_pod_disruption_budget(
@@ -175,7 +189,9 @@ class Application(ABC):
         else:
             logging.info(f"creating poddisruptionbudget {pdr.metadata.name}")
             return create_pod_disruption_budget(
-                kube_client=kube_client, pod_disruption_budget=pdr
+                kube_client=kube_client,
+                pod_disruption_budget=pdr,
+                namespace=pdr.metadata.namespace,
             )
 
 
@@ -220,67 +236,22 @@ class DeploymentWrapper(Application):
         )
 
     def create(self, kube_client: KubeClient) -> None:
-        create_deployment(kube_client=kube_client, formatted_deployment=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        create_deployment(
+            kube_client=kube_client,
+            formatted_deployment=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
         self.sync_horizontal_pod_autoscaler(kube_client)
-
-    def deep_delete_and_create(self, kube_client: KubeClient) -> None:
-        self.deep_delete(kube_client)
-        timer = 0
-        while (
-            self.kube_deployment in set(list_all_deployments(kube_client))
-            and timer < 60
-        ):
-            sleep(1)
-            timer += 1
-
-        if timer >= 60 and self.kube_deployment in set(
-            list_all_deployments(kube_client)
-        ):
-            # When deleting then immediately creating, we need to use Background
-            # deletion to ensure we can create the deployment immediately
-            self.deep_delete(kube_client, propagation_policy="Background")
-
-            try:
-                force_delete_pods(
-                    self.item.metadata.name,
-                    self.kube_deployment.service,
-                    self.kube_deployment.instance,
-                    self.item.metadata.namespace,
-                    kube_client,
-                )
-            except ApiException as e:
-                if e.status == 404:
-                    # Pod(s) may have been deleted by GC before we got to it
-                    # We can consider this a success
-                    self.logging.debug(
-                        "pods already deleted for {} from namespace/{}. Continuing.".format(
-                            self.kube_deployment.service, self.item.metadata.namespace
-                        )
-                    )
-                else:
-                    raise
-
-        if self.kube_deployment in set(list_all_deployments(kube_client)):
-            # deployment deletion failed, we cannot continue
-            raise Exception(f"Could not delete deployment {self.item.metadata.name}")
-        else:
-            self.logging.info(
-                "deleted deploy/{} from namespace/{}".format(
-                    self.kube_deployment.service, self.item.metadata.namespace
-                )
-            )
-        self.create(kube_client=kube_client)
 
     def update(self, kube_client: KubeClient) -> None:
         # If HPA is enabled, do not update replicas.
         # In all other cases, replica is set to max(instances, min_instances)
-        if self.soa_config.config_dict.get("bounce_method", "") == "brutal":
-            threading.Thread(
-                target=self.deep_delete_and_create, args=[KubeClient()]
-            ).start()
-            return
-        update_deployment(kube_client=kube_client, formatted_deployment=self.item)
+        update_deployment(
+            kube_client=kube_client,
+            formatted_deployment=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
 
     def update_related_api_objects(self, kube_client: KubeClient) -> None:
         super().update_related_api_objects(kube_client)
@@ -404,11 +375,19 @@ class StatefulSetWrapper(Application):
         self.delete_pod_disruption_budget(kube_client)
 
     def create(self, kube_client: KubeClient):
-        create_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
-        self.ensure_pod_disruption_budget(kube_client)
+        create_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
+        self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
 
     def update(self, kube_client: KubeClient):
-        update_stateful_set(kube_client=kube_client, formatted_stateful_set=self.item)
+        update_stateful_set(
+            kube_client=kube_client,
+            formatted_stateful_set=self.item,
+            namespace=self.soa_config.get_namespace(),
+        )
 
 
 def get_application_wrapper(

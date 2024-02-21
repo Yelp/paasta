@@ -1,5 +1,9 @@
 astroid
 asynctest
+coverage
+# VSCode debugging requirement
+# See https://code.visualstudio.com/docs/python/debugging#_local-script-debugging
+debugpy
 docutils
 flake8
 freezegun

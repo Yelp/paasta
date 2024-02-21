@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from mock import ANY
+from mock import call
 from mock import MagicMock
 from mock import patch
 from pytest import raises
@@ -22,6 +23,7 @@ from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds.push_to_registry import build_command
 from paasta_tools.cli.cmds.push_to_registry import is_docker_image_already_in_registry
 from paasta_tools.cli.cmds.push_to_registry import paasta_push_to_registry
+from paasta_tools.cli.cmds.push_to_registry import retag_versioned_image
 
 
 @patch("paasta_tools.cli.cmds.push_to_registry.build_docker_tag", autospec=True)
@@ -54,7 +56,7 @@ def test_push_to_registry_run_fail(
     )
     mock_is_docker_image_already_in_registry.return_value = False
     mock_run.return_value = (1, "Bad")
-    args = MagicMock()
+    args = MagicMock(image_version=None)
     assert paasta_push_to_registry(args) == 1
     assert not mock_log_audit.called
 
@@ -351,6 +353,7 @@ def test_is_docker_image_already_in_registry_http_when_image_does_not_exist(
     )
 
 
+@patch("paasta_tools.cli.cmds.push_to_registry.retag_versioned_image", autospec=True)
 @patch(
     "paasta_tools.cli.cmds.push_to_registry.is_docker_image_already_in_registry",
     autospec=True,
@@ -367,6 +370,7 @@ def test_push_to_registry_with_image_version(
     mock_validate_service_name,
     mock_build_command,
     mock_is_docker_image_already_in_registry,
+    mock_retag_versioned_image,
 ):
     args, _ = parse_args(
         [
@@ -376,15 +380,45 @@ def test_push_to_registry_with_image_version(
             "-c",
             "abcd" * 10,
             "--image-version",
-            "extrastuff:this",
+            "extrastuff",
         ]
     )
+    mock_retag_versioned_image.return_value = 0
+    mock_build_command.side_effect = [
+        "docker push unversioned",
+        "docker push with-image-version",
+    ]
 
     mock_run.return_value = (0, "Success")
     mock_is_docker_image_already_in_registry.return_value = False
     assert paasta_push_to_registry(args) == 0
-    mock_build_command.assert_called_once_with("foo", "abcd" * 10, "extrastuff:this")
-    assert mock_run.called
+    mock_build_command.assert_has_calls(
+        [
+            call("foo", "abcd" * 10, None),
+            call("foo", "abcd" * 10, "extrastuff"),
+        ]
+    )
+    mock_retag_versioned_image.assert_called_once_with("foo", "abcd" * 10, "extrastuff")
+    mock_run.assert_has_calls(
+        [
+            call(
+                "docker push unversioned",
+                component="build",
+                log=True,
+                loglevel="debug",
+                service="foo",
+                timeout=3600,
+            ),
+            call(
+                "docker push with-image-version",
+                component="build",
+                log=True,
+                loglevel="debug",
+                service="foo",
+                timeout=3600,
+            ),
+        ]
+    )
 
 
 @patch(
@@ -407,4 +441,26 @@ def test_is_docker_image_already_with_image_version(
         ANY,
         "https://registry/v2/services-fake_service/manifests/paasta-fake_sha-extrastuff",
         timeout=30,
+    )
+
+
+@patch("paasta_tools.cli.cmds.push_to_registry.build_docker_tag", autospec=True)
+@patch("paasta_tools.cli.cmds.push_to_registry._run", autospec=True)
+def test_retag_versioned_image(mock_run, mock_build_docker_tag):
+    mock_build_docker_tag.side_effect = ["legacy", "versioned"]
+    mock_run.return_value = (0, "")
+    assert retag_versioned_image("foo", "aaaabbbbcccc", "extrastuff") == 0
+    mock_run.assert_called_once_with(
+        ["docker", "tag", "versioned", "legacy"],
+        component="build",
+        log=True,
+        loglevel="debug",
+        service="foo",
+        timeout=30,
+    )
+    mock_build_docker_tag.assert_has_calls(
+        [
+            call("foo", "aaaabbbbcccc", None),
+            call("foo", "aaaabbbbcccc", "extrastuff"),
+        ]
     )

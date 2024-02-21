@@ -85,7 +85,7 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
 
     def mutate_refs(refs):
         deploy_group = service_config.get_deploy_group()
-        (_, head_sha) = get_latest_deployment_tag(refs, deploy_group)
+        (_, head_sha, _) = get_latest_deployment_tag(refs, deploy_group)
         refs[
             format_tag(service_config.get_branch(), force_bounce, desired_state)
         ] = head_sha
@@ -265,7 +265,9 @@ def paasta_start_or_stop(args, desired_state):
                     return 1
 
                 deploy_group = service_config.get_deploy_group()
-                (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
+                (deploy_tag, _, _) = get_latest_deployment_tag(
+                    remote_refs, deploy_group
+                )
 
                 if deploy_tag not in remote_refs:
                     invalid_deploy_groups.append(deploy_group)

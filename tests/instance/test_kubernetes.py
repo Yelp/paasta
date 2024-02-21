@@ -21,6 +21,7 @@ import pytest
 
 import paasta_tools.instance.kubernetes as pik
 from paasta_tools import utils
+from paasta_tools.utils import DeploymentVersion
 from tests.conftest import Struct
 from tests.conftest import wrap_value_in_task
 
@@ -116,7 +117,6 @@ def instance_status_kwargs():
         instance="",
         instance_type="",
         verbose=0,
-        include_smartstack=False,
         include_envoy=False,
         settings=mock.Mock(),
         use_new=False,
@@ -188,7 +188,6 @@ def test_kubernetes_status():
             service="",
             instance="",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="flink",
             settings=mock.Mock(),
@@ -255,6 +254,14 @@ class TestKubernetesStatusV2:
         ) as mock_get_pod_event_messages:
             yield mock_get_pod_event_messages
 
+    @pytest.fixture
+    def mock_find_all_relevant_namespaces(self):
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.find_all_relevant_namespaces",
+            autospec=True,
+        ) as mock_find_all_relevant_namespaces:
+            yield mock_find_all_relevant_namespaces
+
     def test_replicaset(
         self,
         mock_replicasets_for_service_instance,
@@ -264,7 +271,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -276,6 +285,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={
@@ -294,7 +304,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -313,7 +322,9 @@ class TestKubernetesStatusV2:
                     "ready_replicas": 0,
                     "create_timestamp": datetime.datetime(2021, 3, 5).timestamp(),
                     "git_sha": "aaa000",
+                    "image_version": None,
                     "config_sha": "config000",
+                    "namespace": "paasta",
                     "pods": [
                         {
                             "name": "pod_1",
@@ -373,7 +384,9 @@ class TestKubernetesStatusV2:
         mock_pods_for_service_instance,
         mock_mesh_status,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
         )
@@ -384,6 +397,7 @@ class TestKubernetesStatusV2:
             Struct(
                 metadata=Struct(
                     name="controller_revision_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 4, 1),
                     labels={
                         "paasta.yelp.com/git_sha": "aaa000",
@@ -404,7 +418,6 @@ class TestKubernetesStatusV2:
                 service="service",
                 instance="instance",
                 verbose=0,
-                include_smartstack=False,
                 include_envoy=False,
                 instance_type="kubernetes",
                 settings=mock.Mock(),
@@ -418,8 +431,72 @@ class TestKubernetesStatusV2:
             "ready_replicas": 1,
             "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
             "git_sha": "aaa000",
+            "image_version": None,
             "config_sha": "config000",
             "pods": [mock.ANY],
+            "namespace": "paasta",
+        }
+
+    def test_statefulset_with_image_version(
+        self,
+        mock_controller_revisions_for_service_instance,
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS,
+        mock_load_service_namespace_config,
+        mock_pods_for_service_instance,
+        mock_mesh_status,
+        mock_pod,
+        mock_find_all_relevant_namespaces,
+    ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
+        mock_job_config = mock.Mock(
+            get_persistent_volumes=mock.Mock(return_value=[mock.Mock]),
+        )
+        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS[
+            "kubernetes"
+        ].loader.return_value = mock_job_config
+        mock_controller_revisions_for_service_instance.return_value = [
+            Struct(
+                metadata=Struct(
+                    name="controller_revision_1",
+                    namespace="paasta",
+                    creation_timestamp=datetime.datetime(2021, 4, 1),
+                    labels={
+                        "paasta.yelp.com/git_sha": "aaa000",
+                        "paasta.yelp.com/config_sha": "config000",
+                        "paasta.yelp.com/image_version": "extrastuff",
+                    },
+                ),
+            ),
+        ]
+
+        mock_pod.metadata.owner_references = []
+        mock_pods_for_service_instance.return_value = [mock_pod]
+
+        with asynctest.patch(
+            "paasta_tools.instance.kubernetes.get_pod_status", autospec=True
+        ) as mock_get_pod_status:
+            mock_get_pod_status.return_value = {}
+            status = pik.kubernetes_status_v2(
+                service="service",
+                instance="instance",
+                verbose=0,
+                include_envoy=False,
+                instance_type="kubernetes",
+                settings=mock.Mock(),
+            )
+
+        assert len(status["versions"]) == 1
+        assert status["versions"][0] == {
+            "name": "controller_revision_1",
+            "type": "ControllerRevision",
+            "replicas": 1,
+            "ready_replicas": 1,
+            "create_timestamp": datetime.datetime(2021, 4, 1).timestamp(),
+            "git_sha": "aaa000",
+            "image_version": "extrastuff",
+            "config_sha": "config000",
+            "pods": [mock.ANY],
+            "namespace": "paasta",
         }
 
     def test_event_timeout(
@@ -431,7 +508,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -443,6 +522,7 @@ class TestKubernetesStatusV2:
                 spec=Struct(replicas=1),
                 metadata=Struct(
                     name="replicaset_1",
+                    namespace="paasta",
                     creation_timestamp=datetime.datetime(2021, 3, 5),
                     deletion_timestamp=None,
                     labels={
@@ -461,7 +541,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -483,7 +562,9 @@ class TestKubernetesStatusV2:
         mock_mesh_status,
         mock_get_pod_event_messages,
         mock_pod,
+        mock_find_all_relevant_namespaces,
     ):
+        mock_find_all_relevant_namespaces.return_value = ["paasta"]
         mock_job_config = mock.Mock(
             get_persistent_volumes=mock.Mock(return_value=[]),
         )
@@ -513,7 +594,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -539,52 +619,6 @@ def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_na
     )
 
     assert len(kstatus["replicasets"]) == 3
-
-
-def test_kubernetes_status_include_smartstack():
-    with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace_config, asynctest.patch(
-        "paasta_tools.instance.kubernetes.mesh_status",
-        autospec=True,
-    ) as mock_mesh_status, asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-    ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        autospec=True,
-    ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
-        mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
-        mock_pods_for_service_instance.return_value = []
-        mock_replicasets_for_service_instance.return_value = []
-        mock_service = mock.Mock()
-        status = pik.kubernetes_status(
-            service=mock_service,
-            instance="",
-            verbose=0,
-            include_smartstack=True,
-            include_envoy=False,
-            instance_type="flink",
-            settings=mock.Mock(),
-        )
-        assert (
-            mock_load_service_namespace_config.mock_calls[0][2]["service"]
-            is mock_service
-        )
-        assert mock_mesh_status.mock_calls[0][2]["service"] is mock_service
-        assert "app_count" in status
-        assert "evicted_count" in status
-        assert "bounce_method" in status
-        assert "desired_state" in status
 
 
 def test_cr_status_bad_instance_type():
@@ -707,19 +741,7 @@ async def test_get_pod_status_mesh_ready(event_loop):
     assert not status["mesh_ready"]
 
 
-@pytest.mark.parametrize(
-    "include_smartstack,include_envoy,expected",
-    [
-        (True, True, ("smartstack", "envoy")),
-        (True, False, ("smartstack",)),
-        (False, True, ("envoy",)),
-    ],
-)
-def test_kubernetes_mesh_status(
-    include_smartstack,
-    include_envoy,
-    expected,
-):
+def test_kubernetes_mesh_status_include_envoy():
     with asynctest.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace_config, asynctest.patch(
@@ -743,26 +765,34 @@ def test_kubernetes_mesh_status(
             instance="fake_instance",
             instance_type="flink",
             settings=mock_settings,
-            include_smartstack=include_smartstack,
-            include_envoy=include_envoy,
+            include_envoy=True,
         )
 
-        assert len(kmesh) == len(expected)
-        for i in range(len(expected)):
-            mesh_type = expected[i]
-            assert kmesh.get(mesh_type) == mock_mesh_status.return_value
-            assert mock_mesh_status.call_args_list[i] == mock.call(
+        assert len(kmesh) == 1
+        assert kmesh.get("envoy") == mock_mesh_status.return_value
+        assert mock_mesh_status.call_args_list[0] == mock.call(
+            service="fake_service",
+            instance=mock_job_config.get_nerve_namespace.return_value,
+            job_config=mock_job_config,
+            service_namespace_config={"proxy_port": 1234},
+            pods_task=mock.ANY,
+            should_return_individual_backends=True,
+            settings=mock_settings,
+            service_mesh=getattr(pik.ServiceMesh, "ENVOY"),
+        )
+        _, kwargs = mock_mesh_status.call_args_list[0]
+        assert kwargs["pods_task"].result() == ["pod_1"]
+
+        # include_envoy = False should error
+        with pytest.raises(RuntimeError) as excinfo:
+            kmesh = pik.kubernetes_mesh_status(
                 service="fake_service",
-                instance=mock_job_config.get_nerve_namespace.return_value,
-                job_config=mock_job_config,
-                service_namespace_config={"proxy_port": 1234},
-                pods_task=mock.ANY,
-                should_return_individual_backends=True,
+                instance="fake_instance",
+                instance_type="flink",
                 settings=mock_settings,
-                service_mesh=getattr(pik.ServiceMesh, mesh_type.upper()),
+                include_envoy=False,
             )
-            _, kwargs = mock_mesh_status.call_args_list[i]
-            assert kwargs["pods_task"].result() == ["pod_1"]
+        assert "No mesh types specified" in str(excinfo.value)
 
 
 @mock.patch(
@@ -804,7 +834,6 @@ def test_kubernetes_mesh_status_error(
             instance="fake_instance",
             instance_type=inst_type,
             settings=mock_settings,
-            include_smartstack=include_mesh,
             include_envoy=include_mesh,
         )
 
@@ -821,9 +850,10 @@ def test_bounce_status():
             "deploy_status",
             "message",
         )
-        mock_kubernetes_tools.get_active_shas_for_service.return_value = [
-            ("aaa", "config_aaa"),
-            ("bbb", "config_bbb"),
+        mock_kubernetes_tools.get_active_versions_for_service.return_value = [
+            (DeploymentVersion("aaa", None), "config_aaa"),
+            (DeploymentVersion("bbb", None), "config_bbb"),
+            (DeploymentVersion("ccc", "extrastuff"), "config_ccc"),
         ]
 
         mock_settings = mock.Mock()
@@ -836,8 +866,14 @@ def test_bounce_status():
             "active_shas": [
                 ("aaa", "config_aaa"),
                 ("bbb", "config_bbb"),
+                ("ccc", "config_ccc"),
             ],
-            "app_count": 2,
+            "active_versions": [
+                ("aaa", None, "config_aaa"),
+                ("bbb", None, "config_bbb"),
+                ("ccc", "extrastuff", "config_ccc"),
+            ],
+            "app_count": 3,
         }
 
 

@@ -1,17 +1,19 @@
 import copy
 import logging
+import re
 import socket
+import sys
 from functools import lru_cache
 from typing import cast
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Set
 
 import yaml
 from mypy_extensions import TypedDict
-from service_configuration_lib.spark_config import _adjust_spark_requested_resources
-from service_configuration_lib.spark_config import _append_sql_shuffle_partitions_conf
+from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import DEFAULT_SPARK_RUN_CONFIG
 
 from paasta_tools.utils import DockerVolume
@@ -133,7 +135,8 @@ def adjust_spark_resources(
     """
     # TODO: would be nice if _adjust_spark_requested_resources only returned the stuff it
     # modified
-    return _adjust_spark_requested_resources(
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    return spark_conf_builder._adjust_spark_requested_resources(
         # additionally, _adjust_spark_requested_resources modifies the dict you pass in
         # so we make a copy to make things less confusing - consider dropping the
         # service_configuration_lib dependency here so that we can do things in a slightly
@@ -146,15 +149,66 @@ def adjust_spark_resources(
 
 def setup_shuffle_partitions(spark_args: Dict[str, str]) -> Dict[str, str]:
     """
-    Wrapper around _append_sql_shuffle_partitions_conf from service_configuration_lib.
+    Wrapper around _append_sql_partitions_conf from service_configuration_lib.
 
     For now, this really just sets a default number of partitions based on # of cores.
     """
     # as above, this function also returns everything + mutates the passed in dictionary
     # which is not ideal
-    return _append_sql_shuffle_partitions_conf(
+    spark_conf_builder = spark_config.SparkConfBuilder()
+    return spark_conf_builder._append_sql_partitions_conf(
         spark_opts=copy.copy(spark_args),
     )
+
+
+def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[str]:
+    return (
+        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
+        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
+        else []
+    )
+
+
+def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
+    volume_names = []
+    for key in list(spark_conf.keys()):
+        if (
+            "spark.kubernetes.executor.volumes.hostPath." in key
+            and ".mount.path" in key
+        ):
+            v_name = re.match(
+                r"spark.kubernetes.executor.volumes.hostPath.([a-z0-9]([-a-z0-9]*[a-z0-9])?).mount.path",
+                key,
+            )
+            if v_name:
+                volume_names.append(v_name.group(1))
+            else:
+                log.error(
+                    f"Volume names must consist of lower case alphanumeric characters or '-', "
+                    f"and must start and end with an alphanumeric character. Config -> '{key}' must be fixed."
+                )
+                # Failing here because the k8s pod fails to start if the volume names
+                # don't follow the lowercase RFC 1123 standard.
+                sys.exit(1)
+
+    volumes = []
+    for volume_name in volume_names:
+        read_only = (
+            "ro"
+            if spark_conf.get(
+                f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.readOnly"
+            )
+            == "true"
+            else "rw"
+        )
+        container_path = spark_conf.get(
+            f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.mount.path"
+        )
+        host_path = spark_conf.get(
+            f"spark.kubernetes.executor.volumes.hostPath.{volume_name}.options.path"
+        )
+        volumes.append(f"{host_path}:{container_path}:{read_only}")
+    return volumes
 
 
 def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:

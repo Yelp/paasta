@@ -105,6 +105,7 @@ PAASTA_SUBCOMMANDS = {
     "check": "check",
     "cook-image": "cook_image",
     "get-docker-image": "get_docker_image",
+    "get-image-version": "get_image_version",
     "get-latest-deployment": "get_latest_deployment",
     "info": "info",
     "itest": "itest",
@@ -117,7 +118,6 @@ PAASTA_SUBCOMMANDS = {
     "mesh-status": "mesh_status",
     "metastatus": "metastatus",
     "pause_service_autoscaler": "pause_service_autoscaler",
-    "performance-check": "performance_check",
     "push-to-registry": "push_to_registry",
     "remote-run": "remote_run",
     "rollback": "rollback",
@@ -254,7 +254,7 @@ def main(argv=None):
         else:
             return_code = args.command(args)
     except KeyboardInterrupt:
-        return_code = 1
+        return_code = 130
     sys.exit(return_code)
 
 

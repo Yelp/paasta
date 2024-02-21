@@ -1,10 +1,13 @@
 import getpass
+import logging
 import os
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+
+from paasta_tools.secret_providers import CryptoKey
 
 try:
     from vault_tools.client.jsonsecret import get_plaintext
@@ -28,6 +31,9 @@ except ImportError:
 
 from paasta_tools.secret_providers import BaseSecretProvider
 from paasta_tools.secret_tools import get_secret_name_from_ref
+
+
+log = logging.getLogger(__name__)
 
 
 class SecretProvider(BaseSecretProvider):
@@ -126,18 +132,7 @@ class SecretProvider(BaseSecretProvider):
                 )
 
     def decrypt_secret(self, secret_name: str) -> str:
-        client = self.clients[self.ecosystems[0]]
-        secret_path = os.path.join(self.secret_dir, f"{secret_name}.json")
-        return get_plaintext(
-            client=client,
-            path=secret_path,
-            env=self.ecosystems[0],
-            cache_enabled=False,
-            cache_key=None,
-            cache_dir=None,
-            context=self.service_name,
-            rescue_failures=False,
-        ).decode("utf-8")
+        return self.decrypt_secret_raw(secret_name).decode("utf-8")
 
     def decrypt_secret_raw(self, secret_name: str) -> bytes:
         client = self.clients[self.ecosystems[0]]
@@ -159,3 +154,61 @@ class SecretProvider(BaseSecretProvider):
             return data["environments"][ecosystem]["signature"]
         else:
             return None
+
+    def get_data_from_vault_path(self, path: str) -> Optional[Dict[str, str]]:
+        # clients.read returns None if not set
+        # if it is set, it returns an object with { **metadata, data: {} }
+        # eg lease_id, request_id, etc. we only care about 'data' here
+
+        client = self.clients[self.ecosystems[0]]
+
+        # there is a chance client is None (ie if the connection is invalid)
+        if client is None:
+            raise Exception(
+                "possible Vault misconfiguration as client is not available"
+            )
+
+        entry = client.read(path)
+
+        # returns one of 3 things:
+        #   entry -> could be None
+        #   entry["data"] -> could be an object with content
+        #   entry["data"] -> could be empty (ie no secrets)
+        # all are plausible and valid scenarios that give different information about the path
+
+        if entry is not None:
+            return entry.get("data", {})
+        return None
+
+    def get_key_versions(
+        self,
+        key_name: str,
+    ) -> List[CryptoKey]:
+        """
+        Retrieve all versions of Vault key based on its metadata
+        """
+        client = self.clients[self.ecosystems[0]]
+        crypto_keys: List[CryptoKey] = []
+        try:
+            meta_response = client.secrets.kv.read_secret_metadata(
+                path=key_name, mount_point="keystore"
+            )
+
+            for key_version in meta_response["data"]["versions"].keys():
+                key_response = client.secrets.kv.read_secret_version(
+                    path=key_name, version=key_version, mount_point="keystore"
+                )
+                crypto_keys.append(
+                    {
+                        "key_name": key_name,
+                        "key_version": key_response["data"]["metadata"]["version"],
+                        "key": key_response["data"]["data"]["key"],
+                    }
+                )
+        except hvac.exceptions.VaultError:
+            log.warning(
+                f"Could not fetch key versions for {key_name} on {self.ecosystems[0]}"
+            )
+            pass
+
+        return crypto_keys

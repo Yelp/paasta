@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.127.1
+RELEASE=0.218.6
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw -e PIP_INDEX_URL=$(PIP_INDEX_URL) yelp/paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -36,19 +36,15 @@ build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
 	docker pull "yelp/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
-        --build-arg PIP_INDEX_URL=$(PIP_INDEX_URL) -t "yelp/paastatools_$*_container" .
-	if [ "$$TRAVIS_BRANCH" = "master" -a \
-	     "$$TRAVIS_PULL_REQUEST" = "false" -a \
-	     "$$DOCKER_USERNAME" != "" ]; then \
-	  docker push "yelp/paastatools_$*_container"; \
-	fi
+	$(if $(filter-out $(PAASTA_ENV),YELP), --build-arg PIP_INDEX_URL=https://pypi.org/simple,) \
+		-t "yelp/paastatools_$*_container" .
 
 .SECONDEXPANSION:
 itest_%: package_$$*
 	$(DOCKER_RUN) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
-PTG_VERSION=0.0.12
-PTG_SUM=1fa3f94fe5dd00059186404c2e2717625808c1cdefd90bd551f16b6e72018640
+PTG_VERSION=0.0.20
+PTG_SUM=17fabafb3aa8ea728c8c4a62927fc699b7b16ad0bd561ed822096f2da329eed1
 ifeq ($(PAASTA_ENV),YELP)
 	PTG_SANITY=monk
 else

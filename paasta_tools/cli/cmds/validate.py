@@ -12,17 +12,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import functools
 import json
 import os
 import pkgutil
 import re
 from collections import Counter
 from datetime import datetime
+from functools import lru_cache
+from functools import partial
 from glob import glob
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import pytz
 import yaml
@@ -31,6 +37,7 @@ from jsonschema import Draft4Validator
 from jsonschema import exceptions
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+from mypy_extensions import TypedDict
 from ruamel.yaml import SafeConstructor
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -44,6 +51,9 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
+from paasta_tools.long_running_service_tools import (
+    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+)
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -53,6 +63,8 @@ from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
@@ -88,10 +100,65 @@ UNKNOWN_SERVICE = (
     % (PaastaColors.cyan("SERVICE"), PaastaColors.cyan("-s"))
 )
 
+SCHEMA_TYPES = {
+    "adhoc",
+    "kubernetes",  # long-running services
+    "rollback",  # automatic rollbacks during deployments
+    "tron",  # batch workloads
+    "eks",  # eks workloads
+    "autotuned_defaults/kubernetes",
+    "autotuned_defaults/cassandracluster",
+}
 # we expect a comment that looks like # override-cpu-setting PROJ-1234
 # but we don't have a $ anchor in case users want to add an additional
 # comment
-OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"^#\s*override-cpu-setting\s+\([A-Z]+-[0-9]+\)"
+OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN = r"#\s*override-cpu-setting\s+\(.+[A-Z]+-[0-9]+.+\)"
+
+# we expect a comment that looks like # override-cpu-burst PROJ-1234
+# but we don't have a $ anchor in case users want to add an additional
+# comment
+OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\)"
+# for now, double the autotune cap to give people the benefit of the doubt
+# if we see that people are still misusing this configuration, we can lower
+# this to the autotune cap (i.e., 1)
+CPU_BURST_THRESHOLD = 2
+
+K8S_TYPES = {"eks", "kubernetes"}
+
+
+class ConditionConfig(TypedDict, total=False):
+    """
+    Common config options for all Conditions
+    """
+
+    # for now, this is the only key required by the schema
+    query: str
+    # and only one of these needs to be present (enforced in code, not schema)
+    upper_bound: Optional[Union[int, float]]
+    lower_bound: Optional[Union[int, float]]
+
+    # truly optional
+    dry_run: bool
+
+
+@functools.lru_cache()
+def load_all_instance_configs_for_service(
+    service: str, cluster: str, soa_dir: str
+) -> Tuple[Tuple[str, InstanceConfig], ...]:
+    ret = []
+    for instance in list_all_instances_for_service(
+        service=service, clusters=[cluster], soa_dir=soa_dir
+    ):
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=False,
+            soa_dir=soa_dir,
+        )
+        ret.append((instance, instance_config))
+
+    return tuple(ret)
 
 
 def invalid_tron_namespace(cluster, output, filename):
@@ -133,6 +200,34 @@ def get_schema(file_type):
     return json.loads(schema)
 
 
+def validate_rollback_bounds(
+    config: Dict[str, List[ConditionConfig]], file_loc: str
+) -> bool:
+    """
+    Ensure that at least one of upper_bound or lower_bound is set (and set to non-null values)
+    """
+    errors = []
+
+    for source, queries in config.items():
+        for query in queries:
+            if not any(
+                (
+                    query.get("lower_bound"),
+                    query.get("upper_bound"),
+                ),
+            ):
+                errors.append(
+                    f"{file_loc}:{source}: {query['query']} needs one of lower_bound OR upper_bound set."
+                )
+
+    for error in errors:
+        print(
+            failure(error, link=""),  # TODO: point to actual docs once they exist
+        )
+
+    return len(errors) == 0
+
+
 def validate_instance_names(config_file_object, file_path):
     errors = []
     for instance_name in config_file_object:
@@ -166,6 +261,7 @@ def validate_service_name(service):
     return True
 
 
+@lru_cache()
 def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, Any]:
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
@@ -196,7 +292,7 @@ def get_config_file_dict(file_path: str, use_ruamel: bool = False) -> Dict[Any, 
         raise
 
 
-def validate_schema(file_path, file_type):
+def validate_schema(file_path: str, file_type: str) -> bool:
     """Check if the specified config file has a valid schema
 
     :param file_path: path to file to validate
@@ -206,49 +302,59 @@ def validate_schema(file_path, file_type):
         schema = get_schema(file_type)
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
 
     if schema is None:
         print(f"{SCHEMA_NOT_FOUND}: {file_path}")
-        return
+        return False
+
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
     config_file_object = get_config_file_dict(file_path)
     try:
         validator.validate(config_file_object)
-        if file_type == "kubernetes" and not validate_instance_names(
+        if file_type in K8S_TYPES and not validate_instance_names(
             config_file_object, file_path
         ):
-            return
+            return False
+
+        if file_type == "rollback" and not validate_rollback_bounds(
+            config_file_object["conditions"],
+            file_path,
+        ):
+            return False
+
     except ValidationError:
         print(f"{SCHEMA_INVALID}: {file_path}")
 
         errors = validator.iter_errors(config_file_object)
         print("  Validation Message: %s" % exceptions.best_match(errors).message)
+        return False
     except Exception as e:
         print(f"{SCHEMA_ERROR}: {file_type}, error: {e!r}")
-        return
+        return False
     else:
         print(f"{SCHEMA_VALID}: {basename}")
         return True
 
 
-def validate_all_schemas(service_path):
+def validate_all_schemas(service_path: str) -> bool:
     """Finds all recognized config files in service directory,
     and validates their schema.
 
     :param service_path: path to location of configuration files
     """
 
-    path = os.path.join(service_path, "*.yaml")
+    path = os.path.join(service_path, "**/*.yaml")
 
     returncode = True
-    for file_name in glob(path):
+    for file_name in glob(path, recursive=True):
         if os.path.islink(file_name):
             continue
-        basename = os.path.basename(file_name)
-        for file_type in ["marathon", "adhoc", "tron", "kubernetes"]:
-            if basename.startswith(file_type):
+
+        filename_without_service_path = os.path.relpath(file_name, start=service_path)
+        for file_type in SCHEMA_TYPES:
+            if filename_without_service_path.startswith(file_type):
                 if not validate_schema(file_name, file_type):
                     returncode = False
     return returncode
@@ -340,8 +446,12 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
         if not validate_tron_namespace(service, cluster, soa_dir):
             returncode = False
         elif verbose:
-            # service config has been validated and cron schedules are safe to parse
-            service_config = load_tron_service_config(service, cluster)
+            # service config has been validated and cron schedules should be safe to parse
+
+            # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
+            service_config = load_tron_service_config(
+                service=service, cluster=cluster, soa_dir=soa_dir
+            )
             for config in service_config:
                 cron_expression = config.get_cron_expression()
                 if cron_expression:
@@ -387,16 +497,9 @@ def validate_paasta_objects(service_path):
     returncode = True
     messages = []
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             messages.extend(instance_config.validate())
     returncode = len(messages) == 0
 
@@ -442,17 +545,31 @@ def _get_comments_for_key(data: CommentedMap, key: Any) -> Optional[str]:
     # this is a little weird, but ruamel is returning a list that looks like:
     # [None, None, CommentToken(...), None] for some reason instead of just a
     # single string
-    raw_comments = [
-        comment.value for comment in data.ca.items.get(key, []) if comment is not None
-    ]
+    # Sometimes ruamel returns a recursive list of CommentTokens as well that looks like
+    # [None, None, [CommentToken(...),CommentToken(...),None], CommentToken(...), None]
+    def _flatten_comments(comments):
+        for comment in comments:
+            if comment is None:
+                continue
+            if isinstance(comment, list):
+                yield from _flatten_comments(comment)
+            else:
+                yield comment.value
+
+    raw_comments = [*_flatten_comments(data.ca.items.get(key, []))]
     if not raw_comments:
         # return None so that we don't return an empty string below if there really aren't
         # any comments
         return None
-    # there should really just be a single item in the list, but just in case...
+    # joining all comments together before returning them
     comment = "".join(raw_comments)
-
     return comment
+
+
+def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> bool:
+    return os.path.exists(
+        os.path.join(os.path.abspath(soa_dir), service, f"{workload}-{cluster}.in")
+    )
 
 
 def validate_autoscaling_configs(service_path):
@@ -467,22 +584,46 @@ def validate_autoscaling_configs(service_path):
     )
 
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
 
             if (
-                instance_config.get_instance_type() == "kubernetes"
+                instance_config.get_instance_type() in K8S_TYPES
                 and instance_config.is_autoscaling_enabled()
+                # we should eventually make the python templates add the override comment
+                # to the correspoding YAML line, but until then we just opt these out of that validation
+                and __is_templated(
+                    service,
+                    soa_dir,
+                    cluster,
+                    workload=instance_config.get_instance_type(),
+                )
+                is False
             ):
                 autoscaling_params = instance_config.get_autoscaling_params()
+                if autoscaling_params["metrics_provider"] == "active-requests":
+                    desired_active_requests_per_replica = autoscaling_params.get(
+                        "desired_active_requests_per_replica",
+                        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
+                    )
+                    if desired_active_requests_per_replica <= 0:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: desired_active_requests_per_replica must be "
+                                "greater than zero",
+                                link="",
+                            )
+                        )
+                    if len(instance_config.get_registrations()) > 1:
+                        returncode = False
+                        print(
+                            failure(
+                                msg="Autoscaling configuration is invalid: active-requests autoscaler doesn't support instances with multiple registrations.",
+                                link="",
+                            )
+                        )
                 if autoscaling_params["metrics_provider"] in {
                     "uwsgi",
                     "piscina",
@@ -505,7 +646,7 @@ def validate_autoscaling_configs(service_path):
                     service in skip_cpu_override_validation_list
                 )
                 if (
-                    autoscaling_params["metrics_provider"] in {"cpu", "mesos_cpu"}
+                    autoscaling_params["metrics_provider"] == "cpu"
                     # to enable kew autoscaling we just set a decision policy of "bespoke", but
                     # the metrics_provider is (confusingly) left as "cpu"
                     and autoscaling_params.get("decision_policy") != "bespoke"
@@ -514,7 +655,11 @@ def validate_autoscaling_configs(service_path):
                     # we need access to the comments, so we need to read the config with ruamel to be able
                     # to actually get them in a "nice" automated fashion
                     config = get_config_file_dict(
-                        os.path.join(soa_dir, service, f"kubernetes-{cluster}.yaml"),
+                        os.path.join(
+                            soa_dir,
+                            service,
+                            f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                        ),
                         use_ruamel=True,
                     )
                     if config[instance].get("cpus") is None:
@@ -529,12 +674,13 @@ def validate_autoscaling_configs(service_path):
                     # a DAR if people aren't being careful.
                     if (
                         cpu_comment is None
-                        or re.match(
+                        or re.search(
                             pattern=OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN,
                             string=cpu_comment,
                         )
                         is None
                     ):
+                        returncode = False
                         print(
                             failure(
                                 msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
@@ -551,16 +697,9 @@ def validate_min_max_instances(service_path):
     returncode = True
 
     for cluster in list_clusters(service, soa_dir):
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             if instance_config.get_instance_type() != "tron":
                 min_instances = instance_config.get_min_instances()
                 max_instances = instance_config.get_max_instances()
@@ -578,15 +717,21 @@ def validate_min_max_instances(service_path):
     return returncode
 
 
-def check_secrets_for_instance(instance_config_dict, soa_dir, service_path, vault_env):
+def check_secrets_for_instance(
+    instance_config_dict: InstanceConfigDict, soa_dir: str, service: str, vault_env: str
+) -> bool:
     return_value = True
+    # If the service: directive is used, look for the secret there, rather than where the instance config is defined.
+    service_containing_secret = instance_config_dict.get("service", service)
     for env_value in instance_config_dict.get("env", {}).values():
         if is_secret_ref(env_value):
             secret_name = get_secret_name_from_ref(env_value)
             if is_shared_secret(env_value):
                 secret_file_name = f"{soa_dir}/_shared/secrets/{secret_name}.json"
             else:
-                secret_file_name = f"{service_path}/secrets/{secret_name}.json"
+                secret_file_name = (
+                    f"{soa_dir}/{service_containing_secret}/secrets/{secret_name}.json"
+                )
             if os.path.isfile(secret_file_name):
                 secret_json = get_config_file_dict(secret_file_name)
                 if "ciphertext" not in secret_json["environments"].get(vault_env, {}):
@@ -622,23 +767,84 @@ def validate_secrets(service_path):
             return_value = False
             continue
 
-        for instance in list_all_instances_for_service(
-            service=service, clusters=[cluster], soa_dir=soa_dir
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
         ):
-            instance_config = get_instance_config(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                load_deployments=False,
-                soa_dir=soa_dir,
-            )
             if not check_secrets_for_instance(
-                instance_config.config_dict, soa_dir, service_path, vault_env
+                instance_config.config_dict, soa_dir, service, vault_env
             ):
                 return_value = False
     if return_value:
         print(success("No orphan secrets found"))
     return return_value
+
+
+def validate_cpu_burst(service_path: str) -> bool:
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    skip_cpu_burst_validation_list = (
+        load_system_paasta_config().get_skip_cpu_burst_validation_services()
+    )
+
+    returncode = True
+    for cluster in list_clusters(service, soa_dir):
+        if __is_templated(
+            service, soa_dir, cluster, workload="kubernetes"
+        ) or __is_templated(service, soa_dir, cluster, workload="eks"):
+            # we should eventually make the python templates add the override comment
+            # to the correspoding YAML line, but until then we just opt these out of that validation
+            continue
+        for instance, instance_config in load_all_instance_configs_for_service(
+            service=service, cluster=cluster, soa_dir=soa_dir
+        ):
+            is_k8s_service = (
+                instance_config.get_instance_type() == "kubernetes"
+                or instance_config.get_instance_type() == "eks"
+            )
+            should_skip_cpu_burst_validation = service in skip_cpu_burst_validation_list
+            if is_k8s_service and not should_skip_cpu_burst_validation:
+                # we need access to the comments, so we need to read the config with ruamel to be able
+                # to actually get them in a "nice" automated fashion
+                config = get_config_file_dict(
+                    os.path.join(
+                        soa_dir,
+                        service,
+                        f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                    ),
+                    use_ruamel=True,
+                )
+
+                if config[instance].get("cpu_burst_add") is None:
+                    # using autotuned values - can skip
+                    continue
+                if config[instance]["cpu_burst_add"] <= CPU_BURST_THRESHOLD:
+                    # under the threshold - can also skip
+                    continue
+
+                burst_comment = _get_comments_for_key(
+                    data=config[instance], key="cpu_burst_add"
+                )
+                # we could probably have a separate error message if there's a comment that doesn't match
+                # the ack pattern, but that seems like overkill - especially for something that could cause
+                # a DAR if people aren't being careful.
+                if (
+                    burst_comment is None
+                    or re.search(
+                        pattern=OVERRIDE_CPU_BURST_ACK_PATTERN,
+                        string=burst_comment,
+                    )
+                    is None
+                ):
+                    returncode = False
+                    print(
+                        failure(
+                            msg=f"Potentially excessive CPU burst (cpu_burst_add: {config[instance]['cpu_burst_add']} "
+                            f"higher than current threshold of {CPU_BURST_THRESHOLD} cores) detected in {cluster}: {service}.{instance}."
+                            " Please read the following link for next steps:",
+                            link="y/high-cpu-burst",
+                        )
+                    )
+
+    return returncode
 
 
 def paasta_validate_soa_configs(
@@ -654,30 +860,21 @@ def paasta_validate_soa_configs(
     if not validate_service_name(service):
         return False
 
-    returncode = True
+    checks: List[Callable[[str], bool]] = [
+        validate_all_schemas,
+        partial(validate_tron, verbose=verbose),
+        validate_paasta_objects,
+        validate_unique_instance_names,
+        validate_autoscaling_configs,
+        validate_secrets,
+        validate_min_max_instances,
+        validate_cpu_burst,
+    ]
 
-    if not validate_all_schemas(service_path):
-        returncode = False
-
-    if not validate_tron(service_path, verbose):
-        returncode = False
-
-    if not validate_paasta_objects(service_path):
-        returncode = False
-
-    if not validate_unique_instance_names(service_path):
-        returncode = False
-
-    if not validate_autoscaling_configs(service_path):
-        returncode = False
-
-    if not validate_secrets(service_path):
-        returncode = False
-
-    if not validate_min_max_instances(service_path):
-        returncode = False
-
-    return returncode
+    # NOTE: we're explicitly passing a list comprehension to all()
+    # instead of a generator expression so that we run all checks
+    # no matter what
+    return all([check(service_path) for check in checks])
 
 
 def paasta_validate(args):

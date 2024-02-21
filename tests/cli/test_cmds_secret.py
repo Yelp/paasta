@@ -17,6 +17,8 @@ import mock
 from pytest import raises
 
 from paasta_tools.cli.cmds import secret
+from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 
 
 def test_add_subparser():
@@ -143,7 +145,17 @@ def test_paasta_secret():
         "paasta_tools.cli.cmds.secret.get_plaintext_input", autospec=True
     ) as mock_get_plaintext_input, mock.patch(
         "paasta_tools.cli.cmds.secret._log_audit", autospec=True
-    ) as mock_log_audit:
+    ) as mock_log_audit, mock.patch(
+        "paasta_tools.cli.cmds.secret.is_secrets_for_teams_enabled", autospec=True
+    ) as mock_is_secrets_for_teams_enabled, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_secret", autospec=True
+    ) as mock_get_secret, mock.patch(
+        "paasta_tools.cli.cmds.secret.KubeClient", autospec=True
+    ) as mock_kube_client, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_namespaces_for_secret", autospec=True
+    ) as mock_get_namespaces_for_secret, mock.patch(
+        "paasta_tools.cli.cmds.secret.select_k8s_secret_namespace", autospec=True
+    ) as mock_select_k8s_secret_namespace:
         mock_secret_provider = mock.Mock(secret_dir="/nail/blah")
         mock_get_secret_provider_for_service.return_value = mock_secret_provider
         mock_args = mock.Mock(
@@ -156,7 +168,10 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
+            soa_dir=mock.ANY,
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="add",
@@ -180,7 +195,10 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
+            soa_dir=mock.ANY,
         )
         mock_secret_provider.write_secret.assert_called_with(
             action="update",
@@ -201,12 +219,57 @@ def test_paasta_secret():
             clusters="mesosstage",
             shared=False,
         )
+        mock_is_secrets_for_teams_enabled.return_value = False
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            "middleearth", cluster_names="mesosstage"
+            "middleearth",
+            cluster_names="mesosstage",
+            soa_dir=mock.ANY,
+            secret_provider_extra_kwargs=mock.ANY,
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
+        )
+
+        # decrypt with secrets_for_teams enabled
+        mock_args = mock.Mock(
+            action="decrypt",
+            secret_name="theonering",
+            service="middleearth",
+            clusters="mesosstage",
+            yelpsoa_config_root="something",
+            shared=False,
+        )
+        kube_client = mock.Mock()
+        mock_is_secrets_for_teams_enabled.return_value = True
+        mock_get_namespaces_for_secret.return_value = {"paastasvc-middleearth"}
+        mock_select_k8s_secret_namespace.return_value = "paastasvc-middleearth"
+        mock_kube_client.return_value = kube_client
+
+        secret.paasta_secret(mock_args)
+
+        mock_is_secrets_for_teams_enabled.assert_called_with("middleearth", "something")
+        mock_kube_client.assert_called_with(
+            config_file=KUBE_CONFIG_USER_PATH, context="mesosstage"
+        )
+        mock_get_secret.assert_called_with(
+            kube_client,
+            get_paasta_secret_name(
+                "paastasvc-middleearth", "middleearth", "theonering"
+            ),
+            key_name="theonering",
+            namespace="paastasvc-middleearth",
+        )
+
+        # empty namespace list
+        mock_get_namespaces_for_secret.return_value = set()
+        mock_select_k8s_secret_namespace.return_value = None
+        secret.paasta_secret(mock_args)
+        mock_get_secret.assert_called_with(
+            kube_client,
+            get_paasta_secret_name("paasta", "middleearth", "theonering"),
+            key_name="theonering",
+            namespace="paasta",
         )
 
         mock_args = mock.Mock(
@@ -218,7 +281,10 @@ def test_paasta_secret():
         )
         secret.paasta_secret(mock_args)
         mock_get_secret_provider_for_service.assert_called_with(
-            secret.SHARED_SECRET_SERVICE, cluster_names="mesosstage"
+            secret.SHARED_SECRET_SERVICE,
+            cluster_names="mesosstage",
+            secret_provider_extra_kwargs=mock.ANY,
+            soa_dir=mock.ANY,
         )
         mock_decrypt_secret.assert_called_with(
             secret_provider=mock_secret_provider, secret_name="theonering"
@@ -250,3 +316,39 @@ def test_decrypt_secret():
         == mock_secret_provider.decrypt_secret.return_value
     )
     mock_secret_provider.decrypt_secret.assert_called_with("theonering")
+
+
+def test_paasta_secret_run():
+    with mock.patch(
+        "paasta_tools.cli.cmds.secret.decrypt_secret_environment_variables",
+        autospec=True,
+    ) as mock_decrypt_secret_environment_variables, mock.patch(
+        "paasta_tools.cli.cmds.secret.get_instance_config",
+        autospec=True,
+    ), mock.patch(
+        "paasta_tools.cli.cmds.secret.load_system_paasta_config", autospec=True
+    ), mock.patch(
+        "os.execvpe",
+        autospec=True,
+    ) as mock_exec:
+        mock_decrypt_secret_environment_variables.return_value = {
+            "PAASTA_SECRET_TEST": "test secret value",
+        }
+        mock_args = mock.Mock(
+            action="run",
+            service="middleearth",
+            clusters="mesosstage",
+            instance="main",
+            cmd=["foo"],
+        )
+
+        secret.paasta_secret(mock_args)
+
+        mock_exec.assert_called_once_with(
+            "foo",
+            ["foo"],
+            mock.ANY,
+        )
+        assert (
+            mock_exec.call_args[0][2].get("PAASTA_SECRET_TEST") == "test secret value"
+        )

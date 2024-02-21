@@ -32,6 +32,7 @@ from paasta_tools import __version__
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
+from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import MarathonClient
@@ -95,6 +96,7 @@ def parse_args(argv):
     parser.add_argument(
         "-s",
         "--service",
+        dest="service_name",
         help=(
             "Show how many of a given service instance can be run on a cluster slave."
             "Note: This is only effective with -vvv and --instance must also be specified"
@@ -103,6 +105,7 @@ def parse_args(argv):
     parser.add_argument(
         "-i",
         "--instance",
+        dest="instance_name",
         help=(
             "Show how many of a given service instance can be run on a cluster slave."
             "Note: This is only effective with -vvv and --service must also be specified"
@@ -227,13 +230,17 @@ def utilization_table_by_grouping_from_kube(
     groupings: Sequence[str],
     threshold: float,
     kube_client: KubeClient,
+    *,
+    namespace: str,
     service_instance_stats: Optional[ServiceInstanceStats] = None,
 ) -> Tuple[Sequence[MutableSequence[str]], bool]:
     grouping_function = metastatus_lib.key_func_for_attribute_multi_kube(groupings)
 
     resource_info_dict_grouped = (
         metastatus_lib.get_resource_utilization_by_grouping_kube(
-            grouping_function, kube_client
+            grouping_func=grouping_function,
+            kube_client=kube_client,
+            namespace=namespace,
         )
     )
 
@@ -311,9 +318,9 @@ def get_service_instance_stats(
 
 
 def _run_kube_checks(
-    kube_client: KubeClient,
+    kube_client: KubeClient, namespace: str
 ) -> Sequence[HealthCheckResult]:
-    kube_status = metastatus_lib.get_kube_status(kube_client)
+    kube_status = metastatus_lib.get_kube_status(kube_client, namespace)
     kube_metrics_status = metastatus_lib.get_kube_resource_utilization_health(
         kube_client=kube_client
     )
@@ -327,7 +334,11 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
     args = parse_args(argv)
 
     system_paasta_config = load_system_paasta_config()
-
+    service_config_dict = load_kubernetes_service_config(
+        service=args.service_name,
+        instance=args.instance_name,
+        cluster=system_paasta_config.get_cluster(),
+    )
     if mesos_available:
         master_kwargs = {}
         # we don't want to be passing False to not override a possible True
@@ -369,7 +380,9 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
 
     if kube_available:
         kube_client = KubeClient()
-        kube_results = _run_kube_checks(kube_client)
+        kube_results = _run_kube_checks(
+            kube_client, service_config_dict.get_namespace()
+        )
     else:
         kube_results = [
             metastatus_lib.HealthCheckResult(
@@ -437,7 +450,10 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
     if args.verbose > 1 and kube_available:
         print_with_indent("Resources Grouped by %s" % ", ".join(args.groupings), 2)
         all_rows, healthy_exit = utilization_table_by_grouping_from_kube(
-            groupings=args.groupings, threshold=args.threshold, kube_client=kube_client
+            groupings=args.groupings,
+            threshold=args.threshold,
+            kube_client=kube_client,
+            namespace=service_config_dict.get_namespace(),
         )
         for line in format_table(all_rows):
             print_with_indent(line, 4)
@@ -460,6 +476,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
                 threshold=args.threshold,
                 kube_client=kube_client,
                 service_instance_stats=service_instance_stats,
+                namespace=service_config_dict.get_namespace(),
             )
             # The last column from utilization_table_by_grouping_from_kube is "Agent count", which will always be
             # 1 for per-node resources, so delete it.

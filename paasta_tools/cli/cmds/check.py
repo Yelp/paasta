@@ -77,7 +77,13 @@ def deploy_check(service_path):
 
 def deploy_has_security_check(service, soa_dir):
     pipeline = get_pipeline_config(service=service, soa_dir=soa_dir)
-    steps = [step["step"] for step in pipeline]
+    steps = [step["step"] for step in pipeline if not step.get("parallel")]
+    steps += [
+        substep["step"]
+        for step in pipeline
+        if step.get("parallel")
+        for substep in step.get("parallel")
+    ]
     if "security-check" in steps:
         print(PaastaCheckMessages.DEPLOY_SECURITY_FOUND)
         return True
@@ -97,13 +103,12 @@ def docker_check():
 
 
 def makefile_responds_to(target):
-    """Runs `make --dry-run <target>` to detect if a makefile responds to the
+    """Runs `make --question <target>` to detect if a makefile responds to the
     specified target."""
-    cmd = "make --dry-run %s" % target
     # According to http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make,
-    # 0 means OK, and 2 means error
-    returncode, _ = _run(cmd, timeout=5)
-    return returncode == 0
+    # 0 means OK, 1 means the target is not up to date, and 2 means error
+    returncode, _ = _run(["make", "--question", target], timeout=5)
+    return returncode != 2
 
 
 def makefile_has_a_tab(makefile_path):

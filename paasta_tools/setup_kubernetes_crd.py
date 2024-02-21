@@ -28,10 +28,12 @@ from typing import Sequence
 
 import service_configuration_lib
 from kubernetes.client import V1beta1CustomResourceDefinition
-from kubernetes.client.rest import ApiException
+from kubernetes.client import V1CustomResourceDefinition
+from kubernetes.client.exceptions import ApiException
 
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import paasta_prefixed
+from paasta_tools.kubernetes_tools import update_crds
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
@@ -104,7 +106,22 @@ def setup_kube_crd(
         label_selector=paasta_prefixed("service")
     )
 
-    success = True
+    # This step can fail in k8s 1.22 since this version is not existing anymore
+    # we need to support this for the transition
+    try:
+        existing_crds_v1_beta1 = (
+            kube_client.apiextensions_v1_beta1.list_custom_resource_definition(
+                label_selector=paasta_prefixed("service")
+            )
+        )
+    except ApiException:
+        existing_crds_v1_beta1 = []
+        log.debug(
+            "Listing CRDs with apiextensions/v1beta1 not supported on this cluster, falling back to v1"
+        )
+
+    desired_crds = []
+    desired_crds_v1_beta1 = []
     for service in services:
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f"crd-{cluster}", soa_dir=soa_dir
@@ -118,50 +135,33 @@ def setup_kube_crd(
             metadata["labels"] = {}
         metadata["labels"]["yelp.com/paasta_service"] = service
         metadata["labels"][paasta_prefixed("service")] = service
-        desired_crd = V1beta1CustomResourceDefinition(
-            api_version=crd_config.get("apiVersion"),
-            kind=crd_config.get("kind"),
-            metadata=metadata,
-            spec=crd_config.get("spec"),
-        )
 
-        existing_crd = None
-        for crd in existing_crds.items:
-            if crd.metadata.name == desired_crd.metadata["name"]:
-                existing_crd = crd
-                break
-
-        try:
-            if existing_crd:
-                desired_crd.metadata[
-                    "resourceVersion"
-                ] = existing_crd.metadata.resource_version
-                kube_client.apiextensions.replace_custom_resource_definition(
-                    name=desired_crd.metadata["name"], body=desired_crd
-                )
-            else:
-                try:
-                    kube_client.apiextensions.create_custom_resource_definition(
-                        body=desired_crd
-                    )
-                except ValueError as err:
-                    # TODO: kubernetes server will sometimes reply with conditions:null,
-                    # figure out how to deal with this correctly, for more details:
-                    # https://github.com/kubernetes/kubernetes/pull/64996
-                    if "`conditions`, must not be `None`" in str(err):
-                        pass
-                    else:
-                        raise err
-            log.info(f"deployed {desired_crd.metadata['name']} for {cluster}:{service}")
-        except ApiException as exc:
-            log.error(
-                f"error deploying crd for {cluster}:{service}, "
-                f"status: {exc.status}, reason: {exc.reason}"
+        if "apiextensions.k8s.io/v1beta1" == crd_config["apiVersion"]:
+            desired_crd = V1beta1CustomResourceDefinition(
+                api_version=crd_config.get("apiVersion"),
+                kind=crd_config.get("kind"),
+                metadata=metadata,
+                spec=crd_config.get("spec"),
             )
-            log.debug(exc.body)
-            success = False
+            desired_crds_v1_beta1.append(desired_crd)
+        else:
+            desired_crd = V1CustomResourceDefinition(
+                api_version=crd_config.get("apiVersion"),
+                kind=crd_config.get("kind"),
+                metadata=metadata,
+                spec=crd_config.get("spec"),
+            )
+            desired_crds.append(desired_crd)
 
-    return success
+    return update_crds(
+        kube_client=kube_client,
+        desired_crds=desired_crds,
+        existing_crds=existing_crds,
+    ) and update_crds(
+        kube_client=kube_client,
+        desired_crds=desired_crds_v1_beta1,
+        existing_crds=existing_crds_v1_beta1,
+    )
 
 
 if __name__ == "__main__":

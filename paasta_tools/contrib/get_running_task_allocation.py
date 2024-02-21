@@ -4,6 +4,7 @@ import time
 from typing import Any
 from typing import Dict
 from typing import Iterable
+from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
@@ -40,6 +41,7 @@ class TaskAllocationInfo(NamedTuple):
     git_sha: str
     config_sha: str
     mesos_container_id: str  # Because Mesos task info does not have docker id
+    namespace: Optional[str]
 
 
 def get_container_info_from_mesos_task(
@@ -107,6 +109,7 @@ async def get_mesos_task_allocation_info() -> Iterable[TaskAllocationInfo]:
                 git_sha=None,
                 config_sha=None,
                 mesos_container_id=mesos_container_id,
+                namespace=None,
             )
         )
     return info_list
@@ -150,14 +153,13 @@ def get_pod_pool(
     pool = "default"
     if node:
         if node.metadata.labels:
-            pool = node.metadata.labels.get("yelp.com/pool", "default")
+            pool = node.metadata.labels.get("paasta.yelp.com/pool", "default")
     return pool
 
 
 def get_kubernetes_metadata(
     pod: V1Pod,
 ) -> Tuple[
-    Optional[str],
     Optional[str],
     Optional[str],
     Optional[str],
@@ -189,8 +191,9 @@ def get_container_type(container_name: str, instance_name: str) -> str:
         return container_name
 
 
-def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocationInfo]:
-    client = KubeClient()
+def get_kubernetes_task_allocation_info(
+    namespace: str, client: KubeClient
+) -> Iterable[TaskAllocationInfo]:
     pods = get_all_running_kubernetes_pods(client, namespace)
     info_list = []
     for pod in pods:
@@ -246,6 +249,7 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
                     git_sha=info.get("git_sha"),
                     config_sha=info.get("config_sha"),
                     mesos_container_id=None,
+                    namespace=namespace,
                 )
             )
 
@@ -253,12 +257,14 @@ def get_kubernetes_task_allocation_info(namespace: str) -> Iterable[TaskAllocati
 
 
 def get_task_allocation_info(
-    scheduler: str, namespace: str
+    scheduler: str,
+    namespace: str,
+    kube_client: Optional[KubeClient],
 ) -> Iterable[TaskAllocationInfo]:
     if scheduler == "mesos":
         return get_mesos_task_allocation_info()
     elif scheduler == "kubernetes":
-        return get_kubernetes_task_allocation_info(namespace)
+        return get_kubernetes_task_allocation_info(namespace, kube_client)
     else:
         return []
 
@@ -269,35 +275,64 @@ def parse_args() -> argparse.Namespace:
         "--scheduler",
         help="Scheduler to get task info from",
         dest="scheduler",
-        default="mesos",
+        default="kubernetes",
         choices=["mesos", "kubernetes"],
     )
     parser.add_argument(
+        "--additional-namespaces-exclude",
+        help="full names of namespaces to not fetch allocation info for those that don't match --namespace-prefix-exlude",
+        dest="additional_namespaces_exclude",
+        nargs="+",
+        default=[],
+    )
+    parser.add_argument(
         "--namespace-prefix",
-        help="prefix of the namespace to fetch the logs for"
-        "Used only when scheduler is kubernetes",
+        help=argparse.SUPPRESS,
         dest="namespace_prefix",
         default="paasta",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--additional-namespaces",
+        help=argparse.SUPPRESS,
+        dest="additional_namespaces",
+        nargs="+",
+        # we default this to tron since this is really the only non-paasta-prefix namespaced that is part of paasta
+        # and we'd like to not run two cronjobs to get this information :p
+        default=["tron"],
+    )
+    args = parser.parse_args()
+
+    args.additional_namespaces_exclude = set(args.additional_namespaces_exclude)
+
+    return args
+
+
+def get_unexcluded_namespaces(
+    namespaces: List[str], excluded_namespaces: List[str]
+) -> List[str]:
+    return [n for n in namespaces if n not in excluded_namespaces]
 
 
 def main(args: argparse.Namespace) -> None:
     cluster = load_system_paasta_config().get_cluster()
-    if args.scheduler == "mesos":
-        display_task_allocation_info(cluster, args.scheduler, args.namespace_prefix)
-    else:
-        client = KubeClient()
-        all_namespaces = kubernetes_tools.get_all_namespaces(client)
-        matching_namespaces = [
-            n for n in all_namespaces if n.startswith(args.namespace_prefix)
-        ]
-        for matching_namespace in matching_namespaces:
-            display_task_allocation_info(cluster, args.scheduler, matching_namespace)
+    kube_client = KubeClient()
+    all_namespaces = kubernetes_tools.get_all_namespaces(kube_client)
+    for matching_namespace in get_unexcluded_namespaces(
+        all_namespaces,
+        args.additional_namespaces_exclude,
+    ):
+        display_task_allocation_info(
+            cluster, args.scheduler, matching_namespace, kube_client
+        )
 
 
-def display_task_allocation_info(cluster, scheduler, namespace):
-    info_list = get_task_allocation_info(scheduler, namespace)
+def display_task_allocation_info(
+    cluster: str,
+    scheduler: str,
+    namespace: str,
+    kube_client: Optional[KubeClient],
+) -> None:
+    info_list = get_task_allocation_info(scheduler, namespace, kube_client)
     timestamp = time.time()
     for info in info_list:
         info_dict = info._asdict()

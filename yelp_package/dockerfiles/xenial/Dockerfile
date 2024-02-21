@@ -15,10 +15,8 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}xenial_pkgbuild
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/xenial/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
-
-RUN sed -i 's/archive.ubuntu.com/us-east1.gce.archive.ubuntu.com/g' /etc/apt/sources.list
 
 RUN echo "deb http://repos.mesosphere.com/ubuntu xenial main" > /etc/apt/sources.list.d/mesosphere.list && \
     apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
@@ -35,7 +33,7 @@ RUN apt-get update > /dev/null && \
         libssl-dev \
         libyaml-dev \
         python-pip \
-        python3.7-dev \
+        python3.8-dev \
         software-properties-common \
         wget \
         zsh > /dev/null \
@@ -46,7 +44,7 @@ ADD mesos-slave-secret /etc/mesos-slave-secret
 COPY requirements.txt requirements.txt
 RUN python -m pip install --upgrade pip==20.0.2
 RUN pip install virtualenv==16.7.7
-RUN virtualenv --python=python3.7 venv && venv/bin/pip install -r requirements.txt
+RUN virtualenv --python=python3.8 venv && venv/bin/pip install -r requirements.txt
 
 
 WORKDIR /work

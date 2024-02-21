@@ -53,6 +53,7 @@ class TestMarathonTools:
             "desired_state": "start",
             "force_bounce": None,
             "git_sha": "deadbeef",
+            "image_version": None,
         },
     )
     fake_srv_config = {
@@ -159,6 +160,7 @@ class TestMarathonTools:
                 "force_bounce": "12345",
                 "docker_image": fake_docker,
                 "git_sha": "9",
+                "image_version": None,
             }
         )
         deployments_json_mock = mock.Mock(
@@ -285,6 +287,7 @@ class TestMarathonTools:
         fake_discover = "myhabitat"
         fake_advertise = ["red", "blue"]
         fake_body_expect = r'"master\/elected":1'
+        fake_lb_policy = "ROUND_ROBIN"
         fake_info = {
             "healthcheck_mode": fake_healthcheck_mode,
             "healthcheck_uri": fake_uri,
@@ -293,7 +296,6 @@ class TestMarathonTools:
             "proxy_port": fake_port,
             "timeout_connect_ms": 192,
             "timeout_server_ms": 291,
-            "timeout_client_ms": 912,
             "updown_timeout_s": 293,
             "retries": fake_retries,
             "mode": mode,
@@ -305,6 +307,7 @@ class TestMarathonTools:
             "advertise": fake_advertise,
             "extra_advertise": {"alpha": ["beta"], "gamma": ["delta", "epsilon"]},
             "extra_healthcheck_headers": {"Host": "example.com"},
+            "lb_policy": fake_lb_policy,
         }
         expected = {
             "healthcheck_mode": fake_healthcheck_mode,
@@ -314,7 +317,6 @@ class TestMarathonTools:
             "proxy_port": fake_port,
             "timeout_connect_ms": 192,
             "timeout_server_ms": 291,
-            "timeout_client_ms": 912,
             "updown_timeout_s": 293,
             "retries": fake_retries,
             "mode": mode,
@@ -331,6 +333,7 @@ class TestMarathonTools:
                 ("gamma", "epsilon"),
             ],
             "extra_healthcheck_headers": {"Host": "example.com"},
+            "lb_policy": fake_lb_policy,
         }
         with mock.patch(
             "service_configuration_lib.read_extra_service_information",
@@ -915,11 +918,15 @@ class TestMarathonTools:
             "paasta_tools.marathon_tools.load_service_namespace_config",
             autospec=True,
             return_value={"ten": 10},
+        ), mock.patch(
+            "multiprocessing.cpu_count",
+            return_value=13,
+            autospec=True,
         ):
             info = marathon_tools.get_classic_service_information_for_nerve(
                 "no_water", "we_are_the_one"
             )
-            assert info == ("no_water.main", {"ten": 10, "port": 101})
+            assert info == ("no_water.main", {"ten": 10, "port": 101, "weight": 13})
 
     def test_get_puppet_services_that_run_here(self):
         with mock.patch(
@@ -1108,6 +1115,7 @@ class TestMarathonTools:
                 "docker_image": "dockervania_from_konami",
                 "force_bounce": None,
                 "git_sha": "deadbeef",
+                "image_version": None,
             },
         )
         with mock.patch(
@@ -1153,6 +1161,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "stop",
                 "git_sha": "deadbeef",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1303,6 +1312,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "start",
                 "git_sha": "cafebabe",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1328,6 +1338,7 @@ class TestMarathonTools:
             branch_dict={
                 "desired_state": "start",
                 "git_sha": "baaaaaa",
+                "image_version": None,
                 "docker_image": "docker_image",
                 "force_bounce": None,
             },
@@ -1657,7 +1668,7 @@ class TestMarathonTools:
             )
             args, kwargs = client_patch.call_args
             assert "User-Agent" in kwargs["session"].headers
-            assert "py.test" in kwargs["session"].headers["User-Agent"]
+            assert "test" in kwargs["session"].headers["User-Agent"]
 
     def test_list_all_marathon_app_ids(self):
         fakeapp1 = mock.Mock(id="/fake_app1")
@@ -1737,7 +1748,7 @@ class TestMarathonTools:
     def test_add_leading_slash(self):
         fake_client = mock.Mock(list_tasks=mock.Mock(return_value=[{}, {}, {}, {}]))
         marathon_tools.app_has_tasks(fake_client, "fake_app", 4)
-        assert fake_client.list_tasks.called_with("/fake_app")
+        fake_client.list_tasks.assert_called_with(app_id="/fake_app")
 
     def test_get_config_hash(self):
         test_input = {"foo": "bar"}
@@ -1770,6 +1781,7 @@ class TestMarathonTools:
                 "force_bounce": "88888",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1783,6 +1795,7 @@ class TestMarathonTools:
                 "force_bounce": "99999",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1796,6 +1809,7 @@ class TestMarathonTools:
                 "force_bounce": "99999",
                 "git_sha": "deadbeef",
                 "docker_image": "doesntmatter",
+                "image_version": None,
             },
         )
 
@@ -1855,6 +1869,7 @@ class TestMarathonTools:
                     "force_bounce": "99999",
                     "git_sha": "deadface",
                     "docker_image": "docker_image",
+                    "image_version": None,
                 },
             )
             with raises(NoSlavesAvailableError) as excinfo:
@@ -2354,6 +2369,7 @@ class TestMarathonServiceConfig:
             branch_dict={
                 "docker_image": "abcdef",
                 "git_sha": "deadbeef",
+                "image_version": None,
                 "force_bounce": None,
                 "desired_state": "start",
             },
@@ -2401,6 +2417,7 @@ def test_format_marathon_app_dict_no_smartstack():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2501,6 +2518,7 @@ def test_format_marathon_app_dict_with_smartstack():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2616,6 +2634,7 @@ def test_format_marathon_app_dict_utilizes_net():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2673,6 +2692,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
         branch_dict={
             "docker_image": "abcdef",
             "git_sha": "deadbeef",
+            "image_version": None,
             "force_bounce": None,
             "desired_state": "start",
         },
@@ -2851,6 +2871,7 @@ def test_marathon_service_config_copy():
         branch_dict={
             "docker_image": "test2",
             "git_sha": "beefd00d",
+            "image_version": None,
             "desired_state": "start",
             "force_bounce": None,
         },

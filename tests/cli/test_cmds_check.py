@@ -331,7 +331,7 @@ def test_check_parallel_fails(mock_get_config_file_dict):
         ],
     }
 
-    assert validate_schema("my/fake-service", "deploy") is None
+    assert validate_schema("my/fake-service", "deploy") is False
 
 
 @patch("paasta_tools.cli.cmds.check._run", autospec=True)
@@ -409,6 +409,24 @@ def test_deploy_has_security_check_true(mock_pipeline_config, capfd):
     mock_pipeline_config.return_value = [
         {"step": "itest"},
         {"step": "security-check"},
+        {"step": "push-to-registry"},
+        {"step": "hab.canary", "trigger_next_step_manually": True},
+        {"step": "hab.main"},
+    ]
+    actual = deploy_has_security_check(service="fake_service", soa_dir="/fake/path")
+    assert actual is True
+
+
+@patch("paasta_tools.cli.cmds.check.get_pipeline_config", autospec=True)
+def test_deploy_has_parallel_security_check_true(mock_pipeline_config, capfd):
+    mock_pipeline_config.return_value = [
+        {
+            "step": "initial",
+            "parallel": [
+                {"step": "test"},
+                {"step": "security-check"},
+            ],
+        },
         {"step": "push-to-registry"},
         {"step": "hab.canary", "trigger_next_step_manually": True},
         {"step": "hab.main"},

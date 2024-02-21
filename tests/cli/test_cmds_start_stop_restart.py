@@ -190,7 +190,7 @@ def test_paasta_start_or_stop(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None, "canary": None}},
@@ -303,7 +303,7 @@ def test_paasta_start_or_stop_with_deploy_group(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = args.deploy_group
     mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"instance1": None}}
@@ -385,7 +385,7 @@ def test_stop_or_start_figures_out_correct_instances(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     mock_get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None}},
@@ -584,7 +584,7 @@ def test_start_warn_on_multi_instance(
     mock_get_instance_config.return_value = mock_instance_config
     mock_instance_config.get_deploy_group.return_value = "some_group"
     get_remote_refs.return_value = ["not_a_real_tag", "fake_tag"]
-    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None)
+    mock_get_latest_deployment_tag.return_value = ("not_a_real_tag", None, None)
     mock_format_timestamp.return_value = "not_a_real_timestamp"
     mock_apply_args_filters.return_value = {
         "cluster1": {"fake_service": {"main1": None}, "other_service": {"main1": None}},

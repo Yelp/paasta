@@ -16,6 +16,7 @@ Directions (For PaaSTA Users)
    autoscaling
    hpa
    deploy_groups
+   persistent_volumes
 
 About PaaSTA's Architecture
 ---------------------------
@@ -33,6 +34,7 @@ PaaSTA Development
 .. toctree::
    :maxdepth: 2
 
+   paasta_development
    contributing
    style_guide
    upgrading_marathon

@@ -8,7 +8,8 @@
             "properties": {
                 "parallel": {},
                 "step": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_.-]+$"
                 },
                 "trigger_next_step_manually": {
                     "type": "boolean"
@@ -100,6 +101,9 @@
                 },
                 "confirm_complete": {
                     "type": "boolean"
+                },
+                "enable_automated_redeploys": {
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -147,6 +151,16 @@
         },
         "slack_notify": {
             "type": "boolean"
+        },
+        "allow_no_verify_deploy": {
+            "type": "boolean"
+        },
+        "default_deploy_strategy": {
+            "type": "string",
+            "enum": [
+                "verify",
+                "no-verify"
+            ]
         }
     },
     "required": [

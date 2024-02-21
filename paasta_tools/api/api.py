@@ -16,6 +16,7 @@
 Responds to paasta service and instance requests.
 """
 import argparse
+import contextlib
 import logging
 import os
 import sys
@@ -73,6 +74,12 @@ def parse_paasta_api_args():
         dest="max_request_seconds",
         help="Maximum seconds allowed for a worker to process a request",
     )
+    parser.add_argument(
+        "-w",
+        "--workers",
+        default=4,
+        help="Number of gunicorn workers to run",
+    )
     args = parser.parse_args()
     return args
 
@@ -99,6 +106,22 @@ def make_app(global_config=None):
 
     config.include("pyramid_swagger")
     config.include(request_logger)
+
+    config.add_route(
+        "flink.service.instance.jobs", "/v1/flink/{service}/{instance}/jobs"
+    )
+
+    config.add_route(
+        "flink.service.instance.job_details",
+        "/v1/flink/{service}/{instance}/jobs/{job_id}",
+    )
+
+    config.add_route(
+        "flink.service.instance.overview", "/v1/flink/{service}/{instance}/overview"
+    )
+    config.add_route(
+        "flink.service.instance.config", "/v1/flink/{service}/{instance}/config"
+    )
     config.include(profiling)
 
     config.add_route("resources.utilization", "/v1/resources/utilization")
@@ -250,11 +273,10 @@ def main(argv=None):
     if args.cluster:
         os.environ["PAASTA_API_CLUSTER"] = args.cluster
 
-    os.execlp(
-        os.path.join(sys.exec_prefix, "bin", "gunicorn"),
+    gunicorn_args = [
         "gunicorn",
         "-w",
-        "4",
+        str(args.workers),
         "--bind",
         f":{args.port}",
         "--timeout",
@@ -262,7 +284,23 @@ def main(argv=None):
         "--graceful-timeout",
         str(args.max_request_seconds),
         "paasta_tools.api.api:application",
-    )
+    ]
+
+    if argv:
+        with redirect_argv(gunicorn_args):
+            from gunicorn.app import wsgiapp
+
+            wsgiapp.run()
+    else:
+        os.execlp(os.path.join(sys.exec_prefix, "bin", "gunicorn"), *gunicorn_args)
+
+
+@contextlib.contextmanager
+def redirect_argv(args):
+    sys._argv = sys.argv[:]
+    sys.argv = args
+    yield
+    sys.argv = sys._argv
 
 
 if __name__ == "__main__":
