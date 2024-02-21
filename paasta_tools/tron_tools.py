@@ -336,6 +336,11 @@ class TronActionConfig(InstanceConfig):
                 "force_spark_resource_configs", False
             ),
         )
+        if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
+            print(
+                f"Removing spark.kubernetes.executor.podTemplateFile={spark_conf['spark.kubernetes.executor.podTemplateFile']}"
+            )
+            del spark_conf["spark.kubernetes.executor.podTemplateFile"]
 
         spark_conf.update(
             {
@@ -984,16 +989,16 @@ def format_tron_action_dict(action_config: TronActionConfig):
                     "host_path": system_paasta_config.get_spark_kubeconfig(),
                     "mode": "RO",
                 },
-                # mount pod template file used for executors
-                {
-                    "container_path": spark_config.get(
-                        "spark.kubernetes.executor.podTemplateFile", ""
-                    ),
-                    "host_path": spark_config.get(
-                        "spark.kubernetes.executor.podTemplateFile", ""
-                    ),
-                    "mode": "RO",
-                },
+                # # mount pod template file used for executors
+                # {
+                #     "container_path": spark_config.get(
+                #         "spark.kubernetes.executor.podTemplateFile", ""
+                #     ),
+                #     "host_path": spark_config.get(
+                #         "spark.kubernetes.executor.podTemplateFile", ""
+                #     ),
+                #     "mode": "RO",
+                # },
             ]
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
