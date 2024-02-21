@@ -1,4 +1,4 @@
 pip==18.1
-setuptools==39.0.1
+setuptools==69.1.0
 venv-update==3.2.4
 wheel==0.32.3
