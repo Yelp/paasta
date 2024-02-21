@@ -21,7 +21,7 @@ pycparser==2.20
 pygpgme==0.3
 pyopenssl==19.0.0
 PySubnetTree==0.34
-python-jsonschema-objects==0.3.1
+python-jsonschema-objects==0.5.2
 retrying==1.3.3
 scribereader==0.15.0
 signalform-tools==0.0.16
