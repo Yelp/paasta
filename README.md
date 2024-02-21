@@ -32,7 +32,7 @@ before it works completely:
  * [Kubernetes](https://kubernetes.io/) for code execution and scheduling (runs Docker containers)
  * [Tron](https://tron.readthedocs.io/en/latest/) for running things on a timer (nightly batches)
  * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) and [Envoy](https://www.envoyproxy.io/) for service registration and discovery
- * [Sensu](https://sensuapp.org/) for monitoring/alerting
+ * [Sensu](https://sensu.io/) for monitoring/alerting
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
  * [Prometheus](https://prometheus.io/) and [HPA](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/) for autoscaling services
 
