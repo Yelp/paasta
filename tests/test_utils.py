@@ -2887,7 +2887,7 @@ def test_is_secrets_for_teams_enabled():
             argparse.Namespace(cluster="test-cluster", pool="test-pool"),
             SystemPaastaConfig(
                 SystemPaastaConfigDict(
-                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}  # type: ignore
                 ),
                 "fake_dir",
             ),

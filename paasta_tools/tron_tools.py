@@ -274,10 +274,14 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # ...but tron are using command - this is going to require a little
     # maneuvering to unify
     command: str
+    service_account_name: str
+
     # the values for this dict can be anything since it's whatever
     # spark accepts
     spark_args: Dict[str, Any]
-    service_account_name: str
+    image: str
+    force_spark_resource_configs: bool
+    timeout_spark: str
 
 
 class TronActionConfig(InstanceConfig):
