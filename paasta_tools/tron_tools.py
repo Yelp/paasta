@@ -108,6 +108,7 @@ EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
 SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
 SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 SPARK_DRIVER_POOL = "stable"
+SPARK_JOB_USER = "TRON"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -249,6 +250,25 @@ def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
 
+# TODO: Reuse by ad-hoc Spark-driver-on-k8s
+def _get_spark_driver_monitoring_annotations_labels(
+    spark_config: Dict[str, str],
+) -> Tuple[Dict[str, str], Dict[str, str]]:
+    """
+    A tuple of [pod annotation dict, pod labels dict].
+    """
+    annotations = {
+        "prometheus.io/scrape": "true",
+    }
+
+    labels = {
+        "paasta.yelp.com/prometheus_shard": "ml-compute",
+        "spark.yelp.com/user": SPARK_JOB_USER,
+        "spark.yelp.com/driver_ui_port": str(spark_config.get("spark.ui.port", "")),
+    }
+    return annotations, labels
+
+
 class TronActionConfigDict(InstanceConfigDict, total=False):
     # this is kinda confusing: long-running stuff is currently using cmd
     # ...but tron are using command - this is going to require a little
@@ -335,6 +355,7 @@ class TronActionConfig(InstanceConfig):
             force_spark_resource_configs=self.config_dict.get(
                 "force_spark_resource_configs", False
             ),
+            user=SPARK_JOB_USER,
         )
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
             print(
@@ -1004,6 +1025,14 @@ def format_tron_action_dict(action_config: TronActionConfig):
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             # result["ports"] = get_spark_ports_from_config(spark_config)
+
+            # Add pod annotations and labels for Spark monitoring metrics
+            (
+                monitoring_annotations,
+                monitoring_labels,
+            ) = _get_spark_driver_monitoring_annotations_labels(spark_config)
+            result["annotations"].update(monitoring_annotations)
+            result["labels"].update(monitoring_labels)
 
     elif executor in MESOS_EXECUTOR_NAMES:
         result["executor"] = "mesos"
