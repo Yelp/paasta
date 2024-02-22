@@ -11,7 +11,7 @@ docutils==0.19
 filelock==3.13.1
 flake8==7.0.0
 freezegun==1.4.0
-hypothesis==6.98.9
+hypothesis==6.79.4
 identify==2.5.35
 imagesize==1.4.1
 importlib-metadata==7.0.1
