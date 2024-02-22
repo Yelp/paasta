@@ -1,3 +1,10 @@
+paasta-tools (0.218.8) xenial; urgency=medium
+
+  * 0.218.8 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1926_home"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 22 Feb 2024 06:38:58 -0800
+
 paasta-tools (0.218.7) xenial; urgency=medium
 
   * 0.218.7 tagged with 'make release'
