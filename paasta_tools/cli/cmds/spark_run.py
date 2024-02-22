@@ -44,6 +44,7 @@ from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import is_using_unprivileged_containers
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -485,7 +486,13 @@ def get_docker_run_cmd(
         if sys.stdout.isatty():
             cmd.append("--tty=true")
 
-    cmd.append("--user=%d:%d" % (os.geteuid(), os.getegid()))
+    container_user = (
+        # root inside container == current user outside
+        (0, 0)
+        if is_using_unprivileged_containers()
+        else (os.geteuid(), os.getegid())
+    )
+    cmd.append("--user=%d:%d" % container_user)
     cmd.append("--name=%s" % sanitize_container_name(container_name))
     for k, v in env.items():
         cmd.append("--env")
@@ -493,6 +500,9 @@ def get_docker_run_cmd(
             cmd.append(k)
         else:
             cmd.append(f"{k}={v}")
+    if is_using_unprivileged_containers():
+        cmd.append("--env")
+        cmd.append(f"HOME=/nail/home/{get_username()}")
     if nvidia:
         cmd.append("--env")
         cmd.append("NVIDIA_VISIBLE_DEVICES=all")

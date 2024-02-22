@@ -675,7 +675,9 @@ def create_or_update_k8s_secret(
     :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
     """
     # In order to prevent slamming the k8s API, add some artificial delay here
-    time.sleep(0.3)
+    delay = load_system_paasta_config().get_secret_sync_delay_seconds()
+    if delay:
+        time.sleep(delay)
 
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,

@@ -637,6 +637,15 @@ class ScribeLogReader(LogReader):
             )
         self.cluster_map = cluster_map
 
+    def get_scribereader_selector(self, scribe_env: str) -> str:
+        # this is kinda silly, but until the scribereader cli becomes more ergonomic
+        # we'll need to do a little bit of string munging to let humans use scribereader
+        # in the same way we are (tl;dr: scribereader has sorta confusing behavior between
+        # what can be use for --ecosystem, --region, and --superregion and the fastest/least
+        # hacky thing to figure out which we wanna use is that any env with a - in it is a region
+        # and any without one is an ecosystem)
+        return "-e" if "-" in scribe_env else "-r"
+
     def run_code_over_scribe_envs(
         self,
         clusters: Sequence[str],
@@ -745,8 +754,10 @@ class ScribeLogReader(LogReader):
             else:
                 kw["stream_name"] = stream_info.stream_name_fn(service)
             log.debug(
-                "Running the equivalent of 'scribereader -e {} {}'".format(
-                    scribe_env, kw["stream_name"]
+                "Running the equivalent of 'scribereader {} {} {}'".format(
+                    self.get_scribereader_selector(scribe_env),
+                    scribe_env,
+                    kw["stream_name"],
                 )
             )
             process = Process(target=self.scribe_tail, kwargs=kw)
@@ -1036,8 +1047,14 @@ class ScribeLogReader(LogReader):
         end_date_yst = end_time.astimezone(pytz.timezone("America/Los_Angeles")).date()
 
         log.debug(
-            "Running the equivalent of 'scribereader -e %s %s --min-date %s --max-date %s"
-            % (scribe_env, stream_name, start_date_yst, end_date_yst)
+            "Running the equivalent of 'scribereader %s %s %s --min-date %s --max-date %s"
+            % (
+                self.get_scribereader_selector(scribe_env),
+                scribe_env,
+                stream_name,
+                start_date_yst,
+                end_date_yst,
+            )
         )
         return scribereader.get_stream_reader(
             stream_name=stream_name,
@@ -1064,7 +1081,7 @@ class ScribeLogReader(LogReader):
         @contextmanager
         def fake_context():
             log.debug(
-                f"Running the equivalent of 'scribereader -e {scribe_env} {stream_name}'"
+                f"Running the equivalent of 'scribereader -n {line_count} {self.get_scribereader_selector(scribe_env)} {scribe_env} {stream_name}'"
             )
             yield scribereader.get_stream_tailer(
                 stream_name=stream_name,
