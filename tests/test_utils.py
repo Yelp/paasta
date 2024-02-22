@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import datetime
 import json
 import os
@@ -28,6 +29,9 @@ from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -2840,3 +2844,67 @@ def test_is_secrets_for_teams_enabled():
         # if not present
         mock_read_extra_service_information.return_value = {"description": "something"}
         assert not utils.is_secrets_for_teams_enabled(service)
+
+
+@pytest.mark.parametrize(
+    "args,system_paasta_config,expected",
+    [
+        (
+            # allowed_pools key has test-cluster and test-pool
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            {"pass": True},
+        ),
+        (
+            # allowed_pools key has test-cluster but doesn't have test-pool
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["fail-test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            {"pass": False},
+        ),
+        (
+            # allowed_pools key doesn't have test-cluster
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            {},
+        ),
+        (
+            # allowed_pools key is not present
+            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            {},
+        ),
+    ],
+)
+def test_validate_pool(args, system_paasta_config, expected):
+    if "pass" in expected:
+        assert (
+            utils.validate_pool(args.cluster, args.pool, system_paasta_config)
+            == expected["pass"]
+        )
+    else:
+        raised = False
+        try:
+            utils.validate_pool(args.cluster, args.pool, system_paasta_config)
+        except PoolsNotConfiguredError:
+            raised = True
+        assert raised is True
