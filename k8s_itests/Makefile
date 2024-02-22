@@ -37,7 +37,7 @@ ifeq (,$(wildcard ./kind))
 endif
 
 itest: .create_cluster
-	../.paasta/bin/tox -e k8s_itests
+	tox -e k8s_itests
 
 clean:
 	./scripts/clean.sh $(PAASTA_CONFIG_DIR) $(CLUSTER) 2>/dev/null || true

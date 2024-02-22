@@ -32,46 +32,36 @@ endif
 
 .PHONY: all docs test itest k8s_itests quick-test
 
-dev: .paasta/bin/activate
-	.paasta/bin/tox
+dev:
+	tox
 
-docs: .paasta/bin/activate
-	.paasta/bin/tox -e docs
+docs:
+	tox -e docs
 
-test: .paasta/bin/activate
+test:
 	if [ "$(PAASTA_ENV)" != "YELP" ]; then \
-		.paasta/bin/tox -e tests; \
+		tox -e tests; \
 	else \
-		.paasta/bin/tox -e tests-yelpy; \
+		tox -e tests-yelpy; \
 	fi
 
-test-yelpy: .paasta/bin/activate
-	.paasta/bin/tox -e tests-yelpy
+test-yelpy:
+	tox -e tests-yelpy
 
-test-not-yelpy: .paasta/bin/activate
-	.paasta/bin/tox -e tests
+test-not-yelpy:
+	tox -e tests
 
 quick-test: .tox/py38-linux
 	TZ=UTC .tox/py38-linux/bin/py.test --failed-first -x --disable-warnings -- tests
 
-.tox/py38-linux: .paasta/bin/activate
-	.paasta/bin/tox
+.tox/py38-linux:
+	tox
 
 dev-api: .tox/py38-linux
-	.paasta/bin/tox -e dev-api
+	tox -e dev-api
 
-.paasta/bin/activate: requirements.txt requirements-dev.txt
-	test -d .paasta/bin/activate || virtualenv -p python3.8 .paasta
-	.paasta/bin/pip install -U \
-		pip==22.0.4 \
-		virtualenv==16.2.0 \
-		tox==3.7.0 \
-		tox-requirements-bootstrap==1.1.0 \
-		tox-pip-extensions==1.4.2
-	touch .paasta/bin/activate
-
-itest: test .paasta/bin/activate
-	.paasta/bin/tox -e general_itests
+itest: test
+	tox -e general_itests
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
@@ -101,7 +91,7 @@ help:
 install-hooks:
 	tox -e install-hooks
 
-k8s_itests: .paasta/bin/activate
+k8s_itests:
 	make -C k8s_itests all
 
 .PHONY: k8s_fake_cluster
@@ -109,7 +99,7 @@ k8s_fake_cluster: .tox/py38-linux
 	make -C k8s_itests .fake_cluster
 
 .PHONY: k8s_clean
-k8s_clean: .paasta/bin/activate
+k8s_clean:
 	make -C k8s_itests clean
 
 # image source: openapitools/openapi-generator-cli:latest
@@ -136,10 +126,10 @@ swagger-validate:
 		-i paasta_tools/api/api_docs/swagger.json
 
 .PHONY: vscode_settings
-vscode_settings: .paasta/bin/activate .tox/py38-linux
-	.paasta/bin/python paasta_tools/contrib/ide_helper.py
+vscode_settings: .tox/py38-linux
+	.tox/py38-linux/bin/python paasta_tools/contrib/ide_helper.py
 
-etc_paasta_playground soa_config_playground: .paasta/bin/activate .tox/py38-linux
+etc_paasta_playground soa_config_playground: .tox/py38-linux
 	.tox/py38-linux/bin/python paasta_tools/contrib/create_paasta_playground.py
 
 .PHONY: generate_deployments_for_service
@@ -152,7 +142,7 @@ generate_deployments_for_service: | soa_config_playground .tox/py38-linux
 
 .PHONY: playground-api
 playground-api: .tox/py38-linux | soa_config_playground
-	.paasta/bin/tox -e playground-api
+	tox -e playground-api
 
 .PHONY: setup-kubernetes-job
 setup-kubernetes-job: k8s_fake_cluster generate_deployments_for_service
