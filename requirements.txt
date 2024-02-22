@@ -72,7 +72,7 @@ plaster==1.1.2
 plaster-pastedeploy==1.0.1
 platformdirs==3.10.0
 ply==3.11
-progressbar2==4.3.2
+progressbar2==3.10.1
 prometheus-client==0.20.0
 protobuf==4.25.3
 py==1.11.0
