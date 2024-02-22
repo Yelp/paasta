@@ -571,6 +571,9 @@ def get_docker_run_cmd(
             cmd.append(k)
         else:
             cmd.append(f"{k}={v}")
+    if is_using_unprivileged_containers():
+        cmd.append("--env")
+        cmd.append(f"HOME=/nail/home/{get_username()}")
     if nvidia:
         cmd.append("--env")
         cmd.append("NVIDIA_VISIBLE_DEVICES=all")
