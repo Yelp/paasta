@@ -1040,6 +1040,8 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
       - pool
       - iam_role
       - iam_role_provider
+      - force_spark_resource_configs
+      - timeout_spark
       - command
       - env
       - spark_args
@@ -1070,10 +1072,12 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         )
         return None
 
-    # Other args
+    # Other args: map Tronfig YAML fields to spark-run CLI args
     fields_to_args = {
         "pool": "pool",
         "iam_role": "assume_aws_role",
+        "force_spark_resource_configs": "force_spark_resource_configs",
+        "timeout_spark": "timeout_job_runtime",
         "command": "cmd",
         "spark_args": "spark_args",
     }
@@ -1086,8 +1090,8 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
             # Befutify for printing
-            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(20, " ")
-            field_name_str = field_name.ljust(12)
+            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
+            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
             if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
