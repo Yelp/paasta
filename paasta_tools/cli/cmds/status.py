@@ -1583,7 +1583,7 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     elif phase == "Pending":
         if not pod.containers:
             state = ReplicaState.NO_CONTAINERS_YET
-        elif all([c.state == "waiting" for c in pod.containers]):
+        elif all([c.state.lower() == "waiting" for c in pod.containers]):
             state = ReplicaState.ALL_CONTAINERS_WAITING
         else:
             state = ReplicaState.SOME_CONTAINERS_WAITING
