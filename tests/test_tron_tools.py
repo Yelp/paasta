@@ -1004,6 +1004,10 @@ class TestTronTools:
             "paasta_tools.tron_tools.get_k8s_url_for_cluster",
             autospec=True,
             return_value="https://k8s.test-cluster.paasta:6443",
+        ), mock.patch(
+            "service_configuration_lib.spark_config.utils.ephemeral_port_reserve_range",
+            autospec=True,
+            return_value=12345,
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1024,7 +1028,7 @@ class TestTronTools:
             "--conf spark.executor.cores=2 "
             f"--conf spark.app.name={spark_app_name} "
             f"--conf spark.app.id={spark_app_id} "
-            "--conf spark.ui.port=39091 "
+            "--conf spark.ui.port=12345 "
             "--conf spark.executor.instances=0 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
@@ -1045,7 +1049,7 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/user=TRON "
-            "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=39091 "
+            "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=12345 "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
@@ -1182,7 +1186,7 @@ class TestTronTools:
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "paasta.yelp.com/prometheus_shard": "ml-compute",
                 "spark.yelp.com/user": "TRON",
-                "spark.yelp.com/driver_ui_port": "39091",
+                "spark.yelp.com/driver_ui_port": "12345",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
