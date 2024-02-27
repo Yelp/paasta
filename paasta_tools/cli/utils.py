@@ -44,8 +44,8 @@ from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.eks_tools import load_eks_service_config
-from paasta_tools.flink_eks_tools import load_flink_eks_instance_config
 from paasta_tools.flink_tools import load_flink_instance_config
+from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -782,7 +782,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
     flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
     flinkeks=InstanceTypeHandler(
-        get_service_instance_list, load_flink_eks_instance_config
+        get_service_instance_list, load_flinkeks_instance_config
     ),
     cassandracluster=InstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
@@ -815,7 +815,7 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
         get_service_instance_list, load_flink_instance_config
     ),
     flinkeks=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_flink_eks_instance_config
+        get_service_instance_list, load_flinkeks_instance_config
     ),
     cassandracluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config

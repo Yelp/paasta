@@ -1,16 +1,16 @@
 import mock
 
-from paasta_tools.flink_eks_tools import load_flink_eks_instance_config
+from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 
 
-def test_load_flink_eks_instance_config():
+def test_load_flinkeks_instance_config():
     with mock.patch(
-        "paasta_tools.flink_eks_tools.load_v2_deployments_json", autospec=True
+        "paasta_tools.flinkeks_tools.load_v2_deployments_json", autospec=True
     ) as mock_load_v2_deployments_json, mock.patch(
-        "paasta_tools.flink_eks_tools.load_service_instance_config", autospec=True
+        "paasta_tools.flinkeks_tools.load_service_instance_config", autospec=True
     ), mock.patch(
-        "paasta_tools.flink_eks_tools.FlinkEksDeploymentConfig", autospec=True
-    ) as mock_flink_eks_deployment_config:
+        "paasta_tools.flinkeks_tools.FlinkEksDeploymentConfig", autospec=True
+    ) as mock_flinkeks_deployment_config:
         mock_config = {
             "port": None,
             "monitoring": {},
@@ -19,7 +19,7 @@ def test_load_flink_eks_instance_config():
             "smartstack": {},
             "dependencies": {},
         }
-        flink_eks_deployment_config = load_flink_eks_instance_config(
+        flinkeks_deployment_config = load_flinkeks_instance_config(
             service="fake_flinkservice",
             instance="fake_instance",
             cluster="fake_cluster",
@@ -29,7 +29,7 @@ def test_load_flink_eks_instance_config():
         mock_load_v2_deployments_json.assert_called_with(
             service="fake_flinkservice", soa_dir="/foo/bar"
         )
-        mock_flink_eks_deployment_config.assert_called_with(
+        mock_flinkeks_deployment_config.assert_called_with(
             service="fake_flinkservice",
             instance="fake_instance",
             cluster="fake_cluster",
@@ -39,5 +39,5 @@ def test_load_flink_eks_instance_config():
         )
 
         assert (
-            flink_eks_deployment_config == mock_flink_eks_deployment_config.return_value
+            flinkeks_deployment_config == mock_flinkeks_deployment_config.return_value
         )

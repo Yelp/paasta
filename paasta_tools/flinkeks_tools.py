@@ -36,7 +36,7 @@ class FlinkEksDeploymentConfig(FlinkDeploymentConfig):
         )
 
 
-def load_flink_eks_instance_config(
+def load_flinkeks_instance_config(
     service: str,
     instance: str,
     cluster: str,
