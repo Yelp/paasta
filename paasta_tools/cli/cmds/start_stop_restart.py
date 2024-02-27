@@ -15,7 +15,6 @@
 import datetime
 import socket
 import sys
-from collections import defaultdict
 from typing import Dict
 from typing import List
 
@@ -29,8 +28,10 @@ from paasta_tools.cli.cmds.mark_for_deployment import get_deploy_info
 from paasta_tools.cli.cmds.status import add_instance_filter_arguments
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import trigger_deploys
 from paasta_tools.flink_tools import FlinkDeploymentConfig
+from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -292,32 +293,33 @@ def paasta_start_or_stop(args, desired_state):
     #       instance_type in API
     if affected_flinks:
         print_flink_message(desired_state)
-        csi = defaultdict(lambda: defaultdict(list))
-        for service_config in affected_flinks:
-            csi[service_config.cluster][service_config.service].append(
-                service_config.instance
-            )
 
         system_paasta_config = load_system_paasta_config()
-        for cluster, services_instances in csi.items():
-            client = get_paasta_oapi_client(cluster, system_paasta_config)
+        for service_config in affected_flinks:
+            cluster = service_config.cluster
+            service = service_config.service
+            instance = service_config.instance
+            is_eks = isinstance(service_config, FlinkEksDeploymentConfig)
+
+            client = get_paasta_oapi_client(
+                cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+                system_paasta_config=system_paasta_config,
+            )
             if not client:
                 print("Cannot get a paasta-api client")
                 exit(1)
 
-            for service, instances in services_instances.items():
-                for instance in instances:
-                    try:
-                        client.service.instance_set_state(
-                            service=service,
-                            instance=instance,
-                            desired_state=desired_state,
-                        )
-                    except client.api_error as exc:
-                        print(exc.reason)
-                        return exc.status
+            try:
+                client.service.instance_set_state(
+                    service=service,
+                    instance=instance,
+                    desired_state=desired_state,
+                )
+            except client.api_error as exc:
+                print(exc.reason)
+                return exc.status
 
-                return_val = 0
+            return_val = 0
 
     if invalid_deploy_groups:
         print(f"No deploy tags found for {', '.join(invalid_deploy_groups)}.")

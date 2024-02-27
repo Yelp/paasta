@@ -63,6 +63,7 @@ from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -100,6 +101,7 @@ from paasta_tools.utils import SystemPaastaConfig
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
@@ -112,6 +114,7 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
 # Tron instances are not included in deployments, so skip these InstanceConfigs
 DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
@@ -131,6 +134,9 @@ InstanceStatusWriter = Callable[
     ],
     int,
 ]
+
+EKS_DEPLOYMENT_CONFIGS = [EksDeploymentConfig, FlinkEksDeploymentConfig]
+FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
 
 def add_subparser(
@@ -1268,6 +1274,33 @@ def print_flink_status(
     )
 
 
+def print_flinkeks_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    flink: Mapping[str, Any],
+    verbose: int,
+) -> int:
+    system_paasta_config = load_system_paasta_config()
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=True),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        output.append(
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        )
+        return 1
+
+    return _print_flink_status_from_job_manager(
+        service, instance, output, flink, client, verbose
+    )
+
+
 async def get_flink_job_details(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> List[FlinkJobDetails]:
@@ -2194,7 +2227,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
-                is_eks=(instance_config_class == EksDeploymentConfig),
+                is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
 
@@ -2395,7 +2428,7 @@ def paasta_status(args) -> int:
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
+            all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
             actual_deployments: Mapping[str, DeploymentVersion]
             if all_flink:
                 actual_deployments = {}
@@ -2587,6 +2620,7 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     tron=print_tron_status,
     adhoc=print_adhoc_status,
     flink=print_flink_status,
+    flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,
     cassandracluster=print_cassandra_status,
 )
