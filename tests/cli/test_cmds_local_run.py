@@ -1914,12 +1914,14 @@ def test_get_local_run_environment_vars_other(
     mock_instance_config.get_mem.return_value = 123
     mock_instance_config.get_disk.return_value = 123
     mock_instance_config.get_cpus.return_value = 123
+    mock_instance_config.get_container_port.return_value = 8888
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
     actual = get_local_run_environment_vars(
         instance_config=mock_instance_config, port0=1234, framework="adhoc"
     )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
+    assert actual["PAASTA_PORT"] == "8888"
     assert "MARATHON_PORT" not in actual
 
 
