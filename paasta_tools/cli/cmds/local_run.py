@@ -661,7 +661,7 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
         "PAASTA_HOST": hostname,
-        "PAASTA_PORT": str(port0),
+        "PAASTA_PORT": str(instance_config.get_container_port()),
     }
     if framework == "marathon":
         fake_taskid = uuid.uuid4()
