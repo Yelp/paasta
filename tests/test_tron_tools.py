@@ -1005,9 +1005,82 @@ class TestTronTools:
             autospec=True,
             return_value="https://k8s.test-cluster.paasta:6443",
         ), mock.patch(
-            "service_configuration_lib.spark_config.utils.ephemeral_port_reserve_range",
+            "service_configuration_lib.spark_config.utils.load_spark_srv_conf",
             autospec=True,
-            return_value=12345,
+            return_value=(
+                {},
+                {
+                    "target_mem_cpu_ratio": 7,
+                    "resource_configs": {
+                        "recommended": {
+                            "cpu": 4,
+                            "mem": 28,
+                        },
+                        "medium": {
+                            "cpu": 8,
+                            "mem": 56,
+                        },
+                        "max": {
+                            "cpu": 12,
+                            "mem": 110,
+                        },
+                    },
+                    "cost_factor": {
+                        "test-cluster": {
+                            "test-pool": 100,
+                        },
+                        "spark-pnw-prod": {
+                            "batch": 0.041,
+                            "stable_batch": 0.142,
+                        },
+                    },
+                    "adjust_executor_res_ratio_thresh": 99999,
+                    "default_resources_waiting_time_per_executor": 2,
+                    "default_clusterman_observed_scaling_time": 15,
+                    "high_cost_threshold_daily": 500,
+                    "preferred_spark_ui_port_start": 39091,
+                    "preferred_spark_ui_port_end": 39100,
+                    "defaults": {
+                        "spark.executor.cores": 4,
+                        "spark.executor.instances": 2,
+                        "spark.executor.memory": 28,
+                        "spark.task.cpus": 1,
+                        "spark.sql.shuffle.partitions": 128,
+                        "spark.dynamicAllocation.executorAllocationRatio": 0.8,
+                        "spark.dynamicAllocation.cachedExecutorIdleTimeout": "1500s",
+                        "spark.yelp.dra.minExecutorRatio": 0.25,
+                    },
+                    "mandatory_defaults": {
+                        "spark.kubernetes.allocation.batch.size": 512,
+                        "spark.kubernetes.decommission.script": "/opt/spark/kubernetes/dockerfiles/spark/decom.sh",
+                        "spark.logConf": "true",
+                    },
+                },
+                {
+                    "spark.executor.cores": 4,
+                    "spark.executor.instances": 2,
+                    "spark.executor.memory": 28,
+                    "spark.task.cpus": 1,
+                    "spark.sql.shuffle.partitions": 128,
+                    "spark.dynamicAllocation.executorAllocationRatio": 0.8,
+                    "spark.dynamicAllocation.cachedExecutorIdleTimeout": "1500s",
+                    "spark.yelp.dra.minExecutorRatio": 0.25,
+                },
+                {
+                    "spark.kubernetes.allocation.batch.size": 512,
+                    "spark.kubernetes.decommission.script": "/opt/spark/kubernetes/dockerfiles/spark/decom.sh",
+                    "spark.logConf": "true",
+                },
+                {
+                    "test-cluster": {
+                        "test-pool": 100,
+                    },
+                    "spark-pnw-prod": {
+                        "batch": 0.041,
+                        "stable_batch": 0.142,
+                    },
+                },
+            ),
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1028,7 +1101,7 @@ class TestTronTools:
             "--conf spark.executor.cores=2 "
             f"--conf spark.app.name={spark_app_name} "
             f"--conf spark.app.id={spark_app_id} "
-            "--conf spark.ui.port=12345 "
+            "--conf spark.ui.port=39091 "
             "--conf spark.executor.instances=0 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
             "--conf spark.scheduler.maxRegisteredResourcesWaitingTime=15min "
@@ -1049,7 +1122,7 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/instance=my_job.do_something "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/cluster=test-cluster "
             "--conf spark.kubernetes.executor.label.spark.yelp.com/user=TRON "
-            "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=12345 "
+            "--conf spark.kubernetes.executor.label.spark.yelp.com/driver_ui_port=39091 "
             "--conf spark.kubernetes.node.selector.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
@@ -1075,49 +1148,13 @@ class TestTronTools:
             "--conf spark.ui.prometheus.enabled=true "
             "--conf spark.metrics.conf.*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet "
             "--conf spark.metrics.conf.*.sink.prometheusServlet.path=/metrics/prometheus "
-            "--conf spark.eventLog.enabled=true "
-            "--conf spark.eventLog.dir=s3a://yelp-spark-event-logs-dev-us-west-2/logs "
+            "--conf spark.eventLog.enabled=false "
             "--conf spark.sql.shuffle.partitions=12 "
             "--conf spark.sql.files.minPartitionNum=12 "
             "--conf spark.default.parallelism=12 "
             "--conf spark.kubernetes.allocation.batch.size=512 "
             "--conf spark.kubernetes.decommission.script=/opt/spark/kubernetes/dockerfiles/spark/decom.sh "
             "--conf spark.logConf=true "
-            "--conf spark.driver.extraClassPath=/opt/spark/extra_jars/* "
-            "--conf spark.executor.extraClassPath=/opt/spark/extra_jars/* "
-            "--conf spark.scheduler.listenerbus.eventqueue.capacity=20000 "
-            "--conf spark.hadoop.mapreduce.fileoutputcommitter.algorithm.version=2 "
-            "--conf spark.hadoop.mapreduce.fileoutputcommitter.cleanup-failures.ignored=true "
-            "--conf spark.hadoop.parquet.enable.summary-metadata=false "
-            "--conf spark.hadoop.parquet.enable.summary.metadata=false "
-            "--conf spark.sql.parquet.mergeSchema=false "
-            "--conf spark.sql.parquet.filterPushdown=true "
-            "--conf spark.sql.files.maxPartitionBytes=536870912 "
-            "--conf spark.speculation=false "
-            "--conf spark.hadoop.fs.s3a.multiobjectdelete.enable=true "
-            "--conf spark.hadoop.mapreduce.fileoutputcommitter.cleanup.skipped=false "
-            "--conf spark.serializer=org.apache.spark.serializer.KryoSerializer "
-            "--conf spark.sql.autoBroadcastJoinThreshold=134217728 "
-            "--conf spark.executor.heartbeatInterval=30s "
-            "--conf spark.rdd.compress=true "
-            "--conf spark.shuffle.compress=true "
-            "--conf spark.shuffle.spill.compress=true "
-            "--conf spark.checkpoint.compress=true "
-            "--conf spark.broadcast.compress=true "
-            "--conf spark.sql.inMemoryColumnarStorage.compress=true "
-            "--conf spark.hadoop.fs.s3.impl=org.apache.hadoop.fs.s3a.S3AFileSystem "
-            "--conf spark.sql.catalogImplementation=hive "
-            "--conf spark.sql.hive.metastorePartitionPruning=true "
-            "--conf spark.hadoop.aws.region=us-west-2 "
-            "--conf spark.sql.sources.readPartitionWithSubdirectory.enabled=true "
-            "--conf spark.sql.legacy.timeParserPolicy=LEGACY "
-            "--conf spark.decommission.enabled=true "
-            "--conf spark.storage.decommission.enabled=true "
-            "--conf spark.storage.decommission.shuffleBlocks.enabled=true "
-            "--conf spark.storage.decommission.rddBlocks.enabled=true "
-            "--conf spark.kubernetes.driver.service.deleteOnTermination=false "
-            "--conf spark.driver.extraJavaOptions='-Dderby.system.home=/tmp/derby -Dlog4j.configuration=file:/opt/spark/conf/log4j.properties' "
-            "--conf spark.metrics.executorMetricsSource.enabled=true "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
             "--conf spark.driver.port=33001 "
@@ -1186,7 +1223,7 @@ class TestTronTools:
                 "yelp.com/owner": "compute_infra_platform_experience",
                 "paasta.yelp.com/prometheus_shard": "ml-compute",
                 "spark.yelp.com/user": "TRON",
-                "spark.yelp.com/driver_ui_port": "12345",
+                "spark.yelp.com/driver_ui_port": "39091",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
