@@ -39,6 +39,7 @@ from paasta_tools.cli.cmds.local_run import perform_tcp_healthcheck
 from paasta_tools.cli.cmds.local_run import run_docker_container
 from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -103,10 +104,11 @@ def test_dry_run_json_dict(
 ):
     mock_get_instance_config.return_value.get_cmd.return_value = "fake_command"
     mock_get_instance_config.return_value.format_docker_parameters.return_value = {}
-    mock_get_instance_config.return_value.get_env_dictionary.return_value = {}
+    mock_get_instance_config.return_value.get_env.return_value = {}
     mock_get_instance_config.return_value.get_mem.return_value = 123
     mock_get_instance_config.return_value.get_disk.return_value = 123
     mock_get_instance_config.return_value.get_cpu.return_value = 123
+    mock_get_instance_config.return_value.get_cluster.return_value = "fake_cluster"
     mock_get_instance_config.return_value.get_net.return_value = "fake_net"
     mock_get_instance_config.return_value.get_docker_image.return_value = (
         "fake_docker_image"
@@ -1574,7 +1576,7 @@ def test_run_docker_container_with_user_specified_port(
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
     mock_service_manifest.get_net.return_value = "bridge"
-    mock_service_manifest.get_env_dictionary.return_value = {}
+    mock_service_manifest.get_env.return_value = {}
     mock_service_manifest.get_container_port.return_value = 8888
     mock_service_manifest.cluster = "blah"
     run_docker_container(
@@ -1907,21 +1909,44 @@ def test_get_local_run_environment_vars_marathon(
     autospec=True,
     return_value="fake_host",
 )
-def test_get_local_run_environment_vars_other(
+def test_get_local_run_environment_vars_kubernetes(
+    mock_getfqdn,
+):
+    mock_instance_config = mock.MagicMock(spec_set=KubernetesDeploymentConfig)
+    mock_instance_config.get_mem.return_value = 123
+    mock_instance_config.get_disk.return_value = 123
+    mock_instance_config.get_cpus.return_value = 123
+    mock_instance_config.get_cluster.return_value = "fake_cluster"
+    mock_instance_config.get_docker_image.return_value = "fake_docker_image"
+
+    actual = get_local_run_environment_vars(
+        instance_config=mock_instance_config, port0=1234, framework="not-marathon"
+    )
+    assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert "MARATHON_PORT" not in actual
+
+
+@mock.patch(
+    "paasta_tools.cli.cmds.local_run.socket.getfqdn",
+    autospec=True,
+    return_value="fake_host",
+)
+def test_get_local_run_environment_vars_adhoc(
     mock_getfqdn,
 ):
     mock_instance_config = mock.MagicMock(spec_set=AdhocJobConfig)
     mock_instance_config.get_mem.return_value = 123
     mock_instance_config.get_disk.return_value = 123
     mock_instance_config.get_cpus.return_value = 123
-    mock_instance_config.get_container_port.return_value = 8888
+    mock_instance_config.get_cluster.return_value = "fake_cluster"
     mock_instance_config.get_docker_image.return_value = "fake_docker_image"
 
     actual = get_local_run_environment_vars(
         instance_config=mock_instance_config, port0=1234, framework="adhoc"
     )
     assert actual["PAASTA_DOCKER_IMAGE"] == "fake_docker_image"
-    assert actual["PAASTA_PORT"] == "8888"
+    assert actual["PAASTA_CLUSTER"] == "fake_cluster"
+    assert "PAASTA_PORT" not in actual
     assert "MARATHON_PORT" not in actual
 
 
