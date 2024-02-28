@@ -1127,6 +1127,7 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/owner=core_ml "
+            "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/tmp "
             "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=false "

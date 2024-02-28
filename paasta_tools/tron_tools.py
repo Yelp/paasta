@@ -109,6 +109,7 @@ SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvid
 SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 SPARK_DRIVER_POOL = "stable"
 SPARK_JOB_USER = "TRON"
+SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -361,11 +362,16 @@ class TronActionConfig(InstanceConfig):
             ),
             user=SPARK_JOB_USER,
         )
+        # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
             print(
-                f"Removing spark.kubernetes.executor.podTemplateFile={spark_conf['spark.kubernetes.executor.podTemplateFile']}"
+                f"Replacing spark.kubernetes.executor.podTemplateFile="
+                f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
+                f"spark.kubernetes.executor.podTemplateFile={SPARK_DNS_POD_TEMPLATE}"
             )
-            del spark_conf["spark.kubernetes.executor.podTemplateFile"]
+            spark_conf[
+                "spark.kubernetes.executor.podTemplateFile"
+            ] = SPARK_DNS_POD_TEMPLATE
 
         spark_conf.update(
             {
