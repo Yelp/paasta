@@ -1,3 +1,12 @@
+paasta-tools (0.218.9) xenial; urgency=medium
+
+  * 0.218.9 tagged with 'make release'
+    Commit: Merge pull request #3797 from Yelp/u/asoliman/FLINK-
+    4925_create_eks_flink_deployment  FLINK-4925: Create flink eks
+    instance type
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Wed, 28 Feb 2024 04:51:53 -0800
+
 paasta-tools (0.218.8) xenial; urgency=medium
 
   * 0.218.8 tagged with 'make release'
