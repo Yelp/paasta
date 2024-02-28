@@ -64,13 +64,11 @@ def test_get_service_info():
         assert "Git Repo: git@github.yelpcorp.com:services/fake_service" in actual
         assert "Deployed to the following" in actual
         assert (
-            "clusterA (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterA.yelp/")
+            "clusterA (%s)" % PaastaColors.cyan("http://fake_service.clusterA.paasta/")
             in actual
         )
         assert (
-            "clusterB (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterB.yelp/")
+            "clusterB (%s)" % PaastaColors.cyan("http://fake_service.clusterB.paasta/")
             in actual
         )
         assert "Smartstack endpoint" in actual
@@ -135,12 +133,12 @@ def test_get_deployments_strings_default_case_with_smartstack():
         actual = info.get_deployments_strings("fake_service", "/fake/soa/dir")
         assert (
             " - clusterA (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterA.yelp/")
+            % PaastaColors.cyan("http://fake_service.clusterA.paasta/")
             in actual
         )
         assert (
             " - clusterB (%s)"
-            % PaastaColors.cyan("http://fake_service.paasta-clusterB.yelp/")
+            % PaastaColors.cyan("http://fake_service.clusterB.paasta/")
             in actual
         )
 
@@ -157,11 +155,11 @@ def test_get_deployments_strings_protocol_tcp_case():
         )
         actual = info.get_deployments_strings("unused", "/fake/soa/dir")
         assert (
-            " - clusterA (%s)" % PaastaColors.cyan("tcp://paasta-clusterA.yelp:8080/")
+            " - clusterA (%s)" % PaastaColors.cyan("tcp://clusterA.paasta:8080/")
             in actual
         )
         assert (
-            " - clusterB (%s)" % PaastaColors.cyan("tcp://paasta-clusterB.yelp:8080/")
+            " - clusterB (%s)" % PaastaColors.cyan("tcp://clusterB.paasta:8080/")
             in actual
         )
 

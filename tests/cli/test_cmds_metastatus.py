@@ -24,7 +24,7 @@ def test_report_cluster_status(mock_load_system_paasta_config, capfd):
     fake_system_paasta_config = SystemPaastaConfig(
         {
             "dashboard_links": {
-                "fake_cluster": {"URL": "http://paasta-fake_cluster.yelp:5050"}
+                "fake_cluster": {"URL": "http://fake_cluster.paasta:5050"}
             }
         },
         "fake_directory",
@@ -73,13 +73,13 @@ def test_get_cluster_dashboards():
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             {
                 "dashboard_links": {
-                    "fake_cluster": {"URL": "http://paasta-fake_cluster.yelp:5050"}
+                    "fake_cluster": {"URL": "http://fake_cluster.paasta:5050"}
                 }
             },
             "fake_directory",
         )
         output_text = metastatus.get_cluster_dashboards("fake_cluster")
-        assert "http://paasta-fake_cluster.yelp:5050" in output_text
+        assert "http://fake_cluster.paasta:5050" in output_text
         assert "URL: " in output_text
 
 
@@ -92,8 +92,8 @@ def test_get_cluster_dashboards_for_sharded_frameworks():
                 "dashboard_links": {
                     "fake_cluster": {
                         "URL": [
-                            "http://paasta-fake_cluster.yelp:5050",
-                            "http://paasta-fake_cluster1.yelp:5050",
+                            "http://fake_cluster.paasta:5050",
+                            "http://fake_cluster1.paasta:5050",
                         ]
                     }
                 }
@@ -101,8 +101,8 @@ def test_get_cluster_dashboards_for_sharded_frameworks():
             "fake_directory",
         )
         output_text = metastatus.get_cluster_dashboards("fake_cluster")
-        assert "http://paasta-fake_cluster.yelp:5050" in output_text
-        assert "http://paasta-fake_cluster1.yelp:5050" in output_text
+        assert "http://fake_cluster.paasta:5050" in output_text
+        assert "http://fake_cluster1.paasta:5050" in output_text
         assert "URL: " in output_text
 
 
@@ -124,9 +124,7 @@ def test_get_cluster_dashboards_unknown_cluster():
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
             {
                 "dashboard_links": {
-                    "another_fake_cluster": {
-                        "URL": "http://paasta-fake_cluster.yelp:5050"
-                    }
+                    "another_fake_cluster": {"URL": "http://fake_cluster.paasta:5050"}
                 }
             },
             "fake_directory",

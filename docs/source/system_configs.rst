@@ -128,6 +128,6 @@ These are the keys that may exist in system configs:
     cluster.
     This format string gets one parameter: ``cluster``.
     This is used by ``paasta status`` to know where to SSH to run ``paasta_serviceinit``.
-    Defaults to ``paasta-{cluster:s}.yelp``.
+    Defaults to ``{cluster:s}.paasta``.
 
-    Example: ``"cluster_fqdn_format": "paasta-{cluster:s}.service.dc1.consul"``
+    Example: ``"cluster_fqdn_format": "{cluster:s}.service.dc1.consul"``

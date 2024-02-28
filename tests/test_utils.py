@@ -554,7 +554,7 @@ def test_SystemPaastaConfig_get_metrics_provider():
 def test_SystemPaastaConfig_get_cluster_fqdn_format_default():
     fake_config = utils.SystemPaastaConfig({}, "/some/fake/dir")
     actual = fake_config.get_cluster_fqdn_format()
-    expected = "paasta-{cluster:s}.yelp"
+    expected = "{cluster:s}.paasta"
     assert actual == expected
 
 
