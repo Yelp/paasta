@@ -1005,6 +1005,23 @@ class TestTronTools:
             autospec=True,
             return_value="https://k8s.test-cluster.paasta:6443",
         ), mock.patch(
+            "service_configuration_lib.spark_config._get_k8s_docker_volumes_conf",
+            autospec=True,
+            return_value={
+                "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/nail/tmp",
+                "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/nail/tmp",
+                "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "false",
+                "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/etc/pki/spark",
+                "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/etc/pki/spark",
+                "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "true",
+                "spark.kubernetes.executor.volumes.hostPath.2.mount.path": "/etc/passwd",
+                "spark.kubernetes.executor.volumes.hostPath.2.options.path": "/etc/passwd",
+                "spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly": "true",
+                "spark.kubernetes.executor.volumes.hostPath.3.mount.path": "/etc/group",
+                "spark.kubernetes.executor.volumes.hostPath.3.options.path": "/etc/group",
+                "spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly": "true",
+            },
+        ), mock.patch(
             "service_configuration_lib.spark_config.utils.load_spark_srv_conf",
             autospec=True,
             return_value=(
