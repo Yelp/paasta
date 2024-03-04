@@ -57,10 +57,9 @@ from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
-# from paasta_tools.spark_tools import get_spark_ports
 
-# from paasta_tools.spark_tools import get_spark_ports_from_config
 from paasta_tools.spark_tools import create_spark_config_str
+from paasta_tools.spark_tools import get_spark_ports_from_config
 
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
@@ -382,13 +381,6 @@ class TronActionConfig(InstanceConfig):
         spark_conf.setdefault(
             "spark.kubernetes.executor.label.yelp.com/owner", self.get_team()
         )
-        # spark_ports = get_spark_ports(system_paasta_config=system_paasta_config)
-        # spark_conf.update(
-        #     {
-        #         k: (str(v) if not isinstance(v, bool) else str(v).lower())
-        #         for k, v in spark_ports.items()
-        #     }
-        # )
 
         # We need to make sure the Service Account used by the executors has been created.
         # We are using the Service Account created using the provided or default IAM role.
@@ -1034,7 +1026,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
-            # result["ports"] = get_spark_ports_from_config(spark_config)
+            result["ports"] = get_spark_ports_from_config(spark_config)
 
             # Add pod annotations and labels for Spark monitoring metrics
             (
