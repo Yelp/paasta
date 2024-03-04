@@ -1175,9 +1175,6 @@ class TestTronTools:
             "--conf spark.logConf=true "
             "--conf spark.hadoop.fs.s3a.aws.credentials.provider=com.amazonaws.auth.WebIdentityTokenCredentialsProvider "
             "--conf spark.driver.host=$PAASTA_POD_IP "
-            "--conf spark.driver.port=33001 "
-            "--conf spark.blockManager.port=33002 "
-            "--conf spark.driver.blockManager.port=33002 "
             "--conf spark.kubernetes.authenticate.executor.serviceAccountName=paasta--arn-aws-iam-000000000000-role-some-role-eks "
             "file://this/is/a_test.py",
             "executor": "spark",
@@ -1255,6 +1252,7 @@ class TestTronTools:
                 },
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
+            "ports": [39091],
             "cpus": 2,
             "mem": 1200,
             "disk": 42,
