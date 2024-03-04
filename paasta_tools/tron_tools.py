@@ -57,7 +57,7 @@ from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
 from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
-from paasta_tools.spark_tools import get_spark_ports
+# from paasta_tools.spark_tools import get_spark_ports
 
 # from paasta_tools.spark_tools import get_spark_ports_from_config
 from paasta_tools.spark_tools import create_spark_config_str
