@@ -382,13 +382,13 @@ class TronActionConfig(InstanceConfig):
         spark_conf.setdefault(
             "spark.kubernetes.executor.label.yelp.com/owner", self.get_team()
         )
-        spark_ports = get_spark_ports(system_paasta_config=system_paasta_config)
-        spark_conf.update(
-            {
-                k: (str(v) if not isinstance(v, bool) else str(v).lower())
-                for k, v in spark_ports.items()
-            }
-        )
+        # spark_ports = get_spark_ports(system_paasta_config=system_paasta_config)
+        # spark_conf.update(
+        #     {
+        #         k: (str(v) if not isinstance(v, bool) else str(v).lower())
+        #         for k, v in spark_ports.items()
+        #     }
+        # )
 
         # We need to make sure the Service Account used by the executors has been created.
         # We are using the Service Account created using the provided or default IAM role.
