@@ -15,12 +15,11 @@ import argparse
 
 import mock
 import pytest
-from service_configuration_lib import spark_config
 
+from paasta_tools import spark_tools
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
 from paasta_tools.cli.cmds.spark_run import build_and_push_docker_image
-from paasta_tools.cli.cmds.spark_run import CLUSTER_MANAGER_K8S
 from paasta_tools.cli.cmds.spark_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.spark_run import decide_final_eks_toggle_state
 from paasta_tools.cli.cmds.spark_run import DEFAULT_DOCKER_SHM_SIZE
@@ -30,9 +29,11 @@ from paasta_tools.cli.cmds.spark_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.spark_run import get_smart_paasta_instance_name
 from paasta_tools.cli.cmds.spark_run import get_spark_app_name
 from paasta_tools.cli.cmds.spark_run import sanitize_container_name
-from paasta_tools.cli.cmds.spark_run import should_enable_compact_bin_packing
+from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 
 
 DUMMY_DOCKER_IMAGE_DIGEST = "MOCK-docker-dev.yelpcorp.com/paasta-spark-run-user@sha256:103ce91c65d42498ca61cdfe8d799fab8ab1c37dac58b743b49ced227bc7bc06"
@@ -97,26 +98,6 @@ def test_get_docker_run_cmd(mock_getegid, mock_geteuid):
 )
 def test_sanitize_container_name(container_name, expected):
     assert sanitize_container_name(container_name) == expected
-
-
-@pytest.mark.parametrize(
-    "disable_compact_bin_packing,cluster_manager,dir_access,expected",
-    [
-        (False, CLUSTER_MANAGER_K8S, True, True),
-        (True, CLUSTER_MANAGER_K8S, True, False),
-        (True, CLUSTER_MANAGER_K8S, False, False),
-    ],
-)
-def test_should_enable_compact_bin_packing(
-    disable_compact_bin_packing, cluster_manager, dir_access, expected
-):
-    with mock.patch("os.access", autospec=True, return_value=dir_access):
-        assert (
-            should_enable_compact_bin_packing(
-                disable_compact_bin_packing, cluster_manager
-            )
-            == expected
-        )
 
 
 @pytest.fixture
@@ -203,12 +184,6 @@ def test_get_smart_paasta_instance_name_tron():
 
 
 @pytest.fixture
-def mock_create_spark_config_str():
-    with mock.patch.object(spark_run, "create_spark_config_str") as m:
-        yield m
-
-
-@pytest.fixture
 def mock_get_possible_launced_by_user_variable_from_env():
     with mock.patch.object(
         spark_run, "get_possible_launched_by_user_variable_from_env"
@@ -290,11 +265,11 @@ def test_get_spark_env(
         **extra_expected,
         **expected_aws,
     }
-    fake_system_paasta_config = (
-        SystemPaastaConfig(
-            {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
-            "fake_dir",
+    fake_system_paasta_config = SystemPaastaConfig(
+        SystemPaastaConfigDict(
+            {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
         ),
+        "fake_dir",
     )
     assert (
         spark_run.get_spark_env(
@@ -309,89 +284,33 @@ def test_get_spark_env(
 
 
 @pytest.mark.parametrize(
-    "spark_args,enable_spark_dra,expected",
+    "spark_args,expected",
     [
         (
             "spark.cores.max=1  spark.executor.memory=24g",
-            False,
             {"spark.cores.max": "1", "spark.executor.memory": "24g"},
         ),
         (
             "spark.cores.max=1  spark.executor.memory=24g",
-            True,
             {
                 "spark.cores.max": "1",
                 "spark.executor.memory": "24g",
-                "spark.dynamicAllocation.enabled": "true",
             },
         ),
-        ("spark.cores.max", False, None),
-        (None, False, {}),
-        (None, True, {"spark.dynamicAllocation.enabled": "true"}),
+        ("spark.cores.max", None),
+        (None, {}),
     ],
 )
-def test_parse_user_spark_args(spark_args, enable_spark_dra, expected, capsys):
+def test_parse_user_spark_args(spark_args, expected, capsys):
     if expected is not None:
-        assert (
-            spark_run._parse_user_spark_args(
-                spark_args, "unique-run", False, enable_spark_dra
-            )
-            == expected
-        )
+        assert spark_run._parse_user_spark_args(spark_args) == expected
     else:
         with pytest.raises(SystemExit):
-            spark_run._parse_user_spark_args(
-                spark_args, "unique-run", False, enable_spark_dra
-            )
+            spark_run._parse_user_spark_args(spark_args)
             assert (
                 capsys.readouterr().err
                 == "Spark option spark.cores.max is not in format option=value."
             )
-
-
-@pytest.mark.parametrize(
-    "args,system_paasta_config,expected",
-    [
-        (
-            # allowed_pools key has test-cluster and test-pool
-            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
-            SystemPaastaConfig(
-                {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
-                "fake_dir",
-            ),
-            True,
-        ),
-        (
-            # allowed_pools key has test-cluster but doesn't have test-pool
-            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
-            SystemPaastaConfig(
-                {"allowed_pools": {"test-cluster": ["fail-test-pool", "fake-pool"]}},
-                "fake_dir",
-            ),
-            False,
-        ),
-        (
-            # allowed_pools key doesn't have test-cluster
-            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
-            SystemPaastaConfig(
-                {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}},
-                "fake_dir",
-            ),
-            True,
-        ),
-        (
-            # allowed_pools key is not present
-            argparse.Namespace(cluster="test-cluster", pool="test-pool"),
-            SystemPaastaConfig(
-                {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}},
-                "fake_dir",
-            ),
-            True,
-        ),
-    ],
-)
-def test__validate_pool(args, system_paasta_config, expected):
-    assert spark_run._validate_pool(args, system_paasta_config) == expected
 
 
 @pytest.mark.parametrize("is_mrjob", [True, False])
@@ -401,7 +320,7 @@ def test_create_spark_config_str(is_mrjob):
         "spark.executor.memory": "4g",
         "spark.max.cores": "10",
     }
-    output = spark_run.create_spark_config_str(spark_opts, is_mrjob)
+    output = spark_tools.create_spark_config_str(spark_opts, is_mrjob)
     if is_mrjob:
         assert output == (
             "--spark-master=mesos://some-host:5050 "
@@ -420,13 +339,6 @@ def test_create_spark_config_str(is_mrjob):
 def mock_get_docker_run_cmd():
     with mock.patch.object(spark_run, "get_docker_run_cmd") as m:
         m.return_value = ["docker", "run", "commands"]
-        yield m
-
-
-@pytest.fixture
-def mock_generate_pod_template_path():
-    with mock.patch.object(spark_run, "generate_pod_template_path") as m:
-        m.return_value = "unique-run"
         yield m
 
 
@@ -491,33 +403,31 @@ def test_run_docker_container(
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_username", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.run_docker_container", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_webui_url", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_docker_cmd", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_signalfx_url", autospec=True)
-@mock.patch.object(spark_config.SparkConfBuilder(), "get_history_url", autospec=True)
+@mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
 class TestConfigureAndRunDockerContainer:
 
     instance_config = InstanceConfig(
         cluster="fake_cluster",
         instance="fake_instance",
         service="fake_service",
-        config_dict={
-            "extra_volumes": [{"hostPath": "/h1", "containerPath": "/c1", "mode": "RO"}]
-        },
-        branch_dict={"docker_image": "fake_service:fake_sha"},
+        config_dict=InstanceConfigDict(
+            {
+                "extra_volumes": [
+                    {"hostPath": "/h1", "containerPath": "/c1", "mode": "RO"}
+                ]
+            }
+        ),
+        branch_dict=BranchDictV2({"docker_image": "fake_service:fake_sha"}),
     )
 
     system_paasta_config = SystemPaastaConfig(
-        {"volumes": [{"hostPath": "/h2", "containerPath": "/c2", "mode": "RO"}]},
+        SystemPaastaConfigDict(
+            {"volumes": [{"hostPath": "/h2", "containerPath": "/c2", "mode": "RO"}]}
+        ),
         "fake_dir",
     )
-
-    @pytest.fixture
-    def mock_create_spark_config_str(self):
-        with mock.patch(
-            "paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True
-        ) as _mock_create_spark_config_str:
-            yield _mock_create_spark_config_str
 
     @pytest.mark.parametrize(
         ["cluster_manager", "spark_args_volumes", "expected_volumes"],
@@ -550,10 +460,9 @@ class TestConfigureAndRunDockerContainer:
     )
     def test_configure_and_run_docker_container(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -567,6 +476,7 @@ class TestConfigureAndRunDockerContainer:
             "spark.ui.port": "1234",
             **spark_args_volumes,
         }
+        mock_create_spark_config_str.return_value = "testing spark opts string"
         mock_run_docker_container.return_value = 0
 
         args = mock.MagicMock()
@@ -599,11 +509,19 @@ class TestConfigureAndRunDockerContainer:
                 pod_template_path="unique-run",
             )
         assert retcode == 0
+        mock_create_spark_config_str.assert_called_once_with(
+            spark_config_dict=spark_conf,
+            is_mrjob=args.mrjob,
+        )
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=(
                 expected_volumes
-                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+                + [
+                    "/fake_dir:/spark_driver:rw",
+                    "/nail/home:/nail/home:rw",
+                    "unique-run:unique-run:rw",
+                ]
             ),
             environment={
                 "env1": "val1",
@@ -611,7 +529,7 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
-                "SPARK_OPTS": mock_create_spark_config_str.return_value,
+                "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
@@ -656,10 +574,9 @@ class TestConfigureAndRunDockerContainer:
     )
     def test_configure_and_run_docker_driver_resource_limits_config(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -675,6 +592,7 @@ class TestConfigureAndRunDockerContainer:
             "spark.driver.cores": "2",
             **spark_args_volumes,
         }
+        mock_create_spark_config_str.return_value = "testing spark opts string"
         mock_run_docker_container.return_value = 0
 
         args = mock.MagicMock()
@@ -705,11 +623,19 @@ class TestConfigureAndRunDockerContainer:
                 pod_template_path="unique-run",
             )
         assert retcode == 0
+        mock_create_spark_config_str.assert_called_once_with(
+            spark_config_dict=spark_conf,
+            is_mrjob=args.mrjob,
+        )
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=(
                 expected_volumes
-                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+                + [
+                    "/fake_dir:/spark_driver:rw",
+                    "/nail/home:/nail/home:rw",
+                    "unique-run:unique-run:rw",
+                ]
             ),
             environment={
                 "env1": "val1",
@@ -717,7 +643,7 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
-                "SPARK_OPTS": mock_create_spark_config_str.return_value,
+                "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
@@ -762,10 +688,9 @@ class TestConfigureAndRunDockerContainer:
     )
     def test_configure_and_run_docker_driver_resource_limits(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -781,6 +706,7 @@ class TestConfigureAndRunDockerContainer:
             "spark.driver.cores": "2",
             **spark_args_volumes,
         }
+        mock_create_spark_config_str.return_value = "testing spark opts string"
         mock_run_docker_container.return_value = 0
 
         args = mock.MagicMock()
@@ -810,12 +736,21 @@ class TestConfigureAndRunDockerContainer:
                 cluster_manager=cluster_manager,
                 pod_template_path="unique-run",
             )
+
         assert retcode == 0
+        mock_create_spark_config_str.assert_called_once_with(
+            spark_config_dict=spark_conf,
+            is_mrjob=args.mrjob,
+        )
         mock_run_docker_container.assert_called_once_with(
             container_name="fake_app",
             volumes=(
                 expected_volumes
-                + ["/fake_dir:/spark_driver:rw", "/nail/home:/nail/home:rw"]
+                + [
+                    "/fake_dir:/spark_driver:rw",
+                    "/nail/home:/nail/home:rw",
+                    "unique-run:unique-run:rw",
+                ]
             ),
             environment={
                 "env1": "val1",
@@ -823,7 +758,7 @@ class TestConfigureAndRunDockerContainer:
                 "AWS_SECRET_ACCESS_KEY": "secret",
                 "AWS_SESSION_TOKEN": "token",
                 "AWS_DEFAULT_REGION": "fake_region",
-                "SPARK_OPTS": mock_create_spark_config_str.return_value,
+                "SPARK_OPTS": "testing spark opts string",
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
@@ -839,10 +774,9 @@ class TestConfigureAndRunDockerContainer:
 
     def test_configure_and_run_docker_container_nvidia(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -877,10 +811,9 @@ class TestConfigureAndRunDockerContainer:
 
     def test_configure_and_run_docker_container_mrjob(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -915,10 +848,9 @@ class TestConfigureAndRunDockerContainer:
 
     def test_dont_emit_metrics_for_inappropriate_commands(
         self,
-        mock_get_history_url,
-        mock_et_signalfx_url,
-        mock_get_docker_cmd,
         mock_create_spark_config_str,
+        mock_get_signalfx_url,
+        mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
         mock_get_username,
@@ -1009,7 +941,6 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
 )
@@ -1019,7 +950,6 @@ def test_paasta_spark_run_bash(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_spark_conf_builder,
-    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1027,7 +957,6 @@ def test_paasta_spark_run_bash(
     mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_validate_work_dir,
-    mock_generate_pod_template_path,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1058,11 +987,13 @@ def test_paasta_spark_run_bash(
         job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
-        "test-cluster": ["test-pool"]
-    }
-    mock_should_enable_compact_bin_packing.return_value = True
+    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+        "test-pool"
+    ]
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
+    mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
+        "spark.kubernetes.executor.podTemplateFile": "/test/pod-template.yaml",
+    }
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "/bin/bash"
@@ -1075,7 +1006,6 @@ def test_paasta_spark_run_bash(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,
@@ -1086,7 +1016,7 @@ def test_paasta_spark_run_bash(
     )
     mock_get_spark_app_name.assert_called_once_with("/bin/bash")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", True, False
+        "spark.cores.max=100 spark.executor.cores=10"
     )
     mock_spark_conf_builder.return_value.get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
@@ -1113,10 +1043,9 @@ def test_paasta_spark_run_bash(
         spark_conf=mock_spark_conf,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
-        pod_template_path="unique-run",
+        pod_template_path="/test/pod-template.yaml",
         extra_driver_envs=dict(),
     )
-    mock_generate_pod_template_path.assert_called_once()
 
 
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
@@ -1125,8 +1054,8 @@ def test_paasta_spark_run_bash(
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
+@mock.patch.object(spark_run, "auto_add_timeout_for_spark_job", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
 )
@@ -1136,15 +1065,14 @@ def test_paasta_spark_run(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_spark_conf_builder,
-    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
+    mock_auto_add_timeout_for_spark_job,
     mock_get_spark_app_name,
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_validate_work_dir,
-    mock_generate_pod_template_path,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1175,11 +1103,16 @@ def test_paasta_spark_run(
         job_id=None,
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
-        "test-cluster": ["test-pool"]
-    }
-    mock_should_enable_compact_bin_packing.return_value = True
+    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+        "test-pool"
+    ]
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
+    mock_auto_add_timeout_for_spark_job.return_value = (
+        "USER=test timeout 1m spark-submit test.py"
+    )
+    mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
+        "spark.kubernetes.executor.podTemplateFile": "/test/pod-template.yaml",
+    }
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "USER=test timeout 1m spark-submit test.py"
@@ -1192,7 +1125,6 @@ def test_paasta_spark_run(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,
@@ -1203,7 +1135,7 @@ def test_paasta_spark_run(
     )
     mock_get_spark_app_name.assert_called_once_with("USER=test spark-submit test.py")
     mock_parse_user_spark_args.assert_called_once_with(
-        "spark.cores.max=100 spark.executor.cores=10", "unique-run", True, True
+        "spark.cores.max=100 spark.executor.cores=10"
     )
     mock_spark_conf_builder.return_value.get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
@@ -1229,10 +1161,9 @@ def test_paasta_spark_run(
         spark_conf=mock_spark_conf_builder.return_value.get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
-        pod_template_path="unique-run",
+        pod_template_path="/test/pod-template.yaml",
         extra_driver_envs=dict(),
     )
-    mock_generate_pod_template_path.assert_called_once()
 
 
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
@@ -1242,7 +1173,6 @@ def test_paasta_spark_run(
 @mock.patch.object(spark_run, "get_docker_image", autospec=True)
 @mock.patch.object(spark_run, "get_spark_app_name", autospec=True)
 @mock.patch.object(spark_run, "_parse_user_spark_args", autospec=True)
-@mock.patch.object(spark_run, "should_enable_compact_bin_packing", autospec=True)
 @mock.patch(
     "paasta_tools.cli.cmds.spark_run.spark_config.SparkConfBuilder", autospec=True
 )
@@ -1252,7 +1182,6 @@ def test_paasta_spark_run_pyspark(
     mock_get_smart_paasta_instance_name,
     mock_configure_and_run_docker_container,
     mock_spark_conf_builder,
-    mock_should_enable_compact_bin_packing,
     mock_parse_user_spark_args,
     mock_get_spark_app_name,
     mock_get_docker_image,
@@ -1260,7 +1189,6 @@ def test_paasta_spark_run_pyspark(
     mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_validate_work_dir,
-    mock_generate_pod_template_path,
 ):
     args = argparse.Namespace(
         work_dir="/tmp/local",
@@ -1294,11 +1222,15 @@ def test_paasta_spark_run_pyspark(
         False
     )
     mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_cluster_pools.return_value = {
-        "test-cluster": ["test-pool"]
-    }
+    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+        "test-pool"
+    ]
 
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
+    mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
+        "spark.kubernetes.executor.podTemplateFile": "/test/pod-template.yaml",
+    }
+
     spark_run.paasta_spark_run(args)
     mock_validate_work_dir.assert_called_once_with("/tmp/local")
     assert args.cmd == "pyspark"
@@ -1311,7 +1243,6 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,
@@ -1320,15 +1251,9 @@ def test_paasta_spark_run_pyspark(
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
     )
-    mock_should_enable_compact_bin_packing.assert_called_once_with(
-        False, spark_run.CLUSTER_MANAGER_K8S
-    )
     mock_get_spark_app_name.assert_called_once_with("pyspark")
     mock_parse_user_spark_args.assert_called_once_with(
         "spark.cores.max=70 spark.executor.cores=10",
-        "unique-run",
-        mock_should_enable_compact_bin_packing.return_value,
-        False,
     )
     mock_spark_conf_builder.return_value.get_spark_conf.assert_called_once_with(
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
@@ -1354,10 +1279,9 @@ def test_paasta_spark_run_pyspark(
         spark_conf=mock_spark_conf_builder.return_value.get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
-        pod_template_path="unique-run",
+        pod_template_path="/test/pod-template.yaml",
         extra_driver_envs=dict(),
     )
-    mock_generate_pod_template_path.assert_called_once()
 
 
 @pytest.mark.parametrize(

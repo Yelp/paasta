@@ -6,7 +6,6 @@ import re
 import shlex
 import socket
 import sys
-import uuid
 from typing import Any
 from typing import Dict
 from typing import List
@@ -15,7 +14,6 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import yaml
 from service_configuration_lib import read_service_configuration
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
@@ -32,7 +30,9 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
-from paasta_tools.kubernetes_tools import limit_size_with_hash
+from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
+from paasta_tools.spark_tools import create_spark_config_str
+from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
 from paasta_tools.spark_tools import get_webui_url
@@ -40,6 +40,7 @@ from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import filter_templates_from_config
+from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
@@ -51,7 +52,9 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
+from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import validate_pool
 
 
 DEFAULT_AWS_REGION = "us-west-2"
@@ -70,32 +73,7 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
-POD_TEMPLATE_DIR = "/nail/tmp"
-POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
-DEFAULT_RUNTIME_TIMEOUT = "12h"
-DEFAILT_AWS_PROFILE = "default"
-
-POD_TEMPLATE = """
-apiVersion: v1
-kind: Pod
-metadata:
-  labels:
-    spark: {spark_pod_label}
-spec:
-  dnsPolicy: Default
-  affinity:
-    podAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 95
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-            - key: spark
-              operator: In
-              values:
-              - {spark_pod_label}
-          topologyKey: topology.kubernetes.io/hostname
-"""
+DEFAULT_AWS_PROFILE = "default"
 
 deprecated_opts = {
     "j": "spark.jars",
@@ -152,6 +130,7 @@ def add_subparser(subparsers):
         help="Use the provided image to start the Spark driver and executors.",
     )
 
+    # TODO: Deprecated. Remove this
     list_parser.add_argument(
         "-e",
         "--enable-compact-bin-packing",
@@ -161,15 +140,6 @@ def add_subparser(subparsers):
         ),
         action="store_true",
         default=True,
-    )
-    list_parser.add_argument(
-        "--disable-compact-bin-packing",
-        help=(
-            "Disable compact bin packing. Requires --cluster-manager to be kubernetes. Note: this option is only for advanced Spark configurations,"
-            " don't use it unless you've been instructed to do so."
-        ),
-        action="store_true",
-        default=False,
     )
     list_parser.add_argument(
         "--docker-memory-limit",
@@ -289,9 +259,9 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         "--timeout-job-runtime",
         type=str,
-        help="Timeout value which will be added before spark-submit. Job will exit if it doesn't "
-        "finishes in given runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_RUNTIME_TIMEOUT}",
-        default=DEFAULT_RUNTIME_TIMEOUT,
+        help="Timeout value which will be added before spark-submit. Job will exit if it doesn't finish in given "
+        f"runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
+        default=DEFAULT_SPARK_RUNTIME_TIMEOUT,
     )
 
     list_parser.add_argument(
@@ -304,8 +274,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, separated by space. "
-        'For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
+        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, "
+        'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -328,16 +298,6 @@ def add_subparser(subparsers):
         dest="cluster_manager",
         choices=CLUSTER_MANAGERS,
         default=CLUSTER_MANAGER_K8S,
-    )
-
-    list_parser.add_argument(
-        "--enable-dra",
-        help=(
-            "[DEPRECATED] Enable Dynamic Resource Allocation (DRA) for the Spark job as documented in (y/spark-dra)."
-            "DRA is enabled by default now. This config is a no-op operation and recommended to be removed."
-        ),
-        action="store_true",
-        default=False,
     )
 
     list_parser.add_argument(
@@ -424,15 +384,7 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default=DEFAILT_AWS_PROFILE,
-    )
-
-    aws_group.add_argument(
-        "--no-aws-credentials",
-        help="Do not load any AWS credentials; allow the Spark job to use its "
-        "own logic to load credentials",
-        action="store_true",
-        default=False,
+        default=DEFAULT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -502,29 +454,6 @@ def decide_final_eks_toggle_state(user_override: Optional[bool]) -> bool:
 def sanitize_container_name(container_name):
     # container_name only allows [a-zA-Z0-9][a-zA-Z0-9_.-]
     return re.sub("[^a-zA-Z0-9_.-]", "_", re.sub("^[^a-zA-Z0-9]+", "", container_name))
-
-
-def generate_pod_template_path():
-    return POD_TEMPLATE_PATH.format(file_uuid=uuid.uuid4().hex)
-
-
-def should_enable_compact_bin_packing(disable_compact_bin_packing, cluster_manager):
-    if disable_compact_bin_packing:
-        return False
-
-    if cluster_manager != CLUSTER_MANAGER_K8S:
-        log.warn(
-            "enable_compact_bin_packing=True ignored as cluster manager is not kubernetes"
-        )
-        return False
-
-    if not os.access(POD_TEMPLATE_DIR, os.W_OK):
-        log.warn(
-            f"enable_compact_bin_packing=True ignored as {POD_TEMPLATE_DIR} is not usable"
-        )
-        return False
-
-    return True
 
 
 def get_docker_run_cmd(
@@ -707,10 +636,7 @@ def get_spark_env(
 
 
 def _parse_user_spark_args(
-    spark_args: Optional[str],
-    pod_template_path: str,
-    enable_compact_bin_packing: bool = False,
-    enable_spark_dra: bool = False,
+    spark_args: str,
 ) -> Dict[str, str]:
 
     user_spark_opts = {}
@@ -727,46 +653,7 @@ def _parse_user_spark_args(
                 sys.exit(1)
             user_spark_opts[fields[0]] = fields[1]
 
-    if enable_compact_bin_packing:
-        user_spark_opts["spark.kubernetes.executor.podTemplateFile"] = pod_template_path
-
-    if enable_spark_dra:
-        if (
-            "spark.dynamicAllocation.enabled" in user_spark_opts
-            and user_spark_opts["spark.dynamicAllocation.enabled"] == "false"
-        ):
-            print(
-                PaastaColors.red(
-                    "Error: --enable-dra flag is provided while spark.dynamicAllocation.enabled "
-                    "is explicitly set to false in --spark-args. If you want to enable DRA, please remove the "
-                    "spark.dynamicAllocation.enabled=false config from spark-args. If you don't want to "
-                    "enable DRA, please remove the --enable-dra flag."
-                ),
-                file=sys.stderr,
-            )
-            sys.exit(1)
-        user_spark_opts["spark.dynamicAllocation.enabled"] = "true"
-
     return user_spark_opts
-
-
-def create_spark_config_str(spark_config_dict, is_mrjob):
-    conf_option = "--jobconf" if is_mrjob else "--conf"
-    spark_config_entries = list()
-
-    if is_mrjob:
-        spark_master = spark_config_dict["spark.master"]
-        spark_config_entries.append(f"--spark-master={spark_master}")
-
-    for opt, val in spark_config_dict.items():
-        # mrjob use separate options to configure master
-        if is_mrjob and opt == "spark.master":
-            continue
-        # Process Spark configs with multiple space separated values to be in single quotes
-        if isinstance(val, str) and " " in val:
-            val = f"'{val}'"
-        spark_config_entries.append(f"{conf_option} {opt}={val}")
-    return " ".join(spark_config_entries)
 
 
 def run_docker_container(
@@ -917,8 +804,7 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    if args.enable_compact_bin_packing:
-        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
+    volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     if decide_final_eks_toggle_state(args.use_eks_override):
         volumes.append(
@@ -1134,82 +1020,6 @@ def validate_work_dir(s):
             sys.exit(1)
 
 
-def _auto_add_timeout_for_job(cmd, timeout_job_runtime):
-    # Timeout only to be added for spark-submit commands
-    # TODO: Add timeout for jobs using mrjob with spark-runner
-    if "spark-submit" not in cmd:
-        return cmd
-    try:
-        timeout_present = re.match(
-            r"^.*timeout[\s]+[\d]+[\.]?[\d]*[m|h][\s]+spark-submit .*$", cmd
-        )
-        if not timeout_present:
-            split_cmd = cmd.split("spark-submit")
-            cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
-            print(
-                PaastaColors.blue(
-                    f"NOTE: Job will exit in given time {timeout_job_runtime}. "
-                    f"Adjust timeout value using --timeout-job-timeout. "
-                    f"New Updated Command with timeout: {cmd}"
-                ),
-            )
-    except Exception as e:
-        err_msg = (
-            f"'timeout' could not be added to command: '{cmd}' due to error '{e}'. "
-            "Please report to #spark."
-        )
-        log.warn(err_msg)
-        print(PaastaColors.red(err_msg))
-    return cmd
-
-
-def _validate_pool(args, system_paasta_config):
-    if args.pool:
-        valid_pools = system_paasta_config.get_cluster_pools().get(args.cluster, [])
-        if not valid_pools:
-            log.warning(
-                PaastaColors.yellow(
-                    f"Could not fetch allowed_pools for `{args.cluster}`. Skipping pool validation.\n"
-                )
-            )
-        if valid_pools and args.pool not in valid_pools:
-            print(
-                PaastaColors.red(
-                    f"Invalid --pool value. List of valid pools for cluster `{args.cluster}`: "
-                    f"{valid_pools}"
-                ),
-                file=sys.stderr,
-            )
-            return False
-    return True
-
-
-def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
-    """
-    Annoyingly, there's two layers of aliases: one to figure out what
-    k8s server url to use (this one) and another to figure out what
-    soaconfigs filename to use ;_;
-
-    This exists so that we can map something like `--cluster pnw-devc`
-    into spark-pnw-devc's k8s apiserver url without needing to update
-    any soaconfigs/alter folk's muscle memory.
-
-    Ideally we can get rid of this entirely once spark-run reads soaconfigs
-    in a manner more closely aligned to what we do with other paasta workloads
-    (i.e., have it automatically determine where to run based on soaconfigs
-    filenames - and not rely on explicit config)
-    """
-    realized_cluster = (
-        load_system_paasta_config().get_eks_cluster_aliases().get(cluster, cluster)
-    )
-    return (
-        load_system_paasta_config()
-        .get_kube_clusters()
-        .get(realized_cluster, {})
-        .get("server")
-    )
-
-
 def parse_tronfig(tronfig_path: str, job_id: str) -> Optional[Dict[str, Any]]:
     splitted = job_id.split(".")
     if len(splitted) != 2:
@@ -1230,6 +1040,8 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
       - pool
       - iam_role
       - iam_role_provider
+      - force_spark_resource_configs
+      - timeout_spark
       - command
       - env
       - spark_args
@@ -1260,10 +1072,12 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         )
         return None
 
-    # Other args
+    # Other args: map Tronfig YAML fields to spark-run CLI args
     fields_to_args = {
         "pool": "pool",
         "iam_role": "assume_aws_role",
+        "force_spark_resource_configs": "force_spark_resource_configs",
+        "timeout_spark": "timeout_job_runtime",
         "command": "cmd",
         "spark_args": "spark_args",
     }
@@ -1276,11 +1090,11 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
             # Befutify for printing
-            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(20, " ")
-            field_name_str = field_name.ljust(12)
+            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
+            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile != DEFAILT_AWS_PROFILE:
+            if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
                 print(
                     PaastaColors.yellow(
                         f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
@@ -1341,8 +1155,22 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         return 1
 
     # validate pool
-    if not _validate_pool(args, system_paasta_config):
-        return 1
+    try:
+        if not validate_pool(args.cluster, args.pool, system_paasta_config):
+            print(
+                PaastaColors.red(
+                    f"Invalid --pool value. List of valid pools for cluster `{args.cluster}`: "
+                    f"{system_paasta_config.get_pools_for_cluster(args.cluster)}"
+                ),
+                file=sys.stderr,
+            )
+            return 1
+    except PoolsNotConfiguredError:
+        log.warning(
+            PaastaColors.yellow(
+                f"Could not fetch allowed_pools for `{args.cluster}`. Skipping pool validation.\n"
+            )
+        )
 
     # annoyingly, there's two layers of aliases: one for the soaconfigs to read from
     # (that's this alias lookup) - and then another layer later when figuring out what
@@ -1382,7 +1210,6 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
 
     aws_creds = get_aws_credentials(
         service=args.service,
-        no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
@@ -1392,30 +1219,12 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
     if docker_image_digest is None:
         return 1
 
-    pod_template_path = generate_pod_template_path()
-    args.enable_compact_bin_packing = should_enable_compact_bin_packing(
-        args.disable_compact_bin_packing, args.cluster_manager
-    )
-
     volumes = instance_config.get_volumes(system_paasta_config.get_volumes())
     app_base_name = get_spark_app_name(args.cmd or instance_config.get_cmd())
 
-    if args.enable_compact_bin_packing:
-        document = POD_TEMPLATE.format(
-            spark_pod_label=limit_size_with_hash(f"exec-{app_base_name}"),
-        )
-        parsed_pod_template = yaml.safe_load(document)
-        with open(pod_template_path, "w") as f:
-            yaml.dump(parsed_pod_template, f)
+    user_spark_opts = _parse_user_spark_args(args.spark_args)
 
-    user_spark_opts = _parse_user_spark_args(
-        args.spark_args,
-        pod_template_path,
-        args.enable_compact_bin_packing,
-        args.enable_dra,
-    )
-
-    args.cmd = _auto_add_timeout_for_job(args.cmd, args.timeout_job_runtime)
+    args.cmd = auto_add_timeout_for_spark_job(args.cmd, args.timeout_job_runtime)
 
     # This is required if configs are provided as part of `spark-submit`
     # Other way to provide is with --spark-args
@@ -1430,7 +1239,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
     paasta_instance = get_smart_paasta_instance_name(args)
 
     use_eks = decide_final_eks_toggle_state(args.use_eks_override)
-    k8s_server_address = _get_k8s_url_for_cluster(args.cluster) if use_eks else None
+    k8s_server_address = get_k8s_url_for_cluster(args.cluster) if use_eks else None
     paasta_cluster = (
         args.cluster
         if not use_eks
@@ -1469,6 +1278,8 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         spark_conf=spark_conf,
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
-        pod_template_path=pod_template_path,
+        pod_template_path=spark_conf.get(
+            "spark.kubernetes.executor.podTemplateFile", ""
+        ),
         extra_driver_envs=driver_envs_from_tronfig,
     )
