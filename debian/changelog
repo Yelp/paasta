@@ -1,3 +1,11 @@
+paasta-tools (0.218.11) xenial; urgency=medium
+
+  * 0.218.11 tagged with 'make release'
+    Commit: lowercase before comparing in case we"re wrong about the
+    name of this state.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 06 Mar 2024 11:53:52 -0800
+
 paasta-tools (0.218.10) xenial; urgency=medium
 
   * 0.218.10 tagged with 'make release'
