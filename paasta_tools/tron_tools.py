@@ -108,6 +108,7 @@ SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvid
 SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
 SPARK_DRIVER_POOL = "stable"
 SPARK_JOB_USER = "TRON"
+SPARK_PROMETHEUS_SHARD = "ml-compute"
 SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 
 
@@ -259,10 +260,11 @@ def _get_spark_driver_monitoring_annotations_labels(
     """
     annotations = {
         "prometheus.io/scrape": "true",
+        "prometheus.io/path": "/metrics/prometheus",
     }
 
     labels = {
-        "paasta.yelp.com/prometheus_shard": "ml-compute",
+        "paasta.yelp.com/prometheus_shard": SPARK_PROMETHEUS_SHARD,
         "spark.yelp.com/user": SPARK_JOB_USER,
         "spark.yelp.com/driver_ui_port": str(spark_config.get("spark.ui.port", "")),
     }

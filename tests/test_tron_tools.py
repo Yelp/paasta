@@ -1243,6 +1243,7 @@ class TestTronTools:
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
                 "prometheus.io/scrape": "true",
+                "prometheus.io/path": "/metrics/prometheus",
             },
             "extra_volumes": [
                 {
