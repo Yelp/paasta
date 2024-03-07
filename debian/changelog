@@ -1,3 +1,20 @@
+paasta-tools (0.218.11) xenial; urgency=medium
+
+  * 0.218.11 tagged with 'make release'
+    Commit: lowercase before comparing in case we"re wrong about the
+    name of this state.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 06 Mar 2024 11:53:52 -0800
+
+paasta-tools (0.218.10) xenial; urgency=medium
+
+  * 0.218.10 tagged with 'make release'
+    Commit: Merge pull request #3810 from Yelp/u/ajayprataps/COMPINFRA-
+    3685-added-support-for-flinkeks  added support for flinkeks in
+    paasta cli
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Wed, 06 Mar 2024 03:53:47 -0800
+
 paasta-tools (0.218.9) xenial; urgency=medium
 
   * 0.218.9 tagged with 'make release'

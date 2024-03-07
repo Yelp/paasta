@@ -97,6 +97,7 @@ class InstanceStatus(ModelNormal):
         return {
             'adhoc': (InstanceStatusAdhoc,),  # noqa: E501
             'flink': (InstanceStatusFlink,),  # noqa: E501
+            'flinkeks': (InstanceStatusFlink,),  # noqa: E501
             'git_sha': (str,),  # noqa: E501
             'version': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
@@ -117,6 +118,7 @@ class InstanceStatus(ModelNormal):
     attribute_map = {
         'adhoc': 'adhoc',  # noqa: E501
         'flink': 'flink',  # noqa: E501
+        'flinkeks': 'flinkeks',  # noqa: E501
         'git_sha': 'git_sha',  # noqa: E501
         'version': 'version',  # noqa: E501
         'instance': 'instance',  # noqa: E501
@@ -177,6 +179,7 @@ class InstanceStatus(ModelNormal):
                                 _visited_composed_classes = (Animal,)
             adhoc (InstanceStatusAdhoc): [optional]  # noqa: E501
             flink (InstanceStatusFlink): [optional]  # noqa: E501
+            flinkeks (InstanceStatusFlink): [optional]  # noqa: E501
             git_sha (str): Git sha of a service. [optional]  # noqa: E501
             version (str): Deployment Version of a service. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
