@@ -73,6 +73,11 @@ package_%: build_$$*_docker go_entrypoint
 
 	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
+	# The in-house Podman deployment (unprivileged Docker) maps a virtual UID in the OS to root in the container,
+	# so we skip this chown statement to avoid broken permissions.
+ifeq ($(findstring podman,$(DOCKER_HOST)),)
+	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
+endif
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
