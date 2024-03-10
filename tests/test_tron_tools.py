@@ -1242,7 +1242,7 @@ class TestTronTools:
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "true",
-                "prometheus.io/scrape": "true",
+                "prometheus.io/port": "39091",
                 "prometheus.io/path": "/metrics/prometheus",
             },
             "extra_volumes": [

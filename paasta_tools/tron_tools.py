@@ -258,15 +258,17 @@ def _get_spark_driver_monitoring_annotations_labels(
     """
     A tuple of [pod annotation dict, pod labels dict].
     """
+    ui_port_str = str(spark_config.get("spark.ui.port", ""))
+
     annotations = {
-        "prometheus.io/scrape": "true",
+        "prometheus.io/port": ui_port_str,
         "prometheus.io/path": "/metrics/prometheus",
     }
 
     labels = {
         "paasta.yelp.com/prometheus_shard": SPARK_PROMETHEUS_SHARD,
         "spark.yelp.com/user": SPARK_JOB_USER,
-        "spark.yelp.com/driver_ui_port": str(spark_config.get("spark.ui.port", "")),
+        "spark.yelp.com/driver_ui_port": ui_port_str,
     }
     return annotations, labels
 
