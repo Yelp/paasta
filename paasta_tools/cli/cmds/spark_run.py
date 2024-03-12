@@ -22,7 +22,6 @@ from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_hourly_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
@@ -946,12 +945,8 @@ def configure_and_run_docker_container(
         print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         grafana_url = get_grafana_url(spark_conf)
-        signalfx_url = get_signalfx_url(spark_conf)
         dashboard_url_msg = (
-            PaastaColors.green(f"\nGrafana dashboard: ")
-            + f"{grafana_url}\n"
-            + PaastaColors.green(f"\nSignalfx dashboard: ")
-            + f"{signalfx_url}\n"
+            PaastaColors.green(f"\nGrafana dashboard: ") + f"{grafana_url}\n"
         )
         print(webui_url_msg)
         print(dashboard_url_msg)
