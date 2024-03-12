@@ -296,20 +296,6 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-    # TODO: remove once hpa scaling policy patch is removed
-    def patch_expected_autoscaling_spec(self, obj, deployment, max_replicas=3):
-        """Currently, HPA scaling policies are monkey-patched onto the HPA
-        OpenAPI objects. This function does the same thing so that any assertions
-        we do will pass.
-        """
-        if isinstance(obj, V2beta2HorizontalPodAutoscaler):
-            obj = KubeClient().jsonify(obj)
-            obj["spec"]["behavior"] = deployment.get_autoscaling_scaling_policy(
-                autoscaling_params={},
-                max_replicas=max_replicas,
-            )
-        return obj
-
     def test_copy(self):
         assert self.deployment.copy() == self.deployment
         assert self.deployment.copy() is not self.deployment
@@ -944,7 +930,6 @@ class TestKubernetesDeploymentConfig:
         ],
     )
     def test_get_kubernetes_containers(self, prometheus_port, expected_ports):
-
         with mock.patch(
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_docker_url",
             autospec=True,
@@ -1336,7 +1321,6 @@ class TestKubernetesDeploymentConfig:
         expected_secret_name,
         expected_signature_name,
     ):
-
         deployment = KubernetesDeploymentConfig(
             service=service,
             instance=instance,
@@ -2199,7 +2183,6 @@ class TestKubernetesDeploymentConfig:
             autospec=True,
             return_value=is_autoscaled,
         ):
-
             ret = self.deployment.get_kubernetes_metadata("aaa123")
             assert ret == V1ObjectMeta(
                 labels={
@@ -2253,6 +2236,10 @@ class TestKubernetesDeploymentConfig:
                 name="fake_name", namespace="paasta", annotations=annotations
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
@@ -2274,10 +2261,7 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
+        assert expected_res == return_value
 
     @pytest.mark.parametrize(
         "metrics_provider",
@@ -2317,6 +2301,10 @@ class TestKubernetesDeploymentConfig:
                 name="fake_name", namespace="paasta", annotations=annotations
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
@@ -2355,10 +2343,7 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
         )
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
+        assert expected_res == return_value
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
@@ -2405,6 +2390,10 @@ class TestKubernetesDeploymentConfig:
                 annotations={},
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
@@ -2434,10 +2423,7 @@ class TestKubernetesDeploymentConfig:
             ),
         )
 
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
+        assert expected_res == return_value
 
     @mock.patch(
         "paasta_tools.kubernetes_tools.load_system_paasta_config",
@@ -2483,6 +2469,10 @@ class TestKubernetesDeploymentConfig:
                 annotations={},
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=mock_config.get_autoscaling_scaling_policy(
+                    autoscaling_params={},
+                    max_replicas=3,
+                ),
                 max_replicas=3,
                 min_replicas=1,
                 metrics=[
@@ -2512,10 +2502,7 @@ class TestKubernetesDeploymentConfig:
             ),
         )
 
-        assert (
-            self.patch_expected_autoscaling_spec(expected_res, mock_config)
-            == return_value
-        )
+        assert expected_res == return_value
 
     def test_override_scaledown_policies(self):
         config_dict = KubernetesDeploymentConfigDict(
@@ -2539,14 +2526,14 @@ class TestKubernetesDeploymentConfig:
             config_dict=config_dict,
             branch_dict=None,
         )
-        hpa_dict = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
+        hpa = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
             mock_config,
             "fake_name",
             "cluster",
             KubeClient(),
             "paasta",
         )
-        assert hpa_dict["spec"]["behavior"]["scaleDown"] == {
+        assert hpa.spec.behavior["scaleDown"] == {
             "stabilizationWindowSeconds": 123,
             "selectPolicy": "Max",
             "policies": [{"type": "Percent", "value": 45, "periodSeconds": 67}],
@@ -2872,7 +2859,6 @@ def test_get_kubernetes_services_running_here_for_nerve():
     ) as mock_get_kubernetes_services_running_here, mock.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace:
-
         mock_load_service_namespace.side_effect = (
             lambda service, namespace, soa_dir: MockNerveDict(name=namespace)
         )
@@ -4762,7 +4748,6 @@ def test_get_kubernetes_secret_env_variables():
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
-
         mock_environment = {
             "MY": "aaa",
             "SECRET_NAME1": "SECRET(SECRET_NAME1)",
@@ -4825,7 +4810,6 @@ def test_get_kubernetes_secret_volumes_multiple_files():
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
-
         mock_secret_volumes_config = [
             SecretVolume(
                 container_path="/the/container/path/",
@@ -4861,7 +4845,6 @@ def test_get_kubernetes_secret_volumes_single_file():
     ) as mock_get_kubernetes_secret, mock.patch(
         "paasta_tools.kubernetes_tools.KubeClient", autospec=True
     ) as mock_kube_client:
-
         mock_secret_volumes_config = [
             SecretVolume(
                 container_path="/the/container/path/",
