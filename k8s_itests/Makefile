@@ -9,6 +9,10 @@ export PAASTA_SYSTEM_CONFIG_DIR=$(PAASTA_CONFIG_DIR)/fake_etc_paasta
 export PAASTA_API_PORT=$(shell ephemeral-port-reserve)
 export KUBECONFIG=$(CWD)/kubeconfig
 
+ifeq ($(findstring podman,${DOCKER_HOST}), podman)
+	export CREATE_CLUSTER_ENVS=KIND_EXPERIMENTAL_PROVIDER=podman
+endif
+
 ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
 	export KIND_CONFIG=deployments/kind/cluster-devbox.yaml
 	PAASTA_K8S_ENV ?= YELP
@@ -32,7 +36,7 @@ ifeq (,$(wildcard ./kind))
 	./scripts/install-kind.sh
 
 .create_cluster: kind
-	KIND_EXPERIMENTAL_PROVIDER=podman ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
+	$(CREATE_CLUSTER_ENVS) ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
 	touch .create_cluster
 endif
 
