@@ -1,0 +1,6 @@
+ephemeral-port-reserve==1.1.4
+pip==22.0.4
+setuptools==69.1.0
+tox==3.7.0
+tox-pip-extensions==1.4.2
+virtualenv==16.2.0
