@@ -32,7 +32,7 @@ ifeq (,$(wildcard ./kind))
 	./scripts/install-kind.sh
 
 .create_cluster: kind
-	./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
+	KIND_EXPERIMENTAL_PROVIDER=podman ./kind create cluster --name=$(CLUSTER) --config=$(KIND_CONFIG) --kubeconfig $(KUBECONFIG)
 	touch .create_cluster
 endif
 
