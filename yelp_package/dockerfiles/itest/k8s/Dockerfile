@@ -43,6 +43,7 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 WORKDIR /work
 
 ADD requirements.txt /work/
+ADD requirements-bootstrap.txt /work/
 RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements-bootstrap.txt
