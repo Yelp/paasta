@@ -87,7 +87,8 @@ class DeprecatedAction(argparse.Action):
             PaastaColors.red(
                 f"Use of {option_string} is deprecated. "
                 f"Please use {deprecated_opts.get(option_string.strip('-'), '')}=value in --spark-args."
-                if option_string.strip('-') in deprecated_opts else ""
+                if option_string.strip("-") in deprecated_opts
+                else ""
             )
         )
         sys.exit(1)
@@ -259,9 +260,9 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, '
-             'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g '
-             'spark.executor.instances=2".',
+        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, "
+        'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g '
+        'spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -1154,7 +1155,9 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
     paasta_instance = get_smart_paasta_instance_name(args)
 
     k8s_server_address = get_k8s_url_for_cluster(args.cluster)
-    paasta_cluster = system_paasta_config.get_eks_cluster_aliases().get(args.cluster, args.cluster)
+    paasta_cluster = system_paasta_config.get_eks_cluster_aliases().get(
+        args.cluster, args.cluster
+    )
 
     spark_conf_builder = spark_config.SparkConfBuilder()
     spark_conf = spark_conf_builder.get_spark_conf(

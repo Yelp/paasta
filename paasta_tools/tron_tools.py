@@ -1000,9 +1000,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
             )
 
         if executor == "spark":
-            is_mrjob = action_config.config_dict.get(
-                "mrjob", False
-            )
+            is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
             # inject spark configs to the original spark-submit command
             spark_config = action_config.build_spark_config()
