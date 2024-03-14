@@ -282,6 +282,7 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     image: str
     force_spark_resource_configs: bool
     timeout_spark: str
+    mrjob: bool
 
 
 class TronActionConfig(InstanceConfig):
@@ -995,10 +996,13 @@ def format_tron_action_dict(action_config: TronActionConfig):
             )
 
         if executor == "spark":
+            is_mrjob = action_config.config_dict.get(
+                "mrjob", False
+            )
             system_paasta_config = load_system_paasta_config()
             # inject spark configs to the original spark-submit command
             spark_config = action_config.build_spark_config()
-            command = f"{inject_spark_conf_str(result['command'], create_spark_config_str(spark_config, False))}"
+            command = f"{inject_spark_conf_str(result['command'], create_spark_config_str(spark_config, is_mrjob=is_mrjob))}"
             result["command"] = auto_add_timeout_for_spark_job(
                 command,
                 action_config.config_dict.get(

@@ -75,16 +75,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 DEFAULT_AWS_PROFILE = "default"
 
-deprecated_opts = {
-    "j": "spark.jars",
-    "jars": "spark.jars",
-    "max-cores": "spark.cores.max",
-    "executor-cores": "spark.executor.cores",
-    "executor-memory": "spark.executor.memory",
-    "driver-max-result-size": "spark.driver.maxResultSize",
-    "driver-cores": "spark.driver.cores",
-    "driver-memory": "spark.driver.memory",
-}
+deprecated_opts = {}
 
 SPARK_COMMANDS = {"pyspark", "spark-submit"}
 
@@ -95,9 +86,9 @@ class DeprecatedAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         print(
             PaastaColors.red(
-                "Use of {} is deprecated. Please use {}=value in --spark-args.".format(
-                    option_string, deprecated_opts[option_string.strip("-")]
-                )
+                f"Use of {option_string} is deprecated. "
+                f"Please use {deprecated_opts.get(option_string.strip('-'), '')}=value in --spark-args."
+                if option_string.strip('-') in deprecated_opts else ""
             )
         )
         sys.exit(1)
@@ -130,16 +121,11 @@ def add_subparser(subparsers):
         help="Use the provided image to start the Spark driver and executors.",
     )
 
-    # TODO: Deprecated. Remove this
     list_parser.add_argument(
         "-e",
         "--enable-compact-bin-packing",
-        help=(
-            "Enabling compact bin packing will try to ensure executors are scheduled on the same nodes. Requires --cluster-manager to be kubernetes."
-            " Always true by default, keep around for backward compability."
-        ),
-        action="store_true",
-        default=True,
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
     )
     list_parser.add_argument(
         "--docker-memory-limit",
@@ -274,8 +260,9 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, "
-        'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
+        help='Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, '
+             'separated by space. For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g '
+             'spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -312,54 +299,6 @@ def add_subparser(subparsers):
         help="Tron job id <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
         type=str,
         default=None,
-    )
-
-    k8s_target_cluster_type_group = list_parser.add_mutually_exclusive_group()
-    k8s_target_cluster_type_group.add_argument(
-        "--force-use-eks",
-        help="Use the EKS version of the target cluster rather than the Yelp-managed target cluster",
-        action="store_true",
-        dest="use_eks_override",
-        # We'll take a boolean value to mean that we should honor what the user wants, and None as using
-        # the CI-provided default
-        default=None,
-    )
-    k8s_target_cluster_type_group.add_argument(
-        "--force-no-use-eks",
-        help="Use the Yelp-managed version of the target cluster rather than the AWS-managed EKS target cluster",
-        action="store_false",
-        dest="use_eks_override",
-        # We'll take a boolean value to mean that we should honor what the user wants, and None as using
-        # the CI-provided default
-        default=None,
-    )
-
-    list_parser.add_argument(
-        "-j", "--jars", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--executor-memory", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--executor-cores", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--max-cores", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--driver-max-result-size", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--driver-memory", help=argparse.SUPPRESS, action=DeprecatedAction
-    )
-
-    list_parser.add_argument(
-        "--driver-cores", help=argparse.SUPPRESS, action=DeprecatedAction
     )
 
     aws_group = list_parser.add_argument_group(
@@ -432,23 +371,6 @@ def add_subparser(subparsers):
     )
 
     list_parser.set_defaults(command=paasta_spark_run)
-
-
-def decide_final_eks_toggle_state(user_override: Optional[bool]) -> bool:
-    """
-    This is slightly weird (hooray for tri-value logic!) - but basically:
-    we want to prioritize any user choice for using EKS (i.e., force
-    enable/disable using EKS) regardless of what the PaaSTA-supplied
-    default is.
-
-    If a user hasn't set --force-use-eks or --force-no-use-eks, argparse
-    will leave args.use_eks_override (or, in this function, user_override) as None -
-    otherwise, there'll be an actual boolean there.
-    """
-    if user_override is not None:
-        return user_override
-
-    return load_system_paasta_config().get_spark_use_eks_default()
 
 
 def sanitize_container_name(container_name):
@@ -629,8 +551,7 @@ def get_spark_env(
         spark_env["SPARK_DAEMON_CLASSPATH"] = "/opt/spark/extra_jars/*"
         spark_env["SPARK_NO_DAEMONIZE"] = "true"
 
-    if decide_final_eks_toggle_state(args.use_eks_override):
-        spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+    spark_env["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
     return spark_env
 
@@ -806,10 +727,9 @@ def configure_and_run_docker_container(
 
     volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
-    if decide_final_eks_toggle_state(args.use_eks_override):
-        volumes.append(
-            f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
-        )
+    volumes.append(
+        f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
+    )
 
     environment = instance_config.get_env_dictionary()  # type: ignore
     spark_conf_str = create_spark_config_str(spark_conf, is_mrjob=args.mrjob)
@@ -1238,15 +1158,9 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
 
     paasta_instance = get_smart_paasta_instance_name(args)
 
-    use_eks = decide_final_eks_toggle_state(args.use_eks_override)
-    k8s_server_address = get_k8s_url_for_cluster(args.cluster) if use_eks else None
-    paasta_cluster = (
-        args.cluster
-        if not use_eks
-        else load_system_paasta_config()
-        .get_eks_cluster_aliases()
-        .get(args.cluster, args.cluster)
-    )
+    k8s_server_address = get_k8s_url_for_cluster(args.cluster)
+    paasta_cluster = system_paasta_config.get_eks_cluster_aliases().get(args.cluster, args.cluster)
+
     spark_conf_builder = spark_config.SparkConfBuilder()
     spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
@@ -1261,14 +1175,9 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         aws_creds=aws_creds,
         aws_region=args.aws_region,
         force_spark_resource_configs=args.force_spark_resource_configs,
-        use_eks=use_eks,
+        use_eks=True,
         k8s_server_address=k8s_server_address,
     )
-    # TODO: Remove this after MLCOMPUTE-699 is complete
-    if "spark.kubernetes.decommission.script" not in spark_conf:
-        spark_conf[
-            "spark.kubernetes.decommission.script"
-        ] = "/opt/spark/kubernetes/dockerfiles/spark/decom.sh"
 
     return configure_and_run_docker_container(
         args,

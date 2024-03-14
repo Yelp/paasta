@@ -326,6 +326,9 @@
                 "force_spark_resource_configs": {
                     "type": "boolean"
                 },
+                "mrjob": {
+                    "type": "boolean"
+                },
                 "spark_args": {
                     "type": "object",
                     "additionalProperties": true,
