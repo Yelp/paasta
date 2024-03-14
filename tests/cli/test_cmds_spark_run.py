@@ -258,6 +258,7 @@ def test_get_spark_env(
         "PAASTA_LAUNCHED_BY": mock_get_possible_launced_by_user_variable_from_env.return_value,
         "PAASTA_INSTANCE_TYPE": "spark",
         "AWS_DEFAULT_REGION": "test-region",
+        "KUBECONFIG": "/etc/kubernetes/spark.conf",
         **extra_expected,
         **expected_aws,
     }
@@ -514,6 +515,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -526,6 +528,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
             docker_cmd=mock_get_docker_cmd.return_value,
@@ -626,6 +629,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -638,6 +642,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
             docker_cmd=mock_get_docker_cmd.return_value,
@@ -739,6 +744,7 @@ class TestConfigureAndRunDockerContainer:
                     "/fake_dir:/spark_driver:rw",
                     "/nail/home:/nail/home:rw",
                     "unique-run:unique-run:rw",
+                    "/etc/kubernetes/spark.conf:/etc/kubernetes/spark.conf:ro",
                 ]
             ),
             environment={
@@ -751,6 +757,7 @@ class TestConfigureAndRunDockerContainer:
                 "SPARK_USER": "root",
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "PAASTA_LAUNCHED_BY": mock.ANY,
+                "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             docker_img="fake-registry/fake-service",
             docker_cmd=mock_get_docker_cmd.return_value,
@@ -975,6 +982,9 @@ def test_paasta_spark_run_bash(
     mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
+    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+        "test-cluster": "test-cluster"
+    }
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
         "spark.kubernetes.executor.podTemplateFile": "/test/pod-template.yaml",
@@ -1016,7 +1026,7 @@ def test_paasta_spark_run_bash(
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
-        use_eks=False,
+        use_eks=True,
         k8s_server_address=None,
     )
     mock_spark_conf = mock_spark_conf_builder.return_value.get_spark_conf.return_value
@@ -1090,6 +1100,9 @@ def test_paasta_spark_run(
     mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
+    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+        "test-cluster": "test-cluster"
+    }
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     mock_auto_add_timeout_for_spark_job.return_value = (
         "USER=test timeout 1m spark-submit test.py"
@@ -1134,7 +1147,7 @@ def test_paasta_spark_run(
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
-        use_eks=False,
+        use_eks=True,
         k8s_server_address=None,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
@@ -1208,6 +1221,9 @@ def test_paasta_spark_run_pyspark(
     mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
+    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+        "test-cluster": "test-cluster"
+    }
 
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
     mock_spark_conf_builder.return_value.get_spark_conf.return_value = {
@@ -1251,7 +1267,7 @@ def test_paasta_spark_run_pyspark(
         aws_creds=mock_get_aws_credentials.return_value,
         aws_region="test-region",
         force_spark_resource_configs=False,
-        use_eks=False,
+        use_eks=True,
         k8s_server_address=None,
     )
     mock_configure_and_run_docker_container.assert_called_once_with(
