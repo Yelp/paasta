@@ -74,7 +74,10 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 DEFAULT_AWS_PROFILE = "default"
 
-deprecated_opts = {}
+deprecated_opts = {
+    "j": "spark.jars",
+    "jars": "spark.jars",
+}
 
 SPARK_COMMANDS = {"pyspark", "spark-submit"}
 
@@ -82,13 +85,18 @@ log = logging.getLogger(__name__)
 
 
 class DeprecatedAction(argparse.Action):
+    def __init__(self, option_strings, dest, nargs="?", **kwargs):
+        super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+
     def __call__(self, parser, namespace, values, option_string=None):
         print(
             PaastaColors.red(
                 f"Use of {option_string} is deprecated. "
-                f"Please use {deprecated_opts.get(option_string.strip('-'), '')}=value in --spark-args."
-                if option_string.strip("-") in deprecated_opts
-                else ""
+                + (
+                    f"Please use {deprecated_opts.get(option_string.strip('-'), '')}=value in --spark-args."
+                    if option_string.strip("-") in deprecated_opts
+                    else ""
+                )
             )
         )
         sys.exit(1)
