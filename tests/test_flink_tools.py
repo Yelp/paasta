@@ -234,9 +234,9 @@ def test_get_flink_jobmanager_overview():
     ) as mock_dashboard_get:
         cluster = "mycluster"
         cr_name = "kurupt--fm-7c7b459d59"
-        overview = flink_tools.get_flink_jobmanager_overview(cr_name, cluster)
+        overview = flink_tools.get_flink_jobmanager_overview(cr_name, cluster, False)
         mock_dashboard_get.assert_called_once_with(
-            cr_name=cr_name, cluster=cluster, path="overview"
+            cr_name=cr_name, cluster=cluster, path="overview", is_eks=False
         )
         assert overview == {
             "taskmanagers": 10,

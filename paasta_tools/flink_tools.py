@@ -184,8 +184,8 @@ def get_flink_ingress_url_root(cluster: str, is_eks: bool) -> str:
         return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
 
 
-def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
-    root = get_flink_ingress_url_root(cluster)
+def _dashboard_get(cr_name: str, cluster: str, path: str, is_eks: bool) -> str:
+    root = get_flink_ingress_url_root(cluster, is_eks)
     url = f"{root}{cr_name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
@@ -259,9 +259,11 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         raise ValueError(f"failed HTTP request to flink API: {e}")
 
 
-def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
+def get_flink_jobmanager_overview(
+    cr_name: str, cluster: str, is_eks: bool
+) -> Mapping[str, Any]:
     try:
-        response = _dashboard_get(cr_name, cluster, "overview")
+        response = _dashboard_get(cr_name, cluster, "overview", is_eks)
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url
