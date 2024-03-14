@@ -218,8 +218,8 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
 def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     metadata = cr["metadata"]
     cluster = metadata["labels"][paasta_prefixed("cluster")]
-    is_eks = bool(metadata["labels"].get("is_eks", "false"))
-    base_url = get_flink_ingress_url_root(cluster, bool(is_eks))
+    is_eks = metadata["labels"].get("paasta.yelp.com/eks", "False")
+    base_url = get_flink_ingress_url_root(cluster, is_eks == "True")
 
     # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
     _, _, service_cr_name, *_ = urlparse(
