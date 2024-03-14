@@ -400,7 +400,6 @@ def test_run_docker_container(
 @mock.patch("paasta_tools.cli.cmds.spark_run.run_docker_container", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_webui_url", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.get_docker_cmd", autospec=True)
-@mock.patch("paasta_tools.cli.cmds.spark_run.get_signalfx_url", autospec=True)
 @mock.patch("paasta_tools.cli.cmds.spark_run.create_spark_config_str", autospec=True)
 class TestConfigureAndRunDockerContainer:
 
@@ -457,7 +456,6 @@ class TestConfigureAndRunDockerContainer:
     def test_configure_and_run_docker_container(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
@@ -570,7 +568,6 @@ class TestConfigureAndRunDockerContainer:
     def test_configure_and_run_docker_driver_resource_limits_config(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
@@ -683,7 +680,6 @@ class TestConfigureAndRunDockerContainer:
     def test_configure_and_run_docker_driver_resource_limits(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
@@ -768,7 +764,6 @@ class TestConfigureAndRunDockerContainer:
     def test_configure_and_run_docker_container_nvidia(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
@@ -805,7 +800,6 @@ class TestConfigureAndRunDockerContainer:
     def test_configure_and_run_docker_container_mrjob(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
@@ -842,7 +836,6 @@ class TestConfigureAndRunDockerContainer:
     def test_dont_emit_metrics_for_inappropriate_commands(
         self,
         mock_create_spark_config_str,
-        mock_get_signalfx_url,
         mock_get_docker_cmd,
         mock_get_webui_url,
         mock_run_docker_container,
