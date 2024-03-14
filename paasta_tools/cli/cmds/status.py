@@ -1503,8 +1503,16 @@ def get_version_table_entry(
 class ReplicaState(Enum):
     # Order will be preserved in count summary
     RUNNING = "Healthy", PaastaColors.green
+
     UNREACHABLE = "Unreachable", PaastaColors.red
-    NOT_RUNNING = "Not Running", PaastaColors.red
+    EVICTED = "Evicted", PaastaColors.red
+    ALL_CONTAINERS_WAITING = "All Containers Waiting", PaastaColors.red
+    FAILED = "Failed", PaastaColors.red
+    MAIN_CONTAINER_NOT_RUNNING = "Main Container Not Running", PaastaColors.red
+    NO_CONTAINERS_YET = "No Containers Yet", PaastaColors.red
+    NOT_READY = "Not Ready", PaastaColors.red
+    SOME_CONTAINERS_WAITING = "Some Containers Waiting", PaastaColors.red
+
     WARNING = "Warning", PaastaColors.yellow
     UNSCHEDULED = "Unscheduled", PaastaColors.yellow
     STARTING = "Starting", PaastaColors.yellow
@@ -1513,7 +1521,7 @@ class ReplicaState(Enum):
     UNKNOWN = "Unknown", PaastaColors.yellow
 
     def is_unhealthy(self):
-        return self.name in ["UNREACHABLE", "NOT_RUNNING"]
+        return self.color == PaastaColors.red
 
     @property
     def color(self) -> Callable:
@@ -1564,17 +1572,21 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
     reason = pod.reason
-    if phase == "Failed" or reason == "Evicted":
-        state = ReplicaState.NOT_RUNNING
+    if reason == "Evicted":
+        state = ReplicaState.EVICTED
+    elif phase == "Failed":
+        state = ReplicaState.FAILED
     elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
         state = ReplicaState.TERMINATING
     elif phase == "Pending":
-        if not pod.containers or all([c.state == "waiting" for c in pod.containers]):
-            state = ReplicaState.STARTING
+        if not pod.containers:
+            state = ReplicaState.NO_CONTAINERS_YET
+        elif all([c.state.lower() == "waiting" for c in pod.containers]):
+            state = ReplicaState.ALL_CONTAINERS_WAITING
         else:
-            state = ReplicaState.NOT_RUNNING
+            state = ReplicaState.SOME_CONTAINERS_WAITING
     elif phase == "Running":
         ####
         # TODO: Take sidecar containers into account
@@ -1588,11 +1600,11 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
             )
             if pod.mesh_ready is False:
                 if main_container.state != "running":
-                    state = ReplicaState.NOT_RUNNING
+                    state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
                 else:
                     state = ReplicaState.UNREACHABLE
             elif not pod.ready:
-                state = ReplicaState.NOT_RUNNING
+                state = ReplicaState.NOT_READY
             else:
                 if recent_liveness_failure(pod) or recent_container_restart(
                     main_container
