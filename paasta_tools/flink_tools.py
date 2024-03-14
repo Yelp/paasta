@@ -177,8 +177,11 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_flink_ingress_url_root(cluster: str) -> str:
-    return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
+def get_flink_ingress_url_root(cluster: str, is_eks: bool) -> str:
+    if is_eks:
+        return f"http://flink.eks.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
+    else:
+        return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
 
 
 def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
@@ -215,7 +218,8 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
 def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     metadata = cr["metadata"]
     cluster = metadata["labels"][paasta_prefixed("cluster")]
-    base_url = get_flink_ingress_url_root(cluster)
+    is_eks = bool(metadata["labels"].get("is_eks", "false"))
+    base_url = get_flink_ingress_url_root(cluster, bool(is_eks))
 
     # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
     _, _, service_cr_name, *_ = urlparse(
