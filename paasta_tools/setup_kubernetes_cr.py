@@ -252,13 +252,13 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
+def get_dashboard_base_url(kind: str, cluster: str, is_eks: bool) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
         flink_link = dashboard_links.get(cluster, {}).get("Flink")
         if flink_link is None:
-            flink_link = get_flink_ingress_url_root(cluster)
+            flink_link = get_flink_ingress_url_root(cluster, is_eks)
         if flink_link[-1:] != "/":
             flink_link += "/"
         return flink_link
@@ -281,6 +281,7 @@ def format_custom_resource(
     group: str,
     namespace: str,
     git_sha: str,
+    is_eks: bool,
 ) -> Mapping[str, Any]:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -297,13 +298,14 @@ def format_custom_resource(
                 paasta_prefixed("service"): service,
                 paasta_prefixed("instance"): instance,
                 paasta_prefixed("cluster"): cluster,
+                "paasta.yelp.com/eks": str(is_eks),
             },
             "annotations": {},
         },
         "spec": instance_config,
     }
 
-    url = get_dashboard_base_url(kind, cluster)
+    url = get_dashboard_base_url(kind, cluster, is_eks)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
     owner = get_cr_owner(kind)
@@ -333,6 +335,11 @@ def reconcile_kubernetes_resource(
 ) -> bool:
     succeeded = True
     config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
+
+    is_eks = False
+    if crd.file_prefix.endswith("eks"):
+        is_eks = True
+
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
@@ -355,6 +362,7 @@ def reconcile_kubernetes_resource(
                 group=group,
                 namespace=f"paasta-{kind.plural}",
                 git_sha=git_sha,
+                is_eks=is_eks,
             )
             desired_resource = KubeCustomResource(
                 service=service,
