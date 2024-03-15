@@ -1,3 +1,13 @@
+paasta-tools (0.218.14) xenial; urgency=medium
+
+  * 0.218.14 tagged with 'make release'
+    Commit: Correctly log setup_tron_namespace exceptions (#3789)  This
+    isn"t a user-facing script, so we really should just be using
+    logger.exception() to be as verbose as possible when there"s an
+    error
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 15 Mar 2024 09:08:32 -0700
+
 paasta-tools (0.218.13) xenial; urgency=medium
 
   * 0.218.13 tagged with 'make release'
