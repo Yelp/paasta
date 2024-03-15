@@ -1,3 +1,11 @@
+paasta-tools (0.218.13) xenial; urgency=medium
+
+  * 0.218.13 tagged with 'make release'
+    Commit: Merge pull request #3818 from Yelp/u/ajayprataps/COMPINFRA-
+    3733  Updated flink ingress for eks clusters
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Fri, 15 Mar 2024 03:24:40 -0700
+
 paasta-tools (0.218.12) xenial; urgency=medium
 
   * 0.218.12 tagged with 'make release'
