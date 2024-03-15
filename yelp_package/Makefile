@@ -13,13 +13,13 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.217.3
+RELEASE=0.218.14
 
 SHELL=/bin/bash
 
 UID:=`id -u`
 GID:=`id -g`
-DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw yelp/paastatools_$*_container
+DOCKER_RUN=docker run -t -v $(CURDIR)/../:/work:rw docker.io/yelp/paastatools_$*_container
 
 NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
@@ -34,10 +34,10 @@ endif
 
 build_%_docker:
 	[ -d ../dist ] || mkdir ../dist
-	docker pull "yelp/paastatools_$*_container" || true
+	docker pull "docker.io/yelp/paastatools_$*_container" || true
 	cd dockerfiles/$*/ && docker build --build-arg DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
 	$(if $(filter-out $(PAASTA_ENV),YELP), --build-arg PIP_INDEX_URL=https://pypi.org/simple,) \
-		-t "yelp/paastatools_$*_container" .
+		-t "docker.io/yelp/paastatools_$*_container" .
 
 .SECONDEXPANSION:
 itest_%: package_$$*
@@ -73,7 +73,11 @@ package_%: build_$$*_docker go_entrypoint
 
 	# noddebs to work around https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=897569
 	$(DOCKER_RUN) /bin/bash -c "DEB_BUILD_OPTIONS=noddebs dpkg-buildpackage -d && mv ../*.deb dist/"
+	# The in-house Podman deployment (unprivileged Docker) maps a virtual UID in the OS to root in the container,
+	# so we skip this chown statement to avoid broken permissions.
+ifeq ($(findstring podman,$(DOCKER_HOST)),)
 	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
+endif
 	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog

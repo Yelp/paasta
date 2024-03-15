@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 from behave import given
 from behave import then
 from behave import when
@@ -30,6 +32,7 @@ def docker_is_available(context):
 @given("a running docker container with task id {task_id} and image {image_name}")
 def create_docker_container(context, task_id, image_name):
     container_name = "paasta-itest-execute-in-containers"
+    image_name = os.getenv("DOCKER_REGISTRY", "docker-dev.yelpcorp.com/") + image_name
     try:
         context.docker_client.remove_container(container_name, force=True)
     except APIError:

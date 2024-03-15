@@ -132,6 +132,7 @@ INSTANCE_TYPES = (
     "eks",
     "tron",
     "flink",
+    "flinkeks",
     "cassandracluster",
     "kafkacluster",
     "vitesscluster",
@@ -149,6 +150,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "adhoc": "paasta",
     "tron": "tron",
     "flink": "paasta-flinks",
+    "flinkeks": "paasta-flinks",
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
     "vitesscluster": "paasta-vitessclusters",
@@ -939,7 +941,7 @@ class InstanceConfig:
             if deploy_group not in pipeline_deploy_groups:
                 return (
                     False,
-                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but it is not deploy.yaml",
+                    f"{self.service}.{self.instance} uses deploy_group {deploy_group}, but {deploy_group} is not deployed to in deploy.yaml",
                 )  # noqa: E501
         return True, ""
 
@@ -1939,6 +1941,7 @@ class TopologySpreadConstraintDict(TypedDict, total=False):
 
 class SystemPaastaConfigDict(TypedDict, total=False):
     allowed_pools: Dict[str, List[str]]
+    api_client_timeout: int
     api_endpoints: Dict[str, str]
     api_profiling_config: Dict
     auth_certificate_ttl: str
@@ -2059,6 +2062,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_use_eks_default: bool
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
+    secret_sync_delay_seconds: float
 
 
 def load_system_paasta_config(
@@ -2134,6 +2138,9 @@ class SystemPaastaConfig:
 
     def __repr__(self) -> str:
         return f"SystemPaastaConfig({self.config_dict!r}, {self.directory!r})"
+
+    def get_secret_sync_delay_seconds(self) -> float:
+        return self.config_dict.get("secret_sync_delay_seconds", 0)
 
     def get_spark_use_eks_default(self) -> bool:
         return self.config_dict.get("spark_use_eks_default", False)
@@ -2245,6 +2252,13 @@ class SystemPaastaConfig:
         type-wise as it allows us to avoid data races/issues with the autotuned recommendations generator/updater.
         """
         return self.config_dict.get("auto_config_instance_type_aliases", {})
+
+    def get_api_client_timeout(self) -> int:
+        """
+        We've seen the Paasta API get hung up sometimes and the client not realizing this will sit idle forever.
+        This will be used to specify the default timeout
+        """
+        return self.config_dict.get("api_client_timeout", 120)
 
     def get_api_endpoints(self) -> Mapping[str, str]:
         return self.config_dict["api_endpoints"]

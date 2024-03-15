@@ -16,15 +16,13 @@ from typing import Tuple
 from typing import Union
 
 import yaml
-from boto3.exceptions import Boto3Error
 from service_configuration_lib import read_service_configuration
+from service_configuration_lib import read_yaml_file
 from service_configuration_lib import spark_config
 from service_configuration_lib.spark_config import get_aws_credentials
 from service_configuration_lib.spark_config import get_grafana_url
 from service_configuration_lib.spark_config import get_resources_requested
-from service_configuration_lib.spark_config import get_signalfx_url
 from service_configuration_lib.spark_config import get_spark_hourly_cost
-from service_configuration_lib.spark_config import send_and_calculate_resources_cost
 from service_configuration_lib.spark_config import UnsupportedClusterManagerException
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -36,14 +34,15 @@ from paasta_tools.clusterman import get_clusterman_metrics
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.spark_tools import DEFAULT_SPARK_SERVICE
 from paasta_tools.spark_tools import get_volumes_from_spark_k8s_configs
-from paasta_tools.spark_tools import get_volumes_from_spark_mesos_configs
 from paasta_tools.spark_tools import get_webui_url
 from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import filter_templates_from_config
 from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import is_using_unprivileged_containers
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -60,10 +59,9 @@ DEFAULT_SPARK_DOCKER_IMAGE_PREFIX = "paasta-spark-run"
 DEFAULT_SPARK_DOCKER_REGISTRY = "docker-dev.yelpcorp.com"
 SENSITIVE_ENV = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN"]
 clusterman_metrics, CLUSTERMAN_YAML_FILE_PATH = get_clusterman_metrics()
-CLUSTER_MANAGER_MESOS = "mesos"
 CLUSTER_MANAGER_K8S = "kubernetes"
 CLUSTER_MANAGER_LOCAL = "local"
-CLUSTER_MANAGERS = {CLUSTER_MANAGER_MESOS, CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
+CLUSTER_MANAGERS = {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}
 DEFAULT_DOCKER_SHM_SIZE = "64m"
 # Reference: https://spark.apache.org/docs/latest/configuration.html#application-properties
 DEFAULT_DRIVER_CORES_BY_SPARK = 1
@@ -74,6 +72,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 POD_TEMPLATE_DIR = "/nail/tmp"
 POD_TEMPLATE_PATH = "/nail/tmp/spark-pt-{file_uuid}.yaml"
 DEFAULT_RUNTIME_TIMEOUT = "12h"
+DEFAILT_AWS_PROFILE = "default"
 
 POD_TEMPLATE = """
 apiVersion: v1
@@ -304,9 +303,8 @@ def add_subparser(subparsers):
 
     list_parser.add_argument(
         "--spark-args",
-        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html. "
-        r'For example, --spark-args "spark.mesos.constraints=pool:default\;instance_type:m4.10xlarge '
-        'spark.executor.cores=4".',
+        help="Spark configurations documented in https://spark.apache.org/docs/latest/configuration.html, separated by space. "
+        'For example, --spark-args "spark.executor.cores=1 spark.executor.memory=7g spark.executor.instances=2".',
     )
 
     list_parser.add_argument(
@@ -341,6 +339,20 @@ def add_subparser(subparsers):
         default=False,
     )
 
+    list_parser.add_argument(
+        "--tronfig",
+        help="Load the Tron config yaml. Use with --job-id.",
+        type=str,
+        default=None,
+    )
+
+    list_parser.add_argument(
+        "--job-id",
+        help="Tron job id <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
+        type=str,
+        default=None,
+    )
+
     k8s_target_cluster_type_group = list_parser.add_mutually_exclusive_group()
     k8s_target_cluster_type_group.add_argument(
         "--force-use-eks",
@@ -360,14 +372,6 @@ def add_subparser(subparsers):
         # the CI-provided default
         default=None,
     )
-
-    if clusterman_metrics:
-        list_parser.add_argument(
-            "--suppress-clusterman-metrics-errors",
-            help="Continue even if sending resource requirements to Clusterman fails. This may result in the job "
-            "failing to acquire resources.",
-            action="store_true",
-        )
 
     list_parser.add_argument(
         "-j", "--jars", help=argparse.SUPPRESS, action=DeprecatedAction
@@ -419,7 +423,7 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default="default",
+        default=DEFAILT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -552,7 +556,13 @@ def get_docker_run_cmd(
         if sys.stdout.isatty():
             cmd.append("--tty=true")
 
-    cmd.append("--user=%d:%d" % (os.geteuid(), os.getegid()))
+    container_user = (
+        # root inside container == current user outside
+        (0, 0)
+        if is_using_unprivileged_containers()
+        else (os.geteuid(), os.getegid())
+    )
+    cmd.append("--user=%d:%d" % container_user)
     cmd.append("--name=%s" % sanitize_container_name(container_name))
     for k, v in env.items():
         cmd.append("--env")
@@ -560,6 +570,9 @@ def get_docker_run_cmd(
             cmd.append(k)
         else:
             cmd.append(f"{k}={v}")
+    if is_using_unprivileged_containers():
+        cmd.append("--env")
+        cmd.append(f"HOME=/nail/home/{get_username()}")
     if nvidia:
         cmd.append("--env")
         cmd.append("NVIDIA_VISIBLE_DEVICES=all")
@@ -882,6 +895,7 @@ def configure_and_run_docker_container(
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     cluster_manager: str,
     pod_template_path: str,
+    extra_driver_envs: Dict[str, str] = dict(),
 ) -> int:
     docker_memory_limit = _calculate_docker_memory_limit(
         spark_conf, args.docker_memory_limit
@@ -892,9 +906,7 @@ def configure_and_run_docker_container(
         args.docker_cpu_limit,
     )
 
-    if cluster_manager == CLUSTER_MANAGER_MESOS:
-        volumes = get_volumes_from_spark_mesos_configs(spark_conf)
-    elif cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
+    if cluster_manager in {CLUSTER_MANAGER_K8S, CLUSTER_MANAGER_LOCAL}:
         # service_configuration_lib puts volumes into the k8s
         # configs for local mode
         volumes = get_volumes_from_spark_k8s_configs(spark_conf)
@@ -923,6 +935,7 @@ def configure_and_run_docker_container(
             system_paasta_config=system_paasta_config,
         )
     )  # type:ignore
+    environment.update(extra_driver_envs)
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"
@@ -932,12 +945,8 @@ def configure_and_run_docker_container(
         print(PaastaColors.green(f"\nSpark history server URL: ") + f"{webui_url}\n")
     elif any(c in docker_cmd for c in ["pyspark", "spark-shell", "spark-submit"]):
         grafana_url = get_grafana_url(spark_conf)
-        signalfx_url = get_signalfx_url(spark_conf)
         dashboard_url_msg = (
-            PaastaColors.green(f"\nGrafana dashboard: ")
-            + f"{grafana_url}\n"
-            + PaastaColors.green(f"\nSignalfx dashboard: ")
-            + f"{signalfx_url}\n"
+            PaastaColors.green(f"\nGrafana dashboard: ") + f"{grafana_url}\n"
         )
         print(webui_url_msg)
         print(dashboard_url_msg)
@@ -955,40 +964,21 @@ def configure_and_run_docker_container(
     print(f"Selected cluster manager: {cluster_manager}\n")
 
     if clusterman_metrics and _should_get_resource_requirements(docker_cmd, args.mrjob):
-        try:
-            if cluster_manager == CLUSTER_MANAGER_MESOS:
-                print("Sending resource request metrics to Clusterman")
-                hourly_cost, resources = send_and_calculate_resources_cost(
-                    clusterman_metrics, spark_conf, webui_url, args.pool
-                )
-            else:
-                resources = get_resources_requested(spark_conf)
-                hourly_cost = get_spark_hourly_cost(
-                    clusterman_metrics,
-                    resources,
-                    spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
-                    args.pool,
-                )
-            message = (
-                f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
-                f" is estimated to cost ${hourly_cost} per hour"
-            )
-            if clusterman_metrics.util.costs.should_warn(hourly_cost):
-                print(PaastaColors.red(f"WARNING: {message}"))
-            else:
-                print(message)
-        except Boto3Error as e:
-            print(
-                PaastaColors.red(
-                    f"Encountered {e} while attempting to send resource requirements to Clusterman."
-                )
-            )
-            if args.suppress_clusterman_metrics_errors:
-                print(
-                    "Continuing anyway since --suppress-clusterman-metrics-errors was passed"
-                )
-            else:
-                raise
+        resources = get_resources_requested(spark_conf)
+        hourly_cost = get_spark_hourly_cost(
+            clusterman_metrics,
+            resources,
+            spark_conf["spark.executorEnv.PAASTA_CLUSTER"],
+            args.pool,
+        )
+        message = (
+            f"Resource request ({resources['cpus']} cpus and {resources['mem']} MB memory total)"
+            f" is estimated to cost ${hourly_cost} per hour"
+        )
+        if clusterman_metrics.util.costs.should_warn(hourly_cost):
+            print(PaastaColors.red(f"WARNING: {message}"))
+        else:
+            print(message)
 
     return run_docker_container(
         container_name=spark_conf["spark.app.name"],
@@ -1106,7 +1096,22 @@ def build_and_push_docker_image(args: argparse.Namespace) -> Optional[str]:
     if not digest_match:
         raise ValueError(f"Could not determine digest from output: {output}")
     digest = digest_match.group("digest")
-    return f"{docker_url}@{digest}"
+
+    image_url = f"{docker_url}@{digest}"
+
+    # If the local digest doesn't match the remote digest AND the registry is
+    # non-default (which requires requires authentication, and consequently sudo),
+    # downstream `docker run` commands will fail trying to authenticate.
+    # To work around this, we can proactively `sudo docker pull` here so that
+    # the image exists locally and can be `docker run` without sudo
+    if registry_uri != DEFAULT_SPARK_DOCKER_REGISTRY:
+        command = f"sudo -H docker pull {image_url}"
+        print(PaastaColors.grey(command))
+        retcode, output = _run(command, stream=False)
+        if retcode != 0:
+            raise NoDockerImageError(f"Could not pull {image_url}: {output}")
+
+    return image_url
 
 
 def validate_work_dir(s):
@@ -1200,7 +1205,110 @@ def _get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
     )
 
 
-def paasta_spark_run(args):
+def parse_tronfig(tronfig_path: str, job_id: str) -> Optional[Dict[str, Any]]:
+    splitted = job_id.split(".")
+    if len(splitted) != 2:
+        return None
+    job_name, action_name = splitted
+
+    file_content = read_yaml_file(tronfig_path)
+    jobs = filter_templates_from_config(file_content)
+    if job_name not in jobs or action_name not in jobs[job_name].get("actions", {}):
+        return None
+    return jobs[job_name]["actions"][action_name]
+
+
+def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str]]:
+    """
+    Load and check the following config fields from the provided Tronfig.
+      - executor
+      - pool
+      - iam_role
+      - iam_role_provider
+      - command
+      - env
+      - spark_args
+
+    Returns: environment variables dictionary or None if failed.
+    """
+    action_dict = parse_tronfig(args.tronfig, args.job_id)
+    if action_dict is None:
+        print(
+            PaastaColors.red(f"Unable to get configs from job-id: {args.job_id}"),
+            file=sys.stderr,
+        )
+        return None
+
+    # executor === spark
+    if action_dict.get("executor", "") != "spark":
+        print(
+            PaastaColors.red("Invalid Tronfig: executor should be 'spark'"),
+            file=sys.stderr,
+        )
+        return None
+
+    # iam_role / aws_profile
+    if "iam_role" in action_dict and action_dict.get("iam_role_provider", "") != "aws":
+        print(
+            PaastaColors.red("Invalid Tronfig: iam_role_provider should be 'aws'"),
+            file=sys.stderr,
+        )
+        return None
+
+    # Other args
+    fields_to_args = {
+        "pool": "pool",
+        "iam_role": "assume_aws_role",
+        "command": "cmd",
+        "spark_args": "spark_args",
+    }
+    for field_name, arg_name in fields_to_args.items():
+        if field_name in action_dict:
+            value = action_dict[field_name]
+
+            # Convert spark_args values from dict to a string "k1=v1 k2=v2"
+            if field_name == "spark_args":
+                value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
+
+            # Befutify for printing
+            arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(20, " ")
+            field_name_str = field_name.ljust(12)
+
+            # Only load iam_role value if --aws-profile is not set
+            if field_name == "iam_role" and args.aws_profile != DEFAILT_AWS_PROFILE:
+                print(
+                    PaastaColors.yellow(
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
+                        "since --aws-profile is provided"
+                    ),
+                )
+                continue
+
+            if hasattr(args, arg_name):
+                print(
+                    PaastaColors.yellow(
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                    ),
+                )
+            setattr(args, arg_name, value)
+
+    # env (currently paasta spark-run does not support Spark driver secrets environment variables)
+    return action_dict.get("env", dict())
+
+
+def paasta_spark_run(args: argparse.Namespace) -> int:
+    driver_envs_from_tronfig: Dict[str, str] = dict()
+    if args.tronfig is not None:
+        if args.job_id is None:
+            print(
+                PaastaColors.red("Missing --job-id when --tronfig is provided"),
+                file=sys.stderr,
+            )
+            return False
+        driver_envs_from_tronfig = update_args_from_tronfig(args)
+        if driver_envs_from_tronfig is None:
+            return False
+
     # argparse does not work as expected with both default and
     # type=validate_work_dir.
     validate_work_dir(args.work_dir)
@@ -1357,4 +1465,5 @@ def paasta_spark_run(args):
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
         pod_template_path=pod_template_path,
+        extra_driver_envs=driver_envs_from_tronfig,
     )

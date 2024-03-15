@@ -38,6 +38,7 @@ from typing_extensions import Literal
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
@@ -318,6 +319,7 @@ def sync_all_secrets(
                 else namespaces_to_allowlist.get(overwrite_namespace, set()),
             }
         for namespace, secret_allowlist in namespaces_to_allowlist.items():
+            ensure_namespace(kube_client, namespace)
             sync_service_secrets["paasta-secret"].append(
                 partial(
                     sync_secrets,
@@ -673,7 +675,9 @@ def create_or_update_k8s_secret(
     :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
     """
     # In order to prevent slamming the k8s API, add some artificial delay here
-    time.sleep(0.3)
+    delay = load_system_paasta_config().get_secret_sync_delay_seconds()
+    if delay:
+        time.sleep(delay)
 
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
