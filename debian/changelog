@@ -1,3 +1,15 @@
+paasta-tools (0.220.0) xenial; urgency=medium
+
+  * 0.220.0 tagged with 'make release'
+    Commit: Allow skipping cleanup of tagged CRDs (#3780)  Open-source
+    operators may need to have N CRDs created, which is not currently
+    suppored by PaaSTA due to our current 1 CRD per file approach.  For
+    teach cases, we tend to manage CRDs with Flux - but PaaSTA will
+    clean these CRDs up since they"re in a PaaSTA-managed namespace, but
+    there"s no record of them in soaconfigs.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 14:37:24 -0700
+
 paasta-tools (0.219.0) xenial; urgency=medium
 
   * 0.219.0 tagged with 'make release'
