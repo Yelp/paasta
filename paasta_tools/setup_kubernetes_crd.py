@@ -24,9 +24,10 @@ Command line options:
 import argparse
 import logging
 import sys
+from pathlib import Path
 from typing import Sequence
 
-import service_configuration_lib
+import yaml
 from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client import V1CustomResourceDefinition
 from kubernetes.client.exceptions import ApiException
@@ -123,35 +124,35 @@ def setup_kube_crd(
     desired_crds = []
     desired_crds_v1_beta1 = []
     for service in services:
-        crd_config = service_configuration_lib.read_extra_service_information(
-            service, f"crd-{cluster}", soa_dir=soa_dir
-        )
-        if not crd_config:
+        crd_config_file = Path(soa_dir) / service / f"crd-{cluster}.yaml"
+        crd_configs = list(yaml.safe_load_all(crd_config_file.read_text()))
+        if not crd_configs:
             log.info("nothing to deploy")
             continue
 
-        metadata = crd_config.get("metadata", {})
-        if "labels" not in metadata:
-            metadata["labels"] = {}
-        metadata["labels"]["yelp.com/paasta_service"] = service
-        metadata["labels"][paasta_prefixed("service")] = service
+        for crd_config in crd_configs:
+            metadata = crd_config.get("metadata", {})
+            if "labels" not in metadata:
+                metadata["labels"] = {}
+            metadata["labels"]["yelp.com/paasta_service"] = service
+            metadata["labels"][paasta_prefixed("service")] = service
 
-        if "apiextensions.k8s.io/v1beta1" == crd_config["apiVersion"]:
-            desired_crd = V1beta1CustomResourceDefinition(
-                api_version=crd_config.get("apiVersion"),
-                kind=crd_config.get("kind"),
-                metadata=metadata,
-                spec=crd_config.get("spec"),
-            )
-            desired_crds_v1_beta1.append(desired_crd)
-        else:
-            desired_crd = V1CustomResourceDefinition(
-                api_version=crd_config.get("apiVersion"),
-                kind=crd_config.get("kind"),
-                metadata=metadata,
-                spec=crd_config.get("spec"),
-            )
-            desired_crds.append(desired_crd)
+            if "apiextensions.k8s.io/v1beta1" == crd_config["apiVersion"]:
+                desired_crd = V1beta1CustomResourceDefinition(
+                    api_version=crd_config.get("apiVersion"),
+                    kind=crd_config.get("kind"),
+                    metadata=metadata,
+                    spec=crd_config.get("spec"),
+                )
+                desired_crds_v1_beta1.append(desired_crd)
+            else:
+                desired_crd = V1CustomResourceDefinition(
+                    api_version=crd_config.get("apiVersion"),
+                    kind=crd_config.get("kind"),
+                    metadata=metadata,
+                    spec=crd_config.get("spec"),
+                )
+                desired_crds.append(desired_crd)
 
     return update_crds(
         kube_client=kube_client,
