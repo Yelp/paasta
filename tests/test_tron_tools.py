@@ -904,6 +904,7 @@ class TestTronTools:
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
+                "app.kubernetes.io/managed-by": "tron",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "false"},
             "cap_drop": CAPS_DROP,
@@ -1112,6 +1113,7 @@ class TestTronTools:
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
+                "app.kubernetes.io/managed-by": "tron",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "true"},
             "cap_drop": CAPS_DROP,
@@ -1178,6 +1180,7 @@ class TestTronTools:
                 "paasta.yelp.com/pool": "default",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
+                "app.kubernetes.io/managed-by": "tron",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1304,6 +1307,7 @@ class TestTronTools:
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
+                "app.kubernetes.io/managed-by": "tron",
             },
             "annotations": {
                 "paasta.yelp.com/routable_ip": "false",
@@ -1425,6 +1429,7 @@ class TestTronTools:
                 "paasta.yelp.com/pool": "special_pool",
                 "paasta.yelp.com/service": "my_service",
                 "yelp.com/owner": "compute_infra_platform_experience",
+                "app.kubernetes.io/managed-by": "tron",
             },
             "annotations": {"paasta.yelp.com/routable_ip": "false"},
             "cap_drop": CAPS_DROP,
@@ -1568,7 +1573,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "ba2ccfd2477b2ce2233de42619aa810a"
+        assert hasher.hexdigest() == "211f7a9d1fdee382664ee0e25fe76e17"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")

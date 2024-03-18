@@ -951,6 +951,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 limit=63,
                 suffix=4,
             ),
+            # XXX: should this be different for Spark drivers launched by Tron?
+            "app.kubernetes.io/managed-by": "tron",
         }
 
         # we can hardcode this for now as batches really shouldn't
