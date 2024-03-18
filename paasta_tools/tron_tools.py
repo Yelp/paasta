@@ -952,7 +952,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 suffix=4,
             ),
             # XXX: should this be different for Spark drivers launched by Tron?
-            "paasta.yelp.com/workload": "tron",
+            "app.kubernetes.io/managed-by": "tron",
         }
 
         # we can hardcode this for now as batches really shouldn't
