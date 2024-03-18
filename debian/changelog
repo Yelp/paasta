@@ -1,3 +1,13 @@
+paasta-tools (0.219.0) xenial; urgency=medium
+
+  * 0.219.0 tagged with 'make release'
+    Commit: Add managed-by label to Tron pods for TSC purposes (#3819)
+    We"d like to create a Topology Spread Constraint (TSC) for Tron
+    pods, but these don"t have a unique label to identify them as Tron-
+    launched pods - so we"ll add a managed-by label for this purpose
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 10:28:51 -0700
+
 paasta-tools (0.218.14) xenial; urgency=medium
 
   * 0.218.14 tagged with 'make release'
