@@ -317,7 +317,6 @@ def test_format_custom_resource():
                     "paasta.yelp.com/cluster": "mycluster",
                     "paasta.yelp.com/config_sha": mock_get_config_hash.return_value,
                     "paasta.yelp.com/git_sha": "gitsha",
-                    "paasta.yelp.com/eks": "False",
                 },
                 "annotations": {
                     "yelp.com/desired_state": "running",
