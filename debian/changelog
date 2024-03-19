@@ -1,3 +1,11 @@
+paasta-tools (0.220.1) xenial; urgency=medium
+
+  * 0.220.1 tagged with 'make release'
+    Commit: Merge pull request #3820 from Yelp/u/ajayprataps/fix-k8s_cr
+    removed default eks var in kubernetes_cr.py
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Tue, 19 Mar 2024 09:49:18 -0700
+
 paasta-tools (0.220.0) xenial; urgency=medium
 
   * 0.220.0 tagged with 'make release'
