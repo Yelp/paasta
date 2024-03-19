@@ -298,12 +298,13 @@ def format_custom_resource(
                 paasta_prefixed("service"): service,
                 paasta_prefixed("instance"): instance,
                 paasta_prefixed("cluster"): cluster,
-                "paasta.yelp.com/eks": str(is_eks),
             },
             "annotations": {},
         },
         "spec": instance_config,
     }
+    if is_eks:
+        resource["metadata"]["labels"][paasta_prefixed("eks")] = str(is_eks)
 
     url = get_dashboard_base_url(kind, cluster, is_eks)
     if url:
