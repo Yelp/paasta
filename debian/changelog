@@ -1,3 +1,11 @@
+paasta-tools (0.220.2) xenial; urgency=medium
+
+  * 0.220.2 tagged with 'make release'
+    Commit: Merge pull request #3812 from Yelp/jfong/fix_local_run_port
+    Fix PAASTA_PORT in local-run containers
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 Mar 2024 09:46:25 -0700
+
 paasta-tools (0.220.1) xenial; urgency=medium
 
   * 0.220.1 tagged with 'make release'
