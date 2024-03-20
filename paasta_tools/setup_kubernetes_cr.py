@@ -115,6 +115,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-c", "--cluster", default=None, help="Cluster to setup CRs for"
     )
+    parser.add_argument(
+        "--eks",
+        action="store_true",
+        dest="eks",
+        help="This deploys CRs that should be running on EKS",
+        default=False,
+    )
     args = parser.parse_args()
     return args
 
@@ -141,6 +148,7 @@ def main() -> None:
         custom_resource_definitions=custom_resource_definitions,
         service=args.service,
         instance=args.instance,
+        eks=args.eks,
     )
     sys.exit(0 if setup_kube_succeeded else 1)
 
@@ -152,6 +160,7 @@ def setup_all_custom_resources(
     custom_resource_definitions: Sequence[CustomResourceDefinition],
     service: str = None,
     instance: str = None,
+    eks: bool = False,
 ) -> bool:
 
     got_results = False
@@ -185,10 +194,11 @@ def setup_all_custom_resources(
                 log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
                 continue
 
+            file_prefix = crd.file_prefix + "eks" if eks else crd.file_prefix
             # by convention, entries where key begins with _ are used as templates
             # and will be filter out here
             config_dicts = load_all_configs(
-                cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
+                cluster=cluster, file_prefix=file_prefix, soa_dir=soa_dir
             )
 
             ensure_namespace(
