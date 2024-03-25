@@ -252,7 +252,6 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     # the values for this dict can be anything since it's whatever
     # spark accepts
     spark_args: Dict[str, Any]
-    image: str
     force_spark_resource_configs: bool
     # TODO: TRON-2145: use this to implement timeout for non-spark actions in tron
     max_runtime: str
@@ -314,9 +313,7 @@ class TronActionConfig(InstanceConfig):
             f"tron_spark_{self.get_service()}_{self.get_instance()}",
         )
 
-        docker_img_url = self.config_dict.get(
-            "image", self.get_docker_url(system_paasta_config)
-        )
+        docker_img_url = self.get_docker_url(system_paasta_config)
 
         spark_conf_builder = SparkConfBuilder()
         spark_conf = spark_conf_builder.get_spark_conf(

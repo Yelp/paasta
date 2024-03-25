@@ -2136,7 +2136,7 @@ def validate_pool(
         if not valid_pools:
             raise PoolsNotConfiguredError
         # at this point, we can be sure that `valid_pools` is populated
-        return pool not in valid_pools
+        return pool in valid_pools
     return True
 
 

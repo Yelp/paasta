@@ -187,7 +187,7 @@ def auto_add_timeout_for_spark_job(cmd: str, timeout_job_runtime: str) -> str:
             split_cmd = cmd.split("spark-submit")
             # split_cmd[0] will always be an empty string or end with a space
             cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
-            print(
+            log.info(
                 PaastaColors.blue(
                     f"NOTE: Job will exit in given time {timeout_job_runtime}. "
                     f"Adjust timeout value using --timeout-job-timeout. "
@@ -224,7 +224,7 @@ def get_spark_driver_monitoring_annotations(
     spark_config: Dict[str, str],
 ) -> Dict[str, str]:
     """
-    A pod annotation dict.
+    Returns Spark driver pod annotations - currently used for Prometheus metadata.
     """
     ui_port_str = str(spark_config.get("spark.ui.port", ""))
     annotations = {
@@ -238,7 +238,7 @@ def get_spark_driver_monitoring_labels(
     spark_config: Dict[str, str],
 ) -> Dict[str, str]:
     """
-    A pod labels dict
+    Returns Spark driver pod labels - generally for Prometheus metric relabeling.
     """
     ui_port_str = str(spark_config.get("spark.ui.port", ""))
     labels = {
