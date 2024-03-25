@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import argparse
 import datetime
 import json
 import os
@@ -2878,10 +2877,7 @@ def test_is_secrets_for_teams_enabled():
     ],
 )
 def test_validate_pool(cluster, pool, system_paasta_config, expected):
-    assert (
-        utils.validate_pool(cluster, pool, system_paasta_config)
-        == expected
-    )
+    assert utils.validate_pool(cluster, pool, system_paasta_config) == expected
 
 
 @pytest.mark.parametrize(
@@ -2912,4 +2908,10 @@ def test_validate_pool(cluster, pool, system_paasta_config, expected):
     ],
 )
 def test_validate_pool_error(cluster, pool, system_paasta_config):
-    assert pytest.raises(PoolsNotConfiguredError, utils.validate_pool, cluster, pool, system_paasta_config)
+    assert pytest.raises(
+        PoolsNotConfiguredError,
+        utils.validate_pool,
+        cluster,
+        pool,
+        system_paasta_config,
+    )

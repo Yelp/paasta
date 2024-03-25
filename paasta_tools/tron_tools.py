@@ -466,18 +466,25 @@ class TronActionConfig(InstanceConfig):
         return iam_role
 
     def get_spark_executor_iam_role(self) -> str:
-        return self.get_iam_role() or load_system_paasta_config().get_spark_executor_iam_role()
+        return (
+            self.get_iam_role()
+            or load_system_paasta_config().get_spark_executor_iam_role()
+        )
 
     def get_extra_volumes(self) -> List[DockerVolume]:
         extra_volumes = super().get_extra_volumes()
         system_paasta_config = load_system_paasta_config()
         if self.get_executor() == "spark":
             # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
-            extra_volumes.append(DockerVolume({
-                "container_path": system_paasta_config.get_spark_kubeconfig(),
-                "host_path": system_paasta_config.get_spark_kubeconfig(),
-                "mode": "RO",
-            })),
+            extra_volumes.append(
+                DockerVolume(
+                    {
+                        "container_path": system_paasta_config.get_spark_kubeconfig(),
+                        "host_path": system_paasta_config.get_spark_kubeconfig(),
+                        "mode": "RO",
+                    }
+                )
+            ),
         return extra_volumes
 
     def get_secret_env(self) -> Mapping[str, dict]:
@@ -987,19 +994,27 @@ def format_tron_action_dict(action_config: TronActionConfig):
             # inject spark configs to the original spark-submit command
             spark_config = action_config.build_spark_config()
             result["command"] = spark_tools.build_spark_command(
-                result['command'],
+                result["command"],
                 spark_config,
                 is_mrjob,
-                action_config.config_dict.get("max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT),
+                action_config.config_dict.get(
+                    "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
+                ),
             )
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
-            result["ports"] = list(set(spark_tools.get_spark_ports_from_config(spark_config)))
+            result["ports"] = list(
+                set(spark_tools.get_spark_ports_from_config(spark_config))
+            )
 
             # Add pod annotations and labels for Spark monitoring metrics
-            monitoring_annotations = spark_tools.get_spark_driver_monitoring_annotations(spark_config)
-            monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(spark_config)
+            monitoring_annotations = (
+                spark_tools.get_spark_driver_monitoring_annotations(spark_config)
+            )
+            monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(
+                spark_config
+            )
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
 

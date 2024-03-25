@@ -8,13 +8,11 @@ from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Set
-from typing import Tuple
 
 from mypy_extensions import TypedDict
 
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import SystemPaastaConfig
 
 KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
@@ -172,9 +170,7 @@ def create_spark_config_str(spark_config_dict: Dict[str, Any], is_mrjob: bool) -
 def inject_spark_conf_str(original_cmd: str, spark_conf_str: str) -> str:
     for base_cmd in ("pyspark", "spark-shell", "spark-submit"):
         if base_cmd in original_cmd:
-            return original_cmd.replace(
-                base_cmd, base_cmd + " " + spark_conf_str, 1
-            )
+            return original_cmd.replace(base_cmd, base_cmd + " " + spark_conf_str, 1)
     return original_cmd
 
 
@@ -209,10 +205,10 @@ def auto_add_timeout_for_spark_job(cmd: str, timeout_job_runtime: str) -> str:
 
 
 def build_spark_command(
-        original_cmd: str,
-        spark_config_dict: Dict[str, Any],
-        is_mrjob: bool,
-        timeout_job_runtime: str
+    original_cmd: str,
+    spark_config_dict: Dict[str, Any],
+    is_mrjob: bool,
+    timeout_job_runtime: str,
 ) -> str:
     command = f"{inject_spark_conf_str(original_cmd, create_spark_config_str(spark_config_dict, is_mrjob=is_mrjob))}"
     return auto_add_timeout_for_spark_job(command, timeout_job_runtime)
