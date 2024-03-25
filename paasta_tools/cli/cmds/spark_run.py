@@ -74,7 +74,7 @@ DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
 DEFAULT_AWS_PROFILE = "default"
 
-deprecated_opts = {
+DEPRECATED_OPTS = {
     "j": "spark.jars",
     "jars": "spark.jars",
 }
@@ -93,13 +93,12 @@ class DeprecatedAction(argparse.Action):
             PaastaColors.red(
                 f"Use of {option_string} is deprecated. "
                 + (
-                    f"Please use {deprecated_opts.get(option_string.strip('-'), '')}=value in --spark-args."
-                    if option_string.strip("-") in deprecated_opts
+                    f"Please use {DEPRECATED_OPTS.get(option_string.strip('-'), '')}=value in --spark-args."
+                    if option_string.strip("-") in DEPRECATED_OPTS
                     else ""
                 )
             )
         )
-        sys.exit(1)
 
 
 def add_subparser(subparsers):
@@ -114,6 +113,44 @@ def add_subparser(subparsers):
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    # Deprecated args kept to avoid failures
+    # TODO: Remove these deprecated args later
+    list_parser.add_argument(
+        "--jars",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--executor-memory",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--executor-cores",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--max-cores",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "-e",
+        "--enable-compact-bin-packing",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--enable-dra",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
+    list_parser.add_argument(
+        "--force-use-eks",
+        help=argparse.SUPPRESS,
+        action=DeprecatedAction,
+    )
 
     group = list_parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -127,13 +164,6 @@ def add_subparser(subparsers):
         "-I",
         "--image",
         help="Use the provided image to start the Spark driver and executors.",
-    )
-
-    list_parser.add_argument(
-        "-e",
-        "--enable-compact-bin-packing",
-        help=argparse.SUPPRESS,
-        action=DeprecatedAction,
     )
     list_parser.add_argument(
         "--docker-memory-limit",
@@ -254,7 +284,7 @@ def add_subparser(subparsers):
         "--timeout-job-runtime",
         type=str,
         help="Timeout value which will be added before spark-submit. Job will exit if it doesn't finish in given "
-        f"runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m {DEFAULT_SPARK_RUNTIME_TIMEOUT}",
+        "runtime. Recommended value: 2 * expected runtime. Example: 1h, 30m",
         default=DEFAULT_SPARK_RUNTIME_TIMEOUT,
     )
 
@@ -965,7 +995,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
       - iam_role
       - iam_role_provider
       - force_spark_resource_configs
-      - timeout_spark
+      - max_runtime
       - command
       - env
       - spark_args
@@ -1001,7 +1031,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         "pool": "pool",
         "iam_role": "assume_aws_role",
         "force_spark_resource_configs": "force_spark_resource_configs",
-        "timeout_spark": "timeout_job_runtime",
+        "max_runtime": "timeout_job_runtime",
         "command": "cmd",
         "spark_args": "spark_args",
     }

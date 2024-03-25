@@ -2,11 +2,13 @@ import logging
 import re
 import socket
 import sys
+from typing import Any
 from typing import cast
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Set
+from typing import Tuple
 
 from mypy_extensions import TypedDict
 
@@ -17,6 +19,12 @@ from paasta_tools.utils import SystemPaastaConfig
 KUBERNETES_NAMESPACE = "paasta-spark"
 DEFAULT_SPARK_SERVICE = "spark"
 DEFAULT_SPARK_RUNTIME_TIMEOUT = "12h"
+SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
+SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
+SPARK_DRIVER_POOL = "stable"
+SPARK_JOB_USER = "TRON"
+SPARK_PROMETHEUS_SHARD = "ml-compute"
+SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 
 log = logging.getLogger(__name__)
 
@@ -144,18 +152,16 @@ def setup_volume_mounts(volumes: List[DockerVolume]) -> Dict[str, str]:
     return conf
 
 
-def create_spark_config_str(spark_config_dict, is_mrjob):
+def create_spark_config_str(spark_config_dict: Dict[str, Any], is_mrjob: bool) -> str:
     conf_option = "--jobconf" if is_mrjob else "--conf"
     spark_config_entries = list()
 
     if is_mrjob:
         spark_master = spark_config_dict["spark.master"]
         spark_config_entries.append(f"--spark-master={spark_master}")
+        spark_config_dict.pop("spark.master", None)
 
     for opt, val in spark_config_dict.items():
-        # mrjob use separate options to configure master
-        if is_mrjob and opt == "spark.master":
-            continue
         # Process Spark configs with multiple space separated values to be in single quotes
         if isinstance(val, str) and " " in val:
             val = f"'{val}'"
@@ -163,16 +169,16 @@ def create_spark_config_str(spark_config_dict, is_mrjob):
     return " ".join(spark_config_entries)
 
 
-def inject_spark_conf_str(original_docker_cmd: str, spark_conf_str: str) -> str:
+def inject_spark_conf_str(original_cmd: str, spark_conf_str: str) -> str:
     for base_cmd in ("pyspark", "spark-shell", "spark-submit"):
-        if base_cmd in original_docker_cmd:
-            return original_docker_cmd.replace(
+        if base_cmd in original_cmd:
+            return original_cmd.replace(
                 base_cmd, base_cmd + " " + spark_conf_str, 1
             )
-    return original_docker_cmd
+    return original_cmd
 
 
-def auto_add_timeout_for_spark_job(cmd, timeout_job_runtime):
+def auto_add_timeout_for_spark_job(cmd: str, timeout_job_runtime: str) -> str:
     # Timeout only to be added for spark-submit commands
     # TODO: Add timeout for jobs using mrjob with spark-runner
     if "spark-submit" not in cmd:
@@ -183,6 +189,7 @@ def auto_add_timeout_for_spark_job(cmd, timeout_job_runtime):
         )
         if not timeout_present:
             split_cmd = cmd.split("spark-submit")
+            # split_cmd[0] will always be an empty string or end with a space
             cmd = f"{split_cmd[0]}timeout {timeout_job_runtime} spark-submit{split_cmd[1]}"
             print(
                 PaastaColors.blue(
@@ -201,15 +208,46 @@ def auto_add_timeout_for_spark_job(cmd, timeout_job_runtime):
     return cmd
 
 
-# TODO: Move to service config lib?
-def get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
-    return {
-        "spark.driver.port": system_paasta_config.get_spark_driver_port(),
-        "spark.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-        "spark.driver.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-    }
+def build_spark_command(
+        original_cmd: str,
+        spark_config_dict: Dict[str, Any],
+        is_mrjob: bool,
+        timeout_job_runtime: str
+) -> str:
+    command = f"{inject_spark_conf_str(original_cmd, create_spark_config_str(spark_config_dict, is_mrjob=is_mrjob))}"
+    return auto_add_timeout_for_spark_job(command, timeout_job_runtime)
 
 
 def get_spark_ports_from_config(spark_conf: Dict[str, str]) -> List[int]:
     ports = [int(v) for k, v in spark_conf.items() if k.endswith(".port")]
     return ports
+
+
+# TODO: Reuse by ad-hoc Spark-driver-on-k8s
+def get_spark_driver_monitoring_annotations(
+    spark_config: Dict[str, str],
+) -> Dict[str, str]:
+    """
+    A pod annotation dict.
+    """
+    ui_port_str = str(spark_config.get("spark.ui.port", ""))
+    annotations = {
+        "prometheus.io/port": ui_port_str,
+        "prometheus.io/path": "/metrics/prometheus",
+    }
+    return annotations
+
+
+def get_spark_driver_monitoring_labels(
+    spark_config: Dict[str, str],
+) -> Dict[str, str]:
+    """
+    A pod labels dict
+    """
+    ui_port_str = str(spark_config.get("spark.ui.port", ""))
+    labels = {
+        "paasta.yelp.com/prometheus_shard": SPARK_PROMETHEUS_SHARD,
+        "spark.yelp.com/user": SPARK_JOB_USER,
+        "spark.yelp.com/driver_ui_port": ui_port_str,
+    }
+    return labels

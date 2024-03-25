@@ -55,11 +55,9 @@ from paasta_tools.utils import TronSecretVolume
 from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
-from paasta_tools.spark_tools import auto_add_timeout_for_spark_job
-from paasta_tools.spark_tools import DEFAULT_SPARK_RUNTIME_TIMEOUT
+from paasta_tools.utils import DockerVolume
 
-from paasta_tools.spark_tools import create_spark_config_str
-from paasta_tools.spark_tools import get_spark_ports_from_config
+from paasta_tools import spark_tools
 
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
@@ -68,7 +66,6 @@ from paasta_tools.kubernetes_tools import (
     raw_selectors_to_requirements,
     to_node_label,
 )
-from paasta_tools.spark_tools import inject_spark_conf_str
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import is_shared_secret_from_secret_name
@@ -104,12 +101,6 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
-SPARK_AWS_CREDS_PROVIDER = "com.amazonaws.auth.WebIdentityTokenCredentialsProvider"
-SPARK_EXECUTOR_NAMESPACE = "paasta-spark"
-SPARK_DRIVER_POOL = "stable"
-SPARK_JOB_USER = "TRON"
-SPARK_PROMETHEUS_SHARD = "ml-compute"
-SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -251,28 +242,6 @@ def _use_suffixed_log_streams_k8s() -> bool:
     return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
 
 
-# TODO: Reuse by ad-hoc Spark-driver-on-k8s
-def _get_spark_driver_monitoring_annotations_labels(
-    spark_config: Dict[str, str],
-) -> Tuple[Dict[str, str], Dict[str, str]]:
-    """
-    A tuple of [pod annotation dict, pod labels dict].
-    """
-    ui_port_str = str(spark_config.get("spark.ui.port", ""))
-
-    annotations = {
-        "prometheus.io/port": ui_port_str,
-        "prometheus.io/path": "/metrics/prometheus",
-    }
-
-    labels = {
-        "paasta.yelp.com/prometheus_shard": SPARK_PROMETHEUS_SHARD,
-        "spark.yelp.com/user": SPARK_JOB_USER,
-        "spark.yelp.com/driver_ui_port": ui_port_str,
-    }
-    return annotations, labels
-
-
 class TronActionConfigDict(InstanceConfigDict, total=False):
     # this is kinda confusing: long-running stuff is currently using cmd
     # ...but tron are using command - this is going to require a little
@@ -285,7 +254,8 @@ class TronActionConfigDict(InstanceConfigDict, total=False):
     spark_args: Dict[str, Any]
     image: str
     force_spark_resource_configs: bool
-    timeout_spark: str
+    # TODO: TRON-2145: use this to implement timeout for non-spark actions in tron
+    max_runtime: str
     mrjob: bool
 
 
@@ -364,22 +334,22 @@ class TronActionConfig(InstanceConfig):
             force_spark_resource_configs=self.config_dict.get(
                 "force_spark_resource_configs", False
             ),
-            user=SPARK_JOB_USER,
+            user=spark_tools.SPARK_JOB_USER,
         )
         # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
             print(
                 f"Replacing spark.kubernetes.executor.podTemplateFile="
                 f"{spark_conf['spark.kubernetes.executor.podTemplateFile']} with "
-                f"spark.kubernetes.executor.podTemplateFile={SPARK_DNS_POD_TEMPLATE}"
+                f"spark.kubernetes.executor.podTemplateFile={spark_tools.SPARK_DNS_POD_TEMPLATE}"
             )
             spark_conf[
                 "spark.kubernetes.executor.podTemplateFile"
-            ] = SPARK_DNS_POD_TEMPLATE
+            ] = spark_tools.SPARK_DNS_POD_TEMPLATE
 
         spark_conf.update(
             {
-                "spark.hadoop.fs.s3a.aws.credentials.provider": SPARK_AWS_CREDS_PROVIDER,
+                "spark.hadoop.fs.s3a.aws.credentials.provider": spark_tools.SPARK_AWS_CREDS_PROVIDER,
                 "spark.driver.host": "$PAASTA_POD_IP",
             }
         )
@@ -393,7 +363,7 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.authenticate.executor.serviceAccountName"
         ] = create_or_find_service_account_name(
             iam_role=self.get_spark_executor_iam_role(),
-            namespace=SPARK_EXECUTOR_NAMESPACE,
+            namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
             kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
             dry_run=self.for_validation,
         )
@@ -496,9 +466,19 @@ class TronActionConfig(InstanceConfig):
         return iam_role
 
     def get_spark_executor_iam_role(self) -> str:
-        if self.get_iam_role():
-            return self.get_iam_role() + "-eks"
-        return load_system_paasta_config().get_spark_executor_iam_role() + "-eks"
+        return self.get_iam_role() or load_system_paasta_config().get_spark_executor_iam_role()
+
+    def get_extra_volumes(self) -> List[DockerVolume]:
+        extra_volumes = super().get_extra_volumes()
+        system_paasta_config = load_system_paasta_config()
+        if self.get_executor() == "spark":
+            # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
+            extra_volumes.append(DockerVolume({
+                "container_path": system_paasta_config.get_spark_kubeconfig(),
+                "host_path": system_paasta_config.get_spark_kubeconfig(),
+                "mode": "RO",
+            })),
+        return extra_volumes
 
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
@@ -649,7 +629,7 @@ class TronActionConfig(InstanceConfig):
                 "pool", load_system_paasta_config().get_tron_default_pool_override()
             )
             if not self.get_executor() == "spark"
-            else SPARK_DRIVER_POOL
+            else spark_tools.SPARK_DRIVER_POOL
         )
 
     def get_spark_executor_pool(self) -> str:
@@ -1004,31 +984,20 @@ def format_tron_action_dict(action_config: TronActionConfig):
             system_paasta_config = load_system_paasta_config()
             # inject spark configs to the original spark-submit command
             spark_config = action_config.build_spark_config()
-            command = f"{inject_spark_conf_str(result['command'], create_spark_config_str(spark_config, is_mrjob=is_mrjob))}"
-            result["command"] = auto_add_timeout_for_spark_job(
-                command,
-                action_config.config_dict.get(
-                    "timeout_spark", DEFAULT_SPARK_RUNTIME_TIMEOUT
-                ),
+            result["command"] = spark_tools.build_spark_command(
+                result['command'],
+                spark_config,
+                is_mrjob,
+                action_config.config_dict.get("max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT),
             )
-            result["extra_volumes"] = [
-                # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
-                {
-                    "container_path": system_paasta_config.get_spark_kubeconfig(),
-                    "host_path": system_paasta_config.get_spark_kubeconfig(),
-                    "mode": "RO",
-                },
-            ]
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
-            result["ports"] = get_spark_ports_from_config(spark_config)
+            result["ports"] = list(set(spark_tools.get_spark_ports_from_config(spark_config)))
 
             # Add pod annotations and labels for Spark monitoring metrics
-            (
-                monitoring_annotations,
-                monitoring_labels,
-            ) = _get_spark_driver_monitoring_annotations_labels(spark_config)
+            monitoring_annotations = spark_tools.get_spark_driver_monitoring_annotations(spark_config)
+            monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(spark_config)
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
 
@@ -1051,12 +1020,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
-        if "extra_volumes" in result:
-            result["extra_volumes"] = result["extra_volumes"] + format_volumes(
-                action_config.get_extra_volumes()
-            )
-        else:
-            result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
+        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
         result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others

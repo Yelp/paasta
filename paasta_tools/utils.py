@@ -2135,8 +2135,8 @@ def validate_pool(
         valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
         if not valid_pools:
             raise PoolsNotConfiguredError
-        if valid_pools and pool not in valid_pools:
-            return False
+        # at this point, we can be sure that `valid_pools` is populated
+        return pool not in valid_pools
     return True
 
 
@@ -2828,7 +2828,6 @@ class SystemPaastaConfig:
         return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
 
     def get_pools_for_cluster(self, cluster: str) -> List[str]:
-        # use the same IAM role as the Spark driver
         return self.get_cluster_pools().get(cluster, [])
 
     def get_hacheck_match_initial_delay(self) -> bool:
