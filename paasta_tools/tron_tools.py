@@ -236,10 +236,6 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
-def _use_suffixed_log_streams_k8s() -> bool:
-    return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
-
-
 def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
     return {
         "spark.ui.port": system_paasta_config.get_spark_ui_port(),
@@ -924,17 +920,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
             for k, v in all_env.items()
             if not is_secret_ref(v) and k not in result["field_selector_env"]
         }
-        # for Tron-on-K8s, we want to ship tronjob output through logspout
-        # such that this output eventually makes it into our per-instance
-        # log streams automatically
-        # however, we're missing infrastructure in the superregion where we run spark jobs (and
-        # some normal tron jobs), so we take a slightly different approach here
-        if _use_suffixed_log_streams_k8s():
-            result["env"]["STREAM_SUFFIX_LOGSPOUT"] = (
-                "spark" if executor == "spark" else "tron"
-            )
-        else:
-            result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
         result["node_selectors"] = action_config.get_node_selectors()
         result["node_affinities"] = action_config.get_node_affinities()
 

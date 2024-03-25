@@ -2771,9 +2771,6 @@ class SystemPaastaConfig:
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
-    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
-        return self.config_dict.get("tron_use_suffixed_log_streams", False)
-
     def get_spark_ui_port(self) -> int:
         # 33000 was picked arbitrarily (it was the base port when we used to
         # randomly reserve port numbers)
