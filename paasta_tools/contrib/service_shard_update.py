@@ -130,9 +130,9 @@ def get_default_git_remote():
 
 
 DEPLOY_MAPPINGS = {
-    "dev": ["kubernetes-norcal-devc"],
-    "stage": ["kubernetes-norcal-stagef", "kubernetes-norcal-stageg"],
-    "prod": ["kubernetes-nova-prod", "kubernetes-pnw-prod"],
+    "dev": ["norcal-devc"],
+    "stage": ["norcal-stagef", "norcal-stageg"],
+    "prod": ["nova-prod", "pnw-prod"],
 }
 
 
@@ -172,7 +172,26 @@ def main(args):
 
             for deploy_prefix, config_paths in DEPLOY_MAPPINGS.items():
                 for config_path in config_paths:
-                    kube_file = updater.get_existing_configs(args.service, config_path)
+                    # Determine configuration suffix (PAASTA-18216)
+                    eks_config = updater.get_existing_configs(
+                        args.service, f"eks-{config_path}"
+                    )
+                    kube_config = updater.get_existing_configs(
+                        args.service, f"kubernetes-{config_path}"
+                    )
+
+                    if eks_config:
+                        config_file = eks_config
+                        config_prefix = "eks-"
+                    elif kube_config:
+                        config_file = kube_config
+                        config_prefix = "kubernetes-"
+                    else:
+                        log.error(
+                            f"No EKS or Kubernetes config found for {args.service}"
+                        )
+                        continue
+
                     instance_config = {
                         "deploy_group": f"{deploy_prefix}.{args.shard_name}",
                         "min_instances": args.min_instance_count,
@@ -197,11 +216,13 @@ def main(args):
                         instance_config["mem"] = args.mem
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
-                    if args.shard_name not in kube_file.keys():
-                        kube_file[args.shard_name] = instance_config
-                        updater.write_configs(args.service, config_path, kube_file)
+                    if args.shard_name not in config_file.keys():
+                        config_file[args.shard_name] = instance_config
+                        updater.write_configs(
+                            args.service, f"{config_prefix}{config_path}", config_file
+                        )
                         log.info(
-                            f"{deploy_prefix}.{args.shard_name} added to {config_path}"
+                            f"{deploy_prefix}.{args.shard_name} added to {config_prefix}{config_path}"
                         )
         else:
             log.info(f"{args.shard_name} is in deploy config already.")

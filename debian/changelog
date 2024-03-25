@@ -1,3 +1,59 @@
+paasta-tools (0.220.2) xenial; urgency=medium
+
+  * 0.220.2 tagged with 'make release'
+    Commit: Merge pull request #3812 from Yelp/jfong/fix_local_run_port
+    Fix PAASTA_PORT in local-run containers
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 Mar 2024 09:46:25 -0700
+
+paasta-tools (0.220.1) xenial; urgency=medium
+
+  * 0.220.1 tagged with 'make release'
+    Commit: Merge pull request #3820 from Yelp/u/ajayprataps/fix-k8s_cr
+    removed default eks var in kubernetes_cr.py
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Tue, 19 Mar 2024 09:49:18 -0700
+
+paasta-tools (0.220.0) xenial; urgency=medium
+
+  * 0.220.0 tagged with 'make release'
+    Commit: Allow skipping cleanup of tagged CRDs (#3780)  Open-source
+    operators may need to have N CRDs created, which is not currently
+    suppored by PaaSTA due to our current 1 CRD per file approach.  For
+    teach cases, we tend to manage CRDs with Flux - but PaaSTA will
+    clean these CRDs up since they"re in a PaaSTA-managed namespace, but
+    there"s no record of them in soaconfigs.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 14:37:24 -0700
+
+paasta-tools (0.219.0) xenial; urgency=medium
+
+  * 0.219.0 tagged with 'make release'
+    Commit: Add managed-by label to Tron pods for TSC purposes (#3819)
+    We"d like to create a Topology Spread Constraint (TSC) for Tron
+    pods, but these don"t have a unique label to identify them as Tron-
+    launched pods - so we"ll add a managed-by label for this purpose
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 10:28:51 -0700
+
+paasta-tools (0.218.14) xenial; urgency=medium
+
+  * 0.218.14 tagged with 'make release'
+    Commit: Correctly log setup_tron_namespace exceptions (#3789)  This
+    isn"t a user-facing script, so we really should just be using
+    logger.exception() to be as verbose as possible when there"s an
+    error
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 15 Mar 2024 09:08:32 -0700
+
+paasta-tools (0.218.13) xenial; urgency=medium
+
+  * 0.218.13 tagged with 'make release'
+    Commit: Merge pull request #3818 from Yelp/u/ajayprataps/COMPINFRA-
+    3733  Updated flink ingress for eks clusters
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Fri, 15 Mar 2024 03:24:40 -0700
+
 paasta-tools (0.218.12) xenial; urgency=medium
 
   * 0.218.12 tagged with 'make release'
