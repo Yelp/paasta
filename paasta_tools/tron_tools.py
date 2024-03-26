@@ -468,22 +468,6 @@ class TronActionConfig(InstanceConfig):
             or load_system_paasta_config().get_spark_executor_iam_role()
         )
 
-    def get_extra_volumes(self) -> List[DockerVolume]:
-        extra_volumes = super().get_extra_volumes()
-        system_paasta_config = load_system_paasta_config()
-        if self.get_executor() == "spark":
-            # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
-            extra_volumes.append(
-                DockerVolume(
-                    {
-                        "container_path": system_paasta_config.get_spark_kubeconfig(),
-                        "host_path": system_paasta_config.get_spark_kubeconfig(),
-                        "mode": "RO",
-                    }
-                )
-            ),
-        return extra_volumes
-
     def get_secret_env(self) -> Mapping[str, dict]:
         base_env = self.config_dict.get("env", {})
         secret_env = {}
@@ -985,6 +969,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 dry_run=action_config.for_validation,
             )
 
+        extra_volumes = action_config.get_extra_volumes()
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
@@ -1004,7 +989,16 @@ def format_tron_action_dict(action_config: TronActionConfig):
             result["ports"] = list(
                 set(spark_tools.get_spark_ports_from_config(spark_config))
             )
-
+            # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
+            extra_volumes.append(
+                DockerVolume(
+                    {
+                        "containerPath": system_paasta_config.get_spark_kubeconfig(),
+                        "hostPath": system_paasta_config.get_spark_kubeconfig(),
+                        "mode": "RO",
+                    }
+                )
+            )
             # Add pod annotations and labels for Spark monitoring metrics
             monitoring_annotations = (
                 spark_tools.get_spark_driver_monitoring_annotations(spark_config)
@@ -1034,7 +1028,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["cpus"] = action_config.get_cpus()
         result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
-        result["extra_volumes"] = format_volumes(action_config.get_extra_volumes())
+        result["extra_volumes"] = format_volumes(extra_volumes)
         result["docker_image"] = action_config.get_docker_url()
 
     # Only pass non-None values, so Tron will use defaults for others
