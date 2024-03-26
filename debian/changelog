@@ -1,3 +1,11 @@
+paasta-tools (0.220.3) xenial; urgency=medium
+
+  * 0.220.3 tagged with 'make release'
+    Commit: Merge pull request #3816 from acrlabs/drmorr/stop-monkey-
+    patching  stop monkey-patching the HPA object
+
+ -- Jon Lee <jonlee@yelp.com>  Mon, 25 Mar 2024 10:45:44 -0700
+
 paasta-tools (0.220.2) xenial; urgency=medium
 
   * 0.220.2 tagged with 'make release'
