@@ -738,7 +738,7 @@ def configure_and_run_docker_container(
     docker_img: str,
     instance_config: InstanceConfig,
     system_paasta_config: SystemPaastaConfig,
-    spark_conf: Mapping[str, str],
+    spark_conf: Dict[str, str],
     aws_creds: Tuple[Optional[str], Optional[str], Optional[str]],
     cluster_manager: str,
     pod_template_path: str,

@@ -17,6 +17,7 @@ import mock
 import pytest
 
 from paasta_tools import spark_tools
+from paasta_tools import utils
 from paasta_tools.cli.cmds import spark_run
 from paasta_tools.cli.cmds.spark_run import _should_get_resource_requirements
 from paasta_tools.cli.cmds.spark_run import build_and_push_docker_image
@@ -928,6 +929,7 @@ def test_get_docker_cmd(args, instance_config, spark_conf_str, expected):
 
 
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
@@ -948,7 +950,8 @@ def test_paasta_spark_run_bash(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_load_system_paasta_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
 ):
     args = argparse.Namespace(
@@ -978,11 +981,16 @@ def test_paasta_spark_run_bash(
         tronfig=None,
         job_id=None,
     )
-    mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
-    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+    mock_load_system_paasta_config_spark_run.return_value.get_eks_cluster_aliases.return_value = {
         "test-cluster": "test-cluster"
     }
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
@@ -1034,7 +1042,7 @@ def test_paasta_spark_run_bash(
         args,
         docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
-        system_paasta_config=mock_load_system_paasta_config.return_value,
+        system_paasta_config=mock_load_system_paasta_config_spark_run.return_value,
         spark_conf=mock_spark_conf,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
@@ -1044,6 +1052,7 @@ def test_paasta_spark_run_bash(
 
 
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
@@ -1066,7 +1075,8 @@ def test_paasta_spark_run(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_load_system_paasta_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
 ):
     args = argparse.Namespace(
@@ -1096,11 +1106,16 @@ def test_paasta_spark_run(
         tronfig=None,
         job_id=None,
     )
-    mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
-    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+    mock_load_system_paasta_config_spark_run.return_value.get_eks_cluster_aliases.return_value = {
         "test-cluster": "test-cluster"
     }
     mock_get_docker_image.return_value = DUMMY_DOCKER_IMAGE_DIGEST
@@ -1154,7 +1169,7 @@ def test_paasta_spark_run(
         args,
         docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
-        system_paasta_config=mock_load_system_paasta_config.return_value,
+        system_paasta_config=mock_load_system_paasta_config_spark_run.return_value,
         spark_conf=mock_spark_conf_builder.return_value.get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
@@ -1164,6 +1179,7 @@ def test_paasta_spark_run(
 
 
 @mock.patch.object(spark_run, "validate_work_dir", autospec=True)
+@mock.patch.object(utils, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "load_system_paasta_config", autospec=True)
 @mock.patch.object(spark_run, "get_instance_config", autospec=True)
 @mock.patch.object(spark_run, "get_aws_credentials", autospec=True)
@@ -1184,7 +1200,8 @@ def test_paasta_spark_run_pyspark(
     mock_get_docker_image,
     mock_get_aws_credentials,
     mock_get_instance_config,
-    mock_load_system_paasta_config,
+    mock_load_system_paasta_config_spark_run,
+    mock_load_system_paasta_config_utils,
     mock_validate_work_dir,
 ):
     args = argparse.Namespace(
@@ -1214,14 +1231,19 @@ def test_paasta_spark_run_pyspark(
         tronfig=None,
         job_id=None,
     )
-    mock_load_system_paasta_config.return_value.get_spark_use_eks_default.return_value = (
+    mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_spark_use_eks_default.return_value = (
         False
     )
-    mock_load_system_paasta_config.return_value.get_cluster_aliases.return_value = {}
-    mock_load_system_paasta_config.return_value.get_pools_for_cluster.return_value = [
+    mock_load_system_paasta_config_spark_run.return_value.get_cluster_aliases.return_value = (
+        {}
+    )
+    mock_load_system_paasta_config_spark_run.return_value.get_pools_for_cluster.return_value = [
         "test-pool"
     ]
-    mock_load_system_paasta_config.return_value.get_eks_cluster_aliases.return_value = {
+    mock_load_system_paasta_config_spark_run.return_value.get_eks_cluster_aliases.return_value = {
         "test-cluster": "test-cluster"
     }
 
@@ -1274,7 +1296,7 @@ def test_paasta_spark_run_pyspark(
         args,
         docker_img=DUMMY_DOCKER_IMAGE_DIGEST,
         instance_config=mock_get_instance_config.return_value,
-        system_paasta_config=mock_load_system_paasta_config.return_value,
+        system_paasta_config=mock_load_system_paasta_config_spark_run.return_value,
         spark_conf=mock_spark_conf_builder.return_value.get_spark_conf.return_value,
         aws_creds=mock_get_aws_credentials.return_value,
         cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
