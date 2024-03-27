@@ -317,8 +317,7 @@
                     "pattern": "[-a-zA-z0-9_]"
                 },
                 "max_runtime": {
-                    "type": "string",
-                    "pattern": "^[1-9]+[0-9]*[smhd]$"
+                    "$ref": "#definitions/time_delta"
                 },
                 "force_spark_resource_configs": {
                     "type": "boolean"
