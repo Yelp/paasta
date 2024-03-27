@@ -1,3 +1,36 @@
+paasta-tools (0.221.0) xenial; urgency=medium
+
+  * 0.221.0 tagged with 'make release'
+    Commit: MLCOMPUTE-967 | changes for Spark drivers on k8s (#3679)  *
+    MLCOMPUTE-967 | add default iam role for Spark drivers on k8s  *
+    MLCOMPUTE-967 | move default to SystemPaastaConfig  * MLCOMPUTE-967
+    | add volume mounts for kubeconfig  * MLCOMPUTE-967 | add spark to
+    the list of executor types  * MLCOMPUTE-967 | use correct k8s url as
+    spark master argument  * MLCOMPUTE-1057 | add flow to create Spark
+    executor service account dynamically  * MLCOMPUTE-967 | use same IAM
+    role for Spark drivers and executors  * MLCOMPUTE-1068 | logic for
+    using duplicate iam role with eks suffix  * remove use_k8s
+    deprecated flag (cherry-picked from 59beb52)  * Use stable pool for
+    Spark driver  * MLCOMPUTE-1160 | consolidate tron and paasta logic
+    to spark_tools, utils and service config lib  * MLCOMPUTE-1163 |
+    handle space separated Spark args  * MLCOMPUTE-1119 | Support extra
+    flags from paasta spark-run in tron_tools  * MLCOMPUTE-967 | mount
+    pod template file for Spark executor  * Add pod labels for
+    monitoring metrics  * Parse additional tronfig args  * MLCOMPUTE-967
+    | use default pod template without compact bin packing  * MLCOMPUTE-
+    967 | bump service-configuration-lib version  * MLCOMPUTE-967 |
+    updated timeout_spark regex acc to bash timeout, removed redundant
+    spark ports assignment  * Specify prometheus scrape path  * Update
+    driver pod annotations for metrics scraping  * MLCOMPUTE-967 |
+    deprecate obsolete args, add mrjob capability to tron tools  *
+    MLCOMPUTE-967 | remove obsolete args, sanitise code  * MLCOMPUTE-967
+    | fix tests  * MLCOMPUTE-967 | use already defined time_delta  ------
+    ---  Co-authored-by: Sameer Sharma <sameersharma@yelp.com> Co-
+    authored-by: Jon Lee <jonlee@yelp.com> Co-authored-by: Chi Chang
+    <chi@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 27 Mar 2024 09:52:10 -0700
+
 paasta-tools (0.220.3) xenial; urgency=medium
 
   * 0.220.3 tagged with 'make release'
