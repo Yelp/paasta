@@ -4008,6 +4008,7 @@ def create_or_find_service_account_name(
     iam_role: str,
     namespace: str,
     k8s_role: Optional[str] = None,
+    kubeconfig_file: Optional[str] = None,
     dry_run: bool = False,
 ) -> str:
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
@@ -4039,7 +4040,7 @@ def create_or_find_service_account_name(
     if dry_run:
         return sa_name
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(config_file=kubeconfig_file)
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)

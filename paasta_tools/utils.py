@@ -1904,6 +1904,7 @@ class RemoteRunConfig(TypedDict, total=False):
 class SparkRunConfig(TypedDict, total=False):
     default_cluster: str
     default_pool: str
+    default_spark_driver_iam_role: str
 
 
 class PaastaNativeConfig(TypedDict, total=False):
@@ -2121,6 +2122,22 @@ def parse_system_paasta_config(
                 json.load(f), config, allow_duplicate_keys=False
             )
     return SystemPaastaConfig(config, path)
+
+
+class PoolsNotConfiguredError(Exception):
+    pass
+
+
+def validate_pool(
+    cluster: str, pool: str, system_paasta_config: "SystemPaastaConfig"
+) -> bool:
+    if pool:
+        valid_pools = system_paasta_config.get_pools_for_cluster(cluster)
+        if not valid_pools:
+            raise PoolsNotConfiguredError
+        # at this point, we can be sure that `valid_pools` is populated
+        return pool in valid_pools
+    return True
 
 
 class SystemPaastaConfig:
@@ -2774,11 +2791,6 @@ class SystemPaastaConfig:
     def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
         return self.config_dict.get("tron_use_suffixed_log_streams", False)
 
-    def get_spark_ui_port(self) -> int:
-        # 33000 was picked arbitrarily (it was the base port when we used to
-        # randomly reserve port numbers)
-        return self.config_dict.get("spark_ui_port", 33000)
-
     def get_spark_driver_port(self) -> int:
         # default value is an arbitrary value
         return self.config_dict.get("spark_driver_port", 33001)
@@ -2807,6 +2819,16 @@ class SystemPaastaConfig:
 
     def get_cluster_pools(self) -> Dict[str, List[str]]:
         return self.config_dict.get("allowed_pools", {})
+
+    def get_spark_driver_iam_role(self) -> str:
+        return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
+
+    def get_spark_executor_iam_role(self) -> str:
+        # use the same IAM role as the Spark driver
+        return self.get_spark_run_config().get("default_spark_driver_iam_role", "")
+
+    def get_pools_for_cluster(self, cluster: str) -> List[str]:
+        return self.get_cluster_pools().get(cluster, [])
 
     def get_hacheck_match_initial_delay(self) -> bool:
         return self.config_dict.get("hacheck_match_initial_delay", False)
@@ -4267,16 +4289,30 @@ def _reorder_docker_volumes(volumes: List[DockerVolume]) -> List[DockerVolume]:
     return sort_dicts(deduped)
 
 
-@lru_cache(maxsize=1)
-def get_runtimeenv() -> str:
-    try:
-        with open("/nail/etc/runtimeenv", mode="r") as f:
-            return f.read()
-    except OSError:
-        log.error("Unable to read runtimeenv - this is not expected if inside Yelp.")
-        # we could also just crash or return None, but this seems a little easier to find
-        # should we somehow run into this at Yelp
-        return "unknown"
+def get_k8s_url_for_cluster(cluster: str) -> Optional[str]:
+    """
+    Annoyingly, there's two layers of aliases: one to figure out what
+    k8s server url to use (this one) and another to figure out what
+    soaconfigs filename to use ;_;
+
+    This exists so that we can map something like `--cluster pnw-devc`
+    into spark-pnw-devc's k8s apiserver url without needing to update
+    any soaconfigs/alter folk's muscle memory.
+
+    Ideally we can get rid of this entirely once spark-run reads soaconfigs
+    in a manner more closely aligned to what we do with other paasta workloads
+    (i.e., have it automatically determine where to run based on soaconfigs
+    filenames - and not rely on explicit config)
+    """
+    realized_cluster = (
+        load_system_paasta_config().get_eks_cluster_aliases().get(cluster, cluster)
+    )
+    return (
+        load_system_paasta_config()
+        .get_kube_clusters()
+        .get(realized_cluster, {})
+        .get("server")
+    )
 
 
 @lru_cache(maxsize=1)

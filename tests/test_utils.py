@@ -28,6 +28,9 @@ from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -2842,3 +2845,73 @@ def test_is_secrets_for_teams_enabled():
         # if not present
         mock_read_extra_service_information.return_value = {"description": "something"}
         assert not utils.is_secrets_for_teams_enabled(service)
+
+
+@pytest.mark.parametrize(
+    "cluster,pool,system_paasta_config,expected",
+    [
+        (
+            # allowed_pools key has test-cluster and test-pool
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            True,
+        ),
+        (
+            # allowed_pools key has test-cluster but doesn't have test-pool
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["fail-test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            False,
+        ),
+    ],
+)
+def test_validate_pool(cluster, pool, system_paasta_config, expected):
+    assert utils.validate_pool(cluster, pool, system_paasta_config) == expected
+
+
+@pytest.mark.parametrize(
+    "cluster,pool,system_paasta_config",
+    [
+        (
+            # allowed_pools key doesn't have test-cluster
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+        ),
+        (
+            # allowed_pools key is not present
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}  # type: ignore
+                ),
+                "fake_dir",
+            ),
+        ),
+    ],
+)
+def test_validate_pool_error(cluster, pool, system_paasta_config):
+    assert pytest.raises(
+        PoolsNotConfiguredError,
+        utils.validate_pool,
+        cluster,
+        pool,
+        system_paasta_config,
+    )
