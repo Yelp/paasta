@@ -910,10 +910,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             max_replicas,
             autoscaling_params,
         )
+
+        labels = {
+            paasta_prefixed("service"): self.service,
+            paasta_prefixed("instance"): self.instance,
+            paasta_prefixed("pool"): self.get_pool(),
+            paasta_prefixed("managed"): "true",
+        }
+
         hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=annotations
+                name=name, namespace=namespace, annotations=annotations, labels=labels
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=scaling_policy,

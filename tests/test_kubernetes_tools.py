@@ -2233,7 +2233,10 @@ class TestKubernetesDeploymentConfig:
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations=annotations
+                name="fake_name",
+                namespace="paasta",
+                annotations=annotations,
+                labels=mock.ANY,
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
@@ -2298,7 +2301,10 @@ class TestKubernetesDeploymentConfig:
         expected_res = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name="fake_name", namespace="paasta", annotations=annotations
+                name="fake_name",
+                namespace="paasta",
+                annotations=annotations,
+                labels=mock.ANY,
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
@@ -2388,6 +2394,7 @@ class TestKubernetesDeploymentConfig:
                 name="fake_name",
                 namespace="paasta",
                 annotations={},
+                labels=mock.ANY,
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
@@ -2467,6 +2474,7 @@ class TestKubernetesDeploymentConfig:
                 name="fake_name",
                 namespace="paasta",
                 annotations={},
+                labels=mock.ANY,
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=mock_config.get_autoscaling_scaling_policy(
