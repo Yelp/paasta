@@ -136,6 +136,7 @@ async def check_max_instances(
                 {
                     "page": False,  # TODO: remove this line once this alert has been deployed for a little while.
                     "runbook": "y/check-autoscaler-max-instances",
+                    "realert_every": 60,  # The check runs once a minute, so this would realert every hour.
                     "tip": (
                         "The autoscaler wants to scale up to handle additional load"
                         " because your service is overloaded, but cannot scale any"
