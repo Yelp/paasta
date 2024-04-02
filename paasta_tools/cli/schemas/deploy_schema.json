@@ -104,6 +104,9 @@
                 },
                 "enable_automated_redeploys": {
                     "type": "boolean"
+                },
+                "service_account": {
+                    "type": "string"
                 }
             },
             "required": [
