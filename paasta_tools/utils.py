@@ -2049,7 +2049,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
-    tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
     spark_ui_port: int
@@ -2787,9 +2786,6 @@ class SystemPaastaConfig:
 
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
-
-    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
-        return self.config_dict.get("tron_use_suffixed_log_streams", False)
 
     def get_spark_driver_port(self) -> int:
         # default value is an arbitrary value
