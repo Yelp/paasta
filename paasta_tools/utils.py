@@ -2049,7 +2049,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
-    tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
     spark_ui_port: int

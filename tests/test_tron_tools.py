@@ -1202,7 +1202,7 @@ class TestTronTools:
                 "PAASTA_INSTANCE_TYPE": "spark",
                 "SHELL": "/bin/bash",
                 "SPARK_USER": "root",
-                "STREAM_SUFFIX_LOGSPOUT": "spark",
+                "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
             },
             "node_selectors": {"yelp.com/pool": "stable"},
