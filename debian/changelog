@@ -1,3 +1,13 @@
+paasta-tools (0.221.2) xenial; urgency=medium
+
+  * 0.221.2 tagged with 'make release'
+    Commit: add service_account field for deploy.yaml (#3813)  adding a
+    new `service_account` field for deploy.yaml steps.  this will allow
+    us to configure service accounts for the step being run instead of
+    for the entire pipeline
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 07:46:30 -0700
+
 paasta-tools (0.221.1) xenial; urgency=medium
 
   * 0.221.1 tagged with 'make release'
