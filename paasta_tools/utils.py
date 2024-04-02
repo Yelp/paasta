@@ -2788,11 +2788,6 @@ class SystemPaastaConfig:
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
-    def get_spark_ui_port(self) -> int:
-        # 33000 was picked arbitrarily (it was the base port when we used to
-        # randomly reserve port numbers)
-        return self.config_dict.get("spark_ui_port", 33000)
-
     def get_spark_driver_port(self) -> int:
         # default value is an arbitrary value
         return self.config_dict.get("spark_driver_port", 33001)

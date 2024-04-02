@@ -238,15 +238,6 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
-def _get_spark_ports(system_paasta_config: SystemPaastaConfig) -> Dict[str, int]:
-    return {
-        "spark.ui.port": system_paasta_config.get_spark_ui_port(),
-        "spark.driver.port": system_paasta_config.get_spark_driver_port(),
-        "spark.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-        "spark.driver.blockManager.port": system_paasta_config.get_spark_blockmanager_port(),
-    }
-
-
 class TronActionConfigDict(InstanceConfigDict, total=False):
     # this is kinda confusing: long-running stuff is currently using cmd
     # ...but tron are using command - this is going to require a little
