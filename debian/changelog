@@ -1,3 +1,101 @@
+paasta-tools (0.221.2) xenial; urgency=medium
+
+  * 0.221.2 tagged with 'make release'
+    Commit: add service_account field for deploy.yaml (#3813)  adding a
+    new `service_account` field for deploy.yaml steps.  this will allow
+    us to configure service accounts for the step being run instead of
+    for the entire pipeline
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 07:46:30 -0700
+
+paasta-tools (0.221.1) xenial; urgency=medium
+
+  * 0.221.1 tagged with 'make release'
+    Commit: Merge pull request #3822 from
+    Yelp/u/krall/add_labels_to_hpas  Add service/instance/managed labels
+    to HPAs. PAASTA-18226
+
+ -- Evan Krall <krall@yelp.com>  Mon, 01 Apr 2024 16:01:38 -0700
+
+paasta-tools (0.221.0) xenial; urgency=medium
+
+  * 0.221.0 tagged with 'make release'
+    Commit: MLCOMPUTE-967 | changes for Spark drivers on k8s (#3679)  *
+    MLCOMPUTE-967 | add default iam role for Spark drivers on k8s  *
+    MLCOMPUTE-967 | move default to SystemPaastaConfig  * MLCOMPUTE-967
+    | add volume mounts for kubeconfig  * MLCOMPUTE-967 | add spark to
+    the list of executor types  * MLCOMPUTE-967 | use correct k8s url as
+    spark master argument  * MLCOMPUTE-1057 | add flow to create Spark
+    executor service account dynamically  * MLCOMPUTE-967 | use same IAM
+    role for Spark drivers and executors  * MLCOMPUTE-1068 | logic for
+    using duplicate iam role with eks suffix  * remove use_k8s
+    deprecated flag (cherry-picked from 59beb52)  * Use stable pool for
+    Spark driver  * MLCOMPUTE-1160 | consolidate tron and paasta logic
+    to spark_tools, utils and service config lib  * MLCOMPUTE-1163 |
+    handle space separated Spark args  * MLCOMPUTE-1119 | Support extra
+    flags from paasta spark-run in tron_tools  * MLCOMPUTE-967 | mount
+    pod template file for Spark executor  * Add pod labels for
+    monitoring metrics  * Parse additional tronfig args  * MLCOMPUTE-967
+    | use default pod template without compact bin packing  * MLCOMPUTE-
+    967 | bump service-configuration-lib version  * MLCOMPUTE-967 |
+    updated timeout_spark regex acc to bash timeout, removed redundant
+    spark ports assignment  * Specify prometheus scrape path  * Update
+    driver pod annotations for metrics scraping  * MLCOMPUTE-967 |
+    deprecate obsolete args, add mrjob capability to tron tools  *
+    MLCOMPUTE-967 | remove obsolete args, sanitise code  * MLCOMPUTE-967
+    | fix tests  * MLCOMPUTE-967 | use already defined time_delta  ------
+    ---  Co-authored-by: Sameer Sharma <sameersharma@yelp.com> Co-
+    authored-by: Jon Lee <jonlee@yelp.com> Co-authored-by: Chi Chang
+    <chi@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 27 Mar 2024 09:52:10 -0700
+
+paasta-tools (0.220.3) xenial; urgency=medium
+
+  * 0.220.3 tagged with 'make release'
+    Commit: Merge pull request #3816 from acrlabs/drmorr/stop-monkey-
+    patching  stop monkey-patching the HPA object
+
+ -- Jon Lee <jonlee@yelp.com>  Mon, 25 Mar 2024 10:45:44 -0700
+
+paasta-tools (0.220.2) xenial; urgency=medium
+
+  * 0.220.2 tagged with 'make release'
+    Commit: Merge pull request #3812 from Yelp/jfong/fix_local_run_port
+    Fix PAASTA_PORT in local-run containers
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 Mar 2024 09:46:25 -0700
+
+paasta-tools (0.220.1) xenial; urgency=medium
+
+  * 0.220.1 tagged with 'make release'
+    Commit: Merge pull request #3820 from Yelp/u/ajayprataps/fix-k8s_cr
+    removed default eks var in kubernetes_cr.py
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Tue, 19 Mar 2024 09:49:18 -0700
+
+paasta-tools (0.220.0) xenial; urgency=medium
+
+  * 0.220.0 tagged with 'make release'
+    Commit: Allow skipping cleanup of tagged CRDs (#3780)  Open-source
+    operators may need to have N CRDs created, which is not currently
+    suppored by PaaSTA due to our current 1 CRD per file approach.  For
+    teach cases, we tend to manage CRDs with Flux - but PaaSTA will
+    clean these CRDs up since they"re in a PaaSTA-managed namespace, but
+    there"s no record of them in soaconfigs.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 14:37:24 -0700
+
+paasta-tools (0.219.0) xenial; urgency=medium
+
+  * 0.219.0 tagged with 'make release'
+    Commit: Add managed-by label to Tron pods for TSC purposes (#3819)
+    We"d like to create a Topology Spread Constraint (TSC) for Tron
+    pods, but these don"t have a unique label to identify them as Tron-
+    launched pods - so we"ll add a managed-by label for this purpose
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 10:28:51 -0700
+
 paasta-tools (0.218.14) xenial; urgency=medium
 
   * 0.218.14 tagged with 'make release'

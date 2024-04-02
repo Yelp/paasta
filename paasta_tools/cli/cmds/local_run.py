@@ -661,8 +661,10 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         "PAASTA_DOCKER_IMAGE": docker_image,
         "PAASTA_LAUNCHED_BY": get_possible_launched_by_user_variable_from_env(),
         "PAASTA_HOST": hostname,
-        "PAASTA_PORT": str(port0),
+        # Kubernetes instances remove PAASTA_CLUSTER, so we need to re-add it ourselves
+        "PAASTA_CLUSTER": instance_config.get_cluster(),
     }
+
     if framework == "marathon":
         fake_taskid = uuid.uuid4()
         env["MESOS_SANDBOX"] = "/mnt/mesos/sandbox"
@@ -855,7 +857,7 @@ def run_docker_container(
             sys.exit(1)
     else:
         chosen_port = pick_random_port(service)
-    environment = instance_config.get_env_dictionary()
+    environment = instance_config.get_env()
     secret_volumes = {}  # type: ignore
     if not skip_secrets:
         # if secrets_for_owner_team enabled in yelpsoa for service

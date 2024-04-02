@@ -99,6 +99,24 @@ def main(args):
         delete_all = set(args.superregion) == set(SUPPERREGION_DEPLOY_MAPPINGS.keys())
 
         for superregion in args.superregion:
+            # Determine / load configuration (PAASTA-18216)
+            eks_config = updater.get_existing_configs(
+                args.service, f"eks-{superregion}"
+            )
+            kube_config = updater.get_existing_configs(
+                args.service, f"kubernetes-{superregion}"
+            )
+
+            if eks_config:
+                config_file = eks_config
+                config_file_suffix = "eks"
+            elif kube_config:
+                config_file = kube_config
+                config_file_suffix = "kubernetes"
+            else:
+                log.error(f"No EKS or Kubernetes config found for {args.service}")
+                continue
+
             # Remove shard from deploy pipeline config
             targeted_step = (
                 f"{SUPPERREGION_DEPLOY_MAPPINGS[superregion]}.{args.shard_name}"
@@ -109,13 +127,14 @@ def main(args):
             log.info(f"{targeted_step} removed from deploy config")
             updater.write_configs(args.service, "deploy", deploy_file)
 
-            # Remove shard from corresponding kubernetes-* config
-            kube_file = updater.get_existing_configs(
-                args.service, f"kubernetes-{superregion}"
+            # Remove shard from corresponding config
+            del config_file[args.shard_name]
+            updater.write_configs(
+                args.service, f"{config_file_suffix}-{superregion}", config_file
             )
-            del kube_file[args.shard_name]
-            updater.write_configs(args.service, f"kubernetes-{superregion}", kube_file)
-            log.info(f"{args.shard_name} removed from kubernetes-{superregion}")
+            log.info(
+                f"{args.shard_name} removed from {config_file_suffix}-{superregion}"
+            )
 
         # If we are removing the shard from all regions, remove it from smartstack too.
         if delete_all:
