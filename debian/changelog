@@ -1,3 +1,12 @@
+paasta-tools (0.223.0) xenial; urgency=medium
+
+  * 0.223.0 tagged with 'make release'
+    Commit: Remove good_enough_window (#3824)  Following up on
+    sysgit/yelpsoa-configs#42719, this removes `good_enough_window` from
+    paasta completely.  ## Testing done `make test` still passes
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Apr 2024 07:59:51 -0700
+
 paasta-tools (0.222.0) xenial; urgency=medium
 
   * 0.222.0 tagged with 'make release'
