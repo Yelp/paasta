@@ -1019,7 +1019,10 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         return None
 
     # iam_role / aws_profile
-    if "iam_role" in action_dict and action_dict.get("iam_role_provider", "") != "aws":
+    if (
+        "iam_role" in action_dict
+        and action_dict.get("iam_role_provider", "aws") != "aws"
+    ):
         print(
             PaastaColors.red("Invalid Tronfig: iam_role_provider should be 'aws'"),
             file=sys.stderr,
