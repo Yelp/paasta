@@ -232,14 +232,6 @@
                         "scaledown_policies": {
                             "type": "object"
                         },
-                        "good_enough_window": {
-                            "type": "array",
-                            "items": {
-                                "type": "number"
-                            },
-                            "minItems": 2,
-                            "maxItems": 2
-                        },
                         "prometheus_adapter_config": {
                             "type": "object",
                             "additionalProperties": false,

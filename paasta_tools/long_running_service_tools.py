@@ -51,7 +51,6 @@ class AutoscalingParamsDict(TypedDict, total=False):
     use_prometheus: bool
     use_resource_metrics: bool
     scaledown_policies: Optional[dict]
-    good_enough_window: List[float]
     prometheus_adapter_config: Optional[dict]
     max_instances_alert_threshold: float
 

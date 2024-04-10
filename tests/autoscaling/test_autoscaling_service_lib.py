@@ -1641,41 +1641,6 @@ def test_proportional_decision_policy_nonzero_offset(mock_fetch_historical_load)
 
 
 @mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
-    autospec=True,
-    return_value=[],
-)
-def test_proportional_decision_policy_good_enough(mock_fetch_historical_load):
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path="/test",
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy="current",
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.54,
-        good_enough_window=(0.45, 0.55),
-        persist_data=False,
-    )
-
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path="/test",
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy="current",
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.46,
-        good_enough_window=(0.45, 0.55),
-        persist_data=False,
-    )
-
-
-@mock.patch(
     "paasta_tools.autoscaling.autoscaling_service_lib.save_historical_load",
     autospec=True,
 )
