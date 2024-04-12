@@ -763,7 +763,8 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
+    if pod_template_path:
+        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     volumes.append(
         f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
