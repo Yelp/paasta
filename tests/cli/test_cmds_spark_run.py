@@ -1117,7 +1117,6 @@ def test_paasta_spark_run_bash(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -1149,7 +1148,6 @@ def test_paasta_spark_run_bash(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,
@@ -1231,7 +1229,6 @@ def test_paasta_spark_run(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -1263,7 +1260,6 @@ def test_paasta_spark_run(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,
@@ -1344,7 +1340,6 @@ def test_paasta_spark_run_pyspark(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=70 spark.executor.cores=10",
@@ -1379,7 +1374,6 @@ def test_paasta_spark_run_pyspark(
     )
     mock_get_aws_credentials.assert_called_once_with(
         service="test-service",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         profile_name=None,
         assume_aws_role_arn=None,

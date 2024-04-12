@@ -1284,7 +1284,6 @@ def paasta_spark_run(args):
 
     aws_creds = get_aws_credentials(
         service=args.service,
-        no_aws_credentials=args.no_aws_credentials,
         aws_credentials_yaml=args.aws_credentials_yaml,
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
