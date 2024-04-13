@@ -93,6 +93,14 @@
                             ]
                         }
                     ]
+                },
+                {
+                    "not": {
+                        "required": [
+                            "service_account_name",
+                            "iam_role"
+                        ]
+                    }
                 }
             ],
             "properties": {
