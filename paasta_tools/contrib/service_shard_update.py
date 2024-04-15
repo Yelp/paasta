@@ -274,26 +274,56 @@ def main(args):
                         instance_config["cpus"] = args.cpus
                     if args.mem is not None:
                         instance_config["mem"] = args.mem
-                    if any((args.autotune_min_cpus, args.autotune_max_cpus, args.autotune_min_mem, args.autotune_max_mem, args.autotune_min_disk, args.autotune_max_disk)):
+                    if any(
+                        (
+                            args.autotune_min_cpus,
+                            args.autotune_max_cpus,
+                            args.autotune_min_mem,
+                            args.autotune_max_mem,
+                            args.autotune_min_disk,
+                            args.autotune_max_disk,
+                        )
+                    ):
                         instance_config["autotune"] = {}
-                        if args.autotune_min_cpus is not None or args.autotune_max_cpus is not None:
+                        if (
+                            args.autotune_min_cpus is not None
+                            or args.autotune_max_cpus is not None
+                        ):
                             instance_config["autotune"]["cpus"] = {}
                             if args.autotune_min_cpus is not None:
-                                instance_config["autotune"]["cpus"]["min"] = args.autotune_min_cpus
+                                instance_config["autotune"]["cpus"][
+                                    "min"
+                                ] = args.autotune_min_cpus
                             if args.autotune_max_cpus is not None:
-                                instance_config["autotune"]["cpus"]["max"] = args.autotune_max_cpus
-                        if args.autotune_min_mem is not None or args.autotune_max_mem is not None:
+                                instance_config["autotune"]["cpus"][
+                                    "max"
+                                ] = args.autotune_max_cpus
+                        if (
+                            args.autotune_min_mem is not None
+                            or args.autotune_max_mem is not None
+                        ):
                             instance_config["autotune"]["mem"] = {}
                             if args.autotune_min_mem is not None:
-                                instance_config["autotune"]["mem"]["min"] = args.autotune_min_mem
+                                instance_config["autotune"]["mem"][
+                                    "min"
+                                ] = args.autotune_min_mem
                             if args.autotune_max_mem is not None:
-                                instance_config["autotune"]["mem"]["max"] = args.autotune_max_mem
-                        if args.autotune_min_disk is not None or args.autotune_max_disk is not None:
+                                instance_config["autotune"]["mem"][
+                                    "max"
+                                ] = args.autotune_max_mem
+                        if (
+                            args.autotune_min_disk is not None
+                            or args.autotune_max_disk is not None
+                        ):
                             instance_config["autotune"]["disk"] = {}
                             if args.autotune_min_disk is not None:
-                                instance_config["autotune"]["disk"]["min"] = args.autotune_min_disk
+                                instance_config["autotune"]["disk"][
+                                    "min"
+                                ] = args.autotune_min_disk
                             if args.autotune_max_disk is not None:
-                                instance_config["autotune"]["disk"]["max"] = args.autotune_max_disk
+                                instance_config["autotune"]["disk"][
+                                    "max"
+                                ] = args.autotune_max_disk
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in config_file.keys():
