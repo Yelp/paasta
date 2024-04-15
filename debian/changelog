@@ -1,3 +1,11 @@
+paasta-tools (0.223.1) xenial; urgency=medium
+
+  * 0.223.1 tagged with 'make release'
+    Commit: Fix volume mount of spark-run on local cluster (#3827)  Co-
+    authored-by: Chi Chang <chi@yelp.com>
+
+ -- Chi Chang <chi@yelp.com>  Mon, 15 Apr 2024 08:05:46 -0700
+
 paasta-tools (0.223.0) xenial; urgency=medium
 
   * 0.223.0 tagged with 'make release'
