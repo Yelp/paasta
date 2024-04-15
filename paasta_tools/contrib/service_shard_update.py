@@ -40,6 +40,13 @@ def parse_args():
         dest="verbose",
     )
     parser.add_argument(
+        "-d",
+        "--dry-run",
+        help="Do not commit changes to git",
+        action="store_true",
+        dest="dry_run",
+    )
+    parser.add_argument(
         "--source-id",
         help="String to attribute the changes in the commit message.",
         required=False,
@@ -114,6 +121,48 @@ def parse_args():
         required=False,
         type=int,
         dest="timeout_server_ms",
+    )
+    parser.add_argument(
+        "--autotune-min-cpus",
+        help="Minimum number of CPUs Autotune should give the shard",
+        required=False,
+        type=float,
+        dest="autotune_min_cpus",
+    )
+    parser.add_argument(
+        "--autotune-max-cpus",
+        help="Maximum number of CPUs Autotune should give the shard",
+        required=False,
+        type=float,
+        dest="autotune_max_cpus",
+    )
+    parser.add_argument(
+        "--autotune-min-mem",
+        help="Minimum amount of memory Autotune should give the shard",
+        required=False,
+        type=int,
+        dest="autotune_min_mem",
+    )
+    parser.add_argument(
+        "--autotune-max-mem",
+        help="Maximum amount of memory Autotune should give the shard",
+        required=False,
+        type=int,
+        dest="autotune_max_mem",
+    )
+    parser.add_argument(
+        "--autotune-min-disk",
+        help="Minimum amount of disk Autotune should give the shard",
+        required=False,
+        type=int,
+        dest="autotune_min_disk",
+    )
+    parser.add_argument(
+        "--autotune-max-disk",
+        help="Maximum amount of disk Autotune should give the shard",
+        required=False,
+        type=int,
+        dest="autotune_max_disk",
     )
     return parser.parse_args()
 
@@ -214,6 +263,26 @@ def main(args):
                         instance_config["cpus"] = args.cpus
                     if args.mem is not None:
                         instance_config["mem"] = args.mem
+                    if any((args.autotune_min_cpus, args.autotune_max_cpus, args.autotune_min_mem, args.autotune_max_mem, args.autotune_min_disk, args.autotune_max_disk)):
+                        instance_config["autotune"] = {}
+                        if args.autotune_min_cpus is not None or args.autotune_max_cpus is not None:
+                            instance_config["autotune"]["cpus"] = {}
+                            if args.autotune_min_cpus is not None:
+                                instance_config["autotune"]["cpus"]["min"] = args.autotune_min_cpus
+                            if args.autotune_max_cpus is not None:
+                                instance_config["autotune"]["cpus"]["max"] = args.autotune_max_cpus
+                        if args.autotune_min_mem is not None or args.autotune_max_mem is not None:
+                            instance_config["autotune"]["mem"] = {}
+                            if args.autotune_min_mem is not None:
+                                instance_config["autotune"]["mem"]["min"] = args.autotune_min_mem
+                            if args.autotune_max_mem is not None:
+                                instance_config["autotune"]["mem"]["max"] = args.autotune_max_mem
+                        if args.autotune_min_disk is not None or args.autotune_max_disk is not None:
+                            instance_config["autotune"]["disk"] = {}
+                            if args.autotune_min_disk is not None:
+                                instance_config["autotune"]["disk"]["min"] = args.autotune_min_disk
+                            if args.autotune_max_disk is not None:
+                                instance_config["autotune"]["disk"]["max"] = args.autotune_max_disk
                     # If the service config does not contain definitions for the shard in each ecosystem
                     # Add the missing definition and write to the corresponding config
                     if args.shard_name not in config_file.keys():
@@ -244,7 +313,7 @@ def main(args):
             log.info(f"{args.shard_name} is in smartstack config already, skipping.")
 
         # Only commit to remote if changes were made
-        if changes_made:
+        if changes_made and not args.dry_run:
             updater.commit_to_remote()
             trigger_deploys(args.service)
         else:
