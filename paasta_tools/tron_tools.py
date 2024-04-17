@@ -281,16 +281,17 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def build_spark_config(self) -> Dict[str, str]:
-
         system_paasta_config = load_system_paasta_config()
         resolved_cluster = system_paasta_config.get_eks_cluster_aliases().get(
             self.get_cluster(), self.get_cluster()
         )
+        pool = self.get_spark_executor_pool()
         try:
-            if not validate_pool(
-                resolved_cluster, self.get_spark_executor_pool(), system_paasta_config
-            ):
-                raise InvalidPoolError
+            if not validate_pool(resolved_cluster, pool, system_paasta_config):
+                raise InvalidPoolError(
+                    f"Job {self.get_service()}.{self.get_instance()}: "
+                    f"pool '{pool}' is invalid for cluster '{resolved_cluster}'"
+                )
         except PoolsNotConfiguredError:
             log.warning(
                 f"Could not fetch allowed_pools for `{resolved_cluster}`. Skipping pool validation.\n"
