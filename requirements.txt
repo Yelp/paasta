@@ -1,6 +1,6 @@
 a-sync==0.5.0
 addict==2.1.0
-aiohttp==3.7.4.post0
+aiohttp==3.9.4
 argcomplete==0.8.1
 argparse==1.4.0
 arrow==1.1.0
