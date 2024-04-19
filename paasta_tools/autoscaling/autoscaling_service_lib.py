@@ -148,24 +148,17 @@ def proportional_decision_policy(
     num_healthy_instances,
     persist_data: bool,
     noop=False,
-    offset=0.0,
     forecast_policy="current",
     **kwargs,
 ):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
-    the setpoint, scales up by 10%. Includes correction for an offset, if your containers have a baseline utilization
-    independent of the number of containers.
+    the setpoint, scales up by 10%.
 
-    The model is: utilization per container = (total load)/(number of containers) + offset.
+    The model is: utilization per container = (total load)/(number of containers).
 
-    total load and offset are measured in the same unit as your metric provider. If you're measuring CPU per container,
-    offset is the baseline CPU of an idle container, and total load is the total CPU required across all containers,
-    subtracting the offset for each container.
+    total load is measured in the same unit as your metric provider. If you're measuring CPU per container,
+    total load is the total CPU required across all containers.
 
-    :param offset: A float (should be between 0.0 and 1.0) representing the expected baseline load for each container.
-                   e.g. if the metric you're using is CPU, then how much CPU an idle container would use.
-                   This should never be more than your setpoint. (If it takes 50% cpu to run an idle container, we can't
-                   get your utilization below 50% no matter how many containers we run.)
     :param forecast_policy: The method for forecasting future load values. Currently, only two forecasters exist:
                             - "current", which assumes that the load will remain the same as the current value for the
                             near future.
@@ -175,7 +168,7 @@ def proportional_decision_policy(
 
     forecast_policy_func = get_forecast_policy(forecast_policy)
 
-    current_load = (utilization - offset) * num_healthy_instances
+    current_load = utilization * num_healthy_instances
 
     historical_load = fetch_historical_load(zk_path_prefix=zookeeper_path)
     historical_load.append((time.time(), current_load))
@@ -184,7 +177,7 @@ def proportional_decision_policy(
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
-    desired_number_instances = int(round(predicted_load / (setpoint - offset)))
+    desired_number_instances = int(round(predicted_load / setpoint))
 
     # Don't scale down if the current utilization >= the setpoint (or the high point of the good enough window)
     # This prevents the case where the moving_average forcast_policy thinks the service needs to scale
