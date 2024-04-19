@@ -632,13 +632,11 @@ def validate_autoscaling_configs(service_path):
                     # default setpoint for all metrics providers so we are safe to
                     # unconditionally read it
                     setpoint = autoscaling_params["setpoint"]
-                    offset = autoscaling_params.get("offset", 0)
-                    if setpoint - offset <= 0:
+                    if setpoint <= 0:
                         returncode = False
                         print(
                             failure(
-                                msg="Autoscaling configuration is invalid: offset must be "
-                                f"smaller than setpoint\n\t(setpoint: {setpoint} | offset: {offset})",
+                                msg="Autoscaling configuration is invalid: setpoint must be greater than zero",
                                 link="",
                             )
                         )
