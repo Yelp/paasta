@@ -106,6 +106,13 @@ def cleanup_kube_crd(
             log.error(f"CRD {crd.metadata.name} has empty {service_attr} label")
             continue
 
+        protected_attr = paasta_prefixed("protected")
+        if crd.metadata.labels.get(protected_attr) is not None:
+            log.info(
+                f"CRD {crd.metadata.name} has {protected_attr} label set - skipping."
+            )
+            continue
+
         crd_config = service_configuration_lib.read_extra_service_information(
             service, f"crd-{cluster}", soa_dir=soa_dir
         )

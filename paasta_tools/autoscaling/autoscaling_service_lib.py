@@ -150,7 +150,6 @@ def proportional_decision_policy(
     noop=False,
     offset=0.0,
     forecast_policy="current",
-    good_enough_window=None,
     **kwargs,
 ):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
@@ -172,10 +171,6 @@ def proportional_decision_policy(
                             near future.
                             - "moving_average", which assumes that total load will remain near the average of data
                             points within a window.
-    :param good_enough_window: A tuple/array of two utilization values, (low, high). If the utilization per container at
-                               the forecasted total load is within this window with the current number of instances,
-                               leave the number of instances alone. This can reduce churn. Setpoint should lie within
-                               this window.
     """
 
     forecast_policy_func = get_forecast_policy(forecast_policy)
@@ -194,21 +189,8 @@ def proportional_decision_policy(
     # Don't scale down if the current utilization >= the setpoint (or the high point of the good enough window)
     # This prevents the case where the moving_average forcast_policy thinks the service needs to scale
     #  down several times in a row due to under-utilization in the near past
-    if desired_number_instances < current_instances:
-        if good_enough_window:
-            _, high = good_enough_window
-            if utilization >= high:
-                desired_number_instances = current_instances
-        elif utilization >= setpoint:
-            desired_number_instances = current_instances
-
-    if good_enough_window:
-        low, high = good_enough_window
-        predicted_load_per_instance_with_current_instances = (
-            predicted_load / current_instances + offset
-        )
-        if low <= predicted_load_per_instance_with_current_instances <= high:
-            desired_number_instances = current_instances
+    if desired_number_instances < current_instances and utilization >= setpoint:
+        desired_number_instances = current_instances
 
     return (
         desired_number_instances - current_instances

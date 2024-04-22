@@ -49,7 +49,13 @@ from paasta_tools.smartstack_tools import match_backends_and_pods
 from paasta_tools.utils import calculate_tail_lines
 
 
-INSTANCE_TYPES_CR = {"flink", "cassandracluster", "kafkacluster", "vitesscluster"}
+INSTANCE_TYPES_CR = {
+    "flink",
+    "flinkeks",
+    "cassandracluster",
+    "kafkacluster",
+    "vitesscluster",
+}
 INSTANCE_TYPES_K8S = {
     "cassandracluster",
     "eks",
@@ -57,9 +63,10 @@ INSTANCE_TYPES_K8S = {
 }
 INSTANCE_TYPES = INSTANCE_TYPES_K8S.union(INSTANCE_TYPES_CR)
 
-INSTANCE_TYPES_WITH_SET_STATE = {"flink"}
+INSTANCE_TYPES_WITH_SET_STATE = {"flink", "flinkeks"}
 INSTANCE_TYPE_CR_ID = dict(
     flink=flink_tools.cr_id,
+    flinkeks=flink_tools.cr_id,
     cassandracluster=cassandracluster_tools.cr_id,
     kafkacluster=kafkacluster_tools.cr_id,
     vitesscluster=vitesscluster_tools.cr_id,

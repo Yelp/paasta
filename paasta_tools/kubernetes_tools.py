@@ -789,7 +789,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         cluster: str,
         kube_client: KubeClient,
         namespace: str,
-    ) -> Optional[Union[V2beta2HorizontalPodAutoscaler, Dict]]:
+    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
 
@@ -906,12 +906,25 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
+        scaling_policy = self.get_autoscaling_scaling_policy(
+            max_replicas,
+            autoscaling_params,
+        )
+
+        labels = {
+            paasta_prefixed("service"): self.service,
+            paasta_prefixed("instance"): self.instance,
+            paasta_prefixed("pool"): self.get_pool(),
+            paasta_prefixed("managed"): "true",
+        }
+
         hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=annotations
+                name=name, namespace=namespace, annotations=annotations, labels=labels
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=scaling_policy,
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
@@ -921,18 +934,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             ),
         )
 
-        # In k8s v1.18, HPA scaling policies can be set:
-        #   https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-configurable-scaling-behavior
-        # However, the python client library currently only supports v1.17, so
-        # we need to monkey-patch scaling policies until the library is updated
-        # v1.18.
-        scaling_policy = self.get_autoscaling_scaling_policy(
-            max_replicas,
-            autoscaling_params,
-        )
-        if scaling_policy:
-            hpa = kube_client.jsonify(hpa)  # this is a hack, see KubeClient class
-            hpa["spec"]["behavior"] = scaling_policy
         return hpa
 
     def get_deployment_strategy_config(self) -> V1DeploymentStrategy:
@@ -4015,6 +4016,7 @@ def create_or_find_service_account_name(
     iam_role: str,
     namespace: str,
     k8s_role: Optional[str] = None,
+    kubeconfig_file: Optional[str] = None,
     dry_run: bool = False,
 ) -> str:
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
@@ -4046,7 +4048,7 @@ def create_or_find_service_account_name(
     if dry_run:
         return sa_name
 
-    kube_client = KubeClient()
+    kube_client = KubeClient(config_file=kubeconfig_file)
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
