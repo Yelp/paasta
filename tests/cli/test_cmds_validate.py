@@ -39,6 +39,9 @@ from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -1066,8 +1069,9 @@ def test_validate_autoscaling_configs(
                 is_autoscaling_enabled=mock.Mock(return_value=True),
                 get_autoscaling_params=mock.Mock(
                     return_value={
-                        "metrics_provider": "uwsgi",
-                        "setpoint": setpoint,
+                        "metrics_providers": [
+                            {"type": METRICS_PROVIDER_UWSGI, "setpoint": setpoint}
+                        ],
                     }
                 ),
             ),
@@ -1095,32 +1099,42 @@ def test_validate_autoscaling_configs(
     "autoscaling_config,registrations,expected",
     [
         (
+            {"metrics_providers": [{"type": METRICS_PROVIDER_ACTIVE_REQUESTS}]},
+            [],
+            True,
+        ),
+        (
             {
-                "metrics_provider": "active-requests",
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
             },
             [],
             True,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
-            },
-            [],
-            True,
-        ),
-        (
-            {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
             },
             ["fake_service.abc"],
             True,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
             },
             ["fake_service.abc", "fake_service.def"],
             False,
@@ -1201,8 +1215,9 @@ def test_validate_cpu_autotune_override(
                 is_autoscaling_enabled=mock.Mock(return_value=True),
                 get_autoscaling_params=mock.Mock(
                     return_value={
-                        "metrics_provider": "cpu",
-                        "setpoint": 0.8,
+                        "metrics_providers": [
+                            {"type": METRICS_PROVIDER_CPU, "setpoint": 0.8}
+                        ],
                     }
                 ),
             ),

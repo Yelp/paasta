@@ -91,7 +91,7 @@ ServiceAutoscalingInfo = namedtuple(
 )
 
 
-SERVICE_METRICS_PROVIDER_KEY = "metrics_provider"
+SERVICE_METRICS_PROVIDER_KEY = "metrics_providers"
 DECISION_POLICY_KEY = "decision_policy"
 
 AUTOSCALING_DELAY = 300
@@ -566,7 +566,7 @@ def get_new_instance_count(
     persist_data: bool,
 ):
     autoscaling_decision_policy = get_decision_policy(
-        autoscaling_params[DECISION_POLICY_KEY]
+        autoscaling_params[SERVICE_METRICS_PROVIDER_KEY][0][DECISION_POLICY_KEY]
     )
 
     zookeeper_path = compose_autoscaling_zookeeper_root(
@@ -605,7 +605,7 @@ def get_utilization(
     mesos_tasks,
 ):
     autoscaling_metrics_provider = get_service_metrics_provider(
-        autoscaling_params[SERVICE_METRICS_PROVIDER_KEY]
+        autoscaling_params[SERVICE_METRICS_PROVIDER_KEY][0]
     )
 
     return autoscaling_metrics_provider(
@@ -652,7 +652,7 @@ def autoscale_marathon_instance(
             )
             error = get_error_from_utilization(
                 utilization=utilization,
-                setpoint=autoscaling_params["setpoint"],
+                setpoint=autoscaling_params["metrics_providers"][0]["setpoint"],
                 current_instances=current_instances,
             )
             num_healthy_instances = len(marathon_tasks)
@@ -762,7 +762,7 @@ def _record_autoscaling_decision(
         "paasta_cluster": marathon_service_config.cluster,
         "paasta_instance": marathon_service_config.instance,
         "paasta_pool": marathon_service_config.get_pool(),
-        "decision_policy": autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
+        "decision_policy": autoscaling_params[SERVICE_METRICS_PROVIDER_KEY][0][DECISION_POLICY_KEY],  # type: ignore
     }
     if yelp_meteorite:
         gauge = yelp_meteorite.create_gauge("paasta.service.instances", meteorite_dims)
@@ -802,7 +802,9 @@ def get_configs_of_services_to_scale(
             if (
                 instance_config.get_max_instances()
                 and instance_config.get_desired_state() == "start"
-                and instance_config.get_autoscaling_params()["decision_policy"]
+                and instance_config.get_autoscaling_params()["metrics_providers"][0][
+                    "decision_policy"
+                ]
                 != "bespoke"
             ):
                 configs.append(instance_config)

@@ -142,6 +142,10 @@ from paasta_tools.kubernetes_tools import update_deployment
 from paasta_tools.kubernetes_tools import update_secret
 from paasta_tools.kubernetes_tools import update_secret_signature
 from paasta_tools.kubernetes_tools import update_stateful_set
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 from paasta_tools.utils import AwsEbsVolume
@@ -768,67 +772,6 @@ class TestKubernetesDeploymentConfig:
             limits={"cpu": 1.0, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
             requests={"cpu": 0.1, "memory": "1024Mi", "ephemeral-storage": "256Mi"},
         )
-
-    def test_should_use_uwsgi_exporter_explicit(self):
-        self.deployment.config_dict.update(
-            {
-                "max_instances": 5,
-                "autoscaling": {
-                    "metrics_provider": "uwsgi",
-                },
-            }
-        )
-
-        system_paasta_config = mock.Mock()
-
-        assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is True
-
-        self.deployment.config_dict["autoscaling"]["metrics_provider"] = "cpu"
-        assert self.deployment.should_use_uwsgi_exporter(system_paasta_config) is False
-
-    def test_get_gunicorn_exporter_sidecar_container_should_run(self):
-        system_paasta_config = mock.Mock(
-            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
-                return_value="gunicorn_exporter_image"
-            )
-        )
-        with mock.patch.object(
-            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=True
-        ):
-            ret = self.deployment.get_gunicorn_exporter_sidecar_container(
-                system_paasta_config
-            )
-            assert ret is not None
-            assert ret.image == "gunicorn_exporter_image"
-            assert ret.ports[0].container_port == 9117
-
-    def test_get_gunicorn_exporter_sidecar_container_shouldnt_run(self):
-        system_paasta_config = mock.Mock(
-            get_gunicorn_exporter_sidecar_image_url=mock.Mock(
-                return_value="gunicorn_exporter_image"
-            )
-        )
-        with mock.patch.object(
-            self.deployment, "should_run_gunicorn_exporter_sidecar", return_value=False
-        ):
-            assert (
-                self.deployment.get_gunicorn_exporter_sidecar_container(
-                    system_paasta_config
-                )
-                is None
-            )
-
-    def test_should_run_gunicorn_exporter_sidecar(self):
-        self.deployment.config_dict.update(
-            {
-                "max_instances": 5,
-                "autoscaling": {
-                    "metrics_provider": "gunicorn",
-                },
-            }
-        )
-
-        assert self.deployment.should_run_gunicorn_exporter_sidecar() is True
 
     def test_get_env(self):
         with mock.patch(
@@ -1664,7 +1607,13 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "autoscaling_metric_provider", [None, "uwsgi", "piscina", "gunicorn"]
+        "autoscaling_metric_provider",
+        [
+            None,
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+        ],
     )
     @pytest.mark.parametrize(
         "in_smtstk,routable_ip,node_affinity,anti_affinity,spec_affinity,termination_grace_period,pod_topology",
@@ -1735,7 +1684,9 @@ class TestKubernetesDeploymentConfig:
             mock_config_dict = KubernetesDeploymentConfigDict(
                 min_instances=1,
                 max_instances=3,
-                autoscaling={"metrics_provider": autoscaling_metric_provider},
+                autoscaling={
+                    "metrics_providers": [{"type": autoscaling_metric_provider}]
+                },
                 deploy_group="fake_group",
             )
             autoscaled_deployment = KubernetesDeploymentConfig(
@@ -1790,11 +1741,14 @@ class TestKubernetesDeploymentConfig:
 
         if autoscaling_metric_provider:
             expected_labels["paasta.yelp.com/deploy_group"] = "fake_group"
-            if autoscaling_metric_provider != "uwsgi":
+            if autoscaling_metric_provider != METRICS_PROVIDER_UWSGI:
                 expected_labels[
                     f"paasta.yelp.com/scrape_{autoscaling_metric_provider}_prometheus"
                 ] = "true"
-        if autoscaling_metric_provider in ("uwsgi", "gunicorn"):
+        if autoscaling_metric_provider in (
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_GUNICORN,
+        ):
             routable_ip = "true"
 
         expected_annotations = {
@@ -1802,7 +1756,7 @@ class TestKubernetesDeploymentConfig:
             "paasta.yelp.com/routable_ip": routable_ip,
             "iam.amazonaws.com/role": "",
         }
-        if autoscaling_metric_provider == "uwsgi":
+        if autoscaling_metric_provider == METRICS_PROVIDER_UWSGI:
             expected_annotations["autoscaling"] = "uwsgi"
 
         expected = V1PodTemplateSpec(
@@ -1820,15 +1774,11 @@ class TestKubernetesDeploymentConfig:
         autospec=True,
     )
     @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_use_uwsgi_exporter",
-        autospec=True,
-    )
-    @mock.patch(
-        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_run_gunicorn_exporter_sidecar",
+        "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.should_use_metrics_provider",
         autospec=True,
     )
     @pytest.mark.parametrize(
-        "ip_configured,in_smtstk,prometheus_port,should_use_uwsgi_exporter_retval,should_run_gunicorn_exporter_sidecar_retval,expected",
+        "ip_configured,in_smtstk,prometheus_port,should_use_uwsgi_provider,should_use_gunicorn_provider,expected",
         [
             (False, True, 8888, False, False, "true"),
             (False, False, 8888, False, False, "true"),
@@ -1841,20 +1791,25 @@ class TestKubernetesDeploymentConfig:
     )
     def test_routable_ip(
         self,
-        mock_should_use_uwsgi_exporter,
-        mock_should_run_gunicorn_exporter_sidecar,
+        mock_should_use_metrics_provider,
         mock_get_prometheus_port,
         ip_configured,
         in_smtstk,
         prometheus_port,
-        should_use_uwsgi_exporter_retval,
-        should_run_gunicorn_exporter_sidecar_retval,
+        should_use_uwsgi_provider,
+        should_use_gunicorn_provider,
         expected,
     ):
+        def mock_should_use_metrics_provider_fn(p: str) -> bool:
+            if p == METRICS_PROVIDER_UWSGI:
+                return should_use_uwsgi_provider
+            elif p == METRICS_PROVIDER_GUNICORN:
+                return should_use_gunicorn_provider
+            return False
+
         mock_get_prometheus_port.return_value = prometheus_port
-        mock_should_use_uwsgi_exporter.return_value = should_use_uwsgi_exporter_retval
-        mock_should_run_gunicorn_exporter_sidecar.return_value = (
-            should_run_gunicorn_exporter_sidecar_retval
+        self.deployment.should_use_metrics_provider = (
+            mock_should_use_metrics_provider_fn
         )
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
@@ -2315,7 +2270,7 @@ class TestKubernetesDeploymentConfig:
 
     @pytest.mark.parametrize(
         "metrics_provider",
-        ("cpu",),
+        (METRICS_PROVIDER_CPU,),
     )
     def test_get_autoscaling_metric_spec_cpu(self, metrics_provider):
         # with cpu
@@ -2323,7 +2278,9 @@ class TestKubernetesDeploymentConfig:
             {
                 "min_instances": 1,
                 "max_instances": 3,
-                "autoscaling": {"metrics_provider": metrics_provider, "setpoint": 0.5},
+                "autoscaling": {
+                    "metrics_providers": [{"type": metrics_provider, "setpoint": 0.5}]
+                },
             }
         )
         mock_config = KubernetesDeploymentConfig(  # type: ignore
@@ -2392,10 +2349,14 @@ class TestKubernetesDeploymentConfig:
                 "min_instances": 1,
                 "max_instances": 3,
                 "autoscaling": {
-                    "metrics_provider": "uwsgi",
-                    "setpoint": 0.4,
-                    "forecast_policy": "moving_average",
-                    "moving_average_window_seconds": 300,
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_UWSGI,
+                            "setpoint": 0.4,
+                            "forecast_policy": "moving_average",
+                            "moving_average_window_seconds": 300,
+                        }
+                    ]
                 },
             }
         )
@@ -2472,10 +2433,14 @@ class TestKubernetesDeploymentConfig:
                 "min_instances": 1,
                 "max_instances": 3,
                 "autoscaling": {
-                    "metrics_provider": "gunicorn",
-                    "setpoint": 0.5,
-                    "forecast_policy": "moving_average",
-                    "moving_average_window_seconds": 300,
+                    "metrics_providers": [
+                        {
+                            "type": METRICS_PROVIDER_GUNICORN,
+                            "setpoint": 0.5,
+                            "forecast_policy": "moving_average",
+                            "moving_average_window_seconds": 300,
+                        }
+                    ]
                 },
             }
         )
@@ -2577,7 +2542,11 @@ class TestKubernetesDeploymentConfig:
             {
                 "min_instances": 1,
                 "max_instances": 3,
-                "autoscaling": {"metrics_provider": "bespoke", "setpoint": 0.5},
+                "autoscaling": {
+                    "metrics_providers": [
+                        {"decision_policy": "bespoke", "setpoint": 0.5}
+                    ]
+                },
             }
         )
         mock_config = KubernetesDeploymentConfig(  # type: ignore

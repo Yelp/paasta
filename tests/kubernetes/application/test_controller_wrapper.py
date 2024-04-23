@@ -267,7 +267,10 @@ def test_sync_horizontal_pod_autoscaler_do_not_create_hpa_bespoke(
 ):
     mock_client = mock.MagicMock()
     # Create
-    config_dict = {"max_instances": 3, "autoscaling": {"decision_policy": "bespoke"}}
+    config_dict = {
+        "max_instances": 3,
+        "autoscaling": {"metrics_providers": [{"decision_policy": "bespoke"}]},
+    }
     app = setup_app(config_dict, False)
 
     app.sync_horizontal_pod_autoscaler(kube_client=mock_client)
