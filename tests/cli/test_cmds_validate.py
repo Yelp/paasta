@@ -1042,14 +1042,14 @@ def test_check_secrets_for_instance_missing_secret(
 
 
 @pytest.mark.parametrize(
-    "setpoint,offset,expected,instance_type",
+    "setpoint,expected,instance_type",
     [
-        (0.5, 0.5, False, "kubernetes"),
-        (0.5, 0.6, False, "kubernetes"),
-        (0.8, 0.25, True, "kubernetes"),
-        (0.5, 0.5, False, "eks"),
-        (0.5, 0.6, False, "eks"),
-        (0.8, 0.25, True, "eks"),
+        (0.0, False, "kubernetes"),
+        (-0.1, False, "kubernetes"),
+        (0.55, True, "kubernetes"),
+        (0.0, False, "eks"),
+        (-0.1, False, "eks"),
+        (0.55, True, "eks"),
     ],
 )
 @patch(
@@ -1063,7 +1063,6 @@ def test_validate_autoscaling_configs(
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
     setpoint,
-    offset,
     expected,
     instance_type,
 ):
@@ -1080,7 +1079,6 @@ def test_validate_autoscaling_configs(
                     return_value={
                         "metrics_provider": "uwsgi",
                         "setpoint": setpoint,
-                        "offset": offset,
                     }
                 ),
             ),
@@ -1096,52 +1094,6 @@ def test_validate_autoscaling_configs(
         ),
     ):
         assert validate_autoscaling_configs("fake-service-path") is expected
-
-
-@pytest.mark.parametrize(
-    "instance_type",
-    [("kubernetes"), ("eks")],
-)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_no_offset_specified(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    instance_type,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value=instance_type),
-                is_autoscaling_enabled=mock.Mock(return_value=True),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "uwsgi",
-                        "setpoint": 0.8,
-                    }
-                ),
-            ),
-        )
-    ]
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is True
 
 
 @patch(

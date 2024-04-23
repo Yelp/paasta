@@ -217,9 +217,6 @@
                                 "current"
                             ]
                         },
-                        "offset": {
-                            "type": "number"
-                        },
                         "moving_average_window_seconds": {
                             "type": "integer"
                         },

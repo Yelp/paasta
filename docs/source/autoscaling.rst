@@ -90,28 +90,6 @@ The currently available decicion policies are:
 
   Extra parameters:
 
-  :offset:
-    Float between 0.0 and 1.0, representing expected baseline load for each container.
-    Defaults to 0.0.
-
-    **DEPRECATED** - while it was previously more complicated, offset is now simply subtracted from your setpoint.
-    For example, ``setpoint: 0.6`` with ``offset: 0.25`` is equivalent to ``setpoint: 0.35`` with no ``offset``.
-    We recommend you just lower your setpoint by the same amount and remove the ``offset``.
-
-    Previously, offset was used to counteract the fake utilization that would be seen by our old uWSGI metrics provider.
-    Under the old system, the uWSGI metrics provider would always see 1 extra worker busy, because the metrics query was proxied through the actual uWSGI workers.
-    Having the autoscaler understand how much load was fake and how much was real helped it converge faster to your target load.
-    Nowadays, we measure uWSGI utilization in a different way that does not use a uWSGI worker, so this is no longer necessary.
-    Support for ``offset`` was only retained to provide a smooth transition from the old system to the new system.
-
-  :good_enough_window:
-    **Not currently supported**
-    An array of two utilization values [low, high].
-    If utilization per container at the forecasted total load is within the window, instances will not scale.
-    Optional parameter (defaults to None).
-
-    This is not currently supported under Kubernetes (see PAASTA-17262), but Kubernetes has a `global 10% tolerance by default. <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
-    This is equivalent to a good_enough_window of ``[0.9*setpoint, 1.1*setpoint]``
   :moving_average_window_seconds:
     The number of seconds to load data points over in order to calculate the average.
     Defaults to 1800s (30m).

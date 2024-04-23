@@ -46,7 +46,6 @@ class AutoscalingParamsDict(TypedDict, total=False):
     setpoint: float
     desired_active_requests_per_replica: int
     forecast_policy: Optional[str]
-    offset: Optional[float]
     moving_average_window_seconds: Optional[int]
     use_prometheus: bool
     use_resource_metrics: bool

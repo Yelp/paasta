@@ -2367,8 +2367,7 @@ class TestKubernetesDeploymentConfig:
                 "max_instances": 3,
                 "autoscaling": {
                     "metrics_provider": "uwsgi",
-                    "setpoint": 0.5,
-                    "offset": 0.1,
+                    "setpoint": 0.4,
                     "forecast_policy": "moving_average",
                     "moving_average_window_seconds": 300,
                 },
