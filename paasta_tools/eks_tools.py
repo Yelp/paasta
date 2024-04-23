@@ -1,9 +1,11 @@
+import copy
 from typing import Optional
 
 import service_configuration_lib
 
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.paasta_service_config_loader import transform_autoscaling_params_dict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -64,6 +66,15 @@ def load_eks_service_config_no_cache(
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
     )
+
+    # TODO: remove when yelpsoa-configs is on the new schema (COREJAVA-1339)
+    if (
+        "autoscaling" in general_config
+        and "metrics_providers" not in general_config["autoscaling"]  # type: ignore
+    ):
+        general_config["autoscaling"] = transform_autoscaling_params_dict(  # type: ignore
+            copy.deepcopy(general_config["autoscaling"])  # type: ignore
+        )
 
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:

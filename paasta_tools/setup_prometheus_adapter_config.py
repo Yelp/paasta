@@ -22,7 +22,6 @@ from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Tuple
 
 import ruamel.yaml as yaml
 from kubernetes.client import V1ConfigMap
@@ -37,7 +36,7 @@ from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import V1Pod
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import all_metrics_providers
 from paasta_tools.long_running_service_tools import (
     DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
@@ -53,6 +52,13 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
+from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
@@ -72,8 +78,6 @@ PROMETHEUS_ADAPTER_POD_PHASES_TO_REMOVE = (
 DEFAULT_SCRAPE_PERIOD_S = 10
 DEFAULT_EXTRAPOLATION_PERIODS = 10
 DEFAULT_EXTRAPOLATION_TIME = DEFAULT_SCRAPE_PERIOD_S * DEFAULT_EXTRAPOLATION_PERIODS
-
-CPU_METRICS_PROVIDER = "cpu"
 
 K8S_INSTANCE_TYPE_CLASSES = (
     KubernetesDeploymentConfig,
@@ -192,72 +196,57 @@ def _minify_promql(query: str) -> str:
     return (" ".join(trimmed_query)).strip()
 
 
-def should_create_uwsgi_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict,
-) -> Tuple[bool, Optional[str]]:
-    """
-    Determines whether we should configure the prometheus adapter for a given service.
-    Returns a 2-tuple of (should_create, reason_to_skip)
-    """
-    if autoscaling_config["metrics_provider"] == "uwsgi":
-        return True, None
+def create_instance_scaling_rule(
+    service: str,
+    instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
+    paasta_cluster: str,
+) -> Optional[PrometheusAdapterRule]:
+    if metrics_provider_config["type"] == METRICS_PROVIDER_CPU:
+        log.debug("[{service}] prometheus-based CPU scaling is not supported")
+        return None
+    if metrics_provider_config["type"] == METRICS_PROVIDER_UWSGI:
+        return create_instance_uwsgi_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
+    if metrics_provider_config["type"] == METRICS_PROVIDER_PISCINA:
+        return create_instance_piscina_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
+    if metrics_provider_config["type"] == METRICS_PROVIDER_GUNICORN:
+        return create_instance_gunicorn_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
+    if metrics_provider_config["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
+        return create_instance_active_requests_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
+    if metrics_provider_config["type"] == METRICS_PROVIDER_PROMQL:
+        return create_instance_arbitrary_promql_scaling_rule(
+            service, instance_config, metrics_provider_config, paasta_cluster
+        )
 
-    return False, "did not request uwsgi autoscaling"
-
-
-def should_create_gunicorn_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict,
-) -> Tuple[bool, Optional[str]]:
-    """
-    Determines whether we should configure the prometheus adapter for a given service.
-    Returns a 2-tuple of (should_create, reason_to_skip)
-    """
-    if autoscaling_config["metrics_provider"] == "gunicorn":
-        return True, None
-
-    return False, "did not request gunicorn autoscaling"
-
-
-def should_create_piscina_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict,
-) -> Tuple[bool, Optional[str]]:
-    """
-    Determines whether we should configure the prometheus adapter for a given service.
-    Returns a 2-tuple of (should_create, reason_to_skip)
-    """
-    if autoscaling_config["metrics_provider"] == "piscina":
-        return True, None
-    return False, "did not request piscina autoscaling"
-
-
-def should_create_active_requests_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict,
-) -> Tuple[bool, Optional[str]]:
-    """
-    Determines whether we should configure the prometheus adapter for a given service.
-    Returns a 2-tuple of (should_create, reason_to_skip)
-    """
-    if autoscaling_config["metrics_provider"] == "active-requests":
-        return True, None
-    return False, "did not request active-requests autoscaling"
+    raise ValueError(
+        f"unknown metrics provider type: {metrics_provider_config['type']}"
+    )
 
 
 def create_instance_active_requests_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    desired_active_requests_per_replica = autoscaling_config.get(
+    desired_active_requests_per_replica = metrics_provider_config.get(
         "desired_active_requests_per_replica",
         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
     )
-    moving_average_window = autoscaling_config.get(
+    moving_average_window = metrics_provider_config.get(
         "moving_average_window_seconds",
         DEFAULT_ACTIVE_REQUESTS_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
@@ -356,16 +345,16 @@ def create_instance_active_requests_scaling_rule(
 def create_instance_uwsgi_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    setpoint = autoscaling_config["setpoint"]
-    moving_average_window = autoscaling_config.get(
+    setpoint = metrics_provider_config["setpoint"]
+    moving_average_window = metrics_provider_config.get(
         "moving_average_window_seconds", DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW
     )
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
@@ -459,16 +448,16 @@ def create_instance_uwsgi_scaling_rule(
 def create_instance_piscina_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    setpoint = autoscaling_config["setpoint"]
-    moving_average_window = autoscaling_config.get(
+    setpoint = metrics_provider_config["setpoint"]
+    moving_average_window = metrics_provider_config.get(
         "moving_average_window_seconds",
         DEFAULT_PISCINA_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
@@ -555,16 +544,16 @@ def create_instance_piscina_scaling_rule(
 def create_instance_gunicorn_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
     """
     Creates a Prometheus adapter rule config for a given service instance.
     """
-    autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    setpoint = autoscaling_config["setpoint"]
-    moving_average_window = autoscaling_config.get(
+    setpoint = metrics_provider_config["setpoint"]
+    moving_average_window = metrics_provider_config.get(
         "moving_average_window_seconds",
         DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW,
     )
@@ -653,27 +642,15 @@ def create_instance_gunicorn_scaling_rule(
     }
 
 
-def should_create_arbitrary_promql_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict,
-) -> Tuple[bool, Optional[str]]:
-    """
-    Determines whether we should configure the prometheus adapter for a given service.
-    Returns a 2-tuple of (should_create, reason_to_skip)
-    """
-    if autoscaling_config["metrics_provider"] == "arbitrary_promql":
-        return True, None
-    return False, "did not request arbitrary_promql autoscaling"
-
-
 def create_instance_arbitrary_promql_scaling_rule(
     service: str,
     instance_config: KubernetesDeploymentConfig,
+    metrics_provider_config: MetricsProviderDict,
     paasta_cluster: str,
 ) -> PrometheusAdapterRule:
-    autoscaling_config = instance_config.get_autoscaling_params()
     instance = instance_config.instance
     namespace = instance_config.get_namespace()
-    prometheus_adapter_config = autoscaling_config["prometheus_adapter_config"]
+    prometheus_adapter_config = metrics_provider_config["prometheus_adapter_config"]
     deployment_name = get_kubernetes_app_name(service=service, instance=instance)
 
     if "seriesQuery" in prometheus_adapter_config:
@@ -738,33 +715,24 @@ def get_rules_for_service_instance(
     """
     rules: List[PrometheusAdapterRule] = []
 
-    for should_create_scaling_rule, create_instance_scaling_rule in (
-        (
-            should_create_active_requests_scaling_rule,
-            create_instance_active_requests_scaling_rule,
-        ),
-        (should_create_uwsgi_scaling_rule, create_instance_uwsgi_scaling_rule),
-        (should_create_piscina_scaling_rule, create_instance_piscina_scaling_rule),
-        (should_create_gunicorn_scaling_rule, create_instance_gunicorn_scaling_rule),
-    ):
-        should_create, skip_reason = should_create_scaling_rule(
-            autoscaling_config=instance_config.get_autoscaling_params(),
+    for metrics_provider_type in all_metrics_providers():
+        metrics_provider_config = instance_config.get_autoscaling_metrics_provider(
+            metrics_provider_type
         )
-        if should_create:
-            rules.append(
-                create_instance_scaling_rule(
-                    service=service_name,
-                    instance_config=instance_config,
-                    paasta_cluster=paasta_cluster,
-                )
-            )
-        else:
+        if metrics_provider_config is None:
             log.debug(
-                "Skipping %s.%s - %s.",
-                service_name,
-                instance_config.instance,
-                skip_reason,
+                f"Skipping {service_name}.{instance_config.instance} - no Prometheus-based autoscaling configured for {metrics_provider_type}"
             )
+            continue
+
+        rule = create_instance_scaling_rule(
+            service=service_name,
+            instance_config=instance_config,
+            metrics_provider_config=metrics_provider_config,
+            paasta_cluster=paasta_cluster,
+        )
+        if rule is not None:
+            rules.append(rule)
 
     return rules
 

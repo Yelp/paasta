@@ -1,3 +1,4 @@
+import copy
 import logging
 import socket
 from typing import Dict
@@ -39,17 +40,39 @@ DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 # instantaneous CPU
 DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW = 60
 
+METRICS_PROVIDER_CPU = "cpu"
+METRICS_PROVIDER_UWSGI = "uwsgi"
+METRICS_PROVIDER_GUNICORN = "gunicorn"
+METRICS_PROVIDER_PISCINA = "piscina"
+METRICS_PROVIDER_ACTIVE_REQUESTS = "active-requests"
+METRICS_PROVIDER_PROMQL = "arbitrary_promql"
 
-class AutoscalingParamsDict(TypedDict, total=False):
-    metrics_provider: str
+
+def all_metrics_providers() -> List[str]:
+    return [
+        METRICS_PROVIDER_CPU,
+        METRICS_PROVIDER_UWSGI,
+        METRICS_PROVIDER_GUNICORN,
+        METRICS_PROVIDER_PISCINA,
+        METRICS_PROVIDER_ACTIVE_REQUESTS,
+        METRICS_PROVIDER_PROMQL,
+    ]
+
+
+class MetricsProviderDict(TypedDict, total=False):
+    type: str
     decision_policy: str
     setpoint: float
     desired_active_requests_per_replica: int
     forecast_policy: Optional[str]
     moving_average_window_seconds: Optional[int]
     use_resource_metrics: bool
-    scaledown_policies: Optional[dict]
     prometheus_adapter_config: Optional[dict]
+
+
+class AutoscalingParamsDict(TypedDict, total=False):
+    metrics_providers: List[MetricsProviderDict]
+    scaledown_policies: Optional[dict]
     max_instances_alert_threshold: float
 
 
@@ -344,20 +367,49 @@ class LongRunningServiceConfig(InstanceConfig):
         return max(self.get_min_instances(), min(self.get_max_instances(), instances))
 
     def get_autoscaling_params(self) -> AutoscalingParamsDict:
-        default_params: AutoscalingParamsDict = {
-            "metrics_provider": "cpu",
+        default_provider_params: MetricsProviderDict = {
+            "type": METRICS_PROVIDER_CPU,
             "decision_policy": "proportional",
             "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
         }
-        return deep_merge_dictionaries(
-            overrides=self.config_dict.get("autoscaling", AutoscalingParamsDict({})),
-            defaults=default_params,
+
+        params = copy.deepcopy(
+            self.config_dict.get("autoscaling", AutoscalingParamsDict({}))
         )
+        if "metrics_providers" not in params or len(params["metrics_providers"]) == 0:
+            params["metrics_providers"] = [default_provider_params]
+        else:
+            params["metrics_providers"] = [
+                deep_merge_dictionaries(
+                    overrides=provider,
+                    defaults=default_provider_params,
+                )
+                for provider in params["metrics_providers"]
+            ]
+        return params
 
     def get_autoscaling_max_instances_alert_threshold(self) -> float:
         autoscaling_params = self.get_autoscaling_params()
         return autoscaling_params.get(
-            "max_instances_alert_threshold", autoscaling_params["setpoint"]
+            # TODO this default doesn't make sense for metrics providers that don't use setpoint
+            "max_instances_alert_threshold",
+            DEFAULT_AUTOSCALING_SETPOINT,
+        )
+
+    def get_autoscaling_metrics_provider(
+        self, provider_type: str
+    ) -> Optional[MetricsProviderDict]:
+        autoscaling_params = self.get_autoscaling_params()
+        # We only allow one metric provider of each type, so we can bail early if we find a match
+        for provider in autoscaling_params["metrics_providers"]:
+            if provider["type"] == provider_type:
+                return provider
+        return None
+
+    def should_use_metrics_provider(self, provider_type: str) -> bool:
+        return (
+            self.is_autoscaling_enabled()
+            and self.get_autoscaling_metrics_provider(provider_type) is not None
         )
 
     def validate(

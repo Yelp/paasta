@@ -100,8 +100,15 @@ async def check_max_instances(
                 >= autoscaling_status["max_instances"]
             ):
                 threshold = job_config.get_autoscaling_max_instances_alert_threshold()
-                setpoint = job_config.get_autoscaling_params()["setpoint"]
-                metric_threshold_target_ratio = threshold / setpoint
+                metrics_provider_configs = job_config.get_autoscaling_params()[
+                    "metrics_providers"
+                ]
+
+                # TODO: this doesn't work for metrics_providers that don't use setpoint (e.g. active-requests)
+                max_setpoint = max(
+                    [provider["setpoint"] for provider in metrics_provider_configs]
+                )
+                metric_threshold_target_ratio = threshold / max_setpoint
 
                 status = pysensu_yelp.Status.UNKNOWN
                 output = "how are there no metrics for this thing?"
@@ -116,7 +123,7 @@ async def check_max_instances(
                             " ratio of current value to target value"
                             f" ({current_value} / {target_value}) is greater than the"
                             " ratio of max_instances_alert_threshold to setpoint"
-                            f" ({threshold} / {setpoint})"
+                            f" ({threshold} / {max_setpoint})"
                         )
                     else:
                         status = pysensu_yelp.Status.OK
@@ -125,7 +132,7 @@ async def check_max_instances(
                             " ratio of current value to target value"
                             f" ({current_value} / {target_value}) is below the ratio of"
                             f" max_instances_alert_threshold to setpoint ({threshold} /"
-                            f" {setpoint})"
+                            f" {max_setpoint})"
                         )
             else:
                 status = pysensu_yelp.Status.OK
