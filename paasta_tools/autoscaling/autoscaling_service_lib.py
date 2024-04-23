@@ -652,7 +652,7 @@ def autoscale_marathon_instance(
             )
             error = get_error_from_utilization(
                 utilization=utilization,
-                setpoint=autoscaling_params["setpoint"],
+                setpoint=autoscaling_params["metrics_providers"][0]["setpoint"],
                 current_instances=current_instances,
             )
             num_healthy_instances = len(marathon_tasks)
@@ -762,7 +762,7 @@ def _record_autoscaling_decision(
         "paasta_cluster": marathon_service_config.cluster,
         "paasta_instance": marathon_service_config.instance,
         "paasta_pool": marathon_service_config.get_pool(),
-        "decision_policy": autoscaling_params[DECISION_POLICY_KEY],  # type: ignore
+        "decision_policy": autoscaling_params["metrics_providers"][0][DECISION_POLICY_KEY],  # type: ignore
     }
     if yelp_meteorite:
         gauge = yelp_meteorite.create_gauge("paasta.service.instances", meteorite_dims)
