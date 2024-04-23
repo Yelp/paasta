@@ -1,3 +1,11 @@
+paasta-tools (0.224.0) xenial; urgency=medium
+
+  * 0.224.0 tagged with 'make release'
+    Commit: Merge pull request #3834 from Yelp/drmorr/remove_offset
+    remove offset from paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Tue, 23 Apr 2024 12:47:47 -0700
+
 paasta-tools (0.223.1) xenial; urgency=medium
 
   * 0.223.1 tagged with 'make release'
