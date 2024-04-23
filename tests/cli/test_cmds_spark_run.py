@@ -979,6 +979,7 @@ def test_paasta_spark_run_bash(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1012,6 +1013,7 @@ def test_paasta_spark_run_bash(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1103,6 +1105,7 @@ def test_paasta_spark_run(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1139,6 +1142,7 @@ def test_paasta_spark_run(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1227,6 +1231,7 @@ def test_paasta_spark_run_pyspark(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1265,6 +1270,7 @@ def test_paasta_spark_run_pyspark(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
