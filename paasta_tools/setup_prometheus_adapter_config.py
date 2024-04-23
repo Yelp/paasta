@@ -57,7 +57,6 @@ from paasta_tools.long_running_service_tools import (
 from paasta_tools.long_running_service_tools import (
     DEFAULT_UWSGI_AUTOSCALING_MOVING_AVERAGE_WINDOW,
 )
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.long_running_service_tools import MetricsProviderType
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -242,7 +241,7 @@ def create_instance_scaling_rule(
         )
 
     raise ValueError(
-        f"unknown metrics provider type: {metrics_provider_config['type'].value}"
+        f"unknown metrics provider type: {metrics_provider_config['type']}"
     )
 
 

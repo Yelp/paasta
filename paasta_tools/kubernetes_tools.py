@@ -787,19 +787,62 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
     def get_autoscaling_provider_spec(
         self, name: str, namespace: str, provider: MetricsProviderDict
-    ) -> V2beta2MetricSpec:
+    ) -> List[V2beta2MetricSpec]:
         target = provider["setpoint"]
         # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
         # HPAs and, since they may be looking at the same thing, we need to suffix one of these metric
         # identifiers because metric names inside an HPA must be unique.
         prometheus_hpa_metric_name = (
-            f"{self.namespace_external_metric_name(provider['type'].value)}-prom"
+            f"{self.namespace_external_metric_name(provider['type'])}-prom"
         )
 
         if provider["type"] == MetricsProviderType.CPU:
+            cpu_providers = []
             use_prometheus = provider.get("use_prometheus", DEFAULT_USE_PROMETHEUS_CPU)
             if use_prometheus:
-                return V2beta2MetricSpec(
+                cpu_providers.append(
+                    V2beta2MetricSpec(
+                        type="Object",
+                        object=V2beta2ObjectMetricSource(
+                            metric=V2beta2MetricIdentifier(
+                                name=prometheus_hpa_metric_name
+                            ),
+                            described_object=V2beta2CrossVersionObjectReference(
+                                api_version="apps/v1", kind="Deployment", name=name
+                            ),
+                            target=V2beta2MetricTarget(
+                                type="Value",
+                                value=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
+
+            use_resource_metrics = provider.get(
+                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
+            )
+            if use_resource_metrics:
+                cpu_providers.append(
+                    V2beta2MetricSpec(
+                        type="Resource",
+                        resource=V2beta2ResourceMetricSource(
+                            name="cpu",
+                            target=V2beta2MetricTarget(
+                                type="Utilization",
+                                average_utilization=int(target * 100),
+                            ),
+                        ),
+                    )
+                )
+            return cpu_providers
+        elif provider["type"] in {
+            MetricsProviderType.Uwsgi,
+            MetricsProviderType.Piscina,
+            MetricsProviderType.Gunicorn,
+            MetricsProviderType.ActiveRequests,
+        }:
+            return [
+                V2beta2MetricSpec(
                     type="Object",
                     object=V2beta2ObjectMetricSource(
                         metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
@@ -808,70 +851,39 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                         ),
                         target=V2beta2MetricTarget(
                             type="Value",
-                            value=int(target * 100),
+                            # we average the number of instances needed to handle the current (or
+                            # averaged) load instead of the load itself as this leads to more
+                            # stable behavior. we return the percentage by which we want to
+                            # scale, so the target in the HPA should always be 1.
+                            # PAASTA-16756 for details
+                            value=1,
                         ),
                     ),
                 )
-
-            use_resource_metrics = provider.get(
-                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
-            )
-            if use_resource_metrics:
-                return V2beta2MetricSpec(
-                    type="Resource",
-                    resource=V2beta2ResourceMetricSource(
-                        name="cpu",
-                        target=V2beta2MetricTarget(
-                            type="Utilization",
-                            average_utilization=int(target * 100),
-                        ),
-                    ),
-                )
-        elif provider["type"] in {
-            MetricsProviderType.Uwsgi,
-            MetricsProviderType.Piscina,
-            MetricsProviderType.Gunicorn,
-            MetricsProviderType.ActiveRequests,
-        }:
-            return V2beta2MetricSpec(
-                type="Object",
-                object=V2beta2ObjectMetricSource(
-                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2beta2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
-                    ),
-                    target=V2beta2MetricTarget(
-                        type="Value",
-                        # we average the number of instances needed to handle the current (or
-                        # averaged) load instead of the load itself as this leads to more
-                        # stable behavior. we return the percentage by which we want to
-                        # scale, so the target in the HPA should always be 1.
-                        # PAASTA-16756 for details
-                        value=1,
-                    ),
-                ),
-            )
+            ]
         elif provider["type"] == MetricsProviderType.ArbitraryPromQL:
-            return V2beta2MetricSpec(
-                type="Object",
-                object=V2beta2ObjectMetricSource(
-                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                    described_object=V2beta2CrossVersionObjectReference(
-                        api_version="apps/v1", kind="Deployment", name=name
+            return [
+                V2beta2MetricSpec(
+                    type="Object",
+                    object=V2beta2ObjectMetricSource(
+                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                        described_object=V2beta2CrossVersionObjectReference(
+                            api_version="apps/v1", kind="Deployment", name=name
+                        ),
+                        target=V2beta2MetricTarget(
+                            # Use the setpoint specified by the user.
+                            type="Value",
+                            value=target,
+                        ),
                     ),
-                    target=V2beta2MetricTarget(
-                        # Use the setpoint specified by the user.
-                        type="Value",
-                        value=target,
-                    ),
-                ),
-            )
-        else:
-            log.error(
-                f"Unknown metrics_provider specified: {provider['type'].value} for\
-                {name}/name in namespace{namespace}"
-            )
-            return None
+                )
+            ]
+
+        log.error(
+            f"Unknown metrics_provider specified: {provider['type']} for\
+            {name}/name in namespace{namespace}"
+        )
+        return []
 
     def get_autoscaling_metric_spec(
         self,
@@ -901,11 +913,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        import pdb; pdb.set_trace()
-        metrics = [
-            self.get_autoscaling_provider_spec(name, namespace, provider)
-            for provider in autoscaling_params["metrics_providers"]
-        ]
+        metrics = []
+        for provider in autoscaling_params["metrics_providers"]:
+            metrics.extend(
+                self.get_autoscaling_provider_spec(name, namespace, provider)
+            )
         scaling_policy = self.get_autoscaling_scaling_policy(
             max_replicas,
             autoscaling_params,
@@ -2113,13 +2125,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
-        metrics_providers = self.get_autoscaling_params()["metrics_providers"]
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
         # TODO: see if we can remove this as we're no longer using sfx data to scale
         if self.get_autoscaling_metrics_provider(MetricsProviderType.Uwsgi) is not None:
-            annotations["autoscaling"] = MetricsProviderType.Uwsgi.value
+            annotations["autoscaling"] = MetricsProviderType.Uwsgi
 
         pod_spec_kwargs = {}
         pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())

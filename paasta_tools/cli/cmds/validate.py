@@ -52,11 +52,12 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.long_running_service_tools import (
     DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
 )
+from paasta_tools.long_running_service_tools import MetricsProviderDict
+from paasta_tools.long_running_service_tools import MetricsProviderType
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -592,9 +593,9 @@ def __is_templated(service: str, soa_dir: str, cluster: str, workload: str) -> b
 
 def _validate_active_requests_autoscaling_configs(
     instance_config: InstanceConfig,
-    autoscaling_params: AutoscalingParamsDict,
+    metrics_provider_config: MetricsProviderDict,
 ) -> None:
-    desired_active_requests_per_replica = autoscaling_params.get(
+    desired_active_requests_per_replica = metrics_provider_config.get(
         "desired_active_requests_per_replica",
         DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
     )
@@ -610,70 +611,70 @@ def _validate_active_requests_autoscaling_configs(
     # someone could theoretically bypass this by setting setpoint: 0.8 in their
     # soaconfigs; but I think it's approximately fine for now
     if (
-        autoscaling_params.get("setpoint", DEFAULT_AUTOSCALING_SETPOINT)
+        metrics_provider_config.get("setpoint", DEFAULT_AUTOSCALING_SETPOINT)
         != DEFAULT_AUTOSCALING_SETPOINT
     ):
         raise AutoscalingValidationError(
             "setpoint is not supported for active-requests; use desired_active_requests_per_replica instead"
         )
-    if autoscaling_params.get("prometheus_adapter_config"):
+    if metrics_provider_config.get("prometheus_adapter_config"):
         raise AutoscalingValidationError(
             "metric provider does not support prometheus_adapter_config"
         )
 
 
 def _validate_uwsgi_piscina_autoscaling_configs(
-    autoscaling_params: AutoscalingParamsDict,
+    metrics_provider_config: MetricsProviderDict,
 ):
     # a service may omit this key, but we provide our own
     # default setpoint for all metrics providers so we are safe to
     # unconditionally read it
-    if autoscaling_params["setpoint"] <= 0:
+    if metrics_provider_config["setpoint"] <= 0:
         raise AutoscalingValidationError("setpoint must be greater than zero")
-    if autoscaling_params.get("desired_active_requests_per_replica"):
+    if metrics_provider_config.get("desired_active_requests_per_replica"):
         raise AutoscalingValidationError(
             "metric provider does not support desired_active_requests_per_second"
         )
-    if autoscaling_params.get("prometheus_adapter_config"):
+    if metrics_provider_config.get("prometheus_adapter_config"):
         raise AutoscalingValidationError(
             "metric provider does not support prometheus_adapter_config"
         )
 
 
 def _validate_arbitrary_promql_autoscaling_configs(
-    autoscaling_params: AutoscalingParamsDict,
+    metrics_provider_config: MetricsProviderDict,
 ):
     # This is a bit incorrect, since the default autoscaling setpoint is 0.8,
     # someone could theoretically bypass this by setting setpoint: 0.8 in their
     # soaconfigs; but I think it's approximately fine for now
     if (
-        autoscaling_params.get("setpoint", DEFAULT_AUTOSCALING_SETPOINT)
+        metrics_provider_config.get("setpoint", DEFAULT_AUTOSCALING_SETPOINT)
         != DEFAULT_AUTOSCALING_SETPOINT
     ):
         raise AutoscalingValidationError(
             "setpoint is not supported for arbitrary PromQL"
         )
-    if autoscaling_params.get("desired_active_requests_per_replica"):
+    if metrics_provider_config.get("desired_active_requests_per_replica"):
         raise AutoscalingValidationError(
             "metric provider does not support desired_active_requests_per_second"
         )
-    if not autoscaling_params.get("prometheus_adapter_config"):
+    if not metrics_provider_config.get("prometheus_adapter_config"):
         raise AutoscalingValidationError(
             "arbitrary promql metrics provider requires prometheus_adapter_config to be set"
         )
 
 
-def _validate_cpu_autoscaling_configs(autoscaling_params: AutoscalingParamsDict):
+def _validate_cpu_autoscaling_configs(metrics_provider_config: MetricsProviderDict):
     # a service may omit this key, but we provide our own
     # default setpoint for all metrics providers so we are safe to
     # unconditionally read it
-    if autoscaling_params["setpoint"] <= 0:
+    if metrics_provider_config["setpoint"] <= 0:
         raise AutoscalingValidationError("setpoint must be greater than zero")
-    if autoscaling_params.get("desired_active_requests_per_replica"):
+    if metrics_provider_config.get("desired_active_requests_per_replica"):
         raise AutoscalingValidationError(
             "metric provider does not support desired_active_requests_per_second"
         )
-    if autoscaling_params.get("prometheus_adapter_config"):
+    if metrics_provider_config.get("prometheus_adapter_config"):
         raise AutoscalingValidationError(
             "metric provider does not support prometheus_adapter_config"
         )
@@ -712,75 +713,87 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                     service in skip_cpu_override_validation_list
                 )
 
-                try:
-                    if autoscaling_params["metrics_provider"] == "active-requests":
-                        _validate_active_requests_autoscaling_configs(
-                            instance_config, autoscaling_params
-                        )
-
-                    elif autoscaling_params["metrics_provider"] in {"uwsgi", "piscina"}:
-                        _validate_uwsgi_piscina_autoscaling_configs(autoscaling_params)
-
-                    elif autoscaling_params["metrics_provider"] == "arbitrary_promql":
-                        _validate_arbitrary_promql_autoscaling_configs(
-                            autoscaling_params
-                        )
-
-                    elif (
-                        autoscaling_params["metrics_provider"] == "cpu"
-                        # to enable kew autoscaling we just set a decision policy of "bespoke", but
-                        # the metrics_provider is (confusingly) left as "cpu"
-                        and autoscaling_params.get("decision_policy") != "bespoke"
-                        and not should_skip_cpu_override_validation
-                    ):
-                        _validate_cpu_autoscaling_configs(autoscaling_params)
-                        # Do some extra validation below: we don't abstract that into the above function
-                        # call because it needs a lot of extra information
-
-                        # we need access to the comments, so we need to read the config with ruamel to be able
-                        # to actually get them in a "nice" automated fashion
-                        config = get_config_file_dict(
-                            os.path.join(
-                                soa_dir,
-                                service,
-                                f"{instance_config.get_instance_type()}-{cluster}.yaml",
-                            ),
-                            use_ruamel=True,
-                        )
-                        if config[instance].get("cpus") is None:
-                            # cpu autoscaled, but using autotuned values - can skip
-                            continue
-
-                        cpu_comment = _get_comments_for_key(
-                            data=config[instance], key="cpus"
-                        )
-                        # we could probably have a separate error message if there's a comment that doesn't match
-                        # the ack pattern, but that seems like overkill - especially for something that could cause
-                        # a DAR if people aren't being careful.
+                for metrics_provider in autoscaling_params["metrics_providers"]:
+                    try:
                         if (
-                            cpu_comment is None
-                            or re.search(
-                                pattern=OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN,
-                                string=cpu_comment,
-                            )
-                            is None
+                            metrics_provider["type"]
+                            == MetricsProviderType.ActiveRequests
                         ):
-                            returncode = False
-                            print(
-                                failure(
-                                    msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
-                                    "the following link for next steps:",
-                                    link="y/override-cpu-autotune",
-                                )
+                            _validate_active_requests_autoscaling_configs(
+                                instance_config, metrics_provider
                             )
-                except AutoscalingValidationError as e:
-                    returncode = False
-                    print(
-                        failure(
-                            msg=f"Autoscaling validation failed for {service}.{instance} in {cluster}: {str(e)}",
-                            link="",
+
+                        elif metrics_provider["type"] in {
+                            MetricsProviderType.Uwsgi,
+                            MetricsProviderType.Piscina,
+                        }:
+                            _validate_uwsgi_piscina_autoscaling_configs(
+                                metrics_provider
+                            )
+
+                        elif (
+                            metrics_provider["type"]
+                            == MetricsProviderType.ArbitraryPromQL
+                        ):
+                            _validate_arbitrary_promql_autoscaling_configs(
+                                metrics_provider
+                            )
+
+                        elif (
+                            metrics_provider["type"] == MetricsProviderType.CPU
+                            # to enable kew autoscaling we just set a decision policy of "bespoke", but
+                            # the metrics_provider is (confusingly) left as "cpu"
+                            and autoscaling_params.get("decision_policy") != "bespoke"
+                            and not should_skip_cpu_override_validation
+                        ):
+                            _validate_cpu_autoscaling_configs(metrics_provider)
+                            # Do some extra validation below: we don't abstract that into the above function
+                            # call because it needs a lot of extra information
+
+                            # we need access to the comments, so we need to read the config with ruamel to be able
+                            # to actually get them in a "nice" automated fashion
+                            config = get_config_file_dict(
+                                os.path.join(
+                                    soa_dir,
+                                    service,
+                                    f"{instance_config.get_instance_type()}-{cluster}.yaml",
+                                ),
+                                use_ruamel=True,
+                            )
+                            if config[instance].get("cpus") is None:
+                                # cpu autoscaled, but using autotuned values - can skip
+                                continue
+
+                            cpu_comment = _get_comments_for_key(
+                                data=config[instance], key="cpus"
+                            )
+                            # we could probably have a separate error message if there's a comment that doesn't match
+                            # the ack pattern, but that seems like overkill - especially for something that could cause
+                            # a DAR if people aren't being careful.
+                            if (
+                                cpu_comment is None
+                                or re.search(
+                                    pattern=OVERRIDE_CPU_AUTOTUNE_ACK_PATTERN,
+                                    string=cpu_comment,
+                                )
+                                is None
+                            ):
+                                returncode = False
+                                print(
+                                    failure(
+                                        msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
+                                        "the following link for next steps:",
+                                        link="y/override-cpu-autotune",
+                                    )
+                                )
+                    except AutoscalingValidationError as e:
+                        returncode = False
+                        print(
+                            failure(
+                                msg=f"Autoscaling validation failed for {service}.{instance} in {cluster}: {str(e)}",
+                                link="",
+                            )
                         )
-                    )
 
     return returncode
 

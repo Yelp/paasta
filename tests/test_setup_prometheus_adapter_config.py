@@ -6,7 +6,6 @@ import pytest
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_CPU
 from paasta_tools.kubernetes_tools import DEFAULT_USE_PROMETHEUS_UWSGI
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.long_running_service_tools import MetricsProviderType
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql

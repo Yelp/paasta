@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import logging
+from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -21,6 +23,8 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
+from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.long_running_service_tools import MetricsProviderType
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
@@ -179,6 +183,13 @@ class PaastaServiceConfigLoader:
         """
 
         merged_config = self._get_merged_config(config)
+        if (
+            "autoscaling" in merged_config
+            and "metrics_providers" not in merged_config["autoscaling"]
+        ):
+            merged_config["autoscaling"] = _transform_autoscaling_params_dict(
+                copy.deepcopy(merged_config["autoscaling"])
+            )
 
         temp_instance_config = config_class(
             service=self._service,
@@ -191,7 +202,7 @@ class PaastaServiceConfigLoader:
 
         branch_dict = self._get_branch_dict(cluster, instance, temp_instance_config)
 
-        return config_class(
+        x = config_class(
             service=self._service,
             cluster=cluster,
             instance=instance,
@@ -199,3 +210,25 @@ class PaastaServiceConfigLoader:
             branch_dict=branch_dict,
             soa_dir=self._soa_dir,
         )
+        return x
+
+
+def _transform_autoscaling_params_dict(
+    old_autoscaling_params: Dict[str, Any]
+) -> AutoscalingParamsDict:
+    metrics_provider_type = old_autoscaling_params.pop("metrics_provider", "cpu")
+    old_autoscaling_params["type"] = MetricsProviderType(metrics_provider_type)
+    scaling_policies = old_autoscaling_params.pop("scaling_policies", None)
+    max_instances_alert_threshold = old_autoscaling_params.pop(
+        "max_instances_alert_threshold", None
+    )
+
+    new_autoscaling_params = {"metrics_providers": [old_autoscaling_params]}
+    if scaling_policies is not None:
+        new_autoscaling_params["scaling_policies"] = scaling_policies
+    if max_instances_alert_threshold is not None:
+        new_autoscaling_params[
+            "max_instances_alert_threshold"
+        ] = max_instances_alert_threshold
+
+    return new_autoscaling_params

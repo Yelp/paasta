@@ -7,7 +7,6 @@ from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import service_configuration_lib
 from mypy_extensions import TypedDict
@@ -43,7 +42,7 @@ DEFAULT_GUNICORN_AUTOSCALING_MOVING_AVERAGE_WINDOW = 1800
 DEFAULT_CPU_AUTOSCALING_MOVING_AVERAGE_WINDOW = 60
 
 
-class MetricsProviderType(Enum):
+class MetricsProviderType(str, Enum):
     CPU = "cpu"
     Uwsgi = "uwsgi"
     Piscina = "piscina"

@@ -1742,7 +1742,10 @@ class TestKubernetesDeploymentConfig:
                 expected_labels[
                     f"paasta.yelp.com/scrape_{autoscaling_metric_provider.value}_prometheus"
                 ] = "true"
-        if autoscaling_metric_provider in (MetricsProviderType.Uwsgi, MetricsProviderType.Gunicorn):
+        if autoscaling_metric_provider in (
+            MetricsProviderType.Uwsgi,
+            MetricsProviderType.Gunicorn,
+        ):
             routable_ip = "true"
 
         expected_annotations = {
@@ -1802,7 +1805,9 @@ class TestKubernetesDeploymentConfig:
             return False
 
         mock_get_prometheus_port.return_value = prometheus_port
-        self.deployment.should_use_metrics_provider = mock_should_use_metrics_provider_fn
+        self.deployment.should_use_metrics_provider = (
+            mock_should_use_metrics_provider_fn
+        )
         mock_service_namespace_config = mock.Mock()
         mock_service_namespace_config.is_in_smartstack.return_value = in_smtstk
         mock_system_paasta_config = mock.Mock()
