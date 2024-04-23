@@ -1434,10 +1434,10 @@ def test_get_aws_credentials():
     ), mock.patch(
         "service_configuration_lib.spark_config.open",
         mock.mock_open(read_data="token-content"),
-        autospec=True,
+        autospec=False,
     ), mock.patch(
         "service_configuration_lib.spark_config.boto3.client",
-        autospec=True,
+        autospec=False,
     ) as boto3_client:
         get_aws_credentials(
             service="some-service",
