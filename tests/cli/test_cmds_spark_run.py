@@ -1419,3 +1419,34 @@ def test_build_and_push_docker_image_unexpected_output_format(
     with pytest.raises(ValueError) as e:
         build_and_push_docker_image(args)
     assert "Could not determine digest from output" in str(e.value)
+
+
+def test_get_aws_credentials():
+    import os
+    from service_configuration_lib.spark_config import get_aws_credentials
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "AWS_WEB_IDENTITY_TOKEN_FILE": "./some-file.txt",
+            "AWS_ROLE_ARN": "some-role-for-test",
+        },
+    ), mock.patch(
+        "service_configuration_lib.spark_config.open",
+        mock.mock_open(read_data="token-content"),
+        autospec=True,
+    ), mock.patch(
+        "service_configuration_lib.spark_config.boto3.client",
+        autospec=True,
+    ) as boto3_client:
+        get_aws_credentials(
+            service="some-service",
+            use_web_identity=True,
+        )
+    boto3_client.assert_called_once_with("sts")
+    boto3_client.return_value.assume_role_with_web_identity.assert_called_once_with(
+        DurationSeconds=3600,
+        RoleArn="some-role-for-test",
+        RoleSessionName=mock.ANY,
+        WebIdentityToken="token-content",
+    )
