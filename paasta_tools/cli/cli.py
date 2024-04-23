@@ -131,6 +131,7 @@ PAASTA_SUBCOMMANDS = {
     "sysdig": "sysdig",
     "validate": "validate",
     "wait-for-deployment": "wait_for_deployment",
+    "blurp": "blurp",
 }
 
 
