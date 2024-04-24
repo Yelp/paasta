@@ -3,6 +3,7 @@ import pytest
 
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import MetricsProviderDict
@@ -157,16 +158,88 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                 instance="instance",
                 get_namespace=mock.Mock(return_value="test_namespace"),
                 get_autoscaling_metrics_provider=mock.Mock(
-                    side_effect=lambda x: {
-                        "type": METRICS_PROVIDER_UWSGI,
-                        "setpoint": 0.1234567890,
-                        "moving_average_window_seconds": 20120302,
-                    }
-                    if x == METRICS_PROVIDER_UWSGI
-                    else None
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_CPU,
+                            "setpoint": 0.1234567890,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_CPU
+                        else None
+                    )
+                ),
+            ),
+            0,
+        ),
+        (
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_metrics_provider=mock.Mock(
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_UWSGI,
+                            "setpoint": 0.1234567890,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_UWSGI
+                        else None
+                    )
                 ),
             ),
             1,
+        ),
+        (
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_metrics_provider=mock.Mock(
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_UWSGI,
+                            "setpoint": 0.1234567890,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_UWSGI
+                        else (
+                            {
+                                "type": METRICS_PROVIDER_CPU,
+                                "setpoint": 0.1234567890,
+                                "moving_average_window_seconds": 20120302,
+                            }
+                            if x == METRICS_PROVIDER_CPU
+                            else None
+                        )
+                    )
+                ),
+            ),
+            1,
+        ),
+        (
+            mock.Mock(
+                instance="instance",
+                get_namespace=mock.Mock(return_value="test_namespace"),
+                get_autoscaling_metrics_provider=mock.Mock(
+                    side_effect=lambda x: (
+                        {
+                            "type": METRICS_PROVIDER_UWSGI,
+                            "setpoint": 0.1234567890,
+                            "moving_average_window_seconds": 20120302,
+                        }
+                        if x == METRICS_PROVIDER_UWSGI
+                        else (
+                            {
+                                "type": METRICS_PROVIDER_GUNICORN,
+                                "setpoint": 0.1234567890,
+                                "moving_average_window_seconds": 20120302,
+                            }
+                            if x == METRICS_PROVIDER_GUNICORN
+                            else None
+                        )
+                    )
+                ),
+            ),
+            2,
         ),
     ],
 )

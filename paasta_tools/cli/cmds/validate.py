@@ -28,6 +28,7 @@ from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Set
 from typing import Tuple
 from typing import Union
 
@@ -679,6 +680,7 @@ def validate_autoscaling_configs(service_path: str) -> bool:
     """
     soa_dir, service = path_to_soa_dir_service(service_path)
     returncode = True
+    link = ""
     skip_cpu_override_validation_list = (
         load_system_paasta_config().get_skip_cpu_override_validation_services()
     )
@@ -710,10 +712,31 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                 should_skip_cpu_override_validation = (
                     service in skip_cpu_override_validation_list
                 )
+                seen_provider_types: Set[str] = set()
+                configured_provider_count = len(autoscaling_params["metrics_providers"])
 
                 for metrics_provider in autoscaling_params["metrics_providers"]:
                     try:
+                        # Generic validation of the config
                         _validate_autoscaling_config(metrics_provider)
+
+                        # Multi-metrics specific validation:
+                        # 1. Bespoke policies shouldn't also use CPU
+                        # 2. Can't set the same metrics provider multiple times
+                        if (
+                            metrics_provider.get("decision_policy") == "bespoke"
+                            and configured_provider_count > 1
+                        ):
+                            raise AutoscalingValidationError(
+                                f"cannot use bespoke autoscaling with HPA autoscaling"
+                            )
+                        if metrics_provider["type"] in seen_provider_types:
+                            raise AutoscalingValidationError(
+                                f"cannot set the same metrics provider multiple times: {metrics_provider['type']}"
+                            )
+                        seen_provider_types.add(metrics_provider["type"])
+
+                        # Metrics-provider specific validations
                         if metrics_provider["type"] == METRICS_PROVIDER_ACTIVE_REQUESTS:
                             _validate_active_requests_autoscaling_configs(
                                 instance_config, metrics_provider
@@ -745,6 +768,14 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                                 use_ruamel=True,
                             )
                             if config[instance].get("cpus") is None:
+                                # If we're using multiple scaling metrics and one of them is CPU, we must
+                                # opt out of CPU autotuning
+                                if configured_provider_count > 1:
+                                    link = "y/override-cpu-autotune"
+                                    raise AutoscalingValidationError(
+                                        "using CPU-based scaling with multiple scaling metrics requires explicit "
+                                        "'cpus' setting; see the following link for more info:"
+                                    )
                                 # cpu autoscaled, but using autotuned values - can skip
                                 continue
 
@@ -762,20 +793,17 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                                 )
                                 is None
                             ):
-                                returncode = False
-                                print(
-                                    failure(
-                                        msg=f"CPU override detected for a CPU-autoscaled instance in {cluster}: {service}.{instance}. Please read "
-                                        "the following link for next steps:",
-                                        link="y/override-cpu-autotune",
-                                    )
+                                link = "y/override-cpu-autotune"
+                                raise AutoscalingValidationError(
+                                    f"CPU override detected for a CPU-autoscaled instance; "
+                                    "see the following link for next steps:"
                                 )
                     except AutoscalingValidationError as e:
                         returncode = False
                         print(
                             failure(
                                 msg=f"Autoscaling validation failed for {service}.{instance} in {cluster}: {str(e)}",
-                                link="",
+                                link=link,
                             )
                         )
 
