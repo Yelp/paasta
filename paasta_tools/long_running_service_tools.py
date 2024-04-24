@@ -47,7 +47,6 @@ class AutoscalingParamsDict(TypedDict, total=False):
     desired_active_requests_per_replica: int
     forecast_policy: Optional[str]
     moving_average_window_seconds: Optional[int]
-    use_prometheus: bool
     use_resource_metrics: bool
     scaledown_policies: Optional[dict]
     prometheus_adapter_config: Optional[dict]

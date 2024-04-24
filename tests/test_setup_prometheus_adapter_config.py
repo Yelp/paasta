@@ -11,9 +11,6 @@ from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_arbitrary_promql_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
-    create_instance_cpu_scaling_rule,
-)
-from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_gunicorn_scaling_rule,
 )
 from paasta_tools.setup_prometheus_adapter_config import (
@@ -23,7 +20,6 @@ from paasta_tools.setup_prometheus_adapter_config import get_rules_for_service_i
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_active_requests_scaling_rule,
 )
-from paasta_tools.setup_prometheus_adapter_config import should_create_cpu_scaling_rule
 from paasta_tools.setup_prometheus_adapter_config import (
     should_create_gunicorn_scaling_rule,
 )
@@ -162,20 +158,10 @@ def test_create_instance_active_requests_scaling_rule(
         (
             {
                 "metrics_provider": "uwsgi",
-                "use_prometheus": True,
                 "moving_average_window_seconds": 544,
                 "setpoint": 0.764,
             },
             True,
-        ),
-        (
-            {
-                "metrics_provider": "uwsgi",
-                "use_prometheus": False,
-                "moving_average_window_seconds": 544,
-                "setpoint": 0.764,
-            },
-            False,
         ),
     ],
 )
@@ -202,7 +188,6 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
                 "metrics_provider": "uwsgi",
                 "setpoint": 0.1234567890,
                 "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
             }
         ),
     )
@@ -229,90 +214,6 @@ def test_create_instance_uwsgi_scaling_rule() -> None:
         str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
         in rule["metricsQuery"]
     )
-
-
-@pytest.mark.parametrize(
-    "autoscaling_config,expected",
-    [
-        (
-            {
-                "metrics_provider": "cpu",
-                "use_prometheus": True,
-                "moving_average_window_seconds": 123,
-                "setpoint": 0.653,
-            },
-            True,
-        ),
-        (
-            {
-                "metrics_provider": "cpu",
-                "moving_average_window_seconds": 123,
-                "setpoint": 0.653,
-            },
-            False,
-        ),
-        (
-            {
-                "metrics_provider": "uwsgi",
-                "moving_average_window_seconds": 124,
-                "setpoint": 0.425,
-            },
-            False,
-        ),
-        (
-            {
-                "metrics_provider": "uwsgi",
-                "use_prometheus": True,
-                "moving_average_window_seconds": 544,
-                "setpoint": 0.764,
-            },
-            False,
-        ),
-    ],
-)
-def test_should_create_cpu_scaling_rule(
-    autoscaling_config: AutoscalingParamsDict, expected: bool
-) -> None:
-    should_create, reason = should_create_cpu_scaling_rule(
-        autoscaling_config=autoscaling_config
-    )
-
-    assert should_create == expected
-    if expected:
-        assert reason is None
-    else:
-        assert reason is not None
-
-
-def test_create_instance_cpu_scaling_rule() -> None:
-    service_name = "test_service"
-    instance_config = mock.Mock(
-        instance="test_instance",
-        get_namespace=mock.Mock(return_value="test_namespace"),
-        get_autoscaling_params=mock.Mock(
-            return_value={
-                "metrics_provider": "cpu",
-                "setpoint": 0.1234567890,
-                "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
-            }
-        ),
-    )
-    paasta_cluster = "test_cluster"
-
-    rule = create_instance_cpu_scaling_rule(
-        service=service_name,
-        instance_config=instance_config,
-        paasta_cluster=paasta_cluster,
-    )
-
-    # our query doesn't include the setpoint as we'll just give the HPA the current CPU usage and
-    # let the HPA compare that to the setpoint directly
-    assert (
-        str(instance_config.get_autoscaling_params()["moving_average_window_seconds"])
-        in rule["metricsQuery"]
-    )
-    assert str(instance_config.get_namespace()) in rule["metricsQuery"]
 
 
 @pytest.mark.parametrize(
@@ -360,7 +261,6 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                 "metrics_provider": "gunicorn",
                 "setpoint": 0.1234567890,
                 "moving_average_window_seconds": 20120302,
-                "use_prometheus": True,
             }
         ),
     )
@@ -401,52 +301,6 @@ def test_create_instance_gunicorn_scaling_rule() -> None:
                         "metrics_provider": "uwsgi",
                         "setpoint": 0.1234567890,
                         "moving_average_window_seconds": 20120302,
-                        "use_prometheus": True,
-                    }
-                ),
-            ),
-            1,
-        ),
-        (
-            mock.Mock(
-                instance="instance",
-                get_namespace=mock.Mock(return_value="test_namespace"),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "uwsgi",
-                        "setpoint": 0.1234567890,
-                        "moving_average_window_seconds": 20120302,
-                        "use_prometheus": False,
-                    }
-                ),
-            ),
-            0,
-        ),
-        (
-            mock.Mock(
-                instance="instance",
-                get_namespace=mock.Mock(return_value="test_namespace"),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "cpu",
-                        "setpoint": 0.1234567890,
-                        "moving_average_window_seconds": 20120302,
-                        "use_prometheus": False,
-                    }
-                ),
-            ),
-            0,
-        ),
-        (
-            mock.Mock(
-                instance="instance",
-                get_namespace=mock.Mock(return_value="test_namespace"),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "cpu",
-                        "setpoint": 0.1234567890,
-                        "moving_average_window_seconds": 20120302,
-                        "use_prometheus": True,
                     }
                 ),
             ),
