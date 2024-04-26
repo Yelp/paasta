@@ -1893,6 +1893,35 @@ class TestKubernetesDeploymentConfig:
         ):
             assert self.deployment.get_node_affinity() is None
 
+    def test_get_node_affinity_no_reqs_with_global_override(self):
+        """
+            Given global node affinity overrides and no deployment specific requirements, the globals should be used
+        """
+        with mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=True
+        ) as mock_load_system_config:
+            mock_load_system_config.side_effect = None
+            mock_load_system_config.return_value = mock.Mock(
+                get_node_affinities=mock.Mock(
+                    return_value={"topology.kubernetes.io/zone":["us-west-1a", "us-west-1b"]}
+                ),
+            )
+            assert self.deployment.get_node_affinity(None) == V1NodeAffinity(
+                required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                    node_selector_terms=[
+                        V1NodeSelectorTerm(
+                            match_expressions=[
+                                V1NodeSelectorRequirement(
+                                    key="topology.kubernetes.io/zone",
+                                    operator="In",
+                                    values=["us-west-1a", "us-west-1b"],
+                                )
+                            ]
+                        )
+                    ],
+                ),
+            )
+
     @pytest.mark.parametrize(
         "anti_affinity,expected",
         [

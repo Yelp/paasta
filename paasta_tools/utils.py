@@ -1971,6 +1971,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pki_backend: str
     pod_defaults: Dict[str, Any]
     topology_spread_constraints: List[Dict[str, Any]]
+    node_affinities: Mapping[str, Any]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
@@ -2556,6 +2557,10 @@ class SystemPaastaConfig:
 
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
+
+    def get_node_affinities(self) -> Mapping[str, Any]:
+        """List of NodeAffinities that will be applied to all Pods in the cluster"""
+        return self.config_dict.get("node_affinities", {})
 
     def get_topology_spread_constraints(self) -> List[Dict[str, Any]]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
