@@ -101,6 +101,7 @@ UNKNOWN_SERVICE = (
 )
 
 SCHEMA_TYPES = {
+    "service",  # service metadata
     "adhoc",
     "kubernetes",  # long-running services
     "rollback",  # automatic rollbacks during deployments
