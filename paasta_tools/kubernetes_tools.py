@@ -2168,7 +2168,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
-        node_affinity = self.get_node_affinity(system_paasta_config.get_node_affinities())
+        node_affinity = self.get_node_affinity(
+            system_paasta_config.get_node_affinities()
+        )
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
@@ -2312,7 +2314,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self, global_node_affinities=None) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(
+        self, global_node_affinities=None
+    ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2333,7 +2337,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     raw_selectors=global_node_affinities,
                 )
             )
-        
+
         preferred_terms = []
         for node_selectors_prefered_config_dict in self.config_dict.get(
             "node_selectors_preferred", []
