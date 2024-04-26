@@ -2315,7 +2315,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return node_selectors
 
     def get_node_affinity(
-        self, global_node_affinities : Mapping[str, Any]=None
+        self, global_node_affinities: Mapping[str, Any] = None
     ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
