@@ -30,6 +30,12 @@ else
 	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
 endif
 
+# If running in CI, pass UID and GID to avoid permission issues
+# since Jenkins does not use Podman
+ifdef CI
+	export DOCKER_OPT_ARGS := --user `id -u`:`id -g`
+endif
+
 .PHONY: all docs test itest k8s_itests quick-test
 
 dev: .paasta/bin/activate
