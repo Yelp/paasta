@@ -2331,7 +2331,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             requirements.extend(
                 raw_selectors_to_requirements(
                     raw_selectors=global_node_affinities,
-
+                )
+            )
+        
         preferred_terms = []
         for node_selectors_prefered_config_dict in self.config_dict.get(
             "node_selectors_preferred", []
