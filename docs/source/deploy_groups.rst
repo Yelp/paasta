@@ -20,7 +20,6 @@ As an example, consider a service with the following deploy.yaml:
    - step: itest
    - step: security-check
    - step: push-to-registry
-   - step: performance-check
    - step: dev-stage.everything
      trigger_next_step_manually: true
    - step: prod.canary
@@ -29,7 +28,7 @@ As an example, consider a service with the following deploy.yaml:
 
 This pipeline will:
 
-1. Run ``itest``, ``security-check``, ``push-to-registry``, and ``performance-check`` steps, which are build and testing steps.
+1. Run ``itest``, ``security-check``, and ``push-to-registry`` steps, which are build and testing steps.
    During ``itest`` phase, a new container image is built (per the `Paasta Contract <about/contract.html>`_).
    This image is pushed to Paasta's Docker registry in the ``push-to-registry`` step.
 2. Deploy the new container image to all instances with ``deploy_group: dev-stage.everything``, and wait for someone to click a button in Jenkins before continuing.
@@ -125,3 +124,23 @@ String interpolation
 --------------------
 
 Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the variable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
+
+Parallel steps
+--------------------
+
+Parallel steps are supported in ``deploy.yaml`` to allow steps that aren't reliant on each other to be executed at the same time. The parallel block also supports waiting before moving on to the next step.
+
+As an example the following deploy.yaml will execute steps ``security-check`` & ``command-test`` together. It will then wait for user input before moving on to the ``performance-check`` step.
+
+.. sourcecode:: yaml
+
+   ---
+   pipeline:
+   - parallel:
+     - step: security-check
+     - step: command-test
+     trigger_next_step_manually: true
+   - step: performance-check
+   - step: prod.canary
+     trigger_next_step_manually: true
+   - step: prod.non_canary

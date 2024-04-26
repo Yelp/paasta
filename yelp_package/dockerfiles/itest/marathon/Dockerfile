@@ -15,9 +15,6 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:xenial
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
-ENV PIP_INDEX_URL=$PIP_INDEX_URL
-
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         apt-transport-https \

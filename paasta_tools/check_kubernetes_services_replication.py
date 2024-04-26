@@ -33,10 +33,14 @@ instance then it will be used instead.
 import logging
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
+from paasta_tools import eks_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.check_services_replication_tools import main
+from paasta_tools.check_services_replication_tools import parse_args
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -50,7 +54,7 @@ DEFAULT_ALERT_AFTER = "10m"
 
 
 def check_healthy_kubernetes_tasks_for_service_instance(
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     expected_count: int,
     all_pods: Sequence[V1Pod],
     dry_run: bool = False,
@@ -73,7 +77,7 @@ def check_healthy_kubernetes_tasks_for_service_instance(
 
 
 def check_kubernetes_pod_replication(
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     all_tasks_or_pods: Sequence[V1Pod],
     replication_checker: KubeSmartstackEnvoyReplicationChecker,
     dry_run: bool = False,
@@ -81,7 +85,7 @@ def check_kubernetes_pod_replication(
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack/envoy or k8s)
 
-    :param instance_config: an instance of KubernetesDeploymentConfig
+    :param instance_config: an instance of KubernetesDeploymentConfig or EksDeploymentConfig
     :param replication_checker: an instance of KubeSmartstackEnvoyReplicationChecker
     """
     default_alert_after = DEFAULT_ALERT_AFTER
@@ -129,7 +133,10 @@ def check_kubernetes_pod_replication(
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main(
-        instance_type_class=kubernetes_tools.KubernetesDeploymentConfig,
+        instance_type_class=eks_tools.EksDeploymentConfig
+        if args.eks
+        else kubernetes_tools.KubernetesDeploymentConfig,
         check_service_replication=check_kubernetes_pod_replication,
     )

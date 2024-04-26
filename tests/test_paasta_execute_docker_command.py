@@ -38,6 +38,11 @@ def test_execute_in_container():
     )
 
 
+@mock.patch(
+    "paasta_tools.paasta_execute_docker_command.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
 def test_execute_in_container_reuses_exec():
     fake_container_id = "fake_container_id"
     fake_execid = "fake_execid"
@@ -59,6 +64,11 @@ def test_execute_in_container_reuses_exec():
     mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
 
 
+@mock.patch(
+    "paasta_tools.paasta_execute_docker_command.is_using_unprivileged_containers",
+    lambda: False,
+    autospec=None,
+)
 def test_execute_in_container_reuses_only_valid_exec():
     fake_container_id = "fake_container_id"
     fake_execid = "fake_execid"

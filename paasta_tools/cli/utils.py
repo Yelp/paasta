@@ -26,6 +26,7 @@ from collections import defaultdict
 from shlex import quote
 from typing import Callable
 from typing import Collection
+from typing import Generator
 from typing import Iterable
 from typing import List
 from typing import Mapping
@@ -41,7 +42,10 @@ from mypy_extensions import NamedArg
 from paasta_tools import remote_git
 from paasta_tools.adhoc_tools import load_adhoc_job_config
 from paasta_tools.cassandracluster_tools import load_cassandracluster_instance_config
+from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.flink_tools import load_flink_instance_config
+from paasta_tools.flinkeks_tools import load_flinkeks_instance_config
 from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
@@ -65,9 +69,11 @@ from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
+from paasta_tools.vitesscluster_tools import load_vitess_instance_config
 
 log = logging.getLogger(__name__)
 
@@ -772,13 +778,20 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     kubernetes=InstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
     ),
+    eks=InstanceTypeHandler(get_service_instance_list, load_eks_service_config),
     tron=InstanceTypeHandler(get_service_instance_list, load_tron_instance_config),
     flink=InstanceTypeHandler(get_service_instance_list, load_flink_instance_config),
+    flinkeks=InstanceTypeHandler(
+        get_service_instance_list, load_flinkeks_instance_config
+    ),
     cassandracluster=InstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
     ),
     kafkacluster=InstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
+    ),
+    vitesscluster=InstanceTypeHandler(
+        get_service_instance_list, load_vitess_instance_config
     ),
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
@@ -801,17 +814,26 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     flink=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_flink_instance_config
     ),
+    flinkeks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_flinkeks_instance_config
+    ),
     cassandracluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_cassandracluster_instance_config
     ),
     kafkacluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
+    vitesscluster=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_vitess_instance_config
+    ),
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
     monkrelays=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
+    ),
+    eks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_eks_service_config
     ),
 )
 
@@ -852,11 +874,16 @@ def get_namespaces_for_secret(
 ) -> Set[str]:
     secret_to_k8s_namespace = set()
 
+    k8s_instance_type_classes = {
+        "kubernetes": KubernetesDeploymentConfig,
+        "eks": EksDeploymentConfig,
+    }
     for instance_type in INSTANCE_TYPES:
-        if instance_type == "kubernetes":
+        if instance_type in PAASTA_K8S_INSTANCE_TYPES:
             config_loader = PaastaServiceConfigLoader(service, soa_dir)
             for service_instance_config in config_loader.instance_configs(
-                cluster=cluster, instance_type_class=KubernetesDeploymentConfig
+                cluster=cluster,
+                instance_type_class=k8s_instance_type_classes[instance_type],
             ):
                 secret_to_k8s_namespace.add(service_instance_config.get_namespace())
         else:
@@ -1046,14 +1073,14 @@ def get_instance_configs_for_service(
     type_filter: Optional[Iterable[str]] = None,
     clusters: Optional[Sequence[str]] = None,
     instances: Optional[Sequence[str]] = None,
-) -> Iterable[InstanceConfig]:
+) -> Generator[InstanceConfig, None, None]:
     if not clusters:
         clusters = list_clusters(service=service, soa_dir=soa_dir)
 
     if type_filter is None:
         type_filter = INSTANCE_TYPE_HANDLERS.keys()
 
-    for cluster in list_clusters(service=service, soa_dir=soa_dir):
+    for cluster in clusters:
         for instance_type, instance_handlers in INSTANCE_TYPE_HANDLERS.items():
             if instance_type not in type_filter:
                 continue
@@ -1178,3 +1205,15 @@ def verify_instances(
                 print("  %s" % instance)
 
     return misspelled_instances
+
+
+def get_paasta_oapi_api_clustername(cluster: str, is_eks: bool) -> str:
+    """
+    We'll be doing a tiny bit of lying while we have both EKS and non-EKS
+    clusters: these will generally share the same PaaSTA name (i.e., the
+    soaconfigs suffix will stay the same) - but we'll need a way to route API
+    requests to the correct place. To do so, we'll add "fake" entries to our
+    api_endpoints SystemPaastaConfig that are the PaaSTA clustername with an
+    "eks-" prefix
+    """
+    return f"eks-{cluster}" if is_eks else cluster

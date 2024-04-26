@@ -43,6 +43,10 @@ class FakeArgs:
     auto_abandon_delay = 1.0
     auto_rollback_delay = 1.0
     authors = None
+    warn = 17
+    polling_interval = None
+    diagnosis_interval = None
+    time_before_first_diagnosis = None
 
 
 @fixture
@@ -127,31 +131,6 @@ def test_mark_for_deployment_sad(
 def test_paasta_mark_for_deployment_when_verify_image_fails(
     mock_list_deploy_groups,
     mock_get_currently_deployed_sha,
-    mock_is_docker_image_already_in_registry,
-    mock_validate_service_name,
-):
-    class FakeArgsRollback(FakeArgs):
-        verify_image = True
-
-    mock_list_deploy_groups.return_value = ["test_deploy_groups"]
-    mock_is_docker_image_already_in_registry.return_value = False
-    with raises(ValueError):
-        mark_for_deployment.paasta_mark_for_deployment(FakeArgsRollback)
-
-
-@patch("paasta_tools.cli.cmds.mark_for_deployment.validate_service_name", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.is_docker_image_already_in_registry",
-    autospec=True,
-)
-@patch(
-    "paasta_tools.cli.cmds.mark_for_deployment.get_currently_deployed_version",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.mark_for_deployment.list_deploy_groups", autospec=True)
-def test_paasta_mark_for_deployment_when_verify_image_succeeds(
-    mock_list_deploy_groups,
-    mock_get_currently_deployed_version,
     mock_is_docker_image_already_in_registry,
     mock_validate_service_name,
 ):
@@ -858,3 +837,65 @@ def test_MarkForDeployProcess_happy_path_skips_complete_if_no_auto_rollback(
     assert mfdp.run() == 0
     assert mfdp.trigger_history == ["start_deploy", "mfd_succeeded", "deploy_finished"]
     assert mfdp.state_history == ["start_deploy", "deploying", "deployed"]
+
+
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.get_instance_configs_for_service_in_deploy_group_all_clusters",
+    autospec=True,
+)
+@patch(
+    "paasta_tools.cli.cmds.mark_for_deployment.MarkForDeploymentProcess.any_slo_failing",
+    autospec=True,
+)
+def test_MarkForDeployProcess_get_available_buttons_failing_slos_show_disable_rollback(
+    mock_any_slo_failing,
+    mock_get_instance_configs,
+):
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=True,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    # Test only get_available_buttons
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" not in mfdp.get_available_buttons()
+
+    mock_any_slo_failing.return_value = True
+    mfdp = WrappedMarkForDeploymentProcess(
+        service="service",
+        deploy_info=MagicMock(),
+        deploy_group="deploy_group",
+        commit="commit",
+        old_git_sha="old_git_sha",
+        git_url="git_url",
+        auto_rollback=False,
+        block=True,
+        soa_dir="soa_dir",
+        timeout=3600,
+        warn_pct=50,
+        auto_certify_delay=None,
+        auto_abandon_delay=600,
+        auto_rollback_delay=30,
+        authors=None,
+    )
+
+    mfdp.run_timeout = 1
+    mfdp.state = "deploying"
+    assert "disable_auto_rollbacks" not in mfdp.get_available_buttons()
+    assert "enable_auto_rollbacks" in mfdp.get_available_buttons()

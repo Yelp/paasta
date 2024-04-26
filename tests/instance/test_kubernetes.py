@@ -117,7 +117,6 @@ def instance_status_kwargs():
         instance="",
         instance_type="",
         verbose=0,
-        include_smartstack=False,
         include_envoy=False,
         settings=mock.Mock(),
         use_new=False,
@@ -189,7 +188,6 @@ def test_kubernetes_status():
             service="",
             instance="",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="flink",
             settings=mock.Mock(),
@@ -306,7 +304,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -421,7 +418,6 @@ class TestKubernetesStatusV2:
                 service="service",
                 instance="instance",
                 verbose=0,
-                include_smartstack=False,
                 include_envoy=False,
                 instance_type="kubernetes",
                 settings=mock.Mock(),
@@ -484,7 +480,6 @@ class TestKubernetesStatusV2:
                 service="service",
                 instance="instance",
                 verbose=0,
-                include_smartstack=False,
                 include_envoy=False,
                 instance_type="kubernetes",
                 settings=mock.Mock(),
@@ -546,7 +541,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -600,7 +594,6 @@ class TestKubernetesStatusV2:
             service="service",
             instance="instance",
             verbose=0,
-            include_smartstack=False,
             include_envoy=False,
             instance_type="kubernetes",
             settings=mock.Mock(),
@@ -626,52 +619,6 @@ def test_job_status_include_replicaset_non_verbose(mock_get_kubernetes_app_by_na
     )
 
     assert len(kstatus["replicasets"]) == 3
-
-
-def test_kubernetes_status_include_smartstack():
-    with asynctest.patch(
-        "paasta_tools.instance.kubernetes.job_status",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
-    ) as mock_load_service_namespace_config, asynctest.patch(
-        "paasta_tools.instance.kubernetes.mesh_status",
-        autospec=True,
-    ) as mock_mesh_status, asynctest.patch(
-        "paasta_tools.kubernetes_tools.replicasets_for_service_instance", autospec=True
-    ) as mock_replicasets_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.pods_for_service_instance",
-        autospec=True,
-    ) as mock_pods_for_service_instance, asynctest.patch(
-        "paasta_tools.kubernetes_tools.get_kubernetes_app_by_name",
-        autospec=True,
-    ), asynctest.patch(
-        "paasta_tools.instance.kubernetes.LONG_RUNNING_INSTANCE_TYPE_HANDLERS",
-        autospec=True,
-    ) as mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS:
-        mock_load_service_namespace_config.return_value = {"proxy_port": 1234}
-        mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS["flink"] = mock.Mock()
-        mock_pods_for_service_instance.return_value = []
-        mock_replicasets_for_service_instance.return_value = []
-        mock_service = mock.Mock()
-        status = pik.kubernetes_status(
-            service=mock_service,
-            instance="",
-            verbose=0,
-            include_smartstack=True,
-            include_envoy=False,
-            instance_type="flink",
-            settings=mock.Mock(),
-        )
-        assert (
-            mock_load_service_namespace_config.mock_calls[0][2]["service"]
-            is mock_service
-        )
-        assert mock_mesh_status.mock_calls[0][2]["service"] is mock_service
-        assert "app_count" in status
-        assert "evicted_count" in status
-        assert "bounce_method" in status
-        assert "desired_state" in status
 
 
 def test_cr_status_bad_instance_type():
@@ -794,19 +741,7 @@ async def test_get_pod_status_mesh_ready(event_loop):
     assert not status["mesh_ready"]
 
 
-@pytest.mark.parametrize(
-    "include_smartstack,include_envoy,expected",
-    [
-        (True, True, ("smartstack", "envoy")),
-        (True, False, ("smartstack",)),
-        (False, True, ("envoy",)),
-    ],
-)
-def test_kubernetes_mesh_status(
-    include_smartstack,
-    include_envoy,
-    expected,
-):
+def test_kubernetes_mesh_status_include_envoy():
     with asynctest.patch(
         "paasta_tools.kubernetes_tools.load_service_namespace_config", autospec=True
     ) as mock_load_service_namespace_config, asynctest.patch(
@@ -830,26 +765,34 @@ def test_kubernetes_mesh_status(
             instance="fake_instance",
             instance_type="flink",
             settings=mock_settings,
-            include_smartstack=include_smartstack,
-            include_envoy=include_envoy,
+            include_envoy=True,
         )
 
-        assert len(kmesh) == len(expected)
-        for i in range(len(expected)):
-            mesh_type = expected[i]
-            assert kmesh.get(mesh_type) == mock_mesh_status.return_value
-            assert mock_mesh_status.call_args_list[i] == mock.call(
+        assert len(kmesh) == 1
+        assert kmesh.get("envoy") == mock_mesh_status.return_value
+        assert mock_mesh_status.call_args_list[0] == mock.call(
+            service="fake_service",
+            instance=mock_job_config.get_nerve_namespace.return_value,
+            job_config=mock_job_config,
+            service_namespace_config={"proxy_port": 1234},
+            pods_task=mock.ANY,
+            should_return_individual_backends=True,
+            settings=mock_settings,
+            service_mesh=getattr(pik.ServiceMesh, "ENVOY"),
+        )
+        _, kwargs = mock_mesh_status.call_args_list[0]
+        assert kwargs["pods_task"].result() == ["pod_1"]
+
+        # include_envoy = False should error
+        with pytest.raises(RuntimeError) as excinfo:
+            kmesh = pik.kubernetes_mesh_status(
                 service="fake_service",
-                instance=mock_job_config.get_nerve_namespace.return_value,
-                job_config=mock_job_config,
-                service_namespace_config={"proxy_port": 1234},
-                pods_task=mock.ANY,
-                should_return_individual_backends=True,
+                instance="fake_instance",
+                instance_type="flink",
                 settings=mock_settings,
-                service_mesh=getattr(pik.ServiceMesh, mesh_type.upper()),
+                include_envoy=False,
             )
-            _, kwargs = mock_mesh_status.call_args_list[i]
-            assert kwargs["pods_task"].result() == ["pod_1"]
+        assert "No mesh types specified" in str(excinfo.value)
 
 
 @mock.patch(
@@ -891,7 +834,6 @@ def test_kubernetes_mesh_status_error(
             instance="fake_instance",
             instance_type=inst_type,
             settings=mock_settings,
-            include_smartstack=include_mesh,
             include_envoy=include_mesh,
         )
 

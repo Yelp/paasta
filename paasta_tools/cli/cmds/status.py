@@ -52,15 +52,18 @@ from paasta_tools.api.client import PaastaOApiClient
 from paasta_tools.cassandracluster_tools import CassandraClusterDeploymentConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_configs_for_service
+from paasta_tools.cli.utils import get_paasta_oapi_api_clustername
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_deploy_groups
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import verify_instances
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import get_flink_config_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_jobs_from_paasta_api_client
 from paasta_tools.flink_tools import get_flink_overview_from_paasta_api_client
+from paasta_tools.flinkeks_tools import FlinkEksDeploymentConfig
 from paasta_tools.kafkacluster_tools import KafkaClusterDeploymentConfig
 from paasta_tools.kubernetes_tools import format_pod_event_messages
 from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
@@ -98,9 +101,11 @@ from paasta_tools.utils import SystemPaastaConfig
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
     TronActionConfig,
@@ -109,9 +114,11 @@ ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
 # Tron instances are not included in deployments, so skip these InstanceConfigs
 DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
+    FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
+    EksDeploymentConfig,
     AdhocJobConfig,
     MarathonServiceConfig,
 ]
@@ -127,6 +134,9 @@ InstanceStatusWriter = Callable[
     ],
     int,
 ]
+
+EKS_DEPLOYMENT_CONFIGS = [EksDeploymentConfig, FlinkEksDeploymentConfig]
+FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
 
 def add_subparser(
@@ -278,9 +288,16 @@ def paasta_status_on_api_endpoint(
     lock: Lock,
     verbose: int,
     new: bool = False,
+    is_eks: bool = False,
 ) -> int:
-    output = ["", f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}"]
-    client = get_paasta_oapi_client(cluster, system_paasta_config)
+    output = [
+        "",
+        f"\n{service}.{PaastaColors.cyan(instance)} in {cluster}{' (EKS)' if is_eks else ''}",
+    ]
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+        system_paasta_config=system_paasta_config,
+    )
     if not client:
         print("Cannot get a paasta-api client")
         exit(1)
@@ -290,7 +307,6 @@ def paasta_status_on_api_endpoint(
             instance=instance,
             verbose=verbose,
             new=new,
-            include_smartstack=False,
         )
     except client.api_error as exc:
         output.append(PaastaColors.red(exc.reason))
@@ -1258,6 +1274,33 @@ def print_flink_status(
     )
 
 
+def print_flinkeks_status(
+    cluster: str,
+    service: str,
+    instance: str,
+    output: List[str],
+    flink: Mapping[str, Any],
+    verbose: int,
+) -> int:
+    system_paasta_config = load_system_paasta_config()
+
+    client = get_paasta_oapi_client(
+        cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=True),
+        system_paasta_config=system_paasta_config,
+    )
+    if not client:
+        output.append(
+            PaastaColors.red(
+                "paasta-api client unavailable - unable to get flink status"
+            )
+        )
+        return 1
+
+    return _print_flink_status_from_job_manager(
+        service, instance, output, flink, client, verbose
+    )
+
+
 async def get_flink_job_details(
     service: str, instance: str, job_ids: List[str], client: PaastaOApiClient
 ) -> List[FlinkJobDetails]:
@@ -1460,8 +1503,16 @@ def get_version_table_entry(
 class ReplicaState(Enum):
     # Order will be preserved in count summary
     RUNNING = "Healthy", PaastaColors.green
+
     UNREACHABLE = "Unreachable", PaastaColors.red
-    NOT_RUNNING = "Not Running", PaastaColors.red
+    EVICTED = "Evicted", PaastaColors.red
+    ALL_CONTAINERS_WAITING = "All Containers Waiting", PaastaColors.red
+    FAILED = "Failed", PaastaColors.red
+    MAIN_CONTAINER_NOT_RUNNING = "Main Container Not Running", PaastaColors.red
+    NO_CONTAINERS_YET = "No Containers Yet", PaastaColors.red
+    NOT_READY = "Not Ready", PaastaColors.red
+    SOME_CONTAINERS_WAITING = "Some Containers Waiting", PaastaColors.red
+
     WARNING = "Warning", PaastaColors.yellow
     UNSCHEDULED = "Unscheduled", PaastaColors.yellow
     STARTING = "Starting", PaastaColors.yellow
@@ -1470,7 +1521,7 @@ class ReplicaState(Enum):
     UNKNOWN = "Unknown", PaastaColors.yellow
 
     def is_unhealthy(self):
-        return self.name in ["UNREACHABLE", "NOT_RUNNING"]
+        return self.color == PaastaColors.red
 
     @property
     def color(self) -> Callable:
@@ -1521,17 +1572,21 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
     phase = pod.phase
     state = ReplicaState.UNKNOWN
     reason = pod.reason
-    if phase == "Failed" or reason == "Evicted":
-        state = ReplicaState.NOT_RUNNING
+    if reason == "Evicted":
+        state = ReplicaState.EVICTED
+    elif phase == "Failed":
+        state = ReplicaState.FAILED
     elif phase is None or not pod.scheduled:
         state = ReplicaState.UNSCHEDULED
     elif pod.delete_timestamp:
         state = ReplicaState.TERMINATING
     elif phase == "Pending":
-        if not pod.containers or all([c.state == "waiting" for c in pod.containers]):
-            state = ReplicaState.STARTING
+        if not pod.containers:
+            state = ReplicaState.NO_CONTAINERS_YET
+        elif all([c.state.lower() == "waiting" for c in pod.containers]):
+            state = ReplicaState.ALL_CONTAINERS_WAITING
         else:
-            state = ReplicaState.NOT_RUNNING
+            state = ReplicaState.SOME_CONTAINERS_WAITING
     elif phase == "Running":
         ####
         # TODO: Take sidecar containers into account
@@ -1545,11 +1600,11 @@ def get_replica_state(pod: KubernetesPodV2) -> ReplicaState:
             )
             if pod.mesh_ready is False:
                 if main_container.state != "running":
-                    state = ReplicaState.NOT_RUNNING
+                    state = ReplicaState.MAIN_CONTAINER_NOT_RUNNING
                 else:
                     state = ReplicaState.UNREACHABLE
             elif not pod.ready:
-                state = ReplicaState.NOT_RUNNING
+                state = ReplicaState.NOT_READY
             else:
                 if recent_liveness_failure(pod) or recent_container_restart(
                     main_container
@@ -1716,7 +1771,6 @@ def get_autoscaling_table(
             f"       Desired instances: {autoscaling_status['desired_replicas']}"
         )
         table.append(f"       Last scale time: {autoscaling_status['last_scale_time']}")
-        table.append(f"       Dashboard: y/sfx-autoscaling")
         NA = PaastaColors.red("N/A")
         if len(autoscaling_status["metrics"]) > 0:
             table.append(f"       Metrics:")
@@ -2138,7 +2192,7 @@ def report_status_for_cluster(
     output = ["", "service: %s" % service, "cluster: %s" % cluster]
     deployed_instances = []
     instances = [
-        instance
+        (instance, instance_config_class)
         for instance, instance_config_class in instance_whitelist.items()
         if instance_config_class in ALLOWED_INSTANCE_CONFIG
     ]
@@ -2175,7 +2229,7 @@ def report_status_for_cluster(
 
     return_code = 0
     return_codes = []
-    for deployed_instance in instances:
+    for deployed_instance, instance_config_class in instances:
         return_codes.append(
             paasta_status_on_api_endpoint(
                 cluster=cluster,
@@ -2185,6 +2239,7 @@ def report_status_for_cluster(
                 lock=lock,
                 verbose=verbose,
                 new=new,
+                is_eks=(instance_config_class in EKS_DEPLOYMENT_CONFIGS),
             )
         )
 
@@ -2192,7 +2247,11 @@ def report_status_for_cluster(
         return_code = 1
 
     output.append(
-        report_invalid_whitelist_values(instances, seen_instances, "instance")
+        report_invalid_whitelist_values(
+            whitelist=[instance[0] for instance in instances],
+            items=seen_instances,
+            item_type="instance",
+        )
     )
 
     return return_code, output
@@ -2381,7 +2440,7 @@ def paasta_status(args) -> int:
     clusters_services_instances = apply_args_filters(args)
     for cluster, service_instances in clusters_services_instances.items():
         for service, instances in service_instances.items():
-            all_flink = all(i == FlinkDeploymentConfig for i in instances.values())
+            all_flink = all((i in FLINK_DEPLOYMENT_CONFIGS) for i in instances.values())
             actual_deployments: Mapping[str, DeploymentVersion]
             if all_flink:
                 actual_deployments = {}
@@ -2569,9 +2628,11 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     marathon=print_marathon_status,
     kubernetes=print_kubernetes_status,
     kubernetes_v2=print_kubernetes_status_v2,
+    eks=print_kubernetes_status,
     tron=print_tron_status,
     adhoc=print_adhoc_status,
     flink=print_flink_status,
+    flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,
     cassandracluster=print_cassandra_status,
 )

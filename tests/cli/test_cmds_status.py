@@ -920,7 +920,7 @@ def test_status_with_registration(
 
 
 @pytest.fixture
-def mock_marathon_status(include_envoy=True, include_smartstack=True):
+def mock_marathon_status(include_envoy=True):
     kwargs = dict(
         desired_state="start",
         desired_app_id="abc.def",
@@ -937,12 +937,6 @@ def mock_marathon_status(include_envoy=True, include_smartstack=True):
             non_running_tasks=[],
         ),
     )
-    if include_smartstack:
-        kwargs["smartstack"] = paastamodels.SmartstackStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
     if include_envoy:
         kwargs["envoy"] = paastamodels.EnvoyStatus(
             registration="fake_service.fake_instance",
@@ -1774,94 +1768,6 @@ class TestPrintMarathonStatus:
         )
         assert return_value == 0
 
-    @pytest.mark.parametrize("include_envoy", [True, False])
-    @pytest.mark.parametrize("include_smartstack", [True, False])
-    @pytest.mark.parametrize("include_autoscaling_info", [True, False])
-    @patch("paasta_tools.cli.cmds.status.create_autoscaling_info_table", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.marathon_mesos_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.marathon_app_status_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.status_marathon_job_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
-    @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
-    def test_output(
-        self,
-        mock_bouncing_status,
-        mock_desired_state,
-        mock_status_marathon_job_human,
-        mock_marathon_app_status_human,
-        mock_marathon_mesos_status_human,
-        mock_get_envoy_status_human,
-        mock_get_smartstack_status_human,
-        mock_create_autoscaling_info_table,
-        include_autoscaling_info,
-        include_smartstack,
-        include_envoy,
-    ):
-        mock_marathon_app_status_human.side_effect = (
-            lambda desired_app_id, app_status: [
-                f"{app_status.deploy_status} status 1",
-                f"{app_status.deploy_status} status 2",
-            ]
-        )
-        mock_marathon_mesos_status_human.return_value = [
-            "mesos status 1",
-            "mesos status 2",
-        ]
-        mock_get_envoy_status_human.return_value = [
-            "envoy status 1",
-            "envoy status 2",
-        ]
-        mock_get_smartstack_status_human.return_value = [
-            "smartstack status 1",
-            "smartstack status 2",
-        ]
-        mock_create_autoscaling_info_table.return_value = [
-            "autoscaling info 1",
-            "autoscaling info 2",
-        ]
-
-        mms = mock_marathon_status(
-            include_smartstack=include_smartstack, include_envoy=include_envoy
-        )
-        mms.app_statuses = [
-            paastamodels.MarathonAppStatus(deploy_status="app_1"),
-            paastamodels.MarathonAppStatus(deploy_status="app_2"),
-        ]
-        if include_autoscaling_info:
-            mms.autoscaling_info = paastamodels.MarathonAutoscalingInfo()
-
-        output = []
-        print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            marathon_status=mms,
-        )
-
-        expected_output = [
-            f"    Desired state:      {mock_bouncing_status.return_value} and {mock_desired_state.return_value}",
-            f"    {mock_status_marathon_job_human.return_value}",
-        ]
-        if include_autoscaling_info:
-            expected_output += ["      autoscaling info 1", "      autoscaling info 2"]
-        expected_output += [
-            f"      app_1 status 1",
-            f"      app_1 status 2",
-            f"      app_2 status 1",
-            f"      app_2 status 2",
-            f"    mesos status 1",
-            f"    mesos status 2",
-        ]
-        if include_smartstack:
-            expected_output += [f"    smartstack status 1", f"    smartstack status 2"]
-        if include_envoy:
-            expected_output += [f"    envoy status 1", f"    envoy status 2"]
-
-        assert expected_output == output
-
 
 @pytest.fixture
 def mock_kubernetes_status_v2():
@@ -2106,7 +2012,7 @@ class TestGetVersionsTable:
         assert "aabbccdd (new)" in versions_table[0]
         assert "2021-03-03" in versions_table[0]
         assert PaastaColors.green("1 Healthy") in versions_table[1]
-        assert PaastaColors.red("1 Not Running") in versions_table[1]
+        assert PaastaColors.red("1 Evicted") in versions_table[1]
 
         assert "ff112233 (old)" in versions_table[7]
         assert "2021-03-01" in versions_table[7]
@@ -2147,10 +2053,7 @@ class TestGetVersionsTable:
             ["curl http://1.2.3.5:8888/healthcheck" in row for row in versions_table]
         )
         assert any(
-            [
-                "1 Not Running" in remove_ansi_escape_sequences(row)
-                for row in versions_table
-            ]
+            ["1 Evicted" in remove_ansi_escape_sequences(row) for row in versions_table]
         )
 
     def test_restart_tip(self, mock_replicasets, mock_bad_container):
@@ -2284,7 +2187,7 @@ class TestGetVersionsTable:
         versions_table = get_versions_table(
             mock_replicasets, "service", "instance", "cluster", verbose=1
         )
-        assert any(["1 Not Running" in row for row in versions_table])
+        assert any(["1 Evicted" in row for row in versions_table])
 
 
 class TestPrintKubernetesStatus:
@@ -2579,12 +2482,15 @@ class TestPrintKafkaStatus:
 
 class TestPrintFlinkStatus:
     @patch("paasta_tools.cli.cmds.status.load_system_paasta_config", autospec=True)
+    @patch("paasta_tools.api.client.load_system_paasta_config", autospec=True)
     def test_error_no_flink(
         self,
+        mock_load_system_paasta_config_api,
         mock_load_system_paasta_config,
         mock_flink_status,
         system_paasta_config,
     ):
+        mock_load_system_paasta_config_api.return_value = system_paasta_config
         mock_load_system_paasta_config.return_value = system_paasta_config
         mock_flink_status["status"] = None
         output = []

@@ -15,7 +15,7 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
@@ -36,17 +36,17 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.7-dev \
+        python3.8-dev \
         python3-pip \
-        python3.7-distutils \
+        python3.8-distutils \
         tox \
         wget \
         sphinx-rtd-theme-common \
         zsh > /dev/null \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3.7 -m pip install --upgrade pip==20.0.2
-RUN pip3.7 install virtualenv==16.0.0
+RUN python3.8 -m pip install --upgrade pip==20.0.2
+RUN pip3.8 install virtualenv==16.0.0
 
 ADD mesos-slave-secret /etc/mesos-slave-secret
 

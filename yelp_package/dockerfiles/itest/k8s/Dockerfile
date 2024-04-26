@@ -15,7 +15,7 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:bionic
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 # Need Python 3.7
@@ -28,7 +28,7 @@ RUN apt-get update > /dev/null && \
         gcc \
         git \
         curl \
-        python3.7-dev \
+        python3.8-dev \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -43,7 +43,7 @@ RUN mv ./kubectl /usr/local/bin/kubectl
 WORKDIR /work
 
 ADD requirements.txt /work/
-RUN virtualenv /venv -ppython3.7 --no-download
+RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
 RUN pip install -r requirements.txt
 ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin

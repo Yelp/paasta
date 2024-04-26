@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.8
 import argparse
 import os
 import re
@@ -23,23 +23,28 @@ def replace(s, values):
     )
 
 
-def render_file(src, dst, values):
+def render_file(src, dst, values, overwrite=True):
     basename = os.path.basename(src)
     new_name = replace(basename, values)
-    with open(f"{dst}/{new_name}", "w") as new:
+    if not os.path.exists(new_name) or overwrite:
+        write_file(dst, new_name, src, values)
+
+
+def write_file(dst, name, src, values):
+    with open(f"{dst}/{name}", "w") as new:
         with open(f"{src}", "r") as old:
             new.write(replace(old.read(), values))
 
 
-def render(src, dst, values={}, exclude={}):
+def render(src, dst, values={}, exclude={}, overwrite=True):
     if os.path.isfile(src):
-        render_file(src, dst, values)
+        render_file(src, dst, values, overwrite)
         return
     for f in os.scandir(src):
         if f.name.startswith(".") or f.path in exclude:
             continue
         if os.path.isfile(f.path):
-            render_file(f.path, dst, values)
+            render_file(f.path, dst, values, overwrite)
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
             try:
@@ -47,7 +52,7 @@ def render(src, dst, values={}, exclude={}):
             except OSError as e:
                 if e.errno != os.errno.EEXIST:
                     raise
-            render(f.path, new_dst, values, exclude)
+            render(f.path, new_dst, values, exclude, overwrite)
 
 
 def parse_args():
@@ -82,7 +87,7 @@ def parse_args():
     return args
 
 
-def render_values(src: str, dst: str, values: str) -> None:
+def render_values(src: str, dst: str, values: str, overwrite=True) -> None:
     if values is not None:
         values = os.path.abspath(values)
     # Validate src and values. Dst needs to be a directory. src can be either a valid folder of directory. values need to be valid file if provided.
@@ -108,7 +113,7 @@ def render_values(src: str, dst: str, values: str) -> None:
             ),
             v,
         )
-    render(src, dst, config_dict, {values})
+    render(src, dst, config_dict, {values}, overwrite)
 
 
 def main():

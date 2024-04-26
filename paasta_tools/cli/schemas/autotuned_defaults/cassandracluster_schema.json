@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "Properties that can be set by automated processes for http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
+    "description": "Properties that can be set by automated processes for cassandracluster spec files",
     "type": "object",
     "additionalProperties": false,
     "minProperties": 1,
@@ -15,29 +15,20 @@
                     "minimum": 0,
                     "exclusiveMinimum": true
                 },
-                "cpu_burst_add": {
+                "cpu_burst_percent": {
                     "type": "number",
-                    "minimum": 0.0,
+                    "minimum": 0,
                     "exclusiveMinimum": false
                 },
                 "disk": {
-                    "type": "number",
-                    "minimum": 128,
-                    "exclusiveMinimum": true
-                },
-                "min_instances": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
-                },
-                "max_instances": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": false
+                    "type": "string"
                 },
                 "mem": {
+                    "type": "string"
+                },
+                "replicas": {
                     "type": "number",
-                    "minimum": 32,
+                    "minimum": 0,
                     "exclusiveMinimum": true
                 }
             }

@@ -1,14 +1,26 @@
 import argparse
 import logging
 from collections import defaultdict
+from typing import Any
+from typing import cast
+from typing import Dict
+from typing import List
+from typing import Literal
+from typing import Optional
 from typing import Set
+from typing import TypedDict
+from typing import Union
 
 from paasta_tools.config_utils import AutoConfigUpdater
 from paasta_tools.contrib.paasta_update_soa_memcpu import get_report_from_splunk
+from paasta_tools.kubernetes_tools import SidecarResourceRequirements
 from paasta_tools.utils import AUTO_SOACONFIG_SUBDIR
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
 from paasta_tools.utils import format_git_url
 from paasta_tools.utils import load_system_paasta_config
+
+
+log = logging.getLogger(__name__)
 
 NULL = "null"
 SUPPORTED_CSV_KEYS = (
@@ -136,10 +148,66 @@ def get_default_git_remote():
     return default_git_remote
 
 
-def get_recommendation_from_result(result, keys_to_apply):
-    rec = {}
+SupportedInstanceType = Literal["kubernetes", "eks", "cassandracluster"]
+
+
+class CassandraRightsizerResult(TypedDict):
+    current_cpus: str
+    suggested_cpus: str
+
+    current_disk: str
+    suggested_disk: str
+
+    current_mem: str
+    suggested_mem: str
+
+    current_replicas: str
+    suggested_replicas: str
+
+
+class CassandraRecommendation(TypedDict, total=False):
+    disk: str
+    mem: str
+    cpus: float
+    replicas: int
+    cpu_burst_percent: float
+
+
+class KubernetesRightsizerResult(TypedDict):
+    current_cpus: str
+    suggested_cpus: str
+
+    current_disk: str
+    suggested_disk: str
+
+    current_mem: str
+    suggested_mem: str
+
+    suggested_hacheck_cpus: float
+
+    suggested_cpu_burst_add: float
+
+    suggested_min_instances: int
+
+    suggested_max_instances: int
+
+
+class KubernetesRecommendation(TypedDict, total=False):
+    disk: float
+    mem: float
+    cpus: float
+    cpu_burst_add: float
+    max_instances: int
+    min_instances: int
+    sidecar_resource_requirements: Dict[str, SidecarResourceRequirements]
+
+
+def get_kubernetes_recommendation_from_result(
+    result: KubernetesRightsizerResult, keys_to_apply: List[str]
+) -> KubernetesRecommendation:
+    rec: KubernetesRecommendation = {}
     for key in keys_to_apply:
-        val = result.get(key)
+        val: Optional[str] = cast(Optional[str], result.get(key))
         if not val or val == NULL:
             continue
         if key == "cpus":
@@ -169,12 +237,33 @@ def get_recommendation_from_result(result, keys_to_apply):
     return rec
 
 
+def get_cassandra_recommendation_from_result(
+    result: CassandraRightsizerResult, keys_to_apply: List[str]
+) -> CassandraRecommendation:
+    rec: CassandraRecommendation = {}
+    for key in keys_to_apply:
+        val: Optional[str] = cast(Optional[str], result.get(key))
+        if not val or val == NULL:
+            continue
+        if key == "cpus":
+            rec["cpus"] = float(val)
+        elif key == "cpu_burst_percent":
+            rec["cpu_burst_percent"] = float(val)
+        elif key == "mem":
+            rec["mem"] = val
+        elif key == "disk":
+            rec["disk"] = val
+        elif key == "replicas":
+            rec["replicas"] = int(val)
+    return rec
+
+
 def get_recommendations_by_service_file(
     results,
     keys_to_apply,
     exclude_clusters: Set[str],
 ):
-    results_by_service_file = defaultdict(dict)
+    results_by_service_file: Dict[tuple, Dict[str, Any]] = defaultdict(dict)
     for result in results.values():
         # we occasionally want to disable autotune for a cluster (or set of clusters)
         # to do so, we can simply skip getting recommendations for any (service, cluster)
@@ -189,7 +278,12 @@ def get_recommendations_by_service_file(
             result["service"],
             result["cluster"],
         )  # e.g. (foo, marathon-norcal-stagef)
-        rec = get_recommendation_from_result(result, keys_to_apply)
+        instance_type = result["cluster"].split("-", 1)[0]
+        rec: Union[KubernetesRecommendation, CassandraRecommendation] = {}
+        if instance_type == "cassandracluster":
+            rec = get_cassandra_recommendation_from_result(result, keys_to_apply)
+        elif instance_type == "kubernetes":
+            rec = get_kubernetes_recommendation_from_result(result, keys_to_apply)
         if not rec:
             continue
         results_by_service_file[key][result["instance"]] = rec
@@ -226,17 +320,17 @@ def main(args):
         validation_schema_path=AUTO_SOACONFIG_SUBDIR,
     )
     with updater:
-        for (service, extra_info), instance_recommendations in results.items():
-            existing_recommendations = updater.get_existing_configs(
-                service, extra_info, AUTO_SOACONFIG_SUBDIR
+        for (
+            service,
+            instance_type_cluster,
+        ), instance_recommendations in updater.merge_recommendations(results).items():
+            log.info(
+                f"Writing configs for {service} to {AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
             )
-            for instance_name, recommendation in instance_recommendations.items():
-                existing_recommendations.setdefault(instance_name, {})
-                existing_recommendations[instance_name].update(recommendation)
             updater.write_configs(
                 service,
-                extra_info,
-                existing_recommendations,
+                instance_type_cluster,
+                instance_recommendations,
                 AUTO_SOACONFIG_SUBDIR,
                 HEADER_COMMENT,
             )

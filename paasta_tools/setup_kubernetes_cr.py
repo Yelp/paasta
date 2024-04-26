@@ -29,6 +29,7 @@ from typing import Optional
 from typing import Sequence
 
 import yaml
+from kubernetes.client.exceptions import ApiException
 
 from paasta_tools.cli.utils import LONG_RUNNING_INSTANCE_TYPE_HANDLERS
 from paasta_tools.flink_tools import get_flink_ingress_url_root
@@ -152,44 +153,68 @@ def setup_all_custom_resources(
     service: str = None,
     instance: str = None,
 ) -> bool:
-    cluster_crds = {
-        crd.spec.names.kind
-        for crd in kube_client.apiextensions.list_custom_resource_definition(
-            label_selector=paasta_prefixed("service")
-        ).items
-    }
-    log.debug(f"CRDs found: {cluster_crds}")
-    results = []
-    for crd in custom_resource_definitions:
-        if crd.kube_kind.singular not in cluster_crds:
-            # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
-            # and not `crd.names.singular`
-            log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
-            continue
 
-        # by convention, entries where key begins with _ are used as templates
-        # and will be filter out here
-        config_dicts = load_all_configs(
-            cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
-        )
+    got_results = False
+    succeeded = False
+    # We support two versions due to our upgrade to 1.22
+    # this functions runs succefully when any of the two apiextensions
+    # succeed to update the CRDs as the cluster could be in any version
+    # we need to try both possibilities
+    for apiextension in [
+        kube_client.apiextensions,
+        kube_client.apiextensions_v1_beta1,
+    ]:
 
-        ensure_namespace(
-            kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
-        )
-        results.append(
-            setup_custom_resources(
-                kube_client=kube_client,
-                kind=crd.kube_kind,
-                crd=crd,
-                config_dicts=config_dicts,
-                version=crd.version,
-                group=crd.group,
-                cluster=cluster,
-                service=service,
-                instance=instance,
+        try:
+            crds_list = apiextension.list_custom_resource_definition(
+                label_selector=paasta_prefixed("service")
+            ).items
+        except ApiException:
+            log.debug(
+                "Listing CRDs with apiextensions/v1 not supported on this cluster, falling back to v1beta1"
             )
-        )
-    return any(results) if results else True
+            crds_list = []
+
+        cluster_crds = {crd.spec.names.kind for crd in crds_list}
+        log.debug(f"CRDs found: {cluster_crds}")
+        results = []
+        for crd in custom_resource_definitions:
+            if crd.kube_kind.singular not in cluster_crds:
+                # TODO: kube_kind.singular seems to correspond to `crd.names.kind`
+                # and not `crd.names.singular`
+                log.warning(f"CRD {crd.kube_kind.singular} " f"not found in {cluster}")
+                continue
+
+            # by convention, entries where key begins with _ are used as templates
+            # and will be filter out here
+            config_dicts = load_all_configs(
+                cluster=cluster, file_prefix=crd.file_prefix, soa_dir=soa_dir
+            )
+
+            ensure_namespace(
+                kube_client=kube_client, namespace=f"paasta-{crd.kube_kind.plural}"
+            )
+            results.append(
+                setup_custom_resources(
+                    kube_client=kube_client,
+                    kind=crd.kube_kind,
+                    crd=crd,
+                    config_dicts=config_dicts,
+                    version=crd.version,
+                    group=crd.group,
+                    cluster=cluster,
+                    service=service,
+                    instance=instance,
+                )
+            )
+        if results:
+            got_results = True
+            if any(results):
+                succeeded = True
+    # we want to return True if we never called `setup_custom_resources`
+    # (i.e., we noop'd) or if any call to `setup_custom_resources`
+    # succeed (handled above) - otherwise, we want to return False
+    return succeeded or not got_results
 
 
 def setup_custom_resources(
@@ -227,13 +252,13 @@ def setup_custom_resources(
     return succeded
 
 
-def get_dashboard_base_url(kind: str, cluster: str) -> Optional[str]:
+def get_dashboard_base_url(kind: str, cluster: str, is_eks: bool) -> Optional[str]:
     system_paasta_config = load_system_paasta_config()
     dashboard_links = system_paasta_config.get_dashboard_links()
     if kind.lower() == "flink":
         flink_link = dashboard_links.get(cluster, {}).get("Flink")
         if flink_link is None:
-            flink_link = get_flink_ingress_url_root(cluster)
+            flink_link = get_flink_ingress_url_root(cluster, is_eks)
         if flink_link[-1:] != "/":
             flink_link += "/"
         return flink_link
@@ -256,6 +281,7 @@ def format_custom_resource(
     group: str,
     namespace: str,
     git_sha: str,
+    is_eks: bool,
 ) -> Mapping[str, Any]:
     sanitised_service = sanitise_kubernetes_name(service)
     sanitised_instance = sanitise_kubernetes_name(instance)
@@ -277,8 +303,10 @@ def format_custom_resource(
         },
         "spec": instance_config,
     }
+    if is_eks:
+        resource["metadata"]["labels"][paasta_prefixed("eks")] = str(is_eks)
 
-    url = get_dashboard_base_url(kind, cluster)
+    url = get_dashboard_base_url(kind, cluster, is_eks)
     if url:
         resource["metadata"]["annotations"][paasta_prefixed("dashboard_base_url")] = url
     owner = get_cr_owner(kind)
@@ -308,6 +336,11 @@ def reconcile_kubernetes_resource(
 ) -> bool:
     succeeded = True
     config_handler = LONG_RUNNING_INSTANCE_TYPE_HANDLERS[crd.file_prefix]
+
+    is_eks = False
+    if crd.file_prefix.endswith("eks"):
+        is_eks = True
+
     for inst, config in instance_configs.items():
         if instance is not None and instance != inst:
             continue
@@ -330,6 +363,7 @@ def reconcile_kubernetes_resource(
                 group=group,
                 namespace=f"paasta-{kind.plural}",
                 git_sha=git_sha,
+                is_eks=is_eks,
             )
             desired_resource = KubeCustomResource(
                 service=service,

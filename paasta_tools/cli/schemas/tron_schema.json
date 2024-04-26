@@ -101,7 +101,9 @@
                     "type": "string"
                 },
                 "iam_role": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^arn:aws:iam::[0-9]+:role/[a-zA-Z0-9+=,.@_-]+$",
+                    "$comment": "This should be a valid AWS IAM role ARN, see https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-names"
                 },
                 "iam_role_provider": {
                     "enum": [
@@ -236,6 +238,51 @@
                     },
                     "uniqueItems": true
                 },
+                "secret_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "secret_name": {
+                                "type": "string"
+                            },
+                            "default_mode": {
+                                "type": "string"
+                            },
+                            "items": {
+                                "type": "array",
+                                "maxItems": 1,
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "key": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "mode": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "key",
+                                        "path"
+                                    ]
+                                },
+                                "uniqueItems": true
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "secret_name"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
                 "cluster": {
                     "type": "string"
                 },
@@ -268,6 +315,15 @@
                     "$comment": "we should eventually get rid of this once we move spark to pod identity - that said, this should be just the filename sans extension",
                     "type": "string",
                     "pattern": "[-a-zA-z0-9_]"
+                },
+                "max_runtime": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "force_spark_resource_configs": {
+                    "type": "boolean"
+                },
+                "mrjob": {
+                    "type": "boolean"
                 },
                 "spark_args": {
                     "type": "object",
@@ -422,9 +478,6 @@
             ],
             "additionalProperties": false,
             "properties": {
-                "use_k8s": {
-                    "type": "boolean"
-                },
                 "name": {
                     "$ref": "#definitions/name"
                 },

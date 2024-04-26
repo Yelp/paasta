@@ -28,6 +28,9 @@ from freezegun import freeze_time
 from pytest import raises
 
 from paasta_tools import utils
+from paasta_tools.utils import PoolsNotConfiguredError
+from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import SystemPaastaConfigDict
 
 
 def test_get_git_url_provided_by_serviceyaml():
@@ -1169,7 +1172,7 @@ def test_load_service_instance_config(
     autospec=True,
 )
 @pytest.mark.parametrize("instance_type_enabled", [(True,), (False,)])
-def test_load_service_instance_auto_configs(
+def test_load_service_instance_auto_configs_no_aliases(
     mock_load_system_paasta_config,
     mock_read_extra_service_information,
     instance_type_enabled,
@@ -1177,6 +1180,9 @@ def test_load_service_instance_auto_configs(
     mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
         "marathon": instance_type_enabled,
     }
+    mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
+        {}
+    )
     result = utils.load_service_instance_auto_configs(
         service="fake_service",
         instance_type="marathon",
@@ -1193,6 +1199,41 @@ def test_load_service_instance_auto_configs(
         assert result == mock_read_extra_service_information.return_value
     else:
         assert result == {}
+
+
+@pytest.mark.parametrize(
+    "instance_type_aliases, instance_type, expected_instance_type",
+    (({}, "kubernetes", "kubernetes"), ({"eks": "kubernetes"}, "eks", "kubernetes")),
+)
+def test_load_service_instance_auto_configs_with_autotune_aliases(
+    instance_type_aliases, instance_type, expected_instance_type
+):
+    with mock.patch(
+        "paasta_tools.utils.service_configuration_lib.read_extra_service_information",
+        autospec=True,
+    ) as mock_read_extra_service_information, mock.patch(
+        "paasta_tools.utils.load_system_paasta_config",
+        autospec=True,
+    ) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
+            expected_instance_type: True,
+        }
+        mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
+            instance_type_aliases
+        )
+        result = utils.load_service_instance_auto_configs(
+            service="fake_service",
+            instance_type=instance_type,
+            cluster="fake",
+            soa_dir="fake_dir",
+        )
+        mock_read_extra_service_information.assert_called_with(
+            "fake_service",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/{expected_instance_type}-fake",
+            soa_dir="fake_dir",
+            deepcopy=False,
+        )
+        assert result == mock_read_extra_service_information.return_value
 
 
 def test_get_services_for_cluster():
@@ -1541,15 +1582,60 @@ class TestInstanceConfig:
                 {"key": "cpu-quota", "value": "600000"},
                 {"key": "label", "value": "paasta_service=fake_name"},
                 {"key": "label", "value": "paasta_instance=fake_instance"},
+                {"key": "init", "value": "true"},
                 {"key": "cap-add", "value": "IPC_LOCK"},
                 {"key": "cap-add", "value": "SYS_PTRACE"},
-                {"key": "init", "value": "true"},
                 {"key": "cap-drop", "value": "SETPCAP"},
                 {"key": "cap-drop", "value": "MKNOD"},
                 {"key": "cap-drop", "value": "AUDIT_WRITE"},
                 {"key": "cap-drop", "value": "CHOWN"},
                 {"key": "cap-drop", "value": "NET_RAW"},
                 {"key": "cap-drop", "value": "DAC_OVERRIDE"},
+                {"key": "cap-drop", "value": "FOWNER"},
+                {"key": "cap-drop", "value": "FSETID"},
+                {"key": "cap-drop", "value": "KILL"},
+                {"key": "cap-drop", "value": "SETGID"},
+                {"key": "cap-drop", "value": "SETUID"},
+                {"key": "cap-drop", "value": "NET_BIND_SERVICE"},
+                {"key": "cap-drop", "value": "SYS_CHROOT"},
+                {"key": "cap-drop", "value": "SETFCAP"},
+            ]
+
+    def test_format_docker_parameters_overlapping_caps(self):
+        fake_conf = utils.InstanceConfig(
+            service="fake_name",
+            cluster="",
+            instance="fake_instance",
+            config_dict={
+                "cpu_burst_add": 2,
+                "cfs_period_us": 200000,
+                "cpus": 1,
+                "mem": 1024,
+                "disk": 1234,
+                "cap_add": ["IPC_LOCK", "SYS_PTRACE", "DAC_OVERRIDE", "NET_RAW"],
+            },
+            branch_dict=None,
+        )
+        with mock.patch(
+            "paasta_tools.utils.InstanceConfig.use_docker_disk_quota",
+            autospec=True,
+            return_value=False,
+        ):
+            assert fake_conf.format_docker_parameters() == [
+                {"key": "memory-swap", "value": "1088m"},
+                {"key": "cpu-period", "value": "200000"},
+                {"key": "cpu-quota", "value": "600000"},
+                {"key": "label", "value": "paasta_service=fake_name"},
+                {"key": "label", "value": "paasta_instance=fake_instance"},
+                {"key": "init", "value": "true"},
+                {"key": "cap-add", "value": "IPC_LOCK"},
+                {"key": "cap-add", "value": "SYS_PTRACE"},
+                {"key": "cap-add", "value": "DAC_OVERRIDE"},
+                {"key": "cap-add", "value": "NET_RAW"},
+                {"key": "cap-drop", "value": "SETPCAP"},
+                {"key": "cap-drop", "value": "MKNOD"},
+                {"key": "cap-drop", "value": "AUDIT_WRITE"},
+                {"key": "cap-drop", "value": "CHOWN"},
                 {"key": "cap-drop", "value": "FOWNER"},
                 {"key": "cap-drop", "value": "FSETID"},
                 {"key": "cap-drop", "value": "KILL"},
@@ -1587,9 +1673,9 @@ class TestInstanceConfig:
                 {"key": "storage-opt", "value": "size=1293942784"},
                 {"key": "label", "value": "paasta_service=fake_name"},
                 {"key": "label", "value": "paasta_instance=fake_instance"},
+                {"key": "init", "value": "true"},
                 {"key": "cap-add", "value": "IPC_LOCK"},
                 {"key": "cap-add", "value": "SYS_PTRACE"},
-                {"key": "init", "value": "true"},
                 {"key": "cap-drop", "value": "SETPCAP"},
                 {"key": "cap-drop", "value": "MKNOD"},
                 {"key": "cap-drop", "value": "AUDIT_WRITE"},
@@ -2275,12 +2361,15 @@ def test_validate_service_instance_invalid():
     mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
+    mock_eks_instances = [("service1", "eks")]
     mock_tron_instances = [("service1", "job.action")]
     mock_flink_instances = [("service1", "flink")]
+    mock_flinkeks_instances = [("service1", "flinkeks")]
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
     mock_monkrelaycluster_instances = [("service1", "monkrelays")]
+    mock_vitesscluster_instances = [("service1", "vitesscluster")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2293,12 +2382,15 @@ def test_validate_service_instance_invalid():
             mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
+            mock_eks_instances,
             mock_tron_instances,
             mock_flink_instances,
+            mock_flinkeks_instances,
             mock_cassandracluster_instances,
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
             mock_monkrelaycluster_instances,
+            mock_vitesscluster_instances,
         ],
     ):
         with raises(
@@ -2560,7 +2652,6 @@ def test_is_deploy_step():
     assert utils.is_deploy_step("thingy")
 
     assert not utils.is_deploy_step("itest")
-    assert not utils.is_deploy_step("performance-check")
     assert not utils.is_deploy_step("command-thingy")
 
 
@@ -2754,3 +2845,73 @@ def test_is_secrets_for_teams_enabled():
         # if not present
         mock_read_extra_service_information.return_value = {"description": "something"}
         assert not utils.is_secrets_for_teams_enabled(service)
+
+
+@pytest.mark.parametrize(
+    "cluster,pool,system_paasta_config,expected",
+    [
+        (
+            # allowed_pools key has test-cluster and test-pool
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            True,
+        ),
+        (
+            # allowed_pools key has test-cluster but doesn't have test-pool
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"test-cluster": ["fail-test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+            False,
+        ),
+    ],
+)
+def test_validate_pool(cluster, pool, system_paasta_config, expected):
+    assert utils.validate_pool(cluster, pool, system_paasta_config) == expected
+
+
+@pytest.mark.parametrize(
+    "cluster,pool,system_paasta_config",
+    [
+        (
+            # allowed_pools key doesn't have test-cluster
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"allowed_pools": {"fail-test-cluster": ["test-pool", "fake-pool"]}}
+                ),
+                "fake_dir",
+            ),
+        ),
+        (
+            # allowed_pools key is not present
+            "test-cluster",
+            "test-pool",
+            SystemPaastaConfig(
+                SystemPaastaConfigDict(
+                    {"fail_allowed_pools": {"test-cluster": ["test-pool", "fake-pool"]}}  # type: ignore
+                ),
+                "fake_dir",
+            ),
+        ),
+    ],
+)
+def test_validate_pool_error(cluster, pool, system_paasta_config):
+    assert pytest.raises(
+        PoolsNotConfiguredError,
+        utils.validate_pool,
+        cluster,
+        pool,
+        system_paasta_config,
+    )

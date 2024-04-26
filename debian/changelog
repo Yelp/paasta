@@ -1,3 +1,1105 @@
+paasta-tools (0.224.0) xenial; urgency=medium
+
+  * 0.224.0 tagged with 'make release'
+    Commit: Merge pull request #3834 from Yelp/drmorr/remove_offset
+    remove offset from paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Tue, 23 Apr 2024 12:47:47 -0700
+
+paasta-tools (0.223.1) xenial; urgency=medium
+
+  * 0.223.1 tagged with 'make release'
+    Commit: Fix volume mount of spark-run on local cluster (#3827)  Co-
+    authored-by: Chi Chang <chi@yelp.com>
+
+ -- Chi Chang <chi@yelp.com>  Mon, 15 Apr 2024 08:05:46 -0700
+
+paasta-tools (0.223.0) xenial; urgency=medium
+
+  * 0.223.0 tagged with 'make release'
+    Commit: Remove good_enough_window (#3824)  Following up on
+    sysgit/yelpsoa-configs#42719, this removes `good_enough_window` from
+    paasta completely.  ## Testing done `make test` still passes
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Apr 2024 07:59:51 -0700
+
+paasta-tools (0.222.0) xenial; urgency=medium
+
+  * 0.222.0 tagged with 'make release'
+    Commit: Remove STREAM_SUFFIX_LOGSPOUT code (#3791)  We ended up not
+    using this, so let"s go ahead and clean things up to prevent
+    confusion :)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 10:59:58 -0700
+
+paasta-tools (0.221.2) xenial; urgency=medium
+
+  * 0.221.2 tagged with 'make release'
+    Commit: add service_account field for deploy.yaml (#3813)  adding a
+    new `service_account` field for deploy.yaml steps.  this will allow
+    us to configure service accounts for the step being run instead of
+    for the entire pipeline
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 07:46:30 -0700
+
+paasta-tools (0.221.1) xenial; urgency=medium
+
+  * 0.221.1 tagged with 'make release'
+    Commit: Merge pull request #3822 from
+    Yelp/u/krall/add_labels_to_hpas  Add service/instance/managed labels
+    to HPAs. PAASTA-18226
+
+ -- Evan Krall <krall@yelp.com>  Mon, 01 Apr 2024 16:01:38 -0700
+
+paasta-tools (0.221.0) xenial; urgency=medium
+
+  * 0.221.0 tagged with 'make release'
+    Commit: MLCOMPUTE-967 | changes for Spark drivers on k8s (#3679)  *
+    MLCOMPUTE-967 | add default iam role for Spark drivers on k8s  *
+    MLCOMPUTE-967 | move default to SystemPaastaConfig  * MLCOMPUTE-967
+    | add volume mounts for kubeconfig  * MLCOMPUTE-967 | add spark to
+    the list of executor types  * MLCOMPUTE-967 | use correct k8s url as
+    spark master argument  * MLCOMPUTE-1057 | add flow to create Spark
+    executor service account dynamically  * MLCOMPUTE-967 | use same IAM
+    role for Spark drivers and executors  * MLCOMPUTE-1068 | logic for
+    using duplicate iam role with eks suffix  * remove use_k8s
+    deprecated flag (cherry-picked from 59beb52)  * Use stable pool for
+    Spark driver  * MLCOMPUTE-1160 | consolidate tron and paasta logic
+    to spark_tools, utils and service config lib  * MLCOMPUTE-1163 |
+    handle space separated Spark args  * MLCOMPUTE-1119 | Support extra
+    flags from paasta spark-run in tron_tools  * MLCOMPUTE-967 | mount
+    pod template file for Spark executor  * Add pod labels for
+    monitoring metrics  * Parse additional tronfig args  * MLCOMPUTE-967
+    | use default pod template without compact bin packing  * MLCOMPUTE-
+    967 | bump service-configuration-lib version  * MLCOMPUTE-967 |
+    updated timeout_spark regex acc to bash timeout, removed redundant
+    spark ports assignment  * Specify prometheus scrape path  * Update
+    driver pod annotations for metrics scraping  * MLCOMPUTE-967 |
+    deprecate obsolete args, add mrjob capability to tron tools  *
+    MLCOMPUTE-967 | remove obsolete args, sanitise code  * MLCOMPUTE-967
+    | fix tests  * MLCOMPUTE-967 | use already defined time_delta  ------
+    ---  Co-authored-by: Sameer Sharma <sameersharma@yelp.com> Co-
+    authored-by: Jon Lee <jonlee@yelp.com> Co-authored-by: Chi Chang
+    <chi@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 27 Mar 2024 09:52:10 -0700
+
+paasta-tools (0.220.3) xenial; urgency=medium
+
+  * 0.220.3 tagged with 'make release'
+    Commit: Merge pull request #3816 from acrlabs/drmorr/stop-monkey-
+    patching  stop monkey-patching the HPA object
+
+ -- Jon Lee <jonlee@yelp.com>  Mon, 25 Mar 2024 10:45:44 -0700
+
+paasta-tools (0.220.2) xenial; urgency=medium
+
+  * 0.220.2 tagged with 'make release'
+    Commit: Merge pull request #3812 from Yelp/jfong/fix_local_run_port
+    Fix PAASTA_PORT in local-run containers
+
+ -- Jen Patague <jfong@yelp.com>  Wed, 20 Mar 2024 09:46:25 -0700
+
+paasta-tools (0.220.1) xenial; urgency=medium
+
+  * 0.220.1 tagged with 'make release'
+    Commit: Merge pull request #3820 from Yelp/u/ajayprataps/fix-k8s_cr
+    removed default eks var in kubernetes_cr.py
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Tue, 19 Mar 2024 09:49:18 -0700
+
+paasta-tools (0.220.0) xenial; urgency=medium
+
+  * 0.220.0 tagged with 'make release'
+    Commit: Allow skipping cleanup of tagged CRDs (#3780)  Open-source
+    operators may need to have N CRDs created, which is not currently
+    suppored by PaaSTA due to our current 1 CRD per file approach.  For
+    teach cases, we tend to manage CRDs with Flux - but PaaSTA will
+    clean these CRDs up since they"re in a PaaSTA-managed namespace, but
+    there"s no record of them in soaconfigs.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 14:37:24 -0700
+
+paasta-tools (0.219.0) xenial; urgency=medium
+
+  * 0.219.0 tagged with 'make release'
+    Commit: Add managed-by label to Tron pods for TSC purposes (#3819)
+    We"d like to create a Topology Spread Constraint (TSC) for Tron
+    pods, but these don"t have a unique label to identify them as Tron-
+    launched pods - so we"ll add a managed-by label for this purpose
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 18 Mar 2024 10:28:51 -0700
+
+paasta-tools (0.218.14) xenial; urgency=medium
+
+  * 0.218.14 tagged with 'make release'
+    Commit: Correctly log setup_tron_namespace exceptions (#3789)  This
+    isn"t a user-facing script, so we really should just be using
+    logger.exception() to be as verbose as possible when there"s an
+    error
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 15 Mar 2024 09:08:32 -0700
+
+paasta-tools (0.218.13) xenial; urgency=medium
+
+  * 0.218.13 tagged with 'make release'
+    Commit: Merge pull request #3818 from Yelp/u/ajayprataps/COMPINFRA-
+    3733  Updated flink ingress for eks clusters
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Fri, 15 Mar 2024 03:24:40 -0700
+
+paasta-tools (0.218.12) xenial; urgency=medium
+
+  * 0.218.12 tagged with 'make release'
+    Commit: Merge pull request #3817 from Yelp/u/cuza/rootless-podman-
+    support-for-paasta-playground  Rootless podman support for PaaSTA
+    playground
+
+ -- Dave Cuza <dcuza@yelp.com>  Thu, 14 Mar 2024 04:56:49 -0700
+
+paasta-tools (0.218.11) xenial; urgency=medium
+
+  * 0.218.11 tagged with 'make release'
+    Commit: lowercase before comparing in case we"re wrong about the
+    name of this state.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 06 Mar 2024 11:53:52 -0800
+
+paasta-tools (0.218.10) xenial; urgency=medium
+
+  * 0.218.10 tagged with 'make release'
+    Commit: Merge pull request #3810 from Yelp/u/ajayprataps/COMPINFRA-
+    3685-added-support-for-flinkeks  added support for flinkeks in
+    paasta cli
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Wed, 06 Mar 2024 03:53:47 -0800
+
+paasta-tools (0.218.9) xenial; urgency=medium
+
+  * 0.218.9 tagged with 'make release'
+    Commit: Merge pull request #3797 from Yelp/u/asoliman/FLINK-
+    4925_create_eks_flink_deployment  FLINK-4925: Create flink eks
+    instance type
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Wed, 28 Feb 2024 04:51:53 -0800
+
+paasta-tools (0.218.8) xenial; urgency=medium
+
+  * 0.218.8 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1926_home"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 22 Feb 2024 06:38:58 -0800
+
+paasta-tools (0.218.7) xenial; urgency=medium
+
+  * 0.218.7 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SECNESS-1926"
+
+ -- Matteo Piano <mpiano@yelp.com>  Thu, 22 Feb 2024 01:56:47 -0800
+
+paasta-tools (0.218.6) xenial; urgency=medium
+
+  * 0.218.6 tagged with 'make release'
+    Commit: Speed up secret syncing (#3803)  It turns out that the
+    slowness here was due to our hardcoded .3s sleep - we"re now syncing
+    a lot more secrets (and generally doing more work) because of our
+    namespace sharding, so this sleep ends up taking quite a bit of
+    time.  We generally haven"t had to throttle much (outside of Pod
+    creation, but that"s generally due to other constraints: e.g.,
+    cluster autoscaling and whatnot), so it"s probably fine to remove
+    this sleep entirely for the time being.  That said, in the interest
+    of safety, I"ve made this delay configurable - so if this ends up
+    causing issues after release (or in the far future), we can easily
+    tweak the delay.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 20 Feb 2024 11:59:32 -0800
+
+paasta-tools (0.218.5) xenial; urgency=medium
+
+  * 0.218.5 tagged with 'make release'
+    Commit: PAASTA-18005: Add default timeout to paasta-api (#3800)
+
+ -- Jon Lee <jonlee@yelp.com>  Thu, 15 Feb 2024 06:09:53 -0800
+
+paasta-tools (0.218.4) xenial; urgency=medium
+
+  * 0.218.4 tagged with 'make release'
+    Commit: Scale with ready pods count rather current replicas for
+    uwsgi (#3802)  We had some surprising behavior recently where an
+    autoscaled app was crashlooping and the HPA did not keep the desired
+    scale as-is - we believe that this is due to a mismatch in how we
+    calculate the value we send to k8s:  The existing PromQL divides by
+    current replica to turn things into a utilization percentage such
+    that when the HPA multiplies later on by the number of current
+    replicas, we reach our target replicas.  However, the HPA will
+    actually multiply by the number of ready replicas, leading to a
+    mismatch.  (h/t to @krall for wording things much better than I
+    could)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 14 Feb 2024 10:06:51 -0800
+
+paasta-tools (0.218.3) xenial; urgency=medium
+
+  * 0.218.3 tagged with 'make release'
+    Commit: Fixes local tests and openapi-codegen (#3801)
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 13 Feb 2024 13:49:03 -0800
+
+paasta-tools (0.218.2) xenial; urgency=medium
+
+  * 0.218.2 tagged with 'make release'
+    Commit: Remove spark mesos logic (#3799)
+
+ -- Chi Chang <chi@yelp.com>  Thu, 08 Feb 2024 09:07:55 -0800
+
+paasta-tools (0.218.1) xenial; urgency=medium
+
+  * 0.218.1 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1911"
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 07 Feb 2024 02:03:23 -0800
+
+paasta-tools (0.218.0) xenial; urgency=medium
+
+  * 0.218.0 tagged with 'make release'
+    Commit: Call ensure_namespace() in paasta_secrets_sync (#3792)  At
+    the moment, you cannot pre-create secrets on a new dual-name cluster
+    since the namespaces for services will not yet have been created by
+    setup_kubernetes_job (and they may not have been created by Flux yet
+    either).  We can fix this by calling ensure_namespace() in the
+    secret sync code - the caching we have on
+    ensure_namespace()/get_all_namespaces() means that this *should* be
+    pretty fast as it should be grabbing cached data most of the time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 06 Feb 2024 09:25:50 -0800
+
+paasta-tools (0.217.3) xenial; urgency=medium
+
+  * 0.217.3 tagged with 'make release'
+    Commit: Displays EKS in PaaSTA Status output (#3788)
+
+ -- Jon Lee <jonlee@yelp.com>  Tue, 30 Jan 2024 11:11:19 -0800
+
+paasta-tools (0.217.2) xenial; urgency=medium
+
+  * 0.217.2 tagged with 'make release'
+    Commit: Merge pull request #3784 from
+    Yelp/jfong/fix_noconfiguration_race_condition  Catch NoConfiguration
+    exceptions in bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 25 Jan 2024 12:59:59 -0800
+
+paasta-tools (0.217.1) xenial; urgency=medium
+
+  * 0.217.1 tagged with 'make release'
+    Commit: Merge pull request #3782 from Yelp/u/vit/SEC-18515-bump-
+    boto3  SEC-18515: Bump boto3 to enable IMDSv2 usage
+
+ -- Vincent Thibault <vit@yelp.com>  Wed, 24 Jan 2024 13:02:25 -0800
+
+paasta-tools (0.217.0) xenial; urgency=medium
+
+  * 0.217.0 tagged with 'make release'
+    Commit: Merge pull request #3758 from Yelp/u/gonabavi/DREIMP-
+    10204_vitess_deployment_poc  Setup scaffolding for Vitess deployment
+    PoC
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 23 Jan 2024 09:08:49 -0800
+
+paasta-tools (0.216.0) xenial; urgency=medium
+
+  * 0.216.0 tagged with 'make release'
+    Commit: Merge pull request #3776 from
+    Yelp/u/jfong/remove_uwsgi_sidecar  Stop using uwsgi sidecars and
+    supporting custom stats port (Again)
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 16 Jan 2024 14:00:16 -0800
+
+paasta-tools (0.215.1) xenial; urgency=medium
+
+  * 0.215.1 tagged with 'make release'
+    Commit: Add placeholder value for non-existent boto_keys (#3773)
+    Previously, using an invalid value here would cause the service to
+    fail to launch. Now that we"re migrating away from using AWS users,
+    people mess this up more often, and it may be desirable to let the
+    pod launch with placeholder values.  Placeholder values instead just
+    ignoring them and not placing keys was much simpler to implement,
+    and only very marginally less desirable IMO.  We still get a log
+    line that we can alert on when this happens.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 16 Jan 2024 09:56:23 -0800
+
+paasta-tools (0.215.0) xenial; urgency=medium
+
+  * 0.215.0 tagged with 'make release'
+    Commit: Make get_running_task_allocation include all namespaces by
+    default (#3774)  For the most part, we"re not really excluding many
+    namespaces (most of our namespaces start with paasta).  That said,
+    now that we allow folks to use any arbitrary namespace, we can run
+    into issues where a namespace is not in our allowlist and then
+    autotune silently stops working.  I don"t foresee this adding too
+    much additional data (and if it does, we can filter out noisy
+    namespaces).  Co-authored-by: tzhu
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 12 Jan 2024 08:18:55 -0800
+
+paasta-tools (0.214.0) xenial; urgency=medium
+
+  * 0.214.0 tagged with 'make release'
+    Commit: Merge pull request #3761 from Yelp/u/cuza/patching-python-
+    k8s-client  Patching python-k8s-client at build time
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Jan 2024 12:24:51 -0800
+
+paasta-tools (0.213.1) xenial; urgency=medium
+
+  * 0.213.1 tagged with 'make release'
+    Commit: Merge pull request #3768 from Yelp/luisp/i-am-very-sorry
+    Load eks- and kubernetes- files in autotune merging
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 08 Jan 2024 17:04:39 -0800
+
+paasta-tools (0.213.0) xenial; urgency=medium
+
+  * 0.213.0 tagged with 'make release'
+    Commit: Remove paasta performance-check (#3750)  This was never
+    really utilized as intended and the necessary infra to run this was
+    torn down long ago - let"s delete this until someone has the desire
+    and will to bring it back :)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 11:43:25 -0800
+
+paasta-tools (0.212.1) xenial; urgency=medium
+
+  * 0.212.1 tagged with 'make release'
+    Commit: Merge pull request #3767 from rockdog/master  Fix
+    NO_DESCRIPTION_MESSAGE used in paasta info cli command
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 08 Jan 2024 08:08:15 -0800
+
+paasta-tools (0.212.0) xenial; urgency=medium
+
+  * 0.212.0 tagged with 'make release'
+    Commit: Merge pull request #3763 from
+    Yelp/u/jfong/no_include_smartstack  Remove include_smartstack
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 05 Jan 2024 09:40:59 -0800
+
+paasta-tools (0.211.2) xenial; urgency=medium
+
+  * 0.211.2 tagged with 'make release'
+    Commit: Guess the correct context (or allow override) in
+    paasta_habitat_fixer (#3766)  Turns out that I didn"t read the admin
+    kubeconf closely enough and missed that the context names there are
+    prefixed with kubernetes-admin@
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 15:46:52 -0800
+
+paasta-tools (0.211.1) xenial; urgency=medium
+
+  * 0.211.1 tagged with 'make release'
+    Commit: Fix debian link (#3765)  This is what I get for naming the
+    file differently from the command - `paasta_habitat_fixer` does not
+    work as bin/ does not contain a paasta_habitat_fixer.py
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 13:49:39 -0800
+
+paasta-tools (0.211.0) xenial; urgency=medium
+
+  * 0.211.0 tagged with 'make release'
+    Commit: Add workaround script to fix habitat labels (#3762)  We"re
+    seeing some weirdness with Karpenter where one of our custom labels
+    (yelp.com/habitat) is sometimes being set as a random integer.
+    While we debug this, we have enough information to write a script to
+    fix these.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 04 Jan 2024 10:18:00 -0800
+
+paasta-tools (0.210.0) xenial; urgency=medium
+
+  * 0.210.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/fix_local_run_docker_hostname"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 03 Jan 2024 11:14:38 -0800
+
+paasta-tools (0.209.3) xenial; urgency=medium
+
+  * 0.209.3 tagged with 'make release'
+    Commit: Merge branch "u/krall/optimize_paasta_validate"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 15 Dec 2023 13:36:26 -0800
+
+paasta-tools (0.209.2) xenial; urgency=medium
+
+  * 0.209.2 tagged with 'make release'
+    Commit: remove use_k8s deprecated flag (#3749)
+
+ -- Jon Lee <jonlee@yelp.com>  Fri, 15 Dec 2023 05:53:59 -0800
+
+paasta-tools (0.209.1) xenial; urgency=medium
+
+  * 0.209.1 tagged with 'make release'
+    Commit: Merge pull request #3751 from
+    Yelp/fix_autoscaler_check_symlink  Add missing symlink for
+    check_autoscaler_max_instances
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 14 Dec 2023 16:31:41 -0800
+
+paasta-tools (0.209.0) xenial; urgency=medium
+
+  * 0.209.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/podtopologyspread"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 14 Dec 2023 13:08:44 -0800
+
+paasta-tools (0.208.0) xenial; urgency=medium
+
+  * 0.208.0 tagged with 'make release'
+    Commit: Add support for setting lower/upper-bounds for autotuned
+    resources (#3744)  At the moment this only supports a specific
+    subset of top-level resource keys: * cpus * mem * disk  Supporting
+    {min,max}_instances should be pretty trivial (but I"m not quite sure
+    when we"d want to use that yet, so I left those out of the
+    allowlist).  I"m explicitly not supporting these values for sidecars
+    since: a) it seemed like it would complicate things a bit and, b)
+    I"m not sure we have a usecase for this :p
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 14 Dec 2023 11:46:59 -0800
+
+paasta-tools (0.207.12) xenial; urgency=medium
+
+  * 0.207.12 tagged with 'make release'
+    Commit: Merge pull request #3746 from Yelp/jfong/PAASTA-18122  Stop
+    deleting brutal deployments
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 14 Dec 2023 10:52:01 -0800
+
+paasta-tools (0.207.11) xenial; urgency=medium
+
+  * 0.207.11 tagged with 'make release'
+    Commit: Merge pull request #3743 from Yelp/u/vit/PAASTA-18111-fix-
+    secret-validation  Secret validation now take into account service:
+    override.
+
+ -- Vincent Thibault <vit@yelp.com>  Thu, 30 Nov 2023 06:30:56 -0800
+
+paasta-tools (0.207.10) xenial; urgency=medium
+
+  * 0.207.10 tagged with 'make release'
+    Commit: MLCOMPUTE-1035 Update dnsPolicy (#3742)
+
+ -- Li Rong <lirong@yelp.com>  Fri, 24 Nov 2023 09:17:41 -0800
+
+paasta-tools (0.207.9) xenial; urgency=medium
+
+  * 0.207.9 tagged with 'make release'
+    Commit: Merge pull request #3741 from Yelp/MLCOMPUTE-
+    1098_fix_parsing_error  MLCOMPUTE-1098 | fix error in parsing user
+    spark args
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 22 Nov 2023 10:12:30 -0800
+
+paasta-tools (0.207.8) xenial; urgency=medium
+
+  * 0.207.8 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SECNESS-1815"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 20 Nov 2023 01:22:55 -0800
+
+paasta-tools (0.207.7) xenial; urgency=medium
+
+  * 0.207.7 tagged with 'make release'
+    Commit: Released 0.207.6 via make release
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 16 Nov 2023 12:23:29 -0800
+
+paasta-tools (0.207.6) xenial; urgency=medium
+
+  * 0.207.6 tagged with 'make release'
+    Commit: Merge pull request #3738 from
+    Yelp/jfong/rollback_conditions_fix  Fix conditions for displaying
+    disable auto rollbacks button
+
+ -- Jen Patague <jfong@yelp.com>  Thu, 16 Nov 2023 12:02:54 -0800
+
+paasta-tools (0.207.5) xenial; urgency=medium
+
+  * 0.207.5 tagged with 'make release'
+    Commit: Merge pull request #3737 from
+    Yelp/u/jfong/fix_paasta_secrets_eks  Fix paasta secrets sync
+    namespace checking for eks instances
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 31 Oct 2023 10:45:47 -0700
+
+paasta-tools (0.207.4) xenial; urgency=medium
+
+  * 0.207.4 tagged with 'make release'
+    Commit: Merge pull request #3736 from
+    Yelp/d/manpreet/limit_spark_app_name_to_63_characters  Upgrade
+    service-configuration-lib to limit character count in spark a…
+
+ -- Manpreet Singh <manpreet@yelp.com>  Tue, 31 Oct 2023 09:21:36 -0700
+
+paasta-tools (0.207.3) xenial; urgency=medium
+
+  * 0.207.3 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SECNESS-1787"
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 31 Oct 2023 06:48:08 -0700
+
+paasta-tools (0.207.2) xenial; urgency=medium
+
+  * 0.207.2 tagged with 'make release'
+    Commit: Merge branch "u/krall/limitrange_paastasvc-"
+
+ -- Evan Krall <krall@yelp.com>  Fri, 27 Oct 2023 11:29:04 -0700
+
+paasta-tools (0.207.1) xenial; urgency=medium
+
+  * 0.207.1 tagged with 'make release'
+    Commit: Merge pull request #3733 from
+    Yelp/jfong/bounce_status_relay_404  Catch statefulset missing as 404
+    in API bounce_status
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 27 Oct 2023 09:49:30 -0700
+
+paasta-tools (0.207.0) xenial; urgency=medium
+
+  * 0.207.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/allow_non_paastasvc"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Oct 2023 11:18:27 -0700
+
+paasta-tools (0.206.0) xenial; urgency=medium
+
+  * 0.206.0 tagged with 'make release'
+    Commit: Merge pull request #3729 from Yelp/u/cuza/making-skj-and-ckj-
+    aware-of-downthenup-bounces-across-namespaces  making skj and ckj
+    aware of downthenup bounces across namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Wed, 25 Oct 2023 10:18:25 -0700
+
+paasta-tools (0.205.1) xenial; urgency=medium
+
+  * 0.205.1 tagged with 'make release'
+    Commit: Merge pull request #3730 from
+    Yelp/u/jfong/fix_spark_run_docker_reg  Use the correct registry_uri
+    to check if we need to sudo
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 23 Oct 2023 17:08:53 -0700
+
+paasta-tools (0.205.0) xenial; urgency=medium
+
+  * 0.205.0 tagged with 'make release'
+    Commit: Respect a service"s docker_registry for adhoc spark-runs
+    (#3728)  There are some services where we want to ensure that a
+    specialized docker registry is always used - even for adhoc
+    development runs.  This change is loosely based on what we do in
+    push-to-registry, where we read service.yaml to see if a specialized
+    registry needs to be used.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 23 Oct 2023 13:45:05 -0700
+
+paasta-tools (0.204.2) xenial; urgency=medium
+
+  * 0.204.2 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v2.18.10 (#3725)
+
+ -- Chi Chang <chi@yelp.com>  Fri, 20 Oct 2023 03:20:32 -0700
+
+paasta-tools (0.204.1) xenial; urgency=medium
+
+  * 0.204.1 tagged with 'make release'
+    Commit: Merge pull request #3724 from Yelp/sina/try-remote-branch-
+    first  DREIMP-10150: Base new commits on remote branch, if it exists
+
+ -- Sina Siadat <sina@yelp.com>  Mon, 16 Oct 2023 03:21:50 -0700
+
+paasta-tools (0.204.0) xenial; urgency=medium
+
+  * 0.204.0 tagged with 'make release'
+    Commit: Add support for autotuned type aliases (#3693)  For some
+    instance types that are autotuned (e.g., `kubernetes`), we may have
+    a largely-similar instance type (e.g., `eks`) and the ability to
+    trivially move instances back and forth between these.  For these,
+    there"s a couple different options for how to handle autotune: 1)
+    have tooling/documentation to migrate data between
+    `autotuned_defaults/` files on instance moves + teach the autotune
+    machinery what the correct cluster/filename to update should be (as
+    well as teach autotune how to gather data correctly) 2) have
+    tooling/documentation to temporarily pin the new instance type at
+    the old autotuned request until autotune has updated with the new
+    instance type data 3) add some form of aliasing and pretend (at the
+    autotune level) that    there"s a single instance type for these
+    largely-similar instance    types  This PR goes for option 3 as it
+    is the least complex and has the fewest moving parts/places for
+    things to horribly blow up.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 12 Oct 2023 12:18:40 -0700
+
+paasta-tools (0.203.0) xenial; urgency=medium
+
+  * 0.203.0 tagged with 'make release'
+    Commit: Merge branch "u/krall/PAASTA-18016_change_default_namespace"
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Oct 2023 10:45:59 -0700
+
+paasta-tools (0.202.4) xenial; urgency=medium
+
+  * 0.202.4 tagged with 'make release'
+    Commit: Sync paasta secrets for eks instances as well (#3718)  We
+    could also teach this to only sync secrets for self-managed OR EKS
+    clusters individually - but that seems like more effort (and there"s
+    no real harm to syncing these to both: in fact, it makes rolling
+    back even easier since there"s no need to wait for secrets to re-
+    sync)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Oct 2023 14:24:18 -0700
+
+paasta-tools (0.202.3) xenial; urgency=medium
+
+  * 0.202.3 tagged with 'make release'
+    Commit: [COREJAVA-998] Use registration name for paasta_instance
+    name if a single custom registration is used (#3717)  * [COREJAVA-
+    998] Use registration name for paasta_instance name if a single
+    custom registration is used  * Add rules to active-requests validate
+    * Add comment inline  * Update
+    paasta_tools/setup_prometheus_adapter_config.py  Simplify
+    envoy_filter_terms  Co-authored-by: Luis Pérez <luisp@yelp.com>  *
+    Update tests and add registration length check  * Update
+    tests/test_setup_prometheus_adapter_config.py  Remove debug print.
+    Co-authored-by: Luis Pérez <luisp@yelp.com>  ---------  Co-authored-
+    by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 09 Oct 2023 10:13:40 -0700
+
+paasta-tools (0.202.2) xenial; urgency=medium
+
+  * 0.202.2 tagged with 'make release'
+    Commit: [COREJAVA-995] Refactor to pass instance_config to all
+    scaling rules (#3716)  * [COREJAVA-995] Refactor to pass
+    instance_config to all scaling rules  * Update the type of
+    instance_config  * Remove namespace as parameter for active-requests
+    scaling  * remove default value as get_namespace() will always
+    return a value
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 06 Oct 2023 02:16:10 -0700
+
+paasta-tools (0.202.1) xenial; urgency=medium
+
+  * 0.202.1 tagged with 'make release'
+    Commit: Merge pull request #3715 from
+    Yelp/jfong/uppercase_iam_support  Support uppercase IAM role names
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 03 Oct 2023 14:45:46 -0700
+
+paasta-tools (0.202.0) xenial; urgency=medium
+
+  * 0.202.0 tagged with 'make release'
+    Commit: Merge pull request #3714 from Yelp/jfong/PAASTA-18066
+    Validate iam_role and stop supporting kiam
+
+ -- Jen Patague <jfong@yelp.com>  Mon, 02 Oct 2023 10:04:47 -0700
+
+paasta-tools (0.201.5) xenial; urgency=medium
+
+  * 0.201.5 tagged with 'make release'
+    Commit: Remove sfx autoscaling link (#3710)  We haven"t used SFX for
+    autoscaling in quite some time and this confuses people that see it
+    referenced in the output of `paasta status`  At some point we"ll
+    want to replace this with a dashboard that visualizes how the
+    Prometheus-based autoscaling works - but that"s for future-us to do
+    :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 27 Sep 2023 14:37:27 -0700
+
+paasta-tools (0.201.4) xenial; urgency=medium
+
+  * 0.201.4 tagged with 'make release'
+    Commit: Ensure secret_volume volumes are not optional (#3708)  We
+    noticed some logging from a newly added use of secret_volume that
+    makes us think that the default for these is that
+    V1SecretVolumeSources are optional - let"s clear up any ambiguity
+    and explicitly set a value for this  NOTE: I"m not quite sure if
+    this will require a big bounce of anything using secret_volume - but
+    I guess that"s also less of a concern than a big bounce of
+    *everything*
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 25 Sep 2023 13:01:01 -0700
+
+paasta-tools (0.201.3) xenial; urgency=medium
+
+  * 0.201.3 tagged with 'make release'
+    Commit: Merge pull request #3709 from
+    Yelp/u/msurnin/add_cassandracluster_crd_autotune_spec_schema
+    COMPINFRA-3079: Add cassandracluster crd autotune spec schema
+
+ -- Mark Surnin <msurnin@yelp.com>  Mon, 25 Sep 2023 02:58:12 -0700
+
+paasta-tools (0.201.2) xenial; urgency=medium
+
+  * 0.201.2 tagged with 'make release'
+    Commit: Merge pull request #3703 from siadat/sina/add-
+    cassandracluster-to-known-config-types  COMPINFRA-3079: Add
+    cassandracluster to known autotuned config types
+
+ -- Sina Siadat <sina@yelp.com>  Tue, 19 Sep 2023 08:34:48 -0700
+
+paasta-tools (0.201.1) xenial; urgency=medium
+
+  * 0.201.1 tagged with 'make release'
+    Commit: [COREJAVA-901] Remove calculation of missing instances as it
+    can"t be calculated with data in HPA (#3706)  * [COREJAVA-901]
+    Remove calculation of missing instances as it can"t be calculated
+    with data in HPA  * Remove unused ready pods calculation
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 15 Sep 2023 07:44:20 -0700
+
+paasta-tools (0.201.0) xenial; urgency=medium
+
+  * 0.201.0 tagged with 'make release'
+    Commit: Merge pull request #3702 from Yelp/u/emanelsabban/PAASTA-
+    17988  Add eks support for cleanup kubernetes job - PAASTA-17988
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Fri, 15 Sep 2023 06:12:01 -0700
+
+paasta-tools (0.200.4) xenial; urgency=medium
+
+  * 0.200.4 tagged with 'make release'
+    Commit: [COREJAVA-897] Avoid using label_replace in series query
+    (#3704)
+
+ -- Charan Gangaraju <sclg@yelp.com>  Wed, 13 Sep 2023 13:40:45 -0700
+
+paasta-tools (0.200.3) xenial; urgency=medium
+
+  * 0.200.3 tagged with 'make release'
+    Commit: [COREJAVA-888] Add kube_deployment and kube_namespace to
+    series and metrics query for hpa (#3701)  * [COREJAVA-888] Add
+    kube_deployment and kube_namespace to series and metrics query for
+    hpa  * add a comment  * Format  * PR Feedback - rename variable and
+    minify promql
+
+ -- Charan Gangaraju <sclg@yelp.com>  Tue, 12 Sep 2023 06:53:28 -0700
+
+paasta-tools (0.200.2) xenial; urgency=medium
+
+  * 0.200.2 tagged with 'make release'
+    Commit: Add quotes around new label name in label_replace (#3700)  *
+    [COREJAVA-888] Add kube deployment label to envoy metrics
+    aggregation  * Format  * Add missing quotes  * PR Feedback - update
+    regex in label_replace and add comment  * Add quotes around new
+    label name in label_replace
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 11 Sep 2023 15:12:29 -0700
+
+paasta-tools (0.200.1) xenial; urgency=medium
+
+  * 0.200.1 tagged with 'make release'
+    Commit: [COREJAVA-888] Add kube deployment label to envoy metrics
+    aggregation (#3699)  * [COREJAVA-888] Add kube deployment label to
+    envoy metrics aggregation  * Format  * Add missing quotes  * PR
+    Feedback - update regex in label_replace and add comment
+
+ -- Charan Gangaraju <sclg@yelp.com>  Mon, 11 Sep 2023 13:54:00 -0700
+
+paasta-tools (0.200.0) xenial; urgency=medium
+
+  * 0.200.0 tagged with 'make release'
+    Commit: Merge pull request #3696 from Yelp/u/emanelsabban/PAASTA-
+    17987  Adding support for SKJ on EKS - PAASTA-17987
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 11 Sep 2023 07:40:31 -0700
+
+paasta-tools (0.199.1) xenial; urgency=medium
+
+  * 0.199.1 tagged with 'make release'
+    Commit: [COREJAVA-883] Update labels in filter terms to match k8
+    labels (#3697)  * [COREJAVA-883] Update labels in filter terms to
+    match k8 labels  * Update the metric according to the label change
+    * Remove accidental push of test file
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 08 Sep 2023 06:44:06 -0700
+
+paasta-tools (0.199.0) xenial; urgency=medium
+
+  * 0.199.0 tagged with 'make release'
+    Commit: Add API support for paasta <CMD>ing eks-* instances (#3685)
+    We do a tiny bit of lying here in order to keep the same PaaSTA
+    cluster name in the soaconfigs filenames (and CLI), but introduce
+    the concept of an API cluster so that we can direct queries for
+    things running from eks-* files to the correct PaaSTA API
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 07 Sep 2023 10:00:44 -0700
+
+paasta-tools (0.198.3) xenial; urgency=medium
+
+  * 0.198.3 tagged with 'make release'
+    Commit: Merge pull request #3694 from Yelp/u/vit/fix-local-run-
+    secret  PAASTA-18017: Read secret where instance service is defined,
+    rather than service defined in CLI args.
+
+ -- Vincent Thibault <vit@yelp.com>  Wed, 06 Sep 2023 10:25:37 -0700
+
+paasta-tools (0.198.2) xenial; urgency=medium
+
+  * 0.198.2 tagged with 'make release'
+    Commit: MLCOMPUTE-1008 | update regex for Spark volume names to be
+    alphanumeric (#3690)  * MLCOMPUTE-1008 | update regex for Spark
+    volume names to be alphanumeric  * MLCOMPUTE-1008 | update regex
+    according to k8s standard, fail fast on incorrect volume names  *
+    MLCOMPUTE-1008 | fix mypy tests  * MLCOMPUTE-1008 | add unit tests  -
+    --------  Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Wed, 06 Sep 2023 09:18:30 -0700
+
+paasta-tools (0.198.1) xenial; urgency=medium
+
+  * 0.198.1 tagged with 'make release'
+    Commit: [COREJAVA-869] Add active requests to kubernetes schema
+    (#3692)
+
+ -- Charan Gangaraju <sclg@yelp.com>  Tue, 05 Sep 2023 07:11:23 -0700
+
+paasta-tools (0.198.0) xenial; urgency=medium
+
+  * 0.198.0 tagged with 'make release'
+    Commit: [COREJAVA-800] Implement active requests autoscaler (#3688)
+    * [COREJAVA-800] Implement active requests autoscaler  * Update test
+    * Reformat code  * Add validation for active-requests  * Add tests
+    for autoscaling config validate  * Incorporate PR feedback  * Move
+    default threshold to a shared variable and update schema  * Update
+    paasta_tools/cli/cmds/validate.py  Co-authored-by: Luis Pérez
+    <luisp@yelp.com>  * Setup HPA for active-requests  ---------  Co-
+    authored-by: Luis Pérez <luisp@yelp.com>
+
+ -- Charan Gangaraju <sclg@yelp.com>  Fri, 01 Sep 2023 09:11:07 -0700
+
+paasta-tools (0.197.1) xenial; urgency=medium
+
+  * 0.197.1 tagged with 'make release'
+    Commit: Bump service-configuration-lib to v2.18.6 (#3682)  * Bump
+    service-configuration-lib to v2.18.5  * Add an option for explicitly
+    specifying spark app id
+
+ -- Chi Chang <chi@yelp.com>  Thu, 24 Aug 2023 03:46:20 -0700
+
+paasta-tools (0.197.0) xenial; urgency=medium
+
+  * 0.197.0 tagged with 'make release'
+    Commit: Merge pull request #3680 from Yelp/u/emanelsabban/PAASTA-
+    17985  Setup eks-$clustername schema files - PAASTA-17985
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Tue, 22 Aug 2023 05:20:27 -0700
+
+paasta-tools (0.196.0) xenial; urgency=medium
+
+  * 0.196.0 tagged with 'make release'
+    Commit: Merge pull request #3678 from Yelp/u/emanelsabban/PAASTA-
+    17991  Creating an instance type class for EKS - PAASTA-17991
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Mon, 21 Aug 2023 07:45:02 -0700
+
+paasta-tools (0.195.0) xenial; urgency=medium
+
+  * 0.195.0 tagged with 'make release'
+    Commit: Introduced new soa key for rotating database passwords
+    (#3655)  `database_credentials` is a top level key. The next key
+    will be a datastore. This could be MySQL or Cassandra or anything
+    else.   Each data store (dstore) contains a name, eg {mysql:
+    ["cred1", "cred2"]}.   These credentials point to a vault path under
+    /dstore/mysql/{cred1,cred2}   These passwords are then mapped to the
+    paasta service as a volume, where each file corresponds to a Vault
+    entry
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 17 Aug 2023 14:56:16 -0700
+
+paasta-tools (0.194.1) xenial; urgency=medium
+
+  * 0.194.1 tagged with 'make release'
+    Commit: Add kubernetes upper-bound for things using paasta as a
+    library (#3671)  This most often pops us as folks unable to use
+    paasta validate when they have the soaconfigs venv activated as pip
+    will grab the latest kuberentes version available - which is not
+    guaranteed to work with our code in paasta.
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Aug 2023 14:39:56 -0700
+
+paasta-tools (0.194.0) xenial; urgency=medium
+
+  * 0.194.0 tagged with 'make release'
+    Commit: Switch all references of py37 to py38 (#3672)  Python3.7 is
+    pretty old, we should at least be on 3.8
+
+ -- Luis Perez <luisp@yelp.com>  Thu, 10 Aug 2023 11:05:52 -0700
+
+paasta-tools (0.193.4) xenial; urgency=medium
+
+  * 0.193.4 tagged with 'make release'
+    Commit: Merge pull request #3673 from ymilki/gunicorn-sidecar-image-
+    url  Fix `gunicorn_exporter_sidecar_image_url`
+
+ -- Jonathan Chu <jrchu@yelp.com>  Wed, 09 Aug 2023 15:56:28 -0700
+
+paasta-tools (0.193.3) xenial; urgency=medium
+
+  * 0.193.3 tagged with 'make release'
+    Commit: Merge pull request #3670 from Yelp/u/cuza/adding-paasta-
+    cassandraclusters-to-shared-secrets-namespaces  adding paasta-
+    cassandraclusters to shared secrets namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 14:13:50 -0700
+
+paasta-tools (0.193.2) xenial; urgency=medium
+
+  * 0.193.2 tagged with 'make release'
+    Commit: Merge pull request #3669 from Yelp/u/cuza/adding-shared-
+    secret-namespaces  Adding shared sectret k8s namespaces
+
+ -- Dave Cuza <dcuza@yelp.com>  Tue, 08 Aug 2023 13:28:51 -0700
+
+paasta-tools (0.193.1) xenial; urgency=medium
+
+  * 0.193.1 tagged with 'make release'
+    Commit: MLCOMPUTE-699 | mesos param deprecation and
+    service_configuration_lib version upgrade (#3634)  * MLCOMPUTE-699 |
+    remove obsolete mesos param  * MLCOMPUTE-699 | process space
+    separated spark configs correctly, upgrade service-configuration-lib
+    version  * MLCOMPUTE-699 | fix Spark tests  * MLCOMPUTE-699 |
+    changes corresponding to service_configuration_lib 2.18.0  *
+    MLCOMPUTE-951 | fix mocking in spark tests  ---------  Co-authored-
+    by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 03 Aug 2023 10:07:01 -0700
+
+paasta-tools (0.193.0) xenial; urgency=medium
+
+  * 0.193.0 tagged with 'make release'
+    Commit: Merge pull request #3647 from Yelp/COMPINFRA-2833  make
+    sidecar resource limit configurable
+
+ -- Ajay Pratap Singh <ajayprataps@yelp.com>  Thu, 03 Aug 2023 04:38:50 -0700
+
+paasta-tools (0.192.0) xenial; urgency=medium
+
+  * 0.192.0 tagged with 'make release'
+    Commit: Add support for eks cluster not matching --cluster spark arg
+    (#3636)  We may make a different cluster for spark in dev, but we
+    don"t really want to deal with a soaconfigs migration in case we
+    decide to rollback  This PR transparently sets the right eks cluster
+    params based on whether or not eks usage is toggled on or off
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 01 Aug 2023 12:24:29 -0700
+
+paasta-tools (0.191.2) xenial; urgency=medium
+
+  * 0.191.2 tagged with 'make release'
+    Commit: Merge pull request #3665 from Yelp/u/vit/fix-default_mode
+    SEC-18177: Enable secret_volumes in adhoc jobs
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 01 Aug 2023 09:55:38 -0700
+
+paasta-tools (0.191.0) xenial; urgency=medium
+
+  * 0.191.0 tagged with 'make release'
+    Commit: Merge pull request #3653 from Yelp/revert-3652-revert-3615-
+    u/vit/tron-1636-add-secret-volume  TRON-1636: Setup tron
+    secret_volumes in setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Mon, 31 Jul 2023 10:27:13 -0700
+
+paasta-tools (0.190.2) xenial; urgency=medium
+
+  * 0.190.2 tagged with 'make release'
+    Commit: Merge pull request #3663 from
+    Yelp/u/jfong/check_support_parallel_step  COMPINFRA-2938: Support
+    security-check in parallel steps
+
+ -- Jen Patague <jfong@yelp.com>  Fri, 28 Jul 2023 12:51:55 -0700
+
+paasta-tools (0.190.1) xenial; urgency=medium
+
+  * 0.190.1 tagged with 'make release'
+    Commit: Merge pull request #3660 from Yelp/u/jfong/TRON-1968-master-
+    config  TRON-1968: Catch exceptions when updaitng MASTER config
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 25 Jul 2023 10:31:24 -0700
+
+paasta-tools (0.190.0) xenial; urgency=medium
+
+  * 0.190.0 tagged with 'make release'
+    Commit: Fixing setup_kubernetes_cr exception (#3658)  * Fixing
+    setup_kubernetes_cr exception  * Fixing tests and logic
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Thu, 20 Jul 2023 09:49:46 -0700
+
+paasta-tools (0.189.0) xenial; urgency=medium
+
+  * 0.189.0 tagged with 'make release'
+    Commit: Revert "TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace" (#3652)
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 05:26:34 -0700
+
+paasta-tools (0.188.0) xenial; urgency=medium
+
+  * 0.188.0 tagged with 'make release'
+    Commit: Fixing script bug (#3651)  * Fixing script bug
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Wed, 19 Jul 2023 01:34:56 -0700
+
+paasta-tools (0.187.0) xenial; urgency=medium
+
+  * 0.187.0 tagged with 'make release'
+    Commit: Merge pull request #3615 from Yelp/u/vit/tron-1636-add-
+    secret-volume  TRON-1636: Setup tron secret_volumes in
+    setup_tron_namespace
+
+ -- Vincent Thibault <vit@yelp.com>  Tue, 18 Jul 2023 14:12:30 -0700
+
+paasta-tools (0.186.0) xenial; urgency=medium
+
+  * 0.186.0 tagged with 'make release'
+    Commit: Adding extensions to update_crds function (#3649)  * Adding
+    extensions to update_crds function  * removing unused client  *
+    Fixing internal update crd  * fixing internal update crd
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 17 Jul 2023 01:23:12 -0700
+
+paasta-tools (0.185.0) xenial; urgency=medium
+
+  * 0.185.0 tagged with 'make release'
+    Commit: Adding support for extensions v1 v1beta1 (#3648)  * Adding
+    support for extensions v1 v1beta1  * Fixing tests  * updating
+    setup_kubernetes_cr  * Fixing call to super  * fixing typo  * adding
+    minimal req for tests  * putting older version back  * Rebasing  *
+    Removing second client  * Adding comments for clairification  *
+    Update paasta_tools/setup_kubernetes_cr.py  Co-authored-by: Luis
+    Pérez <luisp@yelp.com>  * Fixing some whitespace errors  ---------
+    Co-authored-by: Luis Pérez <luisp@yelp.com>
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Fri, 14 Jul 2023 00:18:35 -0700
+
+paasta-tools (0.184.0) xenial; urgency=medium
+
+  * 0.184.0 tagged with 'make release'
+    Commit: Merge pull request #3646 from Yelp/revert-3645-revert-3632-
+    u/wilmerrafael/PAASTA-17925_upgrading_kubernetes_library  Revert
+    "Revert "Upgrading kubernetes client library to v24.2.0""
+
+ -- Wilmer Bandres <wilmerrafael@yelp.com>  Mon, 10 Jul 2023 04:16:45 -0700
+
+paasta-tools (0.183.0) xenial; urgency=medium
+
+  * 0.183.0 tagged with 'make release'
+    Commit: Revert "Upgrading kubernetes client library to v24.2.0"
+    (#3645)  Need to do a clean release of PaaSTA v0.183.0 that we can
+    release to production.  This PR is currently blocking that release
+    because PaaSTA cannot apply CRDs with version `v1beta1`.  We"ll re-
+    apply this PR once 183 is released.  Reverts Yelp/paasta#3632
+
+ -- Max Falk <gfalk@yelp.com>  Mon, 10 Jul 2023 03:55:17 -0700
+
 paasta-tools (0.182.0) xenial; urgency=medium
 
   * 0.182.0 tagged with 'make release'

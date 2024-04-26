@@ -148,39 +148,27 @@ def proportional_decision_policy(
     num_healthy_instances,
     persist_data: bool,
     noop=False,
-    offset=0.0,
     forecast_policy="current",
-    good_enough_window=None,
     **kwargs,
 ):
     """Uses a simple proportional model to decide the correct number of instances to scale to, i.e. if load is 110% of
-    the setpoint, scales up by 10%. Includes correction for an offset, if your containers have a baseline utilization
-    independent of the number of containers.
+    the setpoint, scales up by 10%.
 
-    The model is: utilization per container = (total load)/(number of containers) + offset.
+    The model is: utilization per container = (total load)/(number of containers).
 
-    total load and offset are measured in the same unit as your metric provider. If you're measuring CPU per container,
-    offset is the baseline CPU of an idle container, and total load is the total CPU required across all containers,
-    subtracting the offset for each container.
+    total load is measured in the same unit as your metric provider. If you're measuring CPU per container,
+    total load is the total CPU required across all containers.
 
-    :param offset: A float (should be between 0.0 and 1.0) representing the expected baseline load for each container.
-                   e.g. if the metric you're using is CPU, then how much CPU an idle container would use.
-                   This should never be more than your setpoint. (If it takes 50% cpu to run an idle container, we can't
-                   get your utilization below 50% no matter how many containers we run.)
     :param forecast_policy: The method for forecasting future load values. Currently, only two forecasters exist:
                             - "current", which assumes that the load will remain the same as the current value for the
                             near future.
                             - "moving_average", which assumes that total load will remain near the average of data
                             points within a window.
-    :param good_enough_window: A tuple/array of two utilization values, (low, high). If the utilization per container at
-                               the forecasted total load is within this window with the current number of instances,
-                               leave the number of instances alone. This can reduce churn. Setpoint should lie within
-                               this window.
     """
 
     forecast_policy_func = get_forecast_policy(forecast_policy)
 
-    current_load = (utilization - offset) * num_healthy_instances
+    current_load = utilization * num_healthy_instances
 
     historical_load = fetch_historical_load(zk_path_prefix=zookeeper_path)
     historical_load.append((time.time(), current_load))
@@ -189,26 +177,13 @@ def proportional_decision_policy(
 
     predicted_load = forecast_policy_func(historical_load, **kwargs)
 
-    desired_number_instances = int(round(predicted_load / (setpoint - offset)))
+    desired_number_instances = int(round(predicted_load / setpoint))
 
     # Don't scale down if the current utilization >= the setpoint (or the high point of the good enough window)
     # This prevents the case where the moving_average forcast_policy thinks the service needs to scale
     #  down several times in a row due to under-utilization in the near past
-    if desired_number_instances < current_instances:
-        if good_enough_window:
-            _, high = good_enough_window
-            if utilization >= high:
-                desired_number_instances = current_instances
-        elif utilization >= setpoint:
-            desired_number_instances = current_instances
-
-    if good_enough_window:
-        low, high = good_enough_window
-        predicted_load_per_instance_with_current_instances = (
-            predicted_load / current_instances + offset
-        )
-        if low <= predicted_load_per_instance_with_current_instances <= high:
-            desired_number_instances = current_instances
+    if desired_number_instances < current_instances and utilization >= setpoint:
+        desired_number_instances = current_instances
 
     return (
         desired_number_instances - current_instances

@@ -33,6 +33,7 @@ Submodules
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
+   paasta_tools.check_autoscaler_max_instances
    paasta_tools.check_cassandracluster_services_replication
    paasta_tools.check_flink_services_health
    paasta_tools.check_kubernetes_api
@@ -53,11 +54,13 @@ Submodules
    paasta_tools.docker_wrapper_imports
    paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
+   paasta_tools.eks_tools
    paasta_tools.envoy_tools
    paasta_tools.firewall
    paasta_tools.firewall_logging
    paasta_tools.firewall_update
    paasta_tools.flink_tools
+   paasta_tools.flinkeks_tools
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
@@ -106,7 +109,7 @@ Submodules
    paasta_tools.synapse_srv_namespaces_fact
    paasta_tools.tron_tools
    paasta_tools.utils
-   paasta_tools.vitess_tools
+   paasta_tools.vitesscluster_tools
 
 Module contents
 ---------------

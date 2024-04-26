@@ -60,6 +60,10 @@ def get_paasta_oapi_client_by_url(
     config.ssl_ca_cert = ssl_ca_cert
 
     client = paastaapi.ApiClient(configuration=config)
+    # PAASTA-18005: Adds default timeout to paastaapi client
+    client.rest_client.pool_manager.connection_pool_kw[
+        "timeout"
+    ] = load_system_paasta_config().get_api_client_timeout()
     return PaastaOApiClient(
         autoscaler=paastaapis.AutoscalerApi(client),
         default=paastaapis.DefaultApi(client),

@@ -352,6 +352,14 @@ components:
             status:
               $ref: '#/components/schemas/InstanceStatusFlinkStatus'
           type: object
+        flinkeks:
+          description: Nullable Flink instance status and metadata
+          properties:
+            metadata:
+              $ref: '#/components/schemas/InstanceStatusFlinkMetadata'
+            status:
+              $ref: '#/components/schemas/InstanceStatusFlinkStatus'
+          type: object
         git_sha:
           description: Git sha of a service
           type: string
@@ -1771,12 +1779,6 @@ paths:
         schema:
           format: int32
           type: integer
-      - description: Include Smartstack information
-        in: query
-        name: include_smartstack
-        required: false
-        schema:
-          type: boolean
       - description: Include Envoy information
         in: query
         name: include_envoy
@@ -1825,13 +1827,6 @@ paths:
         required: true
         schema:
           type: string
-      - description: Include Smartstack information
-        in: query
-        name: include_smartstack
-        required: false
-        schema:
-          type: boolean
-          default: true
       - description: Include Envoy information
         in: query
         name: include_envoy

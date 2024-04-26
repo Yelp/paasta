@@ -60,8 +60,12 @@ def test_setup_all_custom_resources():
         cassandra_crd.spec.names = mock.Mock(
             plural="cassandraclusters", kind="CassandraCluster"
         )
+        mock_client.apiextensions_v1_beta1.list_custom_resource_definition.return_value = mock.Mock(
+            items=[flink_crd, cassandra_crd]
+        )
+
         mock_client.apiextensions.list_custom_resource_definition.return_value = (
-            mock.Mock(items=[flink_crd, cassandra_crd])
+            mock.Mock(items=[])
         )
 
         custom_resource_definitions = [
@@ -141,6 +145,10 @@ def test_setup_all_custom_resources_flink():
 
         mock_client.apiextensions.list_custom_resource_definition.return_value = (
             mock.Mock(items=[flink_crd])
+        )
+
+        mock_client.apiextensions_v1_beta1.list_custom_resource_definition.return_value = mock.Mock(
+            items=[]
         )
 
         custom_resource_definitions = [
@@ -329,6 +337,7 @@ def test_format_custom_resource():
                 group="yelp.com",
                 namespace="paasta-flinks",
                 git_sha="gitsha",
+                is_eks=False,
             )
             == expected
         )
@@ -349,8 +358,7 @@ def test_paasta_config_flink_dashboard_base_url():
         expected = "http://flink.mycluster.paasta/"
         assert (
             setup_kubernetes_cr.get_dashboard_base_url(
-                kind="flink",
-                cluster="mycluster",
+                kind="flink", cluster="mycluster", is_eks=False
             )
             == expected
         )

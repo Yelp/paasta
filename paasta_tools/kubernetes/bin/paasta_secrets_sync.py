@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import base64
+import contextlib
 import hashlib
 import json
 import logging
@@ -24,7 +25,9 @@ from collections import defaultdict
 from functools import partial
 from typing import Callable
 from typing import Dict
+from typing import Generator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import Set
 from typing import Tuple
@@ -32,8 +35,10 @@ from typing import Tuple
 from kubernetes.client.rest import ApiException
 from typing_extensions import Literal
 
+from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
+from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
 from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret_signature
@@ -52,8 +57,16 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import INSTANCE_TYPE_TO_K8S_NAMESPACE
 from paasta_tools.utils import INSTANCE_TYPES
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
+from paasta_tools.utils import SHARED_SECRETS_K8S_NAMESPACES
 
 log = logging.getLogger(__name__)
+
+
+K8S_INSTANCE_TYPE_CLASSES = (
+    KubernetesDeploymentConfig,
+    EksDeploymentConfig,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -98,13 +111,39 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--secret-type",
-        choices=["all", "paasta-secret", "boto-key", "crypto-key"],
+        choices=[
+            "all",
+            "paasta-secret",
+            "boto-key",
+            "crypto-key",
+            "datastore-credentials",
+        ],
         default="all",
         type=str,
-        help="Define which type of secret to add/update. Default is 'all'",
+        help="Define which type of secret to add/update. Default is 'all' (which does not include datastore-credentials)",
     )
     args = parser.parse_args()
     return args
+
+
+@contextlib.contextmanager
+def set_temporary_environment_variables(
+    environ: Mapping[str, str]
+) -> Generator[None, None, None]:
+    """
+    *Note the return value means "yields None, takes None, and when finished, returns None"*
+
+    Modifies the os.environ variable then yields this temporary state. Resets it when finished.
+
+    :param environ: Environment variables to set
+    """
+    old_environ = dict(os.environ)  # ensure we're storing a copy
+    os.environ.update(environ)
+    try:
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(old_environ)
 
 
 def main() -> None:
@@ -182,31 +221,32 @@ def get_services_to_k8s_namespaces_to_allowlist(
             continue
 
         config_loader = PaastaServiceConfigLoader(service, soa_dir)
-        for service_instance_config in config_loader.instance_configs(
-            cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-        ):
-            secrets_used, shared_secrets_used = get_secrets_used_by_instance(
-                service_instance_config
-            )
-            allowlist = services_to_k8s_namespaces_to_allowlist[service].setdefault(
-                service_instance_config.get_namespace(),
-                set(),
-            )
-            if allowlist is not None:
-                allowlist.update(secrets_used)
-
-            if "_shared" in service_list:
-                shared_allowlist = services_to_k8s_namespaces_to_allowlist[
-                    "_shared"
-                ].setdefault(
+        for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+            for service_instance_config in config_loader.instance_configs(
+                cluster=cluster, instance_type_class=instance_type_class
+            ):
+                secrets_used, shared_secrets_used = get_secrets_used_by_instance(
+                    service_instance_config
+                )
+                allowlist = services_to_k8s_namespaces_to_allowlist[service].setdefault(
                     service_instance_config.get_namespace(),
                     set(),
                 )
-                if shared_allowlist is not None:
-                    shared_allowlist.update(shared_secrets_used)
+                if allowlist is not None:
+                    allowlist.update(secrets_used)
+
+                if "_shared" in service_list:
+                    shared_allowlist = services_to_k8s_namespaces_to_allowlist[
+                        "_shared"
+                    ].setdefault(
+                        service_instance_config.get_namespace(),
+                        set(),
+                    )
+                    if shared_allowlist is not None:
+                        shared_allowlist.update(shared_secrets_used)
 
         for instance_type in INSTANCE_TYPES:
-            if instance_type == "kubernetes":
+            if instance_type in PAASTA_K8S_INSTANCE_TYPES:
                 continue  # handled above.
 
             instances = get_service_instance_list(
@@ -259,7 +299,9 @@ def sync_all_secrets(
     vault_cluster_config: Dict[str, str],
     soa_dir: str,
     vault_token_file: str,
-    secret_type: Literal["all", "paasta-secret", "crypto-key", "boto-key"] = "all",
+    secret_type: Literal[
+        "all", "paasta-secret", "crypto-key", "boto-key", "datastore-credentials"
+    ] = "all",
     overwrite_namespace: Optional[str] = None,
 ) -> bool:
     results = []
@@ -272,11 +314,12 @@ def sync_all_secrets(
 
         if overwrite_namespace:
             namespaces_to_allowlist = {
-                overwrite_namespace: namespaces_to_allowlist.get(
-                    overwrite_namespace, set()
-                ),
+                overwrite_namespace: None
+                if overwrite_namespace in SHARED_SECRETS_K8S_NAMESPACES
+                else namespaces_to_allowlist.get(overwrite_namespace, set()),
             }
         for namespace, secret_allowlist in namespaces_to_allowlist.items():
+            ensure_namespace(kube_client, namespace)
             sync_service_secrets["paasta-secret"].append(
                 partial(
                     sync_secrets,
@@ -313,12 +356,27 @@ def sync_all_secrets(
             )
         )
 
+        sync_service_secrets["datastore-credentials"].append(
+            partial(
+                sync_datastore_credentials,
+                kube_client=kube_client,
+                cluster=cluster,
+                service=service,
+                secret_provider_name=secret_provider_name,
+                vault_cluster_config=vault_cluster_config,
+                soa_dir=soa_dir,
+                vault_token_file=vault_token_file,
+                overwrite_namespace=overwrite_namespace,
+            )
+        )
+
         if secret_type == "all":
             results.append(
                 all(sync() for sync in sync_service_secrets["paasta-secret"])
             )
             results.append(all(sync() for sync in sync_service_secrets["boto-key"]))
             results.append(all(sync() for sync in sync_service_secrets["crypto-key"]))
+            # note that since datastore-credentials are in a different vault, they're not synced as part of 'all'
         else:
             results.append(all(sync() for sync in sync_service_secrets[secret_type]))
 
@@ -396,6 +454,91 @@ def sync_secrets(
     return True
 
 
+def sync_datastore_credentials(
+    kube_client: KubeClient,
+    cluster: str,
+    service: str,
+    secret_provider_name: str,
+    vault_cluster_config: Dict[str, str],
+    soa_dir: str,
+    vault_token_file: str,
+    overwrite_namespace: Optional[str] = None,
+) -> bool:
+    """
+    Map all the passwords requested for this service-instance to a single Kubernetes Secret store.
+    Volume mounts will then map the associated secrets to their associated mount paths.
+    """
+    config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
+    system_paasta_config = load_system_paasta_config()
+    datastore_credentials_vault_overrides = (
+        system_paasta_config.get_datastore_credentials_vault_overrides()
+    )
+
+    for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=instance_type_class
+        ):
+            namespace = (
+                overwrite_namespace
+                if overwrite_namespace is not None
+                else instance_config.get_namespace()
+            )
+            datastore_credentials = instance_config.get_datastore_credentials()
+            with set_temporary_environment_variables(
+                datastore_credentials_vault_overrides
+            ):
+                # expects VAULT_ADDR_OVERRIDE, VAULT_CA_OVERRIDE, and VAULT_TOKEN_OVERRIDE to be set
+                # in order to use a custom vault shard. overriden temporarily in this context
+                provider = get_secret_provider(
+                    secret_provider_name=secret_provider_name,
+                    soa_dir=soa_dir,
+                    service_name=service,
+                    cluster_names=[cluster],
+                    # overridden by env variables but still needed here for spec validation
+                    secret_provider_kwargs={
+                        "vault_cluster_config": vault_cluster_config,
+                        "vault_auth_method": "token",
+                        "vault_token_file": vault_token_file,
+                    },
+                )
+
+                secret_data = {}
+                for datastore, credentials in datastore_credentials.items():
+                    # mypy loses type hints on '.items' and throws false positives. unfortunately have to type: ignore
+                    # https://github.com/python/mypy/issues/7178
+                    for credential in credentials:  # type: ignore
+                        vault_path = f"secrets/datastore/{datastore}/{credential}"
+                        secrets = provider.get_data_from_vault_path(vault_path)
+                        if not secrets:
+                            # no secrets found at this path. skip syncing
+                            log.debug(
+                                f"Warning: no secrets found at requested path {vault_path}."
+                            )
+                            continue
+
+                        # decrypt and save in secret_data
+                        vault_key_path = get_vault_key_secret_name(vault_path)
+
+                        # kubernetes expects data to be base64 encoded binary in utf-8 when put into secret maps
+                        # may look like:
+                        # {'master': {'passwd': '****', 'user': 'v-approle-mysql-serv-nVcYexH95A2'}, 'reporting': {'passwd': '****', 'user': 'v-approle-mysql-serv-GgCpRIh9Ut7'}, 'slave': {'passwd': '****', 'user': 'v-approle-mysql-serv-PzjPwqNMbqu'}
+                        secret_data[vault_key_path] = base64.b64encode(
+                            json.dumps(secrets).encode("utf-8")
+                        ).decode("utf-8")
+
+            create_or_update_k8s_secret(
+                service=service,
+                signature_name=instance_config.get_datastore_credentials_signature_name(),
+                secret_name=instance_config.get_datastore_credentials_secret_name(),
+                get_secret_data=(lambda: secret_data),
+                secret_signature=_get_dict_signature(secret_data),
+                kube_client=kube_client,
+                namespace=namespace,
+            )
+
+    return True
+
+
 def sync_crypto_secrets(
     kube_client: KubeClient,
     cluster: str,
@@ -414,52 +557,51 @@ def sync_crypto_secrets(
     So each replica of a service instance gets the same key, thereby reducing requests to Vault API as we only talk to vault during secret syncing
     """
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-    for instance_config in config_loader.instance_configs(
-        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-    ):
-        crypto_keys = instance_config.get_crypto_keys_from_config()
-        if not crypto_keys:
-            continue
-        secret_data = {}
-        provider = get_secret_provider(
-            secret_provider_name=secret_provider_name,
-            soa_dir=soa_dir,
-            service_name=service,
-            cluster_names=[cluster],
-            secret_provider_kwargs={
-                "vault_cluster_config": vault_cluster_config,
-                "vault_auth_method": "token",
-                "vault_token_file": vault_token_file,
-            },
-        )
-        for key in crypto_keys:
-            key_versions = provider.get_key_versions(key)
-            if not key_versions:
-                log.error(
-                    f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"
-                )
+    for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=instance_type_class
+        ):
+            crypto_keys = instance_config.get_crypto_keys_from_config()
+            if not crypto_keys:
+                continue
+            secret_data = {}
+            provider = get_secret_provider(
+                secret_provider_name=secret_provider_name,
+                soa_dir=soa_dir,
+                service_name=service,
+                cluster_names=[cluster],
+                secret_provider_kwargs={
+                    "vault_cluster_config": vault_cluster_config,
+                    "vault_auth_method": "token",
+                    "vault_token_file": vault_token_file,
+                },
+            )
+            for key in crypto_keys:
+                key_versions = provider.get_key_versions(key)
+                if not key_versions:
+                    log.error(
+                        f"No key versions found for {key} on {instance_config.get_sanitised_deployment_name()}"
+                    )
+                    continue
+
+                secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
+                    json.dumps(key_versions).encode("utf-8")
+                ).decode("utf-8")
+
+            if not secret_data:
                 continue
 
-            secret_data[get_vault_key_secret_name(key)] = base64.b64encode(
-                json.dumps(key_versions).encode("utf-8")
-            ).decode("utf-8")
-
-        if not secret_data:
-            continue
-
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
-        create_or_update_k8s_secret(
-            service=service,
-            signature_name=instance_config.get_crypto_secret_signature_name(),
-            # the secret name here must match the secret name given in the secret volume config,
-            # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
-            secret_name=instance_config.get_crypto_secret_name(),
-            get_secret_data=(lambda: secret_data),
-            secret_signature=_get_dict_signature(secret_data),
-            kube_client=kube_client,
-            namespace=instance_config.get_namespace(),
-        )
+            create_or_update_k8s_secret(
+                service=service,
+                signature_name=instance_config.get_crypto_secret_signature_name(),
+                # the secret name here must match the secret name given in the secret volume config,
+                # i.e. `kubernetes.client.V1SecretVolumeSource`'s `secret_name` must match below
+                secret_name=instance_config.get_crypto_secret_name(),
+                get_secret_data=(lambda: secret_data),
+                secret_signature=_get_dict_signature(secret_data),
+                kube_client=kube_client,
+                namespace=instance_config.get_namespace(),
+            )
 
     return True
 
@@ -471,42 +613,46 @@ def sync_boto_secrets(
     soa_dir: str,
 ) -> bool:
     config_loader = PaastaServiceConfigLoader(service=service, soa_dir=soa_dir)
-    for instance_config in config_loader.instance_configs(
-        cluster=cluster, instance_type_class=KubernetesDeploymentConfig
-    ):
-        boto_keys = instance_config.config_dict.get("boto_keys", [])
-        if not boto_keys:
-            continue
-        boto_keys.sort()
-        secret_data = {}
-        for key in boto_keys:
-            for filetype in ["sh", "yaml", "json", "cfg"]:
-                this_key = key + "." + filetype
-                sanitised_key = this_key.replace(".", "-").replace("_", "--")
-                try:
-                    with open(f"/etc/boto_cfg_private/{this_key}") as f:
+    for instance_type_class in K8S_INSTANCE_TYPE_CLASSES:
+        for instance_config in config_loader.instance_configs(
+            cluster=cluster, instance_type_class=instance_type_class
+        ):
+            boto_keys = instance_config.config_dict.get("boto_keys", [])
+            if not boto_keys:
+                continue
+            boto_keys.sort()
+            secret_data = {}
+            for key in boto_keys:
+                for filetype in ["sh", "yaml", "json", "cfg"]:
+                    this_key = key + "." + filetype
+                    sanitised_key = this_key.replace(".", "-").replace("_", "--")
+                    try:
+                        with open(f"/etc/boto_cfg_private/{this_key}") as f:
+                            secret_data[sanitised_key] = base64.b64encode(
+                                f.read().encode("utf-8")
+                            ).decode("utf-8")
+                    except IOError:
+                        log.warning(
+                            f"Boto key {this_key} required for {service} could not be found."
+                        )
                         secret_data[sanitised_key] = base64.b64encode(
-                            f.read().encode("utf-8")
+                            "This user no longer exists. Remove it from boto_keys.".encode(
+                                "utf-8"
+                            )
                         ).decode("utf-8")
-                except IOError:
-                    log.warning(
-                        f"Boto key {this_key} required for {service} could not be found."
-                    )
 
-        if not secret_data:
-            continue
+            if not secret_data:
+                continue
 
-        # In order to prevent slamming the k8s API, add some artificial delay here
-        time.sleep(0.3)
-        create_or_update_k8s_secret(
-            service=service,
-            signature_name=instance_config.get_boto_secret_signature_name(),
-            secret_name=instance_config.get_boto_secret_name(),
-            get_secret_data=(lambda: secret_data),
-            secret_signature=_get_dict_signature(secret_data),
-            kube_client=kube_client,
-            namespace=instance_config.get_namespace(),
-        )
+            create_or_update_k8s_secret(
+                service=service,
+                signature_name=instance_config.get_boto_secret_signature_name(),
+                secret_name=instance_config.get_boto_secret_name(),
+                get_secret_data=(lambda: secret_data),
+                secret_signature=_get_dict_signature(secret_data),
+                kube_client=kube_client,
+                namespace=instance_config.get_namespace(),
+            )
     return True
 
 
@@ -528,6 +674,11 @@ def create_or_update_k8s_secret(
     """
     :param get_secret_data: is a function to postpone fetching data in order to reduce service load, e.g. Vault API
     """
+    # In order to prevent slamming the k8s API, add some artificial delay here
+    delay = load_system_paasta_config().get_secret_sync_delay_seconds()
+    if delay:
+        time.sleep(delay)
+
     kubernetes_signature = get_secret_signature(
         kube_client=kube_client,
         signature_name=signature_name,

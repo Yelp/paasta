@@ -30,6 +30,8 @@ Command line options:
 - -t <KILL_THRESHOLD>, --kill-threshold: The decimal fraction of apps we think
     is sane to kill when this job runs
 - -f, --force: Force the killing of apps if we breach the threshold
+- -c, --cluster: Specifies the paasta cluster to check
+- --eks: This flag cleans up only k8 services that shouldn't be running on EKS leaving instances from eks-*.yaml files
 """
 import argparse
 import logging
@@ -41,11 +43,14 @@ from typing import Generator
 from typing import List
 from typing import Set
 from typing import Tuple
+from typing import Union
 
 from kubernetes.client import V1Deployment
 from kubernetes.client import V1StatefulSet
 from pysensu_yelp import Status
 
+from paasta_tools.eks_tools import EksDeploymentConfig
+from paasta_tools.eks_tools import load_eks_service_config
 from paasta_tools.kubernetes.application.controller_wrappers import DeploymentWrapper
 from paasta_tools.kubernetes.application.controller_wrappers import StatefulSetWrapper
 from paasta_tools.kubernetes.application.tools import Application
@@ -106,12 +111,12 @@ def alert_state_change(application: Application, cluster: str) -> Generator:
 
 
 def instance_is_not_bouncing(
-    instance_config: KubernetesDeploymentConfig,
+    instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig],
     applications: List[Application],
 ) -> bool:
     """
 
-    :param instance_config: a KubernetesDeploymentConfig with the configuration of the instance
+    :param instance_config: a KubernetesDeploymentConfig or an EksDeploymentConfig with the configuration of the instance
     :param applications: a list of all deployments or stateful sets on the cluster that match the service
      and instance of provided instance_config
     """
@@ -119,10 +124,16 @@ def instance_is_not_bouncing(
         if isinstance(application, DeploymentWrapper):
             existing_app = application.item
             if (
-                existing_app.metadata.namespace == instance_config.get_namespace()
-                and (
-                    instance_config.get_instances()
-                    <= (existing_app.status.ready_replicas or 0)
+                (
+                    existing_app.metadata.namespace != instance_config.get_namespace()
+                    and (instance_config.get_bounce_method() == "downthenup")
+                )
+                or (
+                    existing_app.metadata.namespace == instance_config.get_namespace()
+                    and (
+                        instance_config.get_instances()
+                        <= (existing_app.status.ready_replicas or 0)
+                    )
                 )
             ) or instance_config.get_desired_state() == "stop":
                 return True
@@ -144,6 +155,7 @@ def get_applications_to_kill(
     cluster: str,
     valid_services: Set[Tuple[str, str]],
     soa_dir: str,
+    eks: bool = False,
 ) -> List[Application]:
     """
 
@@ -161,9 +173,21 @@ def get_applications_to_kill(
             if (service, instance) not in valid_services:
                 applications_to_kill.extend(applications)
             else:
-                instance_config = load_kubernetes_service_config(
-                    cluster=cluster, service=service, instance=instance, soa_dir=soa_dir
-                )
+                instance_config: Union[KubernetesDeploymentConfig, EksDeploymentConfig]
+                if eks:
+                    instance_config = load_eks_service_config(
+                        cluster=cluster,
+                        service=service,
+                        instance=instance,
+                        soa_dir=soa_dir,
+                    )
+                else:
+                    instance_config = load_kubernetes_service_config(
+                        cluster=cluster,
+                        service=service,
+                        instance=instance,
+                        soa_dir=soa_dir,
+                    )
                 try:
                     not_bouncing = instance_is_not_bouncing(
                         instance_config, applications
@@ -200,6 +224,7 @@ def cleanup_unused_apps(
     cluster: str,
     kill_threshold: float = 0.5,
     force: bool = False,
+    eks: bool = False,
 ) -> None:
     """Clean up old or invalid jobs/apps from kubernetes. Retrieves
     both a list of apps currently in kubernetes and a list of valid
@@ -217,11 +242,13 @@ def cleanup_unused_apps(
     applications_dict = list_all_applications(kube_client, APPLICATION_TYPES)
     log.info("Retrieving valid apps from yelpsoa_configs")
     valid_services = set(
-        get_services_for_cluster(instance_type="kubernetes", soa_dir=soa_dir)
+        get_services_for_cluster(
+            instance_type="eks" if eks else "kubernetes", soa_dir=soa_dir
+        )
     )
 
     applications_to_kill: List[Application] = get_applications_to_kill(
-        applications_dict, cluster, valid_services, soa_dir
+        applications_dict, cluster, valid_services, soa_dir, eks
     )
 
     log.debug("Running apps: %s" % list(applications_dict))
@@ -280,6 +307,13 @@ def parse_args(argv):
         default=False,
         help="Force the cleanup if we are above the " "kill_threshold",
     )
+    parser.add_argument(
+        "--eks",
+        help="This flag cleans up only k8 services that shouldn't be running on EKS leaving instances from eks-*.yaml files",
+        dest="eks",
+        action="store_true",
+        default=False,
+    )
     return parser.parse_args(argv)
 
 
@@ -289,13 +323,18 @@ def main(argv=None) -> None:
     kill_threshold = args.kill_threshold
     force = args.force
     cluster = args.cluster
+    eks = args.eks
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
     try:
         cleanup_unused_apps(
-            soa_dir, cluster=cluster, kill_threshold=kill_threshold, force=force
+            soa_dir,
+            cluster=cluster,
+            kill_threshold=kill_threshold,
+            force=force,
+            eks=eks,
         )
     except DontKillEverythingError:
         sys.exit(1)

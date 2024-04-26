@@ -65,20 +65,17 @@ The currently available metrics providers are:
   Measures the CPU usage of your service's container.
 
 :uwsgi:
-  With the ``uwsgi`` metrics provider, Paasta will configure your pods to run an additional container with the `uwsgi_exporter <https://github.com/timonwong/uwsgi_exporter>`_ image.
-  This sidecar will listen on port 9117, and will request metrics from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
-  The uwsgi_exporter container needs to know what port your uWSGI master's stats server is on - you can configure this with the ``uwsgi_stats_port`` key in the ``autoscaling`` dictionary.
-  ``uwsgi_exporter`` will translate the uWSGI stats into Prometheus format, which Prometheus will scrape.
+  With the ``uwsgi`` metrics provider, Paasta will configure your pods to be scraped from your uWSGI master via its `stats server <http://uwsgi-docs.readthedocs.io/en/latest/StatsServer.html>`_.
+  We currently only support uwsgi stats on port 8889, and Prometheus will attempt to scrape that port.
 
   .. note::
 
-    If you have configured your service to use a non-default stats port (8889), you need to explicity set ``uwsgi_stats_port`` in your autoscaling config with the same value to ensure that metrics are being exported.
+    If you have configured your service to use a non-default stats port (8889), PaaSTA will not scale your service correctly!
 
-  Extra parameters:
 
-  :uwsgi_stats_port:
-    the port that your uWSGI master process will respond to with stats.
-    Defaults to 8889.
+:gunicorn:
+  With the ``gunicorn`` metrics provider, Paasta will configure your pods to run an additional container with the `statsd_exporter <https://github.com/prometheus/statsd_exporter>`_ image.
+  This sidecar will listen on port 9117 and receive stats from the gunicorn service. The ``statsd_exporter`` will translate the stats into Prometheus format, which Prometheus will scrape.
 
 
 Decision policies
@@ -93,17 +90,6 @@ The currently available decicion policies are:
 
   Extra parameters:
 
-  :offset:
-    Float between 0.0 and 1.0, representing expected baseline load for each container.
-    Defaults to 0.0.
-  :good_enough_window:
-    **Not currently supported**
-    An array of two utilization values [low, high].
-    If utilization per container at the forecasted total load is within the window, instances will not scale.
-    Optional parameter (defaults to None).
-
-    This is not currently supported under Kubernetes (see PAASTA-17262), but Kubernetes has a `global 10% tolerance by default. <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#algorithm-details>`_
-    This is equivalent to a good_enough_window of ``[0.9*setpoint, 1.1*setpoint]``
   :moving_average_window_seconds:
     The number of seconds to load data points over in order to calculate the average.
     Defaults to 1800s (30m).
@@ -129,3 +115,18 @@ of instances PaaSTA thinks your service should have.
 Finally, remember to set the ``decision_policy`` of the ``autoscaling``
 parameter for each service instance to ``"bespoke"`` or else PaaSTA will
 attempt to autoscale your service with the default autoscaling method.
+
+
+``max_instances`` alerting
+--------------------------
+
+In order to make you aware of when your ``max_instances`` may be too low, causing issues with your service, Paasta will send you ``check_autoscaler_max_instances`` alerts if all of the following conditions are true:
+
+  * The autoscaler has scaled your service to ``max_instances``.
+
+  * The load on your service (as measured by the ``metrics_provider`` you specified, e.g. your worker utilization or CPU utilization) is above ``max_instances_alert_threshold``.
+
+The default value for ``max_instances_alert_threshold`` is whatever your ``setpoint`` is.
+This means by default the alert will trigger when the autoscaler wants to scale up but is prevented from doing so by your ``max_instances`` setting.
+If this alert is noisy, you can try setting ``max_instances_alert_threshold`` to something a little higher than your ``setpoint``.
+Setting a very high value (a utilization value your metrics_provider would never measure) will effectively disable this alert.
