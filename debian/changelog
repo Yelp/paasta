@@ -1,3 +1,12 @@
+paasta-tools (0.225.0) xenial; urgency=medium
+
+  * 0.225.0 tagged with 'make release'
+    Commit: Merge pull request #3828 from
+    Yelp/u/nalma/spark_run_pod_identity  Support pod identity in `spark-
+    run`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Mon, 29 Apr 2024 11:17:46 -0700
+
 paasta-tools (0.224.0) xenial; urgency=medium
 
   * 0.224.0 tagged with 'make release'
