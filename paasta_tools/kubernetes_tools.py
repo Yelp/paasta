@@ -2158,7 +2158,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 service_namespace_config=service_namespace_config,
             ),
             share_process_namespace=True,
-            node_selector=self.get_node_selector(),
+            node_selector=self.get_node_selector(system_paasta_config),
             restart_policy="Always",
             volumes=self.get_pod_volumes(
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
@@ -2168,7 +2168,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
-        node_affinity = self.get_node_affinity()
+        node_affinity = self.get_node_affinity(system_paasta_config)
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
@@ -2299,11 +2299,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
-    def get_node_selector(self) -> Mapping[str, str]:
+    def get_node_selector(self, system_paasta_config: SystemPaastaConfig) -> Mapping[str, str]:
         """Converts simple node restrictions into node selectors. Unlike node
         affinities, selectors will show up in `kubectl describe`.
         """
-        raw_selectors: Mapping[str, Any] = self.config_dict.get("node_selectors", {})
+        raw_selectors: Dict[str, Any] = system_paasta_config.get_node_selectors()
+        # Allow the service to override the system node selectors
+        raw_selectors.update(self.config_dict.get("node_selectors", {}))
         node_selectors = {
             to_node_label(label): value
             for label, value in raw_selectors.items()
@@ -2312,7 +2314,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(self, system_paasta_config: SystemPaastaConfig) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2321,6 +2323,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         requirements = allowlist_denylist_to_requirements(
             allowlist=self.get_deploy_whitelist(),
             denylist=self.get_deploy_blacklist(),
+        )
+        requirements.extend(
+            raw_selectors_to_requirements(
+                raw_selectors=system_paasta_config.get_node_selectors(),
+            )
         )
         requirements.extend(
             raw_selectors_to_requirements(

@@ -2015,6 +2015,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
+    node_selectors: Mapping[str, Any]
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
@@ -2644,6 +2645,10 @@ class SystemPaastaConfig:
 
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
+
+    def get_node_selectors(self) -> Dict[str, Any]:
+        """List of Node Selectors/Affinities that will be applied to all Pods in the cluster"""
+        return self.config_dict.get("node_selectors", [])
 
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""

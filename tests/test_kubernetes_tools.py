@@ -1930,7 +1930,8 @@ class TestKubernetesDeploymentConfig:
     def test_get_node_selectors(self, raw_selectors, expected):
         if raw_selectors:
             self.deployment.config_dict["node_selectors"] = raw_selectors
-        assert self.deployment.get_node_selector() == expected
+        system_paasta_config = SystemPaastaConfig({}, "")
+        assert self.deployment.get_node_selector(system_paasta_config) == expected
 
     def test_get_node_affinity_with_reqs(self):
         deployment = KubernetesDeploymentConfig(
@@ -1947,7 +1948,8 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() == V1NodeAffinity(
+        system_paasta_config = SystemPaastaConfig( {}, "")
+        assert deployment.get_node_affinity(system_paasta_config) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -1978,7 +1980,8 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() is None
+        system_paasta_config = SystemPaastaConfig({}, "")
+        assert deployment.get_node_affinity(system_paasta_config) is None
 
     def test_get_node_affinity_with_preferences(self):
         deployment = KubernetesDeploymentConfig(
@@ -2000,7 +2003,8 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() == V1NodeAffinity(
+        system_paasta_config = SystemPaastaConfig({}, "")
+        assert deployment.get_node_affinity(system_paasta_config) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
