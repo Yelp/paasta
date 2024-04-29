@@ -1,3 +1,11 @@
+paasta-tools (0.226.0) xenial; urgency=medium
+
+  * 0.226.0 tagged with 'make release'
+    Commit: Merge pull request #3835 from Yelp/drmorr/update-validation
+    update paasta validation code
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 29 Apr 2024 14:23:15 -0700
+
 paasta-tools (0.225.1) xenial; urgency=medium
 
   * 0.225.1 tagged with 'make release'
