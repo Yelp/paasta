@@ -17,10 +17,16 @@
                 "type": "string"
             },
             "desired_active_requests_per_replica": {
-                "type": "number"
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true
             },
             "setpoint": {
-                "type": "number"
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1.0,
+                "exclusiveMinimum": true,
+                "exclusiveMaximum": false
             },
             "forecast_policy": {
                 "enum": [
@@ -29,7 +35,9 @@
                 ]
             },
             "moving_average_window_seconds": {
-                "type": "integer"
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true
             },
             "scaledown_policies": {
                 "type": "object"
@@ -70,7 +78,9 @@
                 ]
             },
             "max_instances_alert_threshold": {
-                "type": "number"
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true
             }
         },
         "additionalProperties": false

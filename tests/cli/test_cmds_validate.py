@@ -1037,11 +1037,7 @@ def test_check_secrets_for_instance_missing_secret(
 @pytest.mark.parametrize(
     "setpoint,expected,instance_type",
     [
-        (0.0, False, "kubernetes"),
-        (-0.1, False, "kubernetes"),
         (0.55, True, "kubernetes"),
-        (0.0, False, "eks"),
-        (-0.1, False, "eks"),
         (0.55, True, "eks"),
     ],
 )
@@ -1104,14 +1100,6 @@ def test_validate_autoscaling_configs(
             },
             [],
             True,
-        ),
-        (
-            {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": -5,
-            },
-            [],
-            False,
         ),
         (
             {

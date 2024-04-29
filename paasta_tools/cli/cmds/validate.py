@@ -55,9 +55,6 @@ from paasta_tools.cli.utils import success
 from paasta_tools.kubernetes_tools import sanitise_kubernetes_name
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
-from paasta_tools.long_running_service_tools import (
-    DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
-)
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
@@ -132,6 +129,17 @@ OVERRIDE_CPU_BURST_ACK_PATTERN = r"#\s*override-cpu-burst\s+\(.+[A-Z]+-[0-9]+.+\
 CPU_BURST_THRESHOLD = 2
 
 K8S_TYPES = {"eks", "kubernetes"}
+
+INVALID_AUTOSCALING_FIELDS = {
+    # setpoint isn't included here because we need to confirm that setpoint = 0.8
+    # (since it's auto-added at parse-time)
+    "active-requests": {"prometheus-adapter-config"},
+    "cpu": {"desired_active_requests_per_replica", "prometheus-adapter-config"},
+    "gunicorn": {"desired_active_requests_per_replica", "prometheus-adapter-config"},
+    "piscina": {"desired_active_requests_per_replica", "prometheus-adapter-config"},
+    "uwsgi": {"desired_active_requests_per_replica", "prometheus-adapter-config"},
+    "arbitrary_promql": {"desired_active_requests_per_replica"},
+}
 
 
 class ConditionConfig(TypedDict, total=False):
@@ -602,14 +610,6 @@ def _validate_active_requests_autoscaling_configs(
     instance_config: LongRunningServiceConfig,
     autoscaling_params: AutoscalingParamsDict,
 ) -> None:
-    desired_active_requests_per_replica = autoscaling_params.get(
-        "desired_active_requests_per_replica",
-        DEFAULT_DESIRED_ACTIVE_REQUESTS_PER_REPLICA,
-    )
-    if desired_active_requests_per_replica <= 0:
-        raise AutoscalingValidationError(
-            "desired_active_requests_per_replica must be positive"
-        )
     if len(instance_config.get_registrations()) > 1:
         raise AutoscalingValidationError(
             "active-requests metrics provider doesn't support instances with multiple registrations"
@@ -623,28 +623,6 @@ def _validate_active_requests_autoscaling_configs(
     ):
         raise AutoscalingValidationError(
             "setpoint is not supported for active-requests; use desired_active_requests_per_replica instead"
-        )
-    if autoscaling_params.get("prometheus_adapter_config"):
-        raise AutoscalingValidationError(
-            "metric provider does not support prometheus_adapter_config"
-        )
-
-
-def _validate_uwsgi_piscina_autoscaling_configs(
-    autoscaling_params: AutoscalingParamsDict,
-):
-    # a service may omit this key, but we provide our own
-    # default setpoint for all metrics providers so we are safe to
-    # unconditionally read it
-    if autoscaling_params["setpoint"] <= 0:
-        raise AutoscalingValidationError("setpoint must be greater than zero")
-    if autoscaling_params.get("desired_active_requests_per_replica"):
-        raise AutoscalingValidationError(
-            "metric provider does not support desired_active_requests_per_second"
-        )
-    if autoscaling_params.get("prometheus_adapter_config"):
-        raise AutoscalingValidationError(
-            "metric provider does not support prometheus_adapter_config"
         )
 
 
@@ -661,30 +639,19 @@ def _validate_arbitrary_promql_autoscaling_configs(
         raise AutoscalingValidationError(
             "setpoint is not supported for arbitrary PromQL"
         )
-    if autoscaling_params.get("desired_active_requests_per_replica"):
-        raise AutoscalingValidationError(
-            "metric provider does not support desired_active_requests_per_second"
-        )
     if not autoscaling_params.get("prometheus_adapter_config"):
         raise AutoscalingValidationError(
             "arbitrary promql metrics provider requires prometheus_adapter_config to be set"
         )
 
 
-def _validate_cpu_autoscaling_configs(autoscaling_params: AutoscalingParamsDict):
-    # a service may omit this key, but we provide our own
-    # default setpoint for all metrics providers so we are safe to
-    # unconditionally read it
-    if autoscaling_params["setpoint"] <= 0:
-        raise AutoscalingValidationError("setpoint must be greater than zero")
-    if autoscaling_params.get("desired_active_requests_per_replica"):
-        raise AutoscalingValidationError(
-            "metric provider does not support desired_active_requests_per_second"
-        )
-    if autoscaling_params.get("prometheus_adapter_config"):
-        raise AutoscalingValidationError(
-            "metric provider does not support prometheus_adapter_config"
-        )
+def _validate_autoscaling_config(autoscaling_params: AutoscalingParamsDict):
+    metrics_provider = autoscaling_params["metrics_provider"]
+    for field in INVALID_AUTOSCALING_FIELDS[metrics_provider]:
+        if field in autoscaling_params:
+            raise AutoscalingValidationError(
+                f"metric provider {metrics_provider} does not support {field}"
+            )
 
 
 def validate_autoscaling_configs(service_path: str) -> bool:
@@ -727,13 +694,11 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                 )
 
                 try:
+                    _validate_autoscaling_config(autoscaling_params)
                     if autoscaling_params["metrics_provider"] == "active-requests":
                         _validate_active_requests_autoscaling_configs(
                             instance_config, autoscaling_params
                         )
-
-                    elif autoscaling_params["metrics_provider"] in {"uwsgi", "piscina"}:
-                        _validate_uwsgi_piscina_autoscaling_configs(autoscaling_params)
 
                     elif autoscaling_params["metrics_provider"] == "arbitrary_promql":
                         _validate_arbitrary_promql_autoscaling_configs(
@@ -747,10 +712,6 @@ def validate_autoscaling_configs(service_path: str) -> bool:
                         and autoscaling_params.get("decision_policy") != "bespoke"
                         and not should_skip_cpu_override_validation
                     ):
-                        _validate_cpu_autoscaling_configs(autoscaling_params)
-                        # Do some extra validation below: we don't abstract that into the above function
-                        # call because it needs a lot of extra information
-
                         # we need access to the comments, so we need to read the config with ruamel to be able
                         # to actually get them in a "nice" automated fashion
                         config = get_config_file_dict(
