@@ -1,3 +1,10 @@
+paasta-tools (0.225.1) xenial; urgency=medium
+
+  * 0.225.1 tagged with 'make release'
+    Commit: Set default executor pool to batch driver on k8s (#3845)
+
+ -- Chi Chang <chi@yelp.com>  Mon, 29 Apr 2024 11:32:45 -0700
+
 paasta-tools (0.225.0) xenial; urgency=medium
 
   * 0.225.0 tagged with 'make release'
