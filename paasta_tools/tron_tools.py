@@ -101,6 +101,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
+DEFAULT_SPARK_EXECUTOR_POOL = "batch"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -618,9 +619,7 @@ class TronActionConfig(InstanceConfig):
         )
 
     def get_spark_executor_pool(self) -> str:
-        return self.config_dict.get(
-            "pool", load_system_paasta_config().get_tron_default_pool_override()
-        )
+        return self.config_dict.get("pool", DEFAULT_SPARK_EXECUTOR_POOL)
 
     def get_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name")
