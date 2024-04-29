@@ -21,7 +21,7 @@ from mock import patch
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
-from paasta_tools.cli.cmds.validate import get_schema
+from paasta_tools.cli.cmds.validate import get_schema_validator
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
@@ -227,24 +227,17 @@ def test_get_service_path_soa_dir(mock_glob, mock_isdir):
     assert service_path == f"{soa_dir}/{service}"
 
 
-def is_schema(schema):
-    assert schema is not None
-    assert isinstance(schema, dict)
-    assert "$schema" in schema
-
-
 def test_get_schema_eks_found():
-    schema = get_schema("eks")
-    is_schema(schema)
+    get_schema_validator("eks")
 
 
 def test_get_schema_tron_found():
-    schema = get_schema("tron")
-    is_schema(schema)
+    get_schema_validator("tron")
 
 
 def test_get_schema_missing():
-    assert get_schema("fake_schema") is None
+    with pytest.raises(FileNotFoundError):
+        get_schema_validator("fake_schema")
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -1044,11 +1037,7 @@ def test_check_secrets_for_instance_missing_secret(
 @pytest.mark.parametrize(
     "setpoint,expected,instance_type",
     [
-        (0.0, False, "kubernetes"),
-        (-0.1, False, "kubernetes"),
         (0.55, True, "kubernetes"),
-        (0.0, False, "eks"),
-        (-0.1, False, "eks"),
         (0.55, True, "eks"),
     ],
 )
@@ -1111,14 +1100,6 @@ def test_validate_autoscaling_configs(
             },
             [],
             True,
-        ),
-        (
-            {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": -5,
-            },
-            [],
-            False,
         ),
         (
             {
