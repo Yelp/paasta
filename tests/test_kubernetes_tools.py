@@ -1728,6 +1728,7 @@ class TestKubernetesDeploymentConfig:
         mock_system_paasta_config.get_kubernetes_add_registration_labels.return_value = (
             True
         )
+        mock_system_paasta_config.get_node_selectors.return_value = {}
         mock_system_paasta_config.get_topology_spread_constraints.return_value = []
         mock_system_paasta_config.get_pod_defaults.return_value = dict(dns_policy="foo")
         mock_get_termination_grace_period.return_value = termination_grace_period

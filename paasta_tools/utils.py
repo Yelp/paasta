@@ -2648,7 +2648,7 @@ class SystemPaastaConfig:
 
     def get_node_selectors(self) -> Dict[str, Any]:
         """List of Node Selectors/Affinities that will be applied to all Pods in the cluster"""
-        return self.config_dict.get("node_selectors", [])
+        return self.config_dict.get("node_selectors", {})
 
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
