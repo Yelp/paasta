@@ -775,7 +775,6 @@ class TestKubernetesDeploymentConfig:
                 "max_instances": 5,
                 "autoscaling": {
                     "metrics_provider": "uwsgi",
-                    "use_prometheus": True,
                 },
             }
         )
@@ -2256,91 +2255,6 @@ class TestKubernetesDeploymentConfig:
                             ),
                         ),
                     )
-                ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1",
-                    kind="Deployment",
-                    name="fake_name",
-                ),
-            ),
-        )
-        assert expected_res == return_value
-
-    @pytest.mark.parametrize(
-        "metrics_provider",
-        ("cpu",),
-    )
-    def test_get_autoscaling_metric_spec_cpu_prometheus(self, metrics_provider):
-        # with cpu
-        config_dict = KubernetesDeploymentConfigDict(
-            {
-                "min_instances": 1,
-                "max_instances": 3,
-                "autoscaling": {
-                    "metrics_provider": metrics_provider,
-                    "setpoint": 0.5,
-                    "use_prometheus": True,
-                },
-            }
-        )
-        mock_config = KubernetesDeploymentConfig(  # type: ignore
-            service="service",
-            cluster="cluster",
-            instance="instance",
-            config_dict=config_dict,
-            branch_dict=None,
-        )
-        return_value = KubernetesDeploymentConfig.get_autoscaling_metric_spec(
-            mock_config,
-            "fake_name",
-            "cluster",
-            KubeClient(),
-            "paasta",
-        )
-        annotations: Dict[Any, Any] = {}
-        expected_res = V2beta2HorizontalPodAutoscaler(
-            kind="HorizontalPodAutoscaler",
-            metadata=V1ObjectMeta(
-                name="fake_name",
-                namespace="paasta",
-                annotations=annotations,
-                labels=mock.ANY,
-            ),
-            spec=V2beta2HorizontalPodAutoscalerSpec(
-                behavior=mock_config.get_autoscaling_scaling_policy(
-                    autoscaling_params={},
-                    max_replicas=3,
-                ),
-                max_replicas=3,
-                min_replicas=1,
-                metrics=[
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=f"service-instance-{metrics_provider}-prom"
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1",
-                                kind="Deployment",
-                                name="fake_name",
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=50,
-                            ),
-                        ),
-                    ),
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="cpu",
-                            target=V2beta2MetricTarget(
-                                type="Utilization",
-                                average_utilization=50.0,
-                            ),
-                        ),
-                    ),
                 ],
                 scale_target_ref=V2beta2CrossVersionObjectReference(
                     api_version="apps/v1",

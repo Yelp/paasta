@@ -205,9 +205,6 @@ DEFAULT_PRESTOP_SLEEP_SECONDS = 30
 DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
-DEFAULT_USE_PROMETHEUS_CPU = False
-DEFAULT_USE_PROMETHEUS_UWSGI = True
-DEFAULT_USE_RESOURCE_METRICS_CPU = True
 DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
     "cpu": 0.1,
     "memory": "1024Mi",
@@ -823,44 +820,18 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
         if metrics_provider == "cpu":
-            use_prometheus = autoscaling_params.get(
-                "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
-            )
-            if use_prometheus:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=prometheus_hpa_metric_name
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1", kind="Deployment", name=name
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=int(target * 100),
-                            ),
+            metrics.append(
+                V2beta2MetricSpec(
+                    type="Resource",
+                    resource=V2beta2ResourceMetricSource(
+                        name="cpu",
+                        target=V2beta2MetricTarget(
+                            type="Utilization",
+                            average_utilization=int(target * 100),
                         ),
-                    )
+                    ),
                 )
-
-            use_resource_metrics = autoscaling_params.get(
-                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
             )
-            if use_resource_metrics:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="cpu",
-                            target=V2beta2MetricTarget(
-                                type="Utilization",
-                                average_utilization=int(target * 100),
-                            ),
-                        ),
-                    )
-                )
         elif metrics_provider in {"uwsgi", "piscina", "gunicorn", "active-requests"}:
             metrics.append(
                 V2beta2MetricSpec(

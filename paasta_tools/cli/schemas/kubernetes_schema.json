@@ -220,12 +220,6 @@
                         "moving_average_window_seconds": {
                             "type": "integer"
                         },
-                        "use_prometheus": {
-                            "type": "boolean"
-                        },
-                        "use_resource_metrics": {
-                            "type": "boolean"
-                        },
                         "scaledown_policies": {
                             "type": "object"
                         },
