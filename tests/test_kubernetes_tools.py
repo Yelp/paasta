@@ -1948,7 +1948,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        system_paasta_config = SystemPaastaConfig( {}, "")
+        system_paasta_config = SystemPaastaConfig({}, "")
         assert deployment.get_node_affinity(system_paasta_config) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[

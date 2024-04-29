@@ -2299,7 +2299,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             spec=V1PodSpec(**pod_spec_kwargs),
         )
 
-    def get_node_selector(self, system_paasta_config: SystemPaastaConfig) -> Mapping[str, str]:
+    def get_node_selector(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> Mapping[str, str]:
         """Converts simple node restrictions into node selectors. Unlike node
         affinities, selectors will show up in `kubectl describe`.
         """
@@ -2314,7 +2316,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self, system_paasta_config: SystemPaastaConfig) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
