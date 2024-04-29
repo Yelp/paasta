@@ -2015,7 +2015,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
-    node_selectors: Mapping[str, Any]
+    node_selectors: Dict[str, Any]
     paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]

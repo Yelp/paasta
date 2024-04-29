@@ -1971,6 +1971,45 @@ class TestKubernetesDeploymentConfig:
             ),
         )
 
+    def test_get_node_affinity_with_reqs_and_globals(self):
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={
+                "deploy_whitelist": ["habitat", ["uswest1cstagef"]],
+                "node_selectors": {
+                    "topology.kubernetes.io/zone": ["us-west-1a"],
+                },
+            },
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+
+        system_paasta_config = SystemPaastaConfig(
+            {"node_selectors": {"topology.kubernetes.io/zone": ["us-west-1b"]}}, ""
+        )
+        assert deployment.get_node_affinity(system_paasta_config) == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="yelp.com/habitat",
+                                operator="In",
+                                values=["uswest1cstagef"],
+                            ),
+                            V1NodeSelectorRequirement(
+                                key="topology.kubernetes.io/zone",
+                                operator="In",
+                                values=["us-west-1a"],
+                            ),
+                        ]
+                    )
+                ],
+            ),
+        )
+
     def test_get_node_affinity_no_reqs(self):
         deployment = KubernetesDeploymentConfig(
             service="kurupt",
