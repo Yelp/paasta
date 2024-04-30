@@ -2139,7 +2139,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
-        node_affinity = self.get_node_affinity()
+        node_affinity = self.get_node_affinity(system_paasta_config)
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
@@ -2283,7 +2283,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(self, system_paasta_config: SystemPaastaConfig) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2293,11 +2293,20 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             allowlist=self.get_deploy_whitelist(),
             denylist=self.get_deploy_blacklist(),
         )
+        node_selectors = self.config_dict.get("node_selectors", {})
         requirements.extend(
             raw_selectors_to_requirements(
-                raw_selectors=self.config_dict.get("node_selectors", {}),
+                raw_selectors=node_selectors,
             )
         )
+        pool_node_selectors = system_paasta_config.get_pool_node_selectors()[self.get_pool()]
+        # If the service already has a node selector for a zone, we don't want to override it
+        if pool_node_selectors and "topology.kubernetes.io/zone" not in node_selectors:
+            requirements.extend(
+                raw_selectors_to_requirements(
+                    raw_selectors=pool_node_selectors,
+                )
+            )
 
         preferred_terms = []
         for node_selectors_prefered_config_dict in self.config_dict.get(

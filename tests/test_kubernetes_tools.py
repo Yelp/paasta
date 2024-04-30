@@ -1946,7 +1946,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() == V1NodeAffinity(
+        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -1977,7 +1977,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() is None
+        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) is None
 
     def test_get_node_affinity_with_preferences(self):
         deployment = KubernetesDeploymentConfig(
@@ -1999,7 +1999,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity() == V1NodeAffinity(
+        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -2008,6 +2008,88 @@ class TestKubernetesDeploymentConfig:
                                 key="yelp.com/habitat",
                                 operator="In",
                                 values=["habitat_a"],
+                            ),
+                        ]
+                    )
+                ],
+            ),
+            preferred_during_scheduling_ignored_during_execution=[
+                V1PreferredSchedulingTerm(
+                    weight=1,
+                    preference=V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="node.kubernetes.io/instance-type",
+                                operator="In",
+                                values=["a1.1xlarge"],
+                            ),
+                        ]
+                    ),
+                )
+            ],
+        )
+
+    def test_get_node_affinity_no_reqs_with_global_override(self):
+        """
+        Given global node affinity overrides and no deployment specific requirements, the globals should be used
+        """
+        assert self.deployment.get_node_affinity(
+            SystemPaastaConfig(
+                {"pool_node_selectors": {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}}},
+                ""
+            )
+        ) == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="topology.kubernetes.io/zone",
+                                operator="In",
+                                values=["us-west-1a", "us-west-1b"],
+                            )
+                        ]
+                    )
+                ],
+            ),
+        )
+
+    def test_get_node_affinity_no_reqs_with_global_override_and_deployment_config(self):
+        """
+        Given global node affinity overrides and deployment specific requirements, globals should be ignored
+        """
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={
+                "deploy_whitelist": ["habitat", ["us-west-1a"]],
+                "node_selectors_preferred": [
+                    {
+                        "weight": 1,
+                        "preferences": {
+                            "instance_type": ["a1.1xlarge"],
+                        },
+                    }
+                ],
+            },
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        assert deployment.get_node_affinity(
+            SystemPaastaConfig(
+                {"pool_node_selectors": {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}}},
+                ""
+            )
+        ) == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="yelp.com/habitat",
+                                operator="In",
+                                values=["us-west-1a"],
                             ),
                         ]
                     )
