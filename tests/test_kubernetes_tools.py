@@ -1946,7 +1946,9 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) == V1NodeAffinity(
+        assert deployment.get_node_affinity(
+            SystemPaastaConfig({}, "")
+        ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -1999,7 +2001,9 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) == V1NodeAffinity(
+        assert deployment.get_node_affinity(
+            SystemPaastaConfig({}, "")
+        ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -2035,8 +2039,14 @@ class TestKubernetesDeploymentConfig:
         """
         assert self.deployment.get_node_affinity(
             SystemPaastaConfig(
-                {"pool_node_selectors": {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}}},
-                ""
+                {
+                    "pool_node_selectors": {
+                        "default": {
+                            "topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]
+                        }
+                    }
+                },
+                "",
             )
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
@@ -2078,8 +2088,14 @@ class TestKubernetesDeploymentConfig:
         )
         assert deployment.get_node_affinity(
             SystemPaastaConfig(
-                {"pool_node_selectors": {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}}},
-                ""
+                {
+                    "pool_node_selectors": {
+                        "default": {
+                            "topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]
+                        }
+                    }
+                },
+                "",
             )
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(

@@ -2283,7 +2283,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self, system_paasta_config: SystemPaastaConfig) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(
+        self, system_paasta_config: SystemPaastaConfig
+    ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2299,7 +2301,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 raw_selectors=node_selectors,
             )
         )
-        pool_node_selectors = system_paasta_config.get_pool_node_selectors()[self.get_pool()]
+        pool_node_selectors = system_paasta_config.get_pool_node_selectors()[
+            self.get_pool()
+        ]
         # If the service already has a node selector for a zone, we don't want to override it
         if pool_node_selectors and "topology.kubernetes.io/zone" not in node_selectors:
             requirements.extend(
