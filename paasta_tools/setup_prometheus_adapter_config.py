@@ -22,6 +22,7 @@ from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Set
 from typing import Tuple
 
 import ruamel.yaml as yaml
@@ -945,7 +946,9 @@ def get_rules_for_service_instance(
 
 
 def create_prometheus_adapter_config(
-    paasta_cluster: str, soa_dir: Path
+    paasta_cluster: str,
+    soa_dir: Path,
+    services: Optional[Set[str]] = None,
 ) -> PrometheusAdapterConfig:
     """
     Given a paasta cluster and a soaconfigs directory, create the necessary Prometheus adapter
@@ -959,20 +962,21 @@ def create_prometheus_adapter_config(
     # for every service as PaastaServiceConfigLoader does not expose a way to get configs
     # for a single instance by name. instead, we get the unique set of service names and then
     # let PaastaServiceConfigLoader iterate over instances for us later
-    services = {
-        service_name
-        for service_name, _ in get_services_for_cluster(
-            cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
-        )
-    }
-    services.update(
-        {
+    if services is None:
+        services = {
             service_name
             for service_name, _ in get_services_for_cluster(
-                cluster=paasta_cluster, instance_type="eks", soa_dir=str(soa_dir)
+                cluster=paasta_cluster, instance_type="kubernetes", soa_dir=str(soa_dir)
             )
         }
-    )
+        services.update(
+            {
+                service_name
+                for service_name, _ in get_services_for_cluster(
+                    cluster=paasta_cluster, instance_type="eks", soa_dir=str(soa_dir)
+                )
+            }
+        )
     for service_name in services:
         config_loader = PaastaServiceConfigLoader(
             service=service_name, soa_dir=str(soa_dir)
@@ -999,23 +1003,34 @@ def create_prometheus_adapter_config(
     }
 
 
+def format_prometheus_adapter_configmap(
+    config: PrometheusAdapterConfig,
+) -> V1ConfigMap:
+    return V1ConfigMap(
+        api_version="apps/v1beta1",
+        kind="ConfigMap",
+        metadata=V1ObjectMeta(
+            name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
+            namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
+        ),
+        data={
+            PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
+                config,
+                default_flow_style=False,
+                explicit_start=True,
+                width=sys.maxsize,
+            )
+        },
+    )
+
+
 def update_prometheus_adapter_configmap(
     kube_client: KubeClient, config: PrometheusAdapterConfig
 ) -> None:
     kube_client.core.replace_namespaced_config_map(
         name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME,
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
-        body=V1ConfigMap(
-            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={
-                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
-                    config,
-                    default_flow_style=False,
-                    explicit_start=True,
-                    width=sys.maxsize,
-                )
-            },
-        ),
+        body=format_prometheus_adapter_configmap(config),
     )
 
 
@@ -1024,14 +1039,7 @@ def create_prometheus_adapter_configmap(
 ) -> None:
     kube_client.core.create_namespaced_config_map(
         namespace=PROMETHEUS_ADAPTER_CONFIGMAP_NAMESPACE,
-        body=V1ConfigMap(
-            metadata=V1ObjectMeta(name=PROMETHEUS_ADAPTER_CONFIGMAP_NAME),
-            data={
-                PROMETHEUS_ADAPTER_CONFIGMAP_FILENAME: yaml.dump(
-                    config, default_flow_style=False, explicit_start=True
-                )
-            },
-        ),
+        body=format_prometheus_adapter_configmap(config),
     )
 
 

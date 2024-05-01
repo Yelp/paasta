@@ -2226,7 +2226,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         annotations: Dict[Any, Any] = {}
@@ -2294,7 +2293,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         annotations: Dict[Any, Any] = {}
@@ -2384,7 +2382,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2464,7 +2461,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         expected_res = V2beta2HorizontalPodAutoscaler(
@@ -2537,7 +2533,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         assert hpa.spec.behavior["scaleDown"] == {
@@ -2565,7 +2560,6 @@ class TestKubernetesDeploymentConfig:
             mock_config,
             "fake_name",
             "cluster",
-            KubeClient(),
             "paasta",
         )
         expected_res = None

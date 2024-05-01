@@ -787,7 +787,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         self,
         name: str,
         cluster: str,
-        kube_client: KubeClient,
         namespace: str,
     ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
@@ -2522,6 +2521,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "topology_spread_constraints", default_pod_topology_spread_constraints
         )
 
+    def get_pod_disruption_budget(
+        self,
+        system_paasta_config: Optional[SystemPaastaConfig] = None,
+    ) -> V1beta1PodDisruptionBudget:
+        max_unavailable: Union[str, int]
+        if "bounce_margin_factor" in self.config_dict:
+            max_unavailable = f"{int((1 - self.get_bounce_margin_factor()) * 100)}%"
+        else:
+            if system_paasta_config is None:
+                system_paasta_config = load_system_paasta_config()
+            max_unavailable = system_paasta_config.get_pdb_max_unavailable()
+
+        return V1beta1PodDisruptionBudget(
+            api_version="apps/v1beta1",
+            kind="PodDisruptionBudget",
+            metadata=V1ObjectMeta(
+                name=get_kubernetes_app_name(self.service, self.instance),
+                namespace=self.get_namespace(),
+            ),
+            spec=V1beta1PodDisruptionBudgetSpec(
+                max_unavailable=max_unavailable,
+                selector=V1LabelSelector(
+                    match_labels={
+                        "paasta.yelp.com/service": self.service,
+                        "paasta.yelp.com/instance": self.instance,
+                    }
+                ),
+            ),
+        )
+
 
 def get_kubernetes_secret_hashes(
     environment_variables: Mapping[str, str], service: str, namespace: str
@@ -2718,9 +2747,10 @@ def get_matching_namespaces(
     ]
 
 
-@functools.lru_cache()
-def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
-    paasta_namespace = V1Namespace(
+def make_namespace_object(namespace: str) -> V1Namespace:
+    return V1Namespace(
+        api_version="v1",
+        kind="Namespace",
         metadata=V1ObjectMeta(
             name=namespace,
             labels={
@@ -2728,8 +2758,13 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
                 paasta_prefixed("owner"): "compute_infra_platform_experience",
                 paasta_prefixed("managed"): "true",
             },
-        )
+        ),
     )
+
+
+@functools.lru_cache()
+def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
+    paasta_namespace = make_namespace_object(namespace)
     namespace_names = get_all_namespaces(kube_client)
     if namespace not in namespace_names:
         log.warning(f"Creating namespace: {namespace} as it does not exist")
@@ -2747,6 +2782,28 @@ def ensure_namespace(kube_client: KubeClient, namespace: str) -> None:
     ensure_paasta_namespace_limits(kube_client, namespace)
 
 
+def make_paasta_api_rolebinding_object(namespace: str) -> V1RoleBinding:
+    return V1RoleBinding(
+        api_version="v1",
+        kind="RoleBinding",
+        metadata=V1ObjectMeta(
+            name="paasta-api-server-per-namespace",
+            namespace=namespace,
+        ),
+        role_ref=V1RoleRef(
+            api_group="rbac.authorization.k8s.io",
+            kind="ClusterRole",
+            name="paasta-api-server-per-namespace",
+        ),
+        subjects=[
+            V1Subject(
+                kind="User",
+                name="yelp.com/paasta-api-server",
+            ),
+        ],
+    )
+
+
 def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> None:
     rolebindings = get_all_role_bindings(kube_client, namespace=namespace)
     rolebinding_names = [item.metadata.name for item in rolebindings]
@@ -2754,26 +2811,38 @@ def ensure_paasta_api_rolebinding(kube_client: KubeClient, namespace: str) -> No
         log.warning(
             f"Creating rolebinding paasta-api-server-per-namespace on {namespace} namespace as it does not exist"
         )
-        role_binding = V1RoleBinding(
-            metadata=V1ObjectMeta(
-                name="paasta-api-server-per-namespace",
-                namespace=namespace,
-            ),
-            role_ref=V1RoleRef(
-                api_group="rbac.authorization.k8s.io",
-                kind="ClusterRole",
-                name="paasta-api-server-per-namespace",
-            ),
-            subjects=[
-                V1Subject(
-                    kind="User",
-                    name="yelp.com/paasta-api-server",
-                ),
-            ],
-        )
+        role_binding = make_paasta_api_rolebinding_object(namespace)
         kube_client.rbac.create_namespaced_role_binding(
             namespace=namespace, body=role_binding
         )
+
+
+def make_paasta_namespace_limit_object(namespace: str) -> V1LimitRange:
+    return V1LimitRange(
+        api_version="v1",
+        kind="LimitRange",
+        metadata=V1ObjectMeta(
+            name="limit-mem-cpu-disk-per-container",
+            namespace=namespace,
+        ),
+        spec=V1LimitRangeSpec(
+            limits=[
+                V1LimitRangeItem(
+                    type="Container",
+                    default={
+                        "cpu": "1",
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "1Gi",
+                    },
+                    default_request={
+                        "cpu": "1",
+                        "memory": "1024Mi",
+                        "ephemeral-storage": "1Gi",
+                    },
+                )
+            ]
+        ),
+    )
 
 
 def ensure_paasta_namespace_limits(kube_client: KubeClient, namespace: str) -> None:
@@ -2789,29 +2858,7 @@ def ensure_paasta_namespace_limits(kube_client: KubeClient, namespace: str) -> N
         log.warning(
             f"Creating limit: limit-mem-cpu-disk-per-container on {namespace} namespace as it does not exist"
         )
-        limit = V1LimitRange(
-            metadata=V1ObjectMeta(
-                name="limit-mem-cpu-disk-per-container",
-                namespace=namespace,
-            ),
-            spec=V1LimitRangeSpec(
-                limits=[
-                    V1LimitRangeItem(
-                        type="Container",
-                        default={
-                            "cpu": "1",
-                            "memory": "1024Mi",
-                            "ephemeral-storage": "1Gi",
-                        },
-                        default_request={
-                            "cpu": "1",
-                            "memory": "1024Mi",
-                            "ephemeral-storage": "1Gi",
-                        },
-                    )
-                ]
-            ),
-        )
+        limit = make_paasta_namespace_limit_object(namespace)
         kube_client.core.create_namespaced_limit_range(namespace=namespace, body=limit)
 
 
@@ -3136,29 +3183,6 @@ def max_unavailable(instance_count: int, bounce_margin_factor: float) -> int:
         return max(
             instance_count - int(math.ceil(instance_count * bounce_margin_factor)), 1
         )
-
-
-def pod_disruption_budget_for_service_instance(
-    service: str,
-    instance: str,
-    max_unavailable: Union[str, int],
-    namespace: str,
-) -> V1beta1PodDisruptionBudget:
-    return V1beta1PodDisruptionBudget(
-        metadata=V1ObjectMeta(
-            name=get_kubernetes_app_name(service, instance),
-            namespace=namespace,
-        ),
-        spec=V1beta1PodDisruptionBudgetSpec(
-            max_unavailable=max_unavailable,
-            selector=V1LabelSelector(
-                match_labels={
-                    "paasta.yelp.com/service": service,
-                    "paasta.yelp.com/instance": instance,
-                }
-            ),
-        ),
-    )
 
 
 def create_pod_disruption_budget(

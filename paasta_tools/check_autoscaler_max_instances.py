@@ -63,7 +63,6 @@ async def check_max_instances(
             if not job_config.get_autoscaling_metric_spec(
                 name=get_kubernetes_app_name(service, instance),
                 cluster=cluster,
-                kube_client=kube_client,
                 namespace=job_config.get_namespace(),
             ):
                 # Not an instance that uses HPA, don't check.
