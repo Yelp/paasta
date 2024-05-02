@@ -2060,9 +2060,7 @@ class TestKubernetesDeploymentConfig:
             instance="fm",
             cluster="brentford",
             config_dict={
-                "node_selectors": {
-                    "topology.kubernetes.io/zone": "us-west-1a"
-                },
+                "node_selectors": {"topology.kubernetes.io/zone": "us-west-1a"},
                 "node_selectors_preferred": [
                     {
                         "weight": 1,
