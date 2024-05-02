@@ -1,3 +1,18 @@
+paasta-tools (0.227.0) xenial; urgency=medium
+
+  * 0.227.0 tagged with 'make release'
+    Commit: PAASTA-18198: add pool_node_affinities to improve Karpenter
+    AZ balance (#3849)  This adds a new system config option,
+    `pool_node_affinities`. It"s necessary to configure pods with a
+    preselection of preferred 2-3 AZs per pool so that Karpenter does
+    not try to consider all 6+ AZs in a region for scheduling decisions.
+    This option is a temporary solution and the proper fix will likely
+    be to adopt something like the descheduler to achieve a better AZ
+    balance (along with other benefits).   Signed-off-by: Max Falk
+    <gfalk@yelp.com>
+
+ -- Max Falk <gfalk@yelp.com>  Thu, 02 May 2024 06:03:28 -0700
+
 paasta-tools (0.226.0) xenial; urgency=medium
 
   * 0.226.0 tagged with 'make release'
