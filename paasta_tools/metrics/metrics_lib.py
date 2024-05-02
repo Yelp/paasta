@@ -1,7 +1,10 @@
 import logging
+import os
+import socket
 import time
 from abc import ABC
 from abc import abstractmethod
+from inspect import currentframe
 from types import TracebackType
 from typing import Any
 from typing import Callable
@@ -176,3 +179,27 @@ class NoMetrics(BaseMetrics):
     def emit_event(self, name: str, **kwargs: Any) -> bool:
         log.debug(f"event {name} occurred with properties: {kwargs}")
         return True
+
+
+def system_timer(
+    name: str = "system_process_duration", dimensions: Dict[str, Any] = {}
+) -> TimerProtocol:
+    metrics_interface = get_metrics_interface("paasta")
+    parent_pid = os.getppid()
+    pid = os.getpid()
+    hostname = socket.gethostname()
+    # set our parent caller as the path dimension, e.g. /path/to/setup_kubernetes_job
+    current = currentframe()
+    parent = current.f_back
+    path = parent.f_globals.get("__file__", "unknown")
+    # Note any of these dimensions may be overridden by caller
+    default_dimensions = {
+        "path": path,
+        "host": hostname,
+        "parent_pid": parent_pid,
+        "pid": pid,
+    }
+    default_dimensions.update(dimensions)
+    return metrics_interface.create_timer(
+        name=name, default_dimensions=default_dimensions
+    )
