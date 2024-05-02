@@ -681,6 +681,12 @@ def registration_label(namespace: str) -> str:
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
 
 
+def contains_zone_label(node_selectors):
+    return any(k in node_selectors for k in (
+    "topology.kubernetes.io/zone", paasta_prefixed("habitat"), paasta_prefixed("eni_config"), "karpenter.sh/nodepool",
+    "topology.ebs.csi.aws.com/zone"))
+
+
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
     config_dict: KubernetesDeploymentConfigDict
 
@@ -2310,7 +2316,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # If the service already has a node selector for a zone, we don't want to override it
             if (
                 current_pool_node_affinities
-                and "topology.kubernetes.io/zone" not in node_selectors
+                and not contains_zone_label(node_selectors)
             ):
                 requirements.extend(
                     raw_selectors_to_requirements(
