@@ -65,9 +65,9 @@ defaults to an ipython repl. Also uses the canary version of the code::
 Assuming service role from another AWS account
 ----------------------------------------------
 
-If you need to run your instance with another account than your current environment's, e.g. use prod account from dev environment, you can specify ``--cluster`` and ``--assume-role-aws-account``.
+If you need to locally run your instance using a role from an AWS account that differs from your current environment's (e.g. you want to use a role from our production account in one of our dev environments), you will need to specify ``--cluster`` and ``--assume-role-aws-account``.
 
-In the example below, it's enough to specify ``--cluster`` so ``local-run`` will use configuration that are for ``pnw-prod`` and use prod account, no matter your current environment.
+In the example below, specifying ``--cluster`` in the ``local-run`` command will use instance configurations for ``pnw-prod`` and ``--assume-pod-identity`` will use the configured role from the prod account, no matter your current environment.
 
 
 .. code-block::sh
