@@ -1946,9 +1946,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity(
-            SystemPaastaConfig({}, "")
-        ) == V1NodeAffinity(
+        assert deployment.get_node_affinity() == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -1979,7 +1977,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity(SystemPaastaConfig({}, "")) is None
+        assert deployment.get_node_affinity() is None
 
     def test_get_node_affinity_with_preferences(self):
         deployment = KubernetesDeploymentConfig(
@@ -2001,9 +1999,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
 
-        assert deployment.get_node_affinity(
-            SystemPaastaConfig({}, "")
-        ) == V1NodeAffinity(
+        assert deployment.get_node_affinity() == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -2038,16 +2034,7 @@ class TestKubernetesDeploymentConfig:
         Given global node affinity overrides and no deployment specific requirements, the globals should be used
         """
         assert self.deployment.get_node_affinity(
-            SystemPaastaConfig(
-                {
-                    "pool_node_selectors": {
-                        "default": {
-                            "topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]
-                        }
-                    }
-                },
-                "",
-            )
+                {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
@@ -2087,16 +2074,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
         assert deployment.get_node_affinity(
-            SystemPaastaConfig(
-                {
-                    "pool_node_selectors": {
-                        "default": {
-                            "topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]
-                        }
-                    }
-                },
-                "",
-            )
+                {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
