@@ -2060,7 +2060,9 @@ class TestKubernetesDeploymentConfig:
             instance="fm",
             cluster="brentford",
             config_dict={
-                "deploy_whitelist": ["habitat", ["us-west-1a"]],
+                "node_selectors": {
+                    "topology.kubernetes.io/zone": "us-west-1a"
+                },
                 "node_selectors_preferred": [
                     {
                         "weight": 1,
@@ -2081,7 +2083,7 @@ class TestKubernetesDeploymentConfig:
                     V1NodeSelectorTerm(
                         match_expressions=[
                             V1NodeSelectorRequirement(
-                                key="yelp.com/habitat",
+                                key="topology.kubernetes.io/zone",
                                 operator="In",
                                 values=["us-west-1a"],
                             ),
