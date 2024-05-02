@@ -72,6 +72,6 @@ In the example below, specifying ``--cluster`` in the ``local-run`` command will
 
 .. code-block::sh
 
-    paasta local-run -s <service-name> --pull --assume-pod-identity -i <service-instance> --cluster pnw-prod -I
+    paasta local-run --service <service-name> --pull --assume-pod-identity --instance <service-instance> --cluster pnw-prod --interactive
 
 Here, ``-I`` flag is used to get the interactive shell.
