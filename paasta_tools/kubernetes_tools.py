@@ -681,7 +681,7 @@ def registration_label(namespace: str) -> str:
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
 
 
-def contains_zone_label(node_selectors):
+def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]):
     return any(
         k in node_selectors
         for k in (
