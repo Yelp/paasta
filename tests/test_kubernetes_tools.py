@@ -2034,7 +2034,7 @@ class TestKubernetesDeploymentConfig:
         Given global node affinity overrides and no deployment specific requirements, the globals should be used
         """
         assert self.deployment.get_node_affinity(
-                {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
+            {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
@@ -2074,7 +2074,7 @@ class TestKubernetesDeploymentConfig:
             soa_dir="/nail/blah",
         )
         assert deployment.get_node_affinity(
-                {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
+            {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
         ) == V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
