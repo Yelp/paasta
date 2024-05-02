@@ -68,7 +68,7 @@ Assuming service role from another AWS account
 If you need to run your instance with another account than your current environment's, e.g. use prod account from dev environment, you can specify `--cluster` and `--assume-role-aws-account`.
 
 In the example below, it's enough to specify `--cluster` so `local-run` will use configuration that are for `pnw-prod` and use prod account, no matter your current environment.
-```
-paasta local-run -s <service-name> --pull --assume-pod-identity -i <service-instance> --cluster pnw-prod -I
-```
+
+    paasta local-run -s <service-name> --pull --assume-pod-identity -i <service-instance> --cluster pnw-prod -I
+
 Here, `-I` flag is used to get the interactive shell.
