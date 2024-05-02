@@ -2107,7 +2107,9 @@ class TestKubernetesDeploymentConfig:
         )
         assert actual == expected
 
-    def test_get_node_affinity_no_reqs_with_global_override_and_deployment_config(self):
+    def test_get_node_affinity_no_reqs_with_global_override_and_deployment_config_habitat(
+        self,
+    ):
         """
         Given global node affinity overrides and deployment specific zone selector, globals should be ignored
         """
@@ -2115,9 +2117,7 @@ class TestKubernetesDeploymentConfig:
             service="kurupt",
             instance="fm",
             cluster="brentford",
-            config_dict={
-                "node_selectors": {"yelp.com/habitat": ["uswest1astagef"]}
-            },
+            config_dict={"node_selectors": {"yelp.com/habitat": ["uswest1astagef"]}},
             branch_dict=None,
             soa_dir="/nail/blah",
         )
