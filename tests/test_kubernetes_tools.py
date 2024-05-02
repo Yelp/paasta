@@ -2029,6 +2029,118 @@ class TestKubernetesDeploymentConfig:
             ],
         )
 
+    def test_get_node_affinity_no_reqs_with_global_override(self):
+        """
+        Given global node affinity overrides and no deployment specific requirements, the globals should be used
+        """
+        assert self.deployment.get_node_affinity(
+            {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
+        ) == V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="topology.kubernetes.io/zone",
+                                operator="In",
+                                values=["us-west-1a", "us-west-1b"],
+                            )
+                        ]
+                    )
+                ],
+            ),
+        )
+
+    def test_get_node_affinity_no_reqs_with_global_override_and_deployment_config(self):
+        """
+        Given global node affinity overrides and deployment specific requirements, globals should be ignored
+        """
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={
+                "node_selectors": {"topology.kubernetes.io/zone": ["us-west-1a"]},
+                "node_selectors_preferred": [
+                    {
+                        "weight": 1,
+                        "preferences": {
+                            "instance_type": ["a1.1xlarge"],
+                        },
+                    }
+                ],
+            },
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        actual = deployment.get_node_affinity(
+            {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
+        )
+        expected = V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="topology.kubernetes.io/zone",
+                                operator="In",
+                                values=["us-west-1a"],
+                            ),
+                        ]
+                    )
+                ],
+            ),
+            preferred_during_scheduling_ignored_during_execution=[
+                V1PreferredSchedulingTerm(
+                    weight=1,
+                    preference=V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="node.kubernetes.io/instance-type",
+                                operator="In",
+                                values=["a1.1xlarge"],
+                            ),
+                        ]
+                    ),
+                )
+            ],
+        )
+        assert actual == expected
+
+    def test_get_node_affinity_no_reqs_with_global_override_and_deployment_config_habitat(
+        self,
+    ):
+        """
+        Given global node affinity overrides and deployment specific zone selector, globals should be ignored
+        """
+        deployment = KubernetesDeploymentConfig(
+            service="kurupt",
+            instance="fm",
+            cluster="brentford",
+            config_dict={"node_selectors": {"yelp.com/habitat": ["uswest1astagef"]}},
+            branch_dict=None,
+            soa_dir="/nail/blah",
+        )
+        actual = deployment.get_node_affinity(
+            {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
+        )
+        expected = V1NodeAffinity(
+            required_during_scheduling_ignored_during_execution=V1NodeSelector(
+                node_selector_terms=[
+                    V1NodeSelectorTerm(
+                        match_expressions=[
+                            V1NodeSelectorRequirement(
+                                key="yelp.com/habitat",
+                                operator="In",
+                                values=["uswest1astagef"],
+                            ),
+                        ]
+                    )
+                ],
+            )
+        )
+        assert actual == expected
+
     @pytest.mark.parametrize(
         "anti_affinity,expected",
         [

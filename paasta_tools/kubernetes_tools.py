@@ -198,6 +198,13 @@ DISCOVERY_ATTRIBUTES = {
     "hostname",
     "owner",
 }
+ZONE_LABELS = (
+    "topology.kubernetes.io/zone",
+    "yelp.com/habitat",
+    "yelp.com/eni_config",
+    "karpenter.sh/nodepool",
+    "topology.ebs.csi.aws.com/zone",
+)
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
@@ -679,6 +686,10 @@ def registration_label(namespace: str) -> str:
     """
     limited_namespace = limit_size_with_hash(namespace, limit=63, suffix=4)
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
+
+
+def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]) -> bool:
+    return any(k in node_selectors for k in ZONE_LABELS)
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
@@ -2139,7 +2150,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
-        node_affinity = self.get_node_affinity()
+        node_affinity = self.get_node_affinity(
+            system_paasta_config.get_pool_node_affinities()
+        )
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
@@ -2283,7 +2296,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(
+        self, pool_node_affinities: Dict[str, Dict[str, List[str]]] = None
+    ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2293,11 +2308,23 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             allowlist=self.get_deploy_whitelist(),
             denylist=self.get_deploy_blacklist(),
         )
+        node_selectors = self.config_dict.get("node_selectors", {})
         requirements.extend(
             raw_selectors_to_requirements(
-                raw_selectors=self.config_dict.get("node_selectors", {}),
+                raw_selectors=node_selectors,
             )
         )
+
+        # PAASTA-18198: To improve AZ balance with Karpenter, we temporarily allow specifying zone affinities per pool
+        if pool_node_affinities and self.get_pool() in pool_node_affinities:
+            current_pool_node_affinities = pool_node_affinities[self.get_pool()]
+            # If the service already has a node selector for a zone, we don't want to override it
+            if current_pool_node_affinities and not contains_zone_label(node_selectors):
+                requirements.extend(
+                    raw_selectors_to_requirements(
+                        raw_selectors=current_pool_node_affinities,
+                    )
+                )
 
         preferred_terms = []
         for node_selectors_prefered_config_dict in self.config_dict.get(
