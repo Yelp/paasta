@@ -198,6 +198,13 @@ DISCOVERY_ATTRIBUTES = {
     "hostname",
     "owner",
 }
+ZONE_LABELS = (
+    "topology.kubernetes.io/zone",
+    "yelp.com/habitat",
+    "yelp.com/eni_config",
+    "karpenter.sh/nodepool",
+    "topology.ebs.csi.aws.com/zone",
+)
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
@@ -681,16 +688,10 @@ def registration_label(namespace: str) -> str:
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
 
 
-def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]):
+def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]) -> bool:
     return any(
         k in node_selectors
-        for k in (
-            "topology.kubernetes.io/zone",
-            paasta_prefixed("habitat"),
-            paasta_prefixed("eni_config"),
-            "karpenter.sh/nodepool",
-            "topology.ebs.csi.aws.com/zone",
-        )
+        for k in ZONE_LABELS
     )
 
 
@@ -2318,7 +2319,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
         # PAASTA-18198: To improve AZ balance with Karpenter, we temporarily allow specifying zone affinities per pool
-        if pool_node_affinities:
+        if pool_node_affinities and self.get_pool() in pool_node_affinities:
             current_pool_node_affinities = pool_node_affinities[self.get_pool()]
             # If the service already has a node selector for a zone, we don't want to override it
             if current_pool_node_affinities and not contains_zone_label(node_selectors):
