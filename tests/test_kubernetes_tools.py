@@ -2060,7 +2060,7 @@ class TestKubernetesDeploymentConfig:
             instance="fm",
             cluster="brentford",
             config_dict={
-                "node_selectors": {"topology.kubernetes.io/zone": "us-west-1a"},
+                "node_selectors": {"topology.kubernetes.io/zone": ["us-west-1a"]},
                 "node_selectors_preferred": [
                     {
                         "weight": 1,
@@ -2073,9 +2073,10 @@ class TestKubernetesDeploymentConfig:
             branch_dict=None,
             soa_dir="/nail/blah",
         )
-        assert deployment.get_node_affinity(
+        actual = deployment.get_node_affinity(
             {"default": {"topology.kubernetes.io/zone": ["us-west-1a", "us-west-1b"]}},
-        ) == V1NodeAffinity(
+        )
+        expected = V1NodeAffinity(
             required_during_scheduling_ignored_during_execution=V1NodeSelector(
                 node_selector_terms=[
                     V1NodeSelectorTerm(
@@ -2104,6 +2105,7 @@ class TestKubernetesDeploymentConfig:
                 )
             ],
         )
+        assert actual == expected
 
     @pytest.mark.parametrize(
         "anti_affinity,expected",

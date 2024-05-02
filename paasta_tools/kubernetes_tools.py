@@ -2303,6 +2303,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 raw_selectors=node_selectors,
             )
         )
+
         if pool_node_selectors:
             current_pool_node_selectors = pool_node_selectors[self.get_pool()]
             # If the service already has a node selector for a zone, we don't want to override it
