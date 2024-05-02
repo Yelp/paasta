@@ -689,10 +689,7 @@ def registration_label(namespace: str) -> str:
 
 
 def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]) -> bool:
-    return any(
-        k in node_selectors
-        for k in ZONE_LABELS
-    )
+    return any(k in node_selectors for k in ZONE_LABELS)
 
 
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
