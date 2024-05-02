@@ -2020,7 +2020,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
-    pool_node_selectors: Dict[str, Dict[str, any]]
+    pool_node_affinities: Dict[str, Dict[str, List[str]]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
@@ -2646,9 +2646,9 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
-    def get_pool_node_selectors(self) -> Dict[str, Dict[str, Any]]:
+    def get_pool_node_affinities(self) -> Dict[str, Dict[str, List[str]]]:
         """Node selectors that will be applied to all Pods in a pool"""
-        return self.config_dict.get("pool_node_selectors", {})
+        return self.config_dict.get("pool_node_affinities", {})
 
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""

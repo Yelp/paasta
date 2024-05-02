@@ -2140,7 +2140,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
         node_affinity = self.get_node_affinity(
-            system_paasta_config.get_pool_node_selectors()
+            system_paasta_config.get_pool_node_affinities()
         )
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
@@ -2286,7 +2286,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         return node_selectors
 
     def get_node_affinity(
-        self, pool_node_selectors: Dict[str, Dict[str, Any]] = None
+        self, pool_node_affinities: Dict[str, Dict[str, List[str]]] = None
     ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
@@ -2304,16 +2304,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
         )
 
-        if pool_node_selectors:
-            current_pool_node_selectors = pool_node_selectors[self.get_pool()]
+        # PAASTA-18198: To improve AZ balance with Karpenter, we temporarily allow specifying zone affinities per pool
+        if pool_node_affinities:
+            current_pool_node_affinities = pool_node_affinities[self.get_pool()]
             # If the service already has a node selector for a zone, we don't want to override it
             if (
-                current_pool_node_selectors
+                current_pool_node_affinities
                 and "topology.kubernetes.io/zone" not in node_selectors
             ):
                 requirements.extend(
                     raw_selectors_to_requirements(
-                        raw_selectors=current_pool_node_selectors,
+                        raw_selectors=current_pool_node_affinities,
                     )
                 )
 
