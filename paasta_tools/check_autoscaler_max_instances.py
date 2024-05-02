@@ -99,20 +99,32 @@ async def check_max_instances(
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
             ):
-                threshold = job_config.get_autoscaling_max_instances_alert_threshold()
+
                 metrics_provider_configs = job_config.get_autoscaling_params()[
                     "metrics_providers"
                 ]
 
-                # TODO: this doesn't work for metrics_providers that don't use setpoint (e.g. active-requests)
-                max_setpoint = max(
-                    [provider["setpoint"] for provider in metrics_provider_configs]
-                )
-                metric_threshold_target_ratio = threshold / max_setpoint
-
                 status = pysensu_yelp.Status.UNKNOWN
                 output = "how are there no metrics for this thing?"
-                for metric in autoscaling_status["metrics"]:
+
+                # This makes an assumption that the metrics currently used by the HPA are exactly the same order (and
+                # length) as the list of metrics_providers dictionaries. This should generally be true, but between
+                # yelpsoa-configs being pushed and the HPA actually being updated it may not be true. This might cause
+                # spurious alerts, but hopefully the frequency is low. We can add some safeguards if it's a problem.
+                # (E.g. smarter matching between the status dicts and the config dicts, or bailing/not alerting if the
+                # lists aren't the same lengths.)
+                for metric, metrics_provider_config in zip(
+                    autoscaling_status["metrics"], metrics_provider_configs
+                ):
+
+                    setpoint = metrics_provider_config["setpoint"]
+                    threshold = metrics_provider_config.get(
+                        "max_instances_alert_threshold",
+                        setpoint,
+                    )
+
+                    metric_threshold_target_ratio = threshold / setpoint
+
                     current_value = suffixed_number_value(metric["current_value"])
                     target_value = suffixed_number_value(metric["target_value"])
 
@@ -123,7 +135,7 @@ async def check_max_instances(
                             " ratio of current value to target value"
                             f" ({current_value} / {target_value}) is greater than the"
                             " ratio of max_instances_alert_threshold to setpoint"
-                            f" ({threshold} / {max_setpoint})"
+                            f" ({threshold} / {setpoint})"
                         )
                     else:
                         status = pysensu_yelp.Status.OK
@@ -132,7 +144,7 @@ async def check_max_instances(
                             " ratio of current value to target value"
                             f" ({current_value} / {target_value}) is below the ratio of"
                             f" max_instances_alert_threshold to setpoint ({threshold} /"
-                            f" {max_setpoint})"
+                            f" {setpoint})"
                         )
             else:
                 status = pysensu_yelp.Status.OK
@@ -149,7 +161,7 @@ async def check_max_instances(
                         " because your service is overloaded, but cannot scale any"
                         " higher because of max_instances. You may want to bump"
                         " max_instances. To make this alert quieter, adjust"
-                        " autoscaling.max_instances_alert_threshold in yelpsoa-configs."
+                        " autoscaling.metrics_providers[n].max_instances_alert_threshold in yelpsoa-configs."
                     ),
                 }
             )
