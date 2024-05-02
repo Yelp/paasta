@@ -220,16 +220,9 @@ def transform_autoscaling_params_dict(
     metrics_provider_type = old_autoscaling_params.pop("metrics_provider", "cpu")
     old_autoscaling_params["type"] = metrics_provider_type
     scaledown_policies = old_autoscaling_params.pop("scaledown_policies", None)
-    max_instances_alert_threshold = old_autoscaling_params.pop(
-        "max_instances_alert_threshold", None
-    )
 
     new_autoscaling_params = {"metrics_providers": [old_autoscaling_params]}
     if scaledown_policies is not None:
         new_autoscaling_params["scaledown_policies"] = scaledown_policies
-    if max_instances_alert_threshold is not None:
-        new_autoscaling_params[
-            "max_instances_alert_threshold"
-        ] = max_instances_alert_threshold
 
     return new_autoscaling_params  # type: ignore

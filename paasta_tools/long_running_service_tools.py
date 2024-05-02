@@ -68,12 +68,12 @@ class MetricsProviderDict(TypedDict, total=False):
     moving_average_window_seconds: Optional[int]
     use_resource_metrics: bool
     prometheus_adapter_config: Optional[dict]
+    max_instances_alert_threshold: float
 
 
 class AutoscalingParamsDict(TypedDict, total=False):
     metrics_providers: List[MetricsProviderDict]
     scaledown_policies: Optional[dict]
-    max_instances_alert_threshold: float
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
@@ -387,14 +387,6 @@ class LongRunningServiceConfig(InstanceConfig):
                 for provider in params["metrics_providers"]
             ]
         return params
-
-    def get_autoscaling_max_instances_alert_threshold(self) -> float:
-        autoscaling_params = self.get_autoscaling_params()
-        return autoscaling_params.get(
-            # TODO this default doesn't make sense for metrics providers that don't use setpoint
-            "max_instances_alert_threshold",
-            DEFAULT_AUTOSCALING_SETPOINT,
-        )
 
     def get_autoscaling_metrics_provider(
         self, provider_type: str

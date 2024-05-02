@@ -107,6 +107,9 @@
             "setpoint": {
                 "type": "number"
             },
+            "max_instances_alert_threshold": {
+                "type": "number"
+            },
             "forecast_policy": {
                 "enum": [
                     "moving_average",
@@ -165,9 +168,6 @@
             },
             "scaledown_policies": {
                 "type": "object"
-            },
-            "max_instances_alert_threshold": {
-                "type": "number"
             }
         },
         "additionalProperties": false
