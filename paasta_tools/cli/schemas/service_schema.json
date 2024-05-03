@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/edit",
+    "type": "object",
+    "properties": {
+        "needs_puppet_help": {
+            "type": "boolean"
+        },
+        "description": {
+            "type": "string"
+        },
+        "git_url": {
+            "type": "string",
+            "pattern": "^git@github.yelpcorp.com:[-a-z]+/[-_a-z0-9]+(\\.git)?$",
+            "$comment": "this is obviously very tied to how we name repos at Yelp"
+        },
+        "external_link": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "description",
+        "external_link"
+    ]
+}
