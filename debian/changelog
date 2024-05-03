@@ -1,3 +1,20 @@
+paasta-tools (0.228.0) xenial; urgency=medium
+
+  * 0.228.0 tagged with 'make release'
+    Commit: Add schema validation for service.yaml (#3841)  This is a
+    tad silly: we have a pre-existing schema in py-gitolite (which we"re
+    trying to get rid of), but none in here - which means that folks can
+    attempt to integrate PRs that pass `paasta validate` but that will
+    fail in py-gitolite.  More silliness: the py-gitolite code does not
+    do any validation on `git_url` which means that folks can pass in
+    URLs that dulwich will not be happy with (see COMPINFRA-3914
+    internally) - so let"s add a regex to validate these :)  NOTE: I
+    tested this locally with: `paasta list | xargs -P10 -n1 --no-run-if-
+    empty paasta validate -y $LOCALSOA -s 2>&1 | rg ✗` and saw that
+    there were no failures (apart from the case from COMPINFRA-3914)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 03 May 2024 08:46:33 -0700
+
 paasta-tools (0.227.0) xenial; urgency=medium
 
   * 0.227.0 tagged with 'make release'
