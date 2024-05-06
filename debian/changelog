@@ -1,3 +1,11 @@
+paasta-tools (0.229.0) xenial; urgency=medium
+
+  * 0.229.0 tagged with 'make release'
+    Commit: Merge pull request #3837 from Yelp/drmorr/autoscaling-params-
+    dict-v2  multiple metrics support for paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 06 May 2024 09:51:28 -0700
+
 paasta-tools (0.228.0) xenial; urgency=medium
 
   * 0.228.0 tagged with 'make release'
