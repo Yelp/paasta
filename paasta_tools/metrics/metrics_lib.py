@@ -39,6 +39,11 @@ class TimerProtocol(Protocol):
     ) -> None:
         raise NotImplementedError()
 
+    def __call__(
+        self,
+    ) -> Optional[float]:
+        raise NotImplementedError()
+
     def start(self) -> None:
         raise NotImplementedError()
 
@@ -120,6 +125,7 @@ class MeteoriteMetrics(BaseMetrics):
 class Timer(TimerProtocol):
     def __init__(self, name: str) -> None:
         self.name = name
+        self.elapsed_ms: Optional[float] = None
 
     def __enter__(self) -> TimerProtocol:
         self.start()
@@ -133,6 +139,11 @@ class Timer(TimerProtocol):
     ) -> None:
         if not err_type:
             self.stop()
+
+    def __call__(self) -> Optional[float]:
+        if self.elapsed_ms is None:
+            self.stop()
+        return self.elapsed_ms
 
     def start(self) -> None:
         log.debug("timer {} start at {}".format(self.name, time.time()))
