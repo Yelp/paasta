@@ -74,4 +74,4 @@ In the example below, specifying ``--cluster`` in the ``local-run`` command will
 
     paasta local-run --service <service-name> --pull --assume-pod-identity --instance <service-instance> --cluster pnw-prod --interactive
 
-Here, ``-I`` flag is used to get the interactive shell.
+Here, ``--interactive`` flag is used to get the interactive shell.
