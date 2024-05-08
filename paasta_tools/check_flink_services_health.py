@@ -23,7 +23,9 @@ from typing import Tuple
 import pysensu_yelp
 
 from paasta_tools import flink_tools
+from paasta_tools import flinkeks_tools
 from paasta_tools.check_services_replication_tools import main
+from paasta_tools.check_services_replication_tools import parse_args
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import is_pod_ready
@@ -62,6 +64,7 @@ def check_under_registered_taskmanagers(
     instance_config: FlinkDeploymentConfig,
     expected_count: int,
     cr_name: str,
+    is_eks: bool,
 ) -> Tuple[bool, str, str]:
     """Check if not enough taskmanagers have been registered to the jobmanager and
     returns both the result of the check in the form of a boolean and a human-readable
@@ -71,7 +74,7 @@ def check_under_registered_taskmanagers(
     if cr_name != "":
         try:
             overview = flink_tools.get_flink_jobmanager_overview(
-                cr_name, instance_config.cluster
+                cr_name, instance_config.cluster, is_eks
             )
             num_reported = overview.get("taskmanagers", 0)
             crit_threshold = instance_config.get_replication_crit_percentage()
@@ -170,6 +173,7 @@ def check_flink_service_health(
             instance_config=instance_config,
             expected_count=taskmanagers_expected_cnt,
             cr_name=service_cr_name,
+            is_eks=isinstance(instance_config, flinkeks_tools.FlinkEksDeploymentConfig),
         ),
     ]
     output = ", ".join([r[1] for r in results])
@@ -190,8 +194,11 @@ def check_flink_service_health(
 
 
 if __name__ == "__main__":
+    args = parse_args()
     main(
-        flink_tools.FlinkDeploymentConfig,
-        check_flink_service_health,
+        instance_type_class=flinkeks_tools.FlinkEksDeploymentConfig
+        if args.eks
+        else flink_tools.FlinkDeploymentConfig,
+        check_service_replication=check_flink_service_health,
         namespace="paasta-flinks",
     )

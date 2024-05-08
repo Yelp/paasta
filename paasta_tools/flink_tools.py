@@ -177,12 +177,15 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     )
 
 
-def get_flink_ingress_url_root(cluster: str) -> str:
-    return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
+def get_flink_ingress_url_root(cluster: str, is_eks: bool) -> str:
+    if is_eks:
+        return f"http://flink.eks.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
+    else:
+        return f"http://flink.k8s.{cluster}.paasta:{FLINK_INGRESS_PORT}/"
 
 
-def _dashboard_get(cr_name: str, cluster: str, path: str) -> str:
-    root = get_flink_ingress_url_root(cluster)
+def _dashboard_get(cr_name: str, cluster: str, path: str, is_eks: bool) -> str:
+    root = get_flink_ingress_url_root(cluster, is_eks)
     url = f"{root}{cr_name}/{path}"
     response = requests.get(url, timeout=FLINK_DASHBOARD_TIMEOUT_SECONDS)
     response.raise_for_status()
@@ -215,7 +218,8 @@ def _filter_for_endpoint(json_response: Any, endpoint: str) -> Mapping[str, Any]
 def _get_jm_rest_api_base_url(cr: Mapping[str, Any]) -> str:
     metadata = cr["metadata"]
     cluster = metadata["labels"][paasta_prefixed("cluster")]
-    base_url = get_flink_ingress_url_root(cluster)
+    is_eks = metadata["labels"].get("paasta.yelp.com/eks", "False")
+    base_url = get_flink_ingress_url_root(cluster, is_eks == "True")
 
     # this will look something like http://flink-jobmanager-host:port/paasta-service-cr-name
     _, _, service_cr_name, *_ = urlparse(
@@ -255,9 +259,11 @@ def curl_flink_endpoint(cr_id: Mapping[str, str], endpoint: str) -> Mapping[str,
         raise ValueError(f"failed HTTP request to flink API: {e}")
 
 
-def get_flink_jobmanager_overview(cr_name: str, cluster: str) -> Mapping[str, Any]:
+def get_flink_jobmanager_overview(
+    cr_name: str, cluster: str, is_eks: bool
+) -> Mapping[str, Any]:
     try:
-        response = _dashboard_get(cr_name, cluster, "overview")
+        response = _dashboard_get(cr_name, cluster, "overview", is_eks)
         return json.loads(response)
     except requests.RequestException as e:
         url = e.request.url

@@ -49,7 +49,10 @@ def instance_config():
 )
 def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
     under, output, description = check_under_registered_taskmanagers(
-        instance_config, expected_count=3, cr_name="fake--service-575c857546"
+        instance_config,
+        expected_count=3,
+        cr_name="fake--service-575c857546",
+        is_eks=False,
     )
     assert not under
     assert (
@@ -66,7 +69,10 @@ def test_check_under_registered_taskmanagers_ok(mock_overview, instance_config):
 )
 def test_check_under_registered_taskmanagers_under(mock_overview, instance_config):
     under, output, description = check_under_registered_taskmanagers(
-        instance_config, expected_count=3, cr_name="fake--service-575c857546"
+        instance_config,
+        expected_count=3,
+        cr_name="fake--service-575c857546",
+        is_eks=False,
     )
     assert under
     assert (
@@ -86,7 +92,10 @@ def test_check_under_registered_taskmanagers_under(mock_overview, instance_confi
 )
 def test_check_under_registered_taskmanagers_error(mock_overview, instance_config):
     under, output, description = check_under_registered_taskmanagers(
-        instance_config, expected_count=3, cr_name="fake--service-575c857546"
+        instance_config,
+        expected_count=3,
+        cr_name="fake--service-575c857546",
+        is_eks=False,
     )
     assert under
     assert (
@@ -145,7 +154,7 @@ def test_check_flink_service_health_healthy(instance_config):
         ]
         mock_check_under_replication.assert_has_calls(expected)
         mock_check_under_registered_taskmanagers.assert_called_once_with(
-            instance_config=instance_config, expected_count=3, cr_name=""
+            instance_config=instance_config, expected_count=3, cr_name="", is_eks=False
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -210,7 +219,7 @@ def test_check_flink_service_health_too_few_taskmanagers(instance_config):
         ]
         mock_check_under_replication.assert_has_calls(expected)
         mock_check_under_registered_taskmanagers.assert_called_once_with(
-            instance_config=instance_config, expected_count=3, cr_name=""
+            instance_config=instance_config, expected_count=3, cr_name="", is_eks=False
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,
@@ -267,7 +276,10 @@ def test_check_flink_service_health_under_registered_taskamanagers(instance_conf
         ]
         mock_check_under_replication.assert_has_calls(expected)
         mock_check_under_registered_taskmanagers.assert_called_once_with(
-            instance_config=instance_config, expected_count=3, cr_name=""
+            instance_config=instance_config,
+            expected_count=3,
+            cr_name="",
+            is_eks=False,
         )
         mock_send_replication_event.assert_called_once_with(
             instance_config=instance_config,

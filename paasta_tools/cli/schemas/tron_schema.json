@@ -316,6 +316,15 @@
                     "type": "string",
                     "pattern": "[-a-zA-z0-9_]"
                 },
+                "max_runtime": {
+                    "$ref": "#definitions/time_delta"
+                },
+                "force_spark_resource_configs": {
+                    "type": "boolean"
+                },
+                "mrjob": {
+                    "type": "boolean"
+                },
                 "spark_args": {
                     "type": "object",
                     "additionalProperties": true,

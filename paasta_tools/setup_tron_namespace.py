@@ -80,8 +80,8 @@ def main():
             services = tron_tools.get_tron_namespaces(
                 cluster=args.cluster, soa_dir=args.soa_dir
             )
-        except Exception as e:
-            log.error("Failed to list tron namespaces: {error}".format(error=str(e)))
+        except Exception:
+            log.exception("Failed to list tron namespaces:")
             sys.exit(1)
     else:
         services = args.services
@@ -139,9 +139,8 @@ def main():
                 else:
                     skipped.append(service)
                     log.debug(f"Skipped {service}")
-        except Exception as e:
-            log.error(f"Update for {service} failed: {str(e)}")
-            log.debug(f"Exception while updating {service}", exc_info=1)
+        except Exception:
+            log.exception(f"Update for {service} failed:")
             failed.append(service)
 
     skipped_report = skipped if args.verbose else len(skipped)

@@ -23,9 +23,17 @@ endif
 
 ifeq ($(PAASTA_ENV),YELP)
 	export DOCKER_REGISTRY ?= docker-dev.yelpcorp.com/
+	export DOCKER_OPT_ARGS ?=
 else
-	export DOCKER_REGISTRY ?= ""
+	export DOCKER_REGISTRY ?= docker.io/
+	export DOCKER_OPT_ARGS ?= --user `id -u`:`id -g`
 	export INDEX_URL_BUILD_ARG ?= PIP_INDEX_URL
+endif
+
+# If running in CI, pass UID and GID to avoid permission issues
+# since Jenkins does not use Podman
+ifdef CI
+	export DOCKER_OPT_ARGS := --user `id -u`:`id -g`
 endif
 
 .PHONY: all docs test itest k8s_itests quick-test
@@ -115,8 +123,8 @@ k8s_clean: .paasta/bin/activate
 #   in paasta repo: java -jar ~/openapi-generator/modules/openapi-generator-cli/target/openapi-generator-cli.jar
 openapi-codegen:
 	rm -rf paasta_tools/paastaapi
-	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
-		yelp/openapi-generator-cli:20201026 \
+	docker run --rm -i ${DOCKER_OPT_ARGS} -v `pwd`:/src -w /src \
+		${DOCKER_REGISTRY}yelp/openapi-generator-cli:20201026 \
 		generate \
 		-i paasta_tools/api/api_docs/oapi.yaml \
 		-g python-experimental \
@@ -127,8 +135,8 @@ openapi-codegen:
 	rm -rf temp-openapi-client
 
 swagger-validate:
-	docker run --rm -i --user `id -u`:`id -g` -v `pwd`:/src -w /src \
-		yelp/openapi-generator-cli:20201026 \
+	docker run --rm -i ${DOCKER_OPT_ARGS} -v `pwd`:/src -w /src \
+		${DOCKER_REGISTRY}yelp/openapi-generator-cli:20201026 \
 		validate \
 		-i paasta_tools/api/api_docs/swagger.json
 

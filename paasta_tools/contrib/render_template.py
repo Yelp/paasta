@@ -23,25 +23,28 @@ def replace(s, values):
     )
 
 
-def render_file(src, dst, values):
+def render_file(src, dst, values, overwrite=True):
     basename = os.path.basename(src)
     new_name = replace(basename, values)
-    with open(f"{dst}/{new_name}", "w") as new:
+    if not os.path.exists(new_name) or overwrite:
+        write_file(dst, new_name, src, values)
+
+
+def write_file(dst, name, src, values):
+    with open(f"{dst}/{name}", "w") as new:
         with open(f"{src}", "r") as old:
             new.write(replace(old.read(), values))
 
 
 def render(src, dst, values={}, exclude={}, overwrite=True):
     if os.path.isfile(src):
-        if overwrite:
-            render_file(src, dst, values)
+        render_file(src, dst, values, overwrite)
         return
     for f in os.scandir(src):
         if f.name.startswith(".") or f.path in exclude:
             continue
         if os.path.isfile(f.path):
-            if overwrite:
-                render_file(f.path, dst, values)
+            render_file(f.path, dst, values, overwrite)
         else:
             new_dst = replace(f"{dst}/{f.name}", values)
             try:

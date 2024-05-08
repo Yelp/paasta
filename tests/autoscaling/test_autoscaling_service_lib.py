@@ -23,9 +23,13 @@ from kazoo.exceptions import NoNodeError
 from paasta_tools import marathon_tools
 from paasta_tools.autoscaling import autoscaling_service_lib
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
+from paasta_tools.autoscaling.autoscaling_service_lib import DECISION_POLICY_KEY
 from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
 from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
+from paasta_tools.autoscaling.autoscaling_service_lib import (
+    SERVICE_METRICS_PROVIDER_KEY,
+)
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
@@ -1083,7 +1087,7 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
             "min_instances": 1,
             "max_instances": 10,
             "desired_state": "start",
-            "autoscaling": {"decision_policy": "bespoke"},
+            "autoscaling": {"metrics_providers": [{"decision_policy": "bespoke"}]},
         },
         branch_dict=None,
     )
@@ -1310,8 +1314,7 @@ def test_get_utilization():
         mock_system_paasta_config = mock.Mock()
         mock_log_utilization_data = mock.Mock()
         mock_autoscaling_params = {
-            autoscaling_service_lib.SERVICE_METRICS_PROVIDER_KEY: "mock_provider",
-            "mock_param": 2,
+            SERVICE_METRICS_PROVIDER_KEY: [{"type": "mock_provider", "mock_param": 2}],
         }
         ret = autoscaling_service_lib.get_utilization(
             marathon_service_config=mock_marathon_service_config,
@@ -1327,8 +1330,7 @@ def test_get_utilization():
             marathon_tasks=mock_marathon_tasks,
             mesos_tasks=mock_mesos_tasks,
             log_utilization_data=mock_log_utilization_data,
-            mock_param=2,
-            metrics_provider="mock_provider",
+            metrics_providers=[{"type": "mock_provider", "mock_param": 2}],
         )
         assert ret == mock_metrics_provider.return_value
 
@@ -1345,8 +1347,12 @@ def test_get_new_instance_count():
         mock_get_decision_policy.return_value = mock_decision_policy
         mock_marathon_service_config = mock.Mock()
         mock_autoscaling_params = {
-            autoscaling_service_lib.DECISION_POLICY_KEY: "mock_dp",
-            "mock_param": 2,
+            SERVICE_METRICS_PROVIDER_KEY: [
+                {
+                    DECISION_POLICY_KEY: "mock_dp",
+                    "mock_param": 2,
+                }
+            ]
         }
         ret = autoscaling_service_lib.get_new_instance_count(
             utilization=0.7,
@@ -1361,9 +1367,8 @@ def test_get_new_instance_count():
             error=0.1,
             current_instances=4,
             zookeeper_path=mock_compose_autoscaling_zookeeper_root.return_value,
-            decision_policy="mock_dp",
+            metrics_providers=[{"decision_policy": "mock_dp", "mock_param": 2}],
             utilization=0.7,
-            mock_param=2,
             num_healthy_instances=4,
             persist_data=False,
         )
@@ -1374,8 +1379,12 @@ def test_get_new_instance_count():
         mock_decision_policy = mock.Mock(return_value=-4)
         mock_get_decision_policy.return_value = mock_decision_policy
         mock_autoscaling_params = {
-            autoscaling_service_lib.DECISION_POLICY_KEY: "mock_dp",
-            "mock_param": 2,
+            SERVICE_METRICS_PROVIDER_KEY: [
+                {
+                    DECISION_POLICY_KEY: "mock_dp",
+                    "mock_param": 2,
+                }
+            ]
         }
         ret = autoscaling_service_lib.get_new_instance_count(
             utilization=0.7,
@@ -1580,98 +1589,6 @@ def test_proportional_decision_policy(mock_fetch_historical_load):
     # If we're 50% underutilized, scale down by 50%
     assert -5 == autoscaling_service_lib.proportional_decision_policy(
         setpoint=0.5, utilization=0.25, **common_kwargs
-    )
-
-
-@mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
-    autospec=True,
-    return_value=[],
-)
-def test_proportional_decision_policy_nonzero_offset(mock_fetch_historical_load):
-    common_kwargs = {
-        "zookeeper_path": "/test",
-        "current_instances": 10,
-        "num_healthy_instances": 10,
-        "min_instances": 5,
-        "max_instances": 15,
-        "forecast_policy": "current",
-        "offset": 0.2,
-        "persist_data": False,
-    }
-
-    # if utilization == setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5, utilization=0.5, **common_kwargs
-    )
-
-    # if utilization is fairly close to setpoint, delta should be 0.
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.514,  # Just under 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs,
-    )
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.486,  # Just over 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs,
-    )
-
-    assert 1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.516,  # Just over 0.515 = (0.5 - 0.2) * 1.05 + 0.2
-        **common_kwargs,
-    )
-
-    assert -1 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5,
-        utilization=0.484,  # Just under 0.485 = (0.5 - 0.2) * 0.95 + 0.2
-        **common_kwargs,
-    )
-
-    # If we're 50% overutilized, scale up by 50%
-    assert 5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5, utilization=0.65, **common_kwargs
-    )
-
-    # If we're 50% underutilized, scale down by 50%
-    assert -5 == autoscaling_service_lib.proportional_decision_policy(
-        setpoint=0.5, utilization=0.35, **common_kwargs
-    )
-
-
-@mock.patch(
-    "paasta_tools.autoscaling.autoscaling_service_lib.fetch_historical_load",
-    autospec=True,
-    return_value=[],
-)
-def test_proportional_decision_policy_good_enough(mock_fetch_historical_load):
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path="/test",
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy="current",
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.54,
-        good_enough_window=(0.45, 0.55),
-        persist_data=False,
-    )
-
-    assert 0 == autoscaling_service_lib.proportional_decision_policy(
-        zookeeper_path="/test",
-        current_instances=100,
-        num_healthy_instances=100,
-        min_instances=50,
-        max_instances=150,
-        forecast_policy="current",
-        offset=0.0,
-        setpoint=0.50,
-        utilization=0.46,
-        good_enough_window=(0.45, 0.55),
-        persist_data=False,
     )
 
 

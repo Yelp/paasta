@@ -99,13 +99,32 @@ async def check_max_instances(
                 autoscaling_status["desired_replicas"]
                 >= autoscaling_status["max_instances"]
             ):
-                threshold = job_config.get_autoscaling_max_instances_alert_threshold()
-                setpoint = job_config.get_autoscaling_params()["setpoint"]
-                metric_threshold_target_ratio = threshold / setpoint
+
+                metrics_provider_configs = job_config.get_autoscaling_params()[
+                    "metrics_providers"
+                ]
 
                 status = pysensu_yelp.Status.UNKNOWN
                 output = "how are there no metrics for this thing?"
-                for metric in autoscaling_status["metrics"]:
+
+                # This makes an assumption that the metrics currently used by the HPA are exactly the same order (and
+                # length) as the list of metrics_providers dictionaries. This should generally be true, but between
+                # yelpsoa-configs being pushed and the HPA actually being updated it may not be true. This might cause
+                # spurious alerts, but hopefully the frequency is low. We can add some safeguards if it's a problem.
+                # (E.g. smarter matching between the status dicts and the config dicts, or bailing/not alerting if the
+                # lists aren't the same lengths.)
+                for metric, metrics_provider_config in zip(
+                    autoscaling_status["metrics"], metrics_provider_configs
+                ):
+
+                    setpoint = metrics_provider_config["setpoint"]
+                    threshold = metrics_provider_config.get(
+                        "max_instances_alert_threshold",
+                        setpoint,
+                    )
+
+                    metric_threshold_target_ratio = threshold / setpoint
+
                     current_value = suffixed_number_value(metric["current_value"])
                     target_value = suffixed_number_value(metric["target_value"])
 
@@ -136,12 +155,13 @@ async def check_max_instances(
                 {
                     "page": False,  # TODO: remove this line once this alert has been deployed for a little while.
                     "runbook": "y/check-autoscaler-max-instances",
+                    "realert_every": 60,  # The check runs once a minute, so this would realert every hour.
                     "tip": (
                         "The autoscaler wants to scale up to handle additional load"
                         " because your service is overloaded, but cannot scale any"
                         " higher because of max_instances. You may want to bump"
                         " max_instances. To make this alert quieter, adjust"
-                        " autoscaling.max_instances_alert_threshold in yelpsoa-configs."
+                        " autoscaling.metrics_providers[n].max_instances_alert_threshold in yelpsoa-configs."
                     ),
                 }
             )

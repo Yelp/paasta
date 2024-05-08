@@ -972,6 +972,18 @@
                     },
                     "description": "Nullable Flink instance status and metadata"
                 },
+                "flinkeks": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "$ref": "#/definitions/InstanceStatusFlinkStatus"
+                        },
+                        "metadata": {
+                            "$ref": "#/definitions/InstanceStatusFlinkMetadata"
+                        }
+                    },
+                    "description": "Nullable Flink instance status and metadata"
+                },
                 "kafkacluster": {
                     "type": "object",
                     "properties": {
