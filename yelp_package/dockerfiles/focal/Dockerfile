@@ -21,9 +21,6 @@ RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 
 RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common
-
-RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         build-essential \
         debhelper \
@@ -34,7 +31,7 @@ RUN apt-get update > /dev/null && \
         libgpgme-dev \
         libssl-dev \
         libyaml-dev \
-        python3.8-dev \
+        python3-dev \
         python3-pip \
         python3-distutils-extra \
         # py2 used for just dh-virtualenv \
