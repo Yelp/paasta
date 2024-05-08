@@ -21,8 +21,7 @@ RUN rm /etc/dpkg/dpkg.cfg.d/excludes
 RUN apt-get update && apt-get install -yq gnupg2
 
 RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
+    apt-get install -y --no-install-recommends software-properties-common
 
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -34,11 +33,10 @@ RUN apt-get update > /dev/null && \
         libgpgme11 \
         libgpgme-dev \
         libssl-dev \
-        libjs-sphinxdoc \
         libyaml-dev \
         python3.8-dev \
         python3-pip \
-        python3.8-distutils \
+        python3-distutils-extra \
         # py2 used for just dh-virtualenv \
         python \
         tox \
