@@ -165,11 +165,13 @@ def main() -> None:
         )
     else:
         setup_kube_succeeded = False
-    timer.stop(tmp_dimensions={"result": setup_kube_succeeded})
+    exit_code = 0 if setup_kube_succeeded and service_instances_valid else 1
+
+    timer.stop(tmp_dimensions={"result": exit_code})
     logging.info(
-        f"Stopping timer for {cluster} (eks={args.eks}) with result {setup_kube_succeeded}: {timer()}ms elapsed"
+        f"Stopping timer for {cluster} (eks={args.eks}) with result {exit_code}: {timer()}ms elapsed"
     )
-    sys.exit(0 if setup_kube_succeeded and service_instances_valid else 1)
+    sys.exit(exit_code)
 
 
 def get_service_instances_with_valid_names(

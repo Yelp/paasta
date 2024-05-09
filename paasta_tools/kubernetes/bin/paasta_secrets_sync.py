@@ -190,11 +190,13 @@ def main() -> None:
         overwrite_namespace=args.namespace,
         secret_type=args.secret_type,
     )
-    timer.stop(tmp_dimensions={"result": result})
+    exit_code = 0 if result else 1
+
+    timer.stop(tmp_dimensions={"result": exit_code})
     logging.info(
-        f"Stopping timer for {cluster} with result {result}: {timer()}ms elapsed"
+        f"Stopping timer for {cluster} with result {exit_code}: {timer()}ms elapsed"
     )
-    sys.exit(0) if result else sys.exit(1)
+    sys.exit(exit_code)
 
 
 def get_services_to_k8s_namespaces_to_allowlist(

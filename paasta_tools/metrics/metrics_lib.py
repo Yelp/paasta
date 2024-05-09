@@ -207,6 +207,7 @@ def system_timer(
     default_dimensions = {
         "path": path,
         "host": hostname,
+        # ppid is included given some system processes are called multiple times in parallel for a single 'run'
         "parent_pid": parent_pid,
         "pid": pid,
     }
