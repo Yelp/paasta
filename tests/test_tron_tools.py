@@ -1204,6 +1204,7 @@ class TestTronTools:
                 "SPARK_USER": "root",
                 "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
+                "AWS_DEFAULT_REGION": "us-west-2",
             },
             "node_selectors": {"yelp.com/pool": "stable"},
             "cap_add": [],
