@@ -373,7 +373,10 @@ def add_subparser(subparsers):
 
     aws_group.add_argument(
         "--assume-aws-role",
-        help="Takes an AWS IAM role ARN and attempts to create a session",
+        help=(
+            "Takes an AWS IAM role ARN and attempts to create a session using "
+            "spark_role_assumer"
+        ),
     )
 
     aws_group.add_argument(
@@ -384,6 +387,18 @@ def add_subparser(subparsers):
         ),
         type=int,
         default=43200,
+    )
+
+    aws_group.add_argument(
+        "--use-web-identity",
+        help=(
+            "If the current environment contains AWS_ROLE_ARN and "
+            "AWS_WEB_IDENTITY_TOKEN_FILE, creates a session to use. These "
+            "ENV vars must be present, and will be in the context of a pod-"
+            "identity enabled pod."
+        ),
+        action="store_true",
+        default=False,
     )
 
     jupyter_group = list_parser.add_argument_group(
@@ -763,7 +778,8 @@ def configure_and_run_docker_container(
     volumes.append("%s:rw" % args.work_dir)
     volumes.append("/nail/home:/nail/home:rw")
 
-    volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
+    if pod_template_path:
+        volumes.append(f"{pod_template_path}:{pod_template_path}:rw")
 
     volumes.append(
         f"{system_paasta_config.get_spark_kubeconfig()}:{system_paasta_config.get_spark_kubeconfig()}:ro"
@@ -1019,7 +1035,10 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
         return None
 
     # iam_role / aws_profile
-    if "iam_role" in action_dict and action_dict.get("iam_role_provider", "") != "aws":
+    if (
+        "iam_role" in action_dict
+        and action_dict.get("iam_role_provider", "aws") != "aws"
+    ):
         print(
             PaastaColors.red("Invalid Tronfig: iam_role_provider should be 'aws'"),
             file=sys.stderr,
@@ -1168,6 +1187,7 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         profile_name=args.aws_profile,
         assume_aws_role_arn=args.assume_aws_role,
         session_duration=args.aws_role_duration,
+        use_web_identity=args.use_web_identity,
     )
     docker_image_digest = get_docker_image(args, instance_config)
     if docker_image_digest is None:

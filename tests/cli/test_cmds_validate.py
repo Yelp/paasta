@@ -21,7 +21,7 @@ from mock import patch
 from paasta_tools.cli.cmds.validate import check_secrets_for_instance
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_config_file_dict
-from paasta_tools.cli.cmds.validate import get_schema
+from paasta_tools.cli.cmds.validate import get_schema_validator
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import list_upcoming_runs
 from paasta_tools.cli.cmds.validate import paasta_validate
@@ -39,6 +39,9 @@ from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import validate_secrets
 from paasta_tools.cli.cmds.validate import validate_tron
 from paasta_tools.cli.cmds.validate import validate_unique_instance_names
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -227,24 +230,17 @@ def test_get_service_path_soa_dir(mock_glob, mock_isdir):
     assert service_path == f"{soa_dir}/{service}"
 
 
-def is_schema(schema):
-    assert schema is not None
-    assert isinstance(schema, dict)
-    assert "$schema" in schema
-
-
 def test_get_schema_eks_found():
-    schema = get_schema("eks")
-    is_schema(schema)
+    get_schema_validator("eks")
 
 
 def test_get_schema_tron_found():
-    schema = get_schema("tron")
-    is_schema(schema)
+    get_schema_validator("tron")
 
 
 def test_get_schema_missing():
-    assert get_schema("fake_schema") is None
+    with pytest.raises(FileNotFoundError):
+        get_schema_validator("fake_schema")
 
 
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -1041,109 +1037,6 @@ def test_check_secrets_for_instance_missing_secret(
     )
 
 
-@pytest.mark.parametrize(
-    "setpoint,offset,expected,instance_type",
-    [
-        (0.5, 0.5, False, "kubernetes"),
-        (0.5, 0.6, False, "kubernetes"),
-        (0.8, 0.25, True, "kubernetes"),
-        (0.5, 0.5, False, "eks"),
-        (0.5, 0.6, False, "eks"),
-        (0.8, 0.25, True, "eks"),
-    ],
-)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    setpoint,
-    offset,
-    expected,
-    instance_type,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value=instance_type),
-                is_autoscaling_enabled=mock.Mock(return_value=True),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "uwsgi",
-                        "setpoint": setpoint,
-                        "offset": offset,
-                    }
-                ),
-            ),
-        )
-    ]
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is expected
-
-
-@pytest.mark.parametrize(
-    "instance_type",
-    [("kubernetes"), ("eks")],
-)
-@patch(
-    "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
-    autospec=True,
-)
-@patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
-@patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
-def test_validate_autoscaling_configs_no_offset_specified(
-    mock_path_to_soa_dir_service,
-    mock_list_clusters,
-    mock_load_all_instance_configs_for_service,
-    instance_type,
-):
-    mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
-    mock_list_clusters.return_value = ["fake_cluster"]
-    mock_load_all_instance_configs_for_service.return_value = [
-        (
-            "fake_instance1",
-            mock.Mock(
-                get_instance=mock.Mock(return_value="fake_instance1"),
-                get_instance_type=mock.Mock(return_value=instance_type),
-                is_autoscaling_enabled=mock.Mock(return_value=True),
-                get_autoscaling_params=mock.Mock(
-                    return_value={
-                        "metrics_provider": "uwsgi",
-                        "setpoint": 0.8,
-                    }
-                ),
-            ),
-        )
-    ]
-
-    with mock.patch(
-        "paasta_tools.cli.cmds.validate.load_system_paasta_config",
-        autospec=True,
-        return_value=SystemPaastaConfig(
-            config={"skip_cpu_override_validation": ["not-a-real-service"]},
-            directory="/some/test/dir",
-        ),
-    ):
-        assert validate_autoscaling_configs("fake-service-path") is True
-
-
 @patch(
     "paasta_tools.cli.cmds.validate.load_all_instance_configs_for_service",
     autospec=True,
@@ -1151,55 +1044,96 @@ def test_validate_autoscaling_configs_no_offset_specified(
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.path_to_soa_dir_service", autospec=True)
 @pytest.mark.parametrize(
-    "autoscaling_config,registrations,expected",
+    "autoscaling_config,registrations,instance_type,expected",
     [
         (
-            {
-                "metrics_provider": "active-requests",
-            },
+            {"metrics_providers": [{"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55}]},
             [],
+            "eks",
+            True,
+        ),
+        (
+            {"metrics_providers": [{"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55}]},
+            [],
+            "kubernetes",
             True,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": -5,
+                "metrics_providers": [
+                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
+                    {"type": METRICS_PROVIDER_CPU, "decision_policy": "bespoke"},
+                ]
             },
             [],
+            "kubernetes",
             False,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
+                "metrics_providers": [
+                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.55},
+                    {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.35},
+                ]
             },
             [],
+            "kubernetes",
+            False,
+        ),
+        (
+            {"metrics_providers": [{"type": METRICS_PROVIDER_ACTIVE_REQUESTS}]},
+            [],
+            "kubernetes",
             True,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
+            },
+            [],
+            "kubernetes",
+            True,
+        ),
+        (
+            {
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
             },
             ["fake_service.abc"],
+            "kubernetes",
             True,
         ),
         (
             {
-                "metrics_provider": "active-requests",
-                "desired_active_requests_per_replica": 5,
+                "metrics_providers": [
+                    {
+                        "type": METRICS_PROVIDER_ACTIVE_REQUESTS,
+                        "desired_active_requests_per_replica": 5,
+                    }
+                ]
             },
             ["fake_service.abc", "fake_service.def"],
+            "kubernetes",
             False,
         ),
     ],
 )
-def test_validate_autoscaling_configs_active_requests(
+def test_validate_autoscaling_configs(
     mock_path_to_soa_dir_service,
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
     autoscaling_config,
     registrations,
+    instance_type,
     expected,
 ):
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
@@ -1229,16 +1163,17 @@ def test_validate_autoscaling_configs_active_requests(
 
 
 @pytest.mark.parametrize(
-    "filecontents,expected, instance_type",
+    "has_cpu_override,annotation,expected,instance_type",
     [
-        ("# overridexxx-cpu-setting", False, "kubernetes"),
-        ("# override-cpu-setting", False, "kubernetes"),
-        ("", False, "kubernetes"),
-        ("# override-cpu-setting (PAASTA-17522)", True, "kubernetes"),
-        ("# overridexxx-cpu-setting", False, "eks"),
-        ("# override-cpu-setting", False, "eks"),
-        ("", False, "eks"),
-        ("# override-cpu-setting (PAASTA-17522)", True, "eks"),
+        (True, "# overridexxx-cpu-setting", False, "kubernetes"),
+        (True, "# override-cpu-setting", False, "kubernetes"),
+        (True, "", False, "kubernetes"),
+        (False, "", False, "kubernetes"),
+        (True, "# override-cpu-setting (PAASTA-17522)", True, "kubernetes"),
+        (True, "# overridexxx-cpu-setting", False, "eks"),
+        (True, "# override-cpu-setting", False, "eks"),
+        (True, "", False, "eks"),
+        (True, "# override-cpu-setting (PAASTA-17522)", True, "eks"),
     ],
 )
 @patch("paasta_tools.cli.cmds.validate.get_file_contents", autospec=True)
@@ -1253,10 +1188,16 @@ def test_validate_cpu_autotune_override(
     mock_list_clusters,
     mock_load_all_instance_configs_for_service,
     mock_get_file_contents,
-    filecontents,
+    has_cpu_override,
+    annotation,
     expected,
     instance_type,
 ):
+    metrics_providers = [
+        {"type": METRICS_PROVIDER_CPU, "setpoint": 0.8},
+        {"type": METRICS_PROVIDER_UWSGI, "setpoint": 0.4},
+    ]
+
     mock_path_to_soa_dir_service.return_value = ("fake_soa_dir", "fake_service")
     mock_list_clusters.return_value = ["fake_cluster"]
     mock_load_all_instance_configs_for_service.return_value = [
@@ -1268,8 +1209,7 @@ def test_validate_cpu_autotune_override(
                 is_autoscaling_enabled=mock.Mock(return_value=True),
                 get_autoscaling_params=mock.Mock(
                     return_value={
-                        "metrics_provider": "cpu",
-                        "setpoint": 0.8,
+                        "metrics_providers": metrics_providers,
                     }
                 ),
             ),
@@ -1278,7 +1218,11 @@ def test_validate_cpu_autotune_override(
     mock_get_file_contents.return_value = f"""
 ---
 fake_instance1:
-  cpus: 1 {filecontents}
+  mem: 2
+"""
+    if has_cpu_override:
+        mock_get_file_contents.return_value += f"""
+  cpus: 1 {annotation}
 """
 
     with mock.patch(

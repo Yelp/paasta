@@ -101,6 +101,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
+DEFAULT_SPARK_EXECUTOR_POOL = "batch"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -238,10 +239,6 @@ def _spark_k8s_role() -> str:
     return load_system_paasta_config().get_spark_k8s_role()
 
 
-def _use_suffixed_log_streams_k8s() -> bool:
-    return load_system_paasta_config().get_tron_k8s_use_suffixed_log_streams_k8s()
-
-
 class TronActionConfigDict(InstanceConfigDict, total=False):
     # this is kinda confusing: long-running stuff is currently using cmd
     # ...but tron are using command - this is going to require a little
@@ -285,16 +282,17 @@ class TronActionConfig(InstanceConfig):
         self.for_validation = for_validation
 
     def build_spark_config(self) -> Dict[str, str]:
-
         system_paasta_config = load_system_paasta_config()
         resolved_cluster = system_paasta_config.get_eks_cluster_aliases().get(
             self.get_cluster(), self.get_cluster()
         )
+        pool = self.get_spark_executor_pool()
         try:
-            if not validate_pool(
-                resolved_cluster, self.get_spark_executor_pool(), system_paasta_config
-            ):
-                raise InvalidPoolError
+            if not validate_pool(resolved_cluster, pool, system_paasta_config):
+                raise InvalidPoolError(
+                    f"Job {self.get_service()}.{self.get_instance()}: "
+                    f"pool '{pool}' is invalid for cluster '{resolved_cluster}'"
+                )
         except PoolsNotConfiguredError:
             log.warning(
                 f"Could not fetch allowed_pools for `{resolved_cluster}`. Skipping pool validation.\n"
@@ -624,9 +622,7 @@ class TronActionConfig(InstanceConfig):
         )
 
     def get_spark_executor_pool(self) -> str:
-        return self.config_dict.get(
-            "pool", load_system_paasta_config().get_tron_default_pool_override()
-        )
+        return self.config_dict.get("pool", DEFAULT_SPARK_EXECUTOR_POOL)
 
     def get_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name")
@@ -917,17 +913,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
             for k, v in all_env.items()
             if not is_secret_ref(v) and k not in result["field_selector_env"]
         }
-        # for Tron-on-K8s, we want to ship tronjob output through logspout
-        # such that this output eventually makes it into our per-instance
-        # log streams automatically
-        # however, we're missing infrastructure in the superregion where we run spark jobs (and
-        # some normal tron jobs), so we take a slightly different approach here
-        if _use_suffixed_log_streams_k8s():
-            result["env"]["STREAM_SUFFIX_LOGSPOUT"] = (
-                "spark" if executor == "spark" else "tron"
-            )
-        else:
-            result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
+        result["env"]["ENABLE_PER_INSTANCE_LOGSPOUT"] = "1"
         result["node_selectors"] = action_config.get_node_selectors()
         result["node_affinities"] = action_config.get_node_affinities()
 

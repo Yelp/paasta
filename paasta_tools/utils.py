@@ -2020,6 +2020,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
     pod_defaults: Dict[str, Any]
+    pool_node_affinities: Dict[str, Dict[str, List[str]]]
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     previous_marathon_servers: List[MarathonConfigDict]
     readiness_check_prefix_template: List[str]
@@ -2049,7 +2050,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     tron_k8s_cluster_overrides: Dict[str, str]
     skip_cpu_override_validation: List[str]
     spark_k8s_role: str
-    tron_use_suffixed_log_streams: bool
     cluster_aliases: Dict[str, str]
     hacheck_match_initial_delay: bool
     spark_ui_port: int
@@ -2057,7 +2057,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
-    uwsgi_offset_multiplier: float
     spark_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
@@ -2647,6 +2646,10 @@ class SystemPaastaConfig:
     def get_disabled_watchers(self) -> List:
         return self.config_dict.get("disabled_watchers", [])
 
+    def get_pool_node_affinities(self) -> Dict[str, Dict[str, List[str]]]:
+        """Node selectors that will be applied to all Pods in a pool"""
+        return self.config_dict.get("pool_node_affinities", {})
+
     def get_topology_spread_constraints(self) -> List[TopologySpreadConstraintDict]:
         """List of TopologySpreadConstraints that will be applied to all Pods in the cluster"""
         return self.config_dict.get("topology_spread_constraints", [])
@@ -2788,9 +2791,6 @@ class SystemPaastaConfig:
     def get_spark_k8s_role(self) -> str:
         return self.config_dict.get("spark_k8s_role", "spark")
 
-    def get_tron_k8s_use_suffixed_log_streams_k8s(self) -> bool:
-        return self.config_dict.get("tron_use_suffixed_log_streams", False)
-
     def get_spark_driver_port(self) -> int:
         # default value is an arbitrary value
         return self.config_dict.get("spark_driver_port", 33001)
@@ -2862,15 +2862,6 @@ class SystemPaastaConfig:
         tron master -> compute cluster override which this function will read.
         """
         return self.config_dict.get("tron_k8s_cluster_overrides", {})
-
-    def get_uwsgi_offset_multiplier(self) -> float:
-        """
-        Temporary configuration to allow us to slowly deprecate the usage of `offset` in uwsgi-based autoscaling
-        configurations without making a single massive change to how usage is calculated.
-
-        To be removed once PAASTA-17840 is done.
-        """
-        return self.config_dict.get("uwsgi_offset_multiplier", 1.0)
 
     def get_spark_kubeconfig(self) -> str:
         return self.config_dict.get("spark_kubeconfig", "/etc/kubernetes/spark.conf")

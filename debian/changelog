@@ -1,3 +1,111 @@
+paasta-tools (0.229.0) xenial; urgency=medium
+
+  * 0.229.0 tagged with 'make release'
+    Commit: Merge pull request #3837 from Yelp/drmorr/autoscaling-params-
+    dict-v2  multiple metrics support for paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 06 May 2024 09:51:28 -0700
+
+paasta-tools (0.228.0) xenial; urgency=medium
+
+  * 0.228.0 tagged with 'make release'
+    Commit: Add schema validation for service.yaml (#3841)  This is a
+    tad silly: we have a pre-existing schema in py-gitolite (which we"re
+    trying to get rid of), but none in here - which means that folks can
+    attempt to integrate PRs that pass `paasta validate` but that will
+    fail in py-gitolite.  More silliness: the py-gitolite code does not
+    do any validation on `git_url` which means that folks can pass in
+    URLs that dulwich will not be happy with (see COMPINFRA-3914
+    internally) - so let"s add a regex to validate these :)  NOTE: I
+    tested this locally with: `paasta list | xargs -P10 -n1 --no-run-if-
+    empty paasta validate -y $LOCALSOA -s 2>&1 | rg ✗` and saw that
+    there were no failures (apart from the case from COMPINFRA-3914)
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 03 May 2024 08:46:33 -0700
+
+paasta-tools (0.227.0) xenial; urgency=medium
+
+  * 0.227.0 tagged with 'make release'
+    Commit: PAASTA-18198: add pool_node_affinities to improve Karpenter
+    AZ balance (#3849)  This adds a new system config option,
+    `pool_node_affinities`. It"s necessary to configure pods with a
+    preselection of preferred 2-3 AZs per pool so that Karpenter does
+    not try to consider all 6+ AZs in a region for scheduling decisions.
+    This option is a temporary solution and the proper fix will likely
+    be to adopt something like the descheduler to achieve a better AZ
+    balance (along with other benefits).   Signed-off-by: Max Falk
+    <gfalk@yelp.com>
+
+ -- Max Falk <gfalk@yelp.com>  Thu, 02 May 2024 06:03:28 -0700
+
+paasta-tools (0.226.0) xenial; urgency=medium
+
+  * 0.226.0 tagged with 'make release'
+    Commit: Merge pull request #3835 from Yelp/drmorr/update-validation
+    update paasta validation code
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Mon, 29 Apr 2024 14:23:15 -0700
+
+paasta-tools (0.225.1) xenial; urgency=medium
+
+  * 0.225.1 tagged with 'make release'
+    Commit: Set default executor pool to batch driver on k8s (#3845)
+
+ -- Chi Chang <chi@yelp.com>  Mon, 29 Apr 2024 11:32:45 -0700
+
+paasta-tools (0.225.0) xenial; urgency=medium
+
+  * 0.225.0 tagged with 'make release'
+    Commit: Merge pull request #3828 from
+    Yelp/u/nalma/spark_run_pod_identity  Support pod identity in `spark-
+    run`
+
+ -- Nurdan Almazbekov <nalma@yelp.com>  Mon, 29 Apr 2024 11:17:46 -0700
+
+paasta-tools (0.224.0) xenial; urgency=medium
+
+  * 0.224.0 tagged with 'make release'
+    Commit: Merge pull request #3834 from Yelp/drmorr/remove_offset
+    remove offset from paasta
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Tue, 23 Apr 2024 12:47:47 -0700
+
+paasta-tools (0.223.1) xenial; urgency=medium
+
+  * 0.223.1 tagged with 'make release'
+    Commit: Fix volume mount of spark-run on local cluster (#3827)  Co-
+    authored-by: Chi Chang <chi@yelp.com>
+
+ -- Chi Chang <chi@yelp.com>  Mon, 15 Apr 2024 08:05:46 -0700
+
+paasta-tools (0.223.0) xenial; urgency=medium
+
+  * 0.223.0 tagged with 'make release'
+    Commit: Remove good_enough_window (#3824)  Following up on
+    sysgit/yelpsoa-configs#42719, this removes `good_enough_window` from
+    paasta completely.  ## Testing done `make test` still passes
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 10 Apr 2024 07:59:51 -0700
+
+paasta-tools (0.222.0) xenial; urgency=medium
+
+  * 0.222.0 tagged with 'make release'
+    Commit: Remove STREAM_SUFFIX_LOGSPOUT code (#3791)  We ended up not
+    using this, so let"s go ahead and clean things up to prevent
+    confusion :)
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 10:59:58 -0700
+
+paasta-tools (0.221.2) xenial; urgency=medium
+
+  * 0.221.2 tagged with 'make release'
+    Commit: add service_account field for deploy.yaml (#3813)  adding a
+    new `service_account` field for deploy.yaml steps.  this will allow
+    us to configure service accounts for the step being run instead of
+    for the entire pipeline
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 02 Apr 2024 07:46:30 -0700
+
 paasta-tools (0.221.1) xenial; urgency=medium
 
   * 0.221.1 tagged with 'make release'
