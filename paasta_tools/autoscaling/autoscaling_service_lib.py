@@ -53,7 +53,6 @@ from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
-from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -617,103 +616,6 @@ def is_task_data_insufficient(
     marathon_service_config, marathon_tasks, current_instances
 ):
     return len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
-
-
-def autoscale_marathon_instance(
-    marathon_service_config: MarathonServiceConfig,
-    system_paasta_config: SystemPaastaConfig,
-    marathon_tasks: Sequence[MarathonTask],
-    mesos_tasks: Sequence[Task],
-) -> None:
-    try:
-        with create_autoscaling_lock(
-            marathon_service_config.service, marathon_service_config.instance
-        ):
-            current_instances = marathon_service_config.get_instances()
-            task_data_insufficient = is_task_data_insufficient(
-                marathon_service_config=marathon_service_config,
-                marathon_tasks=marathon_tasks,
-                current_instances=current_instances,
-            )
-            autoscaling_params = marathon_service_config.get_autoscaling_params()
-            log_utilization_data: Mapping = {}
-            utilization = get_utilization(
-                marathon_service_config=marathon_service_config,
-                system_paasta_config=system_paasta_config,
-                autoscaling_params=autoscaling_params,
-                log_utilization_data=log_utilization_data,
-                marathon_tasks=marathon_tasks,
-                mesos_tasks=mesos_tasks,
-            )
-            error = get_error_from_utilization(
-                utilization=utilization,
-                setpoint=autoscaling_params["metrics_providers"][0]["setpoint"],
-                current_instances=current_instances,
-            )
-            num_healthy_instances = len(marathon_tasks)
-            new_instance_count = get_new_instance_count(
-                utilization=utilization,
-                error=error,
-                autoscaling_params=autoscaling_params,
-                current_instances=current_instances,
-                marathon_service_config=marathon_service_config,
-                num_healthy_instances=num_healthy_instances,
-                persist_data=(not task_data_insufficient),
-            )
-            safe_downscaling_threshold = int(current_instances * 0.7)
-            _record_autoscaling_decision(
-                marathon_service_config=marathon_service_config,
-                autoscaling_params=autoscaling_params,
-                utilization=utilization,
-                log_utilization_data=log_utilization_data,
-                error=error,
-                current_instances=current_instances,
-                num_healthy_instances=num_healthy_instances,
-                new_instance_count=new_instance_count,
-                safe_downscaling_threshold=safe_downscaling_threshold,
-                task_data_insufficient=task_data_insufficient,
-            )
-            if new_instance_count != current_instances:
-                if new_instance_count < current_instances and task_data_insufficient:
-                    write_to_log(
-                        config=marathon_service_config,
-                        line="Delaying scaling *down* as we found too few healthy tasks running in marathon. "
-                        "This can happen because tasks are delayed/waiting/unhealthy or because we are "
-                        "waiting for tasks to be killed. Will wait for sufficient healthy tasks before "
-                        "we make a decision to scale down.",
-                        level="debug",
-                    )
-                    return
-                else:
-                    set_instances_for_marathon_service(
-                        service=marathon_service_config.service,
-                        instance=marathon_service_config.instance,
-                        instance_count=new_instance_count,
-                    )
-                    write_to_log(
-                        config=marathon_service_config,
-                        line="Scaling from %d to %d instances (%s)"
-                        % (
-                            current_instances,
-                            new_instance_count,
-                            humanize_error(error),
-                        ),
-                        level="event",
-                    )
-            else:
-                write_to_log(
-                    config=marathon_service_config,
-                    line="Staying at %d instances (%s)"
-                    % (current_instances, humanize_error(error)),
-                    level="debug",
-                )
-    except LockHeldException:
-        log.warning(
-            "Skipping autoscaling run for {service}.{instance} because the lock is held".format(
-                service=marathon_service_config.service,
-                instance=marathon_service_config.instance,
-            )
-        )
 
 
 def _record_autoscaling_decision(
