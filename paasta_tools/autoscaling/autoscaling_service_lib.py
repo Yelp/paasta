@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import json
 import logging
 import struct
 import time
@@ -38,7 +37,6 @@ from paasta_tools.autoscaling.forecasting import get_forecast_policy
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import filter_tasks_in_smartstack
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
@@ -604,62 +602,6 @@ def get_utilization(
         log_utilization_data=log_utilization_data,
         **autoscaling_params,
     )
-
-
-def _record_autoscaling_decision(
-    marathon_service_config: MarathonServiceConfig,
-    autoscaling_params: AutoscalingParamsDict,
-    utilization: float,
-    log_utilization_data: Mapping[str, str],
-    error: float,
-    current_instances: int,
-    num_healthy_instances: int,
-    new_instance_count: int,
-    safe_downscaling_threshold: int,
-    task_data_insufficient: bool,
-) -> None:
-    """
-    Based on the calculations made, perform observability side effects.
-    Log messages, generate time series, send any alerts, etc.
-    """
-    write_to_log(
-        config=marathon_service_config,
-        line=json.dumps(
-            dict(
-                timestamp=time.time(),
-                paasta_cluster=marathon_service_config.get_cluster(),
-                paasta_service=marathon_service_config.get_service(),
-                paasta_instance=marathon_service_config.get_instance(),
-                autoscaling_params=autoscaling_params,
-                utilization=utilization,
-                error=error,
-                current_instances=current_instances,
-                num_healthy_instances=num_healthy_instances,
-                new_instance_count=new_instance_count,
-                safe_downscaling_threshold=safe_downscaling_threshold,
-                task_data_insufficient=task_data_insufficient,
-            )
-        ),
-        level="debug",
-    )
-    meteorite_dims = {
-        "paasta_service": marathon_service_config.service,
-        "paasta_cluster": marathon_service_config.cluster,
-        "paasta_instance": marathon_service_config.instance,
-        "paasta_pool": marathon_service_config.get_pool(),
-        "decision_policy": autoscaling_params[SERVICE_METRICS_PROVIDER_KEY][0][DECISION_POLICY_KEY],  # type: ignore
-    }
-    if yelp_meteorite:
-        gauge = yelp_meteorite.create_gauge("paasta.service.instances", meteorite_dims)
-        gauge.set(new_instance_count)
-        gauge = yelp_meteorite.create_gauge(
-            "paasta.service.max_instances", meteorite_dims
-        )
-        gauge.set(marathon_service_config.get_max_instances())
-        gauge = yelp_meteorite.create_gauge(
-            "paasta.service.min_instances", meteorite_dims
-        )
-        gauge.set(marathon_service_config.get_min_instances())
 
 
 def humanize_error(error):
