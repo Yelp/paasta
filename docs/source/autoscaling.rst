@@ -182,3 +182,5 @@ The default value for ``max_instances_alert_threshold`` is whatever your ``setpo
 This means by default the alert will trigger when the autoscaler wants to scale up but is prevented from doing so by your ``max_instances`` setting.
 If this alert is noisy, you can try setting ``max_instances_alert_threshold`` to something a little higher than your ``setpoint``.
 Setting a very high value (a utilization value your metrics_provider would never measure) will effectively disable this alert.
+
+If this alert reports an UNKNOWN status, this indicates an error with your metrics provided by the ``metrics_provider`` you've specified.  Please review the metric_provider and service configuration to ensure metrics can be collected as expected.
