@@ -97,6 +97,7 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
@@ -107,6 +108,7 @@ from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
+from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
@@ -114,6 +116,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V1VolumeProjection
 from kubernetes.client import V1WeightedPodAffinityTerm
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
@@ -162,6 +165,7 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import ProjectedVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
@@ -1000,6 +1004,16 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=63
         )
 
+    def get_projected_volume_name(self, projected_volume: ProjectedVolume) -> str:
+        return self.get_sanitised_volume_name(
+            "projected-sa--{audiences}".format(
+                audiences="-".join(
+                    src["audience"] for src in projected_volume["sources"]
+                ),
+            ),
+            length_limit=63,
+        )
+
     def get_boto_secret_volume_name(self, service_name: str) -> str:
         return self.get_sanitised_volume_name(
             f"secret-boto-key-{service_name}", length_limit=63
@@ -1128,6 +1142,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     aws_ebs_volumes=[],
                     persistent_volumes=[],
                     secret_volumes=[],
+                    projected_volumes=[],
                 ),
             )
         return None
@@ -1462,6 +1477,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 aws_ebs_volumes=aws_ebs_volumes,
                 persistent_volumes=self.get_persistent_volumes(),
                 secret_volumes=secret_volumes,
+                projected_volumes=self.get_projected_volumes(),
             ),
         )
         containers = [service_container] + self.get_sidecar_containers(  # type: ignore
@@ -1499,6 +1515,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         secret_volumes: Sequence[SecretVolume],
+        projected_volumes: Sequence[ProjectedVolume],
     ) -> Sequence[V1Volume]:
         pod_volumes = []
         unique_docker_volumes = {
@@ -1556,6 +1573,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        for projected_volume in projected_volumes:
+            pod_volumes.append(
+                V1Volume(
+                    name=self.get_projected_volume_name(projected_volume),
+                    projected=V1ProjectedVolumeSource(
+                        sources=[
+                            V1VolumeProjection(
+                                service_account_token=V1ServiceAccountTokenProjection(
+                                    audience=src["audience"],
+                                    expiration_seconds=src.get(
+                                        "expiration_seconds", 3600
+                                    ),
+                                    path=src.get("path", "token"),
+                                )
+                            )
+                            for src in projected_volume["sources"]
+                        ],
+                    ),
+                ),
+            )
+
         boto_volume = self.get_boto_volume()
         if boto_volume:
             pod_volumes.append(boto_volume)
@@ -1716,6 +1754,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
+        projected_volumes: Sequence[ProjectedVolume],
     ) -> Sequence[V1VolumeMount]:
         volume_mounts = (
             [
@@ -1749,6 +1788,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     read_only=True,
                 )
                 for volume in secret_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=volume["container_path"],
+                    name=self.get_projected_volume_name(volume),
+                    read_only=True,
+                )
+                for volume in projected_volumes
             ]
         )
         if self.config_dict.get("boto_keys", []):
@@ -2163,6 +2210,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
                 secret_volumes=self.get_secret_volumes(),
+                projected_volumes=self.get_projected_volumes(),
             ),
         )
         # need to check if there are node selectors/affinities. if there are none

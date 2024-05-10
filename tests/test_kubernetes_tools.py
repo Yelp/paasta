@@ -44,6 +44,7 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
@@ -54,6 +55,7 @@ from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountList
+from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
@@ -61,6 +63,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V1VolumeProjection
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
@@ -149,6 +152,8 @@ from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import ProjectedVolume
+from paasta_tools.utils import ProjectedVolumeSASource
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
@@ -1171,6 +1176,21 @@ class TestKubernetesDeploymentConfig:
                 ],
             ),
         ]
+        mock_projected_volumes = [
+            ProjectedVolume(
+                container_path="/var/secret/something",
+                sources=[
+                    ProjectedVolumeSASource(
+                        audience="a.b.c",
+                    ),
+                    ProjectedVolumeSASource(
+                        audience="d.e.f",
+                        expiration_seconds=1234,
+                        path="nottoken",
+                    ),
+                ],
+            )
+        ]
         expected_volumes = [
             V1Volume(
                 host_path=V1HostPathVolumeSource(path="/nail/blah"),
@@ -1218,12 +1238,34 @@ class TestKubernetesDeploymentConfig:
                     optional=False,
                 ),
             ),
+            V1Volume(
+                name="projected-sa--adot-bdot-c-ddot-edot-f",
+                projected=V1ProjectedVolumeSource(
+                    sources=[
+                        V1VolumeProjection(
+                            service_account_token=V1ServiceAccountTokenProjection(
+                                audience="a.b.c",
+                                expiration_seconds=3600,
+                                path="token",
+                            )
+                        ),
+                        V1VolumeProjection(
+                            service_account_token=V1ServiceAccountTokenProjection(
+                                audience="d.e.f",
+                                expiration_seconds=1234,
+                                path="nottoken",
+                            )
+                        ),
+                    ],
+                ),
+            ),
         ]
         assert (
             self.deployment.get_pod_volumes(
                 docker_volumes=mock_docker_volumes + mock_hacheck_volumes,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
                 secret_volumes=mock_secret_volumes,
+                projected_volumes=mock_projected_volumes,
             )
             == expected_volumes
         )
@@ -1259,6 +1301,16 @@ class TestKubernetesDeploymentConfig:
             mock_secret_volumes = [
                 SecretVolume(container_path="/garply", secret_name="waldo")
             ]
+            mock_projected_volumes = [
+                ProjectedVolume(
+                    container_path="/var/secret/something",
+                    sources=[
+                        ProjectedVolumeSASource(
+                            audience="a.b.c",
+                        ),
+                    ],
+                )
+            ]
             expected_volumes = [
                 V1VolumeMount(
                     mount_path="/nail/foo", name="some-volume", read_only=True
@@ -1271,6 +1323,11 @@ class TestKubernetesDeploymentConfig:
                 ),
                 V1VolumeMount(mount_path="/blah", name="some-volume", read_only=False),
                 V1VolumeMount(mount_path="/garply", name="some-volume", read_only=True),
+                V1VolumeMount(
+                    mount_path="/var/secret/something",
+                    name="some-volume",
+                    read_only=True,
+                ),
             ]
             assert (
                 self.deployment.get_volume_mounts(
@@ -1278,6 +1335,7 @@ class TestKubernetesDeploymentConfig:
                     aws_ebs_volumes=mock_aws_ebs_volumes,
                     persistent_volumes=mock_persistent_volumes,
                     secret_volumes=mock_secret_volumes,
+                    projected_volumes=mock_projected_volumes,
                 )
                 == expected_volumes
             )

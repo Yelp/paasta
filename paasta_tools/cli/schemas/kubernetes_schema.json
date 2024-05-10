@@ -700,6 +700,43 @@
                     },
                     "uniqueItems": true
                 },
+                "projected_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "sources": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "audience": {
+                                            "type": "string"
+                                        },
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "expiration_seconds": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "audience"
+                                    ]
+                                },
+                                "uniqueItems": true
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "sources"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
                 "replication_threshold": {
                     "type": "integer",
                     "minimum": 0
