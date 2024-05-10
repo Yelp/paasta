@@ -606,12 +606,6 @@ def get_utilization(
     )
 
 
-def is_task_data_insufficient(
-    marathon_service_config, marathon_tasks, current_instances
-):
-    return len(marathon_tasks) < int((1 - MAX_TASK_DELTA) * current_instances)
-
-
 def _record_autoscaling_decision(
     marathon_service_config: MarathonServiceConfig,
     autoscaling_params: AutoscalingParamsDict,

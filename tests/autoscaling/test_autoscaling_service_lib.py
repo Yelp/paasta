@@ -25,7 +25,6 @@ from paasta_tools.autoscaling import autoscaling_service_lib
 from paasta_tools.autoscaling.autoscaling_service_lib import autoscaling_is_paused
 from paasta_tools.autoscaling.autoscaling_service_lib import DECISION_POLICY_KEY
 from paasta_tools.autoscaling.autoscaling_service_lib import filter_autoscaling_tasks
-from paasta_tools.autoscaling.autoscaling_service_lib import MAX_TASK_DELTA
 from paasta_tools.autoscaling.autoscaling_service_lib import MetricsProviderNoDataError
 from paasta_tools.autoscaling.autoscaling_service_lib import (
     SERVICE_METRICS_PROVIDER_KEY,
@@ -516,43 +515,6 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
                 fake_marathon_tasks,
                 [],
             )
-
-
-def test_is_task_data_insufficient():
-    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service="fake-service",
-        instance="fake-instance",
-        cluster="fake-cluster",
-        config_dict={"min_instances": 1, "max_instances": 100},
-        branch_dict=None,
-    )
-    # Test all running
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config, [mock.Mock()] * 10, 10
-    )
-    assert not ret
-
-    # Test none running
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config, [], 10
-    )
-    assert ret
-
-    # Test more instances below threshold
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config,
-        [mock.Mock()] * (int(10 * (1 + MAX_TASK_DELTA)) - 1),
-        10,
-    )
-    assert not ret
-
-    # Test fewer below threshold
-    ret = autoscaling_service_lib.is_task_data_insufficient(
-        fake_marathon_service_config,
-        [mock.Mock()] * (int(10 * (1 - MAX_TASK_DELTA)) - 1),
-        10,
-    )
-    assert ret
 
 
 def test_humanize_error_above():
