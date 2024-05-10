@@ -49,16 +49,12 @@ from paasta_tools.long_running_service_tools import load_service_namespace_confi
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
-from paasta_tools.marathon_tools import get_marathon_apps_with_clients
-from paasta_tools.marathon_tools import get_marathon_clients
-from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.marathon_tools import is_old_task_missing_healthchecks
 from paasta_tools.marathon_tools import is_task_healthy
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos.task import Task
-from paasta_tools.mesos_tools import get_all_running_tasks
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import _log
@@ -68,7 +64,6 @@ from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import mean
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import use_requests_cache
 from paasta_tools.utils import ZookeeperPool
 
 try:
@@ -826,54 +821,6 @@ def autoscaling_is_paused():
         return True
     else:
         return False
-
-
-def autoscale_services(
-    soa_dir: str = DEFAULT_SOA_DIR, services: Optional[Sequence[str]] = None
-) -> None:
-    system_paasta_config = load_system_paasta_config()
-    cluster = system_paasta_config.get_cluster()
-    configs = get_configs_of_services_to_scale(
-        cluster=cluster, soa_dir=soa_dir, services=services
-    )
-    autoscale_service_configs(
-        service_configs=configs, system_paasta_config=system_paasta_config
-    )
-
-
-@use_requests_cache("service_autoscaler")
-def autoscale_service_configs(
-    service_configs: Sequence[MarathonServiceConfig],
-    system_paasta_config: SystemPaastaConfig,
-) -> None:
-    if autoscaling_is_paused():
-        log.warning("Skipping autoscaling because autoscaler paused")
-        return
-
-    marathon_clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
-    apps_with_clients = get_marathon_apps_with_clients(
-        marathon_clients.get_all_clients(), embed_tasks=True
-    )
-    all_mesos_tasks = a_sync.block(get_all_running_tasks)
-    with ZookeeperPool():
-        for config in service_configs:
-            try:
-                marathon_tasks, mesos_tasks = filter_autoscaling_tasks(
-                    [app for (app, client) in apps_with_clients],
-                    all_mesos_tasks,
-                    config,
-                    system_paasta_config,
-                )
-                autoscale_marathon_instance(
-                    config,
-                    system_paasta_config,
-                    list(marathon_tasks.values()),
-                    mesos_tasks,
-                )
-            except Exception as e:
-                write_to_log(
-                    config=config, line="Caught Exception %s" % e, level="debug"
-                )
 
 
 def filter_autoscaling_tasks(
