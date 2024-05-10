@@ -52,11 +52,11 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
             "'paasta rollback' is a human-friendly tool for marking a particular "
             "docker image for deployment, which invokes a bounce. While the command "
             "is called 'rollback', it can be used to roll forward or back, as long "
-            "as there is a docker image available for the input git SHA."
+            "as there is a docker image available for the input Git SHA."
         ),
         epilog=(
             "This rollback command uses the Git control plane, which requires network "
-            "connectivity as well as authorization to the git repo.\n\n"
+            "connectivity as well as authorization to the Git repo.\n\n"
             + PaastaColors.red(
                 "WARNING: You MUST manually revert changes in Git and go through the normal push process after using this command.\n"
             )
