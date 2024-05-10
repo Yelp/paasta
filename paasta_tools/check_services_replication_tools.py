@@ -39,6 +39,7 @@ from paasta_tools.kubernetes_tools import V1Pod
 from paasta_tools.marathon_tools import get_marathon_clients
 from paasta_tools.marathon_tools import get_marathon_servers
 from paasta_tools.mesos_tools import get_slaves
+from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker
@@ -207,6 +208,10 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
+    timer = metrics_lib.system_timer(dimensions=dict(eks=args.eks))
+
+    timer.start()
+
     if namespace:
         tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
@@ -241,6 +246,7 @@ def main(
             dry_run=args.dry_run,
         )
 
+    exit_code = 0
     if (
         pct_under_replicated >= args.under_replicated_crit_pct
         and count_under_replicated >= args.min_count_critical
@@ -249,9 +255,13 @@ def main(
             f"{pct_under_replicated}% of instances ({count_under_replicated}/{total}) "
             f"are under replicated (past {args.under_replicated_crit_pct} is critical)!"
         )
-        sys.exit(2)
-    else:
-        sys.exit(0)
+        exit_code = 2
+
+    timer.stop(tmp_dimensions={"result": exit_code})
+    logging.info(
+        f"Stopping timer for {cluster} (eks={args.eks}) with result {exit_code}: {timer()}ms elapsed"
+    )
+    sys.exit(exit_code)
 
 
 def get_mesos_tasks_and_slaves(
