@@ -48,7 +48,6 @@ from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.mesos.task import Task
 from paasta_tools.mesos_tools import get_cached_list_of_running_tasks_from_frameworks
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
-from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import list_services
@@ -720,17 +719,6 @@ def filter_autoscaling_tasks(
         task for task in all_mesos_tasks if task["id"] in healthy_marathon_tasks
     ]
     return (healthy_marathon_tasks, mesos_tasks)
-
-
-def write_to_log(config, line, level="event"):
-    _log(
-        service=config.service,
-        line=line,
-        component="deploy",
-        level=level,
-        cluster=config.cluster,
-        instance=config.instance,
-    )
 
 
 def get_short_job_id(task_id):
