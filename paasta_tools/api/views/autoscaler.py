@@ -65,12 +65,10 @@ def update_autoscaler_count(request):
         raise ApiFailure(error_message, 500)
 
     instance_config = get_instance_config(service, instance, cluster, soa_dir, True)
-    if not isinstance(
-        instance_config, (KubernetesDeploymentConfig, MarathonServiceConfig)
-    ):
+    if not isinstance(instance_config, KubernetesDeploymentConfig):
         error_message = (
             f"Autoscaling is not supported for {service}.{instance} because instance type is not "
-            f"marathon or kubernetes."
+            f"kubernetes or eks."
         )
         raise ApiFailure(error_message, 501)
 
@@ -92,12 +90,9 @@ def update_autoscaler_count(request):
             "WARNING desired_instances is less than min_instances %d" % min_instances
         )
     try:
-        if isinstance(instance_config, KubernetesDeploymentConfig):
-            instance_config.set_autoscaled_instances(
-                instance_count=desired_instances, kube_client=settings.kubernetes_client
-            )
-        else:
-            instance_config.set_autoscaled_instances(instance_count=desired_instances)
+        instance_config.set_autoscaled_instances(
+            instance_count=desired_instances, kube_client=settings.kubernetes_client
+        )
     except Exception as err:
         raise ApiFailure(err, 500)
 

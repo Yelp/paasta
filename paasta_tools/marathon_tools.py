@@ -890,14 +890,6 @@ class MarathonServiceConfig(LongRunningServiceConfig):
             log.debug("No zookeeper data, returning None")
             return None
 
-    def set_autoscaled_instances(self, instance_count: int) -> None:
-        """Set the number of instances in the same way that the autoscaler does."""
-        set_instances_for_marathon_service(
-            service=self.service,
-            instance=self.instance,
-            instance_count=instance_count,
-        )
-
 
 class MarathonDeployStatus:
     """An enum to represent Marathon app deploy status.
@@ -1610,14 +1602,3 @@ def get_instances_from_zookeeper(service: str, instance: str) -> int:
 
 def compose_autoscaling_zookeeper_root(service: str, instance: str) -> str:
     return f"{AUTOSCALING_ZK_ROOT}/{service}/{instance}"
-
-
-def set_instances_for_marathon_service(
-    service: str, instance: str, instance_count: int, soa_dir: str = DEFAULT_SOA_DIR
-) -> None:
-    zookeeper_path = "%s/instances" % compose_autoscaling_zookeeper_root(
-        service, instance
-    )
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count).encode("utf8"))

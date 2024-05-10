@@ -102,33 +102,6 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
         assert fake_marathon_config.get_instances() == 5
 
 
-def test_update_instances_for_marathon_service():
-    with mock.patch(
-        "paasta_tools.marathon_tools.load_marathon_service_config", autospec=True
-    ) as mock_load_marathon_service_config, mock.patch(
-        "paasta_tools.utils.KazooClient", autospec=True
-    ) as mock_zk_client, mock.patch(
-        "paasta_tools.utils.load_system_paasta_config", autospec=True
-    ):
-        zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
-        mock_zk_client.return_value = zk_client
-        mock_load_marathon_service_config.return_value = (
-            marathon_tools.MarathonServiceConfig(
-                service="service",
-                instance="instance",
-                cluster="cluster",
-                config_dict={"min_instances": 5, "max_instances": 10},
-                branch_dict=None,
-            )
-        )
-        autoscaling_service_lib.set_instances_for_marathon_service(
-            "service", "instance", instance_count=8
-        )
-        zk_client.set.assert_called_once_with(
-            "/autoscaling/service/instance/instances", "8".encode("utf8")
-        )
-
-
 def test_compose_autoscaling_zookeeper_root():
     assert (
         autoscaling_service_lib.compose_autoscaling_zookeeper_root(
