@@ -18,12 +18,10 @@ import logging
 import struct
 import time
 from collections import namedtuple
-from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 from math import floor
 from typing import Dict
-from typing import Iterator
 from typing import List
 from typing import Mapping
 from typing import Optional
@@ -32,7 +30,6 @@ from typing import Tuple
 
 import a_sync
 import aiohttp
-from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from marathon.models.app import MarathonApp
 from marathon.models.app import MarathonTask
@@ -41,9 +38,6 @@ from paasta_tools.autoscaling.forecasting import get_forecast_policy
 from paasta_tools.autoscaling.utils import get_autoscaling_component
 from paasta_tools.autoscaling.utils import register_autoscaling_component
 from paasta_tools.bounce_lib import filter_tasks_in_smartstack
-from paasta_tools.bounce_lib import LockHeldException
-from paasta_tools.bounce_lib import LockTimeout
-from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.long_running_service_tools import AutoscalingParamsDict
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
@@ -805,29 +799,3 @@ def write_to_log(config, line, level="event"):
 
 def get_short_job_id(task_id):
     return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
-
-
-@contextmanager
-def create_autoscaling_lock(service: str, instance: str) -> Iterator[None]:
-    """Acquire a lock in zookeeper for autoscaling. This is
-    to avoid autoscaling a service multiple times, and to avoid
-    having multiple paasta services all attempting to autoscale and
-    fetching mesos data."""
-    zk = KazooClient(
-        hosts=load_system_paasta_config().get_zk_hosts(),
-        timeout=ZK_LOCK_CONNECT_TIMEOUT_S,
-    )
-    zk.start()
-    lock = zk.Lock(f"/autoscaling/{service}/{instance}/autoscaling.lock")
-    try:
-        lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
-        yield
-    except LockTimeout:
-        raise LockHeldException(
-            f"Failed to acquire lock for autoscaling! {service}.{instance}"
-        )
-    else:
-        lock.release()
-    finally:
-        zk.stop()
-        zk.close()
