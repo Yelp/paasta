@@ -18,8 +18,6 @@ import struct
 import time
 from collections import namedtuple
 from datetime import datetime
-from math import ceil
-from math import floor
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -601,15 +599,6 @@ def get_utilization(
         log_utilization_data=log_utilization_data,
         **autoscaling_params,
     )
-
-
-def humanize_error(error):
-    if error < 0:
-        return "%d%% underutilized" % floor(-error * 100)
-    elif error > 0:
-        return "%d%% overutilized" % ceil(error * 100)
-    else:
-        return "utilization within thresholds"
 
 
 def get_configs_of_services_to_scale(

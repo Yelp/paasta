@@ -490,21 +490,6 @@ def test_mesos_cpu_metrics_provider_no_data_mesos():
             )
 
 
-def test_humanize_error_above():
-    actual = autoscaling_service_lib.humanize_error(1.0)
-    assert actual == "100% overutilized"
-
-
-def test_humanize_error_below():
-    actual = autoscaling_service_lib.humanize_error(-1.0)
-    assert actual == "100% underutilized"
-
-
-def test_humanize_error_equal():
-    actual = autoscaling_service_lib.humanize_error(0.0)
-    assert actual == "utilization within thresholds"
-
-
 def test_autoscaling_is_paused():
     with mock.patch(
         "paasta_tools.utils.KazooClient", autospec=True
