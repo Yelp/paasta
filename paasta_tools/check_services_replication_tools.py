@@ -208,7 +208,7 @@ def main(
     cluster = system_paasta_config.get_cluster()
     replication_checker: ReplicationChecker
 
-    timer = metrics_lib.system_timer(dimensions=dict(eks=args.eks))
+    timer = metrics_lib.system_timer(dimensions=dict(eks=args.eks, cluster=cluster))
 
     timer.start()
 
