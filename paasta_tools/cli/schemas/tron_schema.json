@@ -283,7 +283,7 @@
                     },
                     "uniqueItems": true
                 },
-                "projected_volumes": {
+                "projected_sa_volumes": {
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -291,31 +291,16 @@
                             "container_path": {
                                 "type": "string"
                             },
-                            "sources": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "audience": {
-                                            "type": "string"
-                                        },
-                                        "path": {
-                                            "type": "string"
-                                        },
-                                        "expiration_seconds": {
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": [
-                                        "audience"
-                                    ]
-                                },
-                                "uniqueItems": true
+                            "audience": {
+                                "type": "string"
+                            },
+                            "expiration_seconds": {
+                                "type": "integer"
                             }
                         },
                         "required": [
                             "container_path",
-                            "sources"
+                            "audience"
                         ]
                     },
                     "uniqueItems": true

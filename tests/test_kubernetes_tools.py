@@ -152,8 +152,7 @@ from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
-from paasta_tools.utils import ProjectedVolume
-from paasta_tools.utils import ProjectedVolumeSASource
+from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
@@ -1176,19 +1175,11 @@ class TestKubernetesDeploymentConfig:
                 ],
             ),
         ]
-        mock_projected_volumes = [
-            ProjectedVolume(
+        mock_projected_sa_volumes = [
+            ProjectedSAVolume(
                 container_path="/var/secret/something",
-                sources=[
-                    ProjectedVolumeSASource(
-                        audience="a.b.c",
-                    ),
-                    ProjectedVolumeSASource(
-                        audience="d.e.f",
-                        expiration_seconds=1234,
-                        path="nottoken",
-                    ),
-                ],
+                audience="a.b.c",
+                expiration_seconds=1234,
             )
         ]
         expected_volumes = [
@@ -1239,21 +1230,14 @@ class TestKubernetesDeploymentConfig:
                 ),
             ),
             V1Volume(
-                name="projected-sa--adot-bdot-c-ddot-edot-f",
+                name="projected-sa--adot-bdot-c",
                 projected=V1ProjectedVolumeSource(
                     sources=[
                         V1VolumeProjection(
                             service_account_token=V1ServiceAccountTokenProjection(
                                 audience="a.b.c",
-                                expiration_seconds=3600,
-                                path="token",
-                            )
-                        ),
-                        V1VolumeProjection(
-                            service_account_token=V1ServiceAccountTokenProjection(
-                                audience="d.e.f",
                                 expiration_seconds=1234,
-                                path="nottoken",
+                                path="token",
                             )
                         ),
                     ],
@@ -1265,7 +1249,7 @@ class TestKubernetesDeploymentConfig:
                 docker_volumes=mock_docker_volumes + mock_hacheck_volumes,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
                 secret_volumes=mock_secret_volumes,
-                projected_volumes=mock_projected_volumes,
+                projected_sa_volumes=mock_projected_sa_volumes,
             )
             == expected_volumes
         )
@@ -1301,14 +1285,10 @@ class TestKubernetesDeploymentConfig:
             mock_secret_volumes = [
                 SecretVolume(container_path="/garply", secret_name="waldo")
             ]
-            mock_projected_volumes = [
-                ProjectedVolume(
+            mock_projected_sa_volumes = [
+                ProjectedSAVolume(
                     container_path="/var/secret/something",
-                    sources=[
-                        ProjectedVolumeSASource(
-                            audience="a.b.c",
-                        ),
-                    ],
+                    audience="a.b.c",
                 )
             ]
             expected_volumes = [
@@ -1335,7 +1315,7 @@ class TestKubernetesDeploymentConfig:
                     aws_ebs_volumes=mock_aws_ebs_volumes,
                     persistent_volumes=mock_persistent_volumes,
                     secret_volumes=mock_secret_volumes,
-                    projected_volumes=mock_projected_volumes,
+                    projected_sa_volumes=mock_projected_sa_volumes,
                 )
                 == expected_volumes
             )

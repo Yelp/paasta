@@ -283,15 +283,10 @@ class SecretVolume(TypedDict, total=False):
     items: List[SecretVolumeItem]
 
 
-class ProjectedVolumeSASource(TypedDict):
+class ProjectedSAVolume(TypedDict, total=False):
+    container_path: str
     audience: str
     expiration_seconds: int
-    path: str
-
-
-class ProjectedVolume(TypedDict):
-    container_path: str
-    sources: List[ProjectedVolumeSASource]
 
 
 class TronSecretVolume(SecretVolume, total=False):
@@ -338,7 +333,7 @@ class InstanceConfigDict(TypedDict, total=False):
     extra_volumes: List[DockerVolume]
     aws_ebs_volumes: List[AwsEbsVolume]
     secret_volumes: List[SecretVolume]
-    projected_volumes: List[ProjectedVolume]
+    projected_sa_volumes: List[ProjectedSAVolume]
     security: SecurityConfigDict
     dependencies_reference: str
     dependencies: Dict[str, Dict]
@@ -968,8 +963,8 @@ class InstanceConfig:
     def get_secret_volumes(self) -> List[SecretVolume]:
         return self.config_dict.get("secret_volumes", [])
 
-    def get_projected_volumes(self) -> List[ProjectedVolume]:
-        return self.config_dict.get("projected_volumes", [])
+    def get_projected_sa_volumes(self) -> List[ProjectedSAVolume]:
+        return self.config_dict.get("projected_sa_volumes", [])
 
     def get_iam_role(self) -> str:
         return self.config_dict.get("iam_role", "")

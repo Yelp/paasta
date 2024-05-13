@@ -165,7 +165,7 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
-from paasta_tools.utils import ProjectedVolume
+from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
@@ -217,6 +217,9 @@ DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
     "memory": "1024Mi",
     "ephemeral-storage": "256Mi",
 }
+
+DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS = 3600
+PROJECTED_SA_TOKEN_PATH = "token"
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -1004,13 +1007,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=63
         )
 
-    def get_projected_volume_name(self, projected_volume: ProjectedVolume) -> str:
+    def get_projected_sa_volume_name(
+        self, projected_sa_volume: ProjectedSAVolume
+    ) -> str:
         return self.get_sanitised_volume_name(
-            "projected-sa--{audiences}".format(
-                audiences="-".join(
-                    src["audience"] for src in projected_volume["sources"]
-                ),
-            ),
+            "projected-sa--{audience}".format(audience=projected_sa_volume["audience"]),
             length_limit=63,
         )
 
@@ -1142,7 +1143,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     aws_ebs_volumes=[],
                     persistent_volumes=[],
                     secret_volumes=[],
-                    projected_volumes=[],
+                    projected_sa_volumes=[],
                 ),
             )
         return None
@@ -1477,7 +1478,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 aws_ebs_volumes=aws_ebs_volumes,
                 persistent_volumes=self.get_persistent_volumes(),
                 secret_volumes=secret_volumes,
-                projected_volumes=self.get_projected_volumes(),
+                projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
         containers = [service_container] + self.get_sidecar_containers(  # type: ignore
@@ -1515,7 +1516,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         secret_volumes: Sequence[SecretVolume],
-        projected_volumes: Sequence[ProjectedVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
     ) -> Sequence[V1Volume]:
         pod_volumes = []
         unique_docker_volumes = {
@@ -1573,22 +1574,22 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
-        for projected_volume in projected_volumes:
+        for projected_volume in projected_sa_volumes:
             pod_volumes.append(
                 V1Volume(
-                    name=self.get_projected_volume_name(projected_volume),
+                    name=self.get_projected_sa_volume_name(projected_volume),
                     projected=V1ProjectedVolumeSource(
                         sources=[
                             V1VolumeProjection(
                                 service_account_token=V1ServiceAccountTokenProjection(
-                                    audience=src["audience"],
-                                    expiration_seconds=src.get(
-                                        "expiration_seconds", 3600
+                                    audience=projected_volume["audience"],
+                                    expiration_seconds=projected_volume.get(
+                                        "expiration_seconds",
+                                        DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS,
                                     ),
-                                    path=src.get("path", "token"),
+                                    path=PROJECTED_SA_TOKEN_PATH,
                                 )
                             )
-                            for src in projected_volume["sources"]
                         ],
                     ),
                 ),
@@ -1754,7 +1755,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
-        projected_volumes: Sequence[ProjectedVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
     ) -> Sequence[V1VolumeMount]:
         volume_mounts = (
             [
@@ -1792,10 +1793,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             + [
                 V1VolumeMount(
                     mount_path=volume["container_path"],
-                    name=self.get_projected_volume_name(volume),
+                    name=self.get_projected_sa_volume_name(volume),
                     read_only=True,
                 )
-                for volume in projected_volumes
+                for volume in projected_sa_volumes
             ]
         )
         if self.config_dict.get("boto_keys", []):
@@ -2210,7 +2211,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
                 secret_volumes=self.get_secret_volumes(),
-                projected_volumes=self.get_projected_volumes(),
+                projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
         # need to check if there are node selectors/affinities. if there are none
