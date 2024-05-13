@@ -138,6 +138,7 @@ INSTANCE_TYPES = (
     "vitesscluster",
     "monkrelays",
     "nrtsearchservice",
+    "nrtsearchserviceeks",
 )
 
 PAASTA_K8S_INSTANCE_TYPES = {
@@ -155,6 +156,7 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "kafkacluster": "paasta-kafkaclusters",
     "vitesscluster": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
+    "nrtsearchserviceeks": "paasta-nrtsearchservices",
 }
 
 SHARED_SECRETS_K8S_NAMESPACES = {"paasta-spark", "paasta-cassandraclusters"}

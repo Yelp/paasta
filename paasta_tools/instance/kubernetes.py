@@ -71,6 +71,7 @@ INSTANCE_TYPE_CR_ID = dict(
     kafkacluster=kafkacluster_tools.cr_id,
     vitesscluster=vitesscluster_tools.cr_id,
     nrtsearchservice=nrtsearchservice_tools.cr_id,
+    nrtsearchserviceeks=nrtsearchservice_tools.cr_id,
     monkrelaycluster=monkrelaycluster_tools.cr_id,
 )
 
