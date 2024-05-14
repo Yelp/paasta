@@ -1,3 +1,10 @@
+paasta-tools (0.232.0) xenial; urgency=medium
+
+  * 0.232.0 tagged with 'make release'
+    Commit: Merge remote-tracking branch "origin/u/mpiano/SEC-18955_poc"
+
+ -- Matteo Piano <mpiano@yelp.com>  Tue, 14 May 2024 07:50:15 -0700
+
 paasta-tools (0.231.0) xenial; urgency=medium
 
   * 0.231.0 tagged with 'make release'
