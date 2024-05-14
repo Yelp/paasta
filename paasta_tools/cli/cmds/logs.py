@@ -37,6 +37,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import Union
 
 import isodate
 import pytz
@@ -54,6 +55,7 @@ try:
     s3reader_available = True
 except ImportError:
     s3reader_available = False
+    S3LogsReader = None
 
 from pytimeparse.timeparse import timeparse
 
@@ -510,7 +512,9 @@ def register_log_reader(name):
     return outer
 
 
-def get_log_reader_class(name: str) -> Type["LogReader"]:
+def get_log_reader_class(
+    name: str,
+) -> Union[Type["ScribeLogReader"], Type["VectorLogsReader"]]:
     return _log_reader_classes[name]
 
 
@@ -518,7 +522,7 @@ def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
-def get_log_reader(components: Set[str]) -> Type["LogReader"]:
+def get_log_reader(components: Set[str]) -> "LogReader":
     log_readers_config = load_system_paasta_config().get_log_readers()
     # ideally we should use a single "driver" for all components, but in cases where more than one is used for different components,
     # we should use the first one that supports all requested components
@@ -1412,7 +1416,7 @@ def validate_filtering_args(args: argparse.Namespace, log_reader: LogReader) -> 
 
 def pick_default_log_mode(
     args: argparse.Namespace,
-    log_reader: ScribeLogReader,
+    log_reader: LogReader,
     service: str,
     levels: Sequence[str],
     components: Iterable[str],

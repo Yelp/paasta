@@ -2003,6 +2003,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     ldap_search_ou: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
+    log_readers: List[LogReaderConfig]
     log_writer: LogWriterConfig
     maintenance_resource_reservation_enabled: bool
     marathon_servers: List[MarathonConfigDict]
@@ -2368,7 +2369,7 @@ class SystemPaastaConfig:
                 % self.directory
             )
 
-    def get_log_readers(self) -> Dict[str, LogReaderConfig]:
+    def get_log_readers(self) -> List[LogReaderConfig]:
         """Get the log_readers configuration out of global paasta config
 
         :returns: the log_readers list of dicts.
