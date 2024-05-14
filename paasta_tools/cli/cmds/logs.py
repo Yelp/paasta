@@ -51,10 +51,7 @@ except ImportError:
 
 try:
     from clog.readers import S3LogsReader
-
-    s3reader_available = True
 except ImportError:
-    s3reader_available = False
     S3LogsReader = None
 
 from pytimeparse.timeparse import timeparse
@@ -1226,8 +1223,9 @@ class VectorLogsReader(LogReader):
     def __init__(self, cluster_map: Mapping[str, Any]) -> None:
         super().__init__()
 
-        if s3reader_available is False:
+        if S3LogsReader is None:
             raise Exception("yelp_clog package must be available to use S3LogsReader")
+
         self.cluster_map = cluster_map
 
     def get_ecosystem_for_cluster(self, cluster: str) -> str:

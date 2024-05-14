@@ -1017,7 +1017,7 @@ def test_vector_logs_read_logs_empty_clusters():
     start_time, end_time = logs.generate_start_end_time()
 
     with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
-        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=True
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ), pytest.raises(IndexError) as e:
         logs.VectorLogsReader(cluster_map={}).print_logs_by_time(
             service,
@@ -1042,7 +1042,7 @@ def test_vector_logs_print_logs_by_time():
     components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
 
     with mock.patch(
-        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=True
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ) as mock_s3_logs, mock.patch(
         "paasta_tools.cli.cmds.logs.print_log", autospec=True
     ) as print_log_patch:
@@ -1107,6 +1107,8 @@ def test_get_log_reader():
         "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ):
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
@@ -1135,6 +1137,8 @@ def test_get_log_reader_invalid():
         "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ), pytest.raises(
         SystemExit
     ) as wrapped_e:
