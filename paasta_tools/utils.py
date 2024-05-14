@@ -1380,6 +1380,7 @@ class LogWriterConfig(TypedDict):
 class LogReaderConfig(TypedDict):
     driver: str
     options: Dict
+    components: Optional[List]
 
 
 # The active log writer.
@@ -2364,6 +2365,19 @@ class SystemPaastaConfig:
         except KeyError:
             raise PaastaNotConfiguredError(
                 "Could not find log_reader in configuration directory: %s"
+                % self.directory
+            )
+
+    def get_log_readers(self) -> Dict[str, LogReaderConfig]:
+        """Get the log_readers configuration out of global paasta config
+
+        :returns: the log_readers list of dicts.
+        """
+        try:
+            return self.config_dict["log_readers"]
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                "Could not find log_readers in configuration directory: %s"
                 % self.directory
             )
 

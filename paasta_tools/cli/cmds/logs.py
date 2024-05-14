@@ -48,6 +48,13 @@ try:
 except ImportError:
     scribereader = None
 
+try:
+    from clog.readers import S3LogsReader
+
+    s3reader_available = True
+except ImportError:
+    s3reader_available = False
+
 from pytimeparse.timeparse import timeparse
 
 from paasta_tools.marathon_tools import format_job_id
@@ -291,7 +298,7 @@ def paasta_log_line_passes_filter(
     if not check_timestamp_in_range(timestamp, start_time, end_time):
         return False
     return (
-        parsed_line.get("level") in levels
+        (parsed_line.get("level") is None or parsed_line.get("level") in levels)
         and parsed_line.get("component") in components
         and (
             parsed_line.get("cluster") in clusters
@@ -503,7 +510,7 @@ def register_log_reader(name):
     return outer
 
 
-def get_log_reader_class(name: str) -> Type["ScribeLogReader"]:
+def get_log_reader_class(name: str) -> Type["LogReader"]:
     return _log_reader_classes[name]
 
 
@@ -511,10 +518,36 @@ def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
-def get_log_reader() -> "ScribeLogReader":
-    log_reader_config = load_system_paasta_config().get_log_reader()
-    log_reader_class = get_log_reader_class(log_reader_config["driver"])
-    return log_reader_class(**log_reader_config.get("options", {}))
+def get_log_reader(components: Set[str]) -> Type["LogReader"]:
+    log_readers_config = load_system_paasta_config().get_log_readers()
+    # ideally we should use a single "driver" for all components, but in cases where more than one is used for different components,
+    # we should use the first one that supports all requested components
+    # otherwise signal an error and suggest to provide a different list of components
+    components_lists = []
+    for log_reader_config in log_readers_config:
+        supported_components = log_reader_config.get("components", [])
+        components_lists.append(supported_components)
+        if components <= set(supported_components):
+            log_reader_class = get_log_reader_class(log_reader_config["driver"])
+            print(
+                PaastaColors.cyan(
+                    "Using '{}' driver to fetch logs...".format(
+                        log_reader_config["driver"]
+                    )
+                ),
+                file=sys.stderr,
+            )
+            return log_reader_class(**log_reader_config.get("options", {}))
+    print(
+        PaastaColors.cyan(
+            "Supplied list of components '{}' is not supported by any log reader. Supported components are:\n\t{}".format(
+                ", ".join(components),
+                "\n\tor ".join([",".join(comp_list) for comp_list in components_lists]),
+            )
+        ),
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 
 class LogReader:
@@ -1182,6 +1215,74 @@ class ScribeLogReader(LogReader):
             return env
 
 
+@register_log_reader("vector-logs")
+class VectorLogsReader(LogReader):
+    SUPPORTS_TIME = True
+
+    def __init__(self, cluster_map: Mapping[str, Any]) -> None:
+        super().__init__()
+
+        if s3reader_available is False:
+            raise Exception("yelp_clog package must be available to use S3LogsReader")
+        self.cluster_map = cluster_map
+
+    def get_ecosystem_for_cluster(self, cluster: str) -> str:
+        return self.cluster_map.get(cluster, None)
+
+    def print_logs_by_time(
+        self,
+        service,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+        levels,
+        components: Iterable[str],
+        clusters,
+        instances,
+        pods,
+        raw_mode,
+        strip_headers,
+    ):
+        stream_name = get_log_name_for_service(service, prefix="app_output")
+        ecosystem = self.get_ecosystem_for_cluster(clusters[0])
+        reader = S3LogsReader(ecosystem)
+        start_date = start_time.date()
+        end_date = end_time.date()
+        aggregated_logs: List[Dict[str, Any]] = []
+
+        for line in reader.get_log_reader(
+            log_name=stream_name, min_date=start_date, max_date=end_date
+        ):
+            if paasta_log_line_passes_filter(
+                line,
+                levels,
+                service,
+                components,
+                clusters,
+                instances,
+                pods,
+                start_time=start_time,
+                end_time=end_time,
+            ):
+                try:
+                    parsed_line = json.loads(line)
+                    timestamp = isodate.parse_datetime(parsed_line.get("timestamp"))
+                    if not timestamp.tzinfo:
+                        timestamp = pytz.utc.localize(timestamp)
+                except ValueError:
+                    timestamp = pytz.utc.localize(datetime.datetime.min)
+
+                line = {"raw_line": line, "sort_key": timestamp}
+                aggregated_logs.append(line)
+
+        aggregated_logs = list(
+            {line["raw_line"]: line for line in aggregated_logs}.values()
+        )
+        aggregated_logs.sort(key=lambda log_line: log_line["sort_key"])
+
+        for line in aggregated_logs:
+            print_log(line["raw_line"], levels, raw_mode, strip_headers)
+
+
 def scribe_env_to_locations(scribe_env):
     """Converts a scribe environment to a dictionary of locations. The
     return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
@@ -1247,9 +1348,7 @@ def generate_start_end_time(
     return start_time, end_time
 
 
-def validate_filtering_args(
-    args: argparse.Namespace, log_reader: ScribeLogReader
-) -> bool:
+def validate_filtering_args(args: argparse.Namespace, log_reader: LogReader) -> bool:
     if not log_reader.SUPPORTS_LINE_OFFSET and args.line_offset is not None:
         print(
             PaastaColors.red(
@@ -1423,7 +1522,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     log.debug(f"Going to get logs for {service} on cluster {cluster}")
 
-    log_reader = get_log_reader()
+    log_reader = get_log_reader(components)
 
     if not validate_filtering_args(args, log_reader):
         return 1
