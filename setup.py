@@ -57,7 +57,6 @@ setup(
         "paasta_tools/generate_deployments_for_service.py",
         "paasta_tools/generate_services_file.py",
         "paasta_tools/generate_services_yaml.py",
-        "paasta_tools/get_mesos_leader.py",
         "paasta_tools/kubernetes/bin/kubernetes_remove_evicted_pods.py",
         "paasta_tools/kubernetes/bin/paasta_cleanup_stale_nodes.py",
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",

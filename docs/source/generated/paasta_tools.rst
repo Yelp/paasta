@@ -62,7 +62,6 @@ Submodules
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
-   paasta_tools.get_mesos_leader
    paasta_tools.hacheck
    paasta_tools.iptables
    paasta_tools.kafkacluster_tools
