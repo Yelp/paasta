@@ -23,7 +23,7 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T

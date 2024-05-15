@@ -30,6 +30,7 @@ from kubernetes.client import V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from mypy_extensions import TypedDict
 
+from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.eks_tools import EksDeploymentConfig
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
@@ -58,7 +59,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster

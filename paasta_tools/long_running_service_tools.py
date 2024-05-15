@@ -11,8 +11,9 @@ from typing import Tuple
 from typing import Type
 
 import service_configuration_lib
-from mypy_extensions import TypedDict
 
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
@@ -60,23 +61,6 @@ ALL_METRICS_PROVIDERS = [
     METRICS_PROVIDER_ACTIVE_REQUESTS,
     METRICS_PROVIDER_PROMQL,
 ]
-
-
-class MetricsProviderDict(TypedDict, total=False):
-    type: str
-    decision_policy: str
-    setpoint: float
-    desired_active_requests_per_replica: int
-    forecast_policy: Optional[str]
-    moving_average_window_seconds: Optional[int]
-    use_resource_metrics: bool
-    prometheus_adapter_config: Optional[dict]
-    max_instances_alert_threshold: float
-
-
-class AutoscalingParamsDict(TypedDict, total=False):
-    metrics_providers: List[MetricsProviderDict]
-    scaledown_policies: Optional[dict]
 
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):

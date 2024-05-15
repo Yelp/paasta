@@ -2,7 +2,6 @@ import json
 import os
 from typing import Dict
 from typing import List
-from typing import Sequence
 from typing import Tuple
 
 import service_configuration_lib
@@ -34,7 +33,7 @@ def get_puppet_services_that_run_here() -> Dict[str, List[str]]:
 
 def get_puppet_services_running_here_for_nerve(
     soa_dir: str,
-) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+) -> List[Tuple[str, ServiceNamespaceConfig]]:
     puppet_services = []
     for service, namespaces in sorted(get_puppet_services_that_run_here().items()):
         for namespace in namespaces:

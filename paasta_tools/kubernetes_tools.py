@@ -132,7 +132,8 @@ from service_configuration_lib import read_soa_metadata
 
 from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
@@ -145,7 +146,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.paasta_service_config_loader import transform_autoscaling_params_dict
 from paasta_tools.secret_tools import get_secret_name_from_ref
