@@ -40,10 +40,10 @@ from paasta_tools.instance.hpa_metrics_parser import HPAMetricsParser
 from paasta_tools.kubernetes_tools import get_pod_event_messages
 from paasta_tools.kubernetes_tools import get_tail_lines_for_kubernetes_container
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.long_running_service_tools import (
     get_expected_instance_count_for_namespace,
 )
-from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import KubeSmartstackEnvoyReplicationChecker

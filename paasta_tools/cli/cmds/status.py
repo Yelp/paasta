@@ -117,7 +117,6 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
     AdhocJobConfig,
-    MarathonServiceConfig,
 ]
 
 InstanceStatusWriter = Callable[

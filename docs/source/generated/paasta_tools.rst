@@ -73,6 +73,7 @@ Submodules
    paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
+   paasta_tools.marathon_dashboard
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
@@ -88,8 +89,8 @@ Submodules
    paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
-   paasta_tools.puppet_service_tools
    paasta_tools.prune_completed_pods
+   paasta_tools.puppet_service_tools
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode
    paasta_tools.run-paasta-api-playground

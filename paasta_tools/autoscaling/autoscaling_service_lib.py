@@ -40,6 +40,7 @@ DECISION_POLICY_KEY = "decision_policy"
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
+
 def autoscaling_is_paused():
     with ZookeeperPool() as zk:
         try:

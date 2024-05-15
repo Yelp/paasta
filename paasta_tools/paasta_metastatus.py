@@ -14,7 +14,6 @@
 # limitations under the License.
 import argparse
 import io
-import itertools
 import logging
 import sys
 from contextlib import redirect_stdout
@@ -32,10 +31,6 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
-from paasta_tools.marathon_tools import get_marathon_clients
-from paasta_tools.marathon_tools import get_marathon_servers
-from paasta_tools.marathon_tools import MarathonClient
-from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState

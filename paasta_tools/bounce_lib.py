@@ -12,47 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import asyncio
-import datetime
-import fcntl
 import logging
 import math
-import os
-import random
-import time
-import typing
-from collections import Counter
-from contextlib import contextmanager
-from typing import Any
 from typing import Callable
 from typing import Collection
 from typing import Dict
-from typing import Iterator
-from typing import List
-from typing import Mapping
-from typing import Optional
 from typing import Sequence
 from typing import Set
-from typing import TypeVar
 
-import a_sync
-from kazoo.client import KazooClient
-from kazoo.exceptions import LockTimeout
-from marathon.models import MarathonApp
-from marathon.models import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import DefaultArg
 from mypy_extensions import TypedDict
-from requests.exceptions import ConnectionError
-from requests.exceptions import RequestException
-
-from paasta_tools import marathon_tools
-from paasta_tools.long_running_service_tools import BounceMethodConfigDict
-from paasta_tools.smartstack_tools import get_registered_marathon_tasks
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import timeout
 
 
 log = logging.getLogger(__name__)
@@ -64,6 +34,7 @@ ZK_LOCK_PATH = "/bounce"
 WAIT_CREATE_S = 3
 WAIT_DELETE_S = 5
 
+BounceMethodConfigDict = TypedDict("BounceMethodConfigDict", {"instances": int})
 
 BounceMethodResult = TypedDict(
     "BounceMethodResult", {"create_app": bool, "tasks_to_drain": Set}

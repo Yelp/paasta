@@ -36,7 +36,7 @@ def test_get_deploy_group_mappings():
             branch_dict=None,
             config_dict={"deploy_group": "try_me"},
         ),
-        MarathonServiceConfig(
+        LongRunningServiceConfig(
             service=fake_service,
             cluster="clusterC",
             instance="main",

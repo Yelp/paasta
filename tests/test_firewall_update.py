@@ -111,8 +111,12 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
         soa_dir=str(soa_dir)
     )
     assert dict(result) == {
-        "mydependency.depinstance": {("myservice", "hassecurityoutbound"),},
-        "another.one": {("myservice", "hassecurityoutbound"),},
+        "mydependency.depinstance": {
+            ("myservice", "hassecurityoutbound"),
+        },
+        "another.one": {
+            ("myservice", "hassecurityoutbound"),
+        },
     }
 
 

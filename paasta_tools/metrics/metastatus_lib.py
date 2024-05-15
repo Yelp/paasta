@@ -1011,7 +1011,7 @@ def run_healthchecks_with_param(
 
 
 def assert_kube_deployments(
-        kube_client: KubeClient, namespace: str
+    kube_client: KubeClient, namespace: str
 ) -> HealthCheckResult:
     num_deployments = len(list_all_deployments(kube_client, namespace))
     return HealthCheckResult(
@@ -1020,7 +1020,7 @@ def assert_kube_deployments(
 
 
 def get_kube_status(
-        kube_client: KubeClient, namespace: str
+    kube_client: KubeClient, namespace: str
 ) -> Sequence[HealthCheckResult]:
     """Gather information about Kubernetes.
     :param kube_client: the KUbernetes client

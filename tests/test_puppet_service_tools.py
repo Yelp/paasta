@@ -35,4 +35,8 @@ def test_get_puppet_services_running_here_for_nerve():
     ):
         assert puppet_service_tools.get_puppet_services_running_here_for_nerve(
             "foo"
-        ) == [("c.main", {}), ("c.canary", {}), ("d.main", {}),]
+        ) == [
+            ("c.main", {}),
+            ("c.canary", {}),
+            ("d.main", {}),
+        ]

@@ -16,7 +16,6 @@ import collections
 import csv
 import logging
 import random
-import socket
 from typing import Any
 from typing import cast
 from typing import Collection
@@ -622,7 +621,12 @@ class KubeSmartstackEnvoyReplicationChecker(BaseReplicationChecker):
 
 def build_smartstack_location_dict(
     location: str,
-    matched_backends_and_tasks: List[Tuple[Optional[HaproxyBackend], Optional[V1Pod],]],
+    matched_backends_and_tasks: List[
+        Tuple[
+            Optional[HaproxyBackend],
+            Optional[V1Pod],
+        ]
+    ],
     should_return_individual_backends: bool = False,
 ) -> MutableMapping[str, Any]:
     running_backends_count = 0
@@ -643,7 +647,8 @@ def build_smartstack_location_dict(
 
 
 def build_smartstack_backend_dict(
-    smartstack_backend: HaproxyBackend, task: Union[V1Pod],
+    smartstack_backend: HaproxyBackend,
+    task: Union[V1Pod],
 ) -> MutableMapping[str, Any]:
     svname = smartstack_backend["svname"]
     if isinstance(task, V1Pod):

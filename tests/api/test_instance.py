@@ -12,38 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import datetime
 
 import asynctest
 import mock
 import pytest
 from kubernetes.client import V1Pod
 from kubernetes.client.rest import ApiException
-from marathon.models.app import MarathonApp
-from marathon.models.app import MarathonTask
 from pyramid import testing
-from requests.exceptions import ReadTimeout
 
 from paasta_tools import eks_tools
 from paasta_tools import kubernetes_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views import instance
 from paasta_tools.api.views.exception import ApiFailure
-from paasta_tools.autoscaling.autoscaling_service_lib import ServiceAutoscalingInfo
-from paasta_tools.envoy_tools import EnvoyBackend
 from paasta_tools.instance.kubernetes import ServiceMesh
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import TimeoutError
 from tests.conftest import wrap_value_in_task
-
-
-
 
 
 @pytest.mark.asyncio

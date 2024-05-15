@@ -37,7 +37,6 @@ from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
-from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_flink_job_name
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human

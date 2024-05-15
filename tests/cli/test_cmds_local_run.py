@@ -2087,7 +2087,7 @@ def test_run_docker_container_assume_aws_role(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
     # Coverage for binary file vs non-binary file
@@ -2190,7 +2190,7 @@ def test_run_docker_container_secret_volumes(
         spec_set=docker.Client.remove_container
     )
 
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
     mock_service_manifest.get_service = mock.MagicMock(
         return_value=override_service_name
@@ -2298,7 +2298,7 @@ def test_run_docker_container_secret_volumes_for_teams(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
     # Coverage for binary file vs non-binary file
@@ -2391,7 +2391,7 @@ def test_run_docker_container_secret_volumes_raises(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
     with raises(SystemExit) as sys_exit:
@@ -2469,7 +2469,7 @@ def test_run_docker_container_secret_volumes_for_teams_raises(
     mock_docker_client.remove_container = mock.MagicMock(
         spec_set=docker.Client.remove_container
     )
-    mock_service_manifest = mock.MagicMock(spec=MarathonServiceConfig)
+    mock_service_manifest = mock.MagicMock(spec=KubernetesDeploymentConfig)
     mock_service_manifest.cluster = "fake_cluster"
 
     with raises(SystemExit) as sys_exit:

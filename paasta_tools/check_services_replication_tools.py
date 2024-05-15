@@ -22,11 +22,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
-from typing import Union
 
-import a_sync
-from marathon import MarathonClient
-from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
@@ -36,9 +32,6 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
-from paasta_tools.marathon_tools import get_marathon_clients
-from paasta_tools.marathon_tools import get_marathon_servers
-from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -48,7 +41,6 @@ from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SPACER
-from paasta_tools.utils import SystemPaastaConfig
 
 try:
     import yelp_meteorite

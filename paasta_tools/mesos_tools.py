@@ -908,7 +908,8 @@ async def get_mesos_task_count_by_slave(
     for slave in slaves_with_counts:
         log.debug(
             "Slave: {}, running {} tasks".format(
-                slave["task_counts"].slave["hostname"], slave["task_counts"].count,
+                slave["task_counts"].slave["hostname"],
+                slave["task_counts"].count,
             )
         )
     return slaves_with_counts
