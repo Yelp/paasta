@@ -18,7 +18,6 @@ import math
 import re
 from collections import Counter
 from collections import namedtuple
-from collections import OrderedDict
 from typing import Any
 from typing import Callable
 from typing import Mapping
@@ -472,39 +471,6 @@ def assert_kube_pods_running(
         message=f"Pods: running: {running} pending: {pending} failed: {failed}",
         healthy=healthy,
     )
-
-
-def assert_no_duplicate_frameworks(
-    state: MesosState, framework_list: Sequence[str]
-) -> HealthCheckResult:
-    """A function which asserts that there are no duplicate frameworks running, where
-    frameworks are identified by their name.
-
-    Note the extra spaces in the output strings: this is to account for the extra indentation
-    we add, so we can have:
-
-        frameworks:
-          framework: tron count: 1
-
-    :param state: the state info from the Mesos master
-    :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
-        indicating if there are any duplicate frameworks.
-    """
-    output = ["Frameworks:"]
-    status = True
-    frameworks = state["frameworks"]
-    for name in framework_list:
-        shards = [x["name"] for x in frameworks if x["name"].startswith(name)]
-        for framework, count in OrderedDict(sorted(Counter(shards).items())).items():
-            if count > 1:
-                status = False
-                output.append(
-                    "    CRITICAL: There are %d connected %s frameworks! "
-                    "(Expected 1)" % (count, framework)
-                )
-        output.append("    Framework: %s count: %d" % (name, len(shards)))
-
-    return HealthCheckResult(message=("\n").join(output), healthy=status)
 
 
 def assert_frameworks_exist(
