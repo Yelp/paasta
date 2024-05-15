@@ -15,6 +15,7 @@
 """
 PaaSTA service instance status/start/stop etc.
 """
+import asyncio
 import logging
 import re
 import traceback
@@ -37,10 +38,7 @@ from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.instance import kubernetes as pik
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentVersion
-from paasta_tools.utils import get_git_sha_from_dockerurl
-from paasta_tools.utils import get_image_version_from_dockerurl
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
