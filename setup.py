@@ -40,7 +40,6 @@ setup(
     python_requires=">=3.8.0",
     install_requires=get_install_requires(),
     scripts=[
-        "paasta_tools/am_i_mesos_leader.py",
         "paasta_tools/apply_external_resources.py",
         "paasta_tools/check_autoscaler_max_instances.py",
         "paasta_tools/check_cassandracluster_services_replication.py",
