@@ -6,7 +6,6 @@ opt/venvs/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_ma
 opt/venvs/paasta-tools/bin/check_kubernetes_api.py usr/bin/check_kubernetes_api
 opt/venvs/paasta-tools/bin/check_kubernetes_services_replication.py usr/bin/check_kubernetes_services_replication
 opt/venvs/paasta-tools/bin/check_autoscaler_max_instances.py usr/bin/check_autoscaler_max_instances
-opt/venvs/paasta-tools/bin/check_mesos_active_frameworks.py usr/bin/check_mesos_active_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_duplicate_frameworks.py usr/bin/check_mesos_duplicate_frameworks
 opt/venvs/paasta-tools/bin/check_mesos_quorum.py usr/bin/check_mesos_quorum
 opt/venvs/paasta-tools/bin/check_oom_events.py usr/bin/check_oom_events
