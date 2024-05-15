@@ -977,11 +977,11 @@ def validate_given_deploy_groups(
 
 
 def short_to_full_git_sha(short, refs):
-    """Converts a short git sha to a full sha
+    """Converts a short git sha to a full SHA
 
-    :param short: A short git sha represented as a string
-    :param refs: A list of refs in the git repository
-    :return: The full git sha or None if one can't be found
+    :param short: A short Git SHA represented as a string
+    :param refs: A list of refs in the Git repository
+    :return: The full Git SHA or None if one can't be found
     """
     return [sha for sha in set(refs.values()) if sha.startswith(short)]
 
@@ -989,15 +989,15 @@ def short_to_full_git_sha(short, refs):
 def validate_short_git_sha(value):
     pattern = re.compile("[a-f0-9]{4,40}")
     if not pattern.match(value):
-        raise argparse.ArgumentTypeError("%s is not a valid git sha" % value)
+        raise argparse.ArgumentTypeError("%s is not a valid Git SHA" % value)
     return value
 
 
-def validate_full_git_sha(value):
+def validate_full_git_sha(value: str) -> str:
     pattern = re.compile("[a-f0-9]{40}")
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a full git sha, and PaaSTA needs the full sha" % value
+            "%s is not a full Git SHA, and PaaSTA needs the full SHA" % value
         )
     return value
 
@@ -1011,7 +1011,7 @@ def validate_git_sha(sha, git_url):
         commits = short_to_full_git_sha(short=sha, refs=refs)
         if len(commits) != 1:
             raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1."
+                "%s matched %d Git SHAs (with refs pointing at them). Must match exactly 1."
                 % (sha, len(commits))
             )
         return commits[0]
