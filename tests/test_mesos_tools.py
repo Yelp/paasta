@@ -25,7 +25,6 @@ from pytest import raises
 from paasta_tools import mesos
 from paasta_tools import mesos_tools
 from paasta_tools import utils
-from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.utils import PaastaColors
 
 
@@ -52,7 +51,7 @@ def test_filter_not_running_tasks():
 )
 def test_status_mesos_tasks_verbose(test_case):
     tail_lines, expected_format_tail_call_count = test_case
-    filter_string = format_job_id("fake_service", "fake_instance")
+    filter_string = "fake--service.fake--instance"
 
     with asynctest.patch(
         "paasta_tools.mesos_tools.get_cached_list_of_running_tasks_from_frameworks",
@@ -584,20 +583,20 @@ async def test_get_mesos_task_count_by_slave():
     ) as mock_get_all_running_tasks:
         mock_tron = mock.Mock()
         mock_tron.name = "tron"
-        mock_marathon = mock.Mock()
-        mock_marathon.name = "marathon"
+        mock_somethingelse = mock.Mock()
+        mock_somethingelse.name = "somethingelse"
         mock_task1 = mock.Mock()
         mock_task1.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
         mock_task1.framework = asynctest.CoroutineMock(return_value=mock_tron)
         mock_task2 = mock.Mock()
         mock_task2.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
-        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_marathon)
+        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
         mock_task3 = mock.Mock()
-        mock_task3.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task3.framework = asynctest.CoroutineMock(return_value=mock_marathon)
+        mock_task3.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
+        mock_task3.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
         mock_task4 = mock.Mock()
         mock_task4.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task4.framework = asynctest.CoroutineMock(return_value=mock_marathon)
+        mock_task4.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
         mock_slave_1 = {
@@ -621,16 +620,8 @@ async def test_get_mesos_task_count_by_slave():
         )
         assert mock_get_all_running_tasks.called
         expected = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=2, batch_count=1, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=2, batch_count=0, slave=mock_slave_2
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_2)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
             expected
@@ -640,21 +631,9 @@ async def test_get_mesos_task_count_by_slave():
         )
         assert mock_get_all_running_tasks.called
         expected = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=2, batch_count=1, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=2, batch_count=0, slave=mock_slave_2
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_3
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_2)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
             expected
@@ -663,45 +642,24 @@ async def test_get_mesos_task_count_by_slave():
         # test slaves_list override
         mock_task2 = mock.Mock()
         mock_task2.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_marathon)
+        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
+        mock_task3 = mock.Mock()
+        mock_task3.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
+        mock_task3.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
         mock_slaves_list = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_2
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_3
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_2)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
         ]
         ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state, slaves_list=mock_slaves_list
         )
         expected = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=1, batch_count=1, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=3, batch_count=0, slave=mock_slave_2
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_3
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_2)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
             expected
@@ -718,42 +676,18 @@ async def test_get_mesos_task_count_by_slave():
         mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
         mock_get_all_running_tasks.return_value = mock_tasks
         mock_slaves_list = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_2
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_3
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_2)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
         ]
         ret = await mesos_tools.get_mesos_task_count_by_slave(
             mock_mesos_state, slaves_list=mock_slaves_list
         )
         # we expect mock_slave_2 to only count 2 tasks, as one of them returned a SlaveDoesNotExist exception
         expected = [
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=1, batch_count=1, slave=mock_slave_1
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=2, batch_count=0, slave=mock_slave_2
-                )
-            },
-            {
-                "task_counts": mesos_tools.SlaveTaskCount(
-                    count=0, batch_count=0, slave=mock_slave_3
-                )
-            },
+            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_1)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=2, slave=mock_slave_2)},
+            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
         ]
         assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
             expected

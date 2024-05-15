@@ -29,7 +29,6 @@ Submodules
    paasta_tools.am_i_mesos_leader
    paasta_tools.apply_external_resources
    paasta_tools.async_utils
-   paasta_tools.autoscale_all_services
    paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
@@ -70,13 +69,10 @@ Submodules
    paasta_tools.kafkacluster_tools
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
-   paasta_tools.list_marathon_service_instances
    paasta_tools.list_tron_namespaces
    paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
-   paasta_tools.marathon_dashboard
-   paasta_tools.marathon_tools
    paasta_tools.mesos_maintenance
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
@@ -92,6 +88,7 @@ Submodules
    paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
+   paasta_tools.puppet_service_tools
    paasta_tools.prune_completed_pods
    paasta_tools.remote_git
    paasta_tools.run-paasta-api-in-dev-mode

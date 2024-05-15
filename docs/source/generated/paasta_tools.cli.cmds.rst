@@ -32,7 +32,6 @@ Submodules
    paasta_tools.cli.cmds.spark_run
    paasta_tools.cli.cmds.start_stop_restart
    paasta_tools.cli.cmds.status
-   paasta_tools.cli.cmds.sysdig
    paasta_tools.cli.cmds.validate
    paasta_tools.cli.cmds.wait_for_deployment
 

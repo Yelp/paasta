@@ -80,7 +80,6 @@ def test_parse_args_default_cron():
     "services_running_here",
     autospec=True,
     return_value=(
-        ("myservice", "hassecurityinbound", "02:42:a9:fe:00:0a", "1.1.1.1"),
         ("myservice", "hassecurityoutbound", "02:42:a9:fe:00:0a", "1.1.1.1"),
     ),
 )
@@ -88,18 +87,16 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
     soa_dir = tmpdir.mkdir("yelpsoa")
     myservice_dir = soa_dir.mkdir("myservice")
 
-    marathon_config = {
-        "hassecurityinbound": {
-            "dependencies_reference": "my_ref",
-            "security": {"inbound_firewall": "reject"},
-        },
+    kubernetes_config = {
         "hassecurityoutbound": {
             "dependencies_reference": "my_ref",
             "security": {"outbound_firewall": "block"},
         },
         "nosecurity": {"dependencies_reference": "my_ref"},
     }
-    myservice_dir.join("marathon-mycluster.yaml").write(yaml.safe_dump(marathon_config))
+    myservice_dir.join("kubernetes-mycluster.yaml").write(
+        yaml.safe_dump(kubernetes_config)
+    )
 
     dependencies_config = {
         "my_ref": [
@@ -114,14 +111,8 @@ def test_smartstack_dependencies_of_running_firewalled_services(_, __, ___, tmpd
         soa_dir=str(soa_dir)
     )
     assert dict(result) == {
-        "mydependency.depinstance": {
-            ("myservice", "hassecurityinbound"),
-            ("myservice", "hassecurityoutbound"),
-        },
-        "another.one": {
-            ("myservice", "hassecurityinbound"),
-            ("myservice", "hassecurityoutbound"),
-        },
+        "mydependency.depinstance": {("myservice", "hassecurityoutbound"),},
+        "another.one": {("myservice", "hassecurityoutbound"),},
     }
 
 

@@ -29,15 +29,15 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
         autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = "marathon"
+        mock_opts.check = "tron"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value={
                 "frameworks": [
-                    {"name": "marathon"},
-                    {"name": "marathon1"},
+                    {"name": "tron"},
+                    {"name": "tron1"},
                     {"name": "foobar"},
                     {"name": "foobar"},
                 ]
@@ -49,7 +49,7 @@ def test_check_mesos_no_duplicate_frameworks_ok(capfd):
             check_mesos_no_duplicate_frameworks()
         out, err = capfd.readouterr()
         assert "OK" in out
-        assert "Framework: marathon count: 2" in out
+        assert "Framework: tron count: 2" in out
         assert "foobar" not in out
         assert error.value.code == 0
 
@@ -63,16 +63,16 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         autospec=True,
     ) as mock_get_mesos_master:
         mock_opts = mock.MagicMock()
-        mock_opts.check = "marathon"
+        mock_opts.check = "tron"
         mock_parse_args.return_value = mock_opts
         mock_master = mock.MagicMock()
         mock_master.state = asynctest.CoroutineMock(
             func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
             return_value={
                 "frameworks": [
-                    {"name": "marathon"},
-                    {"name": "marathon1"},
-                    {"name": "marathon1"},
+                    {"name": "tron"},
+                    {"name": "tron1"},
+                    {"name": "tron1"},
                     {"name": "foobar"},
                     {"name": "foobar"},
                 ]
@@ -83,9 +83,7 @@ def test_check_mesos_no_duplicate_frameworks_critical(capfd):
         with pytest.raises(SystemExit) as error:
             check_mesos_no_duplicate_frameworks()
         out, err = capfd.readouterr()
-        assert (
-            "CRITICAL: There are 2 connected marathon1 frameworks! (Expected 1)" in out
-        )
-        assert "marathon" in out
+        assert "CRITICAL: There are 2 connected tron1 frameworks! (Expected 1)" in out
+        assert "tron" in out
         assert "foobar" not in out
         assert error.value.code == 2
