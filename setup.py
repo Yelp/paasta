@@ -62,7 +62,6 @@ setup(
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/log_task_lifecycle_events.py",
         "paasta_tools/monitoring/check_capacity.py",
-        "paasta_tools/monitoring/check_mesos_quorum.py",
         "paasta_tools/monitoring/kill_orphaned_docker_containers.py",
         "paasta_tools/paasta_cluster_boost.py",
         "paasta_tools/paasta_deploy_tron_jobs",
