@@ -1976,16 +1976,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     default_push_groups: List
     default_should_use_uwsgi_exporter: bool
     deploy_blacklist: UnsafeDeployBlacklist
-    deployd_big_bounce_deadline: float
-    deployd_log_level: str
-    deployd_maintenance_polling_frequency: int
-    deployd_max_service_instance_failures: int
     deployd_metrics_provider: str
-    deployd_number_workers: int
-    deployd_startup_bounce_deadline: float
-    deployd_startup_oracle_enabled: bool
-    deployd_use_zk_queue: bool
-    deployd_worker_failure_backoff_factor: int
     deploy_whitelist: UnsafeDeployWhitelist
     disabled_watchers: List
     dockercfg_location: str
@@ -2389,39 +2380,6 @@ class SystemPaastaConfig:
             return deployd_metrics_provider
         return self.config_dict.get("metrics_provider")
 
-    def get_deployd_worker_failure_backoff_factor(self) -> int:
-        """Get the factor for calculating exponential backoff when a deployd worker
-        fails to bounce a service
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_worker_failure_backoff_factor", 30)
-
-    def get_deployd_maintenance_polling_frequency(self) -> int:
-        """Get the frequency in seconds that the deployd maintenance watcher should
-        poll mesos's api for new draining hosts
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_maintenance_polling_frequency", 30)
-
-    def get_deployd_startup_oracle_enabled(self) -> bool:
-        """This controls whether deployd will add all services that need a bounce on
-        startup. Generally this is desirable behavior. If you are performing a bounce
-        of *all* services you will want to disable this.
-
-        :returns: A boolean
-        """
-        return self.config_dict.get("deployd_startup_oracle_enabled", True)
-
-    def get_deployd_max_service_instance_failures(self) -> int:
-        """Determines how many times a service instance entry in deployd's queue
-        can fail before it will be removed from the queue.
-
-        :returns: An integer
-        """
-        return self.config_dict.get("deployd_max_service_instance_failures", 20)
-
     def get_sensu_host(self) -> str:
         """Get the host that we should send sensu events to.
 
@@ -2587,44 +2545,6 @@ class SystemPaastaConfig:
         :return: The name of the file
         """
         return self.config_dict.get("security_check_command", None)
-
-    def get_deployd_number_workers(self) -> int:
-        """Get the number of workers to consume deployment q
-
-        :return: integer
-        """
-        return self.config_dict.get("deployd_number_workers", 4)
-
-    def get_deployd_big_bounce_deadline(self) -> float:
-        """Get the amount of time in the future to set the deadline when enqueuing instances for SystemPaastaConfig
-        changes.
-
-        :return: float
-        """
-
-        return float(
-            self.config_dict.get("deployd_big_bounce_deadline", 7 * 24 * 60 * 60)
-        )
-
-    def get_deployd_startup_bounce_deadline(self) -> float:
-        """Get the amount of time in the future to set the deadline when enqueuing instances on deployd startup.
-
-        :return: float
-        """
-
-        return float(
-            self.config_dict.get("deployd_startup_bounce_deadline", 7 * 24 * 60 * 60)
-        )
-
-    def get_deployd_log_level(self) -> str:
-        """Get the log level for paasta-deployd
-
-        :return: string name of python logging level, e.g. INFO, DEBUG etc.
-        """
-        return self.config_dict.get("deployd_log_level", "INFO")
-
-    def get_deployd_use_zk_queue(self) -> bool:
-        return self.config_dict.get("deployd_use_zk_queue", True)
 
     def get_hacheck_sidecar_image_url(self) -> str:
         """Get the docker image URL for the hacheck sidecar container"""
