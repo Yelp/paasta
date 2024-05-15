@@ -473,27 +473,6 @@ def assert_kube_pods_running(
     )
 
 
-def assert_frameworks_exist(
-    state: MesosState, expected: Sequence[str]
-) -> HealthCheckResult:
-    frameworks = [f["name"] for f in state["frameworks"]]
-    not_found = []
-    ok = True
-
-    for f in expected:
-        if f not in frameworks:
-            ok = False
-            not_found.append(f)
-
-    if ok:
-        return HealthCheckResult(message="all expected frameworks found", healthy=ok)
-    else:
-        return HealthCheckResult(
-            message="CRITICAL: framework(s) %s not found" % ", ".join(not_found),
-            healthy=ok,
-        )
-
-
 def get_mesos_slaves_health_status(
     metrics: MesosMetrics,
 ) -> Tuple[int, int]:
