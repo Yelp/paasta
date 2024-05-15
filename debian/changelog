@@ -1,3 +1,13 @@
+paasta-tools (0.232.1) xenial; urgency=medium
+
+  * 0.232.1 tagged with 'make release'
+    Commit: Improve paasta rollback messaging (#3862)  Printing out the -
+    -help output when passing a short SHA is not helpful - and neither
+    is not very loudly mentioning that changes *need* to be reverted in
+    Git for a rollback to become permanent
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 15 May 2024 10:48:47 -0700
+
 paasta-tools (0.232.0) xenial; urgency=medium
 
   * 0.232.0 tagged with 'make release'
