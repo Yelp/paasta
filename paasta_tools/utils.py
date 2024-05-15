@@ -1962,10 +1962,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
     boost_regions: List[str]
-    cluster_autoscaler_max_decrease: float
-    cluster_autoscaler_max_increase: float
-    cluster_autoscaling_draining_enabled: bool
-    cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
     cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
@@ -2466,28 +2462,6 @@ class SystemPaastaConfig:
 
     def get_service_discovery_providers(self) -> Dict[str, Any]:
         return self.config_dict.get("service_discovery_providers", {})
-
-    def get_cluster_autoscaling_resources(self) -> IdToClusterAutoscalingResourcesDict:
-        return self.config_dict.get("cluster_autoscaling_resources", {})
-
-    def get_cluster_autoscaling_draining_enabled(self) -> bool:
-        """Enable mesos maintenance mode and trigger draining of instances before the
-        autoscaler terminates the instance.
-
-        :returns A bool"""
-        return self.config_dict.get("cluster_autoscaling_draining_enabled", True)
-
-    def get_cluster_autoscaler_max_increase(self) -> float:
-        """Set the maximum increase that the cluster autoscaler can make in each run
-
-        :returns A float"""
-        return self.config_dict.get("cluster_autoscaler_max_increase", 0.2)
-
-    def get_cluster_autoscaler_max_decrease(self) -> float:
-        """Set the maximum decrease that the cluster autoscaler can make in each run
-
-        :returns A float"""
-        return self.config_dict.get("cluster_autoscaler_max_decrease", 0.1)
 
     def get_maintenance_resource_reservation_enabled(self) -> bool:
         """Enable un/reserving of resources when we un/drain a host in mesos maintenance
