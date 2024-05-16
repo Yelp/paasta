@@ -1286,7 +1286,7 @@ class VectorLogsReader(LogReader):
             print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
 
-def scribe_env_to_locations(scribe_env) -> Dict[str, Optional[str]]:
+def scribe_env_to_locations(scribe_env) -> Mapping[str, Any]:
     """Converts a scribe environment to a dictionary of locations. The
     return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
     """
