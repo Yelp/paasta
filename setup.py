@@ -73,7 +73,6 @@ setup(
         "paasta_tools/monitoring/check_mesos_outdated_tasks.py",
         "paasta_tools/monitoring/check_mesos_quorum.py",
         "paasta_tools/monitoring/kill_orphaned_docker_containers.py",
-        "paasta_tools/paasta_cluster_boost.py",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/paasta_execute_docker_command.py",
         "paasta_tools/paasta_maintenance.py",

@@ -1961,12 +1961,10 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     auto_config_instance_types_enabled: Dict[str, bool]
     auto_config_instance_type_aliases: Dict[str, str]
     auto_hostname_unique_size: int
-    boost_regions: List[str]
     cluster_autoscaler_max_decrease: float
     cluster_autoscaler_max_increase: float
     cluster_autoscaling_draining_enabled: bool
     cluster_autoscaling_resources: IdToClusterAutoscalingResourcesDict
-    cluster_boost_enabled: bool
     cluster_fqdn_format: str
     clusters: Sequence[str]
     cluster: str
@@ -2496,13 +2494,6 @@ class SystemPaastaConfig:
         :returns A bool"""
         return self.config_dict.get("maintenance_resource_reservation_enabled", True)
 
-    def get_cluster_boost_enabled(self) -> bool:
-        """Enable the cluster boost. Note that the boost only applies to the CPUs.
-        If the boost is toggled on here but not configured, it will be transparent.
-
-        :returns A bool: True means cluster boost is enabled."""
-        return self.config_dict.get("cluster_boost_enabled", False)
-
     def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
         return self.config_dict.get("resource_pool_settings", {})
 
@@ -2718,9 +2709,6 @@ class SystemPaastaConfig:
 
     def get_pdb_max_unavailable(self) -> Union[str, int]:
         return self.config_dict.get("pdb_max_unavailable", 0)
-
-    def get_boost_regions(self) -> List[str]:
-        return self.config_dict.get("boost_regions", [])
 
     def get_pod_defaults(self) -> Dict[str, Any]:
         return self.config_dict.get("pod_defaults", {})
