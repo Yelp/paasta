@@ -1,15 +1,20 @@
 import copy
 import logging
+import os
 import socket
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
+from typing import Type
 
 import service_configuration_lib
-from mypy_extensions import TypedDict
 
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import MetricsProviderDict
+from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -21,10 +26,11 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
-logging.getLogger("marathon").setLevel(logging.WARNING)
+logging.getLogger("long_running_service_tools").setLevel(logging.WARNING)
 
 ZK_PAUSE_AUTOSCALE_PATH = "/autoscaling/paused"
 DEFAULT_CONTAINER_PORT = 8888
@@ -53,23 +59,6 @@ ALL_METRICS_PROVIDERS = [
 ]
 
 
-class MetricsProviderDict(TypedDict, total=False):
-    type: str
-    decision_policy: str
-    setpoint: float
-    desired_active_requests_per_replica: int
-    forecast_policy: Optional[str]
-    moving_average_window_seconds: Optional[int]
-    use_resource_metrics: bool
-    prometheus_adapter_config: Optional[dict]
-    max_instances_alert_threshold: float
-
-
-class AutoscalingParamsDict(TypedDict, total=False):
-    metrics_providers: List[MetricsProviderDict]
-    scaledown_policies: Optional[dict]
-
-
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
     drain_method: str
@@ -94,10 +83,6 @@ class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     bounce_margin_factor: float
     should_ping_for_unhealthy_pods: bool
     weight: int
-
-
-# Defined here to avoid import cycles -- this gets used in bounce_lib and subclassed in marathon_tools.
-BounceMethodConfigDict = TypedDict("BounceMethodConfigDict", {"instances": int})
 
 
 class ServiceNamespaceConfig(dict):
@@ -198,7 +183,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
 
     def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
-        """Get the drain method specified in the service's marathon configuration.
+        """Get the drain method specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain method specified in the config, or 'noop' if not specified"""
@@ -211,7 +196,7 @@ class LongRunningServiceConfig(InstanceConfig):
     def get_drain_method_params(
         self, service_namespace_config: ServiceNamespaceConfig
     ) -> Dict:
-        """Get the drain method parameters specified in the service's marathon configuration.
+        """Get the drain method parameters specified in the service's configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
@@ -276,10 +261,7 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_healthcheck_grace_period_seconds(self) -> float:
         """
-        Grace periods indicate different things on kubernetes/marathon: on
-        marathon, it indicates how long marathon will tolerate failing
-        healthchecks; on kubernetes, how long before kubernetes will start
-        sending healthcheck and liveness probes.
+        How long before kubernetes will start sending healthcheck and liveness probes.
         """
         return self.config_dict.get("healthcheck_grace_period_seconds", 60)
 
@@ -337,7 +319,7 @@ class LongRunningServiceConfig(InstanceConfig):
         return self.config_dict.get("max_instances", None)
 
     def get_desired_instances(self) -> int:
-        """Get the number of instances specified in zookeeper or the service's marathon configuration.
+        """Get the number of instances specified in zookeeper or the service's configuration.
         If the number of instances in zookeeper is less than min_instances, returns min_instances.
         If the number of instances in zookeeper is greater than max_instances, returns max_instances.
 
@@ -614,3 +596,74 @@ def host_passes_whitelist(
         log.error("I will assume the host does not pass\nError was: %s" % e)
         return False
     return False
+
+
+def get_all_namespaces(
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+    """Get all the smartstack namespaces across all services.
+    This is mostly so synapse can get everything it needs in one call.
+
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of the form (service.namespace, namespace_config)"""
+    rootdir = os.path.abspath(soa_dir)
+    namespace_list: List[Tuple[str, ServiceNamespaceConfig]] = []
+    for srv_dir in os.listdir(rootdir):
+        namespace_list.extend(get_all_namespaces_for_service(srv_dir, soa_dir))
+    return namespace_list
+
+
+def get_all_namespaces_for_service(
+    service: str, soa_dir: str = DEFAULT_SOA_DIR, full_name: bool = True
+) -> Sequence[Tuple[str, ServiceNamespaceConfig]]:
+    """Get all the smartstack namespaces listed for a given service name.
+
+    :param service: The service name
+    :param soa_dir: The SOA config directory to read from
+    :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
+                      returned tuples as described below (Default: True)
+    :returns: A list of tuples of the form (service<SPACER>namespace, namespace_config) if full_name is true,
+              otherwise of the form (namespace, namespace_config)
+    """
+    service_config = service_configuration_lib.read_service_configuration(
+        service, soa_dir
+    )
+    smartstack = service_config.get("smartstack", {})
+    namespace_list = []
+    for namespace in smartstack:
+        if full_name:
+            name = compose_job_id(service, namespace)
+        else:
+            name = namespace
+        namespace_list.append((name, smartstack[namespace]))
+    return namespace_list
+
+
+def get_expected_instance_count_for_namespace(
+    service: str,
+    namespace: str,
+    instance_type_class: Type[LongRunningServiceConfig],
+    cluster: str = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> int:
+    """Get the number of expected instances for a namespace, based on the number
+    of instances set to run on that namespace as specified in service configuration files.
+
+    :param service: The service's name
+    :param namespace: The namespace for that service to check
+    instance_type_class: The type of the instance, options are e.g. KubernetesDeploymentConfig,
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: An integer value of the # of expected instances for the namespace"""
+    total_expected = 0
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+
+    pscl = PaastaServiceConfigLoader(
+        service=service, soa_dir=soa_dir, load_deployments=False
+    )
+    for job_config in pscl.instance_configs(
+        cluster=cluster, instance_type_class=instance_type_class
+    ):
+        if f"{service}.{namespace}" in job_config.get_registrations():
+            total_expected += job_config.get_instances()
+    return total_expected

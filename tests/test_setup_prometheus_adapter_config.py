@@ -1,12 +1,12 @@
 import mock
 import pytest
 
+from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
-from paasta_tools.long_running_service_tools import MetricsProviderDict
 from paasta_tools.setup_prometheus_adapter_config import _minify_promql
 from paasta_tools.setup_prometheus_adapter_config import (
     create_instance_active_requests_scaling_rule,

@@ -26,7 +26,7 @@ from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -308,13 +308,6 @@ def test_get_subparser():
     )
 
 
-def test_pick_slave_from_status():
-    mock_slaves = [1, 2]
-    mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
-    assert utils.pick_slave_from_status(mock_status, host=None) == 1
-    assert utils.pick_slave_from_status(mock_status, host="lolhost") == "lolhost"
-
-
 def test_git_sha_validation():
     assert (
         utils.validate_full_git_sha("060ce8bc10efe0030c048a4711ad5dd85de5adac")
@@ -332,14 +325,14 @@ def test_list_deploy_groups_parses_configs(
     mock_get_instance_configs_for_service,
 ):
     mock_get_instance_configs_for_service.return_value = [
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="",
             instance="",
             config_dict={"deploy_group": "fake_deploy_group"},
             branch_dict=None,
         ),
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="fake_cluster",
             instance="fake_instance",

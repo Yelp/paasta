@@ -16,7 +16,6 @@
 set -eu
 
 SCRIPTS="am_i_mesos_leader
-autoscale_all_services
 check_kubernetes_api
 check_kubernetes_services_replication
 check_flink_services_health
@@ -28,15 +27,11 @@ paasta_deploy_tron_jobs
 generate_deployments_for_service
 generate_services_file
 generate_services_yaml
-list_marathon_service_instances
 paasta_list_tron_namespaces
 paasta_execute_docker_command
 paasta_metastatus
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
-
-MARATHON_SERVICES="fake_service_uno.main
-fake_service_dos.niam"
 
 SERVICE_NAMESPACES="fake_service_uno.main
 fake_service_uno.canary
@@ -80,16 +75,6 @@ fi
 for scr in $SCRIPTS
 do
   which $scr >/dev/null || (echo "$scr failed to install!"; exit 1)
-done
-
-for srv in $MARATHON_SERVICES
-do
-  if ! list_marathon_service_instances | grep -q $srv; then
-    echo "Service instance $srv ISN'T showing up in list_marathon_service_instances!"
-    exit 1
-  else
-    echo "Service $srv showed up in list_marathon_service_instances"
-  fi
 done
 
 for ns in $SERVICE_NAMESPACES

@@ -35,7 +35,6 @@ log = logging.getLogger(__name__)
 class PaastaOApiClient:
     autoscaler: paastaapis.AutoscalerApi
     default: paastaapis.DefaultApi
-    marathon_dashboard: paastaapis.MarathonDashboardApi
     resources: paastaapis.ResourcesApi
     service: paastaapis.ServiceApi
     api_error: Type[paastaapi.ApiException]
@@ -67,7 +66,6 @@ def get_paasta_oapi_client_by_url(
     return PaastaOApiClient(
         autoscaler=paastaapis.AutoscalerApi(client),
         default=paastaapis.DefaultApi(client),
-        marathon_dashboard=paastaapis.MarathonDashboardApi(client),
         resources=paastaapis.ResourcesApi(client),
         service=paastaapis.ServiceApi(client),
         api_error=paastaapi.ApiException,

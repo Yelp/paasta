@@ -14,7 +14,6 @@
 # limitations under the License.
 import argparse
 import io
-import itertools
 import logging
 import sys
 from contextlib import redirect_stdout
@@ -25,7 +24,6 @@ from typing import Sequence
 from typing import Tuple
 
 import a_sync
-from marathon.exceptions import MarathonError
 from mypy_extensions import TypedDict
 
 from paasta_tools import __version__
@@ -33,10 +31,6 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.kubernetes_tools import is_kubernetes_available
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
-from paasta_tools.marathon_tools import get_marathon_clients
-from paasta_tools.marathon_tools import get_marathon_servers
-from paasta_tools.marathon_tools import MarathonClient
-from paasta_tools.marathon_tools import MarathonClients
 from paasta_tools.mesos.exceptions import MasterNotAvailableException
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
@@ -114,12 +108,6 @@ def parse_args(argv):
     return parser.parse_args(argv)
 
 
-def get_marathon_framework_ids(
-    marathon_clients: Sequence[MarathonClient],
-) -> Sequence[str]:
-    return [client.get_info().framework_id for client in marathon_clients]
-
-
 def _run_mesos_checks(
     mesos_master: MesosMaster, mesos_state: MesosState
 ) -> Sequence[HealthCheckResult]:
@@ -130,25 +118,6 @@ def _run_mesos_checks(
         mesos_metrics=metrics, mesos_state=mesos_state
     )
     return mesos_state_status + mesos_metrics_status  # type: ignore
-
-
-def _run_marathon_checks(
-    marathon_clients: Sequence[MarathonClient],
-) -> Sequence[HealthCheckResult]:
-    try:
-        marathon_results = metastatus_lib.get_marathon_status(marathon_clients)
-        return marathon_results
-    except (MarathonError, ValueError) as e:
-        print(PaastaColors.red(f"CRITICAL: Unable to contact Marathon cluster: {e}"))
-        raise FatalError(2)
-
-
-def all_marathon_clients(
-    marathon_clients: MarathonClients,
-) -> Sequence[MarathonClient]:
-    return [
-        c for c in itertools.chain(marathon_clients.current, marathon_clients.previous)
-    ]
 
 
 def utilization_table_by_grouping(
@@ -351,9 +320,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
             **master_kwargs,
         )
 
-        marathon_servers = get_marathon_servers(system_paasta_config)
-        marathon_clients = all_marathon_clients(get_marathon_clients(marathon_servers))
-
         try:
             mesos_state = a_sync.block(master.state)
             all_mesos_results = _run_mesos_checks(
@@ -365,13 +331,7 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
             print(PaastaColors.red("CRITICAL:  %s" % "\n".join(e.args)))
             raise FatalError(2)
 
-        marathon_results = _run_marathon_checks(marathon_clients)
     else:
-        marathon_results = [
-            metastatus_lib.HealthCheckResult(
-                message="Marathon is not configured to run here", healthy=True
-            )
-        ]
         all_mesos_results = [
             metastatus_lib.HealthCheckResult(
                 message="Mesos is not configured to run here", healthy=True
@@ -391,16 +351,12 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
         ]
 
     mesos_ok = all(metastatus_lib.status_for_results(all_mesos_results))
-    marathon_ok = all(metastatus_lib.status_for_results(marathon_results))
     kube_ok = all(metastatus_lib.status_for_results(kube_results))
 
     mesos_summary = metastatus_lib.generate_summary_for_check("Mesos", mesos_ok)
-    marathon_summary = metastatus_lib.generate_summary_for_check(
-        "Marathon", marathon_ok
-    )
     kube_summary = metastatus_lib.generate_summary_for_check("Kubernetes", kube_ok)
 
-    healthy_exit = True if all([mesos_ok, marathon_ok]) else False
+    healthy_exit = mesos_ok
 
     print(f"Master paasta_tools version: {__version__}")
     print("Mesos leader: %s" % get_mesos_leader())
@@ -441,9 +397,6 @@ def print_output(argv: Optional[Sequence[str]] = None) -> None:
 
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
-    metastatus_lib.print_results_for_healthchecks(
-        marathon_summary, marathon_ok, marathon_results, args.verbose
-    )
     metastatus_lib.print_results_for_healthchecks(
         kube_summary, kube_ok, kube_results, args.verbose
     )
