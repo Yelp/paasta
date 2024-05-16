@@ -33,6 +33,7 @@ from typing import Iterable
 from typing import List
 from typing import Mapping
 from typing import MutableSequence
+from typing import Optional
 from typing import Sequence
 from typing import Set
 from typing import Tuple
@@ -528,7 +529,7 @@ def get_log_reader(components: Set[str]) -> "LogReader":
     for log_reader_config in log_readers_config:
         supported_components = log_reader_config.get("components", [])
         components_lists.append(supported_components)
-        if components <= set(supported_components):
+        if components.issubset(supported_components):
             log_reader_class = get_log_reader_class(log_reader_config["driver"])
             print(
                 PaastaColors.cyan(
@@ -1228,7 +1229,7 @@ class VectorLogsReader(LogReader):
 
         self.cluster_map = cluster_map
 
-    def get_ecosystem_for_cluster(self, cluster: str) -> str:
+    def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
         return self.cluster_map.get(cluster, None)
 
     def print_logs_by_time(
@@ -1243,7 +1244,7 @@ class VectorLogsReader(LogReader):
         pods,
         raw_mode,
         strip_headers,
-    ):
+    ) -> None:
         stream_name = get_log_name_for_service(service, prefix="app_output")
         ecosystem = self.get_ecosystem_for_cluster(clusters[0])
         reader = S3LogsReader(ecosystem)
@@ -1285,7 +1286,7 @@ class VectorLogsReader(LogReader):
             print_log(line["raw_line"], levels, raw_mode, strip_headers)
 
 
-def scribe_env_to_locations(scribe_env):
+def scribe_env_to_locations(scribe_env) -> Dict[str, Optional[str]]:
     """Converts a scribe environment to a dictionary of locations. The
     return value is meant to be used as kwargs for `scribereader.get_tail_host_and_port`.
     """
