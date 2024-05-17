@@ -28,7 +28,6 @@ generate_deployments_for_service
 generate_services_file
 generate_services_yaml
 paasta_list_tron_namespaces
-paasta_execute_docker_command
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
 
