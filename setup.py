@@ -65,7 +65,6 @@ setup(
         "paasta_tools/monitoring/kill_orphaned_docker_containers.py",
         "paasta_tools/paasta_deploy_tron_jobs",
         "paasta_tools/paasta_execute_docker_command.py",
-        "paasta_tools/paasta_metastatus.py",
         "paasta_tools/paasta_remote_run.py",
         "paasta_tools/setup_istio_mesh.py",
         "paasta_tools/setup_kubernetes_cr.py",

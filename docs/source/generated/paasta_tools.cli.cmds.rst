@@ -21,7 +21,6 @@ Submodules
    paasta_tools.cli.cmds.logs
    paasta_tools.cli.cmds.mark_for_deployment
    paasta_tools.cli.cmds.mesh_status
-   paasta_tools.cli.cmds.metastatus
    paasta_tools.cli.cmds.pause_service_autoscaler
    paasta_tools.cli.cmds.push_to_registry
    paasta_tools.cli.cmds.remote_run

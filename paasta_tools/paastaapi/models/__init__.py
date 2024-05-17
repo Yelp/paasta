@@ -49,7 +49,6 @@ from paasta_tools.paastaapi.model.kubernetes_pod_event import KubernetesPodEvent
 from paasta_tools.paastaapi.model.kubernetes_pod_v2 import KubernetesPodV2
 from paasta_tools.paastaapi.model.kubernetes_replica_set import KubernetesReplicaSet
 from paasta_tools.paastaapi.model.kubernetes_version import KubernetesVersion
-from paasta_tools.paastaapi.model.meta_status import MetaStatus
 from paasta_tools.paastaapi.model.resource import Resource
 from paasta_tools.paastaapi.model.resource_item import ResourceItem
 from paasta_tools.paastaapi.model.resource_value import ResourceValue

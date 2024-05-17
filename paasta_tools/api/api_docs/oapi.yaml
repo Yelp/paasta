@@ -893,16 +893,6 @@ components:
           description: Kubernetes namespace this version is in
           type: string
       type: object
-    MetaStatus:
-      description: Result of `paasta metastatus` command
-      properties:
-        exit_code:
-          description: Exit code from `paasta metastatus` command
-          type: integer
-        output:
-          description: Output from `paasta metastatus` command
-          type: string
-      type: object
     Resource:
       items:
         $ref: '#/components/schemas/ResourceItem'
@@ -1151,29 +1141,6 @@ paths:
       summary: Get overview of a flink cluster
       tags:
       - service
-  /metastatus:
-    get:
-      operationId: metastatus
-      parameters:
-      - description: comma separated list of command arguments
-        in: query
-        name: cmd_args
-        required: true
-        schema:
-          items:
-            type: string
-          type: array
-        style: simple
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MetaStatus'
-          description: Detailed metastatus
-        "500":
-          description: Metastatus failure
-      summary: Get metastatus
   /resources/utilization:
     get:
       operationId: resources

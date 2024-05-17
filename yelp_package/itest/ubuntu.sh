@@ -29,7 +29,6 @@ generate_services_file
 generate_services_yaml
 paasta_list_tron_namespaces
 paasta_execute_docker_command
-paasta_metastatus
 paasta_setup_tron_namespace
 synapse_srv_namespaces_fact"
 
@@ -45,7 +44,6 @@ info
 itest
 local-run
 mark-for-deployment
-metastatus
 push-to-registry
 security-check
 status
