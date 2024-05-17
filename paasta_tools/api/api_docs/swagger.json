@@ -279,51 +279,6 @@
                 "operationId": "delete_service_autoscaler_pause"
             }
         },
-        "/resources/utilization": {
-            "get": {
-                "responses": {
-                    "200": {
-                        "description": "Resources in the cluster, filtered and grouped by parameters",
-                        "schema": {
-                            "$ref": "#/definitions/Resource"
-                        }
-                    },
-                    "400": {
-                        "description": "Poorly formated query parameters"
-                    }
-                },
-                "summary": "Get resources in the cluster",
-                "operationId": "resources",
-                "tags": [
-                    "resources"
-                ],
-                "parameters": [
-                    {
-                        "in": "query",
-                        "description": "comma separated list of keys to group by",
-                        "name": "groupings",
-                        "required": false,
-                        "type": "array",
-                        "collectionFormat": "csv",
-                        "items": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "in": "query",
-                        "description": "List of slave filters in format 'filter=attr_name:value1,value2&filter=attr2:value3,value4'. Matches attr_name=(value1 OR value2) AND attr2=(value3 OR value4)",
-                        "name": "filter",
-                        "required": false,
-                        "type": "array",
-                        "collectionFormat": "multi",
-                        "items": {
-                            "type": "string",
-                            "pattern": "(.*):(.*,)*(.*)"
-                        }
-                    }
-                ]
-            }
-        },
         "/services": {
             "get": {
                 "responses": {
