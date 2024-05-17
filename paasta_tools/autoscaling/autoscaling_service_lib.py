@@ -14,27 +14,11 @@
 # limitations under the License.
 import logging
 import time
-from collections import namedtuple
 
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.long_running_service_tools import ZK_PAUSE_AUTOSCALE_PATH
 from paasta_tools.utils import ZookeeperPool
-
-ServiceAutoscalingInfo = namedtuple(
-    "ServiceAutoscalingInfo",
-    [
-        "current_instances",
-        "max_instances",
-        "min_instances",
-        "current_utilization",
-        "target_instances",
-    ],
-)
-
-
-SERVICE_METRICS_PROVIDER_KEY = "metrics_providers"
-DECISION_POLICY_KEY = "decision_policy"
 
 
 log = logging.getLogger(__name__)
