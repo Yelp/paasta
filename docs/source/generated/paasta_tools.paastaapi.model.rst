@@ -44,7 +44,6 @@ Submodules
    paasta_tools.paastaapi.model.kubernetes_pod_v2
    paasta_tools.paastaapi.model.kubernetes_replica_set
    paasta_tools.paastaapi.model.kubernetes_version
-   paasta_tools.paastaapi.model.meta_status
    paasta_tools.paastaapi.model.resource
    paasta_tools.paastaapi.model.resource_item
    paasta_tools.paastaapi.model.resource_value

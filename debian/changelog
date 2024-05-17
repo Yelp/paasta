@@ -1,3 +1,10 @@
+paasta-tools (1.0.1) xenial; urgency=medium
+
+  * 1.0.1 tagged with 'make release'
+    Commit: Delete check_capacity
+
+ -- Evan Krall <krall@yelp.com>  Fri, 17 May 2024 14:14:57 -0700
+
 paasta-tools (1.0.0) xenial; urgency=medium
 
   * 1.0.0 tagged with 'make release'
