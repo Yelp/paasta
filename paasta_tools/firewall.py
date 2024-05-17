@@ -12,16 +12,11 @@ from contextlib import contextmanager
 from paasta_tools import iptables
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.long_running_service_tools import get_all_namespaces_for_service
-from paasta_tools.utils import get_running_mesos_docker_containers
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import timed_flock
 
 
-INBOUND_PRIVATE_IP_RANGES = (
-    "127.0.0.0/255.0.0.0",
-    "169.254.0.0/255.255.0.0",
-)
 OUTBOUND_PRIVATE_IP_RANGES = (
     "127.0.0.0/255.0.0.0",
     "10.0.0.0/255.0.0.0",
@@ -290,36 +285,6 @@ def _cidr_rules(conf):
                 )
 
 
-def services_running_here():
-    """Generator helper that yields (service, instance, mac address) of both
-    mesos tasks.
-    """
-    for container in get_running_mesos_docker_containers():
-        if container["HostConfig"]["NetworkMode"] != "bridge":
-            continue
-
-        service = container["Labels"].get("paasta_service")
-        instance = container["Labels"].get("paasta_instance")
-
-        if service is None or instance is None:
-            continue
-
-        network_info = container["NetworkSettings"]["Networks"]["bridge"]
-
-        mac = network_info["MacAddress"]
-        ip = network_info["IPAddress"]
-        yield service, instance, mac, ip
-
-
-def active_service_groups():
-    """Return active service groups."""
-    service_groups = collections.defaultdict(set)
-    for service, instance, mac, ip in services_running_here():
-        # TODO: only include macs that start with MAC_ADDRESS_PREFIX?
-        service_groups[ServiceGroup(service, instance)].add(mac)
-    return service_groups
-
-
 def _dns_servers():
     with io.open(RESOLV_CONF) as f:
         for line in f:
@@ -424,20 +389,6 @@ def _ensure_internet_chain():
     )
 
 
-def ensure_service_chains(service_groups, soa_dir, synapse_service_dir):
-    """Ensure service chains exist and have the right rules.
-
-    service_groups is a dict {ServiceGroup: set([mac_address..])}
-
-    Returns dictionary {[service chain] => [list of mac addresses]}.
-    """
-    chains = {}
-    for service, macs in service_groups.items():
-        service.update_rules(soa_dir, synapse_service_dir)
-        chains[service.chain_name] = macs
-    return chains
-
-
 def dispatch_rule(chain, mac):
     return iptables.Rule(
         protocol="ip",
@@ -447,45 +398,6 @@ def dispatch_rule(chain, mac):
         matches=(("mac", (("mac-source", (mac.upper(),)),)),),
         target_parameters=(),
     )
-
-
-def ensure_dispatch_chains(service_chains):
-    paasta_rules = set(
-        itertools.chain.from_iterable(
-            (dispatch_rule(chain, mac) for mac in macs)
-            for chain, macs in service_chains.items()
-        )
-    )
-    iptables.ensure_chain("PAASTA", paasta_rules)
-
-    jump_to_paasta = iptables.Rule(
-        protocol="ip",
-        src="0.0.0.0/0.0.0.0",
-        dst="0.0.0.0/0.0.0.0",
-        target="PAASTA",
-        matches=(),
-        target_parameters=(),
-    )
-    iptables.ensure_rule("INPUT", jump_to_paasta)
-    iptables.ensure_rule("FORWARD", jump_to_paasta)
-
-
-def garbage_collect_old_service_chains(desired_chains):
-    current_paasta_chains = {
-        chain for chain in iptables.all_chains() if chain.startswith("PAASTA.")
-    }
-    for chain in current_paasta_chains - set(desired_chains):
-        iptables.delete_chain(chain)
-
-
-def general_update(soa_dir, synapse_service_dir):
-    """Update iptables to match the current PaaSTA state."""
-    ensure_shared_chains()
-    service_chains = ensure_service_chains(
-        active_service_groups(), soa_dir, synapse_service_dir
-    )
-    ensure_dispatch_chains(service_chains)
-    garbage_collect_old_service_chains(service_chains)
 
 
 def prepare_new_container(soa_dir, synapse_service_dir, service, instance, mac):

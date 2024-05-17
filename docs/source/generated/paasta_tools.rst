@@ -54,8 +54,6 @@ Submodules
    paasta_tools.eks_tools
    paasta_tools.envoy_tools
    paasta_tools.firewall
-   paasta_tools.firewall_logging
-   paasta_tools.firewall_update
    paasta_tools.flink_tools
    paasta_tools.flinkeks_tools
    paasta_tools.generate_deployments_for_service
