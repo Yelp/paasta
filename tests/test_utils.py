@@ -570,33 +570,6 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     assert actual == expected
 
 
-def test_SystemPaastaConfig_get_deployd_number_workers():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_number_workers": 3}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_number_workers()
-    expected = 3
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_big_bounce_deadline():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_big_bounce_deadline": 305}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_big_bounce_deadline()
-    expected = 305
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_log_level():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_log_level": "DEBUG"}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_log_level()
-    expected = "DEBUG"
-    assert actual == expected
-
-
 @pytest.mark.parametrize(
     "config,expected_git,expected_primary",
     [
