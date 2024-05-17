@@ -12,7 +12,6 @@ opt/venvs/paasta-tools/bin/generate_all_deployments usr/bin/generate_all_deploym
 opt/venvs/paasta-tools/bin/generate_deployments_for_service.py usr/bin/generate_deployments_for_service
 opt/venvs/paasta-tools/bin/generate_services_file.py usr/bin/generate_services_file
 opt/venvs/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
-opt/venvs/paasta-tools/bin/kill_orphaned_docker_containers.py usr/bin/kill_orphaned_docker_containers
 opt/venvs/paasta-tools/bin/kubernetes_remove_evicted_pods.py usr/bin/kubernetes_remove_evicted_pods
 opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
 opt/venvs/paasta-tools/bin/paasta-fsm usr/bin/paasta-fsm
