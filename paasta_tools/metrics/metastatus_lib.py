@@ -43,7 +43,6 @@ from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import PodStatus
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
-from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
 from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -54,6 +53,7 @@ from paasta_tools.mesos_tools import MesosTask
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
+MAINTENANCE_ROLE = "maintenance"
 
 DEFAULT_KUBERNETES_CPU_REQUEST = "100m"
 DEFAULT_KUBERNETES_MEMORY_REQUEST = "200M"
