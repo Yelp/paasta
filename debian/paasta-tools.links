@@ -17,7 +17,6 @@ opt/venvs/paasta-tools/bin/kill_orphaned_docker_containers.py usr/bin/kill_orpha
 opt/venvs/paasta-tools/bin/kubernetes_remove_evicted_pods.py usr/bin/kubernetes_remove_evicted_pods
 opt/venvs/paasta-tools/bin/paasta-api usr/bin/paasta-api
 opt/venvs/paasta-tools/bin/paasta-fsm usr/bin/paasta-fsm
-opt/venvs/paasta-tools/bin/paasta_cleanup_maintenance usr/bin/paasta_cleanup_maintenance
 opt/venvs/paasta-tools/bin/paasta_cleanup_stale_nodes.py usr/bin/paasta_cleanup_stale_nodes
 opt/venvs/paasta-tools/bin/paasta_prune_completed_pods usr/bin/paasta_prune_completed_pods
 opt/venvs/paasta-tools/bin/paasta_cleanup_tron_namespaces usr/bin/paasta_cleanup_tron_namespaces

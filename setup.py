@@ -88,7 +88,6 @@ setup(
             "paasta_list_kubernetes_service_instances=paasta_tools.list_kubernetes_service_instances:main",
             "paasta_list_tron_namespaces=paasta_tools.list_tron_namespaces:main",
             "paasta_setup_tron_namespace=paasta_tools.setup_tron_namespace:main",
-            "paasta_cleanup_maintenance=paasta_tools.cleanup_maintenance:main",
             "paasta_docker_wrapper=paasta_tools.docker_wrapper:main",
             "paasta_firewall_update=paasta_tools.firewall_update:main",
             "paasta_firewall_logging=paasta_tools.firewall_logging:main",

@@ -42,7 +42,6 @@ Submodules
    paasta_tools.cleanup_kubernetes_cr
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
-   paasta_tools.cleanup_maintenance
    paasta_tools.cleanup_tron_namespaces
    paasta_tools.clusterman
    paasta_tools.config_utils
