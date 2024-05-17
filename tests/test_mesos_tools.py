@@ -209,14 +209,6 @@ async def test_get_mem_usage_divide_by_zero():
     assert actual == "Undef"
 
 
-def test_get_zookeeper_config():
-    zk_hosts = "1.1.1.1:1111,2.2.2.2:2222,3.3.3.3:3333"
-    zk_path = "fake_path"
-    fake_state = {"flags": {"zk": f"zk://{zk_hosts}/{zk_path}"}}
-    expected = {"hosts": zk_hosts, "path": zk_path}
-    assert mesos_tools.get_zookeeper_config(fake_state) == expected
-
-
 def test_get_mesos_leader():
     fake_url = "http://93.184.216.34:5050"
     with asynctest.patch(
@@ -555,189 +547,8 @@ async def test_format_stdstreams_tail_for_task(
             assert result == expected
 
 
-def test_slave_pid_to_ip():
-    ret = mesos_tools.slave_pid_to_ip("slave(1)@10.40.31.172:5051")
-    assert ret == "10.40.31.172"
-
-
-@mark.asyncio
-async def test_get_mesos_task_count_by_slave():
-    with asynctest.patch(
-        "paasta_tools.mesos_tools.get_all_running_tasks", autospec=True
-    ) as mock_get_all_running_tasks:
-        mock_tron = mock.Mock()
-        mock_tron.name = "tron"
-        mock_somethingelse = mock.Mock()
-        mock_somethingelse.name = "somethingelse"
-        mock_task1 = mock.Mock()
-        mock_task1.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
-        mock_task1.framework = asynctest.CoroutineMock(return_value=mock_tron)
-        mock_task2 = mock.Mock()
-        mock_task2.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
-        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
-        mock_task3 = mock.Mock()
-        mock_task3.slave = asynctest.CoroutineMock(return_value={"id": "slave1"})
-        mock_task3.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
-        mock_task4 = mock.Mock()
-        mock_task4.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task4.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
-        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
-        mock_get_all_running_tasks.return_value = mock_tasks
-        mock_slave_1 = {
-            "id": "slave1",
-            "attributes": {"pool": "default"},
-            "hostname": "host1",
-        }
-        mock_slave_2 = {
-            "id": "slave2",
-            "attributes": {"pool": "default"},
-            "hostname": "host2",
-        }
-        mock_slave_3 = {
-            "id": "slave3",
-            "attributes": {"pool": "another"},
-            "hostname": "host3",
-        }
-        mock_mesos_state = {"slaves": [mock_slave_1, mock_slave_2, mock_slave_3]}
-        ret = await mesos_tools.get_mesos_task_count_by_slave(
-            mock_mesos_state, pool="default"
-        )
-        assert mock_get_all_running_tasks.called
-        expected = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_2)},
-        ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
-        ret = await mesos_tools.get_mesos_task_count_by_slave(
-            mock_mesos_state, pool=None
-        )
-        assert mock_get_all_running_tasks.called
-        expected = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_2)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
-        ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
-
-        # test slaves_list override
-        mock_task2 = mock.Mock()
-        mock_task2.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task2.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
-        mock_task3 = mock.Mock()
-        mock_task3.slave = asynctest.CoroutineMock(return_value={"id": "slave2"})
-        mock_task3.framework = asynctest.CoroutineMock(return_value=mock_somethingelse)
-        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
-        mock_get_all_running_tasks.return_value = mock_tasks
-        mock_slaves_list = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_2)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
-        ]
-        ret = await mesos_tools.get_mesos_task_count_by_slave(
-            mock_mesos_state, slaves_list=mock_slaves_list
-        )
-        expected = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=3, slave=mock_slave_2)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
-        ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
-
-        # test SlaveDoesNotExist exception handling
-        mock_task2.__getitem__ = mock.Mock(side_effect="fakeid")
-        mock_task2.slave = asynctest.CoroutineMock(
-            return_value=mock.Mock(
-                __getitem__=mock.Mock(side_effect=mesos.exceptions.SlaveDoesNotExist)
-            )
-        )
-        # we expect to handle this SlaveDoesNotExist exception gracefully, and continue on to handle other tasks
-        mock_tasks = [mock_task1, mock_task2, mock_task3, mock_task4]
-        mock_get_all_running_tasks.return_value = mock_tasks
-        mock_slaves_list = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_2)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
-        ]
-        ret = await mesos_tools.get_mesos_task_count_by_slave(
-            mock_mesos_state, slaves_list=mock_slaves_list
-        )
-        # we expect mock_slave_2 to only count 2 tasks, as one of them returned a SlaveDoesNotExist exception
-        expected = [
-            {"task_counts": mesos_tools.SlaveTaskCount(count=1, slave=mock_slave_1)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=2, slave=mock_slave_2)},
-            {"task_counts": mesos_tools.SlaveTaskCount(count=0, slave=mock_slave_3)},
-        ]
-        assert len(ret) == len(expected) and utils.sort_dicts(ret) == utils.sort_dicts(
-            expected
-        )
-
-
-def test_get_count_running_tasks_on_slave():
-    with asynctest.patch(
-        "paasta_tools.mesos_tools.get_mesos_master", autospec=True
-    ) as mock_get_master, asynctest.patch(
-        "paasta_tools.mesos_tools.get_mesos_task_count_by_slave", autospec=True
-    ) as mock_get_mesos_task_count_by_slave:
-        mock_master = mock.Mock()
-        mock_mesos_state = mock.Mock()
-        mock_master.state_summary = asynctest.CoroutineMock(
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-            return_value=mock_mesos_state,
-        )
-        mock_get_master.return_value = mock_master
-
-        mock_slave_counts = [
-            {"task_counts": mock.Mock(count=3, slave={"hostname": "host1"})},
-            {"task_counts": mock.Mock(count=0, slave={"hostname": "host2"})},
-        ]
-        mock_get_mesos_task_count_by_slave.return_value = mock_slave_counts
-
-        assert mesos_tools.get_count_running_tasks_on_slave("host1") == 3
-        assert mesos_tools.get_count_running_tasks_on_slave("host2") == 0
-        assert mesos_tools.get_count_running_tasks_on_slave("host3") == 0
-        assert mock_master.state_summary.called
-        mock_get_mesos_task_count_by_slave.assert_called_with(mock_mesos_state)
-
-
 def _ids(list_of_mocks):
     return {id(mck) for mck in list_of_mocks}
-
-
-@mark.asyncio
-async def test_get_tasks_from_app_id():
-    with asynctest.patch(
-        "paasta_tools.mesos_tools.get_running_tasks_from_frameworks", autospec=True
-    ) as mock_get_running_tasks_from_frameworks:
-        mock_task_1 = mock.Mock(
-            slave=asynctest.CoroutineMock(return_value={"hostname": "host1"})
-        )
-        mock_task_2 = mock.Mock(
-            slave=asynctest.CoroutineMock(return_value={"hostname": "host2"})
-        )
-        mock_task_3 = mock.Mock(
-            slave=asynctest.CoroutineMock(return_value={"hostname": "host2.domain"})
-        )
-        mock_get_running_tasks_from_frameworks.return_value = [
-            mock_task_1,
-            mock_task_2,
-            mock_task_3,
-        ]
-
-        ret = await mesos_tools.get_tasks_from_app_id("app_id")
-        mock_get_running_tasks_from_frameworks.assert_called_with("app_id")
-        expected = [mock_task_1, mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
-
-        ret = await mesos_tools.get_tasks_from_app_id("app_id", slave_hostname="host2")
-        mock_get_running_tasks_from_frameworks.assert_called_with("app_id")
-        expected = [mock_task_2, mock_task_3]
-        assert len(expected) == len(ret) and _ids(ret) == _ids(expected)
 
 
 @mark.asyncio
@@ -762,15 +573,6 @@ async def test_get_task():
 
         with raises(mesos_tools.TooManyTasks):
             await mesos_tools.get_task("789", app_id="app_id")
-
-
-@mark.asyncio
-async def test_filter_task_by_hostname():
-    mock_task = mock.Mock(
-        slave=asynctest.CoroutineMock(return_value={"hostname": "host1"})
-    )
-    assert await mesos_tools.filter_task_by_hostname(mock_task, "host1")
-    assert not await mesos_tools.filter_task_by_hostname(mock_task, "host2")
 
 
 def test_filter_task_by_task_id():
@@ -810,47 +612,6 @@ async def test_get_running_tasks_from_frameworks():
             mock_get_current_tasks.return_value
         )
         assert ret == mock_filter_running_tasks.return_value
-
-
-@mark.asyncio
-async def test_get_all_running_tasks():
-    with asynctest.patch(
-        "paasta_tools.mesos_tools.get_current_tasks", autospec=True
-    ) as mock_get_current_tasks, asynctest.patch(
-        "paasta_tools.mesos_tools.filter_running_tasks", autospec=True
-    ) as mock_filter_running_tasks, asynctest.patch(
-        "paasta_tools.mesos_tools.get_mesos_master", autospec=True
-    ) as mock_get_mesos_master:
-        mock_task_1 = mock.Mock()
-        mock_task_2 = mock.Mock()
-        mock_task_3 = mock.Mock()
-
-        mock_get_current_tasks.return_value = [mock_task_1, mock_task_2]
-        mock_orphan_tasks = asynctest.CoroutineMock(return_value=[mock_task_3])
-        mock_mesos_master = mock.Mock(orphan_tasks=mock_orphan_tasks)
-        mock_get_mesos_master.return_value = mock_mesos_master
-
-        ret = await mesos_tools.get_all_running_tasks()
-        mock_get_current_tasks.assert_called_with("")
-        mock_filter_running_tasks.assert_called_with(
-            [mock_task_1, mock_task_2, mock_task_3]
-        )
-        assert ret == mock_filter_running_tasks.return_value
-
-
-@mark.asyncio
-async def test_get_non_running_tasks_from_frameworks():
-    with asynctest.patch(
-        "paasta_tools.mesos_tools.get_current_tasks", autospec=True
-    ) as mock_get_current_tasks, asynctest.patch(
-        "paasta_tools.mesos_tools.filter_not_running_tasks", autospec=True
-    ) as mock_filter_not_running_tasks:
-        ret = await mesos_tools.get_non_running_tasks_from_frameworks(job_id="")
-        mock_get_current_tasks.assert_called_with("")
-        mock_filter_not_running_tasks.assert_called_with(
-            mock_get_current_tasks.return_value
-        )
-        assert ret == mock_filter_not_running_tasks.return_value
 
 
 @mark.asyncio

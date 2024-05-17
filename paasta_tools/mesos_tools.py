@@ -19,7 +19,6 @@ import logging
 import re
 import socket
 from collections import namedtuple
-from pathlib import Path
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -63,7 +62,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
 ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
-SlaveTaskCount = namedtuple("SlaveTaskCount", ["count", "slave"])
 
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
 
@@ -110,7 +108,6 @@ def get_mesos_master(
     return MesosMaster(config)
 
 
-MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = "5051"
 
@@ -214,15 +211,6 @@ async def get_running_tasks_from_frameworks(job_id=""):
     return running_tasks
 
 
-async def get_all_running_tasks() -> Collection[Task]:
-    """Will include all running tasks; for now orphans are not included"""
-    framework_tasks = await get_current_tasks("")
-    mesos_master = get_mesos_master()
-    framework_tasks += await mesos_master.orphan_tasks()
-    running_tasks = filter_running_tasks(framework_tasks)
-    return running_tasks
-
-
 @async_ttl_cache(ttl=600)
 async def get_cached_list_of_all_current_tasks():
     """Returns a cached list of all mesos tasks.
@@ -275,15 +263,6 @@ def select_tasks_by_id(tasks: Collection[Task], job_id: str = "") -> List[Task]:
     :return tasks: a list of mesos.Task.
     """
     return [task for task in tasks if job_id in task["id"]]
-
-
-async def get_non_running_tasks_from_frameworks(job_id: str = "") -> List[Task]:
-    """Will include tasks from active and completed frameworks
-    but NOT orphaned tasks
-    """
-    active_framework_tasks = await get_current_tasks(job_id)
-    not_running_tasks = filter_not_running_tasks(active_framework_tasks)
-    return not_running_tasks
 
 
 async def get_short_hostname_from_task(task: Task) -> str:
@@ -714,13 +693,6 @@ def get_zookeeper_host_path():
     return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
 
 
-def get_zookeeper_config(state):
-    """Returns dict, containing the zookeeper hosts and path.
-    :param state: mesos state dictionary"""
-    re_zk = re.match(r"^zk://([^/]*)/(.*)$", state["flags"]["zk"])
-    return {"hosts": re_zk.group(1), "path": re_zk.group(2)}
-
-
 def get_number_of_mesos_masters(host, path):
     """Returns an array, containing mesos masters
     :param zk_config: dict containing information about zookeeper config.
@@ -841,125 +813,9 @@ def get_mesos_id_from_container(container, client):
     return mesos_id
 
 
-def get_mesos_network_for_net(net):
-    docker_mesos_net_mapping = {"none": "NONE", "bridge": "BRIDGE", "host": "HOST"}
-    return docker_mesos_net_mapping.get(net, net)
-
-
-async def get_mesos_task_count_by_slave(
-    mesos_state: MesosState,
-    slaves_list: Sequence[Dict] = None,
-    pool: Optional[str] = None,
-) -> List[Dict]:
-    """Get counts of running tasks per mesos slave.
-
-    :param mesos_state: mesos state dict
-    :param slaves_list: a list of slave dicts to count running tasks for.
-    :param pool: pool of slaves to return (None means all)
-    :returns: list of slave dicts {'task_count': SlaveTaskCount}
-    """
-    all_mesos_tasks = await get_all_running_tasks()  # empty string = all app ids
-    slaves = {
-        slave["id"]: {"count": 0, "slave": slave}
-        for slave in mesos_state.get("slaves", [])
-    }
-    for task in all_mesos_tasks:
-        try:
-            task_slave = await task.slave()
-            if task_slave["id"] not in slaves:
-                log.debug("Slave {} not found for task".format(task_slave["id"]))
-                continue
-            else:
-                slaves[task_slave["id"]]["count"] += 1
-                task_framework = await task.framework()
-                log.debug(f"Task framework: {task_framework.name}")
-        except SlaveDoesNotExist:
-            log.debug(
-                "Tried to get mesos slaves for task {}, but none existed.".format(
-                    task["id"]
-                )
-            )
-            continue
-    if slaves_list:
-        for slave in slaves_list:
-            slave["task_counts"] = SlaveTaskCount(
-                **slaves[slave["task_counts"].slave["id"]]
-            )
-        slaves_with_counts = list(slaves_list)
-    elif pool:
-        slaves_with_counts = [
-            {"task_counts": SlaveTaskCount(**slave_counts)}
-            for slave_counts in slaves.values()
-            if slave_counts["slave"]["attributes"].get("pool", "default") == pool
-        ]
-    else:
-        slaves_with_counts = [
-            {"task_counts": SlaveTaskCount(**slave_counts)}
-            for slave_counts in slaves.values()
-        ]
-    for slave in slaves_with_counts:
-        log.debug(
-            "Slave: {}, running {} tasks".format(
-                slave["task_counts"].slave["hostname"],
-                slave["task_counts"].count,
-            )
-        )
-    return slaves_with_counts
-
-
-def get_count_running_tasks_on_slave(hostname: str) -> int:
-    """Return the number of tasks running on a particular slave
-    or 0 if the slave is not found.
-    :param hostname: hostname of the slave
-    :returns: integer count of mesos tasks"""
-    mesos_state = a_sync.block(get_mesos_master().state_summary)
-    task_counts = a_sync.block(get_mesos_task_count_by_slave, mesos_state)
-    counts = [
-        slave["task_counts"].count
-        for slave in task_counts
-        if slave["task_counts"].slave["hostname"] == hostname
-    ]
-    if counts:
-        return counts[0]
-    else:
-        return 0
-
-
-def slave_pid_to_ip(slave_pid: str) -> str:
-    """Convert slave_pid to IP
-
-    :param: slave pid e.g. slave(1)@10.40.31.172:5051
-    :returns: ip address"""
-    regex = re.compile(r".+?@([\d\.]+):\d+")
-    return regex.match(slave_pid).group(1)
-
-
-async def list_framework_ids(active_only=False):
-    return [f.id for f in await get_mesos_master().frameworks(active_only=active_only)]
-
-
 @a_sync.to_blocking
 async def get_all_frameworks(active_only=False):
     return await get_mesos_master().frameworks(active_only=active_only)
-
-
-def terminate_framework(framework_id):
-    resp = requests.post(
-        "http://%s:%d/master/teardown" % (get_mesos_leader(), MESOS_MASTER_PORT),
-        data={"frameworkId": framework_id},
-    )
-    resp.raise_for_status()
-
-
-async def get_tasks_from_app_id(app_id, slave_hostname=None):
-    tasks = await get_running_tasks_from_frameworks(app_id)
-    if slave_hostname:
-        tasks = [
-            task
-            for task in tasks
-            if await filter_task_by_hostname(task, slave_hostname)
-        ]
-    return tasks
 
 
 async def get_task(task_id: str, app_id: str = "") -> MesosTask:
@@ -976,10 +832,6 @@ async def get_task(task_id: str, app_id: str = "") -> MesosTask:
 
 def filter_task_by_task_id(task: MesosTask, task_id: str) -> bool:
     return task["id"] == task_id
-
-
-async def filter_task_by_hostname(task, hostname):
-    return (await task.slave())["hostname"].startswith(hostname)
 
 
 class TaskNotFound(Exception):
@@ -1045,7 +897,3 @@ def is_task_terminal(
     :returns: a boolean indicating if the task is considered to be in a terminal state
     """
     return task["state"] in TERMINAL_STATES
-
-
-def is_mesos_available() -> bool:
-    return Path(get_mesos_config_path()).exists()
