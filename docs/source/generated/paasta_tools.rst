@@ -28,7 +28,6 @@ Submodules
    paasta_tools.adhoc_tools
    paasta_tools.apply_external_resources
    paasta_tools.async_utils
-   paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
    paasta_tools.check_autoscaler_max_instances
