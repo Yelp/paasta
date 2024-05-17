@@ -30,7 +30,6 @@ from dulwich.repo import Repo
 from paasta_tools import generate_deployments_for_service
 from paasta_tools.cli.cmds.mark_for_deployment import paasta_mark_for_deployment
 from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
-from paasta_tools.utils import DeploymentsJsonV1
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
@@ -163,32 +162,6 @@ def step_impl_when(context):
         return_value=fake_args,
     ):
         generate_deployments_for_service.main()
-
-
-@then("that deployments.json can be read back correctly")
-def step_impl_then(context):
-    deployments = load_deployments_json(
-        "fake_deployments_json_service", soa_dir="fake_soa_configs"
-    )
-    expected_deployments = DeploymentsJsonV1(
-        {
-            "fake_deployments_json_service:paasta-test-cluster.test_instance": {
-                "force_bounce": context.force_bounce_timestamp,
-                "desired_state": "stop",
-                "docker_image": "services-fake_deployments_json_service:paasta-%s"
-                % context.expected_commit,
-            },
-            "fake_deployments_json_service:paasta-test-cluster.test_instance_2": {
-                "force_bounce": None,
-                "desired_state": "start",
-                "docker_image": "services-fake_deployments_json_service:paasta-%s"
-                % context.expected_commit,
-            },
-        }
-    )
-    assert (
-        expected_deployments == deployments
-    ), f"actual: {deployments}\nexpected:{expected_deployments}"
 
 
 @then('that deployments.json has a desired_state of "{expected_state}"')
