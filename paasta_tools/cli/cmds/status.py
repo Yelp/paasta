@@ -70,7 +70,6 @@ from paasta_tools.kubernetes_tools import format_tail_lines_for_kubernetes_pod
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeployStatus
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.mesos_tools import format_tail_lines_for_mesos_task
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import list_teams
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -426,97 +425,6 @@ def create_autoscaling_info_table(autoscaling_info):
     table = [f"  {line}" for line in format_table([headers, row])]
     output.extend(table)
     return output
-
-
-def create_mesos_running_tasks_table(running_tasks):
-    rows = []
-    table_header = [
-        "Mesos Task ID",
-        "Host deployed to",
-        "Ram",
-        "CPU",
-        "Deployed at what localtime",
-    ]
-    rows.append(table_header)
-    for task in running_tasks or []:
-        mem_string = get_mesos_task_memory_string(task)
-        cpu_string = get_mesos_task_cpu_string(task)
-        deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-        deployed_at_string = "{} ({})".format(
-            deployed_at.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(deployed_at)
-        )
-
-        rows.append(
-            [task.id, task.hostname, mem_string, cpu_string, deployed_at_string]
-        )
-        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
-
-    return format_table(rows)
-
-
-def get_mesos_task_memory_string(task):
-    if task.rss.value is None or task.mem_limit.value is None:
-        return task.rss.error_message or task.mem_limit.error_message
-    elif task.mem_limit.value == 0:
-        return "Undef"
-    else:
-        mem_percent = 100 * task.rss.value / task.mem_limit.value
-        mem_string = "%d/%dMB" % (
-            (task.rss.value / 1024 / 1024),
-            (task.mem_limit.value / 1024 / 1024),
-        )
-        if mem_percent > 90:
-            return PaastaColors.red(mem_string)
-        else:
-            return mem_string
-
-
-def get_mesos_task_cpu_string(task):
-    if task.cpu_shares.value is None or task.cpu_used_seconds.value is None:
-        return task.cpu_shares.error_message
-    else:
-        # The total time a task has been allocated is the total time the task has
-        # been running multiplied by the "shares" a task has.
-        # (see https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
-        allocated_seconds = task.cpu_shares.value * task.duration_seconds
-        if allocated_seconds == 0:
-            return "Undef"
-        else:
-            cpu_percent = round(
-                100 * (task.cpu_used_seconds.value / allocated_seconds), 1
-            )
-            cpu_string = "%s%%" % cpu_percent
-            if cpu_percent > 90:
-                return PaastaColors.red(cpu_string)
-            else:
-                return cpu_string
-
-
-def create_mesos_non_running_tasks_table(non_running_tasks):
-    rows = []
-    table_header = [
-        "Mesos Task ID",
-        "Host deployed to",
-        "Deployed at what localtime",
-        "Status",
-    ]
-    rows.append(table_header)
-
-    for task in non_running_tasks or []:
-        if task.deployed_timestamp is None:
-            deployed_at_string = "Unknown"
-        else:
-            deployed_at = datetime.fromtimestamp(task.deployed_timestamp)
-            deployed_at_string = "{} ({})".format(
-                deployed_at.strftime("%Y-%m-%dT%H:%M"),
-                humanize.naturaltime(deployed_at),
-            )
-
-        rows.append([task.id, task.hostname, deployed_at_string, task.state])
-        rows.extend(format_tail_lines_for_mesos_task(task.tail_lines, task.id))
-
-    table = format_table(rows)
-    return [PaastaColors.grey(formatted_row) for formatted_row in table]
 
 
 def format_kubernetes_pod_table(pods, verbose: int):
