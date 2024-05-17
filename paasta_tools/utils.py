@@ -2368,9 +2368,6 @@ class SystemPaastaConfig:
     def get_service_discovery_providers(self) -> Dict[str, Any]:
         return self.config_dict.get("service_discovery_providers", {})
 
-    def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
-        return self.config_dict.get("resource_pool_settings", {})
-
     def get_cluster_fqdn_format(self) -> str:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
@@ -2402,9 +2399,6 @@ class SystemPaastaConfig:
         :returns: The spark-run system_paasta_config dictionary"""
         return self.config_dict.get("spark_run_config", {})
 
-    def get_paasta_native_config(self) -> PaastaNativeConfig:
-        return self.config_dict.get("paasta_native", {})
-
     def get_mesos_cli_config(self) -> Dict:
         """Get the config for mesos-cli
 
@@ -2435,11 +2429,6 @@ class SystemPaastaConfig:
 
         return safe_deploy_whitelist(self.config_dict.get("deploy_whitelist"))
 
-    def get_expected_slave_attributes(self) -> ExpectedSlaveAttributes:
-        """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
-        calculating the default routing constraints."""
-        return self.config_dict.get("expected_slave_attributes")
-
     def get_security_check_command(self) -> Optional[str]:
         """Get the script to be executed during the security-check build step
 
@@ -2464,10 +2453,6 @@ class SystemPaastaConfig:
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
-
-    def get_register_native_services(self) -> bool:
-        """Enable registration of native paasta services in nerve"""
-        return self.config_dict.get("register_native_services", False)
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get("taskproc", {})
