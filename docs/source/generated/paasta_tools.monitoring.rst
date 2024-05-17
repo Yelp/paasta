@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.monitoring.check_capacity
    paasta_tools.monitoring.check_k8s_api_performance
    paasta_tools.monitoring.kill_orphaned_docker_containers
 
