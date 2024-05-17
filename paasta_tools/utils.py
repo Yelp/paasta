@@ -1959,7 +1959,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_writer: LogWriterConfig
-    maintenance_resource_reservation_enabled: bool
     mark_for_deployment_max_polling_threads: int
     mark_for_deployment_default_polling_interval: float
     mark_for_deployment_default_diagnosis_interval: float
