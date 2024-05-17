@@ -78,7 +78,6 @@ Submodules
    paasta_tools.nrtsearchserviceeks_tools
    paasta_tools.oom_logger
    paasta_tools.paasta_execute_docker_command
-   paasta_tools.paasta_native_serviceinit
    paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
    paasta_tools.prune_completed_pods
