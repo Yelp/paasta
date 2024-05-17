@@ -58,7 +58,6 @@ from paasta_tools.nrtsearchserviceeks_tools import (
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log
-from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
@@ -534,88 +533,6 @@ def run_paasta_metastatus(
     ).strip()
     return_code, output = _run(command, timeout=timeout)
     return return_code, output
-
-
-def run_paasta_cluster_boost(master, action, pool, duration, override, boost, verbose):
-    timeout = 20
-
-    verbose_flag: Optional[str]
-    if verbose > 0:
-        verbose_flag = "-{}".format("v" * verbose)
-    else:
-        verbose_flag = None
-
-    pool_flag = f"--pool {pool}"
-    duration_flag = f"--duration {duration}" if duration is not None else ""
-    boost_flag = f"--boost {boost}" if boost is not None else ""
-    override_flag = "--force" if override is not None else ""
-
-    cmd_args = " ".join(
-        filter(
-            None,
-            [action, pool_flag, duration_flag, boost_flag, override_flag, verbose_flag],
-        )
-    )
-    command = (
-        "ssh -A -n -o StrictHostKeyChecking=no {} paasta_cluster_boost {}".format(
-            master, cmd_args
-        )
-    ).strip()
-    return_code, output = _run(command, timeout=timeout)
-    return return_code, output
-
-
-def execute_paasta_cluster_boost_on_remote_master(
-    clusters,
-    system_paasta_config,
-    action,
-    pool,
-    duration=None,
-    override=None,
-    boost=None,
-    verbose=0,
-):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_cluster_boost().
-    """
-    result = {}
-    for cluster in clusters:
-        try:
-            master = connectable_master(cluster, system_paasta_config)
-        except NoMasterError as e:
-            result[cluster] = (255, str(e))
-            continue
-
-        result[cluster] = run_paasta_cluster_boost(
-            master=master,
-            action=action,
-            pool=pool,
-            duration=duration,
-            override=override,
-            boost=boost,
-            verbose=verbose,
-        )
-
-        audit_details = {
-            "boost_action": action,
-            "pool": pool,
-            "duration": duration,
-            "override": override,
-            "boost": boost,
-        }
-        _log_audit(
-            action="cluster-boost", action_details=audit_details, cluster=cluster
-        )
-
-    aggregated_code = 0
-    aggregated_output = ""
-    for cluster in result:
-        code = result[cluster][0]
-        output = result[cluster][1]
-        if not code == 0:
-            aggregated_code = 1
-        aggregated_output += f"\n{cluster}: \n{output}\n"
-    return (aggregated_code, aggregated_output)
 
 
 def run_on_master(

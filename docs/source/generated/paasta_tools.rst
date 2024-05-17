@@ -80,7 +80,6 @@ Submodules
    paasta_tools.nrtsearchservice_tools
    paasta_tools.nrtsearchserviceeks_tools
    paasta_tools.oom_logger
-   paasta_tools.paasta_cluster_boost
    paasta_tools.paasta_execute_docker_command
    paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
