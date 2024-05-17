@@ -1,4 +1,0 @@
-MAILTO=""
-SHELL=/bin/bash
-PATH=/venv/bin:/usr/local/bin:/usr/local/sbin:/nail/sys/bin:/usr/sbin:/usr/bin:/sbin:/bin
-20 * * * * root (delete_old_marathon_deployments) 2>&1 logger -t cron_delete_old_marathon_deployments

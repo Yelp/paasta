@@ -16,7 +16,6 @@ import inspect
 import re
 
 import mock
-import pytest
 from kubernetes.client import V1Container
 from kubernetes.client import V1Node
 from kubernetes.client import V1NodeStatus
@@ -161,104 +160,6 @@ def test_disk_health_mesos_reports_zero():
     assert failure_health is False
 
 
-def test_assert_no_duplicate_frameworks():
-    state = {
-        "frameworks": [
-            {"name": "test_framework1"},
-            {"name": "test_framework2"},
-            {"name": "test_framework3"},
-            {"name": "test_framework4"},
-        ]
-    }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
-        state,
-        ["test_framework1", "test_framework2", "test_framework3", "test_framework4"],
-    )
-
-    expected_output = "\n".join(
-        ["Frameworks:"]
-        + ["    Framework: %s count: 1" % x["name"] for x in state["frameworks"]]
-    )
-    assert output == expected_output
-    assert ok
-
-
-def test_duplicate_frameworks():
-    state = {
-        "frameworks": [
-            {"name": "test_framework1"},
-            {"name": "test_framework1"},
-            {"name": "test_framework1"},
-            {"name": "test_framework2"},
-        ]
-    }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
-        state,
-        ["test_framework1", "test_framework2", "test_framework3", "test_framework4"],
-    )
-    assert (
-        "    CRITICAL: There are 3 connected test_framework1 frameworks! (Expected 1)"
-        in output
-    )
-    assert not ok
-
-
-def test_duplicate_frameworks_not_checked():
-    state = {
-        "frameworks": [
-            {"name": "test_framework1"},
-            {"name": "test_framework1"},
-            {"name": "test_framework1"},
-            {"name": "test_framework2"},
-        ]
-    }
-    output, ok = metastatus_lib.assert_no_duplicate_frameworks(
-        state, ["test_framework2", "test_framework3", "test_framework4"]
-    )
-    assert "test_framework2" in output
-    assert ok
-
-
-@pytest.fixture
-def mock_get_all_marathon_apps():
-    with patch(
-        "paasta_tools.metrics.metastatus_lib.get_all_marathon_apps", autospec=True
-    ) as mock_get_all_marathon_apps:
-        yield mock_get_all_marathon_apps
-
-
-def test_ok_marathon_apps(mock_get_all_marathon_apps):
-    client = mock.Mock()
-    mock_get_all_marathon_apps.return_value = ["MarathonApp::1", "MarathonApp::2"]
-    output, ok = metastatus_lib.assert_marathon_apps([client])
-    assert re.match("marathon apps: +2", output)
-    assert ok
-
-
-def test_no_marathon_apps(mock_get_all_marathon_apps):
-    client = mock.Mock()
-    mock_get_all_marathon_apps.return_value = []
-    output, ok = metastatus_lib.assert_marathon_apps([client])
-    assert "CRITICAL: No marathon apps running" in output
-    assert not ok
-
-
-def test_marathon_tasks():
-    client = Mock()
-    client.list_tasks.return_value = ["MarathonTask:1"]
-    output, ok = metastatus_lib.assert_marathon_tasks([client])
-    assert re.match("marathon tasks: +1", output)
-    assert ok
-
-
-def test_assert_marathon_deployments():
-    client = Mock()
-    client.list_deployments.return_value = ["MarathonDeployment:1"]
-    output, ok = metastatus_lib.assert_marathon_deployments([client])
-    assert re.match("marathon deployments: +1", output)
-    assert ok
-
-
 def test_assert_kube_deployments():
     with mock.patch(
         "paasta_tools.metrics.metastatus_lib.list_all_deployments", autospec=True
@@ -331,26 +232,6 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     output, health = metastatus_lib.assert_quorum_size()
     assert not health
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
-
-
-def test_get_marathon_status(mock_get_all_marathon_apps):
-    client = Mock()
-    mock_get_all_marathon_apps.return_value = ["MarathonApp::1", "MarathonApp::2"]
-    client.list_deployments.return_value = ["MarathonDeployment::1"]
-    client.list_tasks.return_value = [
-        "MarathonTask::1",
-        "MarathonTask::2",
-        "MarathonTask::3",
-    ]
-    expected_apps_output = ("marathon apps:          2", True)
-    expected_deployment_output = ("marathon deployments:   1", True)
-    expected_tasks_output = ("marathon tasks:         3", True)
-
-    results = metastatus_lib.get_marathon_status([client])
-
-    assert expected_apps_output in results
-    assert expected_deployment_output in results
-    assert expected_tasks_output in results
 
 
 def test_status_for_results():

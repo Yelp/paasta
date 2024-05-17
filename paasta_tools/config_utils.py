@@ -21,7 +21,6 @@ log = logging.getLogger(__name__)
 
 # Must have a schema defined
 KNOWN_CONFIG_TYPES = (
-    "marathon",
     "kubernetes",
     "deploy",
     "smartstack",

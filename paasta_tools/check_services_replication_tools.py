@@ -22,11 +22,7 @@ from typing import Optional
 from typing import Sequence
 from typing import Tuple
 from typing import Type
-from typing import Union
 
-import a_sync
-from marathon import MarathonClient
-from marathon.models.task import MarathonTask
 from mypy_extensions import Arg
 from mypy_extensions import NamedArg
 
@@ -36,9 +32,6 @@ from paasta_tools.kubernetes_tools import get_all_pods
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import V1Node
 from paasta_tools.kubernetes_tools import V1Pod
-from paasta_tools.marathon_tools import get_marathon_clients
-from paasta_tools.marathon_tools import get_marathon_servers
-from paasta_tools.mesos_tools import get_slaves
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.monitoring_tools import ReplicationChecker
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
@@ -48,7 +41,6 @@ from paasta_tools.utils import InstanceConfig_T
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import SPACER
-from paasta_tools.utils import SystemPaastaConfig
 
 try:
     import yelp_meteorite
@@ -60,7 +52,7 @@ log = logging.getLogger(__name__)
 CheckServiceReplication = Callable[
     [
         Arg(InstanceConfig_T, "instance_config"),
-        Arg(Sequence[Union[MarathonTask, V1Pod]], "all_tasks_or_pods"),
+        Arg(Sequence[V1Pod], "all_pods"),
         Arg(Any, "replication_checker"),
         NamedArg(bool, "dry_run"),
     ],
@@ -139,7 +131,7 @@ def check_services_replication(
     instance_type_class: Type[InstanceConfig_T],
     check_service_replication: CheckServiceReplication,
     replication_checker: ReplicationChecker,
-    all_tasks_or_pods: Sequence[Union[MarathonTask, V1Pod]],
+    all_pods: Sequence[V1Pod],
     dry_run: bool = False,
 ) -> Tuple[int, int]:
     service_instances_set = set(service_instances)
@@ -159,7 +151,7 @@ def check_services_replication(
             if instance_config.get_docker_image():
                 is_well_replicated = check_service_replication(
                     instance_config=instance_config,
-                    all_tasks_or_pods=all_tasks_or_pods,
+                    all_pods=all_pods,
                     replication_checker=replication_checker,
                     dry_run=dry_run,
                 )
@@ -213,13 +205,13 @@ def main(
     timer.start()
 
     if namespace:
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
+        pods, nodes = get_kubernetes_pods_and_nodes(namespace=namespace)
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
             nodes=nodes,
             system_paasta_config=system_paasta_config,
         )
     else:
-        tasks_or_pods, nodes = get_kubernetes_pods_and_nodes(
+        pods, nodes = get_kubernetes_pods_and_nodes(
             additional_namespaces=args.additional_namespaces,
         )
         replication_checker = KubeSmartstackEnvoyReplicationChecker(
@@ -234,7 +226,7 @@ def main(
         instance_type_class=instance_type_class,
         check_service_replication=check_service_replication,
         replication_checker=replication_checker,
-        all_tasks_or_pods=tasks_or_pods,
+        all_pods=pods,
         dry_run=args.dry_run,
     )
     pct_under_replicated = 0 if total == 0 else 100 * count_under_replicated / total
@@ -262,19 +254,6 @@ def main(
         f"Stopping timer for {cluster} (eks={args.eks}) with result {exit_code}: {timer()}ms elapsed"
     )
     sys.exit(exit_code)
-
-
-def get_mesos_tasks_and_slaves(
-    system_paasta_config: SystemPaastaConfig,
-) -> Tuple[Sequence[MarathonTask], List[Any]]:
-    clients = get_marathon_clients(get_marathon_servers(system_paasta_config))
-    all_clients: Sequence[MarathonClient] = clients.get_all_clients()
-    all_tasks: List[MarathonTask] = []
-    for client in all_clients:
-        all_tasks.extend(client.list_tasks())
-    mesos_slaves = a_sync.block(get_slaves)
-
-    return all_tasks, mesos_slaves
 
 
 def get_kubernetes_pods_and_nodes(

@@ -23,7 +23,7 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
@@ -48,13 +48,13 @@ class PaastaServiceConfigLoader:
     >>>
     >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
-    >>> for instance in sc.instances(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
+    >>> for instance in sc.instances(cluster='fake_cluster', instance_type_class=KubernetesDeploymentConfig):
     ...     print(instance)
     ...
     main
     canary
     >>>
-    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
+    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type_class=KubernetesDeploymentConfig):
     ...     print(instance_config.get_instance())
     ...
     main
@@ -112,7 +112,7 @@ class PaastaServiceConfigLoader:
 
         :param cluster: The cluster name
         :param instance_type_class: a subclass of InstanceConfig
-        :returns: an iterator that yields instances of MarathonServiceConfig, etc.
+        :returns: an iterator that yields instances of KubernetesDeploymentConfig, etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type_class
         """
         if (cluster, instance_type_class) not in self._framework_configs:
@@ -173,7 +173,7 @@ class PaastaServiceConfigLoader:
         config: utils.InstanceConfigDict,
         config_class: Type[InstanceConfig_T],
     ) -> InstanceConfig_T:
-        """Create a service instance's configuration for marathon.
+        """Create a service instance's configuration for kubernetes.
 
         :param cluster: The cluster to read the configuration for
         :param instance: The instance of the service to retrieve

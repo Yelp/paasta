@@ -7,7 +7,6 @@ Submodules
 .. toctree::
 
    paasta_tools.autoscaling.autoscaling_service_lib
-   paasta_tools.autoscaling.ec2_fitness
    paasta_tools.autoscaling.forecasting
    paasta_tools.autoscaling.load_boost
    paasta_tools.autoscaling.max_all_k8s_services
