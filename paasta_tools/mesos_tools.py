@@ -13,12 +13,7 @@
 # limitations under the License.
 import asyncio
 import datetime
-import itertools
-import json
 import logging
-import re
-import socket
-from collections import namedtuple
 from typing import Any
 from typing import Awaitable
 from typing import Callable
@@ -37,7 +32,6 @@ from urllib.parse import urlparse
 import a_sync
 import humanize
 import requests
-from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
 
 import paasta_tools.mesos.cluster as cluster
@@ -45,23 +39,17 @@ import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools.async_utils import aiter_to_list
 from paasta_tools.async_utils import async_timeout
 from paasta_tools.async_utils import async_ttl_cache
-from paasta_tools.long_running_service_tools import host_passes_blacklist
-from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos.task import Task
-from paasta_tools.utils import DeployBlacklist
-from paasta_tools.utils import DeployWhitelist
 from paasta_tools.utils import format_table
-from paasta_tools.utils import get_user_agent
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
-ZookeeperHostPath = namedtuple("ZookeeperHostPath", ["host", "path"])
 
 DEFAULT_MESOS_CLI_CONFIG_LOCATION = "/nail/etc/mesos-cli.json"
 
@@ -109,45 +97,12 @@ def get_mesos_master(
 
 
 MESOS_MASTER_PORT = 5050
-MESOS_SLAVE_PORT = "5051"
-
-
-class MesosSlaveConnectionError(Exception):
-    pass
 
 
 class MesosTailLines(NamedTuple):
     stdout: List[str]
     stderr: List[str]
     error_message: str
-
-
-def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
-    """Get the current mesos-master leader's hostname.
-    Attempts to determine this by using mesos.cli to query ZooKeeper.
-
-    :returns: The current mesos-master hostname"""
-    try:
-        url = get_mesos_master(mesos_config_path).host
-    except mesos_exceptions.MasterNotAvailableException:
-        log.debug("mesos.cli failed to provide the master host")
-        raise
-    log.debug("mesos.cli thinks the master host is: %s" % url)
-    hostname = urlparse(url).hostname
-    log.debug("The parsed master hostname is: %s" % hostname)
-    # This check is necessary, as if we parse a value such as 'localhost:5050',
-    # it won't have a hostname attribute
-    if hostname:
-        try:
-            host = socket.gethostbyaddr(hostname)[0]
-            fqdn = socket.getfqdn(host)
-        except (socket.error, socket.herror, socket.gaierror, socket.timeout):
-            log.debug("Failed to convert mesos leader hostname to fqdn!")
-            raise
-        log.debug("Mesos Leader: %s" % fqdn)
-        return fqdn
-    else:
-        raise ValueError("Expected to receive a valid URL, got: %s" % url)
 
 
 class MesosLeaderUnavailable(Exception):
@@ -200,15 +155,6 @@ def filter_not_running_tasks(tasks: Collection[Task]) -> List[Task]:
     :return filtered: a list of tasks *not* running
     """
     return [task for task in tasks if not is_task_running(task)]
-
-
-async def get_running_tasks_from_frameworks(job_id=""):
-    """Will include tasks from active and completed frameworks
-    but NOT orphaned tasks
-    """
-    active_framework_tasks = await get_current_tasks(job_id)
-    running_tasks = filter_running_tasks(active_framework_tasks)
-    return running_tasks
 
 
 @async_ttl_cache(ttl=600)
@@ -627,34 +573,6 @@ async def status_mesos_tasks_verbose(
     return "\n".join(output)
 
 
-def get_local_slave_state(hostname=None):
-    """Fetches mesos slave state and returns it as a dict.
-
-    :param hostname: The host from which to fetch slave state. If not specified, defaults to the local machine."""
-    if hostname is None:
-        hostname = socket.getfqdn()
-    stats_uri = f"http://{hostname}:{MESOS_SLAVE_PORT}/state"
-    try:
-        headers = {"User-Agent": get_user_agent()}
-        response = requests.get(stats_uri, timeout=10, headers=headers)
-        if response.status_code == 404:
-            fallback_stats_uri = f"http://{hostname}:{MESOS_SLAVE_PORT}/state.json"
-            response = requests.get(fallback_stats_uri, timeout=10, headers=headers)
-    except requests.ConnectionError as e:
-        raise MesosSlaveConnectionError(
-            "Could not connect to the mesos slave to see which services are running\n"
-            "on %s. Is the mesos-slave running?\n"
-            "Error was: %s\n" % (e.request.url, str(e))
-        )
-    response.raise_for_status()
-    return json.loads(response.text)
-
-
-async def get_mesos_quorum():
-    """Returns the configured quorum size."""
-    return int((await get_master_flags())["flags"]["quorum"])
-
-
 MesosResources = Mapping[str, Any]
 
 
@@ -682,207 +600,15 @@ def get_all_tasks_from_state(
     return tasks
 
 
-async def get_master_flags():
-    res = await get_mesos_master().fetch("/master/flags")
-    return await res.json()
-
-
-def get_zookeeper_host_path():
-    zk_url = "zk://%s" % load_system_paasta_config().get_zk_hosts()
-    parsed = urlparse(zk_url)
-    return ZookeeperHostPath(host=parsed.netloc, path=parsed.path)
-
-
-def get_number_of_mesos_masters(host, path):
-    """Returns an array, containing mesos masters
-    :param zk_config: dict containing information about zookeeper config.
-    Masters register themselves in zookeeper by creating ``info_`` entries.
-    We count these entries to get the number of masters.
-    """
-    zk = KazooClient(hosts=host, read_only=True)
-    zk.start()
-    try:
-        root_entries = zk.get_children(path)
-        result = [
-            info
-            for info in root_entries
-            if info.startswith("json.info_") or info.startswith("info_")
-        ]
-        return len(result)
-    finally:
-        zk.stop()
-        zk.close()
-
-
-def get_all_slaves_for_blacklist_whitelist(
-    blacklist: DeployBlacklist, whitelist: DeployWhitelist
-):
-    """
-    A wrapper function to get all slaves and filter according to
-    provided blacklist and whitelist.
-
-    :param blacklist: a blacklist, used to filter mesos slaves by attribute
-    :param whitelist: a whitelist, used to filter mesos slaves by attribute
-
-    :returns: a list of mesos slave objects, filtered by those which are acceptable
-    according to the provided blacklist and whitelists.
-    """
-    all_slaves = get_slaves()
-    return filter_mesos_slaves_by_blacklist(all_slaves, blacklist, whitelist)
-
-
-def get_mesos_slaves_grouped_by_attribute(slaves, attribute):
-    """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
-
-    :param slaves: a list of mesos slaves to group
-    :param attribute: an attribute to filter
-    :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
-              (response can contain multiple 'attribute_value)
-    """
-    sorted_slaves = sorted(
-        slaves,
-        key=lambda slave: (
-            slave["attributes"].get(attribute) is None,
-            slave["attributes"].get(attribute),
-        ),
-    )
-    return {
-        key: list(group)
-        for key, group in itertools.groupby(
-            sorted_slaves, key=lambda slave: slave["attributes"].get(attribute)
-        )
-        if key
-    }
-
-
 # TODO: remove to_blocking, convert call sites (smartstack_tools and marathon_serviceinit) to asyncio.
 @a_sync.to_blocking
 async def get_slaves():
     return (await (await get_mesos_master().fetch("/master/slaves")).json())["slaves"]
 
 
-def filter_mesos_slaves_by_blacklist(
-    slaves, blacklist: DeployBlacklist, whitelist: DeployWhitelist
-):
-    """Takes an input list of slaves and filters them based on the given blacklist.
-    The blacklist is in the form of:
-
-        [["location_type", "location]]
-
-    Where the list inside is something like ["region", "uswest1-prod"]
-
-    :returns: The list of mesos slaves after the filter
-    """
-    filtered_slaves = []
-    for slave in slaves:
-        if host_passes_blacklist(
-            slave["attributes"], blacklist
-        ) and host_passes_whitelist(slave["attributes"], whitelist):
-            filtered_slaves.append(slave)
-    return filtered_slaves
-
-
-def get_container_id_for_mesos_id(client, mesos_task_id):
-    running_containers = client.containers()
-
-    container_id = None
-    for container in running_containers:
-        info = client.inspect_container(container)
-        if info["Config"]["Env"]:
-            for env_var in info["Config"]["Env"]:
-                if ("MESOS_TASK_ID=%s" % mesos_task_id) in env_var:
-                    container_id = info["Id"]
-                    break
-
-    return container_id
-
-
-def get_mesos_id_from_container(container, client):
-    mesos_id = None
-    info = client.inspect_container(container)
-    if info["Config"]["Env"]:
-        for env_var in info["Config"]["Env"]:
-            # In marathon it is like this
-            if "MESOS_TASK_ID=" in env_var:
-                mesos_id = re.match("MESOS_TASK_ID=(.*)", env_var).group(1)
-                break
-            # Chronos it is like this?
-            if "mesos_task_id=" in env_var:
-                mesos_id = re.match("mesos_task_id=(.*)", env_var).group(1)
-                break
-    return mesos_id
-
-
 @a_sync.to_blocking
 async def get_all_frameworks(active_only=False):
     return await get_mesos_master().frameworks(active_only=active_only)
-
-
-async def get_task(task_id: str, app_id: str = "") -> MesosTask:
-    tasks = await get_running_tasks_from_frameworks(app_id)
-    tasks = [task for task in tasks if filter_task_by_task_id(task, task_id)]
-    if len(tasks) < 1:
-        raise TaskNotFound(f"Couldn't find task for given id: {task_id}")
-    if len(tasks) > 1:
-        raise TooManyTasks(
-            f"Found more than one task with id: {task_id}, this should not happen!"
-        )
-    return tasks[0]
-
-
-def filter_task_by_task_id(task: MesosTask, task_id: str) -> bool:
-    return task["id"] == task_id
-
-
-class TaskNotFound(Exception):
-    pass
-
-
-class TooManyTasks(Exception):
-    pass
-
-
-# TODO: async this
-def mesos_services_running_here(
-    framework_filter, parse_service_instance_from_executor_id, hostname=None
-):
-    """See what paasta_native services are being run by a mesos-slave on this host.
-
-    :param framework_filter: a function that returns true if we should consider a given framework.
-    :param parse_service_instance_from_executor_id: A function that returns a tuple of (service, instance) from the
-                                                    executor ID.
-    :param hostname: Hostname to fetch mesos slave state from. See get_local_slave_state.
-
-    :returns: A list of triples of (service, instance, port)"""
-    slave_state = get_local_slave_state(hostname=hostname)
-    frameworks = [
-        fw for fw in slave_state.get("frameworks", []) if framework_filter(fw)
-    ]
-    executors = [
-        ex
-        for fw in frameworks
-        for ex in fw.get("executors", [])
-        if "TASK_RUNNING" in [t["state"] for t in ex.get("tasks", [])]
-    ]
-    srv_list = []
-    for executor in executors:
-        try:
-            srv_name, srv_instance = parse_service_instance_from_executor_id(
-                executor["id"]
-            )
-        except ValueError:
-            log.error(
-                "Failed to decode paasta service instance from {}".format(
-                    executor["id"]
-                )
-            )
-            continue
-        if "ports" in executor["resources"]:
-            srv_port = int(re.findall("[0-9]+", executor["resources"]["ports"])[0])
-        else:
-            srv_port = None
-        srv_list.append((srv_name, srv_instance, srv_port))
-    return srv_list
 
 
 def is_task_terminal(
