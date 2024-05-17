@@ -153,14 +153,6 @@ def get_mesos_leader(mesos_config_path: Optional[str] = None) -> str:
         raise ValueError("Expected to receive a valid URL, got: %s" % url)
 
 
-def is_mesos_leader(hostname: str = MY_HOSTNAME) -> bool:
-    """Check if a hostname is the current mesos leader.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return get_mesos_leader() == hostname
-
-
 class MesosLeaderUnavailable(Exception):
     pass
 
