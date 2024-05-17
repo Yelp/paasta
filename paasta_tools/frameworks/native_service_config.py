@@ -295,7 +295,3 @@ def load_paasta_native_job_config(
     service_config.service_namespace_config = service_namespace_config
 
     return service_config
-
-
-class UnknownNativeServiceError(Exception):
-    pass
