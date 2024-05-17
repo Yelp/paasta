@@ -18,7 +18,6 @@ import math
 import re
 from collections import Counter
 from collections import namedtuple
-from collections import OrderedDict
 from typing import Any
 from typing import Callable
 from typing import Mapping
@@ -42,8 +41,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_all_deployments
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import PodStatus
-from paasta_tools.marathon_tools import get_all_marathon_apps
-from paasta_tools.marathon_tools import MarathonClient
 from paasta_tools.mesos.master import MesosMetrics
 from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos_maintenance import MAINTENANCE_ROLE
@@ -474,60 +471,6 @@ def assert_kube_pods_running(
         message=f"Pods: running: {running} pending: {pending} failed: {failed}",
         healthy=healthy,
     )
-
-
-def assert_no_duplicate_frameworks(
-    state: MesosState, framework_list: Sequence[str] = ["marathon"]
-) -> HealthCheckResult:
-    """A function which asserts that there are no duplicate frameworks running, where
-    frameworks are identified by their name.
-
-    Note the extra spaces in the output strings: this is to account for the extra indentation
-    we add, so we can have:
-
-        frameworks:
-          framework: marathon count: 1
-
-    :param state: the state info from the Mesos master
-    :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
-        indicating if there are any duplicate frameworks.
-    """
-    output = ["Frameworks:"]
-    status = True
-    frameworks = state["frameworks"]
-    for name in framework_list:
-        shards = [x["name"] for x in frameworks if x["name"].startswith(name)]
-        for framework, count in OrderedDict(sorted(Counter(shards).items())).items():
-            if count > 1:
-                status = False
-                output.append(
-                    "    CRITICAL: There are %d connected %s frameworks! "
-                    "(Expected 1)" % (count, framework)
-                )
-        output.append("    Framework: %s count: %d" % (name, len(shards)))
-
-    return HealthCheckResult(message=("\n").join(output), healthy=status)
-
-
-def assert_frameworks_exist(
-    state: MesosState, expected: Sequence[str]
-) -> HealthCheckResult:
-    frameworks = [f["name"] for f in state["frameworks"]]
-    not_found = []
-    ok = True
-
-    for f in expected:
-        if f not in frameworks:
-            ok = False
-            not_found.append(f)
-
-    if ok:
-        return HealthCheckResult(message="all expected frameworks found", healthy=ok)
-    else:
-        return HealthCheckResult(
-            message="CRITICAL: framework(s) %s not found" % ", ".join(not_found),
-            healthy=ok,
-        )
 
 
 def get_mesos_slaves_health_status(
@@ -999,7 +942,6 @@ def get_mesos_state_status(
     """
     return [
         assert_quorum_size(),
-        assert_no_duplicate_frameworks(state=mesos_state, framework_list=["marathon"]),
     ]
 
 
@@ -1013,55 +955,12 @@ def run_healthchecks_with_param(
     ]
 
 
-def assert_marathon_apps(
-    clients: Sequence[MarathonClient],
-) -> HealthCheckResult:
-    num_apps = [len(get_all_marathon_apps(c)) for c in clients]
-    if sum(num_apps) < 1:
-        return HealthCheckResult(
-            message="CRITICAL: No marathon apps running", healthy=False
-        )
-    else:
-        return HealthCheckResult(
-            message="marathon apps: %10d" % sum(num_apps), healthy=True
-        )
-
-
-def assert_marathon_tasks(
-    clients: Sequence[MarathonClient],
-) -> HealthCheckResult:
-    num_tasks = [len(c.list_tasks()) for c in clients]
-    return HealthCheckResult(
-        message="marathon tasks: %9d" % sum(num_tasks), healthy=True
-    )
-
-
-def assert_marathon_deployments(
-    clients: Sequence[MarathonClient],
-) -> HealthCheckResult:
-    num_deployments = [len(c.list_deployments()) for c in clients]
-    return HealthCheckResult(
-        message="marathon deployments: %3d" % sum(num_deployments), healthy=True
-    )
-
-
 def assert_kube_deployments(
     kube_client: KubeClient, namespace: str
 ) -> HealthCheckResult:
     num_deployments = len(list_all_deployments(kube_client, namespace))
     return HealthCheckResult(
         message=f"Kubernetes deployments: {num_deployments:>3}", healthy=True
-    )
-
-
-def get_marathon_status(
-    clients: Sequence[MarathonClient],
-) -> Sequence[HealthCheckResult]:
-    """Gathers information about marathon.
-    :return: string containing the status."""
-    return run_healthchecks_with_param(
-        clients,
-        [assert_marathon_apps, assert_marathon_tasks, assert_marathon_deployments],
     )
 
 

@@ -1883,7 +1883,7 @@ fake_job:
         mock_glob.return_value = [
             "/home/service/tron-dev-cluster2.yaml",
             "/home/service/tron-prod.yaml",
-            "/home/service/marathon-other.yaml",
+            "/home/service/kubernetes-other.yaml",
         ]
         result = tron_tools.list_tron_clusters("foo")
         assert sorted(result) == ["dev-cluster2", "prod"]

@@ -665,24 +665,6 @@ def get_local_run_environment_vars(instance_config, port0, framework):
         "PAASTA_CLUSTER": instance_config.get_cluster(),
     }
 
-    if framework == "marathon":
-        fake_taskid = uuid.uuid4()
-        env["MESOS_SANDBOX"] = "/mnt/mesos/sandbox"
-        env["MESOS_CONTAINER_NAME"] = "localrun-%s" % fake_taskid
-        env["MESOS_TASK_ID"] = str(fake_taskid)
-        env["MARATHON_PORT"] = str(port0)
-        env["MARATHON_PORT0"] = str(port0)
-        env["MARATHON_PORTS"] = str(port0)
-        env["MARATHON_PORT_%d" % instance_config.get_container_port()] = str(port0)
-        env["MARATHON_APP_VERSION"] = "simulated_marathon_app_version"
-        env["MARATHON_APP_RESOURCE_CPUS"] = str(instance_config.get_cpus())
-        env["MARATHON_APP_DOCKER_IMAGE"] = docker_image
-        env["MARATHON_APP_RESOURCE_MEM"] = str(instance_config.get_mem())
-        env["MARATHON_APP_RESOURCE_DISK"] = str(instance_config.get_disk())
-        env["MARATHON_APP_LABELS"] = ""
-        env["MARATHON_APP_ID"] = "/simulated_marathon_app_id"
-        env["MARATHON_HOST"] = hostname
-
     return env
 
 
