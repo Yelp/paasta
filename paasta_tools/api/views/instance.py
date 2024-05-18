@@ -23,7 +23,6 @@ from typing import Dict
 from typing import Mapping
 from typing import Optional
 
-import a_sync
 from pyramid.response import Response
 from pyramid.view import view_config
 
@@ -36,7 +35,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
-from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
@@ -88,15 +86,6 @@ def tron_instance_status(
         status["action_command"] = action_run["command"]
 
     return status
-
-
-async def _task_result_or_error(future):
-    try:
-        return {"value": await future}
-    except TimeoutError:
-        return {"error_message": "Timed Out"}
-    except Exception:
-        return {"error_message": "Unknown"}
 
 
 def no_configuration_for_service_message(cluster, service, instance):
@@ -290,19 +279,6 @@ def bounce_status(request):
             raise ApiFailure(error_message, 404)
         # for all others, treat as a 500
         raise ApiFailure(error_message, 500)
-
-
-def add_executor_info(task):
-    task._Task__items["executor"] = a_sync.block(task.executor).copy()
-    task._Task__items["executor"].pop("tasks", None)
-    task._Task__items["executor"].pop("completed_tasks", None)
-    task._Task__items["executor"].pop("queued_tasks", None)
-    return task
-
-
-def add_slave_info(task):
-    task._Task__items["slave"] = a_sync.block(task.slave)._MesosSlave__items.copy()
-    return task
 
 
 def get_deployment_version(

@@ -128,42 +128,6 @@ async def test_kubernetes_smartstack_status(mock_job_config):
         }
 
 
-def test_add_executor_info():
-    mock_mesos_task = mock.Mock()
-    mock_executor = {
-        "tasks": [mock_mesos_task],
-        "some": "thing",
-        "completed_tasks": [mock_mesos_task],
-        "queued_tasks": [mock_mesos_task],
-    }
-    mock_task = mock.Mock(
-        _Task__items={"a": "thing"},
-        executor=asynctest.CoroutineMock(
-            return_value=mock_executor,
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-        ),
-    )
-    ret = instance.add_executor_info(mock_task)
-    expected = {"a": "thing", "executor": {"some": "thing"}}
-    assert ret._Task__items == expected
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["completed_tasks"]
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["tasks"]
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["queued_tasks"]
-
-
-def test_add_slave_info():
-    mock_slave = asynctest.CoroutineMock(
-        return_value=mock.Mock(_MesosSlave__items={"some": "thing"}),
-        func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-    )
-    mock_task = mock.Mock(_Task__items={"a": "thing"}, slave=mock_slave)
-    expected = {"a": "thing", "slave": {"some": "thing"}}
-    assert instance.add_slave_info(mock_task)._Task__items == expected
-
-
 @mock.patch(
     "paasta_tools.api.views.instance.tron_tools.get_tron_dashboard_for_cluster",
     autospec=True,
