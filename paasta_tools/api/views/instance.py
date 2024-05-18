@@ -27,7 +27,6 @@ import a_sync
 from pyramid.response import Response
 from pyramid.view import view_config
 
-import paasta_tools.mesos.exceptions as mesos_exceptions
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -94,8 +93,6 @@ def tron_instance_status(
 async def _task_result_or_error(future):
     try:
         return {"value": await future}
-    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
-        return {"error_message": "None"}
     except TimeoutError:
         return {"error_message": "Timed Out"}
     except Exception:
