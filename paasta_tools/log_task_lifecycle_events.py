@@ -7,7 +7,6 @@ import traceback
 import aiohttp
 
 from paasta_tools import mesos_tools
-from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools import utils
 
@@ -100,11 +99,6 @@ class MesosEventSubscriber:
 
         if framework_name.startswith("tron"):
             return tron_tools.decompose_executor_id(executor_id)[:2]
-        elif framework_name.startswith("paasta-remote "):
-            # sorta gross, but it's the same format.
-            return paasta_remote_run.parse_service_instance_from_executor_id(
-                executor_id
-            )
         else:
             raise UnknownFrameworkError(
                 f"don't know how to parse task IDs for framework {framework_name}"

@@ -110,7 +110,7 @@ Placement Options
 -----------------
 
 Placement options provide control over how PaaSTA schedules a task, whether it
-is scheduled by Marathon (on Mesos), Kubernetes, Tron, or ``paasta remote-run``.
+is scheduled by Kubernetes or Tron.
 Most commonly, it is used to restrict tasks to specific locations.
 
 .. _general-placement-options:

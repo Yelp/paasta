@@ -23,7 +23,6 @@ Submodules
    paasta_tools.cli.cmds.mesh_status
    paasta_tools.cli.cmds.pause_service_autoscaler
    paasta_tools.cli.cmds.push_to_registry
-   paasta_tools.cli.cmds.remote_run
    paasta_tools.cli.cmds.rollback
    paasta_tools.cli.cmds.secret
    paasta_tools.cli.cmds.security_check

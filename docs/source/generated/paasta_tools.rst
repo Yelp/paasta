@@ -73,7 +73,6 @@ Submodules
    paasta_tools.nrtsearchservice_tools
    paasta_tools.nrtsearchserviceeks_tools
    paasta_tools.oom_logger
-   paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
    paasta_tools.prune_completed_pods
    paasta_tools.puppet_service_tools

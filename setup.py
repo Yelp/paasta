@@ -61,7 +61,6 @@ setup(
         "paasta_tools/kubernetes/bin/paasta_secrets_sync.py",
         "paasta_tools/log_task_lifecycle_events.py",
         "paasta_tools/paasta_deploy_tron_jobs",
-        "paasta_tools/paasta_remote_run.py",
         "paasta_tools/setup_istio_mesh.py",
         "paasta_tools/setup_kubernetes_cr.py",
         "paasta_tools/setup_kubernetes_crd.py",

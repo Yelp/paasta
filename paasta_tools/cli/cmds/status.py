@@ -366,33 +366,6 @@ def find_instance_types(status: Any) -> List[str]:
     return types
 
 
-def print_adhoc_status(
-    cluster: str,
-    service: str,
-    instance: str,
-    output: List[str],
-    status,
-    verbose: int = 0,
-) -> int:
-    output.append(f"    Job: {instance}")
-    for run in status.value:
-        output.append(
-            "Launch time: %s, run id: %s, framework id: %s"
-            % (run["launch_time"], run["run_id"], run["framework_id"])
-        )
-    if status.value:
-        output.append(
-            (
-                "    Use `paasta remote-run stop -s {} -c {} -i {} [-R <run id> "
-                "    | -F <framework id>]` to stop."
-            ).format(service, cluster, instance)
-        )
-    else:
-        output.append("    Nothing found.")
-
-    return 0
-
-
 def create_autoscaling_info_table(autoscaling_info):
     output = ["Autoscaling Info:"]
 
@@ -2268,7 +2241,6 @@ INSTANCE_TYPE_WRITERS: Mapping[str, InstanceStatusWriter] = defaultdict(
     kubernetes_v2=print_kubernetes_status_v2,
     eks=print_kubernetes_status,
     tron=print_tron_status,
-    adhoc=print_adhoc_status,
     flink=print_flink_status,
     flinkeks=print_flinkeks_status,
     kafkacluster=print_kafka_status,

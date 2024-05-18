@@ -1973,7 +1973,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
     register_native_services: bool
-    remote_run_config: RemoteRunConfig
     resource_pool_settings: PoolToResourcePoolSettingsDict
     secret_provider: str
     security_check_command: str
@@ -2386,12 +2385,6 @@ class SystemPaastaConfig:
 
         :returns: The local-run job config dictionary"""
         return self.config_dict.get("local_run_config", {})
-
-    def get_remote_run_config(self) -> RemoteRunConfig:
-        """Get the remote-run config
-
-        :returns: The remote-run system_paasta_config dictionary"""
-        return self.config_dict.get("remote_run_config", {})
 
     def get_spark_run_config(self) -> SparkRunConfig:
         """Get the spark-run config

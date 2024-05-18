@@ -17,11 +17,9 @@ PaaSTA service instance status/start/stop etc.
 """
 import asyncio
 import logging
-import re
 import traceback
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Mapping
 from typing import Optional
 
@@ -30,7 +28,6 @@ from pyramid.response import Response
 from pyramid.view import view_config
 
 import paasta_tools.mesos.exceptions as mesos_exceptions
-from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -91,22 +88,6 @@ def tron_instance_status(
     if action_run.get("command"):
         status["action_command"] = action_run["command"]
 
-    return status
-
-
-def adhoc_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> List[Dict[str, Any]]:
-    status = []
-    filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
-    filtered.sort(key=lambda x: x.name)
-    for f in filtered:
-        launch_time, run_id = re.match(
-            r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
-        ).groups()
-        status.append(
-            {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
-        )
     return status
 
 
@@ -185,11 +166,7 @@ def instance_status(request):
         instance_status["version"] = ""
         instance_status["git_sha"] = ""
     try:
-        if instance_type == "adhoc":
-            instance_status["adhoc"] = adhoc_instance_status(
-                instance_status, service, instance, verbose
-            )
-        elif pik.can_handle(instance_type):
+        if pik.can_handle(instance_type):
             instance_status.update(
                 pik.instance_status(
                     service=service,
