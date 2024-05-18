@@ -4417,3 +4417,29 @@ def get_kubernetes_secret_volumes(
                 ] = secret_contents
 
     return secret_volumes
+
+
+_IEC_NUMBER_SUFFIXES = {
+    "k": 1000,
+    "m": 1000**-1,
+    "M": 1000**2,
+    "G": 1000**3,
+    "T": 1000**4,
+    "P": 1000**5,
+    "Ki": 1024,
+    "Mi": 1024**2,
+    "Gi": 1024**3,
+    "Ti": 1024**4,
+    "Pi": 1024**5,
+}
+
+
+def suffixed_number_value(s: str) -> float:
+    pattern = r"(?P<number>\d+)(?P<suff>\w*)"
+    match = re.match(pattern, s)
+    number, suff = match.groups()
+
+    if suff in _IEC_NUMBER_SUFFIXES:
+        return float(number) * _IEC_NUMBER_SUFFIXES[suff]
+    else:
+        return float(number)

@@ -11,7 +11,7 @@ from paasta_tools.instance import kubernetes as pik
 from paasta_tools.kubernetes_tools import get_kubernetes_app_name
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
-from paasta_tools.metrics.metastatus_lib import suffixed_number_value
+from paasta_tools.kubernetes_tools import suffixed_number_value
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.utils import DEFAULT_SOA_DIR
