@@ -336,24 +336,6 @@ def _ids(list_of_mocks):
     return {id(mck) for mck in list_of_mocks}
 
 
-def test_get_all_tasks_from_state():
-    mock_task_1 = mock.Mock()
-    mock_task_2 = mock.Mock()
-    mock_task_3 = mock.Mock()
-    mock_task_4 = mock.Mock()
-    mock_state = {
-        "frameworks": [{"tasks": [mock_task_1, mock_task_2]}, {"tasks": [mock_task_3]}],
-        "orphan_tasks": [mock_task_4],
-    }
-    ret = mesos_tools.get_all_tasks_from_state(mock_state)
-    expected = [mock_task_1, mock_task_2, mock_task_3]
-    assert len(ret) == len(expected) and ret == expected
-
-    ret = mesos_tools.get_all_tasks_from_state(mock_state, include_orphans=True)
-    expected = [mock_task_1, mock_task_2, mock_task_3, mock_task_4]
-    assert len(ret) == len(expected) and ret == expected
-
-
 @mark.asyncio
 async def test_get_current_tasks():
     with asynctest.patch(

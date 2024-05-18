@@ -20,7 +20,6 @@ from typing import Callable
 from typing import Collection
 from typing import Dict
 from typing import List
-from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
@@ -32,7 +31,6 @@ from urllib.parse import urlparse
 import a_sync
 import humanize
 import requests
-from mypy_extensions import TypedDict
 
 import paasta_tools.mesos.cluster as cluster
 import paasta_tools.mesos.exceptions as mesos_exceptions
@@ -42,7 +40,6 @@ from paasta_tools.async_utils import async_ttl_cache
 from paasta_tools.mesos.cfg import load_mesos_config
 from paasta_tools.mesos.exceptions import SlaveDoesNotExist
 from paasta_tools.mesos.master import MesosMaster
-from paasta_tools.mesos.master import MesosState
 from paasta_tools.mesos.task import Task
 from paasta_tools.utils import format_table
 from paasta_tools.utils import load_system_paasta_config
@@ -573,33 +570,6 @@ async def status_mesos_tasks_verbose(
     return "\n".join(output)
 
 
-MesosResources = Mapping[str, Any]
-
-
-class MesosTask(TypedDict):
-    resources: MesosResources
-    slave_id: str
-    id: str
-    state: str
-
-
-def get_all_tasks_from_state(
-    mesos_state: MesosState, include_orphans: bool = False
-) -> Sequence[MesosTask]:
-    """Given a mesos state, find the tasks from all frameworks.
-    :param mesos_state: the mesos_state
-    :returns: a list of tasks
-    """
-    tasks = [
-        task
-        for framework in mesos_state.get("frameworks", [])
-        for task in framework.get("tasks", [])
-    ]
-    if include_orphans:
-        tasks += mesos_state.get("orphan_tasks", [])
-    return tasks
-
-
 # TODO: remove to_blocking, convert call sites (smartstack_tools and marathon_serviceinit) to asyncio.
 @a_sync.to_blocking
 async def get_slaves():
@@ -609,17 +579,3 @@ async def get_slaves():
 @a_sync.to_blocking
 async def get_all_frameworks(active_only=False):
     return await get_mesos_master().frameworks(active_only=active_only)
-
-
-def is_task_terminal(
-    task: MesosTask,
-) -> bool:
-    """Return whether a given mesos task is terminal.
-
-    Terminal states are documented in
-    http://mesos.apache.org/api/latest/java/org/apache/mesos/Protos.TaskState.html
-
-    :param task: the task to be inspected
-    :returns: a boolean indicating if the task is considered to be in a terminal state
-    """
-    return task["state"] in TERMINAL_STATES
