@@ -628,18 +628,6 @@ class InstanceConfig:
         gpus = self.config_dict.get("gpus", None)
         return gpus
 
-    def get_container_type(self) -> Optional[str]:
-        """Get Mesos containerizer type.
-
-        Default to DOCKER if gpus are not used.
-
-        :returns: Mesos containerizer type, DOCKER or MESOS"""
-        if self.get_gpus() is not None:
-            container_type = "MESOS"
-        else:
-            container_type = "DOCKER"
-        return container_type
-
     def get_cmd(self) -> Optional[Union[str, List[str]]]:
         """Get the docker cmd specified in the service's configuration.
 
@@ -958,17 +946,11 @@ class InstanceConfig:
     def get_iam_role_provider(self) -> str:
         return self.config_dict.get("iam_role_provider", "aws")
 
-    def get_role(self) -> Optional[str]:
-        """Which mesos role of nodes this job should run on."""
-        return self.config_dict.get("role")
-
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
 
-        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint or node selector.
-
-        Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
+        This is implemented with an attribute "pool" on each kubernetes node and by adding a constraint or node selector.
 
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get("pool", "default")
