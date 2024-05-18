@@ -19,6 +19,7 @@ from behave import when
 from path import Path
 
 from paasta_tools.utils import _run
+from paasta_tools.utils import get_docker_client
 
 
 @given("a simple service to test")
@@ -86,3 +87,10 @@ def local_run_on_tron_action(context):
             "--build "
         )
         context.return_code, context.output = _run(command=local_run_cmd, timeout=90)
+
+
+@given("Docker is available")
+def docker_is_available(context):
+    docker_client = get_docker_client()
+    assert docker_client.ping()
+    context.docker_client = docker_client

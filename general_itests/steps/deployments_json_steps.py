@@ -30,10 +30,11 @@ from dulwich.repo import Repo
 from paasta_tools import generate_deployments_for_service
 from paasta_tools.cli.cmds.mark_for_deployment import paasta_mark_for_deployment
 from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
+from paasta_tools.utils import DeploymentsJsonV2
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import format_timestamp
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
-from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_v2_deployments_json
 
 
 @given("a test git repo is setup with commits")
@@ -164,17 +165,50 @@ def step_impl_when(context):
         generate_deployments_for_service.main()
 
 
-@then('that deployments.json has a desired_state of "{expected_state}"')
-def step_impl_then_desired_state(context, expected_state):
-    deployments = load_deployments_json(
+@then("that deployments.json can be read back correctly")
+def step_impl_then(context):
+    deployments = load_v2_deployments_json(
         "fake_deployments_json_service", soa_dir="fake_soa_configs"
     )
-    latest = sorted(
-        deployments.config_dict.items(),
-        key=lambda kv: kv[1]["force_bounce"] or "",
-        reverse=True,
-    )[0][1]
-    desired_state = latest["desired_state"]
+    expected_deployments = DeploymentsJsonV2(
+        service="fake_deployments_json_service",
+        config_dict={
+            "deployments": {
+                "test-cluster.test_instance": {
+                    "docker_image": f"services-fake_deployments_json_service:paasta-{context.expected_commit}",
+                    "git_sha": context.expected_commit,
+                    "image_version": None,
+                }
+            },
+            "controls": {
+                "fake_deployments_json_service:test-cluster.test_instance": {
+                    "force_bounce": context.force_bounce_timestamp,
+                    "desired_state": "stop",
+                },
+                "fake_deployments_json_service:test-cluster.test_instance_2": {
+                    "force_bounce": None,
+                    "desired_state": "start",
+                },
+            },
+        },
+    )
+    assert expected_deployments.service == deployments.service
+    assert expected_deployments.config_dict == deployments.config_dict
+
+
+@then('that deployments.json has a desired_state of "{expected_state}"')
+def step_impl_then_desired_state(context, expected_state):
+    deployments = load_v2_deployments_json(
+        "fake_deployments_json_service", soa_dir="fake_soa_configs"
+    )
+
+    branch_dict = deployments.get_branch_dict(
+        service="fake_deployments_json_service",
+        branch="test-cluster.test_instance",
+        deploy_group="test-cluster.test_instance",
+    )
+
+    desired_state = branch_dict["desired_state"]
     assert (
         desired_state == expected_state
     ), f"actual: {desired_state}\nexpected: {expected_state}"
