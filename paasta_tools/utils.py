@@ -1937,7 +1937,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     envoy_nerve_readiness_check_script: List[str]
     envoy_readiness_check_script: List[str]
     expected_slave_attributes: ExpectedSlaveAttributes
-    filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     git_config: Dict
     hacheck_sidecar_image_url: str
@@ -1958,7 +1957,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
-    mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
@@ -2391,13 +2389,6 @@ class SystemPaastaConfig:
 
         :returns: The spark-run system_paasta_config dictionary"""
         return self.config_dict.get("spark_run_config", {})
-
-    def get_mesos_cli_config(self) -> Dict:
-        """Get the config for mesos-cli
-
-        :returns: The mesos cli config
-        """
-        return self.config_dict.get("mesos_config", {})
 
     def get_monitoring_config(self) -> Dict:
         """Get the monitoring config
@@ -3291,16 +3282,6 @@ def get_docker_client() -> Client:
         return Client(**client_opts)
     else:
         return Client(base_url=get_docker_host(), **client_opts)
-
-
-def get_running_mesos_docker_containers() -> List[Dict]:
-    client = get_docker_client()
-    running_containers = client.containers()
-    return [
-        container
-        for container in running_containers
-        if "mesos-" in container["Names"][0]
-    ]
 
 
 class TimeoutError(Exception):

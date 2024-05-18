@@ -23,55 +23,6 @@ def service_group():
 
 
 @pytest.yield_fixture
-def mock_get_running_mesos_docker_containers():
-    with mock.patch.object(
-        firewall,
-        "get_running_mesos_docker_containers",
-        autospec=True,
-        return_value=[
-            {
-                "HostConfig": {"NetworkMode": "bridge"},
-                "Labels": {
-                    "paasta_service": "myservice",
-                    "paasta_instance": "hassecurity",
-                },
-                "NetworkSettings": {
-                    "Networks": {
-                        "bridge": {
-                            "MacAddress": "02:42:a9:fe:00:0a",
-                            "IPAddress": "1.1.1.1",
-                        }
-                    }
-                },
-            },
-            {
-                "HostConfig": {"NetworkMode": "bridge"},
-                "Labels": {
-                    "paasta_service": "myservice",
-                    "paasta_instance": "hassecurity2",
-                },
-                "NetworkSettings": {
-                    "Networks": {
-                        "bridge": {
-                            "MacAddress": "02:42:a9:fe:00:0b",
-                            "IPAddress": "2.2.2.2",
-                        }
-                    }
-                },
-            },
-            # host networking
-            {
-                "HostConfig": {"NetworkMode": "host"},
-                "Labels": {"paasta_service": "myservice", "paasta_instance": "batch"},
-            },
-            # no labels
-            {"HostConfig": {"NetworkMode": "bridge"}, "Labels": {}},
-        ],
-    ):
-        yield
-
-
-@pytest.yield_fixture
 def mock_services_running_here():
     with mock.patch.object(
         firewall,
