@@ -368,14 +368,6 @@ instance MAY have:
     This setting only affects the first time deployd processes an instance after a change --
       instances that need to be reprocessed will be reenqueued normally.
 
-  * ``drain_method``: Controls the drain method; see `drain_lib
-    <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
-    instances that are not in Smartstack, or ``hacheck`` if they are.
-
-  * ``drain_method_params``: A dictionary of parameters for the specified
-    drain_method. Valid parameters are any of the kwargs defined for the
-    specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
-
   * ``cmd``: The command that is executed. If a string, will be wrapped in ``/bin/sh -c``.
     If a list, will be executed directly as is with no shell parsing.
 
@@ -620,14 +612,6 @@ instance MAY have:
       soa-configs change or mark-for-deployment happened after this one.
     This setting only affects the first time deployd processes an instance after a change --
       instances that need to be reprocessed will be reenqueued normally.
-
-  * ``drain_method``: Controls the drain method; see `drain_lib
-    <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
-    instances that are not in Smartstack, or ``hacheck`` if they are.
-
-  * ``drain_method_params``: A dictionary of parameters for the specified
-    drain_method. Valid parameters are any of the kwargs defined for the
-    specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
 
   * ``cmd``: The command that is executed. Can be used as an alternative to
     args for containers without an `entrypoint

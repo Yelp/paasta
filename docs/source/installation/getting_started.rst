@@ -157,8 +157,6 @@ Hacheck provides several behaviors that are useful for Paasta:
 
   * It can preemptively return error codes for health checks, allowing us to remove a task from load balancers before
     shutting it down.
-    (This is implemented in the
-    `HacheckDrainMethod <../generated/paasta_tools.drain_lib.html#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
 
 Sensu
 -----

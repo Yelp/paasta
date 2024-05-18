@@ -43,56 +43,6 @@
                             ]
                         }
                     ]
-                },
-                {
-                    "oneOf": [
-                        {
-                            "properties": {
-                                "drain_method": {
-                                    "enum": [
-                                        "noop",
-                                        "hacheck",
-                                        "test"
-                                    ]
-                                }
-                            }
-                        },
-                        {
-                            "properties": {
-                                "drain_method": {
-                                    "enum": [
-                                        "http"
-                                    ]
-                                },
-                                "drain_method_params": {
-                                    "type": "object",
-                                    "properties": {
-                                        "drain": {
-                                            "type": "object"
-                                        },
-                                        "stop_draining": {
-                                            "type": "object"
-                                        },
-                                        "is_draining": {
-                                            "type": "object"
-                                        },
-                                        "is_safe_to_kill": {
-                                            "type": "object"
-                                        }
-                                    },
-                                    "required": [
-                                        "drain",
-                                        "stop_draining",
-                                        "is_draining",
-                                        "is_safe_to_kill"
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "drain_method_params"
-                            ]
-                        }
-                    ]
                 }
             ],
             "properties": {
@@ -204,18 +154,6 @@
                 },
                 "service_account_name": {
                     "type": "string"
-                },
-                "drain_method": {
-                    "enum": [
-                        "noop",
-                        "hacheck",
-                        "http",
-                        "test"
-                    ],
-                    "default": "noop"
-                },
-                "drain_method_params": {
-                    "type": "object"
                 },
                 "constraints": {
                     "type": "array",
