@@ -2267,13 +2267,12 @@ def test_validate_service_instance_valid_kubernetes():
             utils.validate_service_instance(
                 my_service, my_instance, fake_cluster, fake_soa_dir
             )
-            == "paasta_native"  # the first entry in utils.INSTANCE_TYPES
+            == "adhoc"  # the first entry in utils.INSTANCE_TYPES
         )
 
 
 def test_validate_service_instance_invalid():
     mock_kubernetes_instances = [("service1", "main1"), ("service1", "main2")]
-    mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
     mock_eks_instances = [("service1", "eks")]
@@ -2295,7 +2294,6 @@ def test_validate_service_instance_invalid():
         autospec=True,
         side_effect=[
             mock_kubernetes_instances,
-            mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
             mock_eks_instances,
@@ -2312,7 +2310,7 @@ def test_validate_service_instance_invalid():
     ):
         with raises(
             utils.NoConfigurationForServiceError,
-            match="Did you mean one of: main3, main2, main1?",
+            match="Did you mean one of: main2, main1?",
         ):
             utils.validate_service_instance(
                 service=my_service,

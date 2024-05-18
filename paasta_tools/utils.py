@@ -125,7 +125,6 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
-    "paasta_native",
     "adhoc",
     "kubernetes",
     "eks",
@@ -1854,11 +1853,6 @@ class SparkRunConfig(TypedDict, total=False):
     default_spark_driver_iam_role: str
 
 
-class PaastaNativeConfig(TypedDict, total=False):
-    principal: str
-    secret: str
-
-
 ExpectedSlaveAttributes = List[Dict[str, Any]]
 
 
@@ -1943,7 +1937,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
-    paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
@@ -1952,7 +1945,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
-    register_native_services: bool
     resource_pool_settings: PoolToResourcePoolSettingsDict
     secret_provider: str
     security_check_command: str
