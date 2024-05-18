@@ -63,7 +63,6 @@ Submodules
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_tron_namespaces
-   paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
    paasta_tools.marathon_dashboard
