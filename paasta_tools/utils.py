@@ -1960,6 +1960,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_readers: List[LogReaderConfig]
+    log_readers_migration_status: Optional[Dict[str, bool]]
     log_writer: LogWriterConfig
     mark_for_deployment_max_polling_threads: int
     mark_for_deployment_default_polling_interval: float
