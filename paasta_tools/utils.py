@@ -2334,7 +2334,7 @@ class SystemPaastaConfig:
                 % self.directory
             )
 
-    def get_log_readers_migration_status(self) -> Optional[Mapping[str, str]]:
+    def get_log_readers_migration_status(self) -> Optional[Mapping[str, bool]]:
         """
         Get the log readers migration configuration out of global paasta config
         """
