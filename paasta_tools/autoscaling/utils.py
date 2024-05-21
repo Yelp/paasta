@@ -15,6 +15,9 @@
 from collections import defaultdict
 from typing import Callable
 from typing import Dict
+from typing import List
+from typing import Optional
+from typing import TypedDict
 
 
 _autoscaling_components: Dict[str, Dict[str, Callable]] = defaultdict(dict)
@@ -30,3 +33,20 @@ def register_autoscaling_component(name, method_type):
 
 def get_autoscaling_component(name, method_type):
     return _autoscaling_components[method_type][name]
+
+
+class MetricsProviderDict(TypedDict, total=False):
+    type: str
+    decision_policy: str
+    setpoint: float
+    desired_active_requests_per_replica: int
+    forecast_policy: Optional[str]
+    moving_average_window_seconds: Optional[int]
+    use_resource_metrics: bool
+    prometheus_adapter_config: Optional[dict]
+    max_instances_alert_threshold: float
+
+
+class AutoscalingParamsDict(TypedDict, total=False):
+    metrics_providers: List[MetricsProviderDict]
+    scaledown_policies: Optional[dict]

@@ -283,6 +283,28 @@
                     },
                     "uniqueItems": true
                 },
+                "projected_sa_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "audience": {
+                                "type": "string"
+                            },
+                            "expiration_seconds": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "audience"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
                 "cluster": {
                     "type": "string"
                 },

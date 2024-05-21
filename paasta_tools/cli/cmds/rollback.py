@@ -52,12 +52,21 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
             "'paasta rollback' is a human-friendly tool for marking a particular "
             "docker image for deployment, which invokes a bounce. While the command "
             "is called 'rollback', it can be used to roll forward or back, as long "
-            "as there is a docker image available for the input git SHA."
+            "as there is a docker image available for the input Git SHA."
         ),
         epilog=(
             "This rollback command uses the Git control plane, which requires network "
-            "connectivity as well as authorization to the git repo."
+            "connectivity as well as authorization to the Git repo.\n\n"
+            + PaastaColors.red(
+                "WARNING: You MUST manually revert changes in Git and go through the normal push process after using this command.\n"
+            )
+            + PaastaColors.red(
+                "WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
+            )
         ),
+        # we manually format the epilog to add newlines + give it an attention-grabbing color
+        # re: reverting changes in Git post-rollback
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     arg_commit = list_parser.add_argument(
         "-k",
@@ -66,7 +75,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         "A commit to rollback to is required for paasta rollback to run. However if one is not provided, "
         "paasta rollback will instead output a list of valid git shas to rollback to.",
         required=False,
-        type=validate_full_git_sha,
     )
     arg_commit.completer = lazy_choices_completer(list_previously_deployed_shas)  # type: ignore
     arg_version = list_parser.add_argument(
@@ -228,6 +236,13 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     deploy groups and sha. These arguments will be verified and passed onto
     mark_for_deployment.
     """
+
+    try:
+        validate_full_git_sha(args.commit)
+    except argparse.ArgumentTypeError as e:
+        print(PaastaColors.red(f"Error: {e}"))
+        return 1
+
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
 
@@ -319,8 +334,13 @@ def paasta_rollback(args: argparse.Namespace) -> int:
 
     if returncode == 0:
         print(
-            PaastaColors.cyan(
-                f"Warning: Don't forget to revert in git as well. Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "
+            PaastaColors.red(
+                f"WARNING: You MUST manually revert changes in Git! Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "
+            )
+        )
+        print(
+            PaastaColors.red(
+                f"WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
             )
         )
 

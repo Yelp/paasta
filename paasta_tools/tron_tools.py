@@ -101,6 +101,7 @@ EXECUTOR_TYPE_TO_NAMESPACE = {
 DEFAULT_TZ = "US/Pacific"
 clusterman_metrics, _ = get_clusterman_metrics()
 EXECUTOR_TYPES = ["paasta", "ssh", "spark"]
+DEFAULT_SPARK_EXECUTOR_POOL = "batch"
 
 
 class FieldSelectorConfig(TypedDict):
@@ -439,6 +440,9 @@ class TronActionConfig(InstanceConfig):
         env = super().get_env(system_paasta_config=system_paasta_config)
 
         if self.get_executor() == "spark":
+            # Required by some sdks like boto3 client. Throws NoRegionError otherwise.
+            # AWS_REGION takes precedence if set.
+            env["AWS_DEFAULT_REGION"] = DEFAULT_AWS_REGION
             env["PAASTA_INSTANCE_TYPE"] = "spark"
             # XXX: is this actually necessary? every PR that's added this hasn't really mentioned why,
             # and Chesterton's Fence makes me very wary about removing it
@@ -618,9 +622,7 @@ class TronActionConfig(InstanceConfig):
         )
 
     def get_spark_executor_pool(self) -> str:
-        return self.config_dict.get(
-            "pool", load_system_paasta_config().get_tron_default_pool_override()
-        )
+        return self.config_dict.get("pool", DEFAULT_SPARK_EXECUTOR_POOL)
 
     def get_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name")

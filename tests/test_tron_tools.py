@@ -1204,6 +1204,7 @@ class TestTronTools:
                 "SPARK_USER": "root",
                 "ENABLE_PER_INSTANCE_LOGSPOUT": "1",
                 "KUBECONFIG": "/etc/kubernetes/spark.conf",
+                "AWS_DEFAULT_REGION": "us-west-2",
             },
             "node_selectors": {"yelp.com/pool": "stable"},
             "cap_add": [],
@@ -1882,7 +1883,7 @@ fake_job:
         mock_glob.return_value = [
             "/home/service/tron-dev-cluster2.yaml",
             "/home/service/tron-prod.yaml",
-            "/home/service/marathon-other.yaml",
+            "/home/service/kubernetes-other.yaml",
         ]
         result = tron_tools.list_tron_clusters("foo")
         assert sorted(result) == ["dev-cluster2", "prod"]

@@ -26,27 +26,20 @@ from mock import Mock
 from mock import patch
 
 import paasta_tools.paastaapi.models as paastamodels
-from paasta_tools import marathon_tools
+from paasta_tools import kubernetes_tools
 from paasta_tools import utils
 from paasta_tools.cli.cmds import status
 from paasta_tools.cli.cmds.status import append_pod_status
 from paasta_tools.cli.cmds.status import apply_args_filters
 from paasta_tools.cli.cmds.status import build_smartstack_backends_table
-from paasta_tools.cli.cmds.status import create_autoscaling_info_table
-from paasta_tools.cli.cmds.status import create_mesos_non_running_tasks_table
-from paasta_tools.cli.cmds.status import create_mesos_running_tasks_table
 from paasta_tools.cli.cmds.status import desired_state_human
 from paasta_tools.cli.cmds.status import format_kubernetes_pod_table
 from paasta_tools.cli.cmds.status import format_kubernetes_replicaset_table
-from paasta_tools.cli.cmds.status import format_marathon_task_table
 from paasta_tools.cli.cmds.status import get_flink_job_name
 from paasta_tools.cli.cmds.status import get_instance_state
 from paasta_tools.cli.cmds.status import get_smartstack_status_human
 from paasta_tools.cli.cmds.status import get_versions_table
 from paasta_tools.cli.cmds.status import haproxy_backend_report
-from paasta_tools.cli.cmds.status import marathon_app_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_human
-from paasta_tools.cli.cmds.status import marathon_mesos_status_summary
 from paasta_tools.cli.cmds.status import missing_deployments_message
 from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import paasta_status_on_api_endpoint
@@ -55,7 +48,6 @@ from paasta_tools.cli.cmds.status import print_flink_status
 from paasta_tools.cli.cmds.status import print_kafka_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status
 from paasta_tools.cli.cmds.status import print_kubernetes_status_v2
-from paasta_tools.cli.cmds.status import print_marathon_status
 from paasta_tools.cli.cmds.status import recent_container_restart
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.utils import NoSuchService
@@ -920,33 +912,6 @@ def test_status_with_registration(
 
 
 @pytest.fixture
-def mock_marathon_status(include_envoy=True):
-    kwargs = dict(
-        desired_state="start",
-        desired_app_id="abc.def",
-        app_id="fake_app_id",
-        app_count=1,
-        running_instance_count=2,
-        expected_instance_count=2,
-        deploy_status="Running",
-        bounce_method="crossover",
-        app_statuses=[],
-        mesos=paastamodels.MarathonMesosStatus(
-            running_task_count=2,
-            running_tasks=[],
-            non_running_tasks=[],
-        ),
-    )
-    if include_envoy:
-        kwargs["envoy"] = paastamodels.EnvoyStatus(
-            registration="fake_service.fake_instance",
-            expected_backends_per_location=1,
-            locations=[],
-        )
-    return paastamodels.InstanceStatusMarathon(**kwargs)
-
-
-@pytest.fixture
 def mock_kubernetes_status():
     return paastamodels.InstanceStatusKubernetes(
         desired_state="start",
@@ -1671,14 +1636,14 @@ def mock_flink_status() -> Mapping[str, Any]:
 
 
 @mock.patch("paasta_tools.cli.cmds.status.get_paasta_oapi_client", autospec=True)
-def test_paasta_status_on_api_endpoint_marathon(
-    mock_get_paasta_oapi_client, system_paasta_config, mock_marathon_status
+def test_paasta_status_on_api_endpoint_kubernetes_v2(
+    mock_get_paasta_oapi_client, system_paasta_config, mock_kubernetes_status_v2
 ):
     fake_status_obj = paastamodels.InstanceStatus(
         git_sha="fake_git_sha",
         instance="fake_instance",
         service="fake_service",
-        marathon=mock_marathon_status,
+        kubernetes_v2=mock_kubernetes_status_v2,
     )
 
     mock_api = mock_get_paasta_oapi_client.return_value
@@ -1741,32 +1706,6 @@ def test_format_kubernetes_replicaset_table_in_non_verbose(mock_kubernetes_statu
         )
 
         assert mock_format_kubernetes_replicaset_table.called
-
-
-class TestPrintMarathonStatus:
-    def test_error(self, mock_marathon_status):
-        mock_marathon_status.error_message = "Things went wrong"
-        output = []
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=output,
-            marathon_status=mock_marathon_status,
-        )
-
-        assert return_value == 1
-        assert output == ["Things went wrong"]
-
-    def test_successful_return_value(self, mock_marathon_status):
-        return_value = print_marathon_status(
-            cluster="fake_cluster",
-            service="fake_service",
-            instance="fake_instance",
-            output=[],
-            marathon_status=mock_marathon_status,
-        )
-        assert return_value == 0
 
 
 @pytest.fixture
@@ -2215,9 +2154,6 @@ class TestPrintKubernetesStatus:
         )
         assert return_value == 0
 
-    @patch(
-        "paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True
-    )
     @patch("paasta_tools.cli.cmds.status.get_smartstack_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.get_envoy_status_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
@@ -2234,7 +2170,6 @@ class TestPrintKubernetesStatus:
         mock_naturaltime,
         mock_get_envoy_status_human,
         mock_get_smartstack_status_human,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
@@ -2908,135 +2843,6 @@ def _formatted_table_to_dict(formatted_table):
     return dict(zip(headers, fields))
 
 
-def test_create_autoscaling_info_table():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=0.6,
-        target_instances=3,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    assert output[0] == "Autoscaling Info:"
-
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-    assert table_headings_to_values == {
-        "Current instances": "2",
-        "Max instances": "5",
-        "Min instances": "1",
-        "Current utilization": "60.0%",
-        "Target instances": "3",
-    }
-
-
-def test_create_autoscaling_info_table_errors():
-    mock_autoscaling_info = paastamodels.MarathonAutoscalingInfo(
-        current_instances=2,
-        max_instances=5,
-        min_instances=1,
-        current_utilization=None,
-        target_instances=None,
-    )
-    output = create_autoscaling_info_table(mock_autoscaling_info)
-    table_headings_to_values = _formatted_table_to_dict(output[1:])
-
-    assert table_headings_to_values["Current utilization"] == "Exception"
-    assert table_headings_to_values["Target instances"] == "Exception"
-
-
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestMarathonAppStatusHuman:
-    @pytest.fixture
-    def mock_app_status(self):
-        return Struct(
-            tasks_running=5,
-            tasks_healthy=4,
-            tasks_staged=3,
-            tasks_total=12,
-            create_timestamp=1565731681,
-            deploy_status="Deploying",
-            dashboard_url="http://paasta.party",
-            backoff_seconds=2,
-            unused_offer_reason_counts=None,
-            tasks=[],
-        )
-
-    def test_marathon_app_status_human(self, mock_naturaltime, mock_app_status):
-        output = marathon_app_status_human("app_id", mock_app_status)
-        uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-
-        assert uncolored_output == [
-            f"Dashboard: {mock_app_status.dashboard_url}",
-            f"  5 running, 4 healthy, 3 staged out of 12",
-            f"  App created: 2019-08-13 21:28:01 ({mock_naturaltime.return_value})",
-            f"  Status: Deploying",
-        ]
-
-    def test_no_dashboard_url(self, mock_naturaltime, mock_app_status):
-        mock_app_status.dashboard_url = None
-        output = marathon_app_status_human("app_id", mock_app_status)
-        assert remove_ansi_escape_sequences(output[0]) == "App ID: app_id"
-
-    @patch("paasta_tools.cli.cmds.status.format_marathon_task_table", autospec=True)
-    def test_tasks_list(
-        self, mock_format_marathon_task_table, mock_naturaltime, mock_app_status
-    ):
-        mock_app_status.tasks = [Struct()]
-        mock_format_marathon_task_table.return_value = ["task table 1", "task table 2"]
-        output = marathon_app_status_human("app_id", mock_app_status)
-
-        expected_task_table_lines = ["  Tasks:", "    task table 1", "    task table 2"]
-        assert output[-3:] == expected_task_table_lines
-
-    def test_unused_offers(self, mock_naturaltime, mock_app_status):
-        mock_app_status.unused_offer_reason_counts = {"reason1": 5, "reason2": 3}
-        output = marathon_app_status_human("app_id", mock_app_status)
-        expected_lines = ["  Possibly stalled for:", "    reason1: 5", "    reason2: 3"]
-        assert output[-3:] == expected_lines
-
-
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-class TestFormatMarathonTaskTable:
-    @pytest.fixture
-    def mock_marathon_task(self):
-        return paastamodels.MarathonTask(
-            id="abc123",
-            host="paasta.cloud",
-            port=4321,
-            deployed_timestamp=1565648600.0,
-            is_healthy=True,
-        )
-
-    def test_format_marathon_task_table(self, mock_naturaltime, mock_marathon_task):
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict == {
-            "Mesos Task ID": "abc123",
-            "Host deployed to": "paasta.cloud:4321",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
-            "Health": PaastaColors.green("Healthy"),
-        }
-
-    def test_no_host(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.host = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Host deployed to"] == "Unknown"
-
-    def test_unhealthy(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = False
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.red("Unhealthy")
-
-    def test_no_health(self, mock_naturaltime, mock_marathon_task):
-        mock_marathon_task.is_healthy = None
-        output = format_marathon_task_table([mock_marathon_task])
-        task_table_dict = _formatted_table_to_dict(output)
-        assert task_table_dict["Health"] == PaastaColors.grey("N/A")
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestFormatKubernetesPodTable:
     @pytest.fixture
@@ -3066,7 +2872,6 @@ class TestFormatKubernetesPodTable:
     def test_format_kubernetes_pod_table(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
@@ -3081,7 +2886,6 @@ class TestFormatKubernetesPodTable:
     def test_format_kubernetes_replicaset_table(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_replicaset,
     ):
         output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
@@ -3097,7 +2901,6 @@ class TestFormatKubernetesPodTable:
     def test_no_host(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.host = None
@@ -3110,7 +2913,6 @@ class TestFormatKubernetesPodTable:
     def test_unhealthy(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
         phase,
         ready,
@@ -3125,7 +2927,6 @@ class TestFormatKubernetesPodTable:
     def test_evicted(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.phase = "Failed"
@@ -3138,7 +2939,6 @@ class TestFormatKubernetesPodTable:
     def test_no_health(
         self,
         mock_naturaltime,
-        mock_format_tail_lines_for_mesos_task,
         mock_kubernetes_pod,
     ):
         mock_kubernetes_pod.phase = None
@@ -3148,60 +2948,6 @@ class TestFormatKubernetesPodTable:
         assert pod_table_dict["Health"] == PaastaColors.grey("N/A")
 
 
-@patch("paasta_tools.cli.cmds.status.create_mesos_running_tasks_table", autospec=True)
-@patch(
-    "paasta_tools.cli.cmds.status.create_mesos_non_running_tasks_table", autospec=True
-)
-@patch("paasta_tools.cli.cmds.status.marathon_mesos_status_summary", autospec=True)
-def test_marathon_mesos_status_human(
-    mock_marathon_mesos_status_summary,
-    mock_create_mesos_non_running_tasks_table,
-    mock_create_mesos_running_tasks_table,
-):
-    mock_create_mesos_running_tasks_table.return_value = [
-        "running task 1",
-        "running task 2",
-    ]
-    mock_create_mesos_non_running_tasks_table.return_value = ["non-running task 1"]
-
-    running_tasks = [
-        paastamodels.MarathonMesosRunningTask(),
-        paastamodels.MarathonMesosRunningTask(),
-    ]
-    non_running_tasks = [paastamodels.MarathonMesosNonrunningTask()]
-    mesos_status = paastamodels.MarathonMesosStatus(
-        running_task_count=2,
-        running_tasks=running_tasks,
-        non_running_tasks=non_running_tasks,
-    )
-    output = marathon_mesos_status_human(
-        mesos_status,
-        expected_instance_count=2,
-    )
-
-    assert output == [
-        mock_marathon_mesos_status_summary.return_value,
-        "  Running Tasks:",
-        "    running task 1",
-        "    running task 2",
-        PaastaColors.grey("  Non-running Tasks:"),
-        "    non-running task 1",
-    ]
-    mock_marathon_mesos_status_summary.assert_called_once_with(2, 2)
-    mock_create_mesos_running_tasks_table.assert_called_once_with(running_tasks)
-    mock_create_mesos_non_running_tasks_table.assert_called_once_with(non_running_tasks)
-
-
-def test_marathon_mesos_status_summary():
-    status_summary = marathon_mesos_status_summary(
-        mesos_task_count=3, expected_instance_count=2
-    )
-    expected_status = PaastaColors.green("Healthy")
-    expected_count = PaastaColors.green(f"(3/2)")
-    assert f"{expected_status} - {expected_count}" in status_summary
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
 @patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
 class TestCreateMesosRunningTasksTable:
     @pytest.fixture
@@ -3217,114 +2963,6 @@ class TestCreateMesosRunningTasksTable:
             deployed_timestamp=1565567511.0,
             tail_lines=Struct(),
         )
-
-    def test_create_mesos_running_tasks_table(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_format_tail_lines_for_mesos_task.return_value = [
-            "tail line 1",
-            "tail line 2",
-        ]
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output[:2])
-        assert running_tasks_dict == {
-            "Mesos Task ID": mock_running_task.id,
-            "Host deployed to": mock_running_task.hostname,
-            "Ram": "1/2MB",
-            "CPU": "0.8%",
-            "Deployed at what localtime": f"2019-08-11T23:51 ({mock_naturaltime.return_value})",
-        }
-        assert output[2:] == ["tail line 1", "tail line 2"]
-        mock_format_tail_lines_for_mesos_task.assert_called_once_with(
-            mock_running_task.tail_lines, mock_running_task.id
-        )
-
-    def test_error_messages(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.mem_limit = paastamodels.FloatAndError(
-            error_message="Couldn't get memory"
-        )
-        mock_running_task.rss = paastamodels.IntegerAndError(value=1)
-        mock_running_task.cpu_shares = paastamodels.FloatAndError(
-            error_message="Couldn't get CPU"
-        )
-
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["Ram"] == "Couldn't get memory"
-        assert running_tasks_dict["CPU"] == "Couldn't get CPU"
-
-    def test_undefined_cpu(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.cpu_shares.value = 0
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["CPU"] == "Undef"
-
-    def test_high_cpu(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        mock_running_task.cpu_shares.value = 0.1
-        mock_running_task.cpu_used_seconds.value = 28
-        output = create_mesos_running_tasks_table([mock_running_task])
-        running_tasks_dict = _formatted_table_to_dict(output)
-        assert running_tasks_dict["CPU"] == PaastaColors.red("93.3%")
-
-    def test_tasks_are_none(
-        self, mock_naturaltime, mock_format_tail_lines_for_mesos_task, mock_running_task
-    ):
-        assert len(create_mesos_running_tasks_table(None)) == 1  # just the header
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
-@patch("paasta_tools.cli.cmds.status.humanize.naturaltime", autospec=True)
-def test_create_mesos_non_running_tasks_table(
-    mock_naturaltime, mock_format_tail_lines_for_mesos_task
-):
-    mock_format_tail_lines_for_mesos_task.return_value = ["tail line 1", "tail line 2"]
-    mock_non_running_task = Struct(
-        id="task_id",
-        hostname="paasta.restaurant",
-        deployed_timestamp=1564642800.0,
-        state="Not running",
-        tail_lines=Struct(),
-    )
-    output = create_mesos_non_running_tasks_table([mock_non_running_task])
-    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-    task_dict = _formatted_table_to_dict(uncolored_output)
-    assert task_dict == {
-        "Mesos Task ID": mock_non_running_task.id,
-        "Host deployed to": mock_non_running_task.hostname,
-        "Deployed at what localtime": f"2019-08-01T07:00 ({mock_naturaltime.return_value})",
-        "Status": mock_non_running_task.state,
-    }
-    assert uncolored_output[2:] == ["tail line 1", "tail line 2"]
-    mock_format_tail_lines_for_mesos_task.assert_called_once_with(
-        mock_non_running_task.tail_lines, mock_non_running_task.id
-    )
-
-
-@patch("paasta_tools.cli.cmds.status.format_tail_lines_for_mesos_task", autospec=True)
-def test_create_mesos_non_running_tasks_table_handles_none_deployed_timestamp(
-    mock_format_tail_lines_for_mesos_task,
-):
-    mock_non_running_task = Struct(
-        id="task_id",
-        hostname="paasta.restaurant",
-        deployed_timestamp=None,
-        state="Not running",
-        tail_lines=Struct(),
-    )
-    output = create_mesos_non_running_tasks_table([mock_non_running_task])
-    uncolored_output = [remove_ansi_escape_sequences(line) for line in output]
-    task_dict = _formatted_table_to_dict(uncolored_output)
-    assert task_dict["Deployed at what localtime"] == "Unknown"
-
-
-def test_create_mesos_non_running_tasks_table_handles_nones():
-    assert len(create_mesos_non_running_tasks_table(None)) == 1  # just the header
 
 
 @patch("paasta_tools.cli.cmds.status.haproxy_backend_report", autospec=True)
@@ -3433,7 +3071,7 @@ class TestBuildSmartstackBackendsTable:
 
 
 def test_get_desired_state_human():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -3446,7 +3084,7 @@ def test_get_desired_state_human():
 
 
 def test_get_desired_state_human_started_with_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",
@@ -3459,7 +3097,7 @@ def test_get_desired_state_human_started_with_instances():
 
 
 def test_get_desired_state_human_with_0_instances():
-    fake_conf = marathon_tools.MarathonServiceConfig(
+    fake_conf = kubernetes_tools.KubernetesDeploymentConfig(
         service="service",
         cluster="cluster",
         instance="instance",

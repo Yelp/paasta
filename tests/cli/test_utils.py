@@ -26,7 +26,7 @@ from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -143,42 +143,6 @@ def test_check_ssh_on_master_check_sudo_failure(mock_run):
     assert actual[0] is False
     assert "1" in actual[1]
     assert "fake_output" in actual[1]
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_run_paasta_metastatus(mock_run):
-    mock_run.return_value = (0, "fake_output")
-    expected_command = (
-        "ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus"
-    )
-    return_code, actual = utils.run_paasta_metastatus("fake_master", [], 0)
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert return_code == 0
-    assert actual == mock_run.return_value[1]
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_run_paasta_metastatus_verbose(mock_run):
-    mock_run.return_value = (0, "fake_output")
-    expected_command = (
-        "ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -v"
-    )
-    return_code, actual = utils.run_paasta_metastatus("fake_master", [], 1)
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert return_code == 0
-    assert actual == mock_run.return_value[1]
-
-
-@patch("paasta_tools.cli.utils._run", autospec=True)
-def test_run_paasta_metastatus_very_verbose(mock_run):
-    mock_run.return_value = (0, "fake_output")
-    return_code, actual = utils.run_paasta_metastatus("fake_master", [], 2, False)
-    expected_command = (
-        "ssh -A -n -o StrictHostKeyChecking=no fake_master sudo paasta_metastatus -vv"
-    )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
-    assert return_code == 0
-    assert actual == mock_run.return_value[1]
 
 
 @patch("paasta_tools.cli.utils.list_all_instances_for_service", autospec=True)
@@ -308,13 +272,6 @@ def test_get_subparser():
     )
 
 
-def test_pick_slave_from_status():
-    mock_slaves = [1, 2]
-    mock_status = mock.Mock(marathon=mock.Mock(slaves=mock_slaves))
-    assert utils.pick_slave_from_status(mock_status, host=None) == 1
-    assert utils.pick_slave_from_status(mock_status, host="lolhost") == "lolhost"
-
-
 def test_git_sha_validation():
     assert (
         utils.validate_full_git_sha("060ce8bc10efe0030c048a4711ad5dd85de5adac")
@@ -332,14 +289,14 @@ def test_list_deploy_groups_parses_configs(
     mock_get_instance_configs_for_service,
 ):
     mock_get_instance_configs_for_service.return_value = [
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="",
             instance="",
             config_dict={"deploy_group": "fake_deploy_group"},
             branch_dict=None,
         ),
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             service="foo",
             cluster="fake_cluster",
             instance="fake_instance",
@@ -374,53 +331,6 @@ def test_pick_random_port():
         port3 = utils.pick_random_port("different_fake_service")
         assert port1 != port3
         assert 33000 <= port3 < 58000
-
-
-@patch("paasta_tools.cli.utils._log_audit", autospec=True)
-@patch("paasta_tools.cli.utils.run_paasta_cluster_boost", autospec=True)
-@patch("paasta_tools.cli.utils.connectable_master", autospec=True)
-@mark.parametrize(
-    "master_result,boost_result,expected_result",
-    [(utils.NoMasterError("error"), None, 1), (mock.Mock(), 1, 1), (mock.Mock(), 0, 0)],
-)
-def test_execute_paasta_cluster_boost_on_remote_master(
-    mock_connectable_master,
-    mock_boost,
-    mock_log,
-    master_result,
-    boost_result,
-    expected_result,
-):
-    mock_c1 = mock.Mock()
-    mock_connectable_master.side_effect = [mock_c1, master_result]
-    clusters = ["c1", "c2"]
-    mock_config = mock.Mock()
-    mock_boost.side_effect = [(0, ""), (boost_result, "")]
-
-    code, output = utils.execute_paasta_cluster_boost_on_remote_master(
-        clusters,
-        mock_config,
-        "do_action",
-        "a_pool",
-        duration=30,
-        override=False,
-        boost=2,
-        verbose=1,
-    )
-
-    shared_kwargs = dict(
-        action="do_action",
-        pool="a_pool",
-        duration=30,
-        override=False,
-        boost=2,
-        verbose=1,
-    )
-    expected_calls = [mock.call(master=mock_c1, **shared_kwargs)]
-    if not isinstance(master_result, utils.NoMasterError):
-        expected_calls.append(mock.call(master=master_result, **shared_kwargs))
-    assert mock_boost.call_args_list == expected_calls
-    assert code == expected_result
 
 
 @mock.patch("paasta_tools.cli.utils._log", mock.Mock(), autospec=None)

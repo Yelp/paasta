@@ -386,18 +386,33 @@ instance MAY have:
 
   * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for details
 
-    * ``metrics_provider``: Which method the autoscaler will use to determine a service's utilization.
-      Should be ``cpu``, ``uwsgi``, or ``gunicorn``.
+    * ``metrics_providers``: A list of data sources to use for autoscaling:
 
-    * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
-      Should be ``proportional`` or ``bespoke``.
+        * ``type``: Which method the autoscaler will use to determine a service's utilization.
+          Should be ``cpu``, ``uwsgi``, ``active-reqeusts``, ``piscina``, ``gunicorn``, or ``arbitrary_promql``.
 
-    * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
-    Default value is 0.8.
+        * ``decision_policy``: Which method the autoscaler will use to determine when to autoscale a service.
+          Should be ``proportional`` or ``bespoke``.
 
-    * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
-    and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
-    The default is the same as your ``setpoint``.
+        * ``setpoint``: The target utilization (as measured by your ``metrics_provider``) that the autoscaler will try to achieve.
+          Default value is 0.8.
+
+        * ``desired_active_requests_per_replica``: Only valid for the ``active-requests`` metrics provider.  The
+          target number of requests per second each pod should be receiving.
+
+        * ``max_instances_alert_threshold``: If the autoscaler has scaled your service to ``max_instances``,
+          and the service's utilization (as measured by your ``metrics_provider``) is above this value, you'll get an alert.
+          The default is the same as your ``setpoint``.
+
+        * ``moving_average_window_seconds``: A smoothing function to apply to the data received from your metrics
+          provider.
+
+        * ``prometheus_adapter_config``: **(advanced users only)** Custom prometheus configuration for the
+          ``arbitrary_promql`` metrics provider.
+
+    * ``scaledown_policies``: Custom configuration for the Kubernetes HPA controlling when the service will scale down;
+      this parameter exactly follows the `Kubernetes HPA schema <https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#scaling-policies>`
+      for scaling policies.
 
   * ``deploy_group``: A string identifying what deploy group this instance belongs
     to. The ``step`` parameter in ``deploy.yaml`` references this value

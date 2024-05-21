@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 import logging
+from typing import Any
 from typing import Dict
 from typing import Iterable
 from typing import List
@@ -21,6 +23,7 @@ from typing import Type
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools import utils
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import InstanceConfig_T
@@ -45,13 +48,13 @@ class PaastaServiceConfigLoader:
     >>>
     >>> sc = PaastaServiceConfigLoader(service='fake_service', soa_dir=DEFAULT_SOA_DIR)
     >>>
-    >>> for instance in sc.instances(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
+    >>> for instance in sc.instances(cluster='fake_cluster', instance_type_class=KubernetesDeploymentConfig):
     ...     print(instance)
     ...
     main
     canary
     >>>
-    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type_class=MarathonServiceConfig):
+    >>> for instance_config in sc.instance_configs(cluster='fake_cluster', instance_type_class=KubernetesDeploymentConfig):
     ...     print(instance_config.get_instance())
     ...
     main
@@ -109,7 +112,7 @@ class PaastaServiceConfigLoader:
 
         :param cluster: The cluster name
         :param instance_type_class: a subclass of InstanceConfig
-        :returns: an iterator that yields instances of MarathonServiceConfig, etc.
+        :returns: an iterator that yields instances of KubernetesDeploymentConfig, etc.
         :raises NotImplementedError: when it doesn't know how to create a config for instance_type_class
         """
         if (cluster, instance_type_class) not in self._framework_configs:
@@ -170,7 +173,7 @@ class PaastaServiceConfigLoader:
         config: utils.InstanceConfigDict,
         config_class: Type[InstanceConfig_T],
     ) -> InstanceConfig_T:
-        """Create a service instance's configuration for marathon.
+        """Create a service instance's configuration for kubernetes.
 
         :param cluster: The cluster to read the configuration for
         :param instance: The instance of the service to retrieve
@@ -179,6 +182,15 @@ class PaastaServiceConfigLoader:
         """
 
         merged_config = self._get_merged_config(config)
+
+        # These type: ignore annotations will go away once yelpsoa-configs is migrated (COREJAVA-1339)
+        if (
+            "autoscaling" in merged_config
+            and "metrics_providers" not in merged_config["autoscaling"]  # type: ignore
+        ):
+            merged_config["autoscaling"] = transform_autoscaling_params_dict(  # type: ignore
+                copy.deepcopy(merged_config["autoscaling"])  # type: ignore
+            )
 
         temp_instance_config = config_class(
             service=self._service,
@@ -199,3 +211,18 @@ class PaastaServiceConfigLoader:
             branch_dict=branch_dict,
             soa_dir=self._soa_dir,
         )
+
+
+# Remove this once yelpsoa-configs is using the new format (COREJAVA-1339)
+def transform_autoscaling_params_dict(
+    old_autoscaling_params: Dict[str, Any]
+) -> AutoscalingParamsDict:
+    metrics_provider_type = old_autoscaling_params.pop("metrics_provider", "cpu")
+    old_autoscaling_params["type"] = metrics_provider_type
+    scaledown_policies = old_autoscaling_params.pop("scaledown_policies", None)
+
+    new_autoscaling_params = {"metrics_providers": [old_autoscaling_params]}
+    if scaledown_policies is not None:
+        new_autoscaling_params["scaledown_policies"] = scaledown_policies
+
+    return new_autoscaling_params  # type: ignore

@@ -570,33 +570,6 @@ def test_SystemPaastaConfig_get_cluster_fqdn_format():
     assert actual == expected
 
 
-def test_SystemPaastaConfig_get_deployd_number_workers():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_number_workers": 3}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_number_workers()
-    expected = 3
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_big_bounce_deadline():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_big_bounce_deadline": 305}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_big_bounce_deadline()
-    expected = 305
-    assert actual == expected
-
-
-def test_SystemPaastaConfig_get_deployd_log_level():
-    fake_config = utils.SystemPaastaConfig(
-        {"deployd_log_level": "DEBUG"}, "/some/fake/dir"
-    )
-    actual = fake_config.get_deployd_log_level()
-    expected = "DEBUG"
-    assert actual == expected
-
-
 @pytest.mark.parametrize(
     "config,expected_git,expected_primary",
     [
@@ -814,8 +787,8 @@ def test_remove_ansi_escape_sequences():
 def test_missing_cluster_configs_are_ignored():
     fake_soa_dir = "/nail/etc/services"
     fake_cluster_configs = [
-        "/nail/etc/services/service1/marathon-cluster1.yaml",
-        "/nail/etc/services/service2/marathon-cluster2.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster1.yaml",
+        "/nail/etc/services/service2/kubernetes-cluster2.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -839,8 +812,8 @@ def test_missing_cluster_configs_are_ignored():
 def test_list_clusters_no_service_given_lists_all_of_them():
     fake_soa_dir = "/nail/etc/services"
     fake_soa_cluster_configs = [
-        ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
+        ["cluster1", "/nail/etc/services/service1/kubernetes-cluster1.yaml"],
+        ["cluster2", "/nail/etc/services/service1/kubernetes-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -856,8 +829,8 @@ def test_list_clusters_with_service():
     fake_soa_dir = "/nail/etc/services"
     fake_service = "fake_service"
     fake_soa_cluster_configs = [
-        ["cluster1", "/nail/etc/services/service1/marathon-cluster1.yaml"],
-        ["cluster2", "/nail/etc/services/service1/marathon-cluster2.yaml"],
+        ["cluster1", "/nail/etc/services/service1/kubernetes-cluster1.yaml"],
+        ["cluster2", "/nail/etc/services/service1/kubernetes-cluster2.yaml"],
     ]
     expected = ["cluster1", "cluster2"]
     with mock.patch(
@@ -873,10 +846,10 @@ def test_list_clusters_ignores_bogus_clusters():
     fake_soa_dir = "/nail/etc/services"
     fake_service = "fake_service"
     fake_cluster_configs = [
-        "/nail/etc/services/service1/marathon-cluster1.yaml",
-        "/nail/etc/services/service1/marathon-PROD.yaml",
-        "/nail/etc/services/service1/marathon-cluster2.yaml",
-        "/nail/etc/services/service1/marathon-SHARED.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster1.yaml",
+        "/nail/etc/services/service1/kubernetes-PROD.yaml",
+        "/nail/etc/services/service1/kubernetes-cluster2.yaml",
+        "/nail/etc/services/service1/kubernetes-SHARED.yaml",
     ]
     fake_system_paasta_config = utils.SystemPaastaConfig(
         {"clusters": ["cluster1", "cluster2"]}, fake_soa_dir
@@ -1178,21 +1151,21 @@ def test_load_service_instance_auto_configs_no_aliases(
     instance_type_enabled,
 ):
     mock_load_system_paasta_config.return_value.get_auto_config_instance_types_enabled.return_value = {
-        "marathon": instance_type_enabled,
+        "kubernetes": instance_type_enabled,
     }
     mock_load_system_paasta_config.return_value.get_auto_config_instance_type_aliases.return_value = (
         {}
     )
     result = utils.load_service_instance_auto_configs(
         service="fake_service",
-        instance_type="marathon",
+        instance_type="kubernetes",
         cluster="fake",
         soa_dir="fake_dir",
     )
     if instance_type_enabled:
         mock_read_extra_service_information.assert_called_with(
             "fake_service",
-            f"{utils.AUTO_SOACONFIG_SUBDIR}/marathon-fake",
+            f"{utils.AUTO_SOACONFIG_SUBDIR}/kubernetes-fake",
             soa_dir="fake_dir",
             deepcopy=False,
         )
@@ -2337,8 +2310,8 @@ def test_deploy_blacklist_to_constraints():
     assert actual == expected_constraints
 
 
-def test_validate_service_instance_valid_marathon():
-    mock_marathon_instances = [("service1", "main"), ("service1", "main2")]
+def test_validate_service_instance_valid_kubernetes():
+    mock_kubernetes_instances = [("service1", "main"), ("service1", "main2")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2346,18 +2319,18 @@ def test_validate_service_instance_valid_marathon():
     with mock.patch(
         "paasta_tools.utils.get_service_instance_list",
         autospec=True,
-        side_effect=[mock_marathon_instances],
+        side_effect=[mock_kubernetes_instances],
     ):
         assert (
             utils.validate_service_instance(
                 my_service, my_instance, fake_cluster, fake_soa_dir
             )
-            == "marathon"
+            == "paasta_native"  # the first entry in utils.INSTANCE_TYPES
         )
 
 
 def test_validate_service_instance_invalid():
-    mock_marathon_instances = [("service1", "main1"), ("service1", "main2")]
+    mock_kubernetes_instances = [("service1", "main1"), ("service1", "main2")]
     mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
@@ -2368,6 +2341,7 @@ def test_validate_service_instance_invalid():
     mock_cassandracluster_instances = [("service1", "cassandracluster")]
     mock_kafkacluster_instances = [("service1", "kafkacluster")]
     mock_nrtsearch_instances = [("service1", "nrtsearch")]
+    mock_nrtsearcheks_instances = [("service1", "nrtsearcheks")]
     mock_monkrelaycluster_instances = [("service1", "monkrelays")]
     mock_vitesscluster_instances = [("service1", "vitesscluster")]
     my_service = "service1"
@@ -2378,7 +2352,7 @@ def test_validate_service_instance_invalid():
         "paasta_tools.utils.get_service_instance_list",
         autospec=True,
         side_effect=[
-            mock_marathon_instances,
+            mock_kubernetes_instances,
             mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
@@ -2389,6 +2363,7 @@ def test_validate_service_instance_invalid():
             mock_cassandracluster_instances,
             mock_kafkacluster_instances,
             mock_nrtsearch_instances,
+            mock_nrtsearcheks_instances,
             mock_monkrelaycluster_instances,
             mock_vitesscluster_instances,
         ],

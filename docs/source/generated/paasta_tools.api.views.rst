@@ -10,8 +10,6 @@ Submodules
    paasta_tools.api.views.exception
    paasta_tools.api.views.flink
    paasta_tools.api.views.instance
-   paasta_tools.api.views.marathon_dashboard
-   paasta_tools.api.views.metastatus
    paasta_tools.api.views.pause_autoscaler
    paasta_tools.api.views.resources
    paasta_tools.api.views.service

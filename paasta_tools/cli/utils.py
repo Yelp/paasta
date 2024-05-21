@@ -50,13 +50,14 @@ from paasta_tools.kafkacluster_tools import load_kafkacluster_instance_config
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import load_kubernetes_service_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monkrelaycluster_tools import load_monkrelaycluster_instance_config
 from paasta_tools.nrtsearchservice_tools import load_nrtsearchservice_instance_config
+from paasta_tools.nrtsearchserviceeks_tools import (
+    load_nrtsearchserviceeks_instance_config,
+)
 from paasta_tools.paasta_service_config_loader import PaastaServiceConfigLoader
 from paasta_tools.tron_tools import load_tron_instance_config
 from paasta_tools.utils import _log
-from paasta_tools.utils import _log_audit
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_CONFIGS_GIT_URL
@@ -191,8 +192,6 @@ class PaastaCheckMessages:
     )
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
-
-    MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
     ADHOC_YAML_FOUND = success("Found adhoc.yaml file.")
 
@@ -493,131 +492,6 @@ def check_ssh_on_master(master, timeout=10):
     return (False, output)
 
 
-def get_paasta_metastatus_cmd_args(
-    groupings: Sequence[str],
-    verbose: int = 0,
-    autoscaling_info: bool = False,
-    use_mesos_cache: bool = False,
-) -> Tuple[Sequence[str], int]:
-    if verbose > 0:
-        verbose_arg = ["-%s" % ("v" * verbose)]
-        timeout = 120
-    else:
-        verbose_arg = []
-        timeout = 20
-    autoscaling_arg = ["-a"] if autoscaling_info else []
-    if autoscaling_arg and verbose < 2:
-        verbose_arg = ["-vv"]
-    groupings_args = ["-g", *groupings] if groupings else []
-    cache_arg = ["--use-mesos-cache"] if use_mesos_cache else []
-    cmd_args = [*verbose_arg, *groupings_args, *autoscaling_arg, *cache_arg]
-    return cmd_args, timeout
-
-
-def run_paasta_metastatus(
-    master: str,
-    groupings: Sequence[str],
-    verbose: int = 0,
-    autoscaling_info: bool = False,
-    use_mesos_cache: bool = False,
-) -> Tuple[int, str]:
-    cmd_args, timeout = get_paasta_metastatus_cmd_args(
-        groupings=groupings,
-        verbose=verbose,
-        autoscaling_info=autoscaling_info,
-        use_mesos_cache=use_mesos_cache,
-    )
-    command = (
-        "ssh -A -n -o StrictHostKeyChecking=no {} sudo paasta_metastatus {}".format(
-            master, " ".join(cmd_args)
-        )
-    ).strip()
-    return_code, output = _run(command, timeout=timeout)
-    return return_code, output
-
-
-def run_paasta_cluster_boost(master, action, pool, duration, override, boost, verbose):
-    timeout = 20
-
-    verbose_flag: Optional[str]
-    if verbose > 0:
-        verbose_flag = "-{}".format("v" * verbose)
-    else:
-        verbose_flag = None
-
-    pool_flag = f"--pool {pool}"
-    duration_flag = f"--duration {duration}" if duration is not None else ""
-    boost_flag = f"--boost {boost}" if boost is not None else ""
-    override_flag = "--force" if override is not None else ""
-
-    cmd_args = " ".join(
-        filter(
-            None,
-            [action, pool_flag, duration_flag, boost_flag, override_flag, verbose_flag],
-        )
-    )
-    command = (
-        "ssh -A -n -o StrictHostKeyChecking=no {} paasta_cluster_boost {}".format(
-            master, cmd_args
-        )
-    ).strip()
-    return_code, output = _run(command, timeout=timeout)
-    return return_code, output
-
-
-def execute_paasta_cluster_boost_on_remote_master(
-    clusters,
-    system_paasta_config,
-    action,
-    pool,
-    duration=None,
-    override=None,
-    boost=None,
-    verbose=0,
-):
-    """Returns a string containing an error message if an error occurred.
-    Otherwise returns the output of run_paasta_cluster_boost().
-    """
-    result = {}
-    for cluster in clusters:
-        try:
-            master = connectable_master(cluster, system_paasta_config)
-        except NoMasterError as e:
-            result[cluster] = (255, str(e))
-            continue
-
-        result[cluster] = run_paasta_cluster_boost(
-            master=master,
-            action=action,
-            pool=pool,
-            duration=duration,
-            override=override,
-            boost=boost,
-            verbose=verbose,
-        )
-
-        audit_details = {
-            "boost_action": action,
-            "pool": pool,
-            "duration": duration,
-            "override": override,
-            "boost": boost,
-        }
-        _log_audit(
-            action="cluster-boost", action_details=audit_details, cluster=cluster
-        )
-
-    aggregated_code = 0
-    aggregated_output = ""
-    for cluster in result:
-        code = result[cluster][0]
-        output = result[cluster][1]
-        if not code == 0:
-            aggregated_code = 1
-        aggregated_output += f"\n{cluster}: \n{output}\n"
-    return (aggregated_code, aggregated_output)
-
-
 def run_on_master(
     cluster,
     system_paasta_config,
@@ -771,9 +645,6 @@ class LongRunningInstanceTypeHandler(NamedTuple):
 
 INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     lambda: InstanceTypeHandler(None, None),
-    marathon=InstanceTypeHandler(
-        get_service_instance_list, load_marathon_service_config
-    ),
     adhoc=InstanceTypeHandler(get_service_instance_list, load_adhoc_job_config),
     kubernetes=InstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
@@ -796,6 +667,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
+    nrtsearchserviceeks=InstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchserviceeks_instance_config
+    ),
     monkrelays=InstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
@@ -805,9 +679,6 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     str, LongRunningInstanceTypeHandler
 ] = defaultdict(
     lambda: LongRunningInstanceTypeHandler(None, None),
-    marathon=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_marathon_service_config
-    ),
     kubernetes=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_kubernetes_service_config
     ),
@@ -829,6 +700,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
+    nrtsearchserviceeks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_nrtsearchserviceeks_instance_config
+    ),
     monkrelays=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_monkrelaycluster_instance_config
     ),
@@ -847,7 +721,7 @@ def get_instance_config(
     instance_type: Optional[str] = None,
 ) -> InstanceConfig:
     """Returns the InstanceConfig object for whatever type of instance
-    it is. (marathon)"""
+    it is. (kubernetes)"""
     if instance_type is None:
         instance_type = validate_service_instance(
             service=service, instance=instance, cluster=cluster, soa_dir=soa_dir
@@ -968,11 +842,11 @@ def validate_given_deploy_groups(
 
 
 def short_to_full_git_sha(short, refs):
-    """Converts a short git sha to a full sha
+    """Converts a short git sha to a full SHA
 
-    :param short: A short git sha represented as a string
-    :param refs: A list of refs in the git repository
-    :return: The full git sha or None if one can't be found
+    :param short: A short Git SHA represented as a string
+    :param refs: A list of refs in the Git repository
+    :return: The full Git SHA or None if one can't be found
     """
     return [sha for sha in set(refs.values()) if sha.startswith(short)]
 
@@ -980,15 +854,15 @@ def short_to_full_git_sha(short, refs):
 def validate_short_git_sha(value):
     pattern = re.compile("[a-f0-9]{4,40}")
     if not pattern.match(value):
-        raise argparse.ArgumentTypeError("%s is not a valid git sha" % value)
+        raise argparse.ArgumentTypeError("%s is not a valid Git SHA" % value)
     return value
 
 
-def validate_full_git_sha(value):
+def validate_full_git_sha(value: str) -> str:
     pattern = re.compile("[a-f0-9]{40}")
     if not pattern.match(value):
         raise argparse.ArgumentTypeError(
-            "%s is not a full git sha, and PaaSTA needs the full sha" % value
+            "%s is not a full Git SHA, and PaaSTA needs the full SHA" % value
         )
     return value
 
@@ -1002,7 +876,7 @@ def validate_git_sha(sha, git_url):
         commits = short_to_full_git_sha(short=sha, refs=refs)
         if len(commits) != 1:
             raise ValueError(
-                "%s matched %d git shas (with refs pointing at them). Must match exactly 1."
+                "%s matched %d Git SHAs (with refs pointing at them). Must match exactly 1."
                 % (sha, len(commits))
             )
         return commits[0]
@@ -1057,14 +931,6 @@ def get_subparser(subparsers, function, command, help_text, description):
     )
     new_parser.set_defaults(command=function)
     return new_parser
-
-
-def pick_slave_from_status(status, host=None):
-    if host:
-        return host
-    else:
-        slaves = status.marathon.slaves
-        return slaves[0]
 
 
 def get_instance_configs_for_service(

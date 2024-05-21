@@ -966,7 +966,6 @@ def test_paasta_spark_run_bash(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -980,6 +979,7 @@ def test_paasta_spark_run_bash(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1013,6 +1013,7 @@ def test_paasta_spark_run_bash(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1091,7 +1092,6 @@ def test_paasta_spark_run(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=100 spark.executor.cores=10",
@@ -1105,6 +1105,7 @@ def test_paasta_spark_run(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1141,6 +1142,7 @@ def test_paasta_spark_run(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1216,7 +1218,6 @@ def test_paasta_spark_run_pyspark(
         cluster="test-cluster",
         pool="test-pool",
         yelpsoa_config_root="/path/to/soa",
-        no_aws_credentials=False,
         aws_credentials_yaml="/path/to/creds",
         aws_profile=None,
         spark_args="spark.cores.max=70 spark.executor.cores=10",
@@ -1230,6 +1231,7 @@ def test_paasta_spark_run_pyspark(
         k8s_server_address=None,
         tronfig=None,
         job_id=None,
+        use_web_identity=False,
     )
     mock_load_system_paasta_config_utils.return_value.get_kube_clusters.return_value = (
         {}
@@ -1268,6 +1270,7 @@ def test_paasta_spark_run_pyspark(
         profile_name=None,
         assume_aws_role_arn=None,
         session_duration=3600,
+        use_web_identity=False,
     )
     mock_get_docker_image.assert_called_once_with(
         args, mock_get_instance_config.return_value
@@ -1416,3 +1419,34 @@ def test_build_and_push_docker_image_unexpected_output_format(
     with pytest.raises(ValueError) as e:
         build_and_push_docker_image(args)
     assert "Could not determine digest from output" in str(e.value)
+
+
+def test_get_aws_credentials():
+    import os
+    from service_configuration_lib.spark_config import get_aws_credentials
+
+    with mock.patch.dict(
+        os.environ,
+        {
+            "AWS_WEB_IDENTITY_TOKEN_FILE": "./some-file.txt",
+            "AWS_ROLE_ARN": "some-role-for-test",
+        },
+    ), mock.patch(
+        "service_configuration_lib.spark_config.open",
+        mock.mock_open(read_data="token-content"),
+        autospec=False,
+    ), mock.patch(
+        "service_configuration_lib.spark_config.boto3.client",
+        autospec=False,
+    ) as boto3_client:
+        get_aws_credentials(
+            service="some-service",
+            use_web_identity=True,
+        )
+    boto3_client.assert_called_once_with("sts")
+    boto3_client.return_value.assume_role_with_web_identity.assert_called_once_with(
+        DurationSeconds=3600,
+        RoleArn="some-role-for-test",
+        RoleSessionName=mock.ANY,
+        WebIdentityToken="token-content",
+    )

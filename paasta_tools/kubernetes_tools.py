@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
+import copy
 import functools
 import hashlib
 import itertools
@@ -97,6 +98,7 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ReplicaSet
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
@@ -107,6 +109,7 @@ from kubernetes.client import V1SecretKeySelector
 from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
+from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
@@ -114,6 +117,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V1VolumeProjection
 from kubernetes.client import V1WeightedPodAffinityTerm
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
@@ -131,14 +135,22 @@ from service_configuration_lib import read_soa_metadata
 
 from paasta_tools import __version__
 from paasta_tools.async_utils import async_timeout
-from paasta_tools.long_running_service_tools import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import AutoscalingParamsDict
+from paasta_tools.autoscaling.utils import MetricsProviderDict
 from paasta_tools.long_running_service_tools import host_passes_blacklist
 from paasta_tools.long_running_service_tools import host_passes_whitelist
 from paasta_tools.long_running_service_tools import InvalidHealthcheckMode
 from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_ACTIVE_REQUESTS
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_GUNICORN
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
+from paasta_tools.paasta_service_config_loader import transform_autoscaling_params_dict
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -162,6 +174,7 @@ from paasta_tools.utils import load_v2_deployments_json
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import time_cache
@@ -198,6 +211,13 @@ DISCOVERY_ATTRIBUTES = {
     "hostname",
     "owner",
 }
+ZONE_LABELS = (
+    "topology.kubernetes.io/zone",
+    "yelp.com/habitat",
+    "yelp.com/eni_config",
+    "karpenter.sh/nodepool",
+    "topology.ebs.csi.aws.com/zone",
+)
 
 GPU_RESOURCE_NAME = "nvidia.com/gpu"
 DEFAULT_STORAGE_CLASS_NAME = "ebs"
@@ -205,14 +225,14 @@ DEFAULT_PRESTOP_SLEEP_SECONDS = 30
 DEFAULT_HADOWN_PRESTOP_SLEEP_SECONDS = DEFAULT_PRESTOP_SLEEP_SECONDS + 1
 
 
-DEFAULT_USE_PROMETHEUS_CPU = False
-DEFAULT_USE_PROMETHEUS_UWSGI = True
-DEFAULT_USE_RESOURCE_METRICS_CPU = True
 DEFAULT_SIDECAR_REQUEST: KubeContainerResourceRequest = {
     "cpu": 0.1,
     "memory": "1024Mi",
     "ephemeral-storage": "256Mi",
 }
+
+DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS = 3600
+PROJECTED_SA_TOKEN_PATH = "token"
 
 
 # conditions is None when creating a new HPA, but the client raises an error in that case.
@@ -447,6 +467,15 @@ def load_kubernetes_service_config_no_cache(
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
     )
+
+    # TODO: Remove once yelpsoa-configs is on the new schema (COREJAVA-1339)
+    if (
+        "autoscaling" in general_config
+        and "metrics_providers" not in general_config["autoscaling"]  # type: ignore
+    ):
+        general_config["autoscaling"] = transform_autoscaling_params_dict(  # type: ignore
+            copy.deepcopy(general_config["autoscaling"])  # type: ignore
+        )
 
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:
@@ -684,6 +713,10 @@ def registration_label(namespace: str) -> str:
     return f"registrations.{PAASTA_ATTRIBUTE_PREFIX}{limited_namespace}"
 
 
+def contains_zone_label(node_selectors: Dict[str, NodeSelectorConfig]) -> bool:
+    return any(k in node_selectors for k in ZONE_LABELS)
+
+
 class KubernetesDeploymentConfig(LongRunningServiceConfig):
     config_dict: KubernetesDeploymentConfigDict
 
@@ -783,6 +816,71 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def namespace_external_metric_name(self, metric_name: str) -> str:
         return f"{self.get_sanitised_deployment_name()}-{metric_name}"
 
+    def get_autoscaling_provider_spec(
+        self, name: str, namespace: str, provider: MetricsProviderDict
+    ) -> Optional[V2beta2MetricSpec]:
+        target = provider["setpoint"]
+        prometheus_hpa_metric_name = (
+            f"{self.namespace_external_metric_name(provider['type'])}-prom"
+        )
+
+        if provider["type"] == METRICS_PROVIDER_CPU:
+            return V2beta2MetricSpec(
+                type="Resource",
+                resource=V2beta2ResourceMetricSource(
+                    name="cpu",
+                    target=V2beta2MetricTarget(
+                        type="Utilization",
+                        average_utilization=int(target * 100),
+                    ),
+                ),
+            )
+        elif provider["type"] in {
+            METRICS_PROVIDER_UWSGI,
+            METRICS_PROVIDER_PISCINA,
+            METRICS_PROVIDER_GUNICORN,
+            METRICS_PROVIDER_ACTIVE_REQUESTS,
+        }:
+            return V2beta2MetricSpec(
+                type="Object",
+                object=V2beta2ObjectMetricSource(
+                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    described_object=V2beta2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2beta2MetricTarget(
+                        type="Value",
+                        # we average the number of instances needed to handle the current (or
+                        # averaged) load instead of the load itself as this leads to more
+                        # stable behavior. we return the percentage by which we want to
+                        # scale, so the target in the HPA should always be 1.
+                        # PAASTA-16756 for details
+                        value=1,
+                    ),
+                ),
+            )
+        elif provider["type"] == METRICS_PROVIDER_PROMQL:
+            return V2beta2MetricSpec(
+                type="Object",
+                object=V2beta2ObjectMetricSource(
+                    metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
+                    described_object=V2beta2CrossVersionObjectReference(
+                        api_version="apps/v1", kind="Deployment", name=name
+                    ),
+                    target=V2beta2MetricTarget(
+                        # Use the setpoint specified by the user.
+                        type="Value",
+                        value=target,
+                    ),
+                ),
+            )
+
+        log.error(
+            f"Unknown metrics_provider specified: {provider['type']} for\
+            {name}/name in namespace{namespace}"
+        )
+        return None
+
     def get_autoscaling_metric_spec(
         self,
         name: str,
@@ -800,7 +898,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             return None
 
         autoscaling_params = self.get_autoscaling_params()
-        if autoscaling_params["decision_policy"] == "bespoke":
+        if autoscaling_params["metrics_providers"][0]["decision_policy"] == "bespoke":
             return None
 
         min_replicas = self.get_min_instances()
@@ -811,101 +909,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
             return None
 
-        metrics_provider = autoscaling_params["metrics_provider"]
         metrics = []
-        target = autoscaling_params["setpoint"]
-        annotations: Dict[str, str] = {}
-        # we will have both the SFX adapter and the Prometheus adapter serving metrics for some
-        # HPAs and, since they may be looking at the same thing, we need to suffix one of these metric
-        # identifiers because metric names inside an HPA must be unique.
-        prometheus_hpa_metric_name = (
-            f"{self.namespace_external_metric_name(metrics_provider)}-prom"
-        )
-
-        if metrics_provider == "cpu":
-            use_prometheus = autoscaling_params.get(
-                "use_prometheus", DEFAULT_USE_PROMETHEUS_CPU
-            )
-            if use_prometheus:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Object",
-                        object=V2beta2ObjectMetricSource(
-                            metric=V2beta2MetricIdentifier(
-                                name=prometheus_hpa_metric_name
-                            ),
-                            described_object=V2beta2CrossVersionObjectReference(
-                                api_version="apps/v1", kind="Deployment", name=name
-                            ),
-                            target=V2beta2MetricTarget(
-                                type="Value",
-                                value=int(target * 100),
-                            ),
-                        ),
-                    )
-                )
-
-            use_resource_metrics = autoscaling_params.get(
-                "use_resource_metrics", DEFAULT_USE_RESOURCE_METRICS_CPU
-            )
-            if use_resource_metrics:
-                metrics.append(
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="cpu",
-                            target=V2beta2MetricTarget(
-                                type="Utilization",
-                                average_utilization=int(target * 100),
-                            ),
-                        ),
-                    )
-                )
-        elif metrics_provider in {"uwsgi", "piscina", "gunicorn", "active-requests"}:
-            metrics.append(
-                V2beta2MetricSpec(
-                    type="Object",
-                    object=V2beta2ObjectMetricSource(
-                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                        described_object=V2beta2CrossVersionObjectReference(
-                            api_version="apps/v1", kind="Deployment", name=name
-                        ),
-                        target=V2beta2MetricTarget(
-                            type="Value",
-                            # we average the number of instances needed to handle the current (or
-                            # averaged) load instead of the load itself as this leads to more
-                            # stable behavior. we return the percentage by which we want to
-                            # scale, so the target in the HPA should always be 1.
-                            # PAASTA-16756 for details
-                            value=1,
-                        ),
-                    ),
-                )
-            )
-        elif metrics_provider in {"arbitrary_promql"}:
-            metrics.append(
-                V2beta2MetricSpec(
-                    type="Object",
-                    object=V2beta2ObjectMetricSource(
-                        metric=V2beta2MetricIdentifier(name=prometheus_hpa_metric_name),
-                        described_object=V2beta2CrossVersionObjectReference(
-                            api_version="apps/v1", kind="Deployment", name=name
-                        ),
-                        target=V2beta2MetricTarget(
-                            # Use the setpoint specified by the user.
-                            type="Value",
-                            value=target,
-                        ),
-                    ),
-                )
-            )
-        else:
-            log.error(
-                f"Unknown metrics_provider specified: {metrics_provider} for\
-                {name}/name in namespace{namespace}"
-            )
-            return None
-
+        for provider in autoscaling_params["metrics_providers"]:
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
+            if spec is not None:
+                metrics.append(spec)
         scaling_policy = self.get_autoscaling_scaling_policy(
             max_replicas,
             autoscaling_params,
@@ -921,7 +929,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name, namespace=namespace, annotations=annotations, labels=labels
+                name=name, namespace=namespace, annotations=dict(), labels=labels
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=scaling_policy,
@@ -999,6 +1007,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
     def get_secret_volume_name(self, secret_volume: SecretVolume) -> str:
         return self.get_sanitised_volume_name(
             "secret--{name}".format(name=secret_volume["secret_name"]), length_limit=63
+        )
+
+    def get_projected_sa_volume_name(
+        self, projected_sa_volume: ProjectedSAVolume
+    ) -> str:
+        return self.get_sanitised_volume_name(
+            "projected-sa--{audience}".format(audience=projected_sa_volume["audience"]),
+            length_limit=63,
         )
 
     def get_boto_secret_volume_name(self, service_name: str) -> str:
@@ -1129,25 +1145,17 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     aws_ebs_volumes=[],
                     persistent_volumes=[],
                     secret_volumes=[],
+                    projected_sa_volumes=[],
                 ),
             )
         return None
-
-    def should_use_uwsgi_exporter(
-        self,
-        system_paasta_config: SystemPaastaConfig,
-    ) -> bool:
-        return (
-            self.is_autoscaling_enabled()
-            and self.get_autoscaling_params()["metrics_provider"] == "uwsgi"
-        )
 
     def get_gunicorn_exporter_sidecar_container(
         self,
         system_paasta_config: SystemPaastaConfig,
     ) -> Optional[V1Container]:
 
-        if self.should_run_gunicorn_exporter_sidecar():
+        if self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             return V1Container(
                 image=system_paasta_config.get_gunicorn_exporter_sidecar_image_url(),
                 resources=self.get_sidecar_resource_requirements(
@@ -1172,21 +1180,6 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             )
 
         return None
-
-    def should_run_gunicorn_exporter_sidecar(self) -> bool:
-        if self.is_autoscaling_enabled():
-            autoscaling_params = self.get_autoscaling_params()
-            if autoscaling_params["metrics_provider"] == "gunicorn":
-                return True
-        return False
-
-    def should_setup_piscina_prometheus_scraping(
-        self,
-    ) -> bool:
-        if self.is_autoscaling_enabled():
-            autoscaling_params = self.get_autoscaling_params()
-            return autoscaling_params["metrics_provider"] == "piscina"
-        return False
 
     def get_env(
         self, system_paasta_config: Optional["SystemPaastaConfig"] = None
@@ -1463,6 +1456,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 aws_ebs_volumes=aws_ebs_volumes,
                 persistent_volumes=self.get_persistent_volumes(),
                 secret_volumes=secret_volumes,
+                projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
         containers = [service_container] + self.get_sidecar_containers(  # type: ignore
@@ -1500,6 +1494,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes: Sequence[DockerVolume],
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         secret_volumes: Sequence[SecretVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
     ) -> Sequence[V1Volume]:
         pod_volumes = []
         unique_docker_volumes = {
@@ -1557,6 +1552,27 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     ),
                 )
             )
+        for projected_volume in projected_sa_volumes:
+            pod_volumes.append(
+                V1Volume(
+                    name=self.get_projected_sa_volume_name(projected_volume),
+                    projected=V1ProjectedVolumeSource(
+                        sources=[
+                            V1VolumeProjection(
+                                service_account_token=V1ServiceAccountTokenProjection(
+                                    audience=projected_volume["audience"],
+                                    expiration_seconds=projected_volume.get(
+                                        "expiration_seconds",
+                                        DEFAULT_PROJECTED_SA_EXPIRATION_SECONDS,
+                                    ),
+                                    path=PROJECTED_SA_TOKEN_PATH,
+                                )
+                            )
+                        ],
+                    ),
+                ),
+            )
+
         boto_volume = self.get_boto_volume()
         if boto_volume:
             pod_volumes.append(boto_volume)
@@ -1717,6 +1733,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         aws_ebs_volumes: Sequence[AwsEbsVolume],
         persistent_volumes: Sequence[PersistentVolume],
         secret_volumes: Sequence[SecretVolume],
+        projected_sa_volumes: Sequence[ProjectedSAVolume],
     ) -> Sequence[V1VolumeMount]:
         volume_mounts = (
             [
@@ -1750,6 +1767,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                     read_only=True,
                 )
                 for volume in secret_volumes
+            ]
+            + [
+                V1VolumeMount(
+                    mount_path=volume["container_path"],
+                    name=self.get_projected_sa_volume_name(volume),
+                    read_only=True,
+                )
+                for volume in projected_sa_volumes
             ]
         )
         if self.config_dict.get("boto_keys", []):
@@ -2114,8 +2139,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             self.config_dict.get("routable_ip", False)
             or service_namespace_config.is_in_smartstack()
             or self.get_prometheus_port() is not None
-            or self.should_use_uwsgi_exporter(system_paasta_config)
-            or self.should_run_gunicorn_exporter_sidecar()
+            or self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI)
+            or self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN)
         ):
             return "true"
         return "false"
@@ -2137,13 +2162,12 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "smartstack_registrations": json.dumps(self.get_registrations()),
             "paasta.yelp.com/routable_ip": has_routable_ip,
         }
-        metrics_provider = self.get_autoscaling_params()["metrics_provider"]
 
         # The HPAMetrics collector needs these annotations to tell it to pull
         # metrics from these pods
         # TODO: see if we can remove this as we're no longer using sfx data to scale
-        if metrics_provider == "uwsgi":
-            annotations["autoscaling"] = metrics_provider
+        if self.get_autoscaling_metrics_provider(METRICS_PROVIDER_UWSGI) is not None:
+            annotations["autoscaling"] = METRICS_PROVIDER_UWSGI
 
         pod_spec_kwargs = {}
         pod_spec_kwargs.update(system_paasta_config.get_pod_defaults())
@@ -2164,11 +2188,14 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 docker_volumes=docker_volumes + hacheck_sidecar_volumes,
                 aws_ebs_volumes=self.get_aws_ebs_volumes(),
                 secret_volumes=self.get_secret_volumes(),
+                projected_sa_volumes=self.get_projected_sa_volumes(),
             ),
         )
         # need to check if there are node selectors/affinities. if there are none
         # and we create an empty affinity object, k8s will deselect all nodes.
-        node_affinity = self.get_node_affinity()
+        node_affinity = self.get_node_affinity(
+            system_paasta_config.get_pool_node_affinities()
+        )
         if node_affinity is not None:
             pod_spec_kwargs["affinity"] = V1Affinity(node_affinity=node_affinity)
 
@@ -2273,7 +2300,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
 
         # not all services use autoscaling, so we label those that do in order to have
         # prometheus selectively discover/scrape them
-        if self.should_use_uwsgi_exporter(system_paasta_config=system_paasta_config):
+        if self.should_use_metrics_provider(METRICS_PROVIDER_UWSGI):
             # UWSGI no longer needs a label to indicate it needs to be scraped as all pods are checked for the uwsgi stats port by our centralized uwsgi-exporter
             # But we do still need deploy_group for relabeling properly
             # this should probably eventually be made into a default label,
@@ -2283,11 +2310,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             # character limit for k8s labels (63 chars)
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
 
-        elif self.should_setup_piscina_prometheus_scraping():
+        elif self.should_use_metrics_provider(METRICS_PROVIDER_PISCINA):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_piscina_prometheus"] = "true"
 
-        elif self.should_run_gunicorn_exporter_sidecar():
+        elif self.should_use_metrics_provider(METRICS_PROVIDER_GUNICORN):
             labels["paasta.yelp.com/deploy_group"] = self.get_deploy_group()
             labels["paasta.yelp.com/scrape_gunicorn_prometheus"] = "true"
 
@@ -2312,7 +2339,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         node_selectors["yelp.com/pool"] = self.get_pool()
         return node_selectors
 
-    def get_node_affinity(self) -> Optional[V1NodeAffinity]:
+    def get_node_affinity(
+        self, pool_node_affinities: Dict[str, Dict[str, List[str]]] = None
+    ) -> Optional[V1NodeAffinity]:
         """Converts deploy_whitelist and deploy_blacklist in node affinities.
 
         note: At the time of writing, `kubectl describe` does not show affinities,
@@ -2322,11 +2351,23 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             allowlist=self.get_deploy_whitelist(),
             denylist=self.get_deploy_blacklist(),
         )
+        node_selectors = self.config_dict.get("node_selectors", {})
         requirements.extend(
             raw_selectors_to_requirements(
-                raw_selectors=self.config_dict.get("node_selectors", {}),
+                raw_selectors=node_selectors,
             )
         )
+
+        # PAASTA-18198: To improve AZ balance with Karpenter, we temporarily allow specifying zone affinities per pool
+        if pool_node_affinities and self.get_pool() in pool_node_affinities:
+            current_pool_node_affinities = pool_node_affinities[self.get_pool()]
+            # If the service already has a node selector for a zone, we don't want to override it
+            if current_pool_node_affinities and not contains_zone_label(node_selectors):
+                requirements.extend(
+                    raw_selectors_to_requirements(
+                        raw_selectors=current_pool_node_affinities,
+                    )
+                )
 
         preferred_terms = []
         for node_selectors_prefered_config_dict in self.config_dict.get(
