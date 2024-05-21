@@ -7,7 +7,7 @@ cryptography==3.0                   # vault-tools dependency
 dateglob==0.3                       # scribereader dependency
 geogrid==1.3.5                      # scribereader dependency
 gitdb2==2.0.3                       # slo-transcoder dependency
-gitpython==2.1.9                    # slo-transcoder, vault-tools dependency
+gitpython==3.1.41                    # slo-transcoder, vault-tools dependency
 hvac==0.11.0                        # vault-tools dependency
 inflection==0.3.1                   # slo-transcoder dependency
 iso8601==2.1.0                      # yelp-ips dependency
