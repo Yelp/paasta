@@ -964,6 +964,76 @@ def test_prefix():
     assert "TEST STRING" in actual
 
 
+def test_pick_log_reader():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers_migration_status.return_value = {
+        "fake_cluster": True,
+        "fake_cluster2": True,
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 0
+        assert mock_get_log_reader.call_count == 1
+
+
+def test_pick_log_reader_default():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers_migration_status.return_value = None
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 1
+        assert mock_get_log_reader.call_count == 0
+
+
+def test_pick_log_reader_false():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers_migration_status.return_value = {
+        "fake_cluster": False,
+        "fake_cluster2": True,
+    }
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 1
+        assert mock_get_log_reader.call_count == 0
+
+
 def test_get_log_reader():
     components = {"stdout", "stderr"}
     mock_system_paasta_config = mock.Mock(

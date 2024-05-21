@@ -476,6 +476,12 @@ def list_log_readers() -> Iterable[str]:
     return _log_reader_classes.keys()
 
 
+def get_default_log_reader() -> "LogReader":
+    log_reader_config = load_system_paasta_config().get_log_reader()
+    log_reader_class = get_log_reader_class(log_reader_config["driver"])
+    return log_reader_class(**log_reader_config.get("options", {}))
+
+
 def get_log_reader(components: Set[str]) -> "LogReader":
     log_readers_config = load_system_paasta_config().get_log_readers()
     # ideally we should use a single "driver" for all components, but in cases where more than one is used for different components,
@@ -1422,6 +1428,20 @@ def pick_default_log_mode(
     return 1
 
 
+def pick_log_reader(cluster: str, components: Set[str]) -> LogReader:
+    log_readers_migration_status = (
+        load_system_paasta_config().get_log_readers_migration_status()
+    )
+    if (
+        log_readers_migration_status
+        and cluster in log_readers_migration_status
+        and log_readers_migration_status[cluster] is True
+    ):
+        return get_log_reader(components)
+    else:
+        return get_default_log_reader()
+
+
 def paasta_logs(args: argparse.Namespace) -> int:
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
@@ -1429,7 +1449,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     service = figure_out_service_name(args, soa_dir)
 
-    cluster = args.cluster
+    clusters = args.cluster
     if (
         args.cluster is None
         or args.instance is None
@@ -1441,7 +1461,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         )
         return 1
 
-    if verify_instances(args.instance, service, cluster, soa_dir):
+    if verify_instances(args.instance, service, clusters, soa_dir):
         return 1
 
     instance = args.instance
@@ -1464,16 +1484,16 @@ def paasta_logs(args: argparse.Namespace) -> int:
 
     levels = [DEFAULT_LOGLEVEL, "debug"]
 
-    log.debug(f"Going to get logs for {service} on cluster {cluster}")
+    log.debug(f"Going to get logs for {service} on cluster {clusters}")
 
-    log_reader = get_log_reader(components)
+    log_reader = pick_log_reader(clusters[0], components)
 
     if not validate_filtering_args(args, log_reader):
         return 1
     # They haven't specified what kind of filtering they want, decide for them
     if args.line_count is None and args.time_from is None and not args.tail:
         return pick_default_log_mode(
-            args, log_reader, service, levels, components, cluster, instance, pods
+            args, log_reader, service, levels, components, clusters, instance, pods
         )
     if args.tail:
         print(
@@ -1483,7 +1503,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             service=service,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1504,7 +1524,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_count=args.line_count,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1518,7 +1538,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
             line_offset=args.line_offset,
             levels=levels,
             components=components,
-            clusters=cluster,
+            clusters=clusters,
             instances=[instance],
             pods=pods,
             raw_mode=args.raw_mode,
@@ -1539,7 +1559,7 @@ def paasta_logs(args: argparse.Namespace) -> int:
         end_time=end_time,
         levels=levels,
         components=components,
-        clusters=cluster,
+        clusters=clusters,
         instances=[instance],
         pods=pods,
         raw_mode=args.raw_mode,

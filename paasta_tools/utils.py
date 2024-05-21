@@ -2334,6 +2334,12 @@ class SystemPaastaConfig:
                 % self.directory
             )
 
+    def get_log_readers_migration_status(self) -> Optional[Mapping[str, str]]:
+        """
+        Get the log readers migration configuration out of global paasta config
+        """
+        return self.config_dict.get("log_readers_migration_status")
+
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config
 
