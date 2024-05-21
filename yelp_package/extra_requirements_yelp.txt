@@ -3,7 +3,7 @@ cached-property==1.3.1              # slo-transcoder dependency
 cffi==1.15.0                        # vault-tools dependency
 clusterman_metrics==2.2.0
 crypto-lib==4.0.0                   # vault-tools dependency
-cryptography==3.0                   # vault-tools dependency
+cryptography==42.0.4                   # vault-tools dependency
 dateglob==0.3                       # scribereader dependency
 geogrid==1.3.5                      # scribereader dependency
 gitdb2==2.0.3                       # slo-transcoder dependency
