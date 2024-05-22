@@ -150,7 +150,7 @@ async def check_max_instances(
                         # we likely couldn't find values for the current metric from autoscaling status
                         # if this is the only metric, we will return UNKNOWN+this error
                         # suggest fixing their autoscaling config
-                        output = f'{service}.{instance}: Service is at max_instances, and there is an error fetching your {metrics_provider_config["type"]} metric.  Check your autoscaling configs or reach out to #paasta.'
+                        output = f'{service}.{instance}: Service is at max_instances, and there is an error fetching your {metrics_provider_config["type"]} metric. Check your autoscaling configs or reach out to #paasta.'
             else:
                 status = pysensu_yelp.Status.OK
                 output = f"{service}.{instance} is below max_instances."
