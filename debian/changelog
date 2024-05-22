@@ -1,3 +1,11 @@
+paasta-tools (1.0.2) xenial; urgency=medium
+
+  * 1.0.2 tagged with 'make release'
+    Commit: Merge pull request #3878 from Yelp/yaroliakh-patch-requests
+    Pin requests in k8s_itests and requirements-minimal
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Wed, 22 May 2024 07:58:05 -0700
+
 paasta-tools (1.0.1) xenial; urgency=medium
 
   * 1.0.1 tagged with 'make release'
