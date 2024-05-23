@@ -725,14 +725,18 @@ def get_rules_for_service_instance(
             )
             continue
 
+        print(
+            f"{instance_config.service}.{instance_config.instance}",
+            metrics_provider_config,
+        )
         rule = create_instance_scaling_rule(
             service=service_name,
             instance_config=instance_config,
             metrics_provider_config=metrics_provider_config,
             paasta_cluster=paasta_cluster,
         )
-        if rule is not None:
-            rules.append(rule)
+        # if rule is not None:
+        #     rules.append(rule)
 
     return rules
 
