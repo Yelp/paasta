@@ -1960,7 +1960,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
     log_readers: List[LogReaderConfig]
-    log_readers_migration_status: Optional[Dict[str, bool]]
     log_writer: LogWriterConfig
     mark_for_deployment_max_polling_threads: int
     mark_for_deployment_default_polling_interval: float
@@ -2018,6 +2017,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
+    use_multiple_log_readers: Optional[List[str]]
 
 
 def load_system_paasta_config(
@@ -2335,11 +2335,11 @@ class SystemPaastaConfig:
                 % self.directory
             )
 
-    def get_log_readers_migration_status(self) -> Optional[Mapping[str, bool]]:
+    def use_multiple_log_readers(self) -> Optional[List[str]]:
         """
-        Get the log readers migration configuration out of global paasta config
+        Get the list of clusters that are using multiple log readers
         """
-        return self.config_dict.get("log_readers_migration_status")
+        return self.config_dict.get("use_multiple_log_readers")
 
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config

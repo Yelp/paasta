@@ -1429,14 +1429,8 @@ def pick_default_log_mode(
 
 
 def pick_log_reader(cluster: str, components: Set[str]) -> LogReader:
-    log_readers_migration_status = (
-        load_system_paasta_config().get_log_readers_migration_status()
-    )
-    if (
-        log_readers_migration_status
-        and cluster in log_readers_migration_status
-        and log_readers_migration_status[cluster] is True
-    ):
+    uses_log_readers = load_system_paasta_config().use_multiple_log_readers()
+    if uses_log_readers and cluster in uses_log_readers:
         return get_log_reader(components)
     else:
         return get_default_log_reader()
