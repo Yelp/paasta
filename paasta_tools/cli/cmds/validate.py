@@ -71,7 +71,7 @@ from paasta_tools.tron_tools import list_tron_clusters
 from paasta_tools.tron_tools import load_tron_service_config
 from paasta_tools.tron_tools import TronJobConfig
 from paasta_tools.tron_tools import validate_complete_config
-from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_service_instance_type_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InstanceConfigDict
 from paasta_tools.utils import list_all_instances_for_service
@@ -568,15 +568,31 @@ def validate_paasta_objects(service_path):
 
 def validate_unique_instance_names(service_path):
     """Check that the service does not use the same instance name more than once"""
+
+    # We use this dict to convert different instance types to the same value so that we can allow duplicate instance
+    # names when migrating from one type to another. This prevents validate from failing during a migration.
+    # We've intentionally left out kubernetes/eks here, as we need to !force those PRs anyway.
+    # NRTSearch migrations will likely be in flux for a long time, so we want to prevent those from causing validation
+    # failures.
+    duplicates_allowed = {
+        "nrtsearchservice": "nrtsearchserviceeks",
+    }
+
     soa_dir, service = path_to_soa_dir_service(service_path)
     check_passed = True
 
     for cluster in list_clusters(service, soa_dir):
-        service_instances = get_service_instance_list(
+        service_instance_types = get_service_instance_type_list(
             service=service, cluster=cluster, soa_dir=soa_dir
         )
-        instance_names = [service_instance[1] for service_instance in service_instances]
-        instance_name_to_count = Counter(instance_names)
+        instance_names_and_merged_types = {
+            (instance, duplicates_allowed.get(instance_type, instance_type))
+            for (service, instance, instance_type) in service_instance_types
+        }
+
+        instance_name_to_count = Counter(
+            instance_name for instance_name, _ in instance_names_and_merged_types
+        )
         duplicate_instance_names = [
             instance_name
             for instance_name, count in instance_name_to_count.items()

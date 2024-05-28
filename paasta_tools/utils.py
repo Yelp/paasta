@@ -3137,6 +3137,56 @@ def get_pipeline_deploy_groups(
     return [step["step"] for step in deploy_group_configs]
 
 
+def get_service_instance_type_list_no_cache(
+    service: str,
+    cluster: Optional[str] = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[Tuple[str, str, str]]:
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param service: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance, instance_type) for each instance defined for the service name
+    """
+
+    instance_list: List[Tuple[str, str, str]] = []
+    for instance_type in INSTANCE_TYPES:
+        instance_list.extend(
+            [
+                (service, instance, instance_type)
+                for service, instance in read_service_instance_names(
+                    service=service,
+                    instance_type=instance_type,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+            ]
+        )
+    log.debug("Enumerated the following instances: %s", instance_list)
+    return instance_list
+
+
+@time_cache(ttl=5)
+def get_service_instance_type_list(
+    service: str,
+    cluster: Optional[str] = None,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[Tuple[str, str, str]]:
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param service: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'kubernetes', 'tron', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance, instance_type) for each instance defined for the service name
+    """
+    return get_service_instance_type_list_no_cache(
+        service=service, cluster=cluster, soa_dir=soa_dir
+    )
+
+
 def get_service_instance_list_no_cache(
     service: str,
     cluster: Optional[str] = None,

@@ -892,32 +892,36 @@ def test_check_service_path_good(mock_glob, mock_isdir):
     assert check_service_path(service_path)
 
 
-@patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.get_service_instance_type_list", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 def test_validate_unique_service_name_success(
-    mock_list_clusters, mock_get_service_instance_list
+    mock_list_clusters, mock_get_service_instance_type_list
 ):
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
-    mock_get_service_instance_list.return_value = [
-        (service_name, "instance_1"),
-        (service_name, "instance_2"),
-        (service_name, "instance_3"),
+    mock_get_service_instance_type_list.return_value = [
+        (service_name, "instance_1", "eks"),
+        (service_name, "instance_2", "eks"),
+        (service_name, "instance_3", "eks"),
+        # Allow for migration from nrtsearchservice to nrtsearchserviceeks:
+        (service_name, "instance_4", "nrtsearchservice"),
+        (service_name, "instance_4", "nrtsearchserviceeks"),
     ]
     assert validate_unique_instance_names(f"soa/{service_name}")
 
 
-@patch("paasta_tools.cli.cmds.validate.get_service_instance_list", autospec=True)
+@patch("paasta_tools.cli.cmds.validate.get_service_instance_type_list", autospec=True)
 @patch("paasta_tools.cli.cmds.validate.list_clusters", autospec=True)
 def test_validate_unique_service_name_failure(
-    mock_list_clusters, mock_get_service_instance_list, capsys
+    mock_list_clusters, mock_get_service_instance_type_list, capsys
 ):
     service_name = "service_1"
     mock_list_clusters.return_value = ["cluster_1"]
-    mock_get_service_instance_list.return_value = [
-        (service_name, "instance_1"),
-        (service_name, "instance_2"),
-        (service_name, "instance_1"),
+    mock_get_service_instance_type_list.return_value = [
+        (service_name, "instance_1", "eks"),
+        (service_name, "instance_2", "eks"),
+        # If the two instance types are different but not included in DUPLICATE_INSTANCE_TYPES_ALLOWED, it should fail:
+        (service_name, "instance_1", "tron"),
     ]
     assert not validate_unique_instance_names(f"soa/{service_name}")
 
