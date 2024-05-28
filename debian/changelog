@@ -1,3 +1,11 @@
+paasta-tools (1.0.3) xenial; urgency=medium
+
+  * 1.0.3 tagged with 'make release'
+    Commit: Merge pull request #3882 from Yelp/drmorr/clean-up-old-
+    autoscaling  clean up code from old autoscaling config
+
+ -- David Morrison (Contractor) <drmorr@yelp.com>  Tue, 28 May 2024 15:49:56 -0700
+
 paasta-tools (1.0.2) xenial; urgency=medium
 
   * 1.0.2 tagged with 'make release'
