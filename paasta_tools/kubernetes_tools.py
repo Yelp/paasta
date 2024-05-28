@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import base64
-import copy
 import functools
 import hashlib
 import itertools
@@ -150,7 +149,6 @@ from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PISCINA
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_PROMQL
 from paasta_tools.long_running_service_tools import METRICS_PROVIDER_UWSGI
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
-from paasta_tools.paasta_service_config_loader import transform_autoscaling_params_dict
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.secret_tools import is_secret_ref
 from paasta_tools.secret_tools import is_shared_secret
@@ -467,15 +465,6 @@ def load_kubernetes_service_config_no_cache(
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
     )
-
-    # TODO: Remove once yelpsoa-configs is on the new schema (COREJAVA-1339)
-    if (
-        "autoscaling" in general_config
-        and "metrics_providers" not in general_config["autoscaling"]  # type: ignore
-    ):
-        general_config["autoscaling"] = transform_autoscaling_params_dict(  # type: ignore
-            copy.deepcopy(general_config["autoscaling"])  # type: ignore
-        )
 
     branch_dict: Optional[BranchDictV2] = None
     if load_deployments:

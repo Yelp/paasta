@@ -190,14 +190,7 @@
                     "type": "string"
                 },
                 "autoscaling": {
-                    "anyOf": [
-                        {
-                            "$ref": "autoscaling_schema.json#autoscaling_params_v1"
-                        },
-                        {
-                            "$ref": "autoscaling_schema.json#autoscaling_params_v2"
-                        }
-                    ]
+                    "$ref": "autoscaling_schema.json#autoscaling_params"
                 },
                 "sfn_autoscaling": {
                     "type": "object"
