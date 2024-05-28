@@ -75,6 +75,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
 from paasta_tools.vitesscluster_tools import load_vitess_instance_config
+from paasta_tools.vitessclustereks_tools import load_vitesseks_instance_config
 
 log = logging.getLogger(__name__)
 
@@ -664,6 +665,9 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
     vitesscluster=InstanceTypeHandler(
         get_service_instance_list, load_vitess_instance_config
     ),
+    vitessclustereks=InstanceTypeHandler(
+        get_service_instance_list, load_vitesseks_instance_config
+    ),
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
     ),
@@ -696,6 +700,9 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
     ),
     vitesscluster=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_vitess_instance_config
+    ),
+    vitessclustereks=LongRunningInstanceTypeHandler(
+        get_service_instance_list, load_vitesseks_instance_config
     ),
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
