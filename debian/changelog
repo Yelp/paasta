@@ -1,3 +1,12 @@
+paasta-tools (1.0.5) xenial; urgency=medium
+
+  * 1.0.5 tagged with 'make release'
+    Commit: Merge pull request #3886 from
+    Yelp/jfong/fix_paasta_rollback_list  Move git sha validation in
+    paasta rollback
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 04 Jun 2024 14:52:49 -0700
+
 paasta-tools (1.0.4) xenial; urgency=medium
 
   * 1.0.4 tagged with 'make release'
