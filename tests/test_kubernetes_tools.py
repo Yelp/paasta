@@ -4905,3 +4905,17 @@ def test_get_kubernetes_secret_volumes_single_file():
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",
         }
+
+
+def test_suffixed_number_value():
+    assert kubernetes_tools.suffixed_number_value("5k") == 5 * 1000
+    assert kubernetes_tools.suffixed_number_value("5m") == 5 * 1000**-1
+    assert kubernetes_tools.suffixed_number_value("5M") == 5 * 1000**2
+    assert kubernetes_tools.suffixed_number_value("5G") == 5 * 1000**3
+    assert kubernetes_tools.suffixed_number_value("5T") == 5 * 1000**4
+    assert kubernetes_tools.suffixed_number_value("5P") == 5 * 1000**5
+    assert kubernetes_tools.suffixed_number_value("5Ki") == 5 * 1024
+    assert kubernetes_tools.suffixed_number_value("5Mi") == 5 * 1024**2
+    assert kubernetes_tools.suffixed_number_value("5Gi") == 5 * 1024**3
+    assert kubernetes_tools.suffixed_number_value("5Ti") == 5 * 1024**4
+    assert kubernetes_tools.suffixed_number_value("5Pi") == 5 * 1024**5

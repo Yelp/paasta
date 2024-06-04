@@ -58,14 +58,6 @@ def get_webui_url(port: str) -> str:
     return f"http://{socket.getfqdn()}:{port}"
 
 
-def get_volumes_from_spark_mesos_configs(spark_conf: Mapping[str, str]) -> List[str]:
-    return (
-        spark_conf.get("spark.mesos.executor.docker.volumes", "").split(",")
-        if spark_conf.get("spark.mesos.executor.docker.volumes", "") != ""
-        else []
-    )
-
-
 def get_volumes_from_spark_k8s_configs(spark_conf: Mapping[str, str]) -> List[str]:
     volume_names = []
     for key in list(spark_conf.keys()):

@@ -125,7 +125,6 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 INSTANCE_TYPES = (
-    "paasta_native",
     "adhoc",
     "kubernetes",
     "eks",
@@ -349,12 +348,6 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role: str
     iam_role_provider: str
     service: str
-
-
-class BranchDictV1(TypedDict, total=False):
-    docker_image: str
-    desired_state: str
-    force_bounce: Optional[str]
 
 
 class BranchDictV2(TypedDict):
@@ -633,18 +626,6 @@ class InstanceConfig:
         :returns: The number of gpus specified by the config, 0 if not specified"""
         gpus = self.config_dict.get("gpus", None)
         return gpus
-
-    def get_container_type(self) -> Optional[str]:
-        """Get Mesos containerizer type.
-
-        Default to DOCKER if gpus are not used.
-
-        :returns: Mesos containerizer type, DOCKER or MESOS"""
-        if self.get_gpus() is not None:
-            container_type = "MESOS"
-        else:
-            container_type = "DOCKER"
-        return container_type
 
     def get_cmd(self) -> Optional[Union[str, List[str]]]:
         """Get the docker cmd specified in the service's configuration.
@@ -964,17 +945,11 @@ class InstanceConfig:
     def get_iam_role_provider(self) -> str:
         return self.config_dict.get("iam_role_provider", "aws")
 
-    def get_role(self) -> Optional[str]:
-        """Which mesos role of nodes this job should run on."""
-        return self.config_dict.get("role")
-
     def get_pool(self) -> str:
         """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
         particularly noisy or noise-sensitive jobs into different pools.
 
-        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint or node selector.
-
-        Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
+        This is implemented with an attribute "pool" on each kubernetes node and by adding a constraint or node selector.
 
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get("pool", "default")
@@ -1878,11 +1853,6 @@ class SparkRunConfig(TypedDict, total=False):
     default_spark_driver_iam_role: str
 
 
-class PaastaNativeConfig(TypedDict, total=False):
-    principal: str
-    secret: str
-
-
 ExpectedSlaveAttributes = List[Dict[str, Any]]
 
 
@@ -1943,7 +1913,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     envoy_nerve_readiness_check_script: List[str]
     envoy_readiness_check_script: List[str]
     expected_slave_attributes: ExpectedSlaveAttributes
-    filter_bogus_mesos_cputime_enabled: bool
     fsm_template: str
     git_config: Dict
     hacheck_sidecar_image_url: str
@@ -1964,12 +1933,10 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     mark_for_deployment_default_diagnosis_interval: float
     mark_for_deployment_default_default_time_before_first_diagnosis: float
     mark_for_deployment_should_ping_for_unhealthy_pods: bool
-    mesos_config: Dict
     metrics_provider: str
     monitoring_config: Dict
     nerve_readiness_check_script: List[str]
     nerve_register_k8s_terminating: bool
-    paasta_native: PaastaNativeConfig
     paasta_status_version: str
     pdb_max_unavailable: Union[str, int]
     pki_backend: str
@@ -1978,8 +1945,6 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     topology_spread_constraints: List[TopologySpreadConstraintDict]
     readiness_check_prefix_template: List[str]
     register_k8s_pods: bool
-    register_native_services: bool
-    remote_run_config: RemoteRunConfig
     resource_pool_settings: PoolToResourcePoolSettingsDict
     secret_provider: str
     security_check_command: str
@@ -2374,9 +2339,6 @@ class SystemPaastaConfig:
     def get_service_discovery_providers(self) -> Dict[str, Any]:
         return self.config_dict.get("service_discovery_providers", {})
 
-    def get_resource_pool_settings(self) -> PoolToResourcePoolSettingsDict:
-        return self.config_dict.get("resource_pool_settings", {})
-
     def get_cluster_fqdn_format(self) -> str:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
@@ -2396,27 +2358,11 @@ class SystemPaastaConfig:
         :returns: The local-run job config dictionary"""
         return self.config_dict.get("local_run_config", {})
 
-    def get_remote_run_config(self) -> RemoteRunConfig:
-        """Get the remote-run config
-
-        :returns: The remote-run system_paasta_config dictionary"""
-        return self.config_dict.get("remote_run_config", {})
-
     def get_spark_run_config(self) -> SparkRunConfig:
         """Get the spark-run config
 
         :returns: The spark-run system_paasta_config dictionary"""
         return self.config_dict.get("spark_run_config", {})
-
-    def get_paasta_native_config(self) -> PaastaNativeConfig:
-        return self.config_dict.get("paasta_native", {})
-
-    def get_mesos_cli_config(self) -> Dict:
-        """Get the config for mesos-cli
-
-        :returns: The mesos cli config
-        """
-        return self.config_dict.get("mesos_config", {})
 
     def get_monitoring_config(self) -> Dict:
         """Get the monitoring config
@@ -2440,11 +2386,6 @@ class SystemPaastaConfig:
         """
 
         return safe_deploy_whitelist(self.config_dict.get("deploy_whitelist"))
-
-    def get_expected_slave_attributes(self) -> ExpectedSlaveAttributes:
-        """Return a list of dictionaries, representing the expected combinations of attributes in this cluster. Used for
-        calculating the default routing constraints."""
-        return self.config_dict.get("expected_slave_attributes")
 
     def get_security_check_command(self) -> Optional[str]:
         """Get the script to be executed during the security-check build step
@@ -2470,10 +2411,6 @@ class SystemPaastaConfig:
 
     def get_kubernetes_use_hacheck_sidecar(self) -> bool:
         return self.config_dict.get("kubernetes_use_hacheck_sidecar", True)
-
-    def get_register_native_services(self) -> bool:
-        """Enable registration of native paasta services in nerve"""
-        return self.config_dict.get("register_native_services", False)
 
     def get_taskproc(self) -> Dict:
         return self.config_dict.get("taskproc", {})
@@ -3321,16 +3258,6 @@ def get_docker_client() -> Client:
         return Client(base_url=get_docker_host(), **client_opts)
 
 
-def get_running_mesos_docker_containers() -> List[Dict]:
-    client = get_docker_client()
-    running_containers = client.containers()
-    return [
-        container
-        for container in running_containers
-        if "mesos-" in container["Names"][0]
-    ]
-
-
 class TimeoutError(Exception):
     pass
 
@@ -3388,8 +3315,6 @@ class DeploymentVersion(NamedTuple):
         return json.dumps(self._asdict())
 
 
-DeploymentsJsonV1Dict = Dict[str, BranchDictV1]
-
 DeployGroup = str
 BranchName = str
 
@@ -3408,26 +3333,6 @@ class _DeploymentsJsonV2DeploymentsDict(TypedDict):
 class DeploymentsJsonV2Dict(TypedDict):
     deployments: Dict[DeployGroup, _DeploymentsJsonV2DeploymentsDict]
     controls: Dict[BranchName, _DeploymentsJsonV2ControlsDict]
-
-
-class DeploymentsJsonDict(TypedDict):
-    v1: DeploymentsJsonV1Dict
-    v2: DeploymentsJsonV2Dict
-
-
-class DeploymentsJsonV1:
-    def __init__(self, config_dict: DeploymentsJsonV1Dict) -> None:
-        self.config_dict = config_dict
-
-    def get_branch_dict(self, service: str, branch: str) -> BranchDictV1:
-        full_branch = f"{service}:paasta-{branch}"
-        return self.config_dict.get(full_branch, {})
-
-    def __eq__(self, other: Any) -> bool:
-        return (
-            isinstance(other, DeploymentsJsonV1)
-            and other.config_dict == self.config_dict
-        )
 
 
 class DeploymentsJsonV2:
@@ -3515,21 +3420,6 @@ class DeploymentsJsonV2:
         except KeyError:
             e = f"{self.service} not configured for {control_branch}. Has mark-for-deployment been run?"
             raise NoDeploymentsAvailable(e)
-
-
-def load_deployments_json(service: str, soa_dir: str = DEFAULT_SOA_DIR) -> Any:
-    deployment_file = os.path.join(soa_dir, service, "deployments.json")
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            config_dict = json.load(f)
-            return (
-                DeploymentsJsonV1(config_dict["v1"])
-                if "v1" in config_dict
-                else DeploymentsJsonV2(service=service, config_dict=config_dict["v2"])
-            )
-    else:
-        e = f"{deployment_file} was not found. 'generate_deployments_for_service --service {service}' must be run first"
-        raise NoDeploymentsAvailable(e)
 
 
 def load_v2_deployments_json(

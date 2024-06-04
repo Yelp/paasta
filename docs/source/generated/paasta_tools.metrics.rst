@@ -6,7 +6,6 @@ Submodules
 
 .. toctree::
 
-   paasta_tools.metrics.metastatus_lib
    paasta_tools.metrics.metrics_lib
 
 Module contents

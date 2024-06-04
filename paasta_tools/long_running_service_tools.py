@@ -61,10 +61,8 @@ ALL_METRICS_PROVIDERS = [
 
 class LongRunningServiceConfigDict(InstanceConfigDict, total=False):
     autoscaling: AutoscalingParamsDict
-    drain_method: str
     fs_group: int
     container_port: int
-    drain_method_params: Dict
     healthcheck_cmd: str
     healthcheck_grace_period_seconds: float
     healthcheck_interval_seconds: float
@@ -181,29 +179,6 @@ class LongRunningServiceConfig(InstanceConfig):
 
     def get_container_port(self) -> int:
         return self.config_dict.get("container_port", DEFAULT_CONTAINER_PORT)
-
-    def get_drain_method(self, service_namespace_config: ServiceNamespaceConfig) -> str:
-        """Get the drain method specified in the service's configuration.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: The drain method specified in the config, or 'noop' if not specified"""
-        default = "noop"
-        # Default to hacheck draining if the service is in smartstack
-        if service_namespace_config.is_in_smartstack():
-            default = "hacheck"
-        return self.config_dict.get("drain_method", default)
-
-    def get_drain_method_params(
-        self, service_namespace_config: ServiceNamespaceConfig
-    ) -> Dict:
-        """Get the drain method parameters specified in the service's configuration.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
-        default: Dict = {}
-        if service_namespace_config.is_in_smartstack():
-            default = {"delay": 60}
-        return self.config_dict.get("drain_method_params", default)
 
     # FIXME(jlynch|2016-08-02, PAASTA-4964): DEPRECATE nerve_ns and remove it
     def get_nerve_namespace(self) -> str:

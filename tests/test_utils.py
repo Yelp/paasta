@@ -1265,64 +1265,6 @@ def test_color_text_with_no_color():
     assert actual == expected
 
 
-def test_DeploymentsJson_read():
-    file_mock = mock.mock_open()
-    fake_dir = "/var/dir_of_fake"
-    fake_path = "/var/dir_of_fake/fake_service/deployments.json"
-    fake_json = {
-        "v1": {
-            "no_srv:blaster": {
-                "docker_image": "test_rocker:9.9",
-                "desired_state": "start",
-                "force_bounce": None,
-            },
-            "dont_care:about": {
-                "docker_image": "this:guy",
-                "desired_state": "stop",
-                "force_bounce": "12345",
-            },
-        }
-    }
-    with mock.patch(
-        "builtins.open", file_mock, autospec=None
-    ) as open_patch, mock.patch(
-        "json.load", autospec=True, return_value=fake_json
-    ) as json_patch, mock.patch(
-        "paasta_tools.utils.os.path.isfile", autospec=True, return_value=True
-    ):
-        actual = utils.load_deployments_json("fake_service", fake_dir)
-        open_patch.assert_called_once_with(fake_path)
-        json_patch.assert_called_once_with(
-            file_mock.return_value.__enter__.return_value
-        )
-        assert actual == utils.DeploymentsJsonV1(fake_json["v1"])  # type: ignore
-
-
-def test_get_running_mesos_docker_containers():
-
-    fake_container_data = [
-        {
-            "Status": "Up 2 hours",
-            "Names": ["/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5"],
-            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3",
-        },
-        {
-            "Status": "Up 3 days",
-            "Names": [
-                "/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f"
-            ],
-            "Id": "ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c",
-        },
-    ]
-
-    with mock.patch(
-        "paasta_tools.utils.get_docker_client", autospec=True
-    ) as mock_docker:
-        docker_client = mock_docker.return_value
-        docker_client.containers.return_value = fake_container_data
-        assert len(utils.get_running_mesos_docker_containers()) == 1
-
-
 def test_run_cancels_timer_thread_on_keyboard_interrupt():
     mock_process = mock.Mock()
     mock_timer_object = mock.Mock()
@@ -2325,13 +2267,12 @@ def test_validate_service_instance_valid_kubernetes():
             utils.validate_service_instance(
                 my_service, my_instance, fake_cluster, fake_soa_dir
             )
-            == "paasta_native"  # the first entry in utils.INSTANCE_TYPES
+            == "adhoc"  # the first entry in utils.INSTANCE_TYPES
         )
 
 
 def test_validate_service_instance_invalid():
     mock_kubernetes_instances = [("service1", "main1"), ("service1", "main2")]
-    mock_paasta_native_instances = [("service1", "main2"), ("service1", "main3")]
     mock_adhoc_instances = [("service1", "interactive")]
     mock_k8s_instances = [("service1", "k8s")]
     mock_eks_instances = [("service1", "eks")]
@@ -2353,7 +2294,6 @@ def test_validate_service_instance_invalid():
         autospec=True,
         side_effect=[
             mock_kubernetes_instances,
-            mock_paasta_native_instances,
             mock_adhoc_instances,
             mock_k8s_instances,
             mock_eks_instances,
@@ -2370,7 +2310,7 @@ def test_validate_service_instance_invalid():
     ):
         with raises(
             utils.NoConfigurationForServiceError,
-            match="Did you mean one of: main3, main2, main1?",
+            match="Did you mean one of: main2, main1?",
         ):
             utils.validate_service_instance(
                 service=my_service,

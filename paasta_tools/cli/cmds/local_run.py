@@ -47,7 +47,6 @@ from paasta_tools.kubernetes_tools import get_kubernetes_secret_volumes
 from paasta_tools.kubernetes_tools import KUBE_CONFIG_USER_PATH
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.long_running_service_tools import get_healthcheck_for_instance
-from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.secret_tools import decrypt_secret_environment_variables
 from paasta_tools.secret_tools import decrypt_secret_volumes
 from paasta_tools.tron_tools import parse_time_variables
@@ -58,6 +57,7 @@ from paasta_tools.utils import get_possible_launched_by_user_variable_from_env
 from paasta_tools.utils import get_username
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import is_secrets_for_teams_enabled
+from paasta_tools.utils import is_using_unprivileged_containers
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_services
 from paasta_tools.utils import load_system_paasta_config
@@ -77,6 +77,28 @@ class AWSSessionCreds(TypedDict):
     AWS_SECRET_ACCESS_KEY: str
     AWS_SESSION_TOKEN: str
     AWS_SECURITY_TOKEN: str
+
+
+def execute_in_container(docker_client, container_id, cmd, timeout):
+    container_info = docker_client.inspect_container(container_id)
+    if (
+        container_info["ExecIDs"]
+        and len(container_info["ExecIDs"]) > 0
+        and not is_using_unprivileged_containers()
+    ):
+        for possible_exec_id in container_info["ExecIDs"]:
+            exec_info = docker_client.exec_inspect(possible_exec_id)["ProcessConfig"]
+            if exec_info["entrypoint"] == "/bin/sh" and exec_info["arguments"] == [
+                "-c",
+                cmd,
+            ]:
+                exec_id = possible_exec_id
+                break
+    else:
+        exec_id = docker_client.exec_create(container_id, ["/bin/sh", "-c", cmd])["Id"]
+    output = docker_client.exec_start(exec_id, stream=False)
+    return_code = docker_client.exec_inspect(exec_id)["ExitCode"]
+    return (output, return_code)
 
 
 def parse_date(date_string):

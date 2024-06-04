@@ -117,7 +117,6 @@ PAASTA_SUBCOMMANDS = {
     "mesh-status": "mesh_status",
     "pause_service_autoscaler": "pause_service_autoscaler",
     "push-to-registry": "push_to_registry",
-    "remote-run": "remote_run",
     "rollback": "rollback",
     "secret": "secret",
     "security-check": "security_check",

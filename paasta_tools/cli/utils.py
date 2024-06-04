@@ -21,9 +21,7 @@ import os
 import random
 import re
 import socket
-import subprocess
 from collections import defaultdict
-from shlex import quote
 from typing import Callable
 from typing import Collection
 from typing import Generator
@@ -490,75 +488,6 @@ def check_ssh_on_master(master, timeout=10):
         }
     )
     return (False, output)
-
-
-def run_on_master(
-    cluster,
-    system_paasta_config,
-    cmd_parts,
-    timeout=None,
-    err_code=-1,
-    graceful_exit=False,
-    stdin=None,
-):
-    """Find connectable master for :cluster: and :system_paasta_config: args and
-    invoke command from :cmd_parts:, wrapping it in ssh call.
-
-    :returns (exit code, output)
-
-    :param cluster: cluster to find master in
-    :param system_paasta_config: system configuration to lookup master data
-    :param cmd_parts: passed into paasta_tools.utils._run as command along with
-        ssh bits
-    :param timeout: see paasta_tools.utils._run documentation (default: None)
-    :param err_code: code to return along with error message when something goes
-        wrong (default: -1)
-    :param graceful_exit: wrap command in a bash script that waits for input and
-        kills the original command; trap SIGINT and send newline into stdin
-    """
-    try:
-        master = connectable_master(cluster, system_paasta_config)
-    except NoMasterError as e:
-        return (err_code, str(e))
-
-    if graceful_exit:
-        # Signals don't travel over ssh, kill process when anything lands on stdin instead
-        # The procedure here is:
-        # 1. send process to background and capture it's pid
-        # 2. wait for stdin with timeout in a loop, exit when original process finished
-        # 3. kill original process if loop finished (something on stdin)
-        cmd_parts.append(
-            "& p=$!; "
-            + "while ! read -t1; do ! kill -0 $p 2>/dev/null && kill $$; done; "
-            + "kill $p; wait"
-        )
-        stdin = subprocess.PIPE
-        stdin_interrupt = True
-        popen_kwargs = {"preexec_fn": os.setsid}
-    else:
-        stdin_interrupt = False
-        popen_kwargs = {}
-
-    cmd_parts = [
-        "ssh",
-        "-q",
-        "-t",
-        "-t",
-        "-A",
-        master,
-        "sudo /bin/bash -c %s" % quote(" ".join(cmd_parts)),
-    ]
-
-    log.debug("Running %s" % " ".join(cmd_parts))
-
-    return _run(
-        cmd_parts,
-        timeout=timeout,
-        stream=True,
-        stdin=stdin,
-        stdin_interrupt=stdin_interrupt,
-        popen_kwargs=popen_kwargs,
-    )
 
 
 def lazy_choices_completer(list_func):

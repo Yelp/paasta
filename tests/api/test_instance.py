@@ -29,7 +29,6 @@ from paasta_tools.instance.kubernetes import ServiceMesh
 from paasta_tools.long_running_service_tools import ServiceNamespaceConfig
 from paasta_tools.smartstack_tools import DiscoveredHost
 from paasta_tools.smartstack_tools import HaproxyBackend
-from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
 from tests.conftest import wrap_value_in_task
 
@@ -127,75 +126,6 @@ async def test_kubernetes_smartstack_status(mock_job_config):
                 }
             ],
         }
-
-
-@mock.patch("paasta_tools.api.views.instance.adhoc_instance_status", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.validate_service_instance", autospec=True)
-@mock.patch("paasta_tools.api.views.instance.get_actual_deployments", autospec=True)
-def test_instances_status_adhoc(
-    mock_get_actual_deployments,
-    mock_validate_service_instance,
-    mock_adhoc_instance_status,
-):
-    settings.cluster = "fake_cluster"
-    mock_deployment_version = DeploymentVersion("GIT_SHA", "20220101T000000")
-    mock_get_actual_deployments.return_value = {
-        "fake_cluster.fake_instance": mock_deployment_version,
-        "fake_cluster.fake_instance2": mock_deployment_version,
-        "fake_cluster2.fake_instance": mock_deployment_version,
-        "fake_cluster2.fake_instance2": mock_deployment_version,
-    }
-    mock_validate_service_instance.return_value = "adhoc"
-    mock_adhoc_instance_status.return_value = {}
-
-    request = testing.DummyRequest()
-    request.swagger_data = {"service": "fake_service", "instance": "fake_instance"}
-
-    response = instance.instance_status(request)
-    assert mock_adhoc_instance_status.called
-    assert response == {
-        "service": "fake_service",
-        "instance": "fake_instance",
-        "git_sha": "GIT_SHA",
-        "version": mock_deployment_version.short_sha_repr(),
-        "adhoc": {},
-    }
-
-
-def test_add_executor_info():
-    mock_mesos_task = mock.Mock()
-    mock_executor = {
-        "tasks": [mock_mesos_task],
-        "some": "thing",
-        "completed_tasks": [mock_mesos_task],
-        "queued_tasks": [mock_mesos_task],
-    }
-    mock_task = mock.Mock(
-        _Task__items={"a": "thing"},
-        executor=asynctest.CoroutineMock(
-            return_value=mock_executor,
-            func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-        ),
-    )
-    ret = instance.add_executor_info(mock_task)
-    expected = {"a": "thing", "executor": {"some": "thing"}}
-    assert ret._Task__items == expected
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["completed_tasks"]
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["tasks"]
-    with pytest.raises(KeyError):
-        ret._Task__items["executor"]["queued_tasks"]
-
-
-def test_add_slave_info():
-    mock_slave = asynctest.CoroutineMock(
-        return_value=mock.Mock(_MesosSlave__items={"some": "thing"}),
-        func=asynctest.CoroutineMock(),  # https://github.com/notion/a_sync/pull/40
-    )
-    mock_task = mock.Mock(_Task__items={"a": "thing"}, slave=mock_slave)
-    expected = {"a": "thing", "slave": {"some": "thing"}}
-    assert instance.add_slave_info(mock_task)._Task__items == expected
 
 
 @mock.patch(

@@ -31,7 +31,6 @@ from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
 from service_configuration_lib.spark_config import SparkConfBuilder
 
-from paasta_tools.mesos_tools import mesos_services_running_here
 
 try:
     from yaml.cyaml import CSafeDumper as Dumper
@@ -1297,13 +1296,6 @@ def get_tron_dashboard_for_cluster(cluster: str):
     if "Tron" not in dashboards:
         raise Exception(f"tron api endpoint is not defined for cluster {cluster}")
     return dashboards["Tron"]
-
-
-def tron_jobs_running_here() -> List[Tuple[str, str, int]]:
-    return mesos_services_running_here(
-        framework_filter=lambda fw: fw["name"].startswith("tron"),
-        parse_service_instance_from_executor_id=parse_service_instance_from_executor_id,
-    )
 
 
 def parse_service_instance_from_executor_id(task_id: str) -> Tuple[str, str]:

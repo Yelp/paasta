@@ -23,63 +23,6 @@ def service_group():
 
 
 @pytest.yield_fixture
-def mock_get_running_mesos_docker_containers():
-    with mock.patch.object(
-        firewall,
-        "get_running_mesos_docker_containers",
-        autospec=True,
-        return_value=[
-            {
-                "HostConfig": {"NetworkMode": "bridge"},
-                "Labels": {
-                    "paasta_service": "myservice",
-                    "paasta_instance": "hassecurity",
-                },
-                "NetworkSettings": {
-                    "Networks": {
-                        "bridge": {
-                            "MacAddress": "02:42:a9:fe:00:0a",
-                            "IPAddress": "1.1.1.1",
-                        }
-                    }
-                },
-            },
-            {
-                "HostConfig": {"NetworkMode": "bridge"},
-                "Labels": {
-                    "paasta_service": "myservice",
-                    "paasta_instance": "hassecurity2",
-                },
-                "NetworkSettings": {
-                    "Networks": {
-                        "bridge": {
-                            "MacAddress": "02:42:a9:fe:00:0b",
-                            "IPAddress": "2.2.2.2",
-                        }
-                    }
-                },
-            },
-            # host networking
-            {
-                "HostConfig": {"NetworkMode": "host"},
-                "Labels": {"paasta_service": "myservice", "paasta_instance": "batch"},
-            },
-            # no labels
-            {"HostConfig": {"NetworkMode": "bridge"}, "Labels": {}},
-        ],
-    ):
-        yield
-
-
-@pytest.mark.usefixtures("mock_get_running_mesos_docker_containers")
-def test_services_running_here():
-    assert tuple(firewall.services_running_here()) == (
-        ("myservice", "hassecurity", "02:42:a9:fe:00:0a", "1.1.1.1"),
-        ("myservice", "hassecurity2", "02:42:a9:fe:00:0b", "2.2.2.2"),
-    )
-
-
-@pytest.yield_fixture
 def mock_services_running_here():
     with mock.patch.object(
         firewall,
@@ -392,20 +335,6 @@ def test_service_group_update_rules(reorder_mock, ensure_mock, service_group):
     reorder_mock.assert_called_once_with(service_group.chain_name)
 
 
-def test_active_service_groups(mock_service_config, mock_services_running_here):
-    assert firewall.active_service_groups() == {
-        firewall.ServiceGroup("example_happyhour", "main"): {
-            "02:42:a9:fe:00:00",
-            "02:42:a9:fe:00:01",
-        },
-        firewall.ServiceGroup("example_happyhour", "batch"): {"02:42:a9:fe:00:02"},
-        firewall.ServiceGroup("my_cool_service", "web"): {
-            "02:42:a9:fe:00:03",
-            "02:42:a9:fe:00:04",
-        },
-    }
-
-
 def test_ensure_internet_chain():
     with mock.patch.object(iptables, "ensure_chain", autospec=True) as m:
         firewall._ensure_internet_chain()
@@ -437,84 +366,6 @@ def mock_active_service_groups():
         },
     }
     return groups
-
-
-@mock.patch.object(iptables, "reorder_chain", autospec=True)
-def test_ensure_service_chains(
-    mock_reorder_chain, mock_active_service_groups, mock_service_config
-):
-    with mock.patch.object(iptables, "ensure_chain", autospec=True) as m:
-        assert firewall.ensure_service_chains(
-            mock_active_service_groups,
-            DEFAULT_SOA_DIR,
-            firewall.DEFAULT_SYNAPSE_SERVICE_DIR,
-        ) == {
-            "PAASTA.cool_servi.397dba3c1f": {"fe:a3:a3:da:2d:40"},
-            "PAASTA.dumb_servi.8fb64b4f63": {"fe:a3:a3:da:2d:30", "fe:a3:a3:da:2d:31"},
-        }
-    assert len(m.mock_calls) == 2
-    assert mock.call("PAASTA.cool_servi.397dba3c1f", mock.ANY) in m.mock_calls
-    assert mock.call("PAASTA.dumb_servi.8fb64b4f63", mock.ANY) in m.mock_calls
-    assert mock.call("PAASTA.cool_servi.397dba3c1f") in mock_reorder_chain.mock_calls
-    assert mock.call("PAASTA.dumb_servi.8fb64b4f63") in mock_reorder_chain.mock_calls
-
-
-def test_ensure_dispatch_chains():
-    with mock.patch.object(
-        iptables, "ensure_rule", autospec=True
-    ) as mock_ensure_rule, mock.patch.object(
-        iptables, "ensure_chain", autospec=True
-    ) as mock_ensure_chain:
-        firewall.ensure_dispatch_chains(
-            {"chain1": {"mac1", "mac2"}, "chain2": {"mac3"}}
-        )
-
-    assert mock_ensure_chain.mock_calls == [
-        mock.call(
-            "PAASTA",
-            {
-                EMPTY_RULE._replace(
-                    target="chain1", matches=(("mac", (("mac-source", ("MAC1",)),)),)
-                ),
-                EMPTY_RULE._replace(
-                    target="chain1", matches=(("mac", (("mac-source", ("MAC2",)),)),)
-                ),
-                EMPTY_RULE._replace(
-                    target="chain2", matches=(("mac", (("mac-source", ("MAC3",)),)),)
-                ),
-            },
-        )
-    ]
-
-    assert mock_ensure_rule.mock_calls == [
-        mock.call("INPUT", EMPTY_RULE._replace(target="PAASTA")),
-        mock.call("FORWARD", EMPTY_RULE._replace(target="PAASTA")),
-    ]
-
-
-def test_garbage_collect_old_service_chains():
-    with mock.patch.object(
-        iptables, "delete_chain", autospec=True
-    ) as mock_delete_chain, mock.patch.object(
-        iptables,
-        "all_chains",
-        autospec=True,
-        return_value={
-            "INPUT",
-            "OUTPUT",
-            "FORWARD",
-            "DOCKER",
-            "PAASTA",
-            "PAASTA-INTERNET",
-            "PAASTA.chain1",
-            "PAASTA.chain3",
-        },
-    ):
-        firewall.garbage_collect_old_service_chains(
-            {"PAASTA.chain1": {"mac1", "mac2"}, "PAASTA.chain2": {"mac3"}}
-        )
-
-    assert mock_delete_chain.mock_calls == [mock.call("PAASTA.chain3")]
 
 
 @mock.patch.object(firewall.ServiceGroup, "get_rules", return_value=mock.sentinel.RULES)

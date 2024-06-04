@@ -17,20 +17,15 @@ PaaSTA service instance status/start/stop etc.
 """
 import asyncio
 import logging
-import re
 import traceback
 from typing import Any
 from typing import Dict
-from typing import List
 from typing import Mapping
 from typing import Optional
 
-import a_sync
 from pyramid.response import Response
 from pyramid.view import view_config
 
-import paasta_tools.mesos.exceptions as mesos_exceptions
-from paasta_tools import paasta_remote_run
 from paasta_tools import tron_tools
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
@@ -40,7 +35,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
-from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
 
 log = logging.getLogger(__name__)
@@ -92,33 +86,6 @@ def tron_instance_status(
         status["action_command"] = action_run["command"]
 
     return status
-
-
-def adhoc_instance_status(
-    instance_status: Mapping[str, Any], service: str, instance: str, verbose: int
-) -> List[Dict[str, Any]]:
-    status = []
-    filtered = paasta_remote_run.remote_run_filter_frameworks(service, instance)
-    filtered.sort(key=lambda x: x.name)
-    for f in filtered:
-        launch_time, run_id = re.match(
-            r"paasta-remote [^\s]+ (\w+) (\w+)", f.name
-        ).groups()
-        status.append(
-            {"launch_time": launch_time, "run_id": run_id, "framework_id": f.id}
-        )
-    return status
-
-
-async def _task_result_or_error(future):
-    try:
-        return {"value": await future}
-    except (AttributeError, mesos_exceptions.SlaveDoesNotExist):
-        return {"error_message": "None"}
-    except TimeoutError:
-        return {"error_message": "Timed Out"}
-    except Exception:
-        return {"error_message": "Unknown"}
 
 
 def no_configuration_for_service_message(cluster, service, instance):
@@ -185,11 +152,7 @@ def instance_status(request):
         instance_status["version"] = ""
         instance_status["git_sha"] = ""
     try:
-        if instance_type == "adhoc":
-            instance_status["adhoc"] = adhoc_instance_status(
-                instance_status, service, instance, verbose
-            )
-        elif pik.can_handle(instance_type):
+        if pik.can_handle(instance_type):
             instance_status.update(
                 pik.instance_status(
                     service=service,
@@ -316,19 +279,6 @@ def bounce_status(request):
             raise ApiFailure(error_message, 404)
         # for all others, treat as a 500
         raise ApiFailure(error_message, 500)
-
-
-def add_executor_info(task):
-    task._Task__items["executor"] = a_sync.block(task.executor).copy()
-    task._Task__items["executor"].pop("tasks", None)
-    task._Task__items["executor"].pop("completed_tasks", None)
-    task._Task__items["executor"].pop("queued_tasks", None)
-    return task
-
-
-def add_slave_info(task):
-    task._Task__items["slave"] = a_sync.block(task.slave)._MesosSlave__items.copy()
-    return task
 
 
 def get_deployment_version(

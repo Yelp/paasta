@@ -28,7 +28,6 @@ Submodules
    paasta_tools.adhoc_tools
    paasta_tools.apply_external_resources
    paasta_tools.async_utils
-   paasta_tools.bounce_lib
    paasta_tools.broadcast_log_to_services
    paasta_tools.cassandracluster_tools
    paasta_tools.check_autoscaler_max_instances
@@ -38,7 +37,6 @@ Submodules
    paasta_tools.check_kubernetes_services_replication
    paasta_tools.check_oom_events
    paasta_tools.check_services_replication_tools
-   paasta_tools.check_spark_jobs
    paasta_tools.cleanup_kubernetes_cr
    paasta_tools.cleanup_kubernetes_crd
    paasta_tools.cleanup_kubernetes_jobs
@@ -49,13 +47,10 @@ Submodules
    paasta_tools.deployment_utils
    paasta_tools.docker_wrapper
    paasta_tools.docker_wrapper_imports
-   paasta_tools.drain_lib
    paasta_tools.dump_locally_running_services
    paasta_tools.eks_tools
    paasta_tools.envoy_tools
    paasta_tools.firewall
-   paasta_tools.firewall_logging
-   paasta_tools.firewall_update
    paasta_tools.flink_tools
    paasta_tools.flinkeks_tools
    paasta_tools.generate_deployments_for_service
@@ -67,20 +62,14 @@ Submodules
    paasta_tools.kubernetes_tools
    paasta_tools.list_kubernetes_service_instances
    paasta_tools.list_tron_namespaces
-   paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
    paasta_tools.marathon_dashboard
-   paasta_tools.mesos_maintenance
-   paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.monkrelaycluster_tools
    paasta_tools.nrtsearchservice_tools
    paasta_tools.nrtsearchserviceeks_tools
    paasta_tools.oom_logger
-   paasta_tools.paasta_execute_docker_command
-   paasta_tools.paasta_native_serviceinit
-   paasta_tools.paasta_remote_run
    paasta_tools.paasta_service_config_loader
    paasta_tools.prune_completed_pods
    paasta_tools.puppet_service_tools

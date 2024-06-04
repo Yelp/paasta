@@ -11,97 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-
 import mock
 import pytest
-import requests
 
 from paasta_tools import smartstack_tools
 from paasta_tools.smartstack_tools import backend_is_up
 from paasta_tools.smartstack_tools import DiscoveredHost
-from paasta_tools.smartstack_tools import get_replication_for_services
 from paasta_tools.smartstack_tools import ip_port_hostname_from_svname
 from paasta_tools.smartstack_tools import match_backends_and_pods
-from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
-
-
-def test_load_smartstack_info_for_service(system_paasta_config):
-    with mock.patch(
-        "paasta_tools.smartstack_tools.long_running_service_tools.load_service_namespace_config",
-        autospec=True,
-    ), mock.patch(
-        "paasta_tools.smartstack_tools.get_smartstack_replication_for_attribute",
-        autospec=True,
-    ):
-        # just a smoke test for now.
-        smartstack_tools.load_smartstack_info_for_service(
-            service="service",
-            namespace="namespace",
-            soa_dir="fake",
-            blacklist=[],
-            system_paasta_config=system_paasta_config,
-        )
-
-
-def test_get_smartstack_replication_for_attribute(system_paasta_config):
-    fake_namespace = "fake_main"
-    fake_service = "fake_service"
-    mock_filtered_slaves = [
-        {"hostname": "hostone", "attributes": {"fake_attribute": "foo"}},
-        {"hostname": "hostone", "attributes": {"fake_attribute": "bar"}},
-    ]
-
-    with mock.patch(
-        "paasta_tools.mesos_tools.get_all_slaves_for_blacklist_whitelist",
-        return_value=mock_filtered_slaves,
-        autospec=True,
-    ) as mock_get_all_slaves_for_blacklist_whitelist, mock.patch(
-        "paasta_tools.smartstack_tools.get_replication_for_services",
-        return_value={},
-        autospec=True,
-    ) as mock_get_replication_for_services:
-        expected = {"foo": {}, "bar": {}}
-        actual = smartstack_tools.get_smartstack_replication_for_attribute(
-            attribute="fake_attribute",
-            service=fake_service,
-            namespace=fake_namespace,
-            blacklist=[],
-            system_paasta_config=system_paasta_config,
-        )
-        mock_get_all_slaves_for_blacklist_whitelist.assert_called_once_with(
-            blacklist=[], whitelist=None
-        )
-        assert actual == expected
-        assert mock_get_replication_for_services.call_count == 2
-
-        mock_get_replication_for_services.assert_any_call(
-            synapse_host="hostone",
-            synapse_port=system_paasta_config.get_synapse_port(),
-            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
-            services=["fake_service.fake_main"],
-        )
-
-
-def test_get_replication_for_service():
-    testdir = os.path.dirname(os.path.realpath(__file__))
-    testdata = os.path.join(testdir, "haproxy_snapshot.txt")
-    with open(testdata, "r") as fd:
-        mock_haproxy_data = fd.read()
-
-    mock_response = mock.Mock()
-    mock_response.text = mock_haproxy_data
-    mock_get = mock.Mock(return_value=(mock_response))
-
-    with mock.patch.object(requests.Session, "get", mock_get):
-        replication_result = get_replication_for_services(
-            "fake_host",
-            6666,
-            DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
-            ["service1", "service2", "service3", "service4"],
-        )
-        expected = {"service1": 18, "service2": 19, "service3": 0, "service4": 3}
-        assert expected == replication_result
 
 
 def test_backend_is_up():
@@ -387,20 +304,6 @@ def test_get_replication_for_instance(mock_replication_checker):
             == expected
         )
         assert mock_get_hostnames_in_pool.call_count == 2
-
-
-def test_get_first_host_in_pool(mock_replication_checker):
-    mock_host_0 = mock.Mock(hostname="host0", pool="some")
-    mock_host_1 = mock.Mock(hostname="host123", pool="default")
-    mock_host_2 = mock.Mock(hostname="host456", pool="default")
-    mock_host_3 = mock.Mock(hostname="host789", pool="special")
-    mock_hosts = [mock_host_0, mock_host_1, mock_host_2, mock_host_3]
-    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "default")
-    assert ret == "host123"
-    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "special")
-    assert ret == "host789"
-    ret = mock_replication_checker.get_first_host_in_pool(mock_hosts, "what")
-    assert ret == "host0"
 
 
 def test_hostnames_in_pool(mock_replication_checker):
