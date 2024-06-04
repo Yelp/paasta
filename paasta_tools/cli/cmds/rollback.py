@@ -237,12 +237,6 @@ def paasta_rollback(args: argparse.Namespace) -> int:
     mark_for_deployment.
     """
 
-    try:
-        validate_full_git_sha(args.commit)
-    except argparse.ArgumentTypeError as e:
-        print(PaastaColors.red(f"Error: {e}"))
-        return 1
-
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
 
@@ -303,6 +297,12 @@ def paasta_rollback(args: argparse.Namespace) -> int:
         list_previous_versions(
             service, deploy_groups, bool(given_deploy_groups), versions
         )
+        return 1
+
+    try:
+        validate_full_git_sha(args.commit)
+    except argparse.ArgumentTypeError as e:
+        print(PaastaColors.red(f"Error: {e}"))
         return 1
 
     # TODO: Add similar check for when image_version is empty and no-commit redeploys is enforced for requested deploy_group
