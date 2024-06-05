@@ -2017,6 +2017,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
+    service_auth_token_settings: ProjectedSAVolume
 
 
 def load_system_paasta_config(
@@ -2702,6 +2703,9 @@ class SystemPaastaConfig:
 
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})
+
+    def get_service_auth_token_volume_config(self) -> ProjectedSAVolume:
+        return self.config_dict.get("service_auth_token_settings", {})
 
 
 def _run(

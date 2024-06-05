@@ -906,6 +906,9 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_containers",
             autospec=True,
             return_value=["mock_sidecar"],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
         ):
             if prometheus_port:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
@@ -1612,6 +1615,10 @@ class TestKubernetesDeploymentConfig:
             )
 
     @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
         autospec=True,
     )
@@ -1695,6 +1702,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
         mock_get_volumes,
+        mock_load_system_paasta_config,
         in_smtstk,
         routable_ip,
         pod_topology,
@@ -2772,6 +2780,25 @@ class TestKubernetesDeploymentConfig:
             )
         )
         assert pv_name == "pv--slash-blahslash-what"
+
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None
+    )
+    @mock.patch(
+        "paasta_tools.kubernetes_tools.get_authenticating_services", autospec=None
+    )
+    def test_get_projected_sa_volumes_token_automount(
+        self, mock_get_auth_services, mock_system_config
+    ):
+        mock_get_auth_services.return_value = {"service_a", "service_b", "kurupt"}
+        mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
+            "audience": "foo.bar",
+            "container_path": "/var/secret/something",
+        }
+        assert self.deployment.get_projected_sa_volumes() == [
+            {"audience": "foo.bar", "container_path": "/var/secret/something"},
+        ]
+        mock_get_auth_services.assert_called_once_with("/nail/blah")
 
 
 def test_get_kubernetes_services_running_here():

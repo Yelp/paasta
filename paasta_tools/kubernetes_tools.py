@@ -21,6 +21,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from functools import lru_cache
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
@@ -2552,6 +2553,19 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "topology_spread_constraints", default_pod_topology_spread_constraints
         )
 
+    def get_projected_sa_volumes(self) -> List[ProjectedSAVolume]:
+        config_volumes = super().get_projected_sa_volumes()
+        token_config = (
+            load_system_paasta_config().get_service_auth_token_volume_config()
+        )
+        if (
+            self.service in get_authenticating_services(self.soa_dir)
+            and token_config
+            and not any(volume == token_config for volume in config_volumes)
+        ):
+            config_volumes = [token_config, *config_volumes]
+        return config_volumes
+
 
 def get_kubernetes_secret_hashes(
     environment_variables: Mapping[str, str], service: str, namespace: str
@@ -4406,3 +4420,11 @@ def get_kubernetes_secret_volumes(
                 ] = secret_contents
 
     return secret_volumes
+
+
+@lru_cache()
+def get_authenticating_services(soa_dir: str = DEFAULT_SOA_DIR) -> Set[str]:
+    """Load list of services partecipating in authenticated traffic"""
+    authenticating_services_conf_path = os.path.join(soa_dir, "authenticating.yaml")
+    config = service_configuration_lib.read_yaml_file(authenticating_services_conf_path)
+    return set(config.get("services", []))
