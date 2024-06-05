@@ -16,8 +16,8 @@ import socket
 import mock
 import pytest
 
-from paasta_tools import generate_services_file
 from paasta_tools import generate_services_yaml
+from paasta_tools import utils
 
 
 MOCK_NAMESPACES = [
@@ -39,10 +39,10 @@ def mock_namespaces():
 def test_main(tmpdir, mock_namespaces):
     services_yaml = tmpdir.join("services.yaml")
 
-    with mock.patch.object(generate_services_file, "datetime") as m, mock.patch.object(
+    with mock.patch.object(utils, "datetime") as m, mock.patch.object(
         socket, "getfqdn", return_value="somehost.yelp"
     ):
-        m.now().isoformat.return_value = "$TIME"
+        m.datetime.now().isoformat.return_value = "$TIME"
         generate_services_yaml.main((services_yaml.strpath,))
 
     assert services_yaml.read() == (
