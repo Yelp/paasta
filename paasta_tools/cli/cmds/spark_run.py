@@ -358,9 +358,9 @@ def add_subparser(subparsers):
     aws_group.add_argument(
         "--aws-profile",
         help="Name of the AWS profile to load credentials from. Only used when "
-        "--aws-credentials-yaml is not specified and --service is either "
-        "not specified or the service does not have credentials in "
-        "/etc/boto_cfg",
+        "--aws-credentials-yaml is not specified or the service name provided by "
+        "--service does not have credentials in /etc/boto_cfg. In the latter case, "
+        "the `default` user profile will be used.",
         default=DEFAULT_AWS_PROFILE,
     )
 
