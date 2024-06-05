@@ -1,3 +1,10 @@
+paasta-tools (1.1.1) xenial; urgency=medium
+
+  * 1.1.1 tagged with 'make release'
+    Commit: link generate_authenticating_services in debian package
+
+ -- Matteo Piano <mpiano@yelp.com>  Wed, 05 Jun 2024 03:12:36 -0700
+
 paasta-tools (1.1.0) xenial; urgency=medium
 
   * 1.1.0 tagged with 'make release'
