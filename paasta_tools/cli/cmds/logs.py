@@ -1176,7 +1176,7 @@ class VectorLogsReader(LogReader):
 
         self.cluster_map = cluster_map
 
-    def get_ecosystem_for_cluster(self, cluster: str) -> Optional[str]:
+    def get_superregion_for_cluster(self, cluster: str) -> Optional[str]:
         return self.cluster_map.get(cluster, None)
 
     def print_logs_by_time(
@@ -1193,8 +1193,8 @@ class VectorLogsReader(LogReader):
         strip_headers,
     ) -> None:
         stream_name = get_log_name_for_service(service, prefix="app_output")
-        ecosystem = self.get_ecosystem_for_cluster(clusters[0])
-        reader = S3LogsReader(ecosystem)
+        superregion = self.get_superregion_for_cluster(clusters[0])
+        reader = S3LogsReader(superregion)
         start_date = start_time.date()
         end_date = end_time.date()
         aggregated_logs: List[Dict[str, Any]] = []
