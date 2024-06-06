@@ -2790,11 +2790,15 @@ class TestKubernetesDeploymentConfig:
     def test_get_projected_sa_volumes_token_automount(
         self, mock_get_auth_services, mock_system_config
     ):
+        # pretending that a couple random services, plus the one referenced by the mock
+        # deployment config need to perform authentication
         mock_get_auth_services.return_value = {"service_a", "service_b", "kurupt"}
+        # setting up mock system config for service auth token mounts
         mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
             "audience": "foo.bar",
             "container_path": "/var/secret/something",
         }
+        # test that the extra project volume mount was added to the deployment
         assert self.deployment.get_projected_sa_volumes() == [
             {"audience": "foo.bar", "container_path": "/var/secret/something"},
         ]

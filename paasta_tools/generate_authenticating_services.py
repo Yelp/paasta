@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A simple script to enumerate all services partecipating in authenticated
+A simple script to enumerate all services participating in authenticated
 communications, and list them in a YAML/JSON file.
 """
 import argparse

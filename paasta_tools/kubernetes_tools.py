@@ -4424,7 +4424,7 @@ def get_kubernetes_secret_volumes(
 
 @lru_cache()
 def get_authenticating_services(soa_dir: str = DEFAULT_SOA_DIR) -> Set[str]:
-    """Load list of services partecipating in authenticated traffic"""
+    """Load list of services participating in authenticated traffic"""
     authenticating_services_conf_path = os.path.join(soa_dir, "authenticating.yaml")
     config = service_configuration_lib.read_yaml_file(authenticating_services_conf_path)
     return set(config.get("services", []))
