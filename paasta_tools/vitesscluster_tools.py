@@ -52,24 +52,12 @@ VTCTLD_EXTRA_ENV = [
 
 VTTABLET_EXTRA_ENV = [
     {
-        "name": "CELL_TOPOLOGY_SERVERS",
-        "value": "",
-    },
-    {
         "name": "SHARD",
         "value": "0",
     },
     {
-        "name": "DB",
-        "value": "",
-    },
-    {
         "name": "EXTERNAL_DB",
         "value": "1",
-    },
-    {
-        "name": "KEYSPACE",
-        "value": "",
     },
     {
         "name": "ROLE",
@@ -82,14 +70,6 @@ VTTABLET_EXTRA_ENV = [
     {
         "name": "GRPC_PORT",
         "value": GRPC_PORT,
-    },
-    {
-        "name": "TOPOLOGY_FLAGS",
-        "value": "",
-    },
-    {
-        "name": "VAULT_ADDR",
-        "value": "https://vault-dre.uswest1-devc.yelpcorp.com:8200",
     },
     {
         "name": "VAULT_ROLEID",
@@ -109,18 +89,10 @@ VTTABLET_EXTRA_ENV = [
             }
         },
     },
-    {
-        "name": "VAULT_CACERT",
-        "value": "/etc/vault/all_cas/acm-privateca-uswest1-devc.crt",
-    },
 ]
 
 # Vault auth related variables
 VTGATE_EXTRA_ENV = [
-    {
-        "name": "VAULT_ADDR",
-        "value": "https://vault-dre.uswest1-devc.yelpcorp.com:8200",
-    },
     {
         "name": "VAULT_ROLEID",
         "valueFrom": {
@@ -138,10 +110,6 @@ VTGATE_EXTRA_ENV = [
                 "key": "vault-vtgate-approle-secretid",
             }
         },
-    },
-    {
-        "name": "VAULT_CACERT",
-        "value": "/etc/vault/all_cas/acm-privateca-uswest1-devc.crt",
     },
 ]
 
@@ -165,8 +133,6 @@ VTTABLET_EXTRA_FLAGS = {
     "keep_logs": "72h",
     "enable-lag-throttler": "true",
     "throttle_check_as_check_self": "true",
-    "throttle_metrics_query": "",
-    "throttle_metrics_threshold": "",
     "db_charset": "utf8mb4",
     "disable_active_reparents": "true",
 }
@@ -177,8 +143,6 @@ def get_updated_environment_variables(original_list: List[Dict], update_dict: Di
         if env["name"] in update_dict:
             env["value"] = update_dict[env["name"]]
             del update_dict[env["name"]]
-            print(update_dict)
-    print(update_dict)
     original_list.extend([{"name": k, "value": v} for k, v in update_dict.items()])
     return original_list
 
@@ -242,6 +206,17 @@ def get_cell_config(
     """
     replicas = vtgate_resources.get("replicas", 1)
     requests = vtgate_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+
+    vtgate_extra_env = copy.deepcopy(VTGATE_EXTRA_ENV)
+    vtgate_extra_env.extend(get_extra_env(paasta_cluster))
+    environment_overrides = {
+        "VAULT_ADDR": f"https://vault-dre.{region}.yelpcorp.com:8200",
+        "VAULT_CACERT": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
+    }
+    updated_vtgate_extra_env = get_updated_environment_variables(
+        vtgate_extra_env, environment_overrides
+    )
+
     config = {
         "name": cell,
         "gateway": {
@@ -254,7 +229,7 @@ def get_cell_config(
             },
             "affinity": get_affinity_spec(paasta_pool),
             "extraLabels": get_extra_labels(paasta_pool, paasta_cluster),
-            "extraEnv": get_extra_env(paasta_cluster),
+            "extraEnv": updated_vtgate_extra_env,
             "replicas": replicas,
             "resources": {
                 "requests": requests,
@@ -262,13 +237,6 @@ def get_cell_config(
             },
         },
     }
-    vtgate_extra_env = copy.deepcopy(VTGATE_EXTRA_ENV)
-    for env in vtgate_extra_env:
-        if env["name"] == "VAULT_ADDR":
-            env["value"] = f"https://vault-dre.{region}.yelpcorp.com:8200"
-        if env["name"] == "VAULT_CACERT":
-            env["value"] = f"/etc/vault/all_cas/acm-privateca-{region}.crt"
-        config["gateway"]["extraEnv"].append(env)
     return config
 
 
@@ -284,11 +252,19 @@ def get_vitess_dashboard_config(
     """
     replicas = vtctld_resources.get("replicas", 1)
     requests = vtctld_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    vtctld_extra_env = copy.deepcopy(VTCTLD_EXTRA_ENV)
+    vtctld_extra_env.extend(get_extra_env(paasta_cluster))
+    environment_overrides = {
+        "TOPOLOGY_FLAGS": f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address {zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}",
+    }
+    updated_vtctld_extra_env = get_updated_environment_variables(
+        vtctld_extra_env, environment_overrides
+    )
     config = {
         "cells": cells,
         "affinity": get_affinity_spec(paasta_pool),
         "extraLabels": get_extra_labels(paasta_pool, paasta_cluster),
-        "extraEnv": get_extra_env(paasta_cluster),
+        "extraEnv": updated_vtctld_extra_env,
         "extraFlags": VTCTLD_EXTRA_FLAGS,
         "replicas": replicas,
         "resources": {
@@ -296,13 +272,6 @@ def get_vitess_dashboard_config(
             "limits": requests,
         },
     }
-    vtctld_extra_env = copy.deepcopy(VTCTLD_EXTRA_ENV)
-    for env in vtctld_extra_env:
-        if env["name"] == "TOPOLOGY_FLAGS":
-            env[
-                "value"
-            ] = f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address ${zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}"
-        config["extraEnv"].append(env)
 
     return config
 
@@ -357,27 +326,34 @@ def get_tablet_pool_config(
     get vttablet config
     """
     vttablet_extra_flags = VTTABLET_EXTRA_FLAGS.copy()
-    vttablet_extra_flags[
-        "throttle_metrics_query"
-    ] = f"select max_replication_delay from max_mysql_replication_delay.{throttle_query_table};"
-    vttablet_extra_flags["throttle_metrics_threshold"] = throttle_metrics_threshold
-    vttablet_extra_flags["enforce-tableacl-config"] = "true"
-    vttablet_extra_flags[
-        "table-acl-config"
-    ] = f"/etc/vitess_keyspace_acls/acls_for_{db_name}.json"
-    vttablet_extra_flags["table-acl-config-reload-interval"] = "60s"
-    vttablet_extra_flags["queryserver-config-strict-table-acl"] = "true"
-    vttablet_extra_flags["db-credentials-server"] = "vault"
-    vttablet_extra_flags[
-        "db-credentials-vault-addr"
-    ] = f"https://vault-dre.{region}.yelpcorp.com:8200"
-    vttablet_extra_flags[
-        "db-credentials-vault-path"
-    ] = "secrets/vitess/vt-tablet/vttablet_credentials.json"
-    vttablet_extra_flags[
-        "db-credentials-vault-tls-ca"
-    ] = f"/etc/vault/all_cas/acm-privateca-{region}.crt"
-    vttablet_extra_flags["db-credentials-vault-ttl"] = "60s"
+    flag_overrides = {
+        "throttle_metrics_query": f"select max_replication_delay from max_mysql_replication_delay.{throttle_query_table};",
+        "throttle_metrics_threshold": throttle_metrics_threshold,
+        "enforce-tableacl-config": "true",
+        "table-acl-config": f"/etc/vitess_keyspace_acls/acls_for_{db_name}.json",
+        "table-acl-config-reload-interval": "60s",
+        "queryserver-config-strict-table-acl": "true",
+        "db-credentials-server": "vault",
+        "db-credentials-vault-addr": f"https://vault-dre.{region}.yelpcorp.com:8200",
+        "db-credentials-vault-path": "secrets/vitess/vt-tablet/vttablet_credentials.json",
+        "db-credentials-vault-tls-ca": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
+        "db-credentials-vault-ttl": "60s",
+    }
+    vttablet_extra_flags.update(flag_overrides)
+
+    vttablet_extra_env = copy.deepcopy(VTTABLET_EXTRA_ENV)
+    vttablet_extra_env.extend(get_extra_env(paasta_cluster))
+    environment_overrides = {
+        "VAULT_ADDR": f"https://vault-dre.{region}.yelpcorp.com:8200",
+        "VAULT_CACERT": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
+        "TOPOLOGY_FLAGS": f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address ${zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}",
+        "CELL_TOPOLOGY_SERVERS": zk_address,
+        "DB": db_name,
+        "KEYSPACE": keyspace,
+    }
+    updated_vttablet_extra_env = get_updated_environment_variables(
+        vttablet_extra_env, environment_overrides
+    )
 
     if tablet_type == "primary":
         type = "externalmaster"
@@ -393,7 +369,7 @@ def get_tablet_pool_config(
         "type": type,
         "affinity": get_affinity_spec(paasta_pool),
         "extraLabels": get_extra_labels(paasta_pool, paasta_cluster),
-        "extraEnv": get_extra_env(paasta_cluster),
+        "extraEnv": updated_vttablet_extra_env,
         "extraVolumeMounts": [
             {
                 "mountPath": "/etc/vault/all_cas",
@@ -450,24 +426,6 @@ def get_tablet_pool_config(
         },
     }
 
-    vttablet_extra_env = copy.deepcopy(VTTABLET_EXTRA_ENV)
-    for env in vttablet_extra_env:
-        if env["name"] == "TOPOLOGY_FLAGS":
-            env[
-                "value"
-            ] = f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address ${zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}"
-        if env["name"] == "CELL_TOPOLOGY_SERVERS":
-            env["value"] = zk_address
-        if env["name"] == "DB":
-            env["value"] = db_name
-        if env["name"] == "KEYSPACE":
-            env["value"] = keyspace
-        if env["name"] == "VAULT_ADDR":
-            env["value"] = f"https://vault-dre.{region}.yelpcorp.com:8200"
-        if env["name"] == "VAULT_CACERT":
-            env["value"] = f"/etc/vault/all_cas/acm-privateca-{region}.crt"
-        config["extraEnv"].append(env)
-
     # Add extra pod label to filter
     config["extraLabels"]["tablet_type"] = f"{db_name}_{tablet_type}"
 
@@ -502,7 +460,7 @@ def get_keyspaces_config(
             # We don't have migration or reporting tablets in all clusters
             if cluster not in mysql_port_mappings:
                 log.error(
-                    f"MySQL Cluster {cluster} not found in mysql_port_mappings in system paasta config"
+                    f"MySQL Cluster {cluster} not found in system paasta config mysql_port_mappings"
                 )
             if tablet_type not in mysql_port_mappings[cluster]:
                 continue
