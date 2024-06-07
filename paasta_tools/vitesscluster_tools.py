@@ -14,6 +14,7 @@ from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 
 KUBERNETES_NAMESPACE = "paasta-vitessclusters"
@@ -33,83 +34,6 @@ TABLET_TYPES = ["primary", "migration"]
 WEB_PORT = "15000"
 GRPC_PORT = "15999"
 
-# Mapping of mysql cluster to target role envoy port
-MYSQL_CLUSTER_PORT_MAP = {
-    "main": {
-        "primary": 23129,
-        "migration": 22212,
-        "read": 23133,
-        "reporting": 23137,
-    },
-    "aux": {
-        "primary": 23126,
-        "migration": 22085,
-        "read": 23131,
-        "reporting": 23135,
-    },
-    "service": {
-        "primary": 23130,
-        "migration": 22388,
-        "read": 23134,
-        "reporting": 23138,
-    },
-    "nowaithost": {
-        "primary": 23184,
-        "migration": 22220,
-        "read": 23186,
-    },
-    "nowaitcad": {
-        "primary": 23183,
-        "migration": 22756,
-        "read": 23185,
-    },
-    "schematizer": {
-        "primary": 23213,
-        "migration": 22679,
-        "read": 23214,
-        "reporting": 23062,
-    },
-    "mlflow": {
-        "primary": 23955,
-        "migration": 22209,
-        "read": 23571,
-        "reporting": 23095,
-    },
-    "vitess-testing-environment": {
-        "primary": 22281,
-        "read": 22545,
-        "reporting": 22541,
-    },
-    "refresh-main": {
-        "primary": 22747,
-        "read": 22879,
-    },
-    "refresh-aux": {
-        "primary": 22505,
-        "read": 22291,
-    },
-    "refresh-service": {
-        "primary": 22790,
-        "read": 22687,
-    },
-    "refresh-nowaithost": {
-        "primary": 22351,
-        "read": 22160,
-    },
-    "refresh-nowaitcad": {
-        "primary": 22419,
-        "read": 22468,
-    },
-    "refresh-schematizer": {
-        "primary": 22840,
-        "read": 22827,
-    },
-    "sanitized-vitess": {
-        "primary": 23824,
-        "read": 23454,
-        "reporting": 23161,
-    },
-}
 
 # Environment variables
 VTCTLD_EXTRA_ENV = [
@@ -543,12 +467,14 @@ def build_keyspaces_config(
 
         tablet_pools = []
 
+        mysql_port_mappings = load_system_paasta_config().get_mysql_port_mappings()
+
         # Build vttablets
         for tablet_type in TABLET_TYPES:
             # We don't have migration or reporting tablets in all clusters
-            if tablet_type not in MYSQL_CLUSTER_PORT_MAP[cluster]:
+            if tablet_type not in mysql_port_mappings[cluster]:
                 continue
-            port = MYSQL_CLUSTER_PORT_MAP[cluster][tablet_type]
+            port = mysql_port_mappings[cluster][tablet_type]
 
             # We use migration_replication delay for migration tablets and read_replication_delay for everything else
             # Also throttling threshold for migration tablets is 2 hours, refresh and sanitized primaries at 30 seconds and everything else at 3 seconds
@@ -737,7 +663,7 @@ def load_vitess_service_instance_configs(
     instance_config = load_service_instance_config(
         service, instance, instance_type, cluster, soa_dir=soa_dir
     )
-    vitess_instance_config = generate_vitess_instance_config(Dict(instance_config))
+    vitess_instance_config = generate_vitess_instance_config(instance_config)
 
     general_config = deep_merge_dictionaries(
         overrides=vitess_instance_config, defaults=general_config
