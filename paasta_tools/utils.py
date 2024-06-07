@@ -2753,6 +2753,17 @@ class SystemPaastaConfig:
     def get_superregion_to_region_mapping(self) -> Dict:
         return self.config_dict.get("superregion_to_region_mapping", {})
 
+    def get_vitess_images(self) -> Dict:
+        return self.config_dict.get(
+            "vitess_images",
+            {
+                "vtctld_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtgate_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vttablet_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtadmin_image": "docker-dev.yelpcorp.com/vtadmin:v16.0.3",
+            },
+        )
+
 
 def _run(
     command: Union[str, List[str]],

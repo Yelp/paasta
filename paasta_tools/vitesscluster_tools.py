@@ -18,12 +18,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
 
 KUBERNETES_NAMESPACE = "paasta-vitessclusters"
-# Image variables
-IMAGE_TAG = "v16.0.3"
-VTCTLD_IMAGE = f"docker-paasta.yelpcorp.com:443/vitess_base:{IMAGE_TAG}"
-VT_GATE_IMAGE = f"docker-paasta.yelpcorp.com:443/vitess_base:{IMAGE_TAG}"
-VT_TABLET_IMAGE = f"docker-paasta.yelpcorp.com:443/vitess_base:{IMAGE_TAG}"
-VT_ADMIN_IMAGE = f"docker-dev.yelpcorp.com/vtadmin:{IMAGE_TAG}"
 
 
 # Global variables
@@ -220,10 +214,13 @@ def build_extra_env(paasta_cluster):
     return extra_env
 
 
-def build_cell_config(cell, paasta_pool, paasta_cluster, region):
+def build_cell_config(cell, paasta_pool, paasta_cluster, region, vtgate_resources):
     """
     Build vtgate config
     """
+    replicas = vtgate_resources.get("replicas", 1)
+    requests = vtgate_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    limits = vtgate_resources.get("limits", {"memory": "256Mi"})
     config = {
         "name": cell,
         "gateway": {
@@ -237,13 +234,10 @@ def build_cell_config(cell, paasta_pool, paasta_cluster, region):
             "affinity": build_affinity_spec(paasta_pool),
             "extraLabels": build_extra_labels(paasta_pool, paasta_cluster),
             "extraEnv": build_extra_env(paasta_cluster),
-            "replicas": 1,
+            "replicas": replicas,
             "resources": {
-                "requests": {
-                    "cpu": "100m",
-                    "memory": "256Mi",
-                },
-                "limits": {"memory": "256Mi"},
+                "requests": requests,
+                "limits": limits,
             },
         },
     }
@@ -257,23 +251,25 @@ def build_cell_config(cell, paasta_pool, paasta_cluster, region):
     return config
 
 
-def build_vitess_dashboard_config(cells, paasta_pool, paasta_cluster, zk_address):
+def build_vitess_dashboard_config(
+    cells, paasta_pool, paasta_cluster, zk_address, vtctld_resources
+):
     """
     Build vtctld config
     """
+    replicas = vtctld_resources.get("replicas", 1)
+    requests = vtctld_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    limits = vtctld_resources.get("limits", {"memory": "256Mi"})
     config = {
         "cells": cells,
         "affinity": build_affinity_spec(paasta_pool),
         "extraLabels": build_extra_labels(paasta_pool, paasta_cluster),
         "extraEnv": build_extra_env(paasta_cluster),
         "extraFlags": VTCTLD_EXTRA_FLAGS,
-        "replicas": 1,
+        "replicas": replicas,
         "resources": {
-            "requests": {
-                "cpu": "100m",
-                "memory": "128Mi",
-            },
-            "limits": {"memory": "128Mi"},
+            "requests": requests,
+            "limits": limits,
         },
     }
     vtctld_extra_env = copy.deepcopy(VTCTLD_EXTRA_ENV)
@@ -287,10 +283,13 @@ def build_vitess_dashboard_config(cells, paasta_pool, paasta_cluster, zk_address
     return config
 
 
-def build_vt_admin_config(cells, paasta_pool, paasta_cluster):
+def build_vt_admin_config(cells, paasta_pool, paasta_cluster, vtadmin_resources):
     """
     Build vtadmin config
     """
+    replicas = vtadmin_resources.get("replicas", 1)
+    requests = vtadmin_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    limits = vtadmin_resources.get("limits", {"memory": "256Mi"})
     config = {
         "cells": cells,
         "apiAddresses": ["http://localhost:15000"],
@@ -298,21 +297,15 @@ def build_vt_admin_config(cells, paasta_pool, paasta_cluster):
         "extraLabels": build_extra_labels(paasta_pool, paasta_cluster),
         "extraFlags": VTADMIN_EXTRA_FLAGS,
         "extraEnv": build_extra_env(paasta_cluster),
-        "replicas": 1,
+        "replicas": replicas,
         "readOnly": False,
         "apiResources": {
-            "requests": {
-                "cpu": "100m",
-                "memory": "128Mi",
-            },
-            "limits": {"memory": "128Mi"},
+            "requests": requests,
+            "limits": limits,
         },
         "webResources": {
-            "requests": {
-                "cpu": "100m",
-                "memory": "128Mi",
-            },
-            "limits": {"memory": "128Mi"},
+            "requests": requests,
+            "limits": limits,
         },
     }
     return config
@@ -330,6 +323,7 @@ def build_tablet_pool_config(
     throttle_metrics_threshold,
     tablet_type,
     region,
+    vttablet_resources,
 ):
     """
     Build vttablet config
@@ -361,6 +355,10 @@ def build_tablet_pool_config(
         type = "externalmaster"
     else:
         type = "externalreplica"
+
+    replicas = vttablet_resources.get("replicas", 1)
+    requests = vttablet_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    limits = vttablet_resources.get("limits", {"memory": "256Mi"})
 
     config = {
         "cell": cell,
@@ -400,15 +398,12 @@ def build_tablet_pool_config(
             {"name": "vttablet-fake-credentials", "hostPath": {"path": "/dev/null"}},
             {"name": "keyspace-fake-init-script", "hostPath": {"path": "/dev/null"}},
         ],
-        "replicas": 1,
+        "replicas": replicas,
         "vttablet": {
             "extraFlags": vttablet_extra_flags,
             "resources": {
-                "requests": {
-                    "cpu": "100m",
-                    "memory": "256Mi",
-                },
-                "limits": {"memory": "256Mi"},
+                "requests": requests,
+                "limits": limits,
             },
         },
         "externalDatastore": {
@@ -464,6 +459,7 @@ def build_keyspaces_config(
         keyspace = keyspace_config["keyspace"]
         db_name = keyspace_config["keyspace"]
         cluster = keyspace_config["cluster"]
+        vttablet_resources = keyspace_config.get("vttablet_resources", {})
 
         tablet_pools = []
 
@@ -472,6 +468,10 @@ def build_keyspaces_config(
         # Build vttablets
         for tablet_type in TABLET_TYPES:
             # We don't have migration or reporting tablets in all clusters
+            if cluster not in mysql_port_mappings:
+                log.error(
+                    f"MySQL Cluster {cluster} not found in mysql_port_mappings in system paasta config"
+                )
             if tablet_type not in mysql_port_mappings[cluster]:
                 continue
             port = mysql_port_mappings[cluster][tablet_type]
@@ -502,6 +502,7 @@ def build_keyspaces_config(
                         throttle_metrics_threshold,
                         tablet_type,
                         region,
+                        vttablet_resources,
                     )
                     for cell in cells
                 ]
@@ -602,6 +603,11 @@ def generate_vitess_instance_config(
     cells = instance_config.get("cells")
     keyspaces = instance_config.get("keyspaces")
     region = instance_config.get("region")
+    vtgate_resources = instance_config.get("vtgate_resources")
+    vtadmin_resources = instance_config.get("vtadmin_resources")
+    vtctld_resources = instance_config.get("vtctld_resources")
+
+    vitess_images = load_system_paasta_config().get_vitess_images()
 
     vitess_instance_config = {
         "namespace": "paasta-vitessclusters",
@@ -622,10 +628,10 @@ def generate_vitess_instance_config(
         "healthcheck_mode": "cmd",
         "healthcheck_cmd": "true",
         "images": {
-            "vtctld": VTCTLD_IMAGE,
-            "vtadmin": VT_ADMIN_IMAGE,
-            "vtgate": VT_GATE_IMAGE,
-            "vttablet": VT_TABLET_IMAGE,
+            "vtctld": vitess_images["vtctld_image"],
+            "vtadmin": vitess_images["vtadmin_image"],
+            "vtgate": vitess_images["vtgate_image"],
+            "vttablet": vitess_images["vttablet_image"],
         },
         "globalLockserver": {
             "external": {
@@ -635,13 +641,17 @@ def generate_vitess_instance_config(
             }
         },
         "cells": [
-            build_cell_config(cell, paasta_pool, paasta_cluster, region)
+            build_cell_config(
+                cell, paasta_pool, paasta_cluster, region, vtgate_resources
+            )
             for cell in cells
         ],
         "vitessDashboard": build_vitess_dashboard_config(
-            cells, paasta_pool, paasta_cluster, zk_address
+            cells, paasta_pool, paasta_cluster, zk_address, vtctld_resources
         ),
-        "vtadmin": build_vt_admin_config(cells, paasta_pool, paasta_cluster),
+        "vtadmin": build_vt_admin_config(
+            cells, paasta_pool, paasta_cluster, vtadmin_resources
+        ),
         "keyspaces": build_keyspaces_config(
             cells, keyspaces, paasta_pool, paasta_cluster, zk_address, region
         ),
