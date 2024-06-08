@@ -1216,7 +1216,9 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
     paasta_cluster = system_paasta_config.get_eks_cluster_aliases().get(
         args.cluster, args.cluster
     )
-
+    user_pod_template_path=user_spark_opts.get(
+            "spark.kubernetes.executor.podTemplateFile", ""
+        )
     spark_conf_builder = spark_config.SparkConfBuilder()
     spark_conf = spark_conf_builder.get_spark_conf(
         cluster_manager=args.cluster_manager,
@@ -1234,7 +1236,13 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         use_eks=True,
         k8s_server_address=k8s_server_address,
     )
-
+    if user_pod_template_path:
+        spark_conf["spark.kubernetes.executor.podTemplateFile"] = user_pod_template_path
+        pod_template_path=""
+    else:
+        pod_template_path = spark_conf.get(
+            "spark.kubernetes.executor.podTemplateFile", ""
+        )
     return configure_and_run_docker_container(
         args,
         docker_img=docker_image_digest,
@@ -1243,8 +1251,6 @@ def paasta_spark_run(args: argparse.Namespace) -> int:
         spark_conf=spark_conf,
         aws_creds=aws_creds,
         cluster_manager=args.cluster_manager,
-        pod_template_path=spark_conf.get(
-            "spark.kubernetes.executor.podTemplateFile", ""
-        ),
+        pod_template_path=pod_template_path,
         extra_driver_envs=driver_envs_from_tronfig,
     )
