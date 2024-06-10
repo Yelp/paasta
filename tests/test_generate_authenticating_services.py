@@ -56,9 +56,26 @@ def mock_soa_configs(tmpdir):
         yield
 
 
-def test_enumerate_authenticating_services(mock_soa_configs):
+@pytest.fixture
+def mock_paasta_config():
+    with patch(
+        "paasta_tools.generate_authenticating_services.load_system_paasta_config"
+    ) as mock_load:
+        mock_load.return_value.get_always_authenticating_services.return_value = [
+            "service_always"
+        ]
+        yield mock_load.return_value
+
+
+def test_enumerate_authenticating_services(mock_soa_configs, mock_paasta_config):
     assert generate_authenticating_services.enumerate_authenticating_services() == {
-        "services": ["service_a", "service_b", "service_c", "service_d"],
+        "services": [
+            "service_a",
+            "service_always",
+            "service_b",
+            "service_c",
+            "service_d",
+        ],
     }
 
 
@@ -66,7 +83,12 @@ def test_enumerate_authenticating_services(mock_soa_configs):
 @patch("paasta_tools.utils.datetime")
 @patch("paasta_tools.generate_authenticating_services.parse_args")
 def test_main_yaml_config(
-    mock_parse_args, mock_datetime, mock_socket, tmpdir, mock_soa_configs
+    mock_parse_args,
+    mock_datetime,
+    mock_socket,
+    tmpdir,
+    mock_soa_configs,
+    mock_paasta_config,
 ):
     output = tmpdir / "authenticating.yaml"
     mock_datetime.datetime.now().isoformat.return_value = "$SOME_TIME"
@@ -85,6 +107,7 @@ def test_main_yaml_config(
 ---
 services:
 - service_a
+- service_always
 - service_b
 - service_c
 - service_d
