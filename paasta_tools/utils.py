@@ -1359,6 +1359,7 @@ class LogWriterConfig(TypedDict):
 class LogReaderConfig(TypedDict):
     driver: str
     options: Dict
+    components: Optional[List]
 
 
 # The active log writer.
@@ -1960,6 +1961,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     ldap_search_ou: str
     local_run_config: LocalRunConfig
     log_reader: LogReaderConfig
+    log_readers: List[LogReaderConfig]
     log_writer: LogWriterConfig
     mark_for_deployment_max_polling_threads: int
     mark_for_deployment_default_polling_interval: float
@@ -2017,6 +2019,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     sidecar_requirements_config: Dict[str, KubeContainerResourceRequest]
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
+    use_multiple_log_readers: Optional[List[str]]
     service_auth_token_settings: ProjectedSAVolume
     always_authenticating_services: List[str]
 
@@ -2322,6 +2325,25 @@ class SystemPaastaConfig:
                 "Could not find log_reader in configuration directory: %s"
                 % self.directory
             )
+
+    def get_log_readers(self) -> List[LogReaderConfig]:
+        """Get the log_readers configuration out of global paasta config
+
+        :returns: the log_readers list of dicts.
+        """
+        try:
+            return self.config_dict["log_readers"]
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                "Could not find log_readers in configuration directory: %s"
+                % self.directory
+            )
+
+    def use_multiple_log_readers(self) -> Optional[List[str]]:
+        """
+        Get the list of clusters that are using multiple log readers
+        """
+        return self.config_dict.get("use_multiple_log_readers")
 
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config

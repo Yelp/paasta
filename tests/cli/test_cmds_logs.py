@@ -20,6 +20,7 @@ from queue import Empty
 import isodate
 import mock
 import pytest
+import pytz
 from pytest import raises
 
 from paasta_tools.cli.cli import parse_args
@@ -884,28 +885,213 @@ def test_determine_scribereader_additional_envs():
         assert "fake_scribe_env" in actual and "fake_scribe_env2" in actual
 
 
+def test_vector_logs_read_logs_empty_clusters():
+    service = "fake_service"
+    levels = ["fake_level1", "fake_level2"]
+    components = ["deploy", "monitoring"]
+    clusters = []
+    instances = ["fake_instance"]
+    pods = ["fake_pod"]
+    start_time, end_time = logs.generate_start_end_time()
+
+    with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ), pytest.raises(IndexError) as e:
+        logs.VectorLogsReader(cluster_map={}).print_logs_by_time(
+            service,
+            start_time,
+            end_time,
+            levels,
+            components,
+            clusters,
+            instances,
+            pods,
+            False,
+            False,
+        )
+    assert e.type == IndexError
+
+
+def test_vector_logs_print_logs_by_time():
+    service = "fake_service"
+    levels = ["debug"]
+    clusters = ["fake_cluster1"]
+    instances = ["main"]
+    components = ["build", "deploy", "monitoring", "marathon", "stdout", "stderr"]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ) as mock_s3_logs, mock.patch(
+        "paasta_tools.cli.cmds.logs.print_log", autospec=True
+    ) as print_log_patch:
+        fake_iter = mock.MagicMock()
+        fake_iter.__iter__.return_value = [
+            b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 1",
+                                           "timestamp":"2016-06-08T06:31:52.706609135Z"}""",
+            b"""{"cluster":"fake_cluster1","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 2",
+                                           "timestamp":"2016-06-08T06:41:52.706609135Z"}""",
+            b"""{"cluster":"fake_cluster2","component":"stderr","instance":"main",
+                                           "level":"debug","message":"testing 3",
+                                           "timestamp":"2016-06-08T06:51:52.706609135Z"}""",
+        ]
+        reader_mock = mock_s3_logs.return_value.get_log_reader
+        reader_mock.return_value = fake_iter
+
+        start_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T06:00"))
+        end_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T07:00"))
+
+        logs.VectorLogsReader(cluster_map={}).print_logs_by_time(
+            service,
+            start_time,
+            end_time,
+            levels,
+            components,
+            clusters,
+            instances,
+            pods=None,
+            raw_mode=False,
+            strip_headers=False,
+        )
+
+        assert reader_mock.call_count == 1
+        assert print_log_patch.call_count == 2
+
+
 def test_prefix():
     actual = logs.prefix("TEST STRING", "deploy")
     assert "TEST STRING" in actual
 
 
-def test_get_log_reader():
+def test_pick_log_reader():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
     mock_system_paasta_config = mock.Mock(
         autospec="paasta_tools.utils.SystemPaastaConfig"
     )
-    mock_system_paasta_config.get_log_reader.return_value = {
-        "driver": "scribereader",
-        "options": {"cluster_map": {}},
-    }
+    mock_system_paasta_config.use_multiple_log_readers.return_value = [
+        "fake_cluster",
+        "fake_cluster2",
+    ]
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 0
+        assert mock_get_log_reader.call_count == 1
+
+
+def test_pick_log_reader_default():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.use_multiple_log_readers.return_value = None
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 1
+        assert mock_get_log_reader.call_count == 0
+
+
+def test_pick_log_reader_still_default():
+    components = {"stdout", "stderr"}
+    cluster = "fake_cluster"
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.use_multiple_log_readers.return_value = ["fake_cluster2"]
+
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_log_reader", autospec=True
+    ) as mock_get_log_reader, mock.patch(
+        "paasta_tools.cli.cmds.logs.get_default_log_reader", autospec=True
+    ) as mock_default_reader:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        logs.pick_log_reader(cluster, components)
+        assert mock_default_reader.call_count == 1
+        assert mock_get_log_reader.call_count == 0
+
+
+def test_get_log_reader():
+    components = {"stdout", "stderr"}
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers.return_value = [
+        {
+            "driver": "scribereader",
+            "options": {"cluster_map": {}},
+            "components": ["build", "deploy"],
+        },
+        {
+            "driver": "vector-logs",
+            "options": {"cluster_map": {}},
+            "components": ["stdout", "stderr"],
+        },
+    ]
     with mock.patch(
         "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
     ) as mock_load_system_paasta_config, mock.patch(
         "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ):
         mock_load_system_paasta_config.return_value = mock_system_paasta_config
 
-        actual = logs.get_log_reader()
-        assert isinstance(actual, logs.ScribeLogReader)
+        actual = logs.get_log_reader(components)
+        assert isinstance(actual, logs.LogReader)
+
+
+def test_get_log_reader_invalid():
+    components = {"stdout", "build"}
+    mock_system_paasta_config = mock.Mock(
+        autospec="paasta_tools.utils.SystemPaastaConfig"
+    )
+    mock_system_paasta_config.get_log_readers.return_value = [
+        {
+            "driver": "scribereader",
+            "options": {"cluster_map": {}},
+            "components": ["build", "deploy"],
+        },
+        {
+            "driver": "vector-logs",
+            "options": {"cluster_map": {}},
+            "components": ["stdout", "stderr"],
+        },
+    ]
+    with mock.patch(
+        "paasta_tools.cli.cmds.logs.load_system_paasta_config", autospec=True
+    ) as mock_load_system_paasta_config, mock.patch(
+        "paasta_tools.cli.cmds.logs.scribereader", autospec=True
+    ), mock.patch(
+        "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
+    ), pytest.raises(
+        SystemExit
+    ) as wrapped_e:
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        logs.get_log_reader(components)
+
+    assert wrapped_e.type == SystemExit
 
 
 def test_generate_start_end_time():
