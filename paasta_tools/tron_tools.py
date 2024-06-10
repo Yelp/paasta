@@ -972,7 +972,18 @@ def format_tron_action_dict(action_config: TronActionConfig):
                     "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
                 ),
             )
+            # set Spark driver pod CPU and memory config if it is specified by Spark arguments
+            if "spark.driver.cores" in spark_config:
+                result["cpus"] = spark_config["spark.driver.cores"]
+            if "spark.driver.memory" in spark_config:
+                # need to set mem in MB based on tron schema
+                memory_in_mb = spark_tools.get_spark_memory_in_unit(spark_config["spark.driver.memory"], 'm')
+                if memory_in_mb:
+                    result["mem"] = str(memory_in_mb)
+
+            # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
+
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
@@ -1014,8 +1025,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
     # the following config is only valid for k8s/Mesos since we're not running SSH actions
     # in a containerized fashion
     if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
-        result["cpus"] = action_config.get_cpus()
-        result["mem"] = action_config.get_mem()
+        result.setdefault("cpus", action_config.get_cpus())
+        result.setdefault("mem", action_config.get_mem())
         result["disk"] = action_config.get_disk()
         result["extra_volumes"] = format_volumes(extra_volumes)
         result["docker_image"] = action_config.get_docker_url()
