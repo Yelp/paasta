@@ -7,7 +7,9 @@ from typing import Optional
 
 import service_configuration_lib
 
+from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import sanitised_cr_name
+from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.long_running_service_tools import LongRunningServiceConfig
 from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
@@ -173,7 +175,7 @@ def get_extra_labels(paasta_pool: str, paasta_cluster: str) -> Dict[str, str]:
     get extra labels to adhere to paasta contract
     """
     extra_labels = {
-        "yelp.com/owner": "dre_mysql",
+        "yelp.com/owner": "dre_mysql_working_hours",
         "paasta.yelp.com/cluster": paasta_cluster,
         "paasta.yelp.com/pool": paasta_pool,
     }
@@ -427,7 +429,8 @@ def get_tablet_pool_config(
     }
 
     # Add extra pod label to filter
-    config["extraLabels"]["tablet_type"] = f"{db_name}_{tablet_type}"
+    tablet_type_label = limit_size_with_hash(f"{db_name}_{tablet_type}", 63)
+    config["extraLabels"]["tablet_type"] = f"{tablet_type_label}"
 
     return config
 
@@ -524,7 +527,18 @@ def get_keyspaces_config(
 
 
 class VitessDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
-    replicas: int
+    images: Dict[str, str]
+    cells: List[str]
+    region: str
+    zk_address: str
+    vtgate_resources: Dict[str, str]
+    vtadmin_resources: Dict[str, str]
+    vtctld_resources: Dict[str, str]
+    keyspaces: List[Dict[str, str]]
+    updateStrategy: Dict[str, str]
+    healthcheck_cmd: str
+    healthcheck_mode: str
+    deploy_group: str
 
 
 class VitessDeploymentConfig(LongRunningServiceConfig):
@@ -541,7 +555,6 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         branch_dict: Optional[BranchDictV2],
         soa_dir: str = DEFAULT_SOA_DIR,
     ) -> None:
-
         super().__init__(
             cluster=cluster,  # superregion
             instance=instance,  # host-1
@@ -551,8 +564,102 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
             branch_dict=branch_dict,
         )
 
-    def get_instances(self, with_limit: bool = True) -> int:
-        return self.config_dict.get("replicas", 1)
+    def get_namespace(self) -> str:
+        return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
+
+    def get_images(self) -> Dict[str, str]:
+        vitess_images = self.config_dict.get(
+            "images", load_system_paasta_config().get_vitess_images()
+        )
+        return {
+            "vtctld": vitess_images["vtctld_image"],
+            "vtadmin": vitess_images["vtadmin_image"],
+            "vtgate": vitess_images["vtgate_image"],
+            "vttablet": vitess_images["vttablet_image"],
+        }
+
+    def get_globalLockserver(self) -> Dict[str, str]:
+        zk_address = self.config_dict.get("zk_address")
+        return {
+            "external": {
+                "implementation": TOPO_IMPLEMENTATION,
+                "address": zk_address,
+                "rootPath": TOPO_GLOBAL_ROOT,
+            }
+        }
+
+    def get_cells(self) -> List[str]:
+        paasta_pool = self.get_pool()
+        paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
+        cells = self.config_dict.get("cells")
+        region = self.config_dict.get("region")
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return [
+            get_cell_config(cell, paasta_pool, paasta_cluster, region, vtgate_resources)
+            for cell in cells
+        ]
+
+    def get_vitessDashboard(self) -> Dict[str, str]:
+        paasta_pool = self.get_pool()
+        paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
+        cells = self.config_dict.get("cells")
+        zk_address = self.config_dict.get("zk_address")
+        vtctld_resources = self.config_dict.get("vtctld_resources")
+        return get_vitess_dashboard_config(
+            cells, paasta_pool, paasta_cluster, zk_address, vtctld_resources
+        )
+
+    def get_vtadmin(self) -> Dict[str, str]:
+        paasta_pool = self.get_pool()
+        paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
+        cells = self.config_dict.get("cells")
+        vtadmin_resources = self.config_dict.get("vtadmin_resources")
+        return get_vt_admin_config(
+            cells, paasta_pool, paasta_cluster, vtadmin_resources
+        )
+
+    def get_keyspaces(self) -> List[Dict[str, str]]:
+        paasta_pool = self.get_pool()
+        paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
+        cells = self.config_dict.get("cells")
+        zk_address = self.config_dict.get("zk_address")
+        region = self.config_dict.get("region")
+        keyspaces = self.config_dict.get("keyspaces")
+        return get_keyspaces_config(
+            cells, keyspaces, paasta_pool, paasta_cluster, zk_address, region
+        )
+
+    def get_updateStrategy(self) -> Dict[str, str]:
+        return self.config_dict.get("updateStrategy", {"type": "Immediate"})
+
+    def get_vitess_config(self) -> Dict[str, str]:
+        smartstack_config = load_service_namespace_config(
+            service=self.service, namespace=self.get_namespace(), soa_dir=self.soa_dir
+        )
+        return {
+            "autoscaling": self.get_autoscaling_params(),
+            "namespace": self.get_namespace(),
+            "cpus": self.get_cpus(),
+            "mem": self.get_mem(),
+            "deploy_group": self.get_deploy_group(),
+            "healthcheck_cmd": self.get_healthcheck_cmd(),
+            "healthcheck_mode": self.get_healthcheck_mode(smartstack_config),
+            "healthcheck_grace_period_seconds": self.get_healthcheck_grace_period_seconds(),
+            "env": {
+                "OPERATOR_NAME": "vitess-operator",
+                "POD_NAME": "vitess-k8s",
+                "PS_OPERATOR_POD_NAME": "vitess-k8s",
+                "PS_OPERATOR_POD_NAMESPACE": KUBERNETES_NAMESPACE,
+                "WATCH_NAMESPACE": KUBERNETES_NAMESPACE,
+            },
+            "images": self.get_images(),
+            "globalLockserver": self.get_globalLockserver(),
+            "cells": self.get_cells(),
+            "vitessDashboard": self.get_vitessDashboard(),
+            "vtadmin": self.get_vtadmin(),
+            "keyspaces": self.get_keyspaces(),
+            "updateStrategy": self.get_updateStrategy(),
+        }
 
     def validate(
         self,
@@ -577,80 +684,48 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
 
 def generate_vitess_instance_config(
     instance_config: Dict,
-) -> Dict:
+) -> VitessDeploymentConfigDict:
     # Generate vitess instance config from yelpsoa config
-
-    cpus = instance_config.get("cpus")
-    mem = instance_config.get("mem")
-    deploy_group = instance_config.get("deploy_group")
     zk_address = instance_config.get("zk_address")
-    paasta_pool = instance_config.get("paasta_pool")
-    paasta_cluster = instance_config.get("paasta_cluster")
     cells = instance_config.get("cells")
     keyspaces = instance_config.get("keyspaces")
     region = instance_config.get("region")
     vtgate_resources = instance_config.get("vtgate_resources")
     vtadmin_resources = instance_config.get("vtadmin_resources")
     vtctld_resources = instance_config.get("vtctld_resources")
+    deploy_group = instance_config.get("deploy_group")
+
+    # healthcheck cmd and mode are required to be in config_dict for LongRunningServiceConfig
+    healthcheck_cmd = instance_config.get("healthcheck_cmd")
+    healthcheck_mode = instance_config.get("healthcheck_mode")
 
     vitess_images = load_system_paasta_config().get_vitess_images()
 
     vitess_instance_config = {
-        "namespace": "paasta-vitessclusters",
-        "cpus": cpus,
-        "mem": mem,
-        "min_instances": 1,
-        "max_instances": 1,
-        "deploy_group": deploy_group,
-        "autoscaling": {"setpoint": 0.7},
-        "env": {
-            "OPERATOR_NAME": "vitess-operator",
-            "POD_NAME": "vitess-k8s",
-            "PS_OPERATOR_POD_NAME": "vitess-k8s",
-            "PS_OPERATOR_POD_NAMESPACE": "paasta-vitessclusters",
-            "WATCH_NAMESPACE": "paasta-vitessclusters",
-        },
-        "healthcheck_grace_period_seconds": 60,
-        "healthcheck_mode": "cmd",
-        "healthcheck_cmd": "true",
-        "images": {
-            "vtctld": vitess_images["vtctld_image"],
-            "vtadmin": vitess_images["vtadmin_image"],
-            "vtgate": vitess_images["vtgate_image"],
-            "vttablet": vitess_images["vttablet_image"],
-        },
-        "globalLockserver": {
-            "external": {
-                "implementation": TOPO_IMPLEMENTATION,
-                "address": zk_address,
-                "rootPath": TOPO_GLOBAL_ROOT,
-            }
-        },
-        "cells": [
-            get_cell_config(cell, paasta_pool, paasta_cluster, region, vtgate_resources)
-            for cell in cells
-        ],
-        "vitessDashboard": get_vitess_dashboard_config(
-            cells, paasta_pool, paasta_cluster, zk_address, vtctld_resources
-        ),
-        "vtadmin": get_vt_admin_config(
-            cells, paasta_pool, paasta_cluster, vtadmin_resources
-        ),
-        "keyspaces": get_keyspaces_config(
-            cells, keyspaces, paasta_pool, paasta_cluster, zk_address, region
-        ),
+        "zk_address": zk_address,
+        "cells": cells,
+        "region": region,
+        "vtgate_resources": vtgate_resources,
+        "vtadmin_resources": vtadmin_resources,
+        "vtctld_resources": vtctld_resources,
+        "keyspaces": keyspaces,
+        "images": vitess_images,
         "updateStrategy": {"type": "Immediate"},
+        "healthcheck_cmd": healthcheck_cmd,
+        "healthcheck_mode": healthcheck_mode,
+        "deploy_group": deploy_group,
     }
-    return vitess_instance_config
+    return VitessDeploymentConfigDict(vitess_instance_config)
 
 
-def load_vitess_service_instance_configs(
+def load_vitess_instance_config(
     service: str,
     instance: str,
-    instance_type: str,
     cluster: str,
+    instance_type: str = "vitesscluster",
+    load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> VitessDeploymentConfigDict:
+) -> VitessDeploymentConfig:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
@@ -661,19 +736,6 @@ def load_vitess_service_instance_configs(
 
     general_config = deep_merge_dictionaries(
         overrides=vitess_instance_config, defaults=general_config
-    )
-    return general_config
-
-
-def load_vitess_instance_config(
-    service: str,
-    instance: str,
-    cluster: str,
-    load_deployments: bool = True,
-    soa_dir: str = DEFAULT_SOA_DIR,
-) -> VitessDeploymentConfig:
-    general_config = load_vitess_service_instance_configs(
-        service, instance, "vitesscluster", cluster, soa_dir=soa_dir
     )
 
     branch_dict: Optional[BranchDictV2] = None
@@ -691,7 +753,7 @@ def load_vitess_instance_config(
         deploy_group = temp_instance_config.get_deploy_group()
         branch_dict = deployments_json.get_branch_dict(service, branch, deploy_group)
 
-    return VitessDeploymentConfig(
+    vitess_deployment_config = VitessDeploymentConfig(
         service=service,
         cluster=cluster,
         instance=instance,
@@ -699,6 +761,21 @@ def load_vitess_instance_config(
         branch_dict=branch_dict,
         soa_dir=soa_dir,
     )
+
+    return vitess_deployment_config
+
+
+def load_vitess_service_instance_configs(
+    service: str,
+    instance: str,
+    instance_type: str,
+    cluster: str,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> VitessDeploymentConfigDict:
+    vitess_service_instance_configs = load_vitess_instance_config(
+        service, instance, cluster, instance_type, soa_dir=soa_dir
+    ).get_vitess_config()
+    return vitess_service_instance_configs
 
 
 # TODO: read this from CRD in service configs
