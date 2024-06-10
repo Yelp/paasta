@@ -2554,17 +2554,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_projected_sa_volumes(self) -> List[ProjectedSAVolume]:
-        config_volumes = super().get_projected_sa_volumes()
-        token_config = (
-            load_system_paasta_config().get_service_auth_token_volume_config()
+        return add_volumes_for_authenticating_services(
+            service_name=self.service,
+            config_volumes=super().get_projected_sa_volumes(),
+            soa_dir=self.soa_dir,
         )
-        if (
-            self.service in get_authenticating_services(self.soa_dir)
-            and token_config
-            and not any(volume == token_config for volume in config_volumes)
-        ):
-            config_volumes = [token_config, *config_volumes]
-        return config_volumes
 
 
 def get_kubernetes_secret_hashes(
@@ -4428,3 +4422,27 @@ def get_authenticating_services(soa_dir: str = DEFAULT_SOA_DIR) -> Set[str]:
     authenticating_services_conf_path = os.path.join(soa_dir, "authenticating.yaml")
     config = service_configuration_lib.read_yaml_file(authenticating_services_conf_path)
     return set(config.get("services", []))
+
+
+def add_volumes_for_authenticating_services(
+    service_name: str,
+    config_volumes: List[ProjectedSAVolume],
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[ProjectedSAVolume]:
+    """Add projected service account volume to the list of volumes if service
+    participates in authenticated traffic. In case of changes, a new list is returned,
+    no updates in-place.
+
+    :param str service_name: name of the service
+    :param List[ProjectedSAVolume] config_volumes: existing projected volumes from service config
+    :param str soa_dir: path to SOA configurations directory
+    :return: updated list of projected service account volumes
+    """
+    token_config = load_system_paasta_config().get_service_auth_token_volume_config()
+    if (
+        token_config
+        and service_name in get_authenticating_services(soa_dir)
+        and not any(volume == token_config for volume in config_volumes)
+    ):
+        config_volumes = [token_config, *config_volumes]
+    return config_volumes
