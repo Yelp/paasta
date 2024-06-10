@@ -737,16 +737,6 @@ class TestTronTools:
         master_config = {
             "some_key": 101,
             "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/tmp",
-                        "host_path": "/nail/tmp",
-                        "mode": "RW",
-                    }
-                ],
-                "other_mesos": True,
-            },
         }
         paasta_volumes = [
             {"containerPath": "/nail/other", "hostPath": "/other/home", "mode": "RW"}
@@ -758,17 +748,6 @@ class TestTronTools:
         assert result == {
             "some_key": 101,
             "another": "hello",
-            "mesos_options": {
-                "default_volumes": [
-                    {
-                        "container_path": "/nail/other",
-                        "host_path": "/other/home",
-                        "mode": "RW",
-                    }
-                ],
-                "dockercfg_location": dockercfg,
-                "other_mesos": True,
-            },
         }
 
         master_config["k8s_options"] = {
