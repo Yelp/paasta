@@ -2760,7 +2760,7 @@ class SystemPaastaConfig:
                 "vtctld_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
                 "vtgate_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
                 "vttablet_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
-                "vtadmin_image": "docker-dev.yelpcorp.com/vtadmin:v16.0.3",
+                "vtadmin_image": "docker-paasta.yelpcorp.com:443/vtadmin:v16.0.3",
             },
         )
 

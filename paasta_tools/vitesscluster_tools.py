@@ -1,4 +1,3 @@
-import copy
 import logging
 from typing import Any
 from typing import Collection
@@ -11,17 +10,20 @@ from typing import Union
 
 import service_configuration_lib
 
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
+
+# from paasta_tools.long_running_service_tools import LongRunningServiceConfig
+# from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 
 
 log = logging.getLogger(__name__)
@@ -41,83 +43,45 @@ GRPC_PORT = "15999"
 
 
 # Environment variables
-VTCTLD_EXTRA_ENV = [
-    {
-        "name": "WEB_PORT",
-        "value": WEB_PORT,
-    },
-    {
-        "name": "GRPC_PORT",
-        "value": GRPC_PORT,
-    },
-    {
-        "name": "TOPOLOGY_FLAGS",
-        "value": "",
-    },
-]
+VTCTLD_EXTRA_ENV = {
+    "WEB_PORT": WEB_PORT,
+    "GRPC_PORT": GRPC_PORT,
+}
 
-VTTABLET_EXTRA_ENV = [
-    {
-        "name": "SHARD",
-        "value": "0",
+VTTABLET_EXTRA_ENV = {
+    "WEB_PORT": WEB_PORT,
+    "GRPC_PORT": GRPC_PORT,
+    "SHARD": "0",
+    "EXTERNAL_DB": "1",
+    "ROLE": "replica",
+    "VAULT_ROLEID": {
+        "secretKeyRef": {
+            "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vttablet-approle-roleid",
+            "key": "vault-vttablet-approle-roleid",
+        }
     },
-    {
-        "name": "EXTERNAL_DB",
-        "value": "1",
+    "VAULT_SECRETID": {
+        "secretKeyRef": {
+            "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vttablet-approle-secretid",
+            "key": "vault-vttablet-approle-secretid",
+        }
     },
-    {
-        "name": "ROLE",
-        "value": "rdonly",
-    },
-    {
-        "name": "WEB_PORT",
-        "value": WEB_PORT,
-    },
-    {
-        "name": "GRPC_PORT",
-        "value": GRPC_PORT,
-    },
-    {
-        "name": "VAULT_ROLEID",
-        "valueFrom": {
-            "secretKeyRef": {
-                "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vttablet-approle-roleid",
-                "key": "vault-vttablet-approle-roleid",
-            }
-        },
-    },
-    {
-        "name": "VAULT_SECRETID",
-        "valueFrom": {
-            "secretKeyRef": {
-                "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vttablet-approle-secretid",
-                "key": "vault-vttablet-approle-secretid",
-            }
-        },
-    },
-]
+}
 
-# Vault auth related variables
-VTGATE_EXTRA_ENV = [
-    {
-        "name": "VAULT_ROLEID",
-        "valueFrom": {
-            "secretKeyRef": {
-                "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vtgate-approle-roleid",
-                "key": "vault-vtgate-approle-roleid",
-            }
-        },
+VTGATE_EXTRA_ENV = {
+    "VAULT_ROLEID": {
+        "secretKeyRef": {
+            "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vtgate-approle-roleid",
+            "key": "vault-vtgate-approle-roleid",
+        }
     },
-    {
-        "name": "VAULT_SECRETID",
-        "valueFrom": {
-            "secretKeyRef": {
-                "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vtgate-approle-secretid",
-                "key": "vault-vtgate-approle-secretid",
-            }
-        },
+    "VAULT_SECRETID": {
+        "secretKeyRef": {
+            "name": "paasta-vitessclusters-secret-vitess-k8s-vault-vtgate-approle-secretid",
+            "key": "vault-vtgate-approle-secretid",
+        }
     },
-]
+}
 
 
 # Extra Flags
@@ -144,15 +108,39 @@ VTTABLET_EXTRA_FLAGS = {
 }
 
 
-def get_updated_environment_variables(
-    original_list: List[Any], update_dict: Dict[str, str]
-) -> List[Dict[str, str]]:
-    for env in original_list:
-        if env["name"] in update_dict:
-            env["value"] = update_dict[env["name"]]
-            del update_dict[env["name"]]
-    original_list.extend([{"name": k, "value": v} for k, v in update_dict.items()])
-    return original_list
+def get_updated_environment_variables(env_vars: Dict[str, Any]) -> List[dict]:
+    """
+    Helper function to take in key value pairs of environment variables and return a list of dicts
+    """
+    updated_environment_variables = []
+    for env_key, env_value in env_vars.items():
+        if isinstance(env_value, str):
+            updated_environment_variables.append({"name": env_key, "value": env_value})
+        elif isinstance(env_value, dict):
+            updated_environment_variables.append(
+                {"name": env_key, "valueFrom": env_value}
+            )
+        else:
+            log.error(f"Invalid environment variable {env_key}={env_value}")
+    return updated_environment_variables
+
+
+def get_formatted_container_env(
+    env_var: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    Helper function to recursively format K8s container environment variable dict which have keys in snake case and modify them to camel case
+    """
+    formatted_env_var = {}
+    for key in env_var.keys():
+        temp_key = key.split("_")
+        new_key = temp_key[0] + "".join(element.title() for element in temp_key[1:])
+        if isinstance(env_var[key], dict):
+            formatted_env_var[new_key] = get_formatted_container_env(env_var[key])
+        else:
+            formatted_env_var[new_key] = env_var[key]
+
+    return formatted_env_var
 
 
 def get_affinity_spec(
@@ -190,41 +178,26 @@ def get_extra_labels(paasta_pool: str, paasta_cluster: str) -> Dict[str, str]:
     return extra_labels
 
 
-def get_extra_env(paasta_cluster: str) -> List[object]:
-    """
-    get extra env to adhere to paasta contract
-    """
-    extra_env = [
-        {
-            "name": "PAASTA_POD_IP",
-            "valueFrom": {"fieldRef": {"fieldPath": "status.podIP"}},
-        },
-        {"name": "PAASTA_CLUSTER", "value": paasta_cluster},
-    ]
-    return extra_env
-
-
 def get_cell_config(
     cell: str,
     paasta_pool: str,
     paasta_cluster: str,
     region: str,
     vtgate_resources: Dict[str, str],
+    env: dict,
 ) -> Dict[str, Collection[str]]:
     """
     get vtgate config
     """
     replicas = vtgate_resources.get("replicas", 1)
     requests = vtgate_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
-
-    vtgate_extra_env = copy.deepcopy(VTGATE_EXTRA_ENV)
-    vtgate_extra_env.extend(get_extra_env(paasta_cluster))  # type: ignore
     environment_overrides = {
         "VAULT_ADDR": f"https://vault-dre.{region}.yelpcorp.com:8200",
         "VAULT_CACERT": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
     }
-    updated_vtgate_extra_env = get_updated_environment_variables(
-        vtgate_extra_env, environment_overrides
+    environment_overrides.update(VTGATE_EXTRA_ENV)
+    updated_vtgate_extra_env = (
+        get_updated_environment_variables(environment_overrides) + env
     )
 
     config = {
@@ -256,20 +229,21 @@ def get_vitess_dashboard_config(
     paasta_cluster: str,
     zk_address: str,
     vtctld_resources: Dict[str, str],
+    env: dict,
 ) -> Dict[str, object]:
     """
     get vtctld config
     """
     replicas = vtctld_resources.get("replicas", 1)
     requests = vtctld_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
-    vtctld_extra_env = copy.deepcopy(VTCTLD_EXTRA_ENV)
-    vtctld_extra_env.extend(get_extra_env(paasta_cluster))  # type: ignore
     environment_overrides = {
         "TOPOLOGY_FLAGS": f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address {zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}",
     }
-    updated_vtctld_extra_env = get_updated_environment_variables(
-        vtctld_extra_env, environment_overrides
+    environment_overrides.update(VTCTLD_EXTRA_ENV)
+    updated_vtctld_extra_env = (
+        get_updated_environment_variables(environment_overrides) + env
     )
+
     config = {
         "cells": cells,
         "affinity": get_affinity_spec(paasta_pool),
@@ -291,6 +265,7 @@ def get_vt_admin_config(
     paasta_pool: str,
     paasta_cluster: str,
     vtadmin_resources: Dict[str, str],
+    env: dict,
 ) -> Dict[str, Union[Collection[object], int]]:
     """
     get vtadmin config
@@ -303,7 +278,7 @@ def get_vt_admin_config(
         "affinity": get_affinity_spec(paasta_pool),
         "extraLabels": get_extra_labels(paasta_pool, paasta_cluster),
         "extraFlags": VTADMIN_EXTRA_FLAGS,
-        "extraEnv": get_extra_env(paasta_cluster),
+        "extraEnv": env,
         "replicas": replicas,
         "readOnly": False,
         "apiResources": {
@@ -331,6 +306,7 @@ def get_tablet_pool_config(
     tablet_type: str,
     region: str,
     vttablet_resources: Dict[str, str],
+    env: dict,
 ) -> Dict[str, object]:
     """
     get vttablet config
@@ -351,8 +327,6 @@ def get_tablet_pool_config(
     }
     vttablet_extra_flags.update(flag_overrides)
 
-    vttablet_extra_env = copy.deepcopy(VTTABLET_EXTRA_ENV)
-    vttablet_extra_env.extend(get_extra_env(paasta_cluster))
     environment_overrides = {
         "VAULT_ADDR": f"https://vault-dre.{region}.yelpcorp.com:8200",
         "VAULT_CACERT": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
@@ -361,8 +335,9 @@ def get_tablet_pool_config(
         "DB": db_name,
         "KEYSPACE": keyspace,
     }
-    updated_vttablet_extra_env = get_updated_environment_variables(
-        vttablet_extra_env, environment_overrides
+    environment_overrides.update(VTTABLET_EXTRA_ENV)
+    updated_vttablet_extra_env = (
+        get_updated_environment_variables(environment_overrides) + env
     )
 
     if tablet_type == "primary":
@@ -450,6 +425,7 @@ def get_keyspaces_config(
     paasta_cluster: str,
     zk_address: str,
     region: str,
+    env: dict,
 ) -> List[Dict[str, object]]:
     """
     get vitess keyspace config
@@ -504,6 +480,7 @@ def get_keyspaces_config(
                         tablet_type,
                         region,
                         vttablet_resources,
+                        env,
                     )
                     for cell in cells
                 ]
@@ -534,7 +511,7 @@ def get_keyspaces_config(
     return config
 
 
-class VitessDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
+class VitessDeploymentConfigDict(KubernetesDeploymentConfigDict, total=False):
     images: Dict[str, str]
     cells: List[str]
     region: str
@@ -547,7 +524,7 @@ class VitessDeploymentConfigDict(LongRunningServiceConfigDict, total=False):
     paasta_cluster: str
 
 
-class VitessDeploymentConfig(LongRunningServiceConfig):
+class VitessDeploymentConfig(KubernetesDeploymentConfig):
     config_dict: VitessDeploymentConfigDict
 
     config_filename_prefix = "vitesscluster"
@@ -571,7 +548,7 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         )
 
     def get_namespace(self) -> str:
-        return self.config_dict.get("namespace", KUBERNETES_NAMESPACE)
+        return KUBERNETES_NAMESPACE
 
     def get_images(self) -> Dict[str, str]:
         vitess_images = self.config_dict.get(
@@ -584,7 +561,7 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
             "vttablet": vitess_images["vttablet_image"],
         }
 
-    def get_globalLockserver(self) -> Dict[str, Dict[str, str]]:
+    def get_global_lock_server(self) -> Dict[str, Dict[str, str]]:
         zk_address = self.config_dict.get("zk_address")
         return {
             "external": {
@@ -600,19 +577,35 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         cells = self.config_dict.get("cells")
         region = self.config_dict.get("region")
         vtgate_resources = self.config_dict.get("vtgate_resources")
+        env = [env.to_dict() for env in self.get_container_env()]
+        formatted_env = [get_formatted_container_env(env_var) for env_var in env]
         return [  # type: ignore
-            get_cell_config(cell, paasta_pool, paasta_cluster, region, vtgate_resources)
+            get_cell_config(
+                cell,
+                paasta_pool,
+                paasta_cluster,
+                region,
+                vtgate_resources,
+                formatted_env,
+            )
             for cell in cells
         ]
 
-    def get_vitessDashboard(self) -> Dict[str, object]:
+    def get_vitess_dashboard(self) -> Dict[str, object]:
         paasta_pool = self.get_pool()
         paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
         cells = self.config_dict.get("cells")
         zk_address = self.config_dict.get("zk_address")
         vtctld_resources = self.config_dict.get("vtctld_resources")
+        env = [env.to_dict() for env in self.get_container_env()]
+        formatted_env = [get_formatted_container_env(env_var) for env_var in env]
         return get_vitess_dashboard_config(
-            cells, paasta_pool, paasta_cluster, zk_address, vtctld_resources
+            cells,
+            paasta_pool,
+            paasta_cluster,
+            zk_address,
+            vtctld_resources,
+            formatted_env,
         )
 
     def get_vtadmin(self) -> Dict[str, Union[Collection[object], int]]:
@@ -620,8 +613,10 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         paasta_cluster = self.config_dict.get("paasta_cluster", self.get_cluster())
         cells = self.config_dict.get("cells")
         vtadmin_resources = self.config_dict.get("vtadmin_resources")
+        env = [env.to_dict() for env in self.get_container_env()]
+        formatted_env = [get_formatted_container_env(env_var) for env_var in env]
         return get_vt_admin_config(
-            cells, paasta_pool, paasta_cluster, vtadmin_resources
+            cells, paasta_pool, paasta_cluster, vtadmin_resources, formatted_env
         )
 
     def get_keyspaces(self) -> List[Dict[str, object]]:
@@ -631,11 +626,19 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
         zk_address = self.config_dict.get("zk_address")
         region = self.config_dict.get("region")
         keyspaces = self.config_dict.get("keyspaces")
+        env = [env.to_dict() for env in self.get_container_env()]
+        formatted_env = [get_formatted_container_env(env_var) for env_var in env]
         return get_keyspaces_config(
-            cells, keyspaces, paasta_pool, paasta_cluster, zk_address, region
+            cells,
+            keyspaces,
+            paasta_pool,
+            paasta_cluster,
+            zk_address,
+            region,
+            formatted_env,
         )
 
-    def get_updateStrategy(self) -> Dict[str, str]:
+    def get_update_strategy(self) -> Dict[str, str]:
         return self.config_dict.get("updateStrategy", {"type": "Immediate"})
 
     def get_vitess_config(self) -> Dict[str, Any]:
@@ -659,12 +662,12 @@ class VitessDeploymentConfig(LongRunningServiceConfig):
                 "WATCH_NAMESPACE": KUBERNETES_NAMESPACE,
             },
             "images": self.get_images(),
-            "globalLockserver": self.get_globalLockserver(),
+            "globalLockserver": self.get_global_lock_server(),
             "cells": self.get_cells(),
-            "vitessDashboard": self.get_vitessDashboard(),
+            "vitessDashboard": self.get_vitess_dashboard(),
             "vtadmin": self.get_vtadmin(),
             "keyspaces": self.get_keyspaces(),
-            "updateStrategy": self.get_updateStrategy(),
+            "updateStrategy": self.get_update_strategy(),
         }
 
     def validate(
