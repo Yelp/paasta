@@ -56,6 +56,7 @@ from paasta_tools.utils import get_k8s_url_for_cluster
 from paasta_tools.utils import validate_pool
 from paasta_tools.utils import PoolsNotConfiguredError
 from paasta_tools.utils import DockerVolume
+from paasta_tools.utils import ProjectedSAVolume
 
 from paasta_tools import spark_tools
 
@@ -71,6 +72,7 @@ from paasta_tools.secret_tools import is_shared_secret
 from paasta_tools.secret_tools import is_shared_secret_from_secret_name
 from paasta_tools.secret_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_paasta_secret_name
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.secret_tools import SHARED_SECRET_SERVICE
 
 from paasta_tools import monitoring_tools
@@ -627,6 +629,14 @@ class TronActionConfig(InstanceConfig):
     def get_service_account_name(self) -> Optional[str]:
         return self.config_dict.get("service_account_name")
 
+    def get_projected_sa_volumes(self) -> Optional[List[ProjectedSAVolume]]:
+        projected_volumes = add_volumes_for_authenticating_services(
+            service_name=self.service,
+            config_volumes=super().get_projected_sa_volumes(),
+            soa_dir=self.soa_dir,
+        )
+        return projected_volumes if projected_volumes else None
+
 
 class TronJobConfig:
     """Represents a job in Tron, consisting of action(s) and job-level configuration values."""
@@ -957,6 +967,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 k8s_role=None,
                 dry_run=action_config.for_validation,
             )
+
+        # service account token volumes for service authentication
+        result["projected_sa_volumes"] = action_config.get_projected_sa_volumes()
 
         extra_volumes = action_config.get_extra_volumes()
         if executor == "spark":

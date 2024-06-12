@@ -2020,6 +2020,8 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     eks_cluster_aliases: Dict[str, str]
     secret_sync_delay_seconds: float
     use_multiple_log_readers: Optional[List[str]]
+    service_auth_token_settings: ProjectedSAVolume
+    always_authenticating_services: List[str]
 
 
 def load_system_paasta_config(
@@ -2724,6 +2726,12 @@ class SystemPaastaConfig:
 
     def get_kube_clusters(self) -> Dict:
         return self.config_dict.get("kube_clusters", {})
+
+    def get_service_auth_token_volume_config(self) -> ProjectedSAVolume:
+        return self.config_dict.get("service_auth_token_settings", {})
+
+    def get_always_authenticating_services(self) -> List[str]:
+        return self.config_dict.get("always_authenticating_services", [])
 
 
 def _run(

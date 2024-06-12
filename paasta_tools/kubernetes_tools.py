@@ -21,6 +21,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from functools import lru_cache
 from inspect import currentframe
 from pathlib import Path
 from typing import Any
@@ -2552,6 +2553,13 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             "topology_spread_constraints", default_pod_topology_spread_constraints
         )
 
+    def get_projected_sa_volumes(self) -> List[ProjectedSAVolume]:
+        return add_volumes_for_authenticating_services(
+            service_name=self.service,
+            config_volumes=super().get_projected_sa_volumes(),
+            soa_dir=self.soa_dir,
+        )
+
 
 def get_kubernetes_secret_hashes(
     environment_variables: Mapping[str, str], service: str, namespace: str
@@ -4406,3 +4414,35 @@ def get_kubernetes_secret_volumes(
                 ] = secret_contents
 
     return secret_volumes
+
+
+@lru_cache()
+def get_authenticating_services(soa_dir: str = DEFAULT_SOA_DIR) -> Set[str]:
+    """Load list of services participating in authenticated traffic"""
+    authenticating_services_conf_path = os.path.join(soa_dir, "authenticating.yaml")
+    config = service_configuration_lib.read_yaml_file(authenticating_services_conf_path)
+    return set(config.get("services", []))
+
+
+def add_volumes_for_authenticating_services(
+    service_name: str,
+    config_volumes: List[ProjectedSAVolume],
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> List[ProjectedSAVolume]:
+    """Add projected service account volume to the list of volumes if service
+    participates in authenticated traffic. In case of changes, a new list is returned,
+    no updates in-place.
+
+    :param str service_name: name of the service
+    :param List[ProjectedSAVolume] config_volumes: existing projected volumes from service config
+    :param str soa_dir: path to SOA configurations directory
+    :return: updated list of projected service account volumes
+    """
+    token_config = load_system_paasta_config().get_service_auth_token_volume_config()
+    if (
+        token_config
+        and service_name in get_authenticating_services(soa_dir)
+        and not any(volume == token_config for volume in config_volumes)
+    ):
+        config_volumes = [token_config, *config_volumes]
+    return config_volumes
