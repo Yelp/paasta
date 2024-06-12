@@ -2764,6 +2764,9 @@ class SystemPaastaConfig:
             },
         )
 
+    def get_superregion_to_region_mapping(self) -> Dict:
+        return self.config_dict.get("superregion_to_region_mapping", {})
+
 
 def _run(
     command: Union[str, List[str]],

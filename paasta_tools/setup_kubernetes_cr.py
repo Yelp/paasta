@@ -360,7 +360,6 @@ def reconcile_kubernetes_resource(
                 config = INSTANCE_TYPE_TO_CONFIG_LOADER[crd.file_prefix](
                     service=service,
                     instance=inst,
-                    instance_type=crd.file_prefix,
                     cluster=cluster,
                     soa_dir=DEFAULT_SOA_DIR,
                 )
