@@ -603,6 +603,20 @@ class TronActionConfig(InstanceConfig):
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
+        # We are not allowing users to specify `cpus` and `mem` configuration if the action is a Spark job
+        # with driver running on k8s (executor: spark), because we derive these values from `spark.driver.cores`
+        # and `spark.driver.memory` in order to avoid confusion.
+        if self.get_executor() == "spark":
+            if "cpus" in self.config_dict:
+                error_msgs.append(
+                    f"{self.get_job_name()}.{self.get_action_name()} is a Spark job. `cpus` config is not allowed. "
+                    f"Please specify the driver cores using `spark.driver.cores`."
+                )
+            if "mem" in self.config_dict:
+                error_msgs.append(
+                    f"{self.get_job_name()}.{self.get_action_name()} is a Spark job. `mem` config is not allowed. "
+                    f"Please specify the driver memory using `spark.driver.memory`."
+                )
         return error_msgs
 
     def get_pool(self) -> str:
