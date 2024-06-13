@@ -632,7 +632,10 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             system_paasta_config=load_system_paasta_config()
         )
         git_sha = get_git_sha_from_dockerurl(docker_url)
-        return self.get_kubernetes_metadata(git_sha=git_sha).labels
+        labels = self.get_kubernetes_metadata(git_sha=git_sha).labels
+        if "yelp.com/owner" in labels.keys():
+            labels["yelp.com/owner"] = "dre_mysql"
+        return labels
 
     def get_vitess_node_affinity(self) -> dict:
         paasta_pool = self.get_pool()
