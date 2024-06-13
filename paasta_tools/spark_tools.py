@@ -8,6 +8,7 @@ from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Set
+from typing import Literal
 
 from mypy_extensions import TypedDict
 
@@ -250,12 +251,12 @@ def get_spark_driver_monitoring_labels(
     return labels
 
 
-def get_spark_memory_in_unit(mem: str, unit: str) -> float:
+def get_spark_memory_in_unit(mem: str, unit: Literal["k", "m", "g", "t"]) -> float:
     """
     Converts Spark memory to the desired unit.
     mem is the same format as JVM memory strings: just number or number followed by 'k', 'm', 'g' or 't'.
     unit can be 'k', 'm', 'g' or 't'.
-    Returns memory as an integer converted to the desired unit.
+    Returns memory as a float converted to the desired unit.
     """
     memory_bytes = 0.0
     if mem:
@@ -265,6 +266,7 @@ def get_spark_memory_in_unit(mem: str, unit: str) -> float:
             try:
                 memory_bytes = float(mem)
             except ValueError:
-                print(f"Unable to parse memory value {mem}")
+                print(f"Unable to parse memory value {mem}. Defaulting to 2 GB.")
+                memory_bytes = 2147483648  # default to 2 GB
     memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
     return memory_unit

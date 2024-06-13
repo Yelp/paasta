@@ -286,28 +286,25 @@ class TronActionConfig(InstanceConfig):
 
     def get_cpus(self) -> float:
         # set Spark driver pod CPU if it is specified by Spark arguments
-        cpus = 0.0
         if (
             self.action_spark_config
             and "spark.driver.cores" in self.action_spark_config
         ):
-            cpus = float(self.action_spark_config["spark.driver.cores"])
-        # use the soa config otherwise
-        return cpus or super().get_cpus()
+            return float(self.action_spark_config["spark.driver.cores"])
+        # we fall back to this default if there's no spark.driver.cores config
+        return super().get_cpus()
 
     def get_mem(self) -> float:
         # set Spark driver pod memory if it is specified by Spark arguments
-        mem_mb = 0.0
         if (
             self.action_spark_config
             and "spark.driver.memory" in self.action_spark_config
         ):
-            # need to set mem in MB based on tron schema
-            mem_mb = spark_tools.get_spark_memory_in_unit(
+            return spark_tools.get_spark_memory_in_unit(
                 self.action_spark_config["spark.driver.memory"], "m"
             )
-        # use the soa config otherwise
-        return mem_mb or super().get_mem()
+        # we fall back to this default if there's no spark.driver.memory config
+        return super().get_mem()
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()
@@ -952,7 +949,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
             executor, "kubernetes"
         )
         if executor == "spark":
-            # inject spark configs to the original spark-submit command
+            # build the complete Spark configuration
+            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
             action_config.action_spark_config = action_config.build_spark_config()
 
         result["secret_env"] = action_config.get_secret_env()
@@ -1017,7 +1015,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
-            # build the entire spark command by adding additional arguments
+            # inject additional Spark configs in case of Spark commands
             result["command"] = spark_tools.build_spark_command(
                 result["command"],
                 action_config.action_spark_config,
