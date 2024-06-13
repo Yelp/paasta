@@ -23,7 +23,7 @@ SPARK_DRIVER_POOL = "stable"
 SPARK_JOB_USER = "TRON"
 SPARK_PROMETHEUS_SHARD = "ml-compute"
 SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
-MEM_MULTIPLIER = {'k': 1024, 'm': 1024**2, 'g': 1024**3, 't': 1024**4}
+MEM_MULTIPLIER = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
 
 log = logging.getLogger(__name__)
 
@@ -250,7 +250,7 @@ def get_spark_driver_monitoring_labels(
     return labels
 
 
-def get_spark_memory_in_unit(mem: str, unit: str) -> int:
+def get_spark_memory_in_unit(mem: str, unit: str) -> float:
     """
     Converts Spark memory to the desired unit.
     mem is the same format as JVM memory strings: just number or number followed by 'k', 'm', 'g' or 't'.
@@ -266,5 +266,5 @@ def get_spark_memory_in_unit(mem: str, unit: str) -> int:
                 memory_bytes = int(mem)
             except ValueError:
                 memory_bytes = 0
-    memory_unit = memory_bytes/MEM_MULTIPLIER[unit]
+    memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
     return memory_unit

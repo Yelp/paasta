@@ -639,6 +639,80 @@ class TestTronJobConfig:
 
     @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
     @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_invalid_cpus_in_executor_spark_action(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "cpus": 1,
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_invalid_mem_in_executor_spark_action(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "mem": 4096,
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 1
+
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
+    def test_validate_valid_executor_spark_action(
+        self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
+    ):
+        job_dict = {
+            "node": "batch_server",
+            "schedule": "daily 12:10:00",
+            "monitoring": {"team": "noop", "page": True},
+            "actions": {
+                "first": {
+                    "command": "echo first",
+                    "deploy_group": "deploy_group_2",
+                }
+            },
+        }
+        mock_get_pipeline_deploy_groups.return_value = [
+            "deploy_group_1",
+            "deploy_group_2",
+        ]
+        job_config = tron_tools.TronJobConfig("my_job", job_dict, "fake-cluster")
+        errors = job_config.validate()
+        assert len(errors) == 0
+
+    @mock.patch("paasta_tools.utils.get_pipeline_deploy_groups", autospec=True)
+    @mock.patch("paasta_tools.tron_tools.load_system_paasta_config", autospec=True)
     def test_validate_monitoring(
         self, mock_load_system_paasta_config, mock_get_pipeline_deploy_groups
     ):
@@ -953,8 +1027,6 @@ class TestTronTools:
             "service": "my_service",
             "deploy_group": "prod",
             "executor": "spark",
-            "cpus": 2,
-            "mem": 1200,
             "disk": 42,
             "pool": "special_pool",
             "env": {"SHELL": "/bin/bash"},

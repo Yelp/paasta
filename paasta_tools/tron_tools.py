@@ -282,6 +282,32 @@ class TronActionConfig(InstanceConfig):
         self.job, self.action = decompose_instance(instance)
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
+        self.action_spark_config = None
+
+    def get_cpus(self) -> float:
+        # set Spark driver pod CPU if it is specified by Spark arguments
+        cpus = 0
+        if (
+            self.action_spark_config
+            and "spark.driver.cores" in self.action_spark_config
+        ):
+            cpus = float(self.action_spark_config["spark.driver.cores"])
+        # use the soa config otherwise
+        return cpus or super().get_cpus()
+
+    def get_mem(self) -> float:
+        # set Spark driver pod memory if it is specified by Spark arguments
+        mem_mb = 0
+        if (
+            self.action_spark_config
+            and "spark.driver.memory" in self.action_spark_config
+        ):
+            # need to set mem in MB based on tron schema
+            mem_mb = spark_tools.get_spark_memory_in_unit(
+                self.action_spark_config["spark.driver.memory"], "m"
+            )
+        # use the soa config otherwise
+        return mem_mb or super().get_mem()
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()
@@ -990,31 +1016,26 @@ def format_tron_action_dict(action_config: TronActionConfig):
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
             # inject spark configs to the original spark-submit command
-            spark_config = action_config.build_spark_config()
+            action_config.action_spark_config = action_config.build_spark_config()
             result["command"] = spark_tools.build_spark_command(
                 result["command"],
-                spark_config,
+                action_config.action_spark_config,
                 is_mrjob,
                 action_config.config_dict.get(
                     "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
                 ),
             )
-            # set Spark driver pod CPU and memory config if it is specified by Spark arguments
-            if "spark.driver.cores" in spark_config:
-                result["cpus"] = spark_config["spark.driver.cores"]
-            if "spark.driver.memory" in spark_config:
-                # need to set mem in MB based on tron schema
-                memory_in_mb = spark_tools.get_spark_memory_in_unit(spark_config["spark.driver.memory"], 'm')
-                if memory_in_mb:
-                    result["mem"] = str(memory_in_mb)
-
             # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
 
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
-                set(spark_tools.get_spark_ports_from_config(spark_config))
+                set(
+                    spark_tools.get_spark_ports_from_config(
+                        action_config.action_spark_config
+                    )
+                )
             )
             # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
             extra_volumes.append(
@@ -1028,10 +1049,12 @@ def format_tron_action_dict(action_config: TronActionConfig):
             )
             # Add pod annotations and labels for Spark monitoring metrics
             monitoring_annotations = (
-                spark_tools.get_spark_driver_monitoring_annotations(spark_config)
+                spark_tools.get_spark_driver_monitoring_annotations(
+                    action_config.action_spark_config
+                )
             )
             monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(
-                spark_config
+                action_config.action_spark_config
             )
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
@@ -1052,8 +1075,8 @@ def format_tron_action_dict(action_config: TronActionConfig):
     # the following config is only valid for k8s/Mesos since we're not running SSH actions
     # in a containerized fashion
     if executor in (KUBERNETES_EXECUTOR_NAMES + MESOS_EXECUTOR_NAMES):
-        result.setdefault("cpus", action_config.get_cpus())
-        result.setdefault("mem", action_config.get_mem())
+        result["cpus"] = action_config.get_cpus()
+        result["mem"] = action_config.get_mem()
         result["disk"] = action_config.get_disk()
         result["extra_volumes"] = format_volumes(extra_volumes)
         result["docker_image"] = action_config.get_docker_url()
