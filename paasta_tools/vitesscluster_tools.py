@@ -33,7 +33,6 @@ KUBERNETES_NAMESPACE = "paasta-vitessclusters"
 TOPO_IMPLEMENTATION = "zk2"
 TOPO_GLOBAL_ROOT = "/vitess-paasta/global"
 SOURCE_DB_HOST = "169.254.255.254"
-TABLET_TYPES = load_system_paasta_config().get_vitess_tablet_types()
 WEB_PORT = "15000"
 GRPC_PORT = "15999"
 
@@ -380,10 +379,6 @@ def get_tablet_pool_config(
         log.error(
             f"Tablet type {tablet_type} not found in system paasta config vitess_tablet_pool_type_mapping"
         )
-    if tablet_type == "primary":
-        type = "externalmaster"
-    else:
-        type = "externalreplica"
 
     try:
         replicas = int(vttablet_resources.get("replicas"))
@@ -482,7 +477,8 @@ def get_keyspaces_config(
         mysql_port_mappings = load_system_paasta_config().get_mysql_port_mappings()
 
         # get vttablets
-        for tablet_type in TABLET_TYPES:
+        tablet_types = load_system_paasta_config().get_vitess_tablet_types()
+        for tablet_type in tablet_types:
             # We don't have migration or reporting tablets in all clusters
             if cluster not in mysql_port_mappings:
                 log.error(
