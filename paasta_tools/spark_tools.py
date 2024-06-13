@@ -257,14 +257,14 @@ def get_spark_memory_in_unit(mem: str, unit: str) -> float:
     unit can be 'k', 'm', 'g' or 't'.
     Returns memory as an integer converted to the desired unit.
     """
-    memory_bytes = 0
+    memory_bytes = 0.0
     if mem:
         if mem[-1] in MEM_MULTIPLIER:
-            memory_bytes = int(mem[:-1]) * MEM_MULTIPLIER[mem[-1]]
+            memory_bytes = float(mem[:-1]) * MEM_MULTIPLIER[mem[-1]]
         else:
             try:
-                memory_bytes = int(mem)
+                memory_bytes = float(mem)
             except ValueError:
-                memory_bytes = 0
+                print(f"Unable to parse memory value {mem}")
     memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
     return memory_unit

@@ -286,7 +286,7 @@ class TronActionConfig(InstanceConfig):
 
     def get_cpus(self) -> float:
         # set Spark driver pod CPU if it is specified by Spark arguments
-        cpus = 0
+        cpus = 0.0
         if (
             self.action_spark_config
             and "spark.driver.cores" in self.action_spark_config
@@ -297,7 +297,7 @@ class TronActionConfig(InstanceConfig):
 
     def get_mem(self) -> float:
         # set Spark driver pod memory if it is specified by Spark arguments
-        mem_mb = 0
+        mem_mb = 0.0
         if (
             self.action_spark_config
             and "spark.driver.memory" in self.action_spark_config
