@@ -351,6 +351,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role: str
     iam_role_provider: str
     service: str
+    uses_bulkdata: bool
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -997,8 +998,24 @@ class InstanceConfig:
         """
         return self.config_dict.get("net", "bridge")
 
+    def has_bulkdata(
+        self,
+    ) -> bool:
+        return self.config_dict.get("uses_bulkdata", True)
+
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
+        # add a dictionary to docker_volumes with a hostPath of /nail/bulkdata
+        # if the service uses bulkdata
+        if self.has_bulkdata():
+            # the volume has a mode of RO
+            volumes = volumes + [
+                {
+                    "hostPath": "/nail/bulkdata",
+                    "containerPath": "/nail/bulkdata",
+                    "mode": "RO",
+                }
+            ]
         return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:
