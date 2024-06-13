@@ -817,6 +817,10 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result["executor"] == "kubernetes"
@@ -873,6 +877,12 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[
+                {"audience": "foo.bar.com", "container_path": "/var/foo/bar"}
+            ],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -898,6 +908,9 @@ class TestTronTools:
             ],
             "extra_volumes": [
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+            ],
+            "projected_sa_volumes": [
+                {"audience": "foo.bar.com", "container_path": "/var/foo/bar"},
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "node_selectors": {"yelp.com/pool": "special_pool"},
@@ -993,6 +1006,10 @@ class TestTronTools:
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ), mock.patch(
             "paasta_tools.tron_tools.get_k8s_url_for_cluster",
             autospec=True,
@@ -1295,6 +1312,10 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1415,6 +1436,10 @@ class TestTronTools:
             "paasta_tools.secret_tools.is_shared_secret_from_secret_name",
             autospec=True,
             return_value=False,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
 
@@ -1522,6 +1547,10 @@ class TestTronTools:
         ), mock.patch(
             "paasta_tools.tron_tools.load_system_paasta_config",
             autospec=True,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             result = tron_tools.format_tron_action_dict(action_config)
         assert result == {
@@ -1682,6 +1711,10 @@ fake_job:
             "paasta_tools.utils.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",
@@ -1732,6 +1765,10 @@ fake_job:
             "paasta_tools.utils.load_system_paasta_config",
             autospec=True,
             return_value=MOCK_SYSTEM_PAASTA_CONFIG_OVERRIDES,
+        ), mock.patch(
+            "paasta_tools.tron_tools.add_volumes_for_authenticating_services",
+            autospec=True,
+            return_value=[],
         ):
             tronfig = tron_tools.create_complete_config(
                 service="fake_service",

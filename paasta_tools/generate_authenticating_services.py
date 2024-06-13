@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A simple script to enumerate all services partecipating in authenticated
+A simple script to enumerate all services participating in authenticated
 communications, and list them in a YAML/JSON file.
 """
 import argparse
@@ -27,6 +27,7 @@ from typing import Set
 import yaml
 
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import write_json_configuration_file
 from paasta_tools.utils import write_yaml_configuration_file
 
@@ -53,6 +54,7 @@ def enumerate_authenticating_services() -> Dict[str, List[str]]:
     config_path_pattern = os.path.join(DEFAULT_SOA_DIR, "*", AUTHORIZATION_CONFIG_FILE)
     for authz_config in glob.glob(config_path_pattern):
         result.update(list_services_in_authz_config(authz_config))
+    result.update(load_system_paasta_config().get_always_authenticating_services())
     return {"services": sorted(result)}
 
 

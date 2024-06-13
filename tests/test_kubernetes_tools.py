@@ -1,5 +1,6 @@
 import functools
 from base64 import b64encode
+from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
@@ -84,6 +85,7 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.contrib.get_running_task_allocation import (
     get_pod_pool as task_allocation_get_pod_pool,
 )
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
@@ -906,6 +908,9 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_containers",
             autospec=True,
             return_value=["mock_sidecar"],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
         ):
             if prometheus_port:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
@@ -1612,6 +1617,10 @@ class TestKubernetesDeploymentConfig:
             )
 
     @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
         autospec=True,
     )
@@ -1695,6 +1704,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
         mock_get_volumes,
+        mock_load_system_paasta_config,
         in_smtstk,
         routable_ip,
         pod_topology,
@@ -4905,3 +4915,54 @@ def test_get_kubernetes_secret_volumes_single_file():
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",
         }
+
+
+@pytest.mark.parametrize(
+    "service,existing_config,expected",
+    (
+        (
+            "service_auth",
+            [],
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+        ),
+        ("service_noauth", [], []),
+        (
+            "service_auth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+        ),
+        (
+            "service_auth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+            [
+                {"audience": "foo.bar", "container_path": "/var/secret/something"},
+                {"audience": "foo.bar", "container_path": "/var/secret/whatever"},
+            ],
+        ),
+        (
+            "service_noauth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+        ),
+    ),
+)
+@mock.patch("paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None)
+@mock.patch("paasta_tools.kubernetes_tools.get_authenticating_services", autospec=None)
+def test_add_volumes_for_authenticating_services(
+    mock_get_auth_services, mock_system_config, service, existing_config, expected
+):
+    mock_get_auth_services.return_value = {"service_auth", "service_foobar"}
+    mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
+        "audience": "foo.bar",
+        "container_path": "/var/secret/something",
+    }
+    existing_config_copy = deepcopy(existing_config)
+    assert (
+        add_volumes_for_authenticating_services(
+            service, existing_config, "/mock/soa/dir"
+        )
+        == expected
+    )
+    mock_get_auth_services.assert_called_once_with("/mock/soa/dir")
+    # verifying that the method does not do in-place updates
+    assert existing_config == existing_config_copy
