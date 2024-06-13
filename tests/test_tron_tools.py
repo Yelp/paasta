@@ -648,6 +648,7 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop", "page": True},
             "actions": {
                 "first": {
+                    "executor": "spark",
                     "cpus": 1,
                     "command": "echo first",
                     "deploy_group": "deploy_group_2",
@@ -673,6 +674,7 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop", "page": True},
             "actions": {
                 "first": {
+                    "executor": "spark",
                     "mem": 4096,
                     "command": "echo first",
                     "deploy_group": "deploy_group_2",
@@ -698,6 +700,7 @@ class TestTronJobConfig:
             "monitoring": {"team": "noop", "page": True},
             "actions": {
                 "first": {
+                    "executor": "spark",
                     "command": "echo first",
                     "deploy_group": "deploy_group_2",
                 }
@@ -1284,8 +1287,8 @@ class TestTronTools:
                 "PAASTA_CLUSTER": "test-cluster",
                 "PAASTA_DEPLOY_GROUP": "prod",
                 "PAASTA_DOCKER_IMAGE": "my_service:paasta-123abcde",
-                "PAASTA_RESOURCE_CPUS": "2",
-                "PAASTA_RESOURCE_MEM": "1200",
+                "PAASTA_RESOURCE_CPUS": "1",
+                "PAASTA_RESOURCE_MEM": "1024.0",
                 "PAASTA_RESOURCE_DISK": "42",
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
@@ -1338,8 +1341,8 @@ class TestTronTools:
                 },
             ],
             "ports": [39091],
-            "cpus": 2,
-            "mem": 1200,
+            "cpus": 1,
+            "mem": 1024.0,
             "disk": 42,
             "docker_image": "docker-registry.com:400/my_service:paasta-123abcde",
         }

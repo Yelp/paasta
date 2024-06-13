@@ -466,7 +466,6 @@ class TronActionConfig(InstanceConfig):
         system_paasta_config: Optional["SystemPaastaConfig"] = None,
     ) -> Dict[str, str]:
         env = super().get_env(system_paasta_config=system_paasta_config)
-
         if self.get_executor() == "spark":
             # Required by some sdks like boto3 client. Throws NoRegionError otherwise.
             # AWS_REGION takes precedence if set.
@@ -952,6 +951,9 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["executor"] = EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE.get(
             executor, "kubernetes"
         )
+        if executor == "spark":
+            # inject spark configs to the original spark-submit command
+            action_config.action_spark_config = action_config.build_spark_config()
 
         result["secret_env"] = action_config.get_secret_env()
         result["field_selector_env"] = action_config.get_field_selector_env()
@@ -1015,8 +1017,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
-            # inject spark configs to the original spark-submit command
-            action_config.action_spark_config = action_config.build_spark_config()
+            # build the entire spark command by adding additional arguments
             result["command"] = spark_tools.build_spark_command(
                 result["command"],
                 action_config.action_spark_config,
