@@ -5,10 +5,10 @@ from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
-from typing import Sequence
 from typing import Union
 
 import service_configuration_lib
+from kubernetes.client import ApiClient
 
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
@@ -22,9 +22,6 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
-
-# from paasta_tools.long_running_service_tools import LongRunningServiceConfig
-# from paasta_tools.long_running_service_tools import LongRunningServiceConfigDict
 
 
 log = logging.getLogger(__name__)
@@ -126,54 +123,13 @@ def get_updated_environment_variables(env_vars: Dict[str, Any]) -> List[dict]:
     return updated_environment_variables
 
 
-def get_formatted_container_env(
-    env_var: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Helper function to recursively format K8s container environment variable dict which have keys in snake case and modify them to camel case
-    """
-    formatted_env_var = {}
-    for key in env_var.keys():
-        temp_key = key.split("_")
-        new_key = temp_key[0] + "".join(element.title() for element in temp_key[1:])
-        if isinstance(env_var[key], dict):
-            formatted_env_var[new_key] = get_formatted_container_env(env_var[key])
-        else:
-            formatted_env_var[new_key] = env_var[key]
-
-    return formatted_env_var
-
-
-def get_affinity_spec(
-    paasta_pool: str,
-) -> Dict[str, Dict[str, Dict[str, List[Dict[str, List[Dict[str, Sequence[str]]]]]]]]:
-    spec = {
-        "nodeAffinity": {
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-                "nodeSelectorTerms": [
-                    {
-                        "matchExpressions": [
-                            {
-                                "key": "yelp.com/pool",
-                                "operator": "In",
-                                "values": [paasta_pool],
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-    }
-    return spec
-
-
 def get_cell_config(
     cell: str,
-    paasta_pool: str,
     region: str,
     vtgate_resources: Dict[str, str],
     env: dict,
     labels: Dict[str, str],
+    node_affinity: dict,
 ) -> Dict[str, Collection[str]]:
     """
     get vtgate config
@@ -199,7 +155,7 @@ def get_cell_config(
                 "mysql_auth_vault_tls_ca": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
                 "mysql_auth_vault_ttl": "60s",
             },
-            "affinity": get_affinity_spec(paasta_pool),
+            "affinity": {"nodeAffinity": node_affinity},
             "extraLabels": labels,
             "extraEnv": updated_vtgate_extra_env,
             "replicas": replicas,
@@ -214,11 +170,11 @@ def get_cell_config(
 
 def get_vitess_dashboard_config(
     cells: List[str],
-    paasta_pool: str,
     zk_address: str,
     vtctld_resources: Dict[str, str],
     env: dict,
     labels: Dict[str, str],
+    node_affinity: dict,
 ) -> Dict[str, object]:
     """
     get vtctld config
@@ -235,7 +191,7 @@ def get_vitess_dashboard_config(
 
     config = {
         "cells": cells,
-        "affinity": get_affinity_spec(paasta_pool),
+        "affinity": {"nodeAffinity": node_affinity},
         "extraLabels": labels,
         "extraEnv": updated_vtctld_extra_env,
         "extraFlags": VTCTLD_EXTRA_FLAGS,
@@ -251,10 +207,10 @@ def get_vitess_dashboard_config(
 
 def get_vt_admin_config(
     cells: List[str],
-    paasta_pool: str,
     vtadmin_resources: Dict[str, str],
     env: dict,
     labels: Dict[str, str],
+    node_affinity: dict,
 ) -> Dict[str, Union[Collection[object], int]]:
     """
     get vtadmin config
@@ -264,7 +220,7 @@ def get_vt_admin_config(
     config = {
         "cells": cells,
         "apiAddresses": ["http://localhost:15000"],
-        "affinity": get_affinity_spec(paasta_pool),
+        "affinity": {"nodeAffinity": node_affinity},
         "extraLabels": labels,
         "extraFlags": VTADMIN_EXTRA_FLAGS,
         "extraEnv": env,
@@ -287,7 +243,6 @@ def get_tablet_pool_config(
     db_name: str,
     keyspace: str,
     port: str,
-    paasta_pool: str,
     zk_address: str,
     throttle_query_table: str,
     throttle_metrics_threshold: str,
@@ -296,6 +251,7 @@ def get_tablet_pool_config(
     vttablet_resources: Dict[str, str],
     env: dict,
     labels: Dict[str, str],
+    node_affinity: dict,
 ) -> Dict[str, object]:
     """
     get vttablet config
@@ -341,7 +297,7 @@ def get_tablet_pool_config(
         "cell": cell,
         "name": f"{db_name}_{tablet_type}",
         "type": type,
-        "affinity": get_affinity_spec(paasta_pool),
+        "affinity": {"nodeAffinity": node_affinity},
         "extraLabels": labels,
         "extraEnv": updated_vttablet_extra_env,
         "extraVolumeMounts": [
@@ -410,11 +366,11 @@ def get_tablet_pool_config(
 def get_keyspaces_config(
     cells: List[str],
     keyspaces: List[Dict[str, Any]],
-    paasta_pool: str,
     zk_address: str,
     region: str,
     env: dict,
     labels: Dict[str, str],
+    node_affinity: dict,
 ) -> List[Dict[str, object]]:
     """
     get vitess keyspace config
@@ -461,7 +417,6 @@ def get_keyspaces_config(
                         db_name,
                         keyspace,
                         port,
-                        paasta_pool,
                         zk_address,
                         throttle_query_table,
                         throttle_metrics_threshold,
@@ -470,6 +425,7 @@ def get_keyspaces_config(
                         vttablet_resources,
                         env,
                         labels,
+                        node_affinity,
                     )
                     for cell in cells
                 ]
@@ -550,9 +506,14 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
     def get_env_variables(self) -> List[Dict[str, Any]]:
         # get all K8s container env vars and format their keys to camel case
-        env = [env.to_dict() for env in self.get_container_env()]
-        formatted_env = [get_formatted_container_env(env_var) for env_var in env]
-        return formatted_env
+
+        # Workaround from https://github.com/kubernetes-client/python/issues/390
+        api_client = ApiClient()
+        env = [
+            api_client.sanitize_for_serialization(env)
+            for env in self.get_container_env()
+        ]
+        return env
 
     def get_labels(self) -> Dict[str, str]:
         # get default labels from parent class to adhere to paasta contract
@@ -561,6 +522,21 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         )
         git_sha = get_git_sha_from_dockerurl(docker_url)
         return self.get_kubernetes_metadata(git_sha=git_sha).labels
+
+    def get_vitess_node_affinity(self) -> dict:
+        paasta_pool = self.get_pool()
+        self.config_dict.update(
+            {
+                "node_selectors": {
+                    "yelp.com/pool": [paasta_pool],
+                }
+            }
+        )
+
+        # Workaround from https://github.com/kubernetes-client/python/issues/390
+        api_client = ApiClient()
+        node_affinity = api_client.sanitize_for_serialization(self.get_node_affinity())
+        return node_affinity
 
     def get_region(self) -> str:
         superregion = self.get_cluster()
@@ -586,48 +562,47 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         }
 
     def get_cells(self) -> List[Any]:
-        paasta_pool = self.get_pool()
         cells = self.config_dict.get("cells")
         region = self.get_region()
         vtgate_resources = self.config_dict.get("vtgate_resources")
 
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
+        node_affinity = self.get_vitess_node_affinity()
 
         return [  # type: ignore
             get_cell_config(
-                cell, paasta_pool, region, vtgate_resources, formatted_env, labels
+                cell, region, vtgate_resources, formatted_env, labels, node_affinity
             )
             for cell in cells
         ]
 
     def get_vitess_dashboard(self) -> Dict[str, object]:
-        paasta_pool = self.get_pool()
         cells = self.config_dict.get("cells")
         zk_address = self.config_dict.get("zk_address")
         vtctld_resources = self.config_dict.get("vtctld_resources")
 
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
+        node_affinity = self.get_vitess_node_affinity()
 
         return get_vitess_dashboard_config(
-            cells, paasta_pool, zk_address, vtctld_resources, formatted_env, labels
+            cells, zk_address, vtctld_resources, formatted_env, labels, node_affinity
         )
 
     def get_vtadmin(self) -> Dict[str, Union[Collection[object], int]]:
-        paasta_pool = self.get_pool()
         cells = self.config_dict.get("cells")
         vtadmin_resources = self.config_dict.get("vtadmin_resources")
 
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
+        node_affinity = self.get_vitess_node_affinity()
 
         return get_vt_admin_config(
-            cells, paasta_pool, vtadmin_resources, formatted_env, labels
+            cells, vtadmin_resources, formatted_env, labels, node_affinity
         )
 
     def get_keyspaces(self) -> List[Dict[str, object]]:
-        paasta_pool = self.get_pool()
         cells = self.config_dict.get("cells")
         zk_address = self.config_dict.get("zk_address")
         region = self.get_region()
@@ -635,9 +610,10 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
+        node_affinity = self.get_vitess_node_affinity()
 
         return get_keyspaces_config(
-            cells, keyspaces, paasta_pool, zk_address, region, formatted_env, labels
+            cells, keyspaces, zk_address, region, formatted_env, labels, node_affinity
         )
 
     def get_update_strategy(self) -> Dict[str, str]:
