@@ -24,6 +24,7 @@ import argparse
 import logging
 import sys
 import traceback
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Sequence
@@ -45,6 +46,7 @@ from paasta_tools.kubernetes_tools import load_kubernetes_service_config_no_cach
 from paasta_tools.metrics import metrics_lib
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -260,6 +262,14 @@ def setup_kube_deployments(
         for deployment in existing_kube_deployments
     }
 
+    existing_deployment_versions: Dict[
+        Tuple[str, str, str], List[DeploymentVersion]
+    ] = {}
+    for deployment in existing_kube_deployments:
+        existing_deployment_versions.setdefault(
+            (deployment.service, deployment.instance, deployment.namespace), []
+        ).append(deployment.deployment_version)
+
     applications = [
         create_application_object(
             cluster=cluster,
@@ -271,6 +281,39 @@ def setup_kube_deployments(
         else (_, None)
         for _, service_instance in service_instance_configs_list
     ]
+
+    def sort_key(ok_app: Tuple[bool, Optional[Application]]) -> int:
+        """This will return 1 if the desired deployment_version matches an existing deployment_version, and 0
+        otherwise. This will cause applications that need a new deployment_version to be handled first.
+        This prioritizes "real" bounces (developers pushing new service versions) over things that are likely to be big
+        bounces (config-only changes).
+        Most of the time, this won't matter much, as we should get through our backlog quickly, but when there is a
+        backlog, we want to avoid blocking developers.
+        """
+        _, app = ok_app
+        if app:
+            if (
+                app.kube_deployment.deployment_version
+                in existing_deployment_versions.get(
+                    (
+                        app.kube_deployment.service,
+                        app.kube_deployment.instance,
+                        app.kube_deployment.namespace,
+                    ),
+                    [],
+                )
+            ):
+                # Desired version exists, so this is just a configuration update; handle this second.
+                return 1
+            else:
+                # Desired version doesn't exist, handle this first.
+                return 0
+        else:
+            # Handle broken app last.
+            return 2
+
+    applications.sort(key=sort_key)
+
     api_updates = 0
     for _, app in applications:
         if app:
