@@ -283,6 +283,10 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
         self.action_spark_config = None
+        if self.get_executor() == "spark":
+            # build the complete Spark configuration
+            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
+            self.action_spark_config = self.build_spark_config()
 
     def get_cpus(self) -> float:
         # set Spark driver pod CPU if it is specified by Spark arguments
@@ -300,9 +304,9 @@ class TronActionConfig(InstanceConfig):
             self.action_spark_config
             and "spark.driver.memory" in self.action_spark_config
         ):
-            return spark_tools.get_spark_memory_in_unit(
+            return int(spark_tools.get_spark_memory_in_unit(
                 self.action_spark_config["spark.driver.memory"], "m"
-            )
+            ))
         # we fall back to this default if there's no spark.driver.memory config
         return super().get_mem()
 
@@ -948,10 +952,6 @@ def format_tron_action_dict(action_config: TronActionConfig):
         result["executor"] = EXECUTOR_NAME_TO_TRON_EXECUTOR_TYPE.get(
             executor, "kubernetes"
         )
-        if executor == "spark":
-            # build the complete Spark configuration
-            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
-            action_config.action_spark_config = action_config.build_spark_config()
 
         result["secret_env"] = action_config.get_secret_env()
         result["field_selector_env"] = action_config.get_field_selector_env()

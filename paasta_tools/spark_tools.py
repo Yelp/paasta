@@ -258,15 +258,13 @@ def get_spark_memory_in_unit(mem: str, unit: Literal["k", "m", "g", "t"]) -> flo
     unit can be 'k', 'm', 'g' or 't'.
     Returns memory as a float converted to the desired unit.
     """
-    memory_bytes = 0.0
-    if mem:
-        if mem[-1] in MEM_MULTIPLIER:
+    try:
+        memory_bytes = float(mem)
+    except ValueError:
+        try:
             memory_bytes = float(mem[:-1]) * MEM_MULTIPLIER[mem[-1]]
-        else:
-            try:
-                memory_bytes = float(mem)
-            except ValueError:
-                print(f"Unable to parse memory value {mem}. Defaulting to 2 GB.")
-                memory_bytes = 2147483648  # default to 2 GB
+        except (ValueError, IndexError):
+            print(f"Unable to parse memory value {mem}. Defaulting to 2 GB.")
+            memory_bytes = 2147483648  # default to 2 GB
     memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
     return memory_unit
