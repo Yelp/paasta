@@ -97,7 +97,7 @@ def add_subparser(subparsers) -> None:
     status_parser.add_argument(
         "-c",
         "--cluster",
-        help="The cluster to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        help="The cluster to see relevant logs for.",
         nargs=1,
     ).completer = completer_clusters
     status_parser.add_argument(
