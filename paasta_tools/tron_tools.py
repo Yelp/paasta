@@ -304,9 +304,11 @@ class TronActionConfig(InstanceConfig):
             self.action_spark_config
             and "spark.driver.memory" in self.action_spark_config
         ):
-            return int(spark_tools.get_spark_memory_in_unit(
-                self.action_spark_config["spark.driver.memory"], "m"
-            ))
+            return int(
+                spark_tools.get_spark_memory_in_unit(
+                    self.action_spark_config["spark.driver.memory"], "m"
+                )
+            )
         # we fall back to this default if there's no spark.driver.memory config
         return super().get_mem()
 
