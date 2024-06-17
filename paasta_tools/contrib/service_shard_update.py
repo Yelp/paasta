@@ -209,7 +209,9 @@ def main(args):
                             metrics_provider_config["type"] = args.metrics_provider
                         if args.setpoint is not None:
                             metrics_provider_config["setpoint"] = args.setpoint
-                        instance_config["autoscaling"]["metrics_providers"].append(metrics_provider_config)
+                        instance_config["autoscaling"]["metrics_providers"].append(
+                            metrics_provider_config
+                        )
 
                     if args.cpus is not None:
                         instance_config["cpus"] = args.cpus
