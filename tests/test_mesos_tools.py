@@ -368,7 +368,7 @@ def test_filter_mesos_slaves_by_blacklist_when_filtered(mock_slave_passes_blackl
 
 
 def test_get_paasta_execute_docker_healthcheck():
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_container_id = "fake_container_id"
     fake_mesos_id = "fake_mesos_id"
     fake_container_info = [
@@ -387,11 +387,11 @@ def test_get_paasta_execute_docker_healthcheck():
         },
     ]
     mock_docker_client.containers = mock.MagicMock(
-        spec_set=docker.Client,
+        spec_set=docker.APIClient,
         return_value=["fake_container_1", "fake_container_2", "fake_container_3"],
     )
     mock_docker_client.inspect_container = mock.MagicMock(
-        spec_set=docker.Client, side_effect=fake_container_info
+        spec_set=docker.APIClient, side_effect=fake_container_info
     )
     assert (
         mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id)
@@ -400,7 +400,7 @@ def test_get_paasta_execute_docker_healthcheck():
 
 
 def test_get_paasta_execute_docker_healthcheck_when_not_found():
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client = mock.MagicMock(spec_set=docker.APIClient)
     fake_mesos_id = "fake_mesos_id"
     fake_container_info = [
         {
@@ -417,10 +417,10 @@ def test_get_paasta_execute_docker_healthcheck_when_not_found():
         },
     ]
     mock_docker_client.containers = mock.MagicMock(
-        spec_set=docker.Client, return_value=["fake_container_1", "fake_container_2"]
+        spec_set=docker.APIClient, return_value=["fake_container_1", "fake_container_2"]
     )
     mock_docker_client.inspect_container = mock.MagicMock(
-        spec_set=docker.Client, side_effect=fake_container_info
+        spec_set=docker.APIClient, side_effect=fake_container_info
     )
     assert (
         mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id)

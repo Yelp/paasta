@@ -75,7 +75,7 @@ import ldap3
 import requests_cache
 import service_configuration_lib
 import yaml
-from docker import Client
+from docker import APIClient
 from docker.utils import kwargs_from_env
 from kazoo.client import KazooClient
 from mypy_extensions import TypedDict
@@ -3345,12 +3345,12 @@ def get_docker_host() -> str:
     return os.environ.get("DOCKER_HOST", "unix://var/run/docker.sock")
 
 
-def get_docker_client() -> Client:
+def get_docker_client() -> APIClient:
     client_opts = kwargs_from_env(assert_hostname=False)
     if "base_url" in client_opts:
-        return Client(**client_opts)
+        return APIClient(**client_opts)
     else:
-        return Client(base_url=get_docker_host(), **client_opts)
+        return APIClient(base_url=get_docker_host(), **client_opts)
 
 
 def get_running_mesos_docker_containers() -> List[Dict]:
