@@ -1,10 +1,12 @@
 import logging
+import sys
 from typing import Any
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import Optional
 from typing import TypedDict
+from typing import Union
 
 import service_configuration_lib
 from kubernetes.client import ApiClient
@@ -103,9 +105,31 @@ VTTABLET_EXTRA_FLAGS = {
 }
 
 
+class KVEnvVar(TypedDict, total=False):
+    name: str
+    value: str
+
+
+class KVEnvVarValueFrom(TypedDict, total=False):
+    name: str
+    valueFrom: Dict[str, Any]
+
+
+class RequestsDict(TypedDict, total=False):
+    cpu: str
+    memory: str
+    disk: str
+
+
+class ResourceConfigDict(TypedDict, total=False):
+    replicas: int
+    requests: Dict[str, RequestsDict]
+    limits: Dict[str, RequestsDict]
+
+
 class GatewayConfigDict(TypedDict, total=False):
     affinity: Dict[str, Any]
-    extraEnv: List[Dict[str, Any]]
+    extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
@@ -120,7 +144,7 @@ class CellConfigDict(TypedDict, total=False):
 class VitessDashboardConfigDict(TypedDict, total=False):
     cells: List[str]
     affinity: Dict[str, Any]
-    extraEnv: List[Dict[str, Any]]
+    extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
@@ -131,7 +155,7 @@ class VtAdminConfigDict(TypedDict, total=False):
     cells: List[str]
     apiAddresses: List[str]
     affinity: Dict[str, Any]
-    extraEnv: List[Dict[str, Any]]
+    extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
@@ -151,7 +175,7 @@ class TabletPoolDict(TypedDict, total=False):
     type: str
     affinity: Dict[str, Any]
     extraLabels: Dict[str, str]
-    extraEnv: List[Dict[str, Any]]
+    extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraVolumeMounts: List[Dict[str, Any]]
     extraVolumes: List[Dict[str, Any]]
     replicas: int
@@ -177,17 +201,21 @@ class KeyspaceConfigDict(TypedDict, total=False):
     name: str
 
 
-def get_updated_environment_variables(env_vars: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_formatted_environment_variables(
+    env_vars: Dict[str, Any]
+) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
     """
     Helper function to take in key value pairs of environment variables and return a list of dicts
     """
-    updated_environment_variables: List[Dict[str, Any]] = []
+    updated_environment_variables: List[Union[KVEnvVar, KVEnvVarValueFrom]] = []
     for env_key, env_value in env_vars.items():
         if isinstance(env_value, str):
-            updated_environment_variables.append({"name": env_key, "value": env_value})
+            updated_environment_variables.append(
+                KVEnvVar(name=env_key, value=env_value)
+            )
         elif isinstance(env_value, dict):
             updated_environment_variables.append(
-                {"name": env_key, "valueFrom": env_value}
+                KVEnvVarValueFrom(name=env_key, valueFrom=env_value)
             )
         else:
             log.error(f"Invalid environment variable {env_key}={env_value}")
@@ -197,27 +225,25 @@ def get_updated_environment_variables(env_vars: Dict[str, Any]) -> List[Dict[str
 def get_cell_config(
     cell: str,
     region: str,
-    vtgate_resources: Dict[str, str],
-    env: List[Dict[str, Any]],
+    vtgate_resources: ResourceConfigDict,
+    env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
 ) -> CellConfigDict:
     """
     get vtgate config
     """
-    try:
-        replicas = int(vtgate_resources.get("replicas"))
-    except ValueError:
-        log.error("Invalid replicas value for vtgate")
-        replicas = 1
-    requests = vtgate_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    replicas = vtgate_resources.get("replicas")
+    requests = vtgate_resources.get(
+        "requests", RequestsDict(cpu="100m", memory="256Mi")
+    )
     environment_overrides: Dict[str, Any] = {
         "VAULT_ADDR": f"https://vault-dre.{region}.yelpcorp.com:8200",
         "VAULT_CACERT": f"/etc/vault/all_cas/acm-privateca-{region}.crt",
     }
     environment_overrides.update(VTGATE_EXTRA_ENV)
     updated_vtgate_extra_env = (
-        get_updated_environment_variables(environment_overrides) + env
+        get_formatted_environment_variables(environment_overrides) + env
     )
 
     config = CellConfigDict(
@@ -246,26 +272,24 @@ def get_cell_config(
 def get_vitess_dashboard_config(
     cells: List[str],
     zk_address: str,
-    vtctld_resources: Dict[str, str],
-    env: List[Dict[str, Any]],
+    vtctld_resources: ResourceConfigDict,
+    env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
 ) -> VitessDashboardConfigDict:
     """
     get vtctld config
     """
-    try:
-        replicas = int(vtctld_resources.get("replicas"))
-    except ValueError:
-        log.error("Invalid replicas value for vtctld")
-        replicas = 1
-    requests = vtctld_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    replicas = vtctld_resources.get("replicas")
+    requests = vtctld_resources.get(
+        "requests", RequestsDict(cpu="100m", memory="256Mi")
+    )
     environment_overrides: Dict[str, Any] = {
         "TOPOLOGY_FLAGS": f"--topo_implementation {TOPO_IMPLEMENTATION} --topo_global_server_address {zk_address} --topo_global_root {TOPO_GLOBAL_ROOT}",
     }
     environment_overrides.update(VTCTLD_EXTRA_ENV)
     updated_vtctld_extra_env = (
-        get_updated_environment_variables(environment_overrides) + env
+        get_formatted_environment_variables(environment_overrides) + env
     )
 
     config = VitessDashboardConfigDict(
@@ -285,20 +309,18 @@ def get_vitess_dashboard_config(
 
 def get_vt_admin_config(
     cells: List[str],
-    vtadmin_resources: Dict[str, str],
-    env: List[Dict[str, Any]],
+    vtadmin_resources: ResourceConfigDict,
+    env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
 ) -> VtAdminConfigDict:
     """
     get vtadmin config
     """
-    try:
-        replicas = int(vtadmin_resources.get("replicas"))
-    except ValueError:
-        log.error("Invalid replicas value for vtadmin")
-        replicas = 1
-    requests = vtadmin_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    replicas = vtadmin_resources.get("replicas")
+    requests = vtadmin_resources.get(
+        "requests", RequestsDict(cpu="100m", memory="256Mi")
+    )
     config = VtAdminConfigDict(
         cells=cells,
         apiAddresses=["http://localhost:15000"],
@@ -330,8 +352,8 @@ def get_tablet_pool_config(
     throttle_metrics_threshold: str,
     tablet_type: str,
     region: str,
-    vttablet_resources: Dict[str, str],
-    env: List[Dict[str, Any]],
+    vttablet_resources: ResourceConfigDict,
+    env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
 ) -> TabletPoolDict:
@@ -343,7 +365,7 @@ def get_tablet_pool_config(
         "throttle_metrics_query": f"select max_replication_delay from max_mysql_replication_delay.{throttle_query_table};",
         "throttle_metrics_threshold": throttle_metrics_threshold,
         "enforce-tableacl-config": "true",
-        "table-acl-config": f"/etc/vitess_keyspace_acls/acls_for_{db_name}.json",
+        "table-acl-config": f"/etc/srv/configs/vitess_keyspace_acls/acls_for_{db_name}.json",
         "table-acl-config-reload-interval": "60s",
         "queryserver-config-strict-table-acl": "true",
         "db-credentials-server": "vault",
@@ -364,7 +386,7 @@ def get_tablet_pool_config(
     }
     environment_overrides.update(VTTABLET_EXTRA_ENV)
     updated_vttablet_extra_env = (
-        get_updated_environment_variables(environment_overrides) + env
+        get_formatted_environment_variables(environment_overrides) + env
     )
 
     # Add extra pod label to filter
@@ -379,13 +401,12 @@ def get_tablet_pool_config(
         log.error(
             f"Tablet type {tablet_type} not found in system paasta config vitess_tablet_pool_type_mapping"
         )
+        type = "externalmaster"
 
-    try:
-        replicas = int(vttablet_resources.get("replicas"))
-    except ValueError:
-        log.error("Invalid replicas value for vttablet")
-        replicas = 1
-    requests = vttablet_resources.get("requests", {"cpu": "100m", "memory": "256Mi"})
+    replicas = vttablet_resources.get("replicas")
+    requests = vttablet_resources.get(
+        "requests", RequestsDict(cpu="100m", memory="256Mi")
+    )
 
     config = TabletPoolDict(
         cell=cell,
@@ -401,8 +422,8 @@ def get_tablet_pool_config(
                 "readOnly": True,
             },
             {
-                "mountPath": "/etc/vitess_keyspace_acls",
-                "name": "acls",
+                "mountPath": "/etc/srv",
+                "name": "srv-configs",
                 "readOnly": True,
             },
             {
@@ -419,8 +440,8 @@ def get_tablet_pool_config(
         extraVolumes=[
             {"name": "vault-secrets", "hostPath": {"path": "/nail/etc/vault/all_cas"}},
             {
-                "name": "acls",
-                "hostPath": {"path": "/nail/srv/configs/vitess_keyspace_acls"},
+                "name": "srv-configs",
+                "hostPath": {"path": "/nail/srv"},
             },
             {"name": "vttablet-fake-credentials", "hostPath": {"path": "/dev/null"}},
             {"name": "keyspace-fake-init-script", "hostPath": {"path": "/dev/null"}},
@@ -457,7 +478,7 @@ def get_keyspaces_config(
     keyspaces: List[Dict[str, Any]],
     zk_address: str,
     region: str,
-    env: List[Dict[str, Any]],
+    env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
 ) -> List[KeyspaceConfigDict]:
@@ -566,10 +587,10 @@ class VitessDeploymentConfigDict(KubernetesDeploymentConfigDict, total=False):
 class VitessInstanceConfigDict(KubernetesDeploymentConfigDict, total=False):
     cells: List[str]
     zk_address: str
-    vtctld_resources: Dict[str, Any]
-    vtgate_resources: Dict[str, Any]
-    vttablet_resources: Dict[str, Any]
-    vtadmin_resources: Dict[str, Any]
+    vtctld_resources: ResourceConfigDict
+    vtgate_resources: ResourceConfigDict
+    vttablet_resources: ResourceConfigDict
+    vtadmin_resources: ResourceConfigDict
     images: Dict[str, str]
     keyspaces: List[Dict[str, Any]]
 
@@ -611,7 +632,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             "vttablet": vitess_images["vttablet_image"],
         }
 
-    def get_env_variables(self) -> List[Dict[str, Any]]:
+    def get_env_variables(self) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
         # get all K8s container env vars and format their keys to camel case
 
         # Workaround from https://github.com/kubernetes-client/python/issues/390
@@ -634,15 +655,6 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         return labels
 
     def get_vitess_node_affinity(self) -> dict:
-        paasta_pool = self.get_pool()
-        self.config_dict.update(
-            {
-                "node_selectors": {
-                    "yelp.com/pool": [paasta_pool],
-                }
-            }
-        )
-
         # Workaround from https://github.com/kubernetes-client/python/issues/390
         api_client = ApiClient()
         node_affinity = api_client.sanitize_for_serialization(self.get_node_affinity())
@@ -663,6 +675,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             log.error(
                 f"Region not found for superregion {superregion}. Check superregion_to_region_mapping in system paasta config"
             )
+            # Exiting early here since region is needed to fetch secrets from vault
+            sys.exit(1)
         return region
 
     def get_global_lock_server(self) -> Dict[str, Dict[str, str]]:
@@ -776,12 +790,9 @@ def load_vitess_instance_config(
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
     )
-    instance_config = VitessDeploymentConfigDict(  # type: ignore
-        load_service_instance_config(
-            service, instance, "vitesscluster", cluster, soa_dir=soa_dir
-        )
+    instance_config = load_service_instance_config(
+        service, instance, "vitesscluster", cluster, soa_dir=soa_dir
     )
-
     general_config = deep_merge_dictionaries(
         overrides=instance_config, defaults=general_config
     )
