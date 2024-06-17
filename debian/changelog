@@ -1,3 +1,17 @@
+paasta-tools (1.4.1) xenial; urgency=medium
+
+  * 1.4.1 tagged with 'make release'
+    Commit: MLCOMPUTE-1203 | Configure Spark driver pod memory and cores
+    based on Spark args (#3892)  * MLCOMPUTE-1203 | Configure Spark
+    driver pod memory and cores based on Spark args  * MLCOMPUTE-1203 |
+    add validation to prevent users from specifying cpus and mem configs
+    for Spark drivers on k8s  * MLCOMPUTE-1203 | overload instance
+    config methods, add tests  * MLCOMPUTE-1203 | fix tests  * MLCOMPUTE-
+    1203 | move building spark config to constructor  ---------  Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 17 Jun 2024 10:59:06 -0700
+
 paasta-tools (1.4.0) xenial; urgency=medium
 
   * 1.4.0 tagged with 'make release'
