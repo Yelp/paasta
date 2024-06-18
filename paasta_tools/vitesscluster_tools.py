@@ -749,6 +749,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
 
     def get_vitess_config(self) -> VitessDeploymentConfigDict:
         vitess_config = VitessDeploymentConfigDict(
+            namespace=self.get_namespace(),
             images=self.get_images(),
             globalLockserver=self.get_global_lock_server(),
             cells=self.get_cells(),
