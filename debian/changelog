@@ -1,3 +1,12 @@
+paasta-tools (1.4.3) xenial; urgency=medium
+
+  * 1.4.3 tagged with 'make release'
+    Commit: Revert "MLCOMPUTE-1203 | Configure Spark driver pod memory
+    and cores based on…" (#3900)  This reverts commit
+    5784aef70b191a83242bf9e9fbae6ae115de8c99.
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 18 Jun 2024 06:31:05 -0700
+
 paasta-tools (1.4.2) xenial; urgency=medium
 
   * 1.4.2 tagged with 'make release'
