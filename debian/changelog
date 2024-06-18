@@ -1,3 +1,10 @@
+paasta-tools (1.4.2) xenial; urgency=medium
+
+  * 1.4.2 tagged with 'make release'
+    Commit: Revert "Bump service-configuration-lib to v2.18.18" (#3898)
+
+ -- Chi Chang <chi@yelp.com>  Tue, 18 Jun 2024 03:00:41 -0700
+
 paasta-tools (1.4.1) xenial; urgency=medium
 
   * 1.4.1 tagged with 'make release'
