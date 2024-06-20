@@ -2013,6 +2013,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     spark_blockmanager_port: int
     skip_cpu_burst_validation: List[str]
     tron_default_pool_override: str
+    tron_enable_authorization: bool
     spark_kubeconfig: str
     kube_clusters: Dict
     spark_use_eks_default: bool
@@ -2137,6 +2138,9 @@ class SystemPaastaConfig:
         :returns: The default_pool_override specified in the paasta configuration
         """
         return self.config_dict.get("tron_default_pool_override", "default")
+
+    def get_tron_enable_authorization(self) -> bool:
+        return self.config_dict.get("tron_enable_authorization", False)
 
     def get_zk_hosts(self) -> str:
         """Get the zk_hosts defined in this hosts's cluster config file.

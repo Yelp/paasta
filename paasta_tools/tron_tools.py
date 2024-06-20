@@ -968,13 +968,15 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 dry_run=action_config.for_validation,
             )
 
+        system_paasta_config = load_system_paasta_config()
+
         # service account token volumes for service authentication
-        result["projected_sa_volumes"] = action_config.get_projected_sa_volumes()
+        if system_paasta_config.get_tron_enable_authorization():
+            result["projected_sa_volumes"] = action_config.get_projected_sa_volumes()
 
         extra_volumes = action_config.get_extra_volumes()
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
-            system_paasta_config = load_system_paasta_config()
             # inject spark configs to the original spark-submit command
             spark_config = action_config.build_spark_config()
             result["command"] = spark_tools.build_spark_command(
