@@ -1,3 +1,12 @@
+paasta-tools (1.4.4) xenial; urgency=medium
+
+  * 1.4.4 tagged with 'make release'
+    Commit: Merge pull request #3889 from Yelp/u/gonabavi/DREIMP-
+    10726_migrate_manifest_generation_to_paasta_tools  Add support for
+    generating vitess config from minimal yelpsoa configs
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 21 Jun 2024 09:15:00 -0700
+
 paasta-tools (1.4.3) xenial; urgency=medium
 
   * 1.4.3 tagged with 'make release'
