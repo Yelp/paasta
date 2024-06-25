@@ -1,3 +1,12 @@
+paasta-tools (1.4.5) xenial; urgency=medium
+
+  * 1.4.5 tagged with 'make release'
+    Commit: Fix incorrect help text for --cluster in paasta logs (#3895)
+    `paasta logs` only supports grabbing logs from a single cluster at a
+    time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Jun 2024 06:58:16 -0700
+
 paasta-tools (1.4.4) xenial; urgency=medium
 
   * 1.4.4 tagged with 'make release'
