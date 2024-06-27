@@ -1,3 +1,12 @@
+paasta-tools (1.4.6) xenial; urgency=medium
+
+  * 1.4.6 tagged with 'make release'
+    Commit: Merge pull request #3902 from Yelp/u/gonabavi/DREIMP-
+    10725_add_paasta_status_for_vitesscluster  Add paasta status for
+    vitesscluster and mount /nail/etc/srv-configs to VTTablets
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Thu, 27 Jun 2024 10:40:09 -0700
+
 paasta-tools (1.4.5) xenial; urgency=medium
 
   * 1.4.5 tagged with 'make release'
