@@ -971,6 +971,7 @@ def get_instance_configs_for_service(
                     cluster=cluster,
                     soa_dir=soa_dir,
                     load_deployments=False,
+                    for_validation=False,
                 )
 
 
