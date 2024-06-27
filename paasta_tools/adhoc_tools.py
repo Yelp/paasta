@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 
 
 def load_adhoc_job_config(
-    service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR
+    service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR, for_validation: bool = False,
 ):
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir

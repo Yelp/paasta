@@ -787,6 +787,7 @@ def load_vitess_instance_config(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    for_validation: bool = False,
 ) -> VitessDeploymentConfig:
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir

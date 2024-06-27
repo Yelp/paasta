@@ -283,6 +283,11 @@ class TronActionConfig(InstanceConfig):
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
         self.action_spark_config = None
+        # building the Spark config inside the constructor for workflows that might need the final configs.
+        if self.get_executor() == "spark":
+            # build the complete Spark configuration
+            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
+            self.action_spark_config = self.build_spark_config()
 
     def get_cpus(self) -> float:
         # set Spark driver pod CPU if it is specified by Spark arguments
@@ -922,12 +927,6 @@ def format_tron_action_dict(action_config: TronActionConfig):
     :param action_config: TronActionConfig
     """
     executor = action_config.get_executor()
-    # not building the Spark config in TronActionConfig constructor since it needs a KUBECONFIG file and
-    # fails in yelpsoa configs repo validation while getting the action configs.
-    if executor == "spark":
-        # build the complete Spark configuration
-        # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
-        action_config.action_spark_config = action_config.build_spark_config()
     result = {
         "command": action_config.get_cmd(),
         "executor": executor,
@@ -1132,12 +1131,14 @@ def load_tron_instance_config(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    for_validation: bool = False,
 ) -> TronActionConfig:
     for action in load_tron_instance_configs(
         service=service,
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
+        for_validation=for_validation,
     ):
         if action.get_instance() == instance:
             return action
@@ -1152,6 +1153,7 @@ def load_tron_instance_configs(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    for_validation: bool = False,
 ) -> Tuple[TronActionConfig, ...]:
     ret: List[TronActionConfig] = []
 
@@ -1160,6 +1162,7 @@ def load_tron_instance_configs(
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
+        for_validation=for_validation,
     )
 
     for job in jobs:

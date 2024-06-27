@@ -607,6 +607,7 @@ InstanceLoaderSig = Callable[
         NamedArg(str, "cluster"),
         NamedArg(bool, "load_deployments"),
         NamedArg(str, "soa_dir"),
+        NamedArg(str, "for_validation"),
     ],
     InstanceConfig,
 ]
@@ -719,6 +720,7 @@ def get_instance_config(
     soa_dir: str = DEFAULT_SOA_DIR,
     load_deployments: bool = False,
     instance_type: Optional[str] = None,
+    for_validation: bool = False,
 ) -> InstanceConfig:
     """Returns the InstanceConfig object for whatever type of instance
     it is. (kubernetes)"""
@@ -740,6 +742,7 @@ def get_instance_config(
         cluster=cluster,
         load_deployments=load_deployments,
         soa_dir=soa_dir,
+        for_validation=for_validation,
     )
 
 

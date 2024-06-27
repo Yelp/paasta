@@ -42,6 +42,7 @@ def load_eks_service_config_no_cache(
     cluster: str,
     load_deployments: bool = True,
     soa_dir: str = DEFAULT_SOA_DIR,
+    for_validation: bool = False,
 ) -> "EksDeploymentConfig":
     """Read a service instance's configuration for EKS.
 
@@ -54,6 +55,8 @@ def load_eks_service_config_no_cache(
     :param load_deployments: A boolean indicating if the corresponding deployments.json for this service
                              should also be loaded
     :param soa_dir: The SOA configuration directory to read from
+    :param for_validation: currently unused - part of the signature for instance types that cannot be
+                           fully created in places where paasta validate runs without special handling
     :returns: A dictionary of whatever was in the config for the service instance"""
     general_config = service_configuration_lib.read_service_configuration(
         service, soa_dir=soa_dir
