@@ -365,7 +365,7 @@ def get_tablet_pool_config(
         "throttle_metrics_query": f"select max_replication_delay from max_mysql_replication_delay.{throttle_query_table};",
         "throttle_metrics_threshold": throttle_metrics_threshold,
         "enforce-tableacl-config": "true",
-        "table-acl-config": f"/etc/srv/configs/vitess_keyspace_acls/acls_for_{db_name}.json",
+        "table-acl-config": f"/nail/srv/configs/vitess_keyspace_acls/acls_for_{db_name}.json",
         "table-acl-config-reload-interval": "60s",
         "queryserver-config-strict-table-acl": "true",
         "db-credentials-server": "vault",
@@ -422,8 +422,13 @@ def get_tablet_pool_config(
                 "readOnly": True,
             },
             {
-                "mountPath": "/etc/srv",
+                "mountPath": "/nail/srv",
                 "name": "srv-configs",
+                "readOnly": True,
+            },
+            {
+                "mountPath": "/nail/etc/srv-configs",
+                "name": "etc-srv-configs",
                 "readOnly": True,
             },
             {
@@ -442,6 +447,10 @@ def get_tablet_pool_config(
             {
                 "name": "srv-configs",
                 "hostPath": {"path": "/nail/srv"},
+            },
+            {
+                "name": "etc-srv-configs",
+                "hostPath": {"path": "/nail/etc/srv-configs"},
             },
             {"name": "vttablet-fake-credentials", "hostPath": {"path": "/dev/null"}},
             {"name": "keyspace-fake-init-script", "hostPath": {"path": "/dev/null"}},
@@ -841,8 +850,8 @@ def load_vitess_service_instance_configs(
 # TODO: read this from CRD in service configs
 def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
-        group="yelp.com",
-        version="v1alpha1",
+        group="planetscale.com",
+        version="v2",
         namespace=KUBERNETES_NAMESPACE,
         plural="vitessclusters",
         name=sanitised_cr_name(service, instance),

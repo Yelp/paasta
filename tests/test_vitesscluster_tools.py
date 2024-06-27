@@ -251,8 +251,13 @@ VITESS_CONFIG = {
                                             "readOnly": True,
                                         },
                                         {
-                                            "mountPath": "/etc/srv",
+                                            "mountPath": "/nail/srv",
                                             "name": "srv-configs",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/srv-configs",
+                                            "name": "etc-srv-configs",
                                             "readOnly": True,
                                         },
                                         {
@@ -274,8 +279,14 @@ VITESS_CONFIG = {
                                             "name": "vault-secrets",
                                         },
                                         {
-                                            "hostPath": {"path": "/nail/srv"},
                                             "name": "srv-configs",
+                                            "hostPath": {"path": "/nail/srv"},
+                                        },
+                                        {
+                                            "name": "etc-srv-configs",
+                                            "hostPath": {
+                                                "path": "/nail/etc/srv-configs"
+                                            },
                                         },
                                         {
                                             "hostPath": {"path": "/dev/null"},
@@ -307,7 +318,7 @@ VITESS_CONFIG = {
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",
                                             "queryserver-config-strict-table-acl": "true",
-                                            "table-acl-config": "/etc/srv/configs/vitess_keyspace_acls/acls_for_fake_keyspaces.json",
+                                            "table-acl-config": "/nail/srv/configs/vitess_keyspace_acls/acls_for_fake_keyspaces.json",
                                             "table-acl-config-reload-interval": "60s",
                                             "throttle_check_as_check_self": "true",
                                             "throttle_metrics_query": "select "
@@ -424,8 +435,13 @@ VITESS_CONFIG = {
                                             "readOnly": True,
                                         },
                                         {
-                                            "mountPath": "/etc/srv",
+                                            "mountPath": "/nail/srv",
                                             "name": "srv-configs",
+                                            "readOnly": True,
+                                        },
+                                        {
+                                            "mountPath": "/nail/etc/srv-configs",
+                                            "name": "etc-srv-configs",
                                             "readOnly": True,
                                         },
                                         {
@@ -447,8 +463,14 @@ VITESS_CONFIG = {
                                             "name": "vault-secrets",
                                         },
                                         {
-                                            "hostPath": {"path": "/nail/srv"},
                                             "name": "srv-configs",
+                                            "hostPath": {"path": "/nail/srv"},
+                                        },
+                                        {
+                                            "name": "etc-srv-configs",
+                                            "hostPath": {
+                                                "path": "/nail/etc/srv-configs"
+                                            },
                                         },
                                         {
                                             "hostPath": {"path": "/dev/null"},
@@ -480,7 +502,7 @@ VITESS_CONFIG = {
                                             "log_err_stacks": "true",
                                             "queryserver-config-schema-reload-time": "1800",
                                             "queryserver-config-strict-table-acl": "true",
-                                            "table-acl-config": "/etc/srv/configs/vitess_keyspace_acls/acls_for_fake_keyspaces.json",
+                                            "table-acl-config": "/nail/srv/configs/vitess_keyspace_acls/acls_for_fake_keyspaces.json",
                                             "table-acl-config-reload-interval": "60s",
                                             "throttle_check_as_check_self": "true",
                                             "throttle_metrics_query": "select "
