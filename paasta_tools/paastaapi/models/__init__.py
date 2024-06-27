@@ -39,6 +39,7 @@ from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStat
 from paasta_tools.paastaapi.model.instance_status_kubernetes_autoscaling_status import InstanceStatusKubernetesAutoscalingStatus
 from paasta_tools.paastaapi.model.instance_status_kubernetes_v2 import InstanceStatusKubernetesV2
 from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
+from paasta_tools.paastaapi.model.instance_status_vitesscluster import InstanceStatusVitesscluster
 from paasta_tools.paastaapi.model.instance_tasks import InstanceTasks
 from paasta_tools.paastaapi.model.integer_and_error import IntegerAndError
 from paasta_tools.paastaapi.model.kubernetes_container import KubernetesContainer

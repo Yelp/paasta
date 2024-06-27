@@ -953,6 +953,18 @@
                         }
                     },
                     "description": "Nullable CassandraCluster instance status"
+                },
+                "vitesscluster": {
+                    "type": "object",
+                    "properties": {
+                        "status": {
+                            "$ref": "#/definitions/InstanceStatusVitessCluster"
+                        },
+                        "metadata": {
+                            "$ref": "#/definitions/InstanceMetadataVitessCluster"
+                        }
+                    },
+                    "description": "Nullable VitessCluster instance status and metadata"
                 }
             }
         },
@@ -1736,6 +1748,14 @@
         "InstanceStatusCassandraCluster": {
             "type": "object",
             "description": "Cassandra instance status"
+        },
+        "InstanceStatusVitessCluster": {
+            "type": "object",
+            "description": "VitessCluster instance status"
+        },
+        "InstanceMetadataVitessCluster": {
+            "type": "object",
+            "description": "VitessCluster instance metadata"
         },
         "InstanceTasks": {
             "type": "array",
