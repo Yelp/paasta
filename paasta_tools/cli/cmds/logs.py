@@ -97,7 +97,7 @@ def add_subparser(subparsers) -> None:
     status_parser.add_argument(
         "-c",
         "--cluster",
-        help="The cluster to see relevant logs for. Defaults to all clusters to which this service is deployed.",
+        help="The cluster to see relevant logs for.",
         nargs=1,
     ).completer = completer_clusters
     status_parser.add_argument(
@@ -1195,12 +1195,10 @@ class VectorLogsReader(LogReader):
         stream_name = get_log_name_for_service(service, prefix="app_output")
         superregion = self.get_superregion_for_cluster(clusters[0])
         reader = S3LogsReader(superregion)
-        start_date = start_time.date()
-        end_date = end_time.date()
         aggregated_logs: List[Dict[str, Any]] = []
 
         for line in reader.get_log_reader(
-            log_name=stream_name, min_date=start_date, max_date=end_date
+            log_name=stream_name, start_datetime=start_time, end_datetime=end_time
         ):
             if paasta_log_line_passes_filter(
                 line,
