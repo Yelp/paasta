@@ -387,7 +387,7 @@ class TronActionConfig(InstanceConfig):
             iam_role=self.get_spark_executor_iam_role(),
             namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
             kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
-            dry_run=self.for_validation,
+            dry_run=True,
         )
 
         return spark_conf
@@ -1009,7 +1009,7 @@ def format_tron_action_dict(action_config: TronActionConfig):
                 iam_role=action_config.get_iam_role(),
                 namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=None,
-                dry_run=action_config.for_validation,
+                dry_run=True,
             )
 
         # service account token volumes for service authentication

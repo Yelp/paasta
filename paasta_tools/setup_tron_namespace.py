@@ -25,8 +25,11 @@ import logging
 import sys
 
 import ruamel.yaml as yaml
+import spark_tools
 
 from paasta_tools import tron_tools
+from paasta_tools.kubernetes_tools import create_or_find_service_account_name
+from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
 
 log = logging.getLogger(__name__)
@@ -61,6 +64,26 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
+
+
+def ensure_service_accounts(config: dict) -> None:
+    for job in config.get("jobs", []):
+        for action in job.get("actions", []):
+            if action.get("service_account_name") is not None:
+                create_or_find_service_account_name(
+                    action["service_account_name"],
+                    namespace=KUBERNETES_NAMESPACE,
+                    dry_run=False,
+                )
+                # spark executors are special in that we want the SA to exist in two namespaces:
+                # the tron namespace - for the spark driver
+                # and the spark namespace - for the spark executor
+                if action.get("executor") == "spark":
+                    create_or_find_service_account_name(
+                        action["service_account_name"],
+                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                        dry_run=False,
+                    )
 
 
 def main():
@@ -133,6 +156,10 @@ def main():
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
+                # PaaSTA will not necessarily have created the SAs we want to use
+                # ...so let's go ahead and create them!
+                ensure_service_accounts(new_config)
+
                 if client.update_namespace(service, new_config):
                     updated.append(service)
                     log.debug(f"Updated {service}")
