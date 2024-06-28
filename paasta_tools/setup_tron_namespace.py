@@ -66,7 +66,11 @@ def parse_args():
     return args
 
 
-def ensure_service_accounts(config: dict) -> None:
+def ensure_service_accounts(raw_config: str) -> None:
+    # this is kinda silly, but the tron create_config functions return strings
+    # we should refactor to pass the dicts around until the we're going to send the config to tron
+    # (where we can finally convert it to a string)
+    config = yaml.safe_load(raw_config)
     for _, job in config.get("jobs", {}).items():
         for _, action in job.get("actions", {}).items():
             if action.get("service_account_name") is not None:
@@ -151,6 +155,7 @@ def main():
                 k8s_enabled=k8s_enabled_for_cluster,
                 dry_run=args.dry_run,
             )
+            ensure_service_accounts(new_config)
             if args.dry_run:
                 log.info(f"Would update {service} to:")
                 log.info(f"{new_config}")
