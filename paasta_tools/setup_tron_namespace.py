@@ -155,7 +155,6 @@ def main():
                 k8s_enabled=k8s_enabled_for_cluster,
                 dry_run=args.dry_run,
             )
-            ensure_service_accounts(new_config)
             if args.dry_run:
                 log.info(f"Would update {service} to:")
                 log.info(f"{new_config}")
