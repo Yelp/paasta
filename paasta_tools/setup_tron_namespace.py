@@ -150,11 +150,6 @@ def main():
     k8s_enabled_for_cluster = (
         yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
     )
-    system_paasta_config = load_system_paasta_config()
-    kube_client = KubeClient()
-    spark_kube_client = KubeClient(
-        config_file=system_paasta_config.get_spark_kubeconfig()
-    )
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
@@ -169,6 +164,12 @@ def main():
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
+                # NOTE: these are all lru_cache'd so it should be fine to call these for every service
+                system_paasta_config = load_system_paasta_config()
+                kube_client = KubeClient()
+                spark_kube_client = KubeClient(
+                    config_file=system_paasta_config.get_spark_kubeconfig()
+                )
                 # PaaSTA will not necessarily have created the SAs we want to use
                 # ...so let's go ahead and create them!
                 ensure_service_accounts(new_config, kube_client, spark_kube_client)
