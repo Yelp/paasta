@@ -241,7 +241,7 @@
                         "type": "string"
                     },
                     "ticket": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "page": {
                         "type": "boolean"
