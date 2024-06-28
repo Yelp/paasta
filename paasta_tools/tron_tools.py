@@ -280,9 +280,15 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
+
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
+
         self.action_spark_config = None
+        if self.get_executor() == "spark":
+            # build the complete Spark configuration
+            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
+            self.action_spark_config = self.build_spark_config()
 
     def get_cpus(self) -> float:
         # set Spark driver pod CPU if it is specified by Spark arguments
@@ -918,12 +924,6 @@ def format_tron_action_dict(action_config: TronActionConfig):
     :param action_config: TronActionConfig
     """
     executor = action_config.get_executor()
-    # not building the Spark config in TronActionConfig constructor since it needs a KUBECONFIG file and
-    # fails in yelpsoa configs repo validation while getting the action configs.
-    if executor == "spark":
-        # build the complete Spark configuration
-        # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
-        action_config.action_spark_config = action_config.build_spark_config()
     result = {
         "command": action_config.get_cmd(),
         "executor": executor,
