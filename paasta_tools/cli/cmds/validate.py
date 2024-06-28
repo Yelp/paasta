@@ -191,7 +191,6 @@ def load_all_instance_configs_for_service(
             cluster=cluster,
             load_deployments=False,
             soa_dir=soa_dir,
-            for_validation=True,
         )
         ret.append((instance, instance_config))
 
@@ -505,7 +504,7 @@ def validate_tron(service_path: str, verbose: bool = False) -> bool:
 
             # TODO(TRON-1761): unify tron/paasta validate cron syntax validation
             service_config = load_tron_service_config(
-                service=service, cluster=cluster, soa_dir=soa_dir, for_validation=True,
+                service=service, cluster=cluster, soa_dir=soa_dir
             )
             for config in service_config:
                 cron_expression = config.get_cron_expression()
