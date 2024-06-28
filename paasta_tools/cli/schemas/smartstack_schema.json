@@ -234,7 +234,19 @@
                     "team": {
                         "type": "string"
                     },
+                    "slack_channel": {
+                        "type": "string"
+                    },
+                    "jira_project": {
+                        "type": "string"
+                    },
+                    "ticket": {
+                        "type": "string"
+                    },
                     "page": {
+                        "type": "boolean"
+                    },
+                    "page_nonprod": {
                         "type": "boolean"
                     },
                     "error_threshold_ratio": {
