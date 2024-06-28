@@ -2349,7 +2349,8 @@ class SystemPaastaConfig:
         """
         Get the list of clusters that are using multiple log readers
         """
-        return self.config_dict.get("use_multiple_log_readers")
+        # return self.config_dict.get("use_multiple_log_readers")
+        return ["kubestage", "pnw-devc"]
 
     def get_metrics_provider(self) -> Optional[str]:
         """Get the metrics_provider configuration out of global paasta config

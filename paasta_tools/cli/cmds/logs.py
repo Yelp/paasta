@@ -40,7 +40,9 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
+import a_sync
 import isodate
+import nats
 import pytz
 from dateutil import tz
 
@@ -1166,8 +1168,10 @@ class ScribeLogReader(LogReader):
 
 @register_log_reader("vector-logs")
 class VectorLogsReader(LogReader):
+    SUPPORTS_TAILING = True
     SUPPORTS_TIME = True
 
+    # def __init__(self, cluster_map: Mapping[str, Any], nats_endpoint_map: Mapping[str, Any]) -> None:
     def __init__(self, cluster_map: Mapping[str, Any]) -> None:
         super().__init__()
 
@@ -1175,9 +1179,14 @@ class VectorLogsReader(LogReader):
             raise Exception("yelp_clog package must be available to use S3LogsReader")
 
         self.cluster_map = cluster_map
+        # self.nats_endpoint_map = nats_endpoint_map
+        self.nats_endpoint_map = {"pnw-devc": "nats-logs.infra.uswest2-devc.eks:4222"}
 
     def get_superregion_for_cluster(self, cluster: str) -> Optional[str]:
         return self.cluster_map.get(cluster, None)
+
+    def get_nats_endpoint_for_cluster(self, cluster: str) -> Optional[str]:
+        return self.nats_endpoint_map.get(cluster, None)
 
     def print_logs_by_time(
         self,
@@ -1229,6 +1238,59 @@ class VectorLogsReader(LogReader):
 
         for line in aggregated_logs:
             print_log(line["raw_line"], levels, raw_mode, strip_headers)
+
+    def tail_logs(
+        self,
+        service: str,
+        levels: Sequence[str],
+        components: Iterable[str],
+        clusters: Sequence[str],
+        instances: List[str],
+        pods: Iterable[str] = None,
+        raw_mode: bool = False,
+        strip_headers: bool = False,
+    ) -> None:
+        stream_name = get_log_name_for_service(service, prefix="app_output")
+        endpoint = self.get_nats_endpoint_for_cluster(clusters[0])
+        if not endpoint:
+            raise NotImplementedError(
+                "Tailing logs is not supported in this cluster yet, sorry"
+            )
+
+        async def tail_logs_from_nats() -> None:
+            nc = await nats.connect(f"nats://{endpoint}")
+            sub = await nc.subscribe(stream_name)
+
+            while True:
+                # Wait indefinitely for a new message (no timeout)
+                msg = await sub.next_msg(timeout=None)
+                decoded_data = msg.data.decode("utf-8")
+
+                # TODO: Make NATS send this data in the correct format in the
+                # first place by adding transforms and filters into Vector to
+                # only send the necessary data. Then none of this should be
+                # needed and the raw JSON could be passed along without
+                # JSON-loading and then JSON dumping it again
+                message_data = json.loads(decoded_data)["message"]
+                message_data[
+                    "message"
+                ] = f"{message_data['hostname']} ({message_data['pod_name']}) {message_data['message']}"
+                json_message_data = json.dumps(message_data)
+
+                if paasta_log_line_passes_filter(
+                    json_message_data,
+                    levels,
+                    service,
+                    components,
+                    clusters,
+                    instances,
+                    pods,
+                ):
+                    await a_sync.run(
+                        print_log, json_message_data, levels, raw_mode, strip_headers
+                    )
+
+        a_sync.block(tail_logs_from_nats)
 
 
 def scribe_env_to_locations(scribe_env) -> Mapping[str, Any]:
