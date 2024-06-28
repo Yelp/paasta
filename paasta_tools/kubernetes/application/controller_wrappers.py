@@ -120,6 +120,13 @@ class Application(ABC):
         :param kube_client:
         """
         self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
+
+    def update_dependency_api_objects(self, kube_client: KubeClient) -> None:
+        """
+        Update related Kubernetes API objects that should be updated before the main object,
+        such as service accounts.
+        :param kube_client:
+        """
         self.ensure_service_account(kube_client)
 
     def ensure_service_account(self, kube_client: KubeClient) -> None:
