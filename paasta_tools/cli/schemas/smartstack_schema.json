@@ -227,6 +227,30 @@
             "vip_upgrade": {
                 "type": "string",
                 "description": "The service namespace that this namespace will route to (via Envoy) if a request has the X-Ctx-Vip header."
+            },
+            "monitoring": {
+                "type": "object",
+                "properties": {
+                    "team": {
+                        "type": "string"
+                    },
+                    "page": {
+                        "type": "boolean"
+                    },
+                    "error_threshold_ratio": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "minimum_error_rps": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "team",
+                    "page"
+                ]
             }
         },
         "required": [
