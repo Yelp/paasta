@@ -25,8 +25,8 @@ import logging
 import sys
 
 import ruamel.yaml as yaml
-import spark_tools
 
+from paasta_tools import spark_tools
 from paasta_tools import tron_tools
 from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
