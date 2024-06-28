@@ -854,7 +854,7 @@ See the `marathon-[clustername].yaml`_ section for details for each of these par
 ``smartstack.yaml``
 -------------------
 
-Configure service registration, discovery, load balancing and default paasta alerting.
+Configure service registration, discovery, load balancing and error alerting.
 
 Here is an example smartstack.yaml::
 
