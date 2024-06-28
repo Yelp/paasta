@@ -67,8 +67,8 @@ def parse_args():
 
 
 def ensure_service_accounts(config: dict) -> None:
-    for job in config.get("jobs", []):
-        for action in job.get("actions", []):
+    for _, job in config.get("jobs", {}).items():
+        for _, action in job.get("actions", {}).items():
             if action.get("service_account_name") is not None:
                 create_or_find_service_account_name(
                     action["service_account_name"],
