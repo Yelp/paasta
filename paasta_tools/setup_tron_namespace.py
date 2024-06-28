@@ -31,6 +31,8 @@ from paasta_tools import tron_tools
 from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import SystemPaastaConfig
 
 log = logging.getLogger(__name__)
 
@@ -66,7 +68,9 @@ def parse_args():
     return args
 
 
-def ensure_service_accounts(raw_config: str) -> None:
+def ensure_service_accounts(
+    raw_config: str, system_paasta_config: SystemPaastaConfig
+) -> None:
     # this is kinda silly, but the tron create_config functions return strings
     # we should refactor to pass the dicts around until the we're going to send the config to tron
     # (where we can finally convert it to a string)
@@ -86,6 +90,7 @@ def ensure_service_accounts(raw_config: str) -> None:
                     create_or_find_service_account_name(
                         action["service_account_name"],
                         namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                        kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
                         dry_run=False,
                     )
 
@@ -146,6 +151,7 @@ def main():
     k8s_enabled_for_cluster = (
         yaml.safe_load(master_config).get("k8s_options", {}).get("enabled", False)
     )
+    system_paasta_config = load_system_paasta_config()
     for service in sorted(services):
         try:
             new_config = tron_tools.create_complete_config(
@@ -162,7 +168,7 @@ def main():
             else:
                 # PaaSTA will not necessarily have created the SAs we want to use
                 # ...so let's go ahead and create them!
-                ensure_service_accounts(new_config)
+                ensure_service_accounts(new_config, system_paasta_config)
 
                 if client.update_namespace(service, new_config):
                     updated.append(service)
