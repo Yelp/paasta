@@ -607,7 +607,7 @@ InstanceLoaderSig = Callable[
         NamedArg(str, "cluster"),
         NamedArg(bool, "load_deployments"),
         NamedArg(str, "soa_dir"),
-        NamedArg(bool, "for_validation"),
+        NamedArg(str, "for_validation"),
     ],
     InstanceConfig,
 ]
