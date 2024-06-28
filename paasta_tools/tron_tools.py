@@ -62,7 +62,7 @@ from paasta_tools import spark_tools
 
 from paasta_tools.kubernetes_tools import (
     allowlist_denylist_to_requirements,
-    create_or_find_service_account_name,
+    get_service_account_name,
     limit_size_with_hash,
     raw_selectors_to_requirements,
     to_node_label,
@@ -379,15 +379,11 @@ class TronActionConfig(InstanceConfig):
             "spark.kubernetes.executor.label.yelp.com/owner", self.get_team()
         )
 
-        # We need to make sure the Service Account used by the executors has been created.
         # We are using the Service Account created using the provided or default IAM role.
         spark_conf[
             "spark.kubernetes.authenticate.executor.serviceAccountName"
-        ] = create_or_find_service_account_name(
+        ] = get_service_account_name(
             iam_role=self.get_spark_executor_iam_role(),
-            namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-            kubeconfig_file=system_paasta_config.get_spark_kubeconfig(),
-            dry_run=True,
         )
 
         return spark_conf
@@ -996,20 +992,14 @@ def format_tron_action_dict(action_config: TronActionConfig):
 
         result["labels"]["yelp.com/owner"] = "compute_infra_platform_experience"
 
-        # create_or_find_service_account_name requires k8s credentials, and we don't
-        # have those available for CI to use (nor do we check these for normal PaaSTA
-        # services, so we're not doing anything "new" by skipping this)
         if (
             action_config.get_iam_role_provider() == "aws"
             and action_config.get_iam_role()
-            and not action_config.for_validation
         ):
             # this service account will be used for normal Tron batches as well as for Spark drivers
-            result["service_account_name"] = create_or_find_service_account_name(
+            result["service_account_name"] = get_service_account_name(
                 iam_role=action_config.get_iam_role(),
-                namespace=EXECUTOR_TYPE_TO_NAMESPACE[executor],
                 k8s_role=None,
-                dry_run=True,
             )
 
         # service account token volumes for service authentication

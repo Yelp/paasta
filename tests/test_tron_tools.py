@@ -1529,7 +1529,7 @@ class TestTronTools:
             autospec=True,
             return_value=False,
         ), mock.patch(
-            "paasta_tools.tron_tools.create_or_find_service_account_name",
+            "paasta_tools.tron_tools.get_service_account_name",
             autospec=True,
             return_value="some--service--account",
         ), mock.patch(
