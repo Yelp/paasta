@@ -854,7 +854,7 @@ See the `marathon-[clustername].yaml`_ section for details for each of these par
 ``smartstack.yaml``
 -------------------
 
-Configure service registration, discovery, and load balancing.
+Configure service registration, discovery, load balancing and default paasta alerting.
 
 Here is an example smartstack.yaml::
 
@@ -1068,6 +1068,33 @@ internally at Yelp.
    - ``percent``: Percentage of requests (0-100) to be randomly affected by this
      delay. Note that due to Envoy's current definition of *percentage* as an
      integer, this cannot be specified as a floating-point number.
+
+Error Alerting
+``````````````
+
+These keys provide optional overrides for the default alerting behaviour.
+
+ * ``monitoring``: Override default alerting behaviour. For example: ::
+
+      main:
+        monitoring:
+          team: frontend
+          slack_channel: "notifications"
+          jira_project: "FRONTEND"
+          ticket: false
+          page: false
+          page_nonprod: true
+          error_threshold_ration: 0.02
+          minimum_error_rps: 10
+    - ``team``: Override the default team for alerting.
+    - ``slack_channel``: Override the default slack channel for alerting.
+    - ``jira_project``: Override the default JIRA project for alerting.
+    - ``ticket``: Override the default ticketing behaviour. Defaults to **true**.
+    - ``page``: Override the default paging behaviour. Defaults to **true**.
+    - ``page_nonprod``: Override the default paging behaviour for non-production
+      environments. Defaults to **false**.
+    - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
+    - ``minimum_error_rps``: Minimum error rate per second, minimum is zero. Defaults to **5**.
 
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
