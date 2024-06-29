@@ -897,7 +897,7 @@ def test_vector_logs_read_logs_empty_clusters():
     with mock.patch("paasta_tools.cli.cmds.logs.log", autospec=True), mock.patch(
         "paasta_tools.cli.cmds.logs.S3LogsReader", autospec=None
     ), pytest.raises(IndexError) as e:
-        logs.VectorLogsReader(cluster_map={}).print_logs_by_time(
+        logs.VectorLogsReader(cluster_map={}, nats_endpoint_map={}).print_logs_by_time(
             service,
             start_time,
             end_time,
@@ -942,7 +942,7 @@ def test_vector_logs_print_logs_by_time():
         start_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T06:00"))
         end_time = pytz.utc.localize(isodate.parse_datetime("2016-06-08T07:00"))
 
-        logs.VectorLogsReader(cluster_map={}).print_logs_by_time(
+        logs.VectorLogsReader(cluster_map={}, nats_endpoint_map={}).print_logs_by_time(
             service,
             start_time,
             end_time,
@@ -1045,7 +1045,7 @@ def test_get_log_reader():
         },
         {
             "driver": "vector-logs",
-            "options": {"cluster_map": {}},
+            "options": {"cluster_map": {}, "nats_endpoint_map": {}},
             "components": ["stdout", "stderr"],
         },
     ]
