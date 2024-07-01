@@ -134,7 +134,11 @@ InstanceStatusWriter = Callable[
     int,
 ]
 
-EKS_DEPLOYMENT_CONFIGS = [EksDeploymentConfig, FlinkEksDeploymentConfig]
+EKS_DEPLOYMENT_CONFIGS = [
+    EksDeploymentConfig,
+    FlinkEksDeploymentConfig,
+    VitessDeploymentConfig,
+]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 
 
