@@ -930,7 +930,9 @@ class TestKubernetesDeploymentConfig:
                     image=mock_get_docker_url.return_value,
                     lifecycle=V1Lifecycle(
                         pre_stop=V1Handler(
-                            _exec=V1ExecAction(command=["/bin/sh", "-c", "sleep 30"])
+                            _exec=V1ExecAction(
+                                command=["/bin/sh", "-c", "echo Goodbye, cruel world."]
+                            )
                         )
                     ),
                     liveness_probe=V1Probe(
@@ -2187,9 +2189,18 @@ class TestKubernetesDeploymentConfig:
     @pytest.mark.parametrize(
         "termination_action,expected",
         [
-            (None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            ("", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ([], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
+            (
+                None,
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+            ),  # no termination action
+            (
+                "",
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+            ),  # empty termination action
+            (
+                [],
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+            ),  # empty termination action
             ("/bin/no-args", ["/bin/no-args"]),  # no args command
             (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
         ],
@@ -4274,7 +4285,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config5abf6b07"
+            == "config7d73e761"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4320,7 +4331,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config8ee1bd70"
+            == "config17bb62ea"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
