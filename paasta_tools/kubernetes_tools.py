@@ -1472,7 +1472,10 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         if not command:
             return V1Handler(
                 _exec=V1ExecAction(
-                    command=["/bin/sh", "-c", f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}"]
+                    # NOTE: we could also probably look into seeing what happens if we return None
+                    # instead of a V1Handler, but in the meantime, having a funny message as the pre-stop
+                    # hook doesn't seem particularly harmful
+                    command=["/bin/sh", "-c", f"echo Goodbye, cruel world."]
                 )
             )
         if isinstance(command, str):
