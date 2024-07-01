@@ -21,6 +21,7 @@ from paasta_tools.oom_logger import capture_oom_events_from_stdin
 from paasta_tools.oom_logger import log_to_clog
 from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import main
+from paasta_tools.oom_logger import parse_args
 from paasta_tools.oom_logger import send_sfx_event
 
 
@@ -344,6 +345,11 @@ def test_send_sfx_event(mock_get_instance_config):
         assert mock_meteorite.create_counter.return_value.count.call_count == 1
 
 
+@patch("paasta_tools.oom_logger.argparse", autospec=True)
+def test_parse_args(mock_argparse):
+    assert parse_args() == mock_argparse.ArgumentParser.return_value.parse_args()
+
+
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 @patch("paasta_tools.oom_logger.clog", autospec=True)
 @patch("paasta_tools.oom_logger.send_sfx_event", autospec=True)
@@ -351,7 +357,9 @@ def test_send_sfx_event(mock_get_instance_config):
 @patch("paasta_tools.oom_logger.log_to_clog", autospec=True)
 @patch("paasta_tools.oom_logger.log_to_paasta", autospec=True)
 @patch("paasta_tools.oom_logger.get_docker_client", autospec=True)
+@patch("paasta_tools.oom_logger.parse_args", autospec=True)
 def test_main(
+    mock_parse_args,
     mock_get_docker_client,
     mock_log_to_paasta,
     mock_log_to_clog,
@@ -365,6 +373,7 @@ def test_main(
 ):
 
     mock_sys_stdin.readline.side_effect = sys_stdin
+    mock_parse_args.return_value.containerd = False
     docker_client = Mock(inspect_container=Mock(return_value=docker_inspect))
     mock_get_docker_client.return_value = docker_client
     mock_load_system_paasta_config.return_value.get_cluster.return_value = (
