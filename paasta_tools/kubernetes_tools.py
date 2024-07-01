@@ -1434,7 +1434,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             env=self.get_container_env(),
             resources=self.get_resource_requirements(),
             lifecycle=V1Lifecycle(
-                pre_stop=self.get_kubernetes_container_termination_action()
+                pre_stop=self.get_kubernetes_container_termination_action(
+                    service_namespace_config
+                )
             ),
             name=self.get_sanitised_instance_name(),
             liveness_probe=self.get_liveness_probe(service_namespace_config),
@@ -1464,20 +1466,36 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         else:
             return self.get_liveness_probe(service_namespace_config)
 
-    def get_kubernetes_container_termination_action(self) -> V1Handler:
+    def get_kubernetes_container_termination_action(
+        self, service_namespace_config: ServiceNamespaceConfig
+    ) -> V1Handler:
         command = self.config_dict.get("lifecycle", KubeLifecycleDict({})).get(
             "pre_stop_command", []
         )
         # default pre stop hook for the container
         if not command:
-            return V1Handler(
-                _exec=V1ExecAction(
-                    # NOTE: we could also probably look into seeing what happens if we return None
-                    # instead of a V1Handler, but in the meantime, having a funny message as the pre-stop
-                    # hook doesn't seem particularly harmful
-                    command=["/bin/sh", "-c", f"echo Goodbye, cruel world."]
+            # if the service is in smartstack, we want to sleep for a while to allow requests to drain
+            if service_namespace_config.is_in_smartstack():
+                return V1Handler(
+                    _exec=V1ExecAction(
+                        command=[
+                            "/bin/sh",
+                            "-c",
+                            f"sleep {DEFAULT_PRESTOP_SLEEP_SECONDS}",
+                        ]
+                    )
                 )
-            )
+            # otherwise, we want to immediately send a SIGTERM to the container
+            # so that it can gracefully shutdown if configured to do so
+            else:
+                return V1Handler(
+                    _exec=V1ExecAction(
+                        # NOTE: we could also probably look into seeing what happens if we return None
+                        # instead of a V1Handler, but in the meantime, having a funny message as the pre-stop
+                        # hook doesn't seem particularly harmful
+                        command=["/bin/sh", "-c", f"echo Goodbye, cruel world."]
+                    )
+                )
         if isinstance(command, str):
             command = [command]
         return V1Handler(_exec=V1ExecAction(command=command))
