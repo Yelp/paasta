@@ -281,7 +281,6 @@ def setup_kube_deployments(
                 "paasta_namespace": app.kube_deployment.namespace,
             }
             try:
-                app.update_dependency_api_objects(kube_client)
                 if (
                     app.kube_deployment.service,
                     app.kube_deployment.instance,
