@@ -1,3 +1,13 @@
+paasta-tools (1.4.8) xenial; urgency=medium
+
+  * 1.4.8 tagged with 'make release'
+    Commit: Merge pull request #3911 from Yelp/revert-3906-
+    u/krall/ensure_service_account  Revert "Split
+    create_or_find_service_account into a non-mutating method and a
+    mutating method"
+
+ -- Jen Patague <jfong@yelp.com>  Tue, 02 Jul 2024 10:25:31 -0700
+
 paasta-tools (1.4.7) xenial; urgency=medium
 
   * 1.4.7 tagged with 'make release'
