@@ -26,13 +26,8 @@ import sys
 
 import ruamel.yaml as yaml
 
-from paasta_tools import spark_tools
 from paasta_tools import tron_tools
-from paasta_tools.kubernetes_tools import ensure_service_account
-from paasta_tools.kubernetes_tools import KubeClient
-from paasta_tools.tron_tools import KUBERNETES_NAMESPACE
 from paasta_tools.tron_tools import MASTER_NAMESPACE
-from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger(__name__)
 
@@ -66,32 +61,6 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
-
-
-def ensure_service_accounts(
-    raw_config: str, kube_client: KubeClient, spark_kube_client: KubeClient
-) -> None:
-    # this is kinda silly, but the tron create_config functions return strings
-    # we should refactor to pass the dicts around until the we're going to send the config to tron
-    # (where we can finally convert it to a string)
-    config = yaml.safe_load(raw_config)
-    for _, job in config.get("jobs", {}).items():
-        for _, action in job.get("actions", {}).items():
-            if action.get("service_account_name") is not None:
-                ensure_service_account(
-                    action["service_account_name"],
-                    namespace=KUBERNETES_NAMESPACE,
-                    kube_client=kube_client,
-                )
-                # spark executors are special in that we want the SA to exist in two namespaces:
-                # the tron namespace - for the spark driver
-                # and the spark namespace - for the spark executor
-                if action.get("executor") == "spark":
-                    ensure_service_account(
-                        action["service_account_name"],
-                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-                        kube_client=spark_kube_client,
-                    )
 
 
 def main():
@@ -164,16 +133,6 @@ def main():
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
-                # NOTE: these are all lru_cache'd so it should be fine to call these for every service
-                system_paasta_config = load_system_paasta_config()
-                kube_client = KubeClient()
-                spark_kube_client = KubeClient(
-                    config_file=system_paasta_config.get_spark_kubeconfig()
-                )
-                # PaaSTA will not necessarily have created the SAs we want to use
-                # ...so let's go ahead and create them!
-                ensure_service_accounts(new_config, kube_client, spark_kube_client)
-
                 if client.update_namespace(service, new_config):
                     updated.append(service)
                     log.debug(f"Updated {service}")
