@@ -280,39 +280,8 @@ class TronActionConfig(InstanceConfig):
             soa_dir=soa_dir,
         )
         self.job, self.action = decompose_instance(instance)
-
         # Indicate whether this config object is created for validation
         self.for_validation = for_validation
-
-        self.action_spark_config = None
-        if self.get_executor() == "spark":
-            # build the complete Spark configuration
-            # TODO: add conditional check for Spark specific commands spark-submit, pyspark etc ?
-            self.action_spark_config = self.build_spark_config()
-
-    def get_cpus(self) -> float:
-        # set Spark driver pod CPU if it is specified by Spark arguments
-        if (
-            self.action_spark_config
-            and "spark.driver.cores" in self.action_spark_config
-        ):
-            return float(self.action_spark_config["spark.driver.cores"])
-        # we fall back to this default if there's no spark.driver.cores config
-        return super().get_cpus()
-
-    def get_mem(self) -> float:
-        # set Spark driver pod memory if it is specified by Spark arguments
-        if (
-            self.action_spark_config
-            and "spark.driver.memory" in self.action_spark_config
-        ):
-            return int(
-                spark_tools.get_spark_memory_in_unit(
-                    self.action_spark_config["spark.driver.memory"], "m"
-                )
-            )
-        # we fall back to this default if there's no spark.driver.memory config
-        return super().get_mem()
 
     def build_spark_config(self) -> Dict[str, str]:
         system_paasta_config = load_system_paasta_config()
@@ -467,6 +436,7 @@ class TronActionConfig(InstanceConfig):
         system_paasta_config: Optional["SystemPaastaConfig"] = None,
     ) -> Dict[str, str]:
         env = super().get_env(system_paasta_config=system_paasta_config)
+
         if self.get_executor() == "spark":
             # Required by some sdks like boto3 client. Throws NoRegionError otherwise.
             # AWS_REGION takes precedence if set.
@@ -631,20 +601,6 @@ class TronActionConfig(InstanceConfig):
             error_msgs.append(
                 f"{self.get_job_name()}.{self.get_action_name()} must have a deploy_group set"
             )
-        # We are not allowing users to specify `cpus` and `mem` configuration if the action is a Spark job
-        # with driver running on k8s (executor: spark), because we derive these values from `spark.driver.cores`
-        # and `spark.driver.memory` in order to avoid confusion.
-        if self.get_executor() == "spark":
-            if "cpus" in self.config_dict:
-                error_msgs.append(
-                    f"{self.get_job_name()}.{self.get_action_name()} is a Spark job. `cpus` config is not allowed. "
-                    f"Please specify the driver cores using `spark.driver.cores`."
-                )
-            if "mem" in self.config_dict:
-                error_msgs.append(
-                    f"{self.get_job_name()}.{self.get_action_name()} is a Spark job. `mem` config is not allowed. "
-                    f"Please specify the driver memory using `spark.driver.memory`."
-                )
         return error_msgs
 
     def get_pool(self) -> str:
@@ -1009,26 +965,21 @@ def format_tron_action_dict(action_config: TronActionConfig):
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
-            # inject additional Spark configs in case of Spark commands
+            # inject spark configs to the original spark-submit command
+            spark_config = action_config.build_spark_config()
             result["command"] = spark_tools.build_spark_command(
                 result["command"],
-                action_config.action_spark_config,
+                spark_config,
                 is_mrjob,
                 action_config.config_dict.get(
                     "max_runtime", spark_tools.DEFAULT_SPARK_RUNTIME_TIMEOUT
                 ),
             )
-            # point to the KUBECONFIG needed by Spark driver
             result["env"]["KUBECONFIG"] = system_paasta_config.get_spark_kubeconfig()
-
             # spark, unlike normal batches, needs to expose several ports for things like the spark
             # ui and for executor->driver communication
             result["ports"] = list(
-                set(
-                    spark_tools.get_spark_ports_from_config(
-                        action_config.action_spark_config
-                    )
-                )
+                set(spark_tools.get_spark_ports_from_config(spark_config))
             )
             # mount KUBECONFIG file for Spark drivers to communicate with EKS cluster
             extra_volumes.append(
@@ -1042,12 +993,10 @@ def format_tron_action_dict(action_config: TronActionConfig):
             )
             # Add pod annotations and labels for Spark monitoring metrics
             monitoring_annotations = (
-                spark_tools.get_spark_driver_monitoring_annotations(
-                    action_config.action_spark_config
-                )
+                spark_tools.get_spark_driver_monitoring_annotations(spark_config)
             )
             monitoring_labels = spark_tools.get_spark_driver_monitoring_labels(
-                action_config.action_spark_config
+                spark_config
             )
             result["annotations"].update(monitoring_annotations)
             result["labels"].update(monitoring_labels)
