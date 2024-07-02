@@ -31,6 +31,7 @@ kubernetes >= 18.20.0, < 22.0.0
 ldap3
 manhole
 mypy-extensions >= 0.3.0
+nats-py
 nulltype
 objgraph
 ply
