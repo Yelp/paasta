@@ -1059,7 +1059,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if field_name == "spark_args":
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
-            # Befutify for printing
+            # Beautify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
             field_name_str = field_name.ljust(28)
 
@@ -1067,8 +1067,9 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if field_name == "iam_role" and args.aws_profile is not None:
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
-                        "since --aws-profile is provided"
+                        f"Ignoring Tronfig: `{field_name_str}` and skipping overwriting `{arg_name_str}` arg with "
+                        f"Tronfig: `{field_name_str}`, since `--aws-profile` is provided. We are giving higher priority "
+                        f"to --aws-profile in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
