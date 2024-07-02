@@ -237,7 +237,7 @@
                     "slack_channel": {
                         "type": "string"
                     },
-                    "jira_project": {
+                    "project": {
                         "type": "string"
                     },
                     "ticket": {

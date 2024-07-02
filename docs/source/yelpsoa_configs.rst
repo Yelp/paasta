@@ -1087,10 +1087,12 @@ These keys provide optional overrides for the default alerting behaviour.
           error_threshold_ration: 0.02
           minimum_error_rps: 10
     - ``team``: Override the default team for alerting.
-    - ``slack_channel``: Override the default slack channel for alerting.
+    - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
+      Use this key if you prefer a different channel.
     - ``jira_project``: Override the default JIRA project for alerting.
     - ``ticket``: Override the default ticketing behaviour. Defaults to **true**.
-    - ``page``: Override the default paging behaviour. Defaults to **true**.
+    - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
+      respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
     - ``page_nonprod``: Override the default paging behaviour for non-production
       environments. Defaults to **false**.
     - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
