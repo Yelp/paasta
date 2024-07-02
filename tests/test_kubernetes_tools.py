@@ -954,6 +954,7 @@ class TestKubernetesDeploymentConfig:
             service_namespace_config = mock.Mock()
             service_namespace_config.get_healthcheck_mode.return_value = "http"
             service_namespace_config.get_healthcheck_uri.return_value = "/status"
+            service_namespace_config.is_in_smartstack.return_value = True
             assert (
                 self.deployment.get_kubernetes_containers(
                     docker_volumes=mock_docker_volumes,
@@ -2184,24 +2185,59 @@ class TestKubernetesDeploymentConfig:
         assert self.deployment.get_pod_anti_affinity() == expected_affinity
 
     @pytest.mark.parametrize(
-        "termination_action,expected",
+        "termination_action,expected,service_namespace_config",
         [
-            (None, ["/bin/sh", "-c", "sleep 30"]),  # no termination action
-            ("", ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ([], ["/bin/sh", "-c", "sleep 30"]),  # empty termination action
-            ("/bin/no-args", ["/bin/no-args"]),  # no args command
-            (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"]),  # no args command
+            (
+                None,
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+                ServiceNamespaceConfig({}),
+            ),  # no termination action
+            (
+                "",
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+                ServiceNamespaceConfig({}),
+            ),  # empty termination action
+            (
+                [],
+                ["/bin/sh", "-c", "echo Goodbye, cruel world."],
+                ServiceNamespaceConfig({}),
+            ),  # empty termination action
+            (
+                None,
+                ["/bin/sh", "-c", "sleep 30"],
+                ServiceNamespaceConfig({"proxy_port": 6666}),
+            ),  # no termination action, mesh-registered
+            (
+                "",
+                ["/bin/sh", "-c", "sleep 30"],
+                ServiceNamespaceConfig({"proxy_port": 6666}),
+            ),  # empty termination action, mesh-registered
+            (
+                [],
+                ["/bin/sh", "-c", "sleep 30"],
+                ServiceNamespaceConfig({"proxy_port": 6666}),
+            ),  # empty termination action, mesh-registered
+            ("/bin/no-args", ["/bin/no-args"], {}),  # no args command
+            (["/bin/bash", "cmd.sh"], ["/bin/bash", "cmd.sh"], {}),  # no args command
         ],
     )
     def test_kubernetes_container_termination_action(
-        self, termination_action, expected
+        self,
+        termination_action,
+        expected,
+        service_namespace_config,
     ):
         if termination_action:
             self.deployment.config_dict["lifecycle"] = {
                 "pre_stop_command": termination_action
             }
         handler = V1Handler(_exec=V1ExecAction(command=expected))
-        assert self.deployment.get_kubernetes_container_termination_action() == handler
+        assert (
+            self.deployment.get_kubernetes_container_termination_action(
+                service_namespace_config
+            )
+            == handler
+        )
 
     @pytest.mark.parametrize(
         "whitelist,blacklist,expected",
@@ -4273,7 +4309,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config5abf6b07"
+            == "config7d73e761"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
