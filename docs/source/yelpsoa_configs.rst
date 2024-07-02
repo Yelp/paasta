@@ -1084,7 +1084,7 @@ These keys provide optional overrides for the default alerting behaviour.
           ticket: false
           page: false
           page_nonprod: true
-          error_threshold_ration: 0.02
+          error_threshold_ratio: 0.02
           minimum_error_rps: 10
     - ``team``: Override the default team for alerting.
     - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
