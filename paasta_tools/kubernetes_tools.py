@@ -2220,9 +2220,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["iam.amazonaws.com/role"] = ""
             iam_role = self.get_iam_role()
             if iam_role:
-                pod_spec_kwargs[
-                    "service_account_name"
-                ] = create_or_find_service_account_name(iam_role, self.get_namespace())
+                pod_spec_kwargs["service_account_name"] = get_service_account_name(
+                    iam_role
+                )
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
                     # running inside the container. Seems like most of such
@@ -4050,12 +4050,9 @@ def get_all_limit_ranges(
 _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
-def create_or_find_service_account_name(
+def get_service_account_name(
     iam_role: str,
-    namespace: str,
     k8s_role: Optional[str] = None,
-    kubeconfig_file: Optional[str] = None,
-    dry_run: bool = False,
 ) -> str:
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
     # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
@@ -4081,12 +4078,17 @@ def create_or_find_service_account_name(
             "Expected at least one of iam_role or k8s_role to be passed in!"
         )
 
-    # if someone is dry-running paasta_setup_tron_namespace or some other tool that
-    # calls this function, we probably don't want to mutate k8s state :)
-    if dry_run:
-        return sa_name
+    return sa_name
 
-    kube_client = KubeClient(config_file=kubeconfig_file)
+
+def ensure_service_account(
+    iam_role: str,
+    namespace: str,
+    kube_client: KubeClient,
+    k8s_role: Optional[str] = None,
+) -> None:
+    sa_name = get_service_account_name(iam_role, k8s_role)
+
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
@@ -4134,8 +4136,6 @@ def create_or_find_service_account_name(
             kube_client.rbac.create_namespaced_role_binding(
                 namespace=namespace, body=role_binding
             )
-
-    return sa_name
 
 
 def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:
