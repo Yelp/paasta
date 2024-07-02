@@ -1,3 +1,72 @@
+paasta-tools (1.4.7) xenial; urgency=medium
+
+  * 1.4.7 tagged with 'make release'
+    Commit: Attempt #2 MLCOMPUTE-1203 | Configure Spark driver pod
+    memory and cores based on Spark args (#3903)  * MLCOMPUTE-1203 |
+    Configure Spark driver pod memory and cores based on Spark args  *
+    MLCOMPUTE-1203 | add validation to prevent users from specifying
+    cpus and mem configs for Spark drivers on k8s  * MLCOMPUTE-1203 |
+    overload instance config methods, add tests  * MLCOMPUTE-1203 | move
+    building spark config to constructor  * MLCOMPUTE-1203 | fix tests
+    and formatting  * DAR-2360 | move the creation of spark config away
+    from the TronActionConfig constructor  * MLCOMPUTE-1203 | add
+    validation signature to methods loading instance configs  *
+    MLCOMPUTE-1203 | add validation signature to methods loading
+    instance configs  * formatting  * MLCOMPUTE-1203 | fix arg type  *
+    add missing pos argument  * Revert "add missing pos argument"  This
+    reverts commit 6d903bea23435dcb9c5b2000acccedd40bbbefdf.  * Revert
+    "MLCOMPUTE-1203 | fix arg type"  This reverts commit
+    b94c2ed64bda2ecf75246e90467e6729849a8477.  * Revert "formatting"
+    This reverts commit 5d27b1b288a257d27ad7f57ee367dd11c02046c9.  *
+    Revert "MLCOMPUTE-1203 | add validation signature to methods loading
+    instance configs"  This reverts commit
+    45f7b4a1b3a26804fab0703a9331994d3806a816.  * Revert "MLCOMPUTE-1203
+    | add validation signature to methods loading instance configs"
+    This reverts commit 01e43d4e032e9e8b787f9e2c57e5dfa0e8199adf.  *
+    Start splitting SA creation and validation (for tron)  Depending on
+    merge order, we"ll want to slightly refactor this after
+    https://github.com/Yelp/paasta/pull/3906 if this goes out first (or
+    refactor this before merging if #3906 goes out first) - but this
+    makes it so that we never create SAs in Tron outside of
+    setup_tron_namespace (which will get called from a host that has the
+    correct permissions)  This avoids needing to pass around any dry-
+    run/validation flags :)  * whoops  * correctly iterate over dicts  i
+    blame copilot for letting me turn off my brain  * correctly parse
+    yaml  i wish that we didn"t pass around a huge string  * remove test
+    call  * use spark kubeconfig  * Use krall"s latest changes  * don"t
+    make kubeclients outside of dry-run  * build spark config in
+    constructor  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com> Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 02 Jul 2024 04:39:19 -0700
+
+paasta-tools (1.4.6) xenial; urgency=medium
+
+  * 1.4.6 tagged with 'make release'
+    Commit: Merge pull request #3902 from Yelp/u/gonabavi/DREIMP-
+    10725_add_paasta_status_for_vitesscluster  Add paasta status for
+    vitesscluster and mount /nail/etc/srv-configs to VTTablets
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Thu, 27 Jun 2024 10:40:09 -0700
+
+paasta-tools (1.4.5) xenial; urgency=medium
+
+  * 1.4.5 tagged with 'make release'
+    Commit: Fix incorrect help text for --cluster in paasta logs (#3895)
+    `paasta logs` only supports grabbing logs from a single cluster at a
+    time.
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 25 Jun 2024 06:58:16 -0700
+
+paasta-tools (1.4.4) xenial; urgency=medium
+
+  * 1.4.4 tagged with 'make release'
+    Commit: Merge pull request #3889 from Yelp/u/gonabavi/DREIMP-
+    10726_migrate_manifest_generation_to_paasta_tools  Add support for
+    generating vitess config from minimal yelpsoa configs
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 21 Jun 2024 09:15:00 -0700
+
 paasta-tools (1.4.3) xenial; urgency=medium
 
   * 1.4.3 tagged with 'make release'

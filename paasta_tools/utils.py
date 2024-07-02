@@ -2022,6 +2022,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     use_multiple_log_readers: Optional[List[str]]
     service_auth_token_settings: ProjectedSAVolume
     always_authenticating_services: List[str]
+    mysql_port_mappings: Dict
+    vitess_images: Dict
+    superregion_to_region_mapping: Dict
+    vitess_tablet_types: List[str]
+    vitess_tablet_pool_type_mapping: Dict
+    vitess_throttling_config: Dict
 
 
 def load_system_paasta_config(
@@ -2732,6 +2738,52 @@ class SystemPaastaConfig:
 
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
+
+    def get_mysql_port_mappings(self) -> Dict:
+        return self.config_dict.get("mysql_port_mappings", {})
+
+    def get_vitess_images(self) -> Dict:
+        return self.config_dict.get(
+            "vitess_images",
+            {
+                "vtctld_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtgate_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vttablet_image": "docker-paasta.yelpcorp.com:443/vitess_base:v16.0.3",
+                "vtadmin_image": "docker-paasta.yelpcorp.com:443/vtadmin:v16.0.3",
+            },
+        )
+
+    def get_superregion_to_region_mapping(self) -> Dict:
+        return self.config_dict.get("superregion_to_region_mapping", {})
+
+    def get_vitess_tablet_types(self) -> List:
+        return self.config_dict.get("vitess_tablet_types", ["primary", "migration"])
+
+    def get_vitess_tablet_pool_type_mapping(self) -> Dict:
+        return self.config_dict.get("vitess_tablet_pool_type_mapping", {})
+
+    def get_vitess_throttling_config(self) -> Dict:
+        return self.config_dict.get(
+            "vitess_throttling_config",
+            {
+                "migration": {
+                    "throttle_query_table": "migration_replication_delay",
+                    "throttle_metrics_threshold": "7200",
+                },
+                "read": {
+                    "throttle_query_table": "read_replication_delay",
+                    "throttle_metrics_threshold": "3",
+                },
+                "reporting": {
+                    "throttle_query_table": "reporting_replication_delay",
+                    "throttle_metrics_threshold": "7200",
+                },
+                "primary": {
+                    "throttle_query_table": "read_replication_delay",
+                    "throttle_metrics_threshold": "3",
+                },
+            },
+        )
 
 
 def _run(
