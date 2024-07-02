@@ -1061,15 +1061,13 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
 
             # Beautify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
-            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
             if field_name == "iam_role" and args.aws_profile is not None:
                 print(
                     PaastaColors.yellow(
-                        f"Ignoring Tronfig: `{field_name_str}` and skipping overwriting `{arg_name_str}` arg with "
-                        f"Tronfig: `{field_name_str}`, since `--aws-profile` is provided. We are giving higher priority "
-                        f"to --aws-profile in case of paasta spark-run adhoc runs."
+                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` is provided. "
+                        f"We are giving higher priority to `--aws-profile` in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
@@ -1077,7 +1075,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if hasattr(args, arg_name):
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name} : {value}"
                     ),
                 )
             setattr(args, arg_name, value)
