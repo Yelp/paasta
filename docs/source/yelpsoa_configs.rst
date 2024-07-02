@@ -1089,7 +1089,7 @@ These keys provide optional overrides for the default alerting behaviour.
     - ``team``: Override the default team for alerting.
     - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
       Use this key if you prefer a different channel.
-    - ``jira_project``: Override the default JIRA project for alerting.
+    - ``project``: Override the default JIRA project for alerting.
     - ``ticket``: Override the default ticketing behaviour. Defaults to **true**.
     - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
       respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
