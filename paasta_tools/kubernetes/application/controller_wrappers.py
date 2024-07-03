@@ -134,11 +134,12 @@ class Application(ABC):
         Ensure that the service account for this application exists
         :param kube_client:
         """
-        ensure_service_account(
-            iam_role=self.soa_config.get_iam_role(),
-            namespace=self.soa_config.get_namespace(),
-            kube_client=kube_client,
-        )
+        if self.soa_config.get_iam_role():
+            ensure_service_account(
+                iam_role=self.soa_config.get_iam_role(),
+                namespace=self.soa_config.get_namespace(),
+                kube_client=kube_client,
+            )
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
