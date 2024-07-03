@@ -68,9 +68,10 @@ def parse_args():
     return args
 
 
-def ensure_service_accounts(
-    raw_config: str, kube_client: KubeClient, spark_kube_client: KubeClient
-) -> None:
+def ensure_service_accounts(raw_config: str) -> None:
+    # NOTE: these are lru_cache'd so it should be fine to call these for every service
+    system_paasta_config = load_system_paasta_config()
+    kube_client = KubeClient()
     # this is kinda silly, but the tron create_config functions return strings
     # we should refactor to pass the dicts around until the we're going to send the config to tron
     # (where we can finally convert it to a string)
@@ -87,6 +88,10 @@ def ensure_service_accounts(
                 # the tron namespace - for the spark driver
                 # and the spark namespace - for the spark executor
                 if action.get("executor") == "spark":
+                    # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
+                    spark_kube_client = KubeClient(
+                        config_file=system_paasta_config.get_spark_kubeconfig()
+                    )
                     ensure_service_account(
                         action["service_account_name"],
                         namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
@@ -164,15 +169,9 @@ def main():
                 log.info(f"{new_config}")
                 updated.append(service)
             else:
-                # NOTE: these are all lru_cache'd so it should be fine to call these for every service
-                system_paasta_config = load_system_paasta_config()
-                kube_client = KubeClient()
-                spark_kube_client = KubeClient(
-                    config_file=system_paasta_config.get_spark_kubeconfig()
-                )
                 # PaaSTA will not necessarily have created the SAs we want to use
                 # ...so let's go ahead and create them!
-                ensure_service_accounts(new_config, kube_client, spark_kube_client)
+                ensure_service_accounts(new_config)
 
                 if client.update_namespace(service, new_config):
                     updated.append(service)
