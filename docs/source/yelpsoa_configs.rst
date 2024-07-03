@@ -1080,8 +1080,8 @@ These keys provide optional overrides for the default alerting behaviour.
         monitoring:
           team: frontend
           slack_channel: "notifications"
-          jira_project: "FRONTEND"
-          ticket: false
+          project: "FRONTEND"
+          ticket: true
           page: false
           page_nonprod: true
           error_threshold_ratio: 0.02
@@ -1090,7 +1090,8 @@ These keys provide optional overrides for the default alerting behaviour.
     - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
       Use this key if you prefer a different channel.
     - ``project``: Override the default JIRA project for alerting.
-    - ``ticket``: Override the default ticketing behaviour. Defaults to **true**.
+    - ``ticket``: Override the default ticketing behaviour. Error Alert ticketing defaults to **false** but also
+      respects the ticketing behaviour set in the monitoring.yaml file. Override that here if required.
     - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
       respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
     - ``page_nonprod``: Override the default paging behaviour for non-production
