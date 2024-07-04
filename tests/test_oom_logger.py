@@ -220,7 +220,14 @@ def test_capture_oom_events_from_stdin_kubernetes_qos(
         test_output = []
         for a_tuple in capture_oom_events_from_stdin():
             test_output.append(a_tuple)
-        assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
+        assert test_output == [
+            (
+                1500316300,
+                "dev37-devc",
+                "0e4a814eda03622476ff47871e6c397e5b8747af209b44f3b3e1c5289b0f9772",
+                "apache2",
+            )
+        ]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
@@ -232,7 +239,14 @@ def test_capture_oom_events_from_stdin_kubernetes_structured_qos(
     test_output = []
     for a_tuple in capture_oom_events_from_stdin():
         test_output.append(a_tuple)
-    assert test_output == [(1500316300, "dev37-devc", "0e4a814eda03", "apache2")]
+    assert test_output == [
+        (
+            1500316300,
+            "dev37-devc",
+            "0e4a814eda030cdc2bb6944078eaefd3278f8f9b3a9725c4ddffb722752a2279",
+            "apache2",
+        )
+    ]
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)

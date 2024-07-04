@@ -38,6 +38,7 @@ import json
 import re
 import sys
 from collections import namedtuple
+from typing import Dict
 
 import grpc
 from containerd.services.containers.v1 import containers_pb2
@@ -86,7 +87,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--containerd",
         action="store_true",
-        help="Use containerd to inspect containers",
+        help="Use containerd to inspect containers, otherwise use docker",
     )
     return parser.parse_args()
 
@@ -103,8 +104,16 @@ def capture_oom_events_from_stdin():
         ^(\d+)\s # timestamp
         ([a-zA-Z0-9\-]+) # hostname
         \s.*Task\sin\s/kubepods/(?:[a-zA-Z]+/)? # start of message; non capturing, optional group for the qos cgroup
-        pod[-\w]+/(\w{12})\w+\s # containerid
+        pod[-\w]+/(\w{12}(?:\w{52})?)\w*\s # Match 'pod' followed by alphanumeric and hyphen characters, then capture 12 characters, optionally followed by 52 characters for container id (12 char for docker and 64 char if we're using containerd), and then zero or more word characters
         killed\sas\sa*  # eom
+        """,
+        re.VERBOSE,
+    )
+    oom_regex_kubernetes_containerd_systemd_cgroup = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/system\.slice/.*nerdctl-(\w{64})\w*\.scope,.*$ # loosely match systemd slice and containerid
         """,
         re.VERBOSE,
     )
@@ -113,7 +122,7 @@ def capture_oom_events_from_stdin():
         ^(\d+)\s # timestamp
         ([a-zA-Z0-9\-]+) # hostname
         \s.*oom-kill:.*task_memcg=/kubepods/(?:[a-zA-Z]+/)? # start of message; non-capturing, optional group for the qos cgroup
-        pod[-\w]+/(\w{12})\w+,.*$ # containerid
+        pod[-\w]+/(\w{12}(?:\w{52})?)\w*,.*$ # containerid
         """,
         re.VERBOSE,
     )
@@ -130,6 +139,7 @@ def capture_oom_events_from_stdin():
         oom_regex_kubernetes,
         oom_regex_kubernetes_structured,
         oom_regex_kubernetes_systemd_cgroup,
+        oom_regex_kubernetes_containerd_systemd_cgroup,
     ]
 
     process_name = ""
@@ -151,7 +161,9 @@ def capture_oom_events_from_stdin():
                 break
 
 
-def get_container_env_as_dict(is_cri_containerd: bool, container_inspect):
+def get_container_env_as_dict(
+    is_cri_containerd: bool, container_inspect: dict
+) -> Dict[str, str]:
     env_vars = {}
     if is_cri_containerd:
         config = container_inspect.get("process")
@@ -228,18 +240,12 @@ def send_sfx_event(service, instance, cluster):
         counter.count()
 
 
-def get_containerd_container(
-    is_cri_containerd: bool, container_id: str
-) -> containers_pb2.Container:
+def get_containerd_container(container_id: str) -> containers_pb2.Container:
     with grpc.insecure_channel("unix:///run/containerd/containerd.sock") as channel:
         containersv1 = containers_pb2_grpc.ContainersStub(channel)
-        if is_cri_containerd:
-            namespace = "k8s.io"
-        else:
-            namespace = "moby"
         return containersv1.Get(
             containers_pb2.GetContainerRequest(id=container_id),
-            metadata=(("containerd-namespace", namespace),),
+            metadata=(("containerd-namespace", "k8s.io"),),
         ).container
 
 
@@ -264,7 +270,11 @@ def main():
     ) in capture_oom_events_from_stdin():
         if args.containerd:
             # then we're using containerd to inspect containers
-            container_info = get_containerd_container(args.containerd, container_id)
+            try:
+                container_info = get_containerd_container(container_id)
+            except grpc.RpcError as e:
+                print("An error occurred while getting the container:", e)
+                continue
             container_spec_raw = container_info.spec.value.decode("utf-8")
             container_inspect = json.loads(container_spec_raw)
         else:
