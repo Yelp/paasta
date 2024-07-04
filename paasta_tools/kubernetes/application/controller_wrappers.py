@@ -15,7 +15,6 @@ from paasta_tools.eks_tools import load_eks_service_config_no_cache
 from paasta_tools.kubernetes_tools import create_deployment
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_stateful_set
-from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubeDeployment
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
@@ -120,25 +119,6 @@ class Application(ABC):
         :param kube_client:
         """
         self.ensure_pod_disruption_budget(kube_client, self.soa_config.get_namespace())
-
-    def update_dependency_api_objects(self, kube_client: KubeClient) -> None:
-        """
-        Update related Kubernetes API objects that should be updated before the main object,
-        such as service accounts.
-        :param kube_client:
-        """
-        self.ensure_service_account(kube_client)
-
-    def ensure_service_account(self, kube_client: KubeClient) -> None:
-        """
-        Ensure that the service account for this application exists
-        :param kube_client:
-        """
-        ensure_service_account(
-            iam_role=self.soa_config.get_iam_role(),
-            namespace=self.soa_config.get_namespace(),
-            kube_client=kube_client,
-        )
 
     def delete_pod_disruption_budget(self, kube_client: KubeClient) -> None:
         try:
