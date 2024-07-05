@@ -1,3 +1,17 @@
+paasta-tools (1.4.11) xenial; urgency=medium
+
+  * 1.4.11 tagged with 'make release'
+    Commit: Skip autotune merging for deleted instances (#3914)  It"s
+    possible for autotune results to include instances that no longer
+    exist in a given file: either because the instance has been
+    completely deleted or moved to another cluster.  In these cases, it
+    should be safe to simply skip the config merge since there"s nothing
+    to merge with.  We could technically still do the config
+    update/merge here and simply skip the resource clamping - but imo,
+    we should simply bail out early.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 14:17:57 -0700
+
 paasta-tools (1.4.10) xenial; urgency=medium
 
   * 1.4.10 tagged with 'make release'
