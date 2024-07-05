@@ -1,3 +1,17 @@
+paasta-tools (1.4.10) xenial; urgency=medium
+
+  * 1.4.10 tagged with 'make release'
+    Commit: Fix ensure_service_account breakages from the
+    get_or_create_service_account refactor (#3912)  * Wait until the
+    last moment to create kubeclients in s_t_n  This should avoid issues
+    with missing spark kubeconfigs on trons that don"t have that
+    kubeconfig puppeted  * Conditionally call ensure_service_account in
+    controller_wrappers  This was reverted as we were hitting the
+    ValueError that protects us from calling this function without an
+    IAM or k8s role due to the default get_iam_role() retval being ""
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 12:30:41 -0700
+
 paasta-tools (1.4.9) xenial; urgency=medium
 
   * 1.4.9 tagged with 'make release'
