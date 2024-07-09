@@ -13,7 +13,7 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:bionic
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
