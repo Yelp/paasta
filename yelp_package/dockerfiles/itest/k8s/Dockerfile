@@ -15,7 +15,7 @@
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
 FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
 RUN apt-get update > /dev/null && \
