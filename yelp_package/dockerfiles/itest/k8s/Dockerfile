@@ -30,6 +30,7 @@ RUN apt-get update > /dev/null && \
         git \
         curl \
         python3.8-dev \
+        python3.8-distutils \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
