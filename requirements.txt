@@ -23,12 +23,12 @@ cookiecutter==1.4.0
 croniter==1.3.4
 decorator==4.1.2
 docker==5.0.3
-dulwich==0.18.4
+dulwich==0.17.3
 ephemeral-port-reserve==1.1.0
 future==0.16.0
 google-auth==1.2.0
 graphviz==0.8.2
-grpcio==1.46.3
+grpcio==1.62.2
 gunicorn==19.8.1
 http-parser==0.9.0
 humanfriendly==4.18
@@ -61,7 +61,7 @@ ply==3.4
 poyo==0.4.0
 progressbar2==3.10.1
 prometheus-client==0.7.1
-protobuf==3.20.3
+protobuf==3.15.0
 py==1.5.2
 pyasn1==0.4.2
 pyasn1-modules==0.2.1
@@ -79,7 +79,7 @@ python-iptables==1.0.1
 python-utils==2.0.1
 pytimeparse==1.1.5
 pytz==2016.10
-pyyaml==6.0
+pyyaml==6.0.1
 repoze.lru==0.6
 requests==2.25.0
 requests-cache==0.6.3
