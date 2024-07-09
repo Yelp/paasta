@@ -45,7 +45,7 @@ WORKDIR /work
 ADD requirements.txt /work/
 RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
-RUN pip install  -r requirements.txt
+RUN pip install --only-binary=grpcio -r requirements.txt
 ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin
 
 ADD . /work/
