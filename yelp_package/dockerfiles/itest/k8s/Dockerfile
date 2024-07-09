@@ -18,11 +18,6 @@ FROM ${DOCKER_REGISTRY}ubuntu:jammy
 ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-# Need Python 3.7
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends curl software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa
-
 RUN apt-get update > /dev/null && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
