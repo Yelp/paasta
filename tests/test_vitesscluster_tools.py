@@ -610,6 +610,21 @@ VITESS_CONFIG = {
             "requests": {"cpu": "100m", "memory": "256Mi"},
         },
     },
+    "prometheusPushGateway": {
+        "name": "prometheusPushGateway",
+        "image": "prometheus/pushgateway",
+        "restartPolicy": "OnFailure",
+        "command": ['--web.listen-address=":8000"'],
+    },
+    "vitessMetricScrapper": {
+        "name": "vitessMetricScrapper",
+        "restartPolicy": "OnFailure",
+        "command": [
+            "sh",
+            "-c",
+            "puppet:///modules/profile_vitess/scrape-vitess-containers.sh",
+        ],
+    },
 }
 
 

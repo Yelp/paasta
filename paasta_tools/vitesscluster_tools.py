@@ -201,6 +201,19 @@ class KeyspaceConfigDict(TypedDict, total=False):
     name: str
 
 
+class PrometheusPushGatewayConfigDict(TypedDict, total=False):
+    image: str
+    name: str
+    restartPolicy: str
+    command: List[str]
+
+
+class VitessMetricsConfigDict(TypedDict, total=False):
+    name: str
+    restartPolicy: str
+    command: List[str]
+
+
 def get_formatted_environment_variables(
     env_vars: Dict[str, Any]
 ) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
@@ -591,6 +604,8 @@ class VitessDeploymentConfigDict(KubernetesDeploymentConfigDict, total=False):
     keyspaces: List[KeyspaceConfigDict]
     updateStrategy: Dict[str, str]
     globalLockserver: Dict[str, Dict[str, str]]
+    prometheusPushGateway: Dict[str, str]
+    vitessMetricScrapper: Dict[str, str]
 
 
 class VitessInstanceConfigDict(KubernetesDeploymentConfigDict, total=False):
@@ -756,6 +771,27 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
     def get_update_strategy(self) -> Dict[str, str]:
         return {"type": "Immediate"}
 
+    def get_prometheus_pushgateway_config(self) -> PrometheusPushGatewayConfigDict:
+        config = PrometheusPushGatewayConfigDict(
+            name="prometheusPushGateway",
+            image="prometheus/pushgateway",
+            restartPolicy="OnFailure",
+            command=['--web.listen-address=":8000"'],
+        )
+        return config
+
+    def get_load_vitess_metrics_config(self) -> VitessMetricsConfigDict:
+        config = VitessMetricsConfigDict(
+            name="vitessMetricScrapper",
+            restartPolicy="OnFailure",
+            command=[
+                "sh",
+                "-c",
+                "puppet:///modules/profile_vitess/scrape-vitess-containers.sh",
+            ],
+        )
+        return config
+
     def get_vitess_config(self) -> VitessDeploymentConfigDict:
         vitess_config = VitessDeploymentConfigDict(
             namespace=self.get_namespace(),
@@ -766,6 +802,8 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             vtadmin=self.get_vtadmin(),
             keyspaces=self.get_keyspaces(),
             updateStrategy=self.get_update_strategy(),
+            prometheusPushGateway=self.get_prometheus_pushgateway_config(),
+            vitessMetricScrapper=self.get_load_vitess_metrics_config(),
         )
         return vitess_config
 
