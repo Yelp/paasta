@@ -351,6 +351,7 @@ class InstanceConfigDict(TypedDict, total=False):
     iam_role: str
     iam_role_provider: str
     service: str
+    uses_bulkdata: bool
 
 
 class BranchDictV1(TypedDict, total=False):
@@ -997,8 +998,27 @@ class InstanceConfig:
         """
         return self.config_dict.get("net", "bridge")
 
+    def has_bulkdata(
+        self,
+    ) -> bool:
+        return self.config_dict.get("uses_bulkdata", True)
+
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
+        # we used to add bulkdata as a default mount - but as part of the
+        # effort to deprecate the entire system, we're swapping to an opt-in
+        # model so that we can shrink the blast radius of any changes
+        if self.has_bulkdata():
+            # bulkdata is mounted RO as the data is produced by another
+            # system and we want to ensure that there are no inadvertent
+            # changes by misbehaved code
+            volumes.append(
+                {
+                    "hostPath": "/nail/bulkdata",
+                    "containerPath": "/nail/bulkdata",
+                    "mode": "RO",
+                }
+            )
         return _reorder_docker_volumes(volumes)
 
     def get_persistent_volumes(self) -> Sequence[PersistentVolume]:

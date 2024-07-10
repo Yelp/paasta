@@ -1948,7 +1948,8 @@ def test_volumes_are_deduped(mock_exists):
                         "containerPath": "/containerPath",
                         "mode": "RO",
                     }
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )

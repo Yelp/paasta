@@ -736,9 +736,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             instance=self.instance,
             cluster=self.cluster,
             config_dict=self.config_dict.copy(),
-            branch_dict=self.branch_dict.copy()
-            if self.branch_dict is not None
-            else None,
+            branch_dict=(
+                self.branch_dict.copy() if self.branch_dict is not None else None
+            ),
             soa_dir=self.soa_dir,
         )
 
@@ -1960,7 +1960,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             supported_storage_classes = (
                 system_paasta_config.get_supported_storage_classes()
             )
-        except (PaastaNotConfiguredError):
+        except PaastaNotConfiguredError:
             log.warning("No PaaSTA configuration was found, returning default value")
             supported_storage_classes = []
         storage_class_name = volume.get("storage_class_name", "ebs")
@@ -2144,6 +2144,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
+
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
         has_routable_ip = self.has_routable_ip(
             service_namespace_config, system_paasta_config
@@ -2406,11 +2407,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             preferred_terms = None
 
         return V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[required_term]
-            )
-            if required_term
-            else None,
+            required_during_scheduling_ignored_during_execution=(
+                V1NodeSelector(node_selector_terms=[required_term])
+                if required_term
+                else None
+            ),
             preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
@@ -2701,7 +2702,7 @@ def get_kubernetes_services_running_here_for_nerve(
                     }
                 nerve_dict["weight"] = kubernetes_service.weight
                 nerve_list.append((registration, nerve_dict))
-        except (KeyError):
+        except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
@@ -2872,10 +2873,12 @@ def list_deployments_in_all_namespaces(
             ),
             namespace=item.metadata.namespace,
             config_sha=item.metadata.labels.get("paasta.yelp.com/config_sha", ""),
-            replicas=item.spec.replicas
-            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
-            == "false"
-            else None,
+            replicas=(
+                item.spec.replicas
+                if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+                == "false"
+                else None
+            ),
         )
         for item in deployments.items + stateful_sets.items
     ]
@@ -2904,10 +2907,12 @@ def list_deployments(
             ),
             namespace=item.metadata.namespace,
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas
-            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
-            == "false"
-            else None,
+            replicas=(
+                item.spec.replicas
+                if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+                == "false"
+                else None
+            ),
         )
         for item in deployments.items + stateful_sets.items
     ]

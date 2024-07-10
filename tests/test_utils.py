@@ -36,10 +36,8 @@ from paasta_tools.utils import SystemPaastaConfigDict
 def test_get_git_url_provided_by_serviceyaml():
     service = "giiiiiiiiiiit"
     expected = "git@some_random_host:foobar"
-    with (
-        mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        )
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration", autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {"git_url": expected}
         assert utils.get_git_url(service) == expected
@@ -51,10 +49,8 @@ def test_get_git_url_provided_by_serviceyaml():
 def test_get_git_url_default():
     service = "giiiiiiiiiiit"
     expected = "git@github.yelpcorp.com:services/%s" % service
-    with (
-        mock.patch(
-            "service_configuration_lib.read_service_configuration", autospec=True
-        )
+    with mock.patch(
+        "service_configuration_lib.read_service_configuration", autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {}
         assert utils.get_git_url(service) == expected
@@ -2031,7 +2027,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RW"},
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2049,7 +2046,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/a", "hostPath": "/other_a", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2071,7 +2069,8 @@ class TestInstanceConfig:
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
                     {"containerPath": "/c", "hostPath": "/c", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2095,7 +2094,8 @@ class TestInstanceConfig:
             config_dict={
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RW"}
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2115,7 +2115,8 @@ class TestInstanceConfig:
                 "extra_volumes": [
                     {"containerPath": "/a", "hostPath": "/a", "mode": "RO"},
                     {"containerPath": "/b", "hostPath": "/b", "mode": "RO"},
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2137,7 +2138,8 @@ class TestInstanceConfig:
             config_dict={
                 "extra_volumes": [
                     {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"}
-                ]
+                ],
+                "uses_bulkdata": False,
             },
             branch_dict=None,
         )
@@ -2147,6 +2149,23 @@ class TestInstanceConfig:
         assert fake_conf.get_volumes(system_volumes) == [
             {"containerPath": "/a/", "hostPath": "/a/", "mode": "RW"},
             {"containerPath": "/b/", "hostPath": "/b/", "mode": "RW"},
+        ]
+
+    def test_get_volumes_with_bulkdata(self):
+        fake_conf = utils.InstanceConfig(
+            service="",
+            cluster="",
+            instance="",
+            config_dict={"uses_bulkdata": True},
+            branch_dict=None,
+        )
+        system_volumes: List[utils.DockerVolume] = []
+        assert fake_conf.get_volumes(system_volumes) == [
+            {
+                "hostPath": "/nail/bulkdata",
+                "containerPath": "/nail/bulkdata",
+                "mode": "RO",
+            },
         ]
 
     def test_get_docker_url_no_error(self):
