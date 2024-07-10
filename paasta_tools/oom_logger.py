@@ -104,7 +104,7 @@ def capture_oom_events_from_stdin():
         ^(\d+)\s # timestamp
         ([a-zA-Z0-9\-]+) # hostname
         \s.*Task\sin\s/kubepods/(?:[a-zA-Z]+/)? # start of message; non capturing, optional group for the qos cgroup
-        pod[-\w]+/(\w{12}(?:\w{52})?)\w*\s # Match 'pod' followed by alphanumeric and hyphen characters, then capture 12 characters, optionally followed by 52 characters for container id (12 char for docker and 64 char if we're using containerd), and then zero or more word characters
+        pod[-\w]+/(\w{12})\w+\s # containerid
         killed\sas\sa*  # eom
         """,
         re.VERBOSE,
@@ -118,20 +118,12 @@ def capture_oom_events_from_stdin():
         """,
         re.VERBOSE,
     )
-    oom_regex_kubernetes_nerdctl_systemd_cgroup = re.compile(
-        r"""
-        ^(\d+)\s # timestamp
-        ([a-zA-Z0-9\-]+) # hostname
-        \s.*oom-kill:.*task_memcg=/system\.slice/.*nerdctl-(\w{64})\w*\.scope,.*$ # loosely match systemd slice and containerid
-        """,
-        re.VERBOSE,
-    )
     oom_regex_kubernetes_structured = re.compile(
         r"""
         ^(\d+)\s # timestamp
         ([a-zA-Z0-9\-]+) # hostname
         \s.*oom-kill:.*task_memcg=/kubepods/(?:[a-zA-Z]+/)? # start of message; non-capturing, optional group for the qos cgroup
-        pod[-\w]+/(\w{12}(?:\w{52})?)\w*,.*$ # containerid
+        pod[-\w]+/(\w{12})\w+,.*$ # containerid
         """,
         re.VERBOSE,
     )
@@ -149,7 +141,6 @@ def capture_oom_events_from_stdin():
         oom_regex_kubernetes_structured,
         oom_regex_kubernetes_systemd_cgroup,
         oom_regex_kubernetes_containerd_systemd_cgroup,
-        oom_regex_kubernetes_nerdctl_systemd_cgroup,
     ]
 
     process_name = ""
