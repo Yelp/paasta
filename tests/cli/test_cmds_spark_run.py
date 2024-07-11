@@ -1450,3 +1450,75 @@ def test_get_aws_credentials():
         RoleSessionName=mock.ANY,
         WebIdentityToken="token-content",
     )
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_session(mock_boto3_session, mock_use_aws_profile):
+    # prioritize session over `profile_name` if both are provided
+    from service_configuration_lib.spark_config import get_aws_credentials
+
+    session = mock_boto3_session()
+
+    get_aws_credentials(
+        service="some-service",
+        session=session,
+        profile_name="some-profile",
+    )
+
+    mock_use_aws_profile.assert_called_once_with(session=session)
+    session.assert_not_called()
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_profile(mock_boto3_session, mock_use_aws_profile):
+    # prioritize `profile_name` over `service` if both are provided
+    from service_configuration_lib.spark_config import get_aws_credentials
+
+    profile_name = "some-profile"
+
+    get_aws_credentials(service="some-service", profile_name=profile_name)
+
+    mock_use_aws_profile.assert_called_once_with(profile_name=profile_name)
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("os.path.exists", autospec=False)
+@mock.patch(
+    "service_configuration_lib.spark_config._load_aws_credentials_from_yaml",
+    autospec=True,
+)
+def test_get_aws_credentials_boto_cfg(
+    mock_load_aws_credentials_from_yaml, mock_os_path_exists, mock_use_aws_profile
+):
+    # use `service` if profile_name is not provided
+    from service_configuration_lib.spark_config import (
+        get_aws_credentials,
+        AWS_CREDENTIALS_DIR,
+    )
+
+    service_name = "some-service"
+
+    get_aws_credentials(
+        service=service_name,
+    )
+
+    credentials_path = f"{AWS_CREDENTIALS_DIR}{service_name}.yaml"
+    mock_os_path_exists.return_value = True
+
+    mock_load_aws_credentials_from_yaml.assert_called_once_with(credentials_path)
+    mock_use_aws_profile.assert_not_called()
+
+
+@mock.patch("service_configuration_lib.spark_config.use_aws_profile", autospec=False)
+@mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
+def test_get_aws_credentials_default_profile(mock_boto3_session, mock_use_aws_profile):
+    # use `default` profile if no valid options are provided
+    from service_configuration_lib.spark_config import get_aws_credentials
+
+    get_aws_credentials(
+        service="spark",
+    )
+
+    mock_use_aws_profile.assert_called_once()
