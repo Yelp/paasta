@@ -1,3 +1,10 @@
+paasta-tools (1.4.13) xenial; urgency=medium
+
+  * 1.4.13 tagged with 'make release'
+    Commit: Merge branch "u/krall/clearer_cami_alert_text"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 11 Jul 2024 16:34:41 -0700
+
 paasta-tools (1.4.12) xenial; urgency=medium
 
   * 1.4.12 tagged with 'make release'
