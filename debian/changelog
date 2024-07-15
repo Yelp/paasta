@@ -1,3 +1,16 @@
+paasta-tools (1.4.14) xenial; urgency=medium
+
+  * 1.4.14 tagged with 'make release'
+    Commit: SEC-19136 | DAR-2360 | don"t force a default value for the --
+    aws-profile if not provided in spark-run (#3901)  * DAR-2360 | don"t
+    force a default value for the --aws-profile if not provided in spark-
+    run  * SEC-19136 | detailed message for preferring --aws-profile
+    over iam_role  * SEC-19136 | bump up service_configuration_lib
+    version  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Mon, 15 Jul 2024 06:33:34 -0700
+
 paasta-tools (1.4.13) xenial; urgency=medium
 
   * 1.4.13 tagged with 'make release'
