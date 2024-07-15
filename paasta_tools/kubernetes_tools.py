@@ -736,9 +736,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             instance=self.instance,
             cluster=self.cluster,
             config_dict=self.config_dict.copy(),
-            branch_dict=self.branch_dict.copy()
-            if self.branch_dict is not None
-            else None,
+            branch_dict=(
+                self.branch_dict.copy() if self.branch_dict is not None else None
+            ),
             soa_dir=self.soa_dir,
         )
 
@@ -1960,7 +1960,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             supported_storage_classes = (
                 system_paasta_config.get_supported_storage_classes()
             )
-        except (PaastaNotConfiguredError):
+        except PaastaNotConfiguredError:
             log.warning("No PaaSTA configuration was found, returning default value")
             supported_storage_classes = []
         storage_class_name = volume.get("storage_class_name", "ebs")
@@ -2144,6 +2144,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         docker_volumes = self.get_volumes(
             system_volumes=system_paasta_config.get_volumes()
         )
+
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
         has_routable_ip = self.has_routable_ip(
             service_namespace_config, system_paasta_config
@@ -2220,9 +2221,9 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             annotations["iam.amazonaws.com/role"] = ""
             iam_role = self.get_iam_role()
             if iam_role:
-                pod_spec_kwargs[
-                    "service_account_name"
-                ] = create_or_find_service_account_name(iam_role, self.get_namespace())
+                pod_spec_kwargs["service_account_name"] = get_service_account_name(
+                    iam_role
+                )
                 if fs_group is None:
                     # We need some reasoable default for group id of a process
                     # running inside the container. Seems like most of such
@@ -2406,11 +2407,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             preferred_terms = None
 
         return V1NodeAffinity(
-            required_during_scheduling_ignored_during_execution=V1NodeSelector(
-                node_selector_terms=[required_term]
-            )
-            if required_term
-            else None,
+            required_during_scheduling_ignored_during_execution=(
+                V1NodeSelector(node_selector_terms=[required_term])
+                if required_term
+                else None
+            ),
             preferred_during_scheduling_ignored_during_execution=preferred_terms,
         )
 
@@ -2701,7 +2702,7 @@ def get_kubernetes_services_running_here_for_nerve(
                     }
                 nerve_dict["weight"] = kubernetes_service.weight
                 nerve_list.append((registration, nerve_dict))
-        except (KeyError):
+        except KeyError:
             continue  # SOA configs got deleted for this app, it'll get cleaned up
 
     return nerve_list
@@ -2872,10 +2873,12 @@ def list_deployments_in_all_namespaces(
             ),
             namespace=item.metadata.namespace,
             config_sha=item.metadata.labels.get("paasta.yelp.com/config_sha", ""),
-            replicas=item.spec.replicas
-            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
-            == "false"
-            else None,
+            replicas=(
+                item.spec.replicas
+                if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+                == "false"
+                else None
+            ),
         )
         for item in deployments.items + stateful_sets.items
     ]
@@ -2904,10 +2907,12 @@ def list_deployments(
             ),
             namespace=item.metadata.namespace,
             config_sha=item.metadata.labels["paasta.yelp.com/config_sha"],
-            replicas=item.spec.replicas
-            if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
-            == "false"
-            else None,
+            replicas=(
+                item.spec.replicas
+                if item.metadata.labels.get(paasta_prefixed("autoscaled"), "false")
+                == "false"
+                else None
+            ),
         )
         for item in deployments.items + stateful_sets.items
     ]
@@ -4050,12 +4055,9 @@ def get_all_limit_ranges(
 _RE_NORMALIZE_IAM_ROLE = re.compile(r"[^0-9a-zA-Z]+")
 
 
-def create_or_find_service_account_name(
+def get_service_account_name(
     iam_role: str,
-    namespace: str,
     k8s_role: Optional[str] = None,
-    kubeconfig_file: Optional[str] = None,
-    dry_run: bool = False,
 ) -> str:
     # the service account is expected to always be prefixed with paasta- as using the actual namespace
     # potentially wastes a lot of characters (e.g., paasta-nrtsearchservices) that could be used for
@@ -4081,12 +4083,17 @@ def create_or_find_service_account_name(
             "Expected at least one of iam_role or k8s_role to be passed in!"
         )
 
-    # if someone is dry-running paasta_setup_tron_namespace or some other tool that
-    # calls this function, we probably don't want to mutate k8s state :)
-    if dry_run:
-        return sa_name
+    return sa_name
 
-    kube_client = KubeClient(config_file=kubeconfig_file)
+
+def ensure_service_account(
+    iam_role: str,
+    namespace: str,
+    kube_client: KubeClient,
+    k8s_role: Optional[str] = None,
+) -> None:
+    sa_name = get_service_account_name(iam_role, k8s_role)
+
     if not any(
         sa.metadata and sa.metadata.name == sa_name
         for sa in get_all_service_accounts(kube_client, namespace)
@@ -4134,8 +4141,6 @@ def create_or_find_service_account_name(
             kube_client.rbac.create_namespaced_role_binding(
                 namespace=namespace, body=role_binding
             )
-
-    return sa_name
 
 
 def mode_to_int(mode: Optional[Union[str, int]]) -> Optional[int]:

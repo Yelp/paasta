@@ -89,7 +89,6 @@ from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_service
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
-from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
@@ -97,6 +96,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace_limits
+from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
@@ -117,6 +117,7 @@ from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_secret_signature
+from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
@@ -4273,7 +4274,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config5abf6b07"
+            == "config39f2013b"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4319,7 +4320,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config8ee1bd70"
+            == "configc59c068d"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4457,7 +4458,7 @@ def test_get_pod_management_policy(config_dict, expected_management_policy):
     assert deployment.get_pod_management_policy() == expected_management_policy
 
 
-def test_create_or_find_service_account_name_new():
+def test_ensure_service_account_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = None
@@ -4477,8 +4478,8 @@ def test_create_or_find_service_account_name_new():
         mock_client.core.list_namespaced_service_account.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_called_once_with(
             namespace=namespace,
@@ -4494,7 +4495,7 @@ def test_create_or_find_service_account_name_new():
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
-def test_create_or_find_service_account_name_with_k8s_role_new():
+def test_ensure_service_account_with_k8s_role_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4518,8 +4519,8 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_called_once_with(
             namespace=namespace,
@@ -4555,7 +4556,7 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
         )
 
 
-def test_create_or_find_service_account_name_existing():
+def test_ensure_service_account_existing():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4608,14 +4609,14 @@ def test_create_or_find_service_account_name_existing():
         ]
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
-def test_create_or_find_service_account_name_existing_create_rb_only():
+def test_ensure_service_account_existing_create_rb_only():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4648,48 +4649,25 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
-def test_create_or_find_service_account_name_caps():
+def test_ensure_service_account_caps():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
-    namespace = "test_namespace"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
-        mock_client = mock.Mock()
-        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
-        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
-            spec=V1ServiceAccountList
-        )
-        mock_client.core.list_namespaced_service_account.return_value.items = [
-            V1ServiceAccount(
-                kind="ServiceAccount",
-                metadata=V1ObjectMeta(
-                    name=expected_sa_name,
-                    namespace=namespace,
-                    annotations={"eks.amazonaws.com/role-arn": iam_role},
-                ),
-            )
-        ]
-        mock_kube_client.return_value = mock_client
-
-        assert expected_sa_name == create_or_find_service_account_name(
+    ):
+        assert expected_sa_name == get_service_account_name(
             iam_role,
-            namespace=namespace,
         )
-        mock_client.core.create_namespaced_service_account.assert_not_called()
 
 
-def test_create_or_find_service_account_name_caps_with_k8s():
+def test_ensure_service_account_caps_with_k8s():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4742,8 +4720,8 @@ def test_create_or_find_service_account_name_caps_with_k8s():
         ]
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()

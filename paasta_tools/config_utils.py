@@ -355,6 +355,12 @@ class AutoConfigUpdater:
             }
 
             for instance_name, recommendation in recommendations_by_instance.items():
+                if instance_name not in existing_configs:
+                    log.debug(
+                        f"Skipping config merge for {instance_name} as it no longer exists in {instance_type_cluster}.yaml."
+                    )
+                    continue
+
                 log.debug(
                     f"Merging recommendations for {instance_name} in {service}/{AUTO_SOACONFIG_SUBDIR}/{instance_type_cluster}.yaml..."
                 )
