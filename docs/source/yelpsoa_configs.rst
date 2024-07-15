@@ -105,6 +105,8 @@ specify the following options:
     volume on a sensitive part of the filesystem, as root. PaaSTA does not
     validate that the bind mounts are "safe".
 
+  * ``uses_bulkdata```: A boolean indicating whether the service should mount the directory /nail/bulkdata on the host into the container. Defaults to true.
+
 
 Placement Options
 -----------------

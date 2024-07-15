@@ -6,6 +6,7 @@ from typing import Any
 from typing import cast
 from typing import Dict
 from typing import List
+from typing import Literal
 from typing import Mapping
 from typing import Set
 
@@ -23,6 +24,7 @@ SPARK_DRIVER_POOL = "stable"
 SPARK_JOB_USER = "TRON"
 SPARK_PROMETHEUS_SHARD = "ml-compute"
 SPARK_DNS_POD_TEMPLATE = "/nail/srv/configs/spark_dns_pod_template.yaml"
+MEM_MULTIPLIER = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
 
 log = logging.getLogger(__name__)
 
@@ -247,3 +249,22 @@ def get_spark_driver_monitoring_labels(
         "spark.yelp.com/driver_ui_port": ui_port_str,
     }
     return labels
+
+
+def get_spark_memory_in_unit(mem: str, unit: Literal["k", "m", "g", "t"]) -> float:
+    """
+    Converts Spark memory to the desired unit.
+    mem is the same format as JVM memory strings: just number or number followed by 'k', 'm', 'g' or 't'.
+    unit can be 'k', 'm', 'g' or 't'.
+    Returns memory as a float converted to the desired unit.
+    """
+    try:
+        memory_bytes = float(mem)
+    except ValueError:
+        try:
+            memory_bytes = float(mem[:-1]) * MEM_MULTIPLIER[mem[-1]]
+        except (ValueError, IndexError):
+            print(f"Unable to parse memory value {mem}. Defaulting to 2 GB.")
+            memory_bytes = 2147483648  # default to 2 GB
+    memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
+    return memory_unit

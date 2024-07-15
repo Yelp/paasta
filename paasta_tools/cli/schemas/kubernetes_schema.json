@@ -928,6 +928,10 @@
                         "required": []
                     },
                     "uniqueItems": true
+                },
+                "uses_bulkdata": {
+                    "type": "boolean",
+                    "default": true
                 }
             }
         }

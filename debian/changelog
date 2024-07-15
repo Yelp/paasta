@@ -1,3 +1,46 @@
+paasta-tools (1.4.13) xenial; urgency=medium
+
+  * 1.4.13 tagged with 'make release'
+    Commit: Merge branch "u/krall/clearer_cami_alert_text"
+
+ -- Evan Krall <krall@yelp.com>  Thu, 11 Jul 2024 16:34:41 -0700
+
+paasta-tools (1.4.12) xenial; urgency=medium
+
+  * 1.4.12 tagged with 'make release'
+    Commit: Merge pull request #3916 from Yelp/yaroliakh-patch-clog
+    Bump yelp_clog version
+
+ -- Yaroslav Liakhovskyi <yaro@yelp.com>  Tue, 09 Jul 2024 08:46:34 -0700
+
+paasta-tools (1.4.11) xenial; urgency=medium
+
+  * 1.4.11 tagged with 'make release'
+    Commit: Skip autotune merging for deleted instances (#3914)  It"s
+    possible for autotune results to include instances that no longer
+    exist in a given file: either because the instance has been
+    completely deleted or moved to another cluster.  In these cases, it
+    should be safe to simply skip the config merge since there"s nothing
+    to merge with.  We could technically still do the config
+    update/merge here and simply skip the resource clamping - but imo,
+    we should simply bail out early.
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 14:17:57 -0700
+
+paasta-tools (1.4.10) xenial; urgency=medium
+
+  * 1.4.10 tagged with 'make release'
+    Commit: Fix ensure_service_account breakages from the
+    get_or_create_service_account refactor (#3912)  * Wait until the
+    last moment to create kubeclients in s_t_n  This should avoid issues
+    with missing spark kubeconfigs on trons that don"t have that
+    kubeconfig puppeted  * Conditionally call ensure_service_account in
+    controller_wrappers  This was reverted as we were hitting the
+    ValueError that protects us from calling this function without an
+    IAM or k8s role due to the default get_iam_role() retval being ""
+
+ -- Luis Perez <luisp@yelp.com>  Fri, 05 Jul 2024 12:30:41 -0700
+
 paasta-tools (1.4.9) xenial; urgency=medium
 
   * 1.4.9 tagged with 'make release'
