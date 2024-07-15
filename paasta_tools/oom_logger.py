@@ -168,11 +168,12 @@ def get_container_env_as_dict(
     env_vars = {}
     if is_cri_containerd:
         config = container_inspect.get("process")
-        env = config.get("env", [])
+        env_key = "env"
     else:
         config = container_inspect.get("Config")
-        env = config.get("Env", [])
+        env_key = "Env"
     if config is not None:
+        env = config.get(env_key, [])
         for i in env:
             name, _, value = i.partition("=")
             env_vars[name] = value
