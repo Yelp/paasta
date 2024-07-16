@@ -97,6 +97,26 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
                         namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
                         kube_client=spark_kube_client,
                     )
+            elif (
+                action.get_executor() == "spark"
+                # NOTE: we only enter this block if there's no IAM role specified as otherwise the above block would do
+                # the same thing as calling ensure_service_account() with iam_role=get_spark_executor_iam_role()
+                and not action.get_iam_role()
+                # the default spark executor IAM role comes from SystemPaastaConfig - so let's guard against it missing
+                # (that should never happen - but operator error is a thing :p)
+                and action.get_spark_executor_iam_role()
+            ):
+                # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
+                # if a Spark job is created without an explicit IAM role, we'll use a default one that only has access
+                # to spark-required resources (e.g., event logs and whatnot)
+                spark_kube_client = KubeClient(
+                    config_file=system_paasta_config.get_spark_kubeconfig()
+                )
+                ensure_service_account(
+                    action.get_spark_executor_iam_role(),
+                    namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                    kube_client=spark_kube_client,
+                )
 
 
 def main():
