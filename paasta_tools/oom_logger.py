@@ -113,7 +113,17 @@ def capture_oom_events_from_stdin():
         r"""
         ^(\d+)\s # timestamp
         ([a-zA-Z0-9\-]+) # hostname
-        \s.*oom-kill:.*task_memcg=/kubepods\.slice/.* # loosely match systemd slice and containerid
+        \s.*oom-kill:.*task_memcg=/.*\.slice/.* # loosely match systemd slice and containerid
+        cri-containerd:(\w{64}).*$ # containerid
+        """,
+        re.VERBOSE,
+    )
+
+    oom_regex_kubernetes_containerd_systemd_cgroup_structured = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/kubepods\.slice/.* # match systemd slice and containerid
         cri-containerd-(\w{64}).*$ # containerid
         """,
         re.VERBOSE,
@@ -141,6 +151,7 @@ def capture_oom_events_from_stdin():
         oom_regex_kubernetes_structured,
         oom_regex_kubernetes_systemd_cgroup,
         oom_regex_kubernetes_containerd_systemd_cgroup,
+        oom_regex_kubernetes_containerd_systemd_cgroup_structured,
     ]
 
     process_name = ""
