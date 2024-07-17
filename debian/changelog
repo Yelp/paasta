@@ -1,3 +1,14 @@
+paasta-tools (1.4.16) xenial; urgency=medium
+
+  * 1.4.16 tagged with 'make release'
+    Commit: Ensure default Spark executor SA is created in Spark
+    clusters (#3921)  This is mostly a disaster-recovery thing since
+    this SA exists already - but to avoid any unpleasant times should we
+    decide to start these clusters from scratch, it"d be best to ensure
+    that this SA actually exists :)
+
+ -- Luis Perez <luisp@yelp.com>  Wed, 17 Jul 2024 09:11:21 -0700
+
 paasta-tools (1.4.15) xenial; urgency=medium
 
   * 1.4.15 tagged with 'make release'
