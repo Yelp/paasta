@@ -2041,6 +2041,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     secret_sync_delay_seconds: float
     use_multiple_log_readers: Optional[List[str]]
     service_auth_token_settings: ProjectedSAVolume
+    service_auth_vault_role: str
     always_authenticating_services: List[str]
     mysql_port_mappings: Dict
     vitess_images: Dict
@@ -2755,6 +2756,9 @@ class SystemPaastaConfig:
 
     def get_service_auth_token_volume_config(self) -> ProjectedSAVolume:
         return self.config_dict.get("service_auth_token_settings", {})
+
+    def get_service_auth_vault_role(self) -> str:
+        return self.config_dict.get("service_auth_vault_role", "service_authz")
 
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
