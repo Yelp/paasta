@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import os
 
 import mock
 import pytest
+from service_configuration_lib.spark_config import AWS_CREDENTIALS_DIR
+from service_configuration_lib.spark_config import get_aws_credentials
 
 from paasta_tools import spark_tools
 from paasta_tools import utils
@@ -1422,9 +1425,6 @@ def test_build_and_push_docker_image_unexpected_output_format(
 
 
 def test_get_aws_credentials():
-    import os
-    from service_configuration_lib.spark_config import get_aws_credentials
-
     with mock.patch.dict(
         os.environ,
         {
@@ -1456,8 +1456,6 @@ def test_get_aws_credentials():
 @mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
 def test_get_aws_credentials_session(mock_boto3_session, mock_use_aws_profile):
     # prioritize session over `profile_name` if both are provided
-    from service_configuration_lib.spark_config import get_aws_credentials
-
     session = mock_boto3_session()
 
     get_aws_credentials(
@@ -1474,8 +1472,6 @@ def test_get_aws_credentials_session(mock_boto3_session, mock_use_aws_profile):
 @mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
 def test_get_aws_credentials_profile(mock_boto3_session, mock_use_aws_profile):
     # prioritize `profile_name` over `service` if both are provided
-    from service_configuration_lib.spark_config import get_aws_credentials
-
     profile_name = "some-profile"
 
     get_aws_credentials(service="some-service", profile_name=profile_name)
@@ -1493,11 +1489,6 @@ def test_get_aws_credentials_boto_cfg(
     mock_load_aws_credentials_from_yaml, mock_os_path_exists, mock_use_aws_profile
 ):
     # use `service` if profile_name is not provided
-    from service_configuration_lib.spark_config import (
-        get_aws_credentials,
-        AWS_CREDENTIALS_DIR,
-    )
-
     service_name = "some-service"
 
     get_aws_credentials(
@@ -1515,8 +1506,6 @@ def test_get_aws_credentials_boto_cfg(
 @mock.patch("service_configuration_lib.spark_config.Session", autospec=True)
 def test_get_aws_credentials_default_profile(mock_boto3_session, mock_use_aws_profile):
     # use `default` profile if no valid options are provided
-    from service_configuration_lib.spark_config import get_aws_credentials
-
     get_aws_credentials(
         service="spark",
     )
