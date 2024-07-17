@@ -87,21 +87,23 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
                 # spark executors are special in that we want the SA to exist in two namespaces:
                 # the tron namespace - for the spark driver (which will be created by the ensure_service_account() above)
                 # and the spark namespace - for the spark executor (which we'll create below)
-                if action.get_executor() == "spark":
+                if (
+                    action.get_executor() == "spark"
+                    # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
+                    and action.get_spark_executor_iam_role()
+                ):
                     # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
                     spark_kube_client = KubeClient(
                         config_file=system_paasta_config.get_spark_kubeconfig()
                     )
-                    # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
-                    if action.get_spark_executor_iam_role():
-                        # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
-                        # this one is for the actual spark executors to use. if an iam_role is set, we'll use that, otherwise
-                        # there's an executor-specifc default role just like there is for the drivers :)
-                        ensure_service_account(
-                            action.get_spark_executor_iam_role(),
-                            namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-                            kube_client=spark_kube_client,
-                        )
+                    # this will look quite similar to the above, but we're ensuring that a potentially different SA exists:
+                    # this one is for the actual spark executors to use. if an iam_role is set, we'll use that, otherwise
+                    # there's an executor-specifc default role just like there is for the drivers :)
+                    ensure_service_account(
+                        action.get_spark_executor_iam_role(),
+                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
+                        kube_client=spark_kube_client,
+                    )
 
 
 def main():
