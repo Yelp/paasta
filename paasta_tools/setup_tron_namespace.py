@@ -85,20 +85,12 @@ def ensure_service_accounts(job_configs: List[TronJobConfig]) -> None:
                     kube_client=kube_client,
                 )
                 # spark executors are special in that we want the SA to exist in two namespaces:
-                # the tron namespace - for the spark driver
-                # and the spark namespace - for the spark executor
+                # the tron namespace - for the spark driver (which will be created by the ensure_service_account() above)
+                # and the spark namespace - for the spark executor (which we'll create below)
                 if action.get_executor() == "spark":
                     # this kubeclient creation is lru_cache'd so it should be fine to call this for every spark action
                     spark_kube_client = KubeClient(
                         config_file=system_paasta_config.get_spark_kubeconfig()
-                    )
-                    # NOTE: the above get_iam_role() should always return a value for executor=spark since we fallback
-                    # to a default role so that the drivers have access to a basic set of resources that are required
-                    # for how we run spark
-                    ensure_service_account(
-                        action.get_iam_role(),
-                        namespace=spark_tools.SPARK_EXECUTOR_NAMESPACE,
-                        kube_client=spark_kube_client,
                     )
                     # this should always be truthy, but let's be safe since this comes from SystemPaastaConfig
                     if action.get_spark_executor_iam_role():
