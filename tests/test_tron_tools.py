@@ -1216,12 +1216,9 @@ class TestTronTools:
 
         confs = result["command"].split(" ")
         spark_app_name = ""
-        spark_app_id = ""
         for s in confs:
             if s.startswith("spark.app.name"):
                 spark_app_name = s.split("=")[1]
-            if s.startswith("spark.app.id"):
-                spark_app_id = s.split("=")[1]
 
         expected = {
             "command": "timeout 12h spark-submit "
@@ -1230,7 +1227,6 @@ class TestTronTools:
             "--conf spark.executor.memory=1g "
             "--conf spark.executor.cores=2 "
             f"--conf spark.app.name={spark_app_name} "
-            f"--conf spark.app.id={spark_app_id} "
             "--conf spark.ui.port=39091 "
             "--conf spark.executor.instances=0 "
             "--conf spark.kubernetes.executor.limit.cores=2 "
