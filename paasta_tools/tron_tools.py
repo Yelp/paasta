@@ -364,6 +364,16 @@ class TronActionConfig(InstanceConfig):
             ),
             user=spark_tools.SPARK_JOB_USER,
         )
+        # delete the dynamically generated spark.app.id to prevent frequent config updates in Tron.
+        # spark.app.id will be generated later by yelp spark-submit wrapper or Spark itself.
+        spark_conf.pop("spark.app.id", None)
+        # use a static spark.app.name to prevent frequent config updates in Tron.
+        # md5 and base64 will always generate the same encoding for a string.
+        # This spark.app.name might be overridden by yelp spark-submit wrapper.
+        if "spark.app.name" in spark_conf:
+            spark_conf["spark.app.name"] = limit_size_with_hash(
+                f"tron_spark_{self.get_service()}_{self.get_instance()}_{self.get_action_name()}"
+            )
         # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
             print(
