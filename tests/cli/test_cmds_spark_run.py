@@ -1510,4 +1510,4 @@ def test_get_aws_credentials_default_profile(mock_boto3_session, mock_use_aws_pr
         service="spark",
     )
 
-    mock_use_aws_profile.assert_called_once()
+    mock_use_aws_profile.assert_called_once_with()
