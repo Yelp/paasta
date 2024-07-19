@@ -1104,10 +1104,13 @@ def get_paasta_oapi_api_clustername(cluster: str, is_eks: bool) -> str:
 
 
 def get_current_ecosystem() -> str:
-    """Infer ecosystem from local-run configuration"""
-    local_run_config = load_system_paasta_config().get_local_run_config()
-    ecosystem = local_run_config["default_cluster"].split("-", 1)[-1]
-    return f"{ecosystem}prod" if ecosystem == "corp" else ecosystem
+    """Get current ecosystem from host configs, defaults to dev if no config is found"""
+    try:
+        with open("/nail/etc/ecosystem") as f:
+            return f.read().strip()
+    except IOError:
+        pass
+    return "devc"
 
 
 def get_service_auth_token() -> str:

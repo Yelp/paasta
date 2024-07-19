@@ -17,7 +17,6 @@ from socket import gaierror
 
 import ephemeral_port_reserve
 import mock
-import pytest
 from mock import call
 from mock import patch
 from pytest import mark
@@ -25,7 +24,6 @@ from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.cli.utils import extract_tags
-from paasta_tools.cli.utils import get_current_ecosystem
 from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import select_k8s_secret_namespace
 from paasta_tools.cli.utils import verify_instances
@@ -479,18 +477,6 @@ def test_select_k8s_secret_namespace():
 
     namespaces = {"a", "b"}
     assert select_k8s_secret_namespace(namespaces) in {"a", "b"}
-
-
-@pytest.mark.parametrize(
-    "default_cluster,expected",
-    (("whatever-dev", "dev"), ("something-corp", "corpprod")),
-)
-@patch("paasta_tools.cli.utils.load_system_paasta_config", autospec=True)
-def test_get_current_ecosystem(mock_config, default_cluster, expected):
-    mock_config.return_value.get_local_run_config.return_value = {
-        "default_cluster": default_cluster
-    }
-    assert get_current_ecosystem() == expected
 
 
 @patch("paasta_tools.cli.utils.load_system_paasta_config", autospec=True)
