@@ -38,6 +38,7 @@ from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import pick_random_port
@@ -507,6 +508,17 @@ def add_subparser(subparsers):
         default=False,
     )
     list_parser.add_argument(
+        "--use-service-auth-token",
+        help=(
+            "Acquire service authentication token for the underlying instance,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_service_auth_token",
+        required=False,
+        default=False,
+    )
+    list_parser.add_argument(
         "--sha",
         help=(
             "SHA to run instead of the currently marked-for-deployment SHA. Ignored when used with --build."
@@ -817,6 +829,7 @@ def run_docker_container(
     assume_role_arn="",
     use_okta_role=False,
     assume_role_aws_account: Optional[str] = None,
+    use_service_auth_token: bool = False,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -905,6 +918,9 @@ def run_docker_container(
             assume_role_aws_account,
         )
         environment.update(aws_creds)
+
+    if use_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
 
     local_run_environment = get_local_run_environment_vars(
         instance_config=instance_config, port0=chosen_port, framework=framework
@@ -1251,6 +1267,7 @@ def configure_and_run_docker_container(
         assume_role_arn=args.assume_role_arn,
         assume_role_aws_account=assume_role_aws_account,
         use_okta_role=args.use_okta_role,
+        use_service_auth_token=args.use_service_auth_token,
     )
 
 
