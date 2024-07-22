@@ -383,18 +383,18 @@
                         },
                         "spark.executor.memory": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                            "pattern": "^[1-9]+[0-9]*[bkmgtp]$"
                         },
                         "spark.driver.memory": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                            "pattern": "^[1-9]+[0-9]*[bkmgtp]$"
                         },
                         "spark.driver.memoryOverhead": {
                             "$comment": "we still need to validate this in code since there's a spark-enforced minimum of 384mb",
                             "oneOf": [
                                 {
                                     "type": "string",
-                                    "pattern": "^[1-9]+[0-9]*[kmg]$"
+                                    "pattern": "^[1-9]+[0-9]*[bkmgtp]$"
                                 },
                                 {
                                     "type": "number",
@@ -408,7 +408,7 @@
                             "oneOf": [
                                 {
                                     "type": "string",
-                                    "pattern": "^[1-9]+[0-9]*[kmg]$"
+                                    "pattern": "^[1-9]+[0-9]*[bkmgtp]$"
                                 },
                                 {
                                     "type": "number",
@@ -419,7 +419,7 @@
                         },
                         "spark.driver.maxResultSize": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[kmg]$"
+                            "pattern": "^[1-9]+[0-9]*[bkmgtp]$"
                         },
                         "spark.scheduler.minRegisteredResourcesRatio": {
                             "type": "number",
@@ -429,7 +429,7 @@
                         },
                         "spark.scheduler.maxRegisteredResourcesWaitingTime": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*(s|min)$"
+                            "pattern": "^[1-9]+[0-9]*(ms|s|m|min|h|d|y)$"
                         },
                         "spark.kubernetes.allocation.batch.size": {
                             "type": "integer"
