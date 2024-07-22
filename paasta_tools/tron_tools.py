@@ -373,8 +373,8 @@ class TronActionConfig(InstanceConfig):
         if "spark.app.name" in spark_conf:
             spark_conf["spark.app.name"] = limit_size_with_hash(
                 f"tron_spark_{self.get_service()}_{self.get_instance()}_{self.get_action_name()}"
-                if "spark.app.name" not in stringified_spark_args else
-                stringified_spark_args["spark.app.name"]
+                if "spark.app.name" not in stringified_spark_args
+                else stringified_spark_args["spark.app.name"]
             )
         # TODO: Remove this once dynamic pod template is generated inside the driver using spark-submit wrapper
         if "spark.kubernetes.executor.podTemplateFile" in spark_conf:
