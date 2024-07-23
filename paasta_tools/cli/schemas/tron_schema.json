@@ -383,18 +383,18 @@
                         },
                         "spark.executor.memory": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[bkmgt]$"
+                            "pattern": "^[1-9]+[0-9]*[kmgt]$"
                         },
                         "spark.driver.memory": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[bkmgt]$"
+                            "pattern": "^[1-9]+[0-9]*[kmgt]$"
                         },
                         "spark.driver.memoryOverhead": {
                             "$comment": "we still need to validate this in code since there's a spark-enforced minimum of 384mb",
                             "oneOf": [
                                 {
                                     "type": "string",
-                                    "pattern": "^[1-9]+[0-9]*[bkmgt]$"
+                                    "pattern": "^[1-9]+[0-9]*[kmgt]$"
                                 },
                                 {
                                     "type": "number",
@@ -408,7 +408,7 @@
                             "oneOf": [
                                 {
                                     "type": "string",
-                                    "pattern": "^[1-9]+[0-9]*[bkmgt]$"
+                                    "pattern": "^[1-9]+[0-9]*[kmgt]$"
                                 },
                                 {
                                     "type": "number",
@@ -419,7 +419,7 @@
                         },
                         "spark.driver.maxResultSize": {
                             "type": "string",
-                            "pattern": "^[1-9]+[0-9]*[bkmgt]$"
+                            "pattern": "^[1-9]+[0-9]*[kmgt]$"
                         },
                         "spark.scheduler.minRegisteredResourcesRatio": {
                             "type": "number",
