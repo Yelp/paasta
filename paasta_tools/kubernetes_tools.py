@@ -531,8 +531,8 @@ def limit_size_with_hash(name: str, limit: int = 63, suffix: int = 4) -> str:
     """
     if len(name) > limit:
         digest = hashlib.md5(name.encode()).digest()
-        hash = base64.b32encode(digest).decode().replace("=", "").lower()
-        return f"{name[:(limit-suffix-1)]}-{hash[:suffix]}"
+        hashed = base64.b32encode(digest).decode().replace("=", "").lower()
+        return f"{name[:(limit-suffix-1)]}-{hashed[:suffix]}"
     else:
         return name
 
