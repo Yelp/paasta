@@ -1,3 +1,14 @@
+paasta-tools (1.4.18) xenial; urgency=medium
+
+  * 1.4.18 tagged with 'make release'
+    Commit: MLCOMPUTE-1389 | remove spark.app.id and generate static
+    spark.app.name (#3923)  * MLCOMPUTE-1389 | remove spark.app.id and
+    generate static spark.app.name  * MLCOMPUTE-1389 | fix tests  *
+    don"t override spark.app.name if provided by the user  ---------  Co-
+    authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 23 Jul 2024 09:04:38 -0700
+
 paasta-tools (1.4.17) xenial; urgency=medium
 
   * 1.4.17 tagged with 'make release'
