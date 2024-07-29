@@ -1,3 +1,20 @@
+paasta-tools (1.4.19) xenial; urgency=medium
+
+  * 1.4.19 tagged with 'make release'
+    Commit: Set bounce_margin_factor default to 0.95 (#3576)  In
+    COMPINFRA-2270, several service owners are complaining about stuck
+    deployments because of individual pods that never become healthy.
+    This change would make it so any service with 20-39 containers would
+    ignore a single stuck pod; 40-59 would ignore 2, etc.  From what I
+    can tell from the [code that manages
+    PodDisruptionBudgets](https://github.com/Yelp/paasta/blob/02b165ac87
+    7700b28f98653f8ad2b30f0d73f339/paasta_tools/kubernetes/application/c
+    ontroller_wrappers.py#L147), this won"t affect PDBs - anything that
+    doesn"t have `bounce_margin_factor` set gets the default PDB from
+    SystemPaastaConfig.
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 29 Jul 2024 10:46:30 -0700
+
 paasta-tools (1.4.18) xenial; urgency=medium
 
   * 1.4.18 tagged with 'make release'
