@@ -57,10 +57,10 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> None:
         epilog=(
             "This rollback command uses the Git control plane, which requires network "
             "connectivity as well as authorization to the Git repo.\n\n"
-            + PaastaColors.red(
+            + PaastaColors.yellow(
                 "WARNING: You MUST manually revert changes in Git and go through the normal push process after using this command.\n"
             )
-            + PaastaColors.red(
+            + PaastaColors.yellow(
                 "WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
             )
         ),
@@ -334,12 +334,12 @@ def paasta_rollback(args: argparse.Namespace) -> int:
 
     if returncode == 0:
         print(
-            PaastaColors.red(
+            PaastaColors.yellow(
                 f"WARNING: You MUST manually revert changes in Git! Use 'git revert {rolled_back_from.sha}', and go through the normal push process. "
             )
         )
         print(
-            PaastaColors.red(
+            PaastaColors.yellow(
                 f"WARNING: Failing to do so means that Jenkins will redeploy the latest code on the next scheduled build!"
             )
         )
