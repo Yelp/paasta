@@ -20,7 +20,7 @@ from paasta_tools.cli.cli import parse_args
 from paasta_tools.cli.cmds import start_stop_restart
 from paasta_tools.flink_tools import FlinkDeploymentConfig
 from paasta_tools.flink_tools import FlinkDeploymentConfigDict
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 
 
 def test_format_tag():
@@ -50,7 +50,7 @@ def test_issue_state_change_for_service(
     get_transport_and_path.return_value = (mock_git_client, fake_path)
 
     start_stop_restart.issue_state_change_for_service(
-        MarathonServiceConfig(
+        KubernetesDeploymentConfig(
             cluster="fake_cluster",
             instance="fake_instance",
             service="fake_service",
@@ -69,7 +69,7 @@ def test_issue_state_change_for_service(
 
 def test_make_mutate_refs_func():
     mutate_refs = start_stop_restart.make_mutate_refs_func(
-        service_config=MarathonServiceConfig(
+        service_config=KubernetesDeploymentConfig(
             cluster="fake_cluster",
             instance="fake_instance",
             service="fake_service",
@@ -108,7 +108,7 @@ def test_log_event():
     ) as mock_log, mock.patch(
         "paasta_tools.utils._log_audit", autospec=True
     ) as mock_log_audit:
-        service_config = MarathonServiceConfig(
+        service_config = KubernetesDeploymentConfig(
             cluster="fake_cluster",
             instance="fake_instance",
             service="fake_service",
@@ -515,7 +515,7 @@ def test_start_or_stop_bad_refs(
     )
     mock_list_clusters.return_value = ["fake_cluster1", "fake_cluster2"]
 
-    mock_get_instance_config.return_value = MarathonServiceConfig(
+    mock_get_instance_config.return_value = KubernetesDeploymentConfig(
         cluster="fake_cluster1",
         instance="fake_instance",
         service="fake_service",

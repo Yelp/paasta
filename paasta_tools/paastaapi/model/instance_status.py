@@ -37,16 +37,16 @@ def lazy_import():
     from paasta_tools.paastaapi.model.instance_status_kafkacluster import InstanceStatusKafkacluster
     from paasta_tools.paastaapi.model.instance_status_kubernetes import InstanceStatusKubernetes
     from paasta_tools.paastaapi.model.instance_status_kubernetes_v2 import InstanceStatusKubernetesV2
-    from paasta_tools.paastaapi.model.instance_status_marathon import InstanceStatusMarathon
     from paasta_tools.paastaapi.model.instance_status_tron import InstanceStatusTron
+    from paasta_tools.paastaapi.model.instance_status_vitesscluster import InstanceStatusVitesscluster
     globals()['InstanceStatusAdhoc'] = InstanceStatusAdhoc
     globals()['InstanceStatusCassandracluster'] = InstanceStatusCassandracluster
     globals()['InstanceStatusFlink'] = InstanceStatusFlink
     globals()['InstanceStatusKafkacluster'] = InstanceStatusKafkacluster
     globals()['InstanceStatusKubernetes'] = InstanceStatusKubernetes
     globals()['InstanceStatusKubernetesV2'] = InstanceStatusKubernetesV2
-    globals()['InstanceStatusMarathon'] = InstanceStatusMarathon
     globals()['InstanceStatusTron'] = InstanceStatusTron
+    globals()['InstanceStatusVitesscluster'] = InstanceStatusVitesscluster
 
 
 class InstanceStatus(ModelNormal):
@@ -102,10 +102,10 @@ class InstanceStatus(ModelNormal):
             'version': (str,),  # noqa: E501
             'instance': (str,),  # noqa: E501
             'cassandracluster': (InstanceStatusCassandracluster,),  # noqa: E501
+            'vitesscluster': (InstanceStatusVitesscluster,),  # noqa: E501
             'kafkacluster': (InstanceStatusKafkacluster,),  # noqa: E501
             'kubernetes': (InstanceStatusKubernetes,),  # noqa: E501
             'kubernetes_v2': (InstanceStatusKubernetesV2,),  # noqa: E501
-            'marathon': (InstanceStatusMarathon,),  # noqa: E501
             'service': (str,),  # noqa: E501
             'tron': (InstanceStatusTron,),  # noqa: E501
         }
@@ -123,10 +123,10 @@ class InstanceStatus(ModelNormal):
         'version': 'version',  # noqa: E501
         'instance': 'instance',  # noqa: E501
         'cassandracluster': 'cassandracluster',  # noqa: E501
+        'vitesscluster': 'vitesscluster',  # noqa: E501
         'kafkacluster': 'kafkacluster',  # noqa: E501
         'kubernetes': 'kubernetes',  # noqa: E501
         'kubernetes_v2': 'kubernetes_v2',  # noqa: E501
-        'marathon': 'marathon',  # noqa: E501
         'service': 'service',  # noqa: E501
         'tron': 'tron',  # noqa: E501
     }
@@ -184,10 +184,10 @@ class InstanceStatus(ModelNormal):
             version (str): Deployment Version of a service. [optional]  # noqa: E501
             instance (str): Instance name. [optional]  # noqa: E501
             cassandracluster (InstanceStatusCassandracluster): [optional]  # noqa: E501
+            vitesscluster (InstanceStatusVitesscluster): [optional]  # noqa: E501
             kafkacluster (InstanceStatusKafkacluster): [optional]  # noqa: E501
             kubernetes (InstanceStatusKubernetes): [optional]  # noqa: E501
             kubernetes_v2 (InstanceStatusKubernetesV2): [optional]  # noqa: E501
-            marathon (InstanceStatusMarathon): [optional]  # noqa: E501
             service (str): Service name. [optional]  # noqa: E501
             tron (InstanceStatusTron): [optional]  # noqa: E501
         """

@@ -1,5 +1,6 @@
 import functools
 from base64 import b64encode
+from copy import deepcopy
 from typing import Any
 from typing import Dict
 from typing import List
@@ -44,6 +45,7 @@ from kubernetes.client import V1PodSpec
 from kubernetes.client import V1PodTemplateSpec
 from kubernetes.client import V1PreferredSchedulingTerm
 from kubernetes.client import V1Probe
+from kubernetes.client import V1ProjectedVolumeSource
 from kubernetes.client import V1ResourceRequirements
 from kubernetes.client import V1RoleBinding
 from kubernetes.client import V1RoleRef
@@ -54,6 +56,7 @@ from kubernetes.client import V1SecretVolumeSource
 from kubernetes.client import V1SecurityContext
 from kubernetes.client import V1ServiceAccount
 from kubernetes.client import V1ServiceAccountList
+from kubernetes.client import V1ServiceAccountTokenProjection
 from kubernetes.client import V1StatefulSet
 from kubernetes.client import V1StatefulSetSpec
 from kubernetes.client import V1Subject
@@ -61,6 +64,7 @@ from kubernetes.client import V1TCPSocketAction
 from kubernetes.client import V1TopologySpreadConstraint
 from kubernetes.client import V1Volume
 from kubernetes.client import V1VolumeMount
+from kubernetes.client import V1VolumeProjection
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
@@ -81,10 +85,10 @@ from paasta_tools.contrib.get_running_task_allocation import (
 from paasta_tools.contrib.get_running_task_allocation import (
     get_pod_pool as task_allocation_get_pod_pool,
 )
+from paasta_tools.kubernetes_tools import add_volumes_for_authenticating_services
 from paasta_tools.kubernetes_tools import allowlist_denylist_to_requirements
 from paasta_tools.kubernetes_tools import create_custom_resource
 from paasta_tools.kubernetes_tools import create_deployment
-from paasta_tools.kubernetes_tools import create_or_find_service_account_name
 from paasta_tools.kubernetes_tools import create_pod_disruption_budget
 from paasta_tools.kubernetes_tools import create_secret
 from paasta_tools.kubernetes_tools import create_secret_signature
@@ -92,6 +96,7 @@ from paasta_tools.kubernetes_tools import create_stateful_set
 from paasta_tools.kubernetes_tools import ensure_namespace
 from paasta_tools.kubernetes_tools import ensure_paasta_api_rolebinding
 from paasta_tools.kubernetes_tools import ensure_paasta_namespace_limits
+from paasta_tools.kubernetes_tools import ensure_service_account
 from paasta_tools.kubernetes_tools import filter_nodes_by_blacklist
 from paasta_tools.kubernetes_tools import filter_pods_by_service_instance
 from paasta_tools.kubernetes_tools import force_delete_pods
@@ -112,6 +117,7 @@ from paasta_tools.kubernetes_tools import get_paasta_secret_signature_name
 from paasta_tools.kubernetes_tools import get_secret
 from paasta_tools.kubernetes_tools import get_secret_name_from_ref
 from paasta_tools.kubernetes_tools import get_secret_signature
+from paasta_tools.kubernetes_tools import get_service_account_name
 from paasta_tools.kubernetes_tools import InvalidKubernetesConfig
 from paasta_tools.kubernetes_tools import is_node_ready
 from paasta_tools.kubernetes_tools import is_pod_ready
@@ -153,6 +159,7 @@ from paasta_tools.utils import CAPS_DROP
 from paasta_tools.utils import DeploymentVersion
 from paasta_tools.utils import DockerVolume
 from paasta_tools.utils import PersistentVolume
+from paasta_tools.utils import ProjectedSAVolume
 from paasta_tools.utils import SecretVolume
 from paasta_tools.utils import SecretVolumeItem
 from paasta_tools.utils import SystemPaastaConfig
@@ -902,6 +909,9 @@ class TestKubernetesDeploymentConfig:
             "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_sidecar_containers",
             autospec=True,
             return_value=["mock_sidecar"],
+        ), mock.patch(
+            "paasta_tools.kubernetes_tools.load_system_paasta_config",
+            autospec=True,
         ):
             if prometheus_port:
                 self.deployment.config_dict["prometheus_port"] = prometheus_port
@@ -1098,6 +1108,13 @@ class TestKubernetesDeploymentConfig:
                 ],
             ),
         ]
+        mock_projected_sa_volumes = [
+            ProjectedSAVolume(
+                container_path="/var/secret/something",
+                audience="a.b.c",
+                expiration_seconds=1234,
+            )
+        ]
         expected_volumes = [
             V1Volume(
                 host_path=V1HostPathVolumeSource(path="/nail/blah"),
@@ -1145,12 +1162,27 @@ class TestKubernetesDeploymentConfig:
                     optional=False,
                 ),
             ),
+            V1Volume(
+                name="projected-sa--adot-bdot-c",
+                projected=V1ProjectedVolumeSource(
+                    sources=[
+                        V1VolumeProjection(
+                            service_account_token=V1ServiceAccountTokenProjection(
+                                audience="a.b.c",
+                                expiration_seconds=1234,
+                                path="token",
+                            )
+                        ),
+                    ],
+                ),
+            ),
         ]
         assert (
             self.deployment.get_pod_volumes(
                 docker_volumes=mock_docker_volumes + mock_hacheck_volumes,
                 aws_ebs_volumes=mock_aws_ebs_volumes,
                 secret_volumes=mock_secret_volumes,
+                projected_sa_volumes=mock_projected_sa_volumes,
             )
             == expected_volumes
         )
@@ -1186,6 +1218,12 @@ class TestKubernetesDeploymentConfig:
             mock_secret_volumes = [
                 SecretVolume(container_path="/garply", secret_name="waldo")
             ]
+            mock_projected_sa_volumes = [
+                ProjectedSAVolume(
+                    container_path="/var/secret/something",
+                    audience="a.b.c",
+                )
+            ]
             expected_volumes = [
                 V1VolumeMount(
                     mount_path="/nail/foo", name="some-volume", read_only=True
@@ -1198,6 +1236,11 @@ class TestKubernetesDeploymentConfig:
                 ),
                 V1VolumeMount(mount_path="/blah", name="some-volume", read_only=False),
                 V1VolumeMount(mount_path="/garply", name="some-volume", read_only=True),
+                V1VolumeMount(
+                    mount_path="/var/secret/something",
+                    name="some-volume",
+                    read_only=True,
+                ),
             ]
             assert (
                 self.deployment.get_volume_mounts(
@@ -1205,6 +1248,7 @@ class TestKubernetesDeploymentConfig:
                     aws_ebs_volumes=mock_aws_ebs_volumes,
                     persistent_volumes=mock_persistent_volumes,
                     secret_volumes=mock_secret_volumes,
+                    projected_sa_volumes=mock_projected_sa_volumes,
                 )
                 == expected_volumes
             )
@@ -1574,6 +1618,10 @@ class TestKubernetesDeploymentConfig:
             )
 
     @mock.patch(
+        "paasta_tools.kubernetes_tools.load_system_paasta_config",
+        autospec=True,
+    )
+    @mock.patch(
         "paasta_tools.kubernetes_tools.KubernetesDeploymentConfig.get_volumes",
         autospec=True,
     )
@@ -1657,6 +1705,7 @@ class TestKubernetesDeploymentConfig:
         mock_get_pod_volumes,
         mock_get_kubernetes_containers,
         mock_get_volumes,
+        mock_load_system_paasta_config,
         in_smtstk,
         routable_ip,
         pod_topology,
@@ -4232,7 +4281,7 @@ def test_warning_big_bounce():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "configb6d6cb34"
+            == "configd2fd7b15"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every service to bounce!"
 
 
@@ -4278,7 +4327,7 @@ def test_warning_big_bounce_routable_pod():
             job_config.format_kubernetes_app().spec.template.metadata.labels[
                 "paasta.yelp.com/config_sha"
             ]
-            == "config01683331"
+            == "configa2ea39be"
         ), "If this fails, just change the constant in this test, but be aware that deploying this change will cause every smartstack-registered service to bounce!"
 
 
@@ -4416,7 +4465,7 @@ def test_get_pod_management_policy(config_dict, expected_management_policy):
     assert deployment.get_pod_management_policy() == expected_management_policy
 
 
-def test_create_or_find_service_account_name_new():
+def test_ensure_service_account_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = None
@@ -4436,8 +4485,8 @@ def test_create_or_find_service_account_name_new():
         mock_client.core.list_namespaced_service_account.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_called_once_with(
             namespace=namespace,
@@ -4453,7 +4502,7 @@ def test_create_or_find_service_account_name_new():
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
-def test_create_or_find_service_account_name_with_k8s_role_new():
+def test_ensure_service_account_with_k8s_role_new():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4477,8 +4526,8 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_called_once_with(
             namespace=namespace,
@@ -4514,7 +4563,7 @@ def test_create_or_find_service_account_name_with_k8s_role_new():
         )
 
 
-def test_create_or_find_service_account_name_existing():
+def test_ensure_service_account_existing():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4567,14 +4616,14 @@ def test_create_or_find_service_account_name_existing():
         ]
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
 
 
-def test_create_or_find_service_account_name_existing_create_rb_only():
+def test_ensure_service_account_existing_create_rb_only():
     iam_role = "arn:aws:iam::000000000000:role/some_role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4607,48 +4656,25 @@ def test_create_or_find_service_account_name_existing_create_rb_only():
         mock_client.rbac.list_namespaced_role_binding.return_value.items = []
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         assert mock_client.rbac.create_namespaced_role_binding.called is True
 
 
-def test_create_or_find_service_account_name_caps():
+def test_ensure_service_account_caps():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
-    namespace = "test_namespace"
     expected_sa_name = "paasta--arn-aws-iam-000000000000-role-some-role"
     with mock.patch(
         "paasta_tools.kubernetes_tools.kube_config.load_kube_config", autospec=True
-    ), mock.patch(
-        "paasta_tools.kubernetes_tools.KubeClient",
-        autospec=False,
-    ) as mock_kube_client:
-        mock_client = mock.Mock()
-        mock_client.core = mock.Mock(spec=kube_client.CoreV1Api)
-        mock_client.core.list_namespaced_service_account.return_value = mock.Mock(
-            spec=V1ServiceAccountList
-        )
-        mock_client.core.list_namespaced_service_account.return_value.items = [
-            V1ServiceAccount(
-                kind="ServiceAccount",
-                metadata=V1ObjectMeta(
-                    name=expected_sa_name,
-                    namespace=namespace,
-                    annotations={"eks.amazonaws.com/role-arn": iam_role},
-                ),
-            )
-        ]
-        mock_kube_client.return_value = mock_client
-
-        assert expected_sa_name == create_or_find_service_account_name(
+    ):
+        assert expected_sa_name == get_service_account_name(
             iam_role,
-            namespace=namespace,
         )
-        mock_client.core.create_namespaced_service_account.assert_not_called()
 
 
-def test_create_or_find_service_account_name_caps_with_k8s():
+def test_ensure_service_account_caps_with_k8s():
     iam_role = "arn:aws:iam::000000000000:role/Some_Role"
     namespace = "test_namespace"
     k8s_role = "mega-admin"
@@ -4701,8 +4727,8 @@ def test_create_or_find_service_account_name_caps_with_k8s():
         ]
         mock_kube_client.return_value = mock_client
 
-        assert expected_sa_name == create_or_find_service_account_name(
-            iam_role, namespace=namespace, k8s_role=k8s_role
+        ensure_service_account(
+            iam_role, namespace=namespace, kube_client=mock_client, k8s_role=k8s_role
         )
         mock_client.core.create_namespaced_service_account.assert_not_called()
         mock_client.rbac.create_namespaced_role_binding.assert_not_called()
@@ -4874,3 +4900,54 @@ def test_get_kubernetes_secret_volumes_single_file():
         assert ret == {
             "/the/container/path/the_secret_name": "secret_contents",
         }
+
+
+@pytest.mark.parametrize(
+    "service,existing_config,expected",
+    (
+        (
+            "service_auth",
+            [],
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+        ),
+        ("service_noauth", [], []),
+        (
+            "service_auth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+            [{"audience": "foo.bar", "container_path": "/var/secret/something"}],
+        ),
+        (
+            "service_auth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+            [
+                {"audience": "foo.bar", "container_path": "/var/secret/something"},
+                {"audience": "foo.bar", "container_path": "/var/secret/whatever"},
+            ],
+        ),
+        (
+            "service_noauth",
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+            [{"audience": "foo.bar", "container_path": "/var/secret/whatever"}],
+        ),
+    ),
+)
+@mock.patch("paasta_tools.kubernetes_tools.load_system_paasta_config", autospec=None)
+@mock.patch("paasta_tools.kubernetes_tools.get_authenticating_services", autospec=None)
+def test_add_volumes_for_authenticating_services(
+    mock_get_auth_services, mock_system_config, service, existing_config, expected
+):
+    mock_get_auth_services.return_value = {"service_auth", "service_foobar"}
+    mock_system_config.return_value.get_service_auth_token_volume_config.return_value = {
+        "audience": "foo.bar",
+        "container_path": "/var/secret/something",
+    }
+    existing_config_copy = deepcopy(existing_config)
+    assert (
+        add_volumes_for_authenticating_services(
+            service, existing_config, "/mock/soa/dir"
+        )
+        == expected
+    )
+    mock_get_auth_services.assert_called_once_with("/mock/soa/dir")
+    # verifying that the method does not do in-place updates
+    assert existing_config == existing_config_copy

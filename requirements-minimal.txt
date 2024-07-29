@@ -10,9 +10,7 @@ certifi
 choice >= 0.1
 cookiecutter >= 1.4.0
 croniter
-# Don't update this unless you have confirmed the client works with
-# the Docker version deployed on PaaSTA servers
-docker-py >= 1.2.3
+docker
 dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
 graphviz
@@ -32,8 +30,8 @@ kazoo >= 2.0.0
 kubernetes >= 18.20.0, < 22.0.0
 ldap3
 manhole
-marathon >= 0.12.0
 mypy-extensions >= 0.3.0
+nats-py
 nulltype
 objgraph
 ply
@@ -49,12 +47,14 @@ python-dateutil >= 2.4.0
 python-iptables
 pytimeparse >= 1.1.0
 pytz >= 2014.10
-requests >= 2.18.4
+# the upper-bound is required for older docker-py (<=7.0.0)
+# to function: https://github.com/psf/requests/issues/6707
+requests >= 2.18.4, <2.32.0
 requests-cache >= 0.4.10
 retry
 ruamel.yaml
 sensu-plugin
-service-configuration-lib >= 2.18.17
+service-configuration-lib >= 2.18.19
 signalfx
 slackclient >= 1.2.1
 sticht >= 1.1.0

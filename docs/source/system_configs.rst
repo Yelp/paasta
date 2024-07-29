@@ -41,7 +41,6 @@ These are the keys that may exist in system configs:
     Example: ``"cluster": "uswest1-prod"``
 
   * ``dashboard_links``: A nested dictionary of cluster -> description -> URL of dashboard links.
-    These are printed at the top of ``paasta metastatus``.
     Example::
 
       "dashboard_links": {

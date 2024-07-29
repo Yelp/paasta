@@ -190,14 +190,7 @@
                     "type": "string"
                 },
                 "autoscaling": {
-                    "anyOf": [
-                        {
-                            "$ref": "autoscaling_schema.json#autoscaling_params_v1"
-                        },
-                        {
-                            "$ref": "autoscaling_schema.json#autoscaling_params_v2"
-                        }
-                    ]
+                    "$ref": "autoscaling_schema.json#autoscaling_params"
                 },
                 "sfn_autoscaling": {
                     "type": "object"
@@ -505,13 +498,6 @@
                     },
                     "additionalProperties": true
                 },
-                "marathon_shard": {
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "previous_marathon_shards": {
-                    "type": "array"
-                },
                 "aws_ebs_volumes": {
                     "type": "array",
                     "items": {
@@ -582,6 +568,28 @@
                         "required": [
                             "container_path",
                             "secret_name"
+                        ]
+                    },
+                    "uniqueItems": true
+                },
+                "projected_sa_volumes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "container_path": {
+                                "type": "string"
+                            },
+                            "audience": {
+                                "type": "string"
+                            },
+                            "expiration_seconds": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "container_path",
+                            "audience"
                         ]
                     },
                     "uniqueItems": true
@@ -920,6 +928,10 @@
                         "required": []
                     },
                     "uniqueItems": true
+                },
+                "uses_bulkdata": {
+                    "type": "boolean",
+                    "default": true
                 }
             }
         }

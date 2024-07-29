@@ -53,7 +53,7 @@ def test_check_service_replication_for_normal_smartstack(instance_config):
     ) as mock_check_replication_for_service:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            all_tasks_or_pods=all_pods,
+            all_pods=all_pods,
             replication_checker=None,
             dry_run=True,
         )
@@ -84,7 +84,7 @@ def test_check_service_replication_for_smartstack_with_different_namespace(
         instance_config.get_registrations.return_value = ["some-random-other-namespace"]
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            all_tasks_or_pods=all_pods,
+            all_pods=all_pods,
             replication_checker=None,
             dry_run=True,
         )
@@ -110,7 +110,7 @@ def test_check_service_replication_for_non_smartstack(instance_config):
     ) as mock_check_healthy_kubernetes_tasks:
         check_kubernetes_services_replication.check_kubernetes_pod_replication(
             instance_config=instance_config,
-            all_tasks_or_pods=[],
+            all_pods=[],
             replication_checker=None,
             dry_run=True,
         )

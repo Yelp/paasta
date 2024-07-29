@@ -277,7 +277,7 @@ def get_recommendations_by_service_file(
         key = (
             result["service"],
             result["cluster"],
-        )  # e.g. (foo, marathon-norcal-stagef)
+        )  # e.g. (foo, kubernetes-norcal-stagef)
         instance_type = result["cluster"].split("-", 1)[0]
         rec: Union[KubernetesRecommendation, CassandraRecommendation] = {}
         if instance_type == "cassandracluster":

@@ -72,8 +72,6 @@ DEFAULT_DRIVER_MEMORY_BY_SPARK = "1g"
 # Extra room for memory overhead and for any other running inside container
 DOCKER_RESOURCE_ADJUSTMENT_FACTOR = 2
 
-DEFAULT_AWS_PROFILE = "default"
-
 DEPRECATED_OPTS = {
     "j": "spark.jars",
     "jars": "spark.jars",
@@ -361,7 +359,6 @@ def add_subparser(subparsers):
         "--aws-credentials-yaml is not specified and --service is either "
         "not specified or the service does not have credentials in "
         "/etc/boto_cfg",
-        default=DEFAULT_AWS_PROFILE,
     )
 
     aws_group.add_argument(
@@ -1062,16 +1059,15 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if field_name == "spark_args":
                 value = " ".join([f"{k}={v}" for k, v in dict(value).items()])
 
-            # Befutify for printing
+            # Beautify for printing
             arg_name_str = (f"--{arg_name.replace('_', '-')}").ljust(31, " ")
-            field_name_str = field_name.ljust(28)
 
             # Only load iam_role value if --aws-profile is not set
-            if field_name == "iam_role" and args.aws_profile != DEFAULT_AWS_PROFILE:
+            if field_name == "iam_role" and args.aws_profile is not None:
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : IGNORE, "
-                        "since --aws-profile is provided"
+                        f"Ignoring Tronfig: `{field_name} : {value}`, since `--aws-profile` is provided. "
+                        f"We are giving higher priority to `--aws-profile` in case of paasta spark-run adhoc runs."
                     ),
                 )
                 continue
@@ -1079,7 +1075,7 @@ def update_args_from_tronfig(args: argparse.Namespace) -> Optional[Dict[str, str
             if hasattr(args, arg_name):
                 print(
                     PaastaColors.yellow(
-                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name_str} : {value}"
+                        f"Overwriting args with Tronfig: {arg_name_str} => {field_name} : {value}"
                     ),
                 )
             setattr(args, arg_name, value)
