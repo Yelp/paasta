@@ -29,6 +29,7 @@ import yaml
 from mypy_extensions import TypedDict
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_yaml_file
+from service_configuration_lib.spark_config import get_total_driver_memory_mb
 from service_configuration_lib.spark_config import SparkConfBuilder
 
 from paasta_tools.mesos_tools import mesos_services_running_here
@@ -301,22 +302,10 @@ class TronActionConfig(InstanceConfig):
         return super().get_cpus()
 
     def get_mem(self) -> float:
-        # set Spark driver pod memory if it is specified by Spark arguments
+        # get Spark driver pod memory specified by Spark arguments
         if self.action_spark_config:
-            # default to 2GB if spark.driver.memory is not set
-            driver_mem_mb = 2048
-            if "spark.driver.memory" in self.action_spark_config:
-                driver_mem_mb = int(
-                    # default to 2GB if memory parser returns 0
-                    spark_tools.get_spark_memory_in_unit(
-                        self.action_spark_config["spark.driver.memory"], "m"
-                    )
-                    or 2048
-                )
-            driver_mem_overhead_mb = spark_tools.get_spark_driver_memory_overhead_in_mb(self.action_spark_config)
-            return driver_mem_mb + driver_mem_overhead_mb
-
-        # we fall back to this default if there's no spark.driver.memory config
+            return get_total_driver_memory_mb(self.action_spark_config)
+        # we fall back to this default if there's no Spark config
         return super().get_mem()
 
     def build_spark_config(self) -> Dict[str, str]:
