@@ -264,7 +264,21 @@ def get_spark_memory_in_unit(mem: str, unit: Literal["k", "m", "g", "t"]) -> flo
         try:
             memory_bytes = float(mem[:-1]) * MEM_MULTIPLIER[mem[-1]]
         except (ValueError, IndexError):
-            print(f"Unable to parse memory value {mem}. Defaulting to 2 GB.")
-            memory_bytes = 2147483648  # default to 2 GB
+            print(f"Unable to parse memory value {mem}. Defaulting to 0.")
+            memory_bytes = 0  # default to 0
     memory_unit = memory_bytes / MEM_MULTIPLIER[unit]
     return memory_unit
+
+
+def get_spark_driver_memory_overhead_in_mb(spark_config: Dict[str, str]) -> float:
+    """
+    Returns the Spark driver memory overhead in bytes.
+    """
+    driver_mem_overhead = "0"
+    if "spark.driver.memoryOverhead" in spark_config:
+        driver_mem_overhead = spark_config["spark.driver.memoryOverhead"]
+    try:
+        memory_mb = float(driver_mem_overhead)
+    except ValueError:
+        memory_mb = get_spark_memory_in_unit(driver_mem_overhead, "m")
+    return memory_mb

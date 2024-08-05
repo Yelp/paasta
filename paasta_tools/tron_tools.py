@@ -302,15 +302,20 @@ class TronActionConfig(InstanceConfig):
 
     def get_mem(self) -> float:
         # set Spark driver pod memory if it is specified by Spark arguments
-        if (
-            self.action_spark_config
-            and "spark.driver.memory" in self.action_spark_config
-        ):
-            return int(
-                spark_tools.get_spark_memory_in_unit(
-                    self.action_spark_config["spark.driver.memory"], "m"
+        if self.action_spark_config:
+            # default to 2GB if spark.driver.memory is not set
+            driver_mem_mb = 2048
+            if "spark.driver.memory" in self.action_spark_config:
+                driver_mem_mb = int(
+                    # default to 2GB if memory parser returns 0
+                    spark_tools.get_spark_memory_in_unit(
+                        self.action_spark_config["spark.driver.memory"], "m"
+                    )
+                    or 2048
                 )
-            )
+            driver_mem_overhead_mb = spark_tools.get_spark_driver_memory_overhead_in_mb(self.action_spark_config)
+            return driver_mem_mb + driver_mem_overhead_mb
+
         # we fall back to this default if there's no spark.driver.memory config
         return super().get_mem()
 
