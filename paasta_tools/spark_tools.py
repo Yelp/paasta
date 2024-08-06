@@ -6,7 +6,6 @@ from typing import Any
 from typing import cast
 from typing import Dict
 from typing import List
-from typing import Literal
 from typing import Mapping
 from typing import Set
 
