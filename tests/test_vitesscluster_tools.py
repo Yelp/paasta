@@ -77,6 +77,10 @@ VITESS_CONFIG = {
                         }
                     }
                 },
+                "annotations": {
+                    "paasta.yelp.com/routable_ip": "false",
+                    "smartstack_registrations": '["fake_service.fake_instance"]',
+                },
                 "extraEnv": [
                     {
                         "name": "VAULT_ADDR",
@@ -168,6 +172,10 @@ VITESS_CONFIG = {
                                                 ]
                                             }
                                         }
+                                    },
+                                    "annotations": {
+                                        "paasta.yelp.com/routable_ip": "false",
+                                        "smartstack_registrations": '["fake_service.fake_instance"]',
                                     },
                                     "cell": "fake_cell",
                                     "dataVolumeClaimTemplate": {
@@ -352,6 +360,10 @@ VITESS_CONFIG = {
                                                 ]
                                             }
                                         }
+                                    },
+                                    "annotations": {
+                                        "paasta.yelp.com/routable_ip": "false",
+                                        "smartstack_registrations": '["fake_service.fake_instance"]',
                                     },
                                     "cell": "fake_cell",
                                     "dataVolumeClaimTemplate": {
@@ -544,6 +556,10 @@ VITESS_CONFIG = {
                 }
             }
         },
+        "annotations": {
+            "paasta.yelp.com/routable_ip": "false",
+            "smartstack_registrations": '["fake_service.fake_instance"]',
+        },
         "cells": ["fake_cell"],
         "extraEnv": [
             {
@@ -585,6 +601,10 @@ VITESS_CONFIG = {
                     ]
                 }
             }
+        },
+        "annotations": {
+            "paasta.yelp.com/routable_ip": "false",
+            "smartstack_registrations": '["fake_service.fake_instance"]',
         },
         "apiAddresses": ["http://localhost:15000"],
         "apiResources": {
