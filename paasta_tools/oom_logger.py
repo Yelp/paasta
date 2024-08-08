@@ -33,10 +33,16 @@ log {
   destination(paasta_oom_logger);
 };
 """
+import argparse
+import json
 import re
 import sys
 from collections import namedtuple
+from typing import Dict
 
+import grpc
+from containerd.services.containers.v1 import containers_pb2
+from containerd.services.containers.v1 import containers_pb2_grpc
 from docker.errors import APIError
 
 from paasta_tools.cli.utils import get_instance_config
@@ -76,6 +82,16 @@ LogLine = namedtuple(
 )
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="paasta_oom_logger")
+    parser.add_argument(
+        "--containerd",
+        action="store_true",
+        help="Use containerd to inspect containers, otherwise use docker",
+    )
+    return parser.parse_args()
+
+
 def capture_oom_events_from_stdin():
     process_name_regex = re.compile(
         r"^\d+\s[a-zA-Z0-9\-]+\s.*\]\s(.+)\sinvoked\soom-killer:"
@@ -90,6 +106,25 @@ def capture_oom_events_from_stdin():
         \s.*Task\sin\s/kubepods/(?:[a-zA-Z]+/)? # start of message; non capturing, optional group for the qos cgroup
         pod[-\w]+/(\w{12})\w+\s # containerid
         killed\sas\sa*  # eom
+        """,
+        re.VERBOSE,
+    )
+    oom_regex_kubernetes_containerd_systemd_cgroup = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/.*\.slice/.* # loosely match systemd slice and containerid
+        cri-containerd:(\w{64}).*$ # containerid
+        """,
+        re.VERBOSE,
+    )
+
+    oom_regex_kubernetes_containerd_systemd_cgroup_structured = re.compile(
+        r"""
+        ^(\d+)\s # timestamp
+        ([a-zA-Z0-9\-]+) # hostname
+        \s.*oom-kill:.*task_memcg=/kubepods\.slice/.* # match systemd slice and containerid
+        cri-containerd-(\w{64}).*$ # containerid
         """,
         re.VERBOSE,
     )
@@ -115,6 +150,8 @@ def capture_oom_events_from_stdin():
         oom_regex_kubernetes,
         oom_regex_kubernetes_structured,
         oom_regex_kubernetes_systemd_cgroup,
+        oom_regex_kubernetes_containerd_systemd_cgroup,
+        oom_regex_kubernetes_containerd_systemd_cgroup_structured,
     ]
 
     process_name = ""
@@ -136,11 +173,18 @@ def capture_oom_events_from_stdin():
                 break
 
 
-def get_container_env_as_dict(docker_inspect):
+def get_container_env_as_dict(
+    is_cri_containerd: bool, container_inspect: dict
+) -> Dict[str, str]:
     env_vars = {}
-    config = docker_inspect.get("Config")
+    if is_cri_containerd:
+        config = container_inspect.get("process")
+        env_key = "env"
+    else:
+        config = container_inspect.get("Config")
+        env_key = "Env"
     if config is not None:
-        env = config.get("Env", [])
+        env = config.get(env_key, [])
         for i in env:
             name, _, value = i.partition("=")
             env_vars[name] = value
@@ -209,18 +253,26 @@ def send_sfx_event(service, instance, cluster):
         counter.count()
 
 
+def get_containerd_container(container_id: str) -> containers_pb2.Container:
+    with grpc.insecure_channel("unix:///run/containerd/containerd.sock") as channel:
+        containersv1 = containers_pb2_grpc.ContainersStub(channel)
+        return containersv1.Get(
+            containers_pb2.GetContainerRequest(id=container_id),
+            metadata=(("containerd-namespace", "k8s.io"),),
+        ).container
+
+
 def main():
     if clog is None:
         print("CLog logger unavailable, exiting.", file=sys.stderr)
         sys.exit(1)
-
+    args = parse_args()
     clog.config.configure(
         scribe_host="169.254.255.254",
         scribe_port=1463,
         monk_disable=False,
         scribe_disable=False,
     )
-
     cluster = load_system_paasta_config().get_cluster()
     client = get_docker_client()
     for (
@@ -229,11 +281,22 @@ def main():
         container_id,
         process_name,
     ) in capture_oom_events_from_stdin():
-        try:
-            docker_inspect = client.inspect_container(resource_id=container_id)
-        except (APIError):
-            continue
-        env_vars = get_container_env_as_dict(docker_inspect)
+        if args.containerd:
+            # then we're using containerd to inspect containers
+            try:
+                container_info = get_containerd_container(container_id)
+            except grpc.RpcError as e:
+                print("An error occurred while getting the container:", e)
+                continue
+            container_spec_raw = container_info.spec.value.decode("utf-8")
+            container_inspect = json.loads(container_spec_raw)
+        else:
+            # we're using docker to inspect containers
+            try:
+                container_inspect = client.inspect_container(resource_id=container_id)
+            except (APIError):
+                continue
+        env_vars = get_container_env_as_dict(args.containerd, container_inspect)
         service = env_vars.get("PAASTA_SERVICE", "unknown")
         instance = env_vars.get("PAASTA_INSTANCE", "unknown")
         mesos_container_id = env_vars.get("MESOS_CONTAINER_NAME", "mesos-null")

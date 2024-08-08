@@ -8,12 +8,14 @@ botocore
 bravado >= 10.2.0
 certifi
 choice >= 0.1
+containerd
 cookiecutter >= 1.4.0
 croniter
 docker
 dulwich >= 0.17.3
 ephemeral-port-reserve >= 1.0.1
 graphviz
+grpcio
 gunicorn
 humanfriendly
 humanize >= 0.5.1

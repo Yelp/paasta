@@ -13,14 +13,15 @@
 # limitations under the License.
 
 ARG DOCKER_REGISTRY=docker-dev.yelpcorp.com/
-FROM ${DOCKER_REGISTRY}ubuntu:bionic
+FROM ${DOCKER_REGISTRY}ubuntu:jammy
 
-ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/bionic/simple
+ARG PIP_INDEX_URL=https://pypi.yelpcorp.com/jammy/simple
 ENV PIP_INDEX_URL=$PIP_INDEX_URL
 
-# Need Python 3.7
-RUN apt-get update > /dev/null && \
-    apt-get install -y --no-install-recommends curl software-properties-common && \
+RUN apt-get update -yq && \
+    apt-get install -yq \
+        # needed to add a ppa
+        software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update > /dev/null && \
@@ -29,6 +30,7 @@ RUN apt-get update > /dev/null && \
         git \
         curl \
         python3.8-dev \
+        python3.8-distutils \
         libffi-dev \
         libssl-dev \
         libyaml-dev \
@@ -45,7 +47,7 @@ WORKDIR /work
 ADD requirements.txt /work/
 RUN virtualenv /venv -ppython3.8 --no-download
 ENV PATH=/venv/bin:$PATH
-RUN pip install -r requirements.txt
+RUN pip install --only-binary=grpcio -r requirements.txt
 ADD yelp_package/dockerfiles/itest/k8s/wait_paasta_api.sh /venv/bin
 
 ADD . /work/
