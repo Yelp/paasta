@@ -650,6 +650,9 @@
                 },
                 "deploy_group": {
                     "type": "string"
+                },
+                "uses_bulkdata": {
+                    "type": "boolean"
                 }
             }
         }
