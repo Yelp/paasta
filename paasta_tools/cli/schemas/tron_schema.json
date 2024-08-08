@@ -445,7 +445,7 @@
                             "type": "boolean"
                         },
                         "spark.app.name": {
-                            "type": "boolean"
+                            "type": "string"
                         },
                         "spark.task.maxFailures": {
                             "type": "integer",

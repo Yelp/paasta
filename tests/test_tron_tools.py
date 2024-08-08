@@ -1312,7 +1312,7 @@ class TestTronTools:
                 "PAASTA_DEPLOY_GROUP": "prod",
                 "PAASTA_DOCKER_IMAGE": "my_service:paasta-123abcde",
                 "PAASTA_RESOURCE_CPUS": "1",
-                "PAASTA_RESOURCE_MEM": "1024",
+                "PAASTA_RESOURCE_MEM": "1126",
                 "PAASTA_RESOURCE_DISK": "42",
                 "PAASTA_GIT_SHA": "123abcde",
                 "PAASTA_INSTANCE_TYPE": "spark",
@@ -1366,7 +1366,7 @@ class TestTronTools:
             ],
             "ports": [39091],
             "cpus": 1,
-            "mem": 1024,
+            "mem": 1126,
             "disk": 42,
             "docker_image": "docker-registry.com:400/my_service:paasta-123abcde",
         }
