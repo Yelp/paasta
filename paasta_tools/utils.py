@@ -2043,6 +2043,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_token_settings: ProjectedSAVolume
     service_auth_vault_role: str
     always_authenticating_services: List[str]
+    mysql_port_mappings: Dict
     vitess_images: Dict
     superregion_to_region_mapping: Dict
     vitess_tablet_types: List[str]
@@ -2761,6 +2762,9 @@ class SystemPaastaConfig:
 
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
+
+    def get_mysql_port_mappings(self) -> Dict:
+        return self.config_dict.get("mysql_port_mappings", {})
 
     def get_vitess_images(self) -> Dict:
         return self.config_dict.get(
