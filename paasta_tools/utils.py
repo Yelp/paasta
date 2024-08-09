@@ -624,7 +624,8 @@ class InstanceConfig:
 
         Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 1024 MiB if not specified"""
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified
+        """
         disk = self.config_dict.get("disk", default)
         return disk
 
@@ -979,7 +980,8 @@ class InstanceConfig:
 
         Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
 
-        :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
+        :returns: the "pool" attribute in your config dict, or the string "default" if not specified.
+        """
         return self.config_dict.get("pool", "default")
 
     def get_pool_constraints(self) -> List[Constraint]:
@@ -1001,7 +1003,11 @@ class InstanceConfig:
     def has_bulkdata(
         self,
     ) -> bool:
-        return self.config_dict.get("uses_bulkdata", True)
+        paasta_system_config = load_system_paasta_config()
+        return self.config_dict.get(
+            "uses_bulkdata",
+            paasta_system_config.config_dict.get("uses_bulkdata_default", True),
+        )
 
     def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
@@ -1038,7 +1044,8 @@ class InstanceConfig:
 
         Defaults to None if not specified in the config.
 
-        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified"""
+        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified
+        """
         dependencies = self.config_dict.get("dependencies")
         if not dependencies:
             return None
@@ -1119,7 +1126,6 @@ def compose(
 
 
 class PaastaColors:
-
     """Collection of static variables and methods to assist in coloring text."""
 
     # ANSI color codes
@@ -2049,6 +2055,7 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     vitess_tablet_types: List[str]
     vitess_tablet_pool_type_mapping: Dict
     vitess_throttling_config: Dict
+    uses_bulkdata_default: bool
 
 
 def load_system_paasta_config(
@@ -2419,7 +2426,8 @@ class SystemPaastaConfig:
         """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
         arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
 
-        :returns: A format string for constructing the URL of haproxy-synapse's status page."""
+        :returns: A format string for constructing the URL of haproxy-synapse's status page.
+        """
         return self.config_dict.get(
             "synapse_haproxy_url_format", DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
         )
@@ -2434,7 +2442,8 @@ class SystemPaastaConfig:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
 
-        :returns: A format string for constructing the FQDN of the masters in a given cluster."""
+        :returns: A format string for constructing the FQDN of the masters in a given cluster.
+        """
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
 
     def get_paasta_status_version(self) -> str:
