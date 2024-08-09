@@ -346,7 +346,7 @@ def get_tablet_pool_config(
     cell: str,
     db_name: str,
     keyspace: str,
-    port: str,
+    host: str,
     zk_address: str,
     throttle_query_table: str,
     throttle_metrics_threshold: str,
@@ -465,8 +465,8 @@ def get_tablet_pool_config(
         },
         externalDatastore={
             "database": db_name,
-            "host": SOURCE_DB_HOST,
-            "port": port,
+            "host": host,
+            "port": 3306,
             "user": "vt_app",
             "credentialsSecret": {
                 "key": "/etc/credentials.yaml",
@@ -504,19 +504,11 @@ def get_keyspaces_config(
 
         tablet_pools = []
 
-        mysql_port_mappings = load_system_paasta_config().get_mysql_port_mappings()
-
         # get vttablets
         tablet_types = load_system_paasta_config().get_vitess_tablet_types()
         for tablet_type in tablet_types:
-            # We don't have migration or reporting tablets in all clusters
-            if cluster not in mysql_port_mappings:
-                log.error(
-                    f"MySQL Cluster {cluster} not found in system paasta config mysql_port_mappings"
-                )
-            if tablet_type not in mysql_port_mappings[cluster]:
-                continue
-            port = mysql_port_mappings[cluster][tablet_type]
+            ecosystem = region.split("-")[-1]
+            host = f"mysql-{cluster}-{tablet_type}.dre-{ecosystem}"
 
             # We use migration_replication delay for migration tablets and read_replication_delay for everything else
             # Also throttling threshold for refresh and sanitized primaries is set at 30 seconds and everything else at 3 seconds
@@ -546,7 +538,7 @@ def get_keyspaces_config(
                         cell,
                         db_name,
                         keyspace,
-                        port,
+                        host,
                         zk_address,
                         throttle_query_table,
                         throttle_metrics_threshold,

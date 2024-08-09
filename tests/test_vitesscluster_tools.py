@@ -47,14 +47,6 @@ CONFIG_DICT = {
 MOCK_SYSTEM_PAASTA_CONFIG = SystemPaastaConfig(
     config={
         "superregion_to_region_mapping": {"fake_superregion": "fake_region"},
-        "mysql_port_mappings": {
-            "fake_cluster": {
-                "primary": 1234,
-                "migration": 1234,
-                "read": 1234,
-                "reporting": 1234,
-            },
-        },
         "vitess_tablet_pool_type_mapping": {
             "primary": "externalmaster",
             "migration": "externalreplica",
@@ -88,11 +80,11 @@ VITESS_CONFIG = {
                 "extraEnv": [
                     {
                         "name": "VAULT_ADDR",
-                        "value": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                        "value": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                     },
                     {
                         "name": "VAULT_CACERT",
-                        "value": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                        "value": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                     },
                     {
                         "name": "VAULT_ROLEID",
@@ -115,9 +107,9 @@ VITESS_CONFIG = {
                 ],
                 "extraFlags": {
                     "mysql_auth_server_impl": "vault",
-                    "mysql_auth_vault_addr": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                    "mysql_auth_vault_addr": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                     "mysql_auth_vault_path": "secrets/vitess/vt-gate/vttablet_credentials.json",
-                    "mysql_auth_vault_tls_ca": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                    "mysql_auth_vault_tls_ca": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                     "mysql_auth_vault_ttl": "60s",
                 },
                 "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
@@ -189,18 +181,18 @@ VITESS_CONFIG = {
                                             "volumeName": "vttablet-fake-credentials",
                                         },
                                         "database": "fake_keyspaces",
-                                        "host": "169.254.255.254",
-                                        "port": 1234,
+                                        "host": "mysql-fake_cluster-primary.dre-devc",
+                                        "port": 3306,
                                         "user": "vt_app",
                                     },
                                     "extraEnv": [
                                         {
                                             "name": "VAULT_ADDR",
-                                            "value": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                                            "value": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                                         },
                                         {
                                             "name": "VAULT_CACERT",
-                                            "value": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                                            "value": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                                         },
                                         {
                                             "name": "TOPOLOGY_FLAGS",
@@ -303,9 +295,9 @@ VITESS_CONFIG = {
                                     "vttablet": {
                                         "extraFlags": {
                                             "db-credentials-server": "vault",
-                                            "db-credentials-vault-addr": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                                            "db-credentials-vault-addr": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                                             "db-credentials-vault-path": "secrets/vitess/vt-tablet/vttablet_credentials.json",
-                                            "db-credentials-vault-tls-ca": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                                            "db-credentials-vault-tls-ca": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                                             "db-credentials-vault-ttl": "60s",
                                             "db_charset": "utf8mb4",
                                             "dba_pool_size": "4",
@@ -373,18 +365,18 @@ VITESS_CONFIG = {
                                             "volumeName": "vttablet-fake-credentials",
                                         },
                                         "database": "fake_keyspaces",
-                                        "host": "169.254.255.254",
-                                        "port": 1234,
+                                        "host": "mysql-fake_cluster-migration.dre-devc",
+                                        "port": 3306,
                                         "user": "vt_app",
                                     },
                                     "extraEnv": [
                                         {
                                             "name": "VAULT_ADDR",
-                                            "value": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                                            "value": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                                         },
                                         {
                                             "name": "VAULT_CACERT",
-                                            "value": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                                            "value": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                                         },
                                         {
                                             "name": "TOPOLOGY_FLAGS",
@@ -487,9 +479,9 @@ VITESS_CONFIG = {
                                     "vttablet": {
                                         "extraFlags": {
                                             "db-credentials-server": "vault",
-                                            "db-credentials-vault-addr": "https://vault-dre.mock_region.yelpcorp.com:8200",
+                                            "db-credentials-vault-addr": "https://vault-dre.mock_region-devc.yelpcorp.com:8200",
                                             "db-credentials-vault-path": "secrets/vitess/vt-tablet/vttablet_credentials.json",
-                                            "db-credentials-vault-tls-ca": "/etc/vault/all_cas/acm-privateca-mock_region.crt",
+                                            "db-credentials-vault-tls-ca": "/etc/vault/all_cas/acm-privateca-mock_region-devc.crt",
                                             "db-credentials-vault-ttl": "60s",
                                             "db_charset": "utf8mb4",
                                             "dba_pool_size": "4",
@@ -616,7 +608,7 @@ VITESS_CONFIG = {
 @pytest.fixture
 def mock_vitess_deployment_config():
     with mock.patch.object(
-        VitessDeploymentConfig, "get_region", return_value="mock_region"
+        VitessDeploymentConfig, "get_region", return_value="mock_region-devc"
     ), mock.patch.object(
         VitessDeploymentConfig, "get_container_env", return_value=[]
     ), mock.patch.object(
@@ -660,40 +652,6 @@ def test_load_vitess_service_instance_configs(
         instance="fake_instance",
     )
     assert vitess_service_instance_configs == VITESS_CONFIG
-
-
-@mock.patch(
-    "paasta_tools.vitesscluster_tools.load_vitess_instance_config",
-    autospec=True,
-)
-@mock.patch(
-    "paasta_tools.vitesscluster_tools.load_system_paasta_config",
-    autospec=True,
-)
-def test_load_vitess_service_instance_configs_missing_mysql_cluster_mapping_entry(
-    mock_load_system_paasta_config,
-    mock_load_vitess_instance_config,
-    mock_vitess_deployment_config,
-):
-    mock_load_vitess_instance_config.return_value = VitessDeploymentConfig(
-        service="fake_service",
-        instance="fake_instance",
-        cluster="fake_cluster",
-        config_dict=CONFIG_DICT,
-        branch_dict={},
-        soa_dir="fake_soa_dir",
-    )
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        config={},
-        directory="/fake/config/directory",
-    )
-    with pytest.raises(KeyError):
-        load_vitess_service_instance_configs(
-            service="fake_service",
-            soa_dir="fake_soa_dir",
-            cluster="fake_cluster",
-            instance="fake_instance",
-        )
 
 
 @mock.patch("paasta_tools.vitesscluster_tools.load_v2_deployments_json", autospec=True)
