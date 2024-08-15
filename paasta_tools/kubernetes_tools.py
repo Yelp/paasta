@@ -2142,7 +2142,8 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
             service=self.service, namespace=self.get_nerve_namespace()
         )
         docker_volumes = self.get_volumes(
-            system_volumes=system_paasta_config.get_volumes()
+            system_volumes=system_paasta_config.get_volumes(),
+            uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
         )
 
         hacheck_sidecar_volumes = system_paasta_config.get_hacheck_sidecar_volumes()
