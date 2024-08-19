@@ -624,7 +624,8 @@ class InstanceConfig:
 
         Defaults to 1024 (1GiB) if no value is specified in the config.
 
-        :returns: The amount of disk space specified by the config, 1024 MiB if not specified"""
+        :returns: The amount of disk space specified by the config, 1024 MiB if not specified
+        """
         disk = self.config_dict.get("disk", default)
         return disk
 
@@ -979,7 +980,8 @@ class InstanceConfig:
 
         Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
 
-        :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
+        :returns: the "pool" attribute in your config dict, or the string "default" if not specified.
+        """
         return self.config_dict.get("pool", "default")
 
     def get_pool_constraints(self) -> List[Constraint]:
@@ -998,17 +1000,17 @@ class InstanceConfig:
         """
         return self.config_dict.get("net", "bridge")
 
-    def has_bulkdata(
-        self,
-    ) -> bool:
-        return self.config_dict.get("uses_bulkdata", True)
-
-    def get_volumes(self, system_volumes: Sequence[DockerVolume]) -> List[DockerVolume]:
+    def get_volumes(
+        self, system_volumes: Sequence[DockerVolume], uses_bulkdata_default: bool = True
+    ) -> List[DockerVolume]:
         volumes = list(system_volumes) + list(self.get_extra_volumes())
         # we used to add bulkdata as a default mount - but as part of the
         # effort to deprecate the entire system, we're swapping to an opt-in
         # model so that we can shrink the blast radius of any changes
-        if self.has_bulkdata():
+        if self.config_dict.get(
+            "uses_bulkdata",
+            uses_bulkdata_default,
+        ):
             # bulkdata is mounted RO as the data is produced by another
             # system and we want to ensure that there are no inadvertent
             # changes by misbehaved code
@@ -1038,7 +1040,8 @@ class InstanceConfig:
 
         Defaults to None if not specified in the config.
 
-        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified"""
+        :returns: A list of dictionaries specified in the dependencies_dict, None if not specified
+        """
         dependencies = self.config_dict.get("dependencies")
         if not dependencies:
             return None
@@ -1119,7 +1122,6 @@ def compose(
 
 
 class PaastaColors:
-
     """Collection of static variables and methods to assist in coloring text."""
 
     # ANSI color codes
@@ -2043,12 +2045,12 @@ class SystemPaastaConfigDict(TypedDict, total=False):
     service_auth_token_settings: ProjectedSAVolume
     service_auth_vault_role: str
     always_authenticating_services: List[str]
-    mysql_port_mappings: Dict
     vitess_images: Dict
     superregion_to_region_mapping: Dict
     vitess_tablet_types: List[str]
     vitess_tablet_pool_type_mapping: Dict
     vitess_throttling_config: Dict
+    uses_bulkdata_default: bool
 
 
 def load_system_paasta_config(
@@ -2419,7 +2421,8 @@ class SystemPaastaConfig:
         """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
         arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
 
-        :returns: A format string for constructing the URL of haproxy-synapse's status page."""
+        :returns: A format string for constructing the URL of haproxy-synapse's status page.
+        """
         return self.config_dict.get(
             "synapse_haproxy_url_format", DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
         )
@@ -2434,7 +2437,8 @@ class SystemPaastaConfig:
         """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
         string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
 
-        :returns: A format string for constructing the FQDN of the masters in a given cluster."""
+        :returns: A format string for constructing the FQDN of the masters in a given cluster.
+        """
         return self.config_dict.get("cluster_fqdn_format", "paasta-{cluster:s}.yelp")
 
     def get_paasta_status_version(self) -> str:
@@ -2763,9 +2767,6 @@ class SystemPaastaConfig:
     def get_always_authenticating_services(self) -> List[str]:
         return self.config_dict.get("always_authenticating_services", [])
 
-    def get_mysql_port_mappings(self) -> Dict:
-        return self.config_dict.get("mysql_port_mappings", {})
-
     def get_vitess_images(self) -> Dict:
         return self.config_dict.get(
             "vitess_images",
@@ -2808,6 +2809,9 @@ class SystemPaastaConfig:
                 },
             },
         )
+
+    def get_uses_bulkdata_default(self) -> bool:
+        return self.config_dict.get("uses_bulkdata_default", True)
 
 
 def _run(

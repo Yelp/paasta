@@ -1,3 +1,4 @@
+import json
 import logging
 import sys
 from typing import Any
@@ -15,6 +16,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import sanitised_cr_name
+from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -134,6 +136,7 @@ class GatewayConfigDict(TypedDict, total=False):
     extraLabels: Dict[str, str]
     replicas: int
     resources: Dict[str, Any]
+    annotations: Mapping[str, Any]
 
 
 class CellConfigDict(TypedDict, total=False):
@@ -149,6 +152,7 @@ class VitessDashboardConfigDict(TypedDict, total=False):
     extraLabels: Dict[str, str]
     replicas: int
     resources: Dict[str, Any]
+    annotations: Mapping[str, Any]
 
 
 class VtAdminConfigDict(TypedDict, total=False):
@@ -162,6 +166,7 @@ class VtAdminConfigDict(TypedDict, total=False):
     readOnly: bool
     apiResources: Dict[str, Any]
     webResources: Dict[str, Any]
+    annotations: Mapping[str, Any]
 
 
 class VtTabletDict(TypedDict, total=False):
@@ -182,6 +187,7 @@ class TabletPoolDict(TypedDict, total=False):
     vttablet: VtTabletDict
     externalDatastore: Dict[str, Any]
     dataVolumeClaimTemplate: Dict[str, Any]
+    annotations: Mapping[str, Any]
 
 
 class ShardTemplateDict(TypedDict, total=False):
@@ -229,6 +235,7 @@ def get_cell_config(
     env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
+    annotations: Mapping[str, Any],
 ) -> CellConfigDict:
     """
     get vtgate config
@@ -264,6 +271,7 @@ def get_cell_config(
                 "requests": requests,
                 "limits": requests,
             },
+            annotations=annotations,
         ),
     )
     return config
@@ -276,6 +284,7 @@ def get_vitess_dashboard_config(
     env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
+    annotations: Mapping[str, Any],
 ) -> VitessDashboardConfigDict:
     """
     get vtctld config
@@ -303,6 +312,7 @@ def get_vitess_dashboard_config(
             "requests": requests,
             "limits": requests,
         },
+        annotations=annotations,
     )
     return config
 
@@ -313,6 +323,7 @@ def get_vt_admin_config(
     env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
+    annotations: Mapping[str, Any],
 ) -> VtAdminConfigDict:
     """
     get vtadmin config
@@ -338,6 +349,7 @@ def get_vt_admin_config(
             "requests": requests,
             "limits": requests,
         },
+        annotations=annotations,
     )
     return config
 
@@ -346,7 +358,7 @@ def get_tablet_pool_config(
     cell: str,
     db_name: str,
     keyspace: str,
-    port: str,
+    host: str,
     zk_address: str,
     throttle_query_table: str,
     throttle_metrics_threshold: str,
@@ -356,6 +368,7 @@ def get_tablet_pool_config(
     env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
+    annotations: Mapping[str, Any],
 ) -> TabletPoolDict:
     """
     get vttablet config
@@ -465,8 +478,8 @@ def get_tablet_pool_config(
         },
         externalDatastore={
             "database": db_name,
-            "host": SOURCE_DB_HOST,
-            "port": port,
+            "host": host,
+            "port": 3306,
             "user": "vt_app",
             "credentialsSecret": {
                 "key": "/etc/credentials.yaml",
@@ -478,6 +491,7 @@ def get_tablet_pool_config(
             "resources": {"requests": {"storage": "10Gi"}},
             "storageClassName": "ebs-csi-gp3",
         },
+        annotations=annotations,
     )
     return config
 
@@ -490,6 +504,7 @@ def get_keyspaces_config(
     env: List[Union[KVEnvVar, KVEnvVarValueFrom]],
     labels: Dict[str, str],
     node_affinity: dict,
+    annotations: Mapping[str, Any],
 ) -> List[KeyspaceConfigDict]:
     """
     get vitess keyspace config
@@ -504,19 +519,11 @@ def get_keyspaces_config(
 
         tablet_pools = []
 
-        mysql_port_mappings = load_system_paasta_config().get_mysql_port_mappings()
-
         # get vttablets
         tablet_types = load_system_paasta_config().get_vitess_tablet_types()
         for tablet_type in tablet_types:
-            # We don't have migration or reporting tablets in all clusters
-            if cluster not in mysql_port_mappings:
-                log.error(
-                    f"MySQL Cluster {cluster} not found in system paasta config mysql_port_mappings"
-                )
-            if tablet_type not in mysql_port_mappings[cluster]:
-                continue
-            port = mysql_port_mappings[cluster][tablet_type]
+            ecosystem = region.split("-")[-1]
+            host = f"mysql-{cluster}-{tablet_type}.dre-{ecosystem}"
 
             # We use migration_replication delay for migration tablets and read_replication_delay for everything else
             # Also throttling threshold for refresh and sanitized primaries is set at 30 seconds and everything else at 3 seconds
@@ -546,7 +553,7 @@ def get_keyspaces_config(
                         cell,
                         db_name,
                         keyspace,
-                        port,
+                        host,
                         zk_address,
                         throttle_query_table,
                         throttle_metrics_threshold,
@@ -556,6 +563,7 @@ def get_keyspaces_config(
                         env,
                         labels,
                         node_affinity,
+                        annotations,
                     )
                     for cell in cells
                 ]
@@ -663,6 +671,22 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             labels["yelp.com/owner"] = "dre_mysql"
         return labels
 
+    def get_annotations(self) -> Mapping[str, Any]:
+        # get required annotations to be added to the formatted resource before creating or updating custom resource
+        service_namespace_config = load_service_namespace_config(
+            service=self.service, namespace=self.get_nerve_namespace()
+        )
+        system_paasta_config = load_system_paasta_config()
+        has_routable_ip = self.has_routable_ip(
+            service_namespace_config, system_paasta_config
+        )
+        annotations: Mapping[str, Any] = {
+            "smartstack_registrations": json.dumps(self.get_registrations()),
+            "paasta.yelp.com/routable_ip": has_routable_ip,
+        }
+
+        return annotations
+
     def get_vitess_node_affinity(self) -> dict:
         # Workaround from https://github.com/kubernetes-client/python/issues/390
         api_client = ApiClient()
@@ -706,10 +730,17 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
+        annotations = self.get_annotations()
 
         return [
             get_cell_config(
-                cell, region, vtgate_resources, formatted_env, labels, node_affinity
+                cell,
+                region,
+                vtgate_resources,
+                formatted_env,
+                labels,
+                node_affinity,
+                annotations,
             )
             for cell in cells
         ]
@@ -722,9 +753,16 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
+        annotations = self.get_annotations()
 
         return get_vitess_dashboard_config(
-            cells, zk_address, vtctld_resources, formatted_env, labels, node_affinity
+            cells,
+            zk_address,
+            vtctld_resources,
+            formatted_env,
+            labels,
+            node_affinity,
+            annotations,
         )
 
     def get_vtadmin(self) -> VtAdminConfigDict:
@@ -734,9 +772,10 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
+        annotations = self.get_annotations()
 
         return get_vt_admin_config(
-            cells, vtadmin_resources, formatted_env, labels, node_affinity
+            cells, vtadmin_resources, formatted_env, labels, node_affinity, annotations
         )
 
     def get_keyspaces(self) -> List[KeyspaceConfigDict]:
@@ -748,9 +787,17 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         formatted_env = self.get_env_variables()
         labels = self.get_labels()
         node_affinity = self.get_vitess_node_affinity()
+        annotations = self.get_annotations()
 
         return get_keyspaces_config(
-            cells, keyspaces, zk_address, region, formatted_env, labels, node_affinity
+            cells,
+            keyspaces,
+            zk_address,
+            region,
+            formatted_env,
+            labels,
+            node_affinity,
+            annotations,
         )
 
     def get_update_strategy(self) -> Dict[str, str]:

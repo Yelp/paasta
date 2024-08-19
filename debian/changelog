@@ -1,3 +1,24 @@
+paasta-tools (1.4.22) xenial; urgency=medium
+
+  * 1.4.22 tagged with 'make release'
+    Commit: Merge pull request #3931 from Yelp/u/gonabavi/DREIMP-
+    10901_add_smartstack_registrations_for_vitess_pods
+    U/gonabavi/dreimp 10901 add smartstack registrations for vitess pods
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 09 Aug 2024 12:32:46 -0700
+
+paasta-tools (1.4.21) xenial; urgency=medium
+
+  * 1.4.21 tagged with 'make release'
+    Commit: MLCOMPUTE-1497 | include spark driver memory overhead in
+    driver pod memory (#3926)  * MLCOMPUTE-1209 | use
+    service_configuration_lib to get total driver memory  * MLCOMPUTE-
+    1209 | increase default Spark driver pod disk to 5GB  * MLCOMPUTE-
+    1209 | prefer disk value if provided  ---------  Co-authored-by:
+    Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Thu, 08 Aug 2024 03:24:06 -0700
+
 paasta-tools (1.4.20) xenial; urgency=medium
 
   * 1.4.20 tagged with 'make release'
