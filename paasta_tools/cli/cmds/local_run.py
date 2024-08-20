@@ -1209,7 +1209,10 @@ def configure_and_run_docker_container(
     if pull_image:
         docker_pull_image(docker_url)
 
-    for volume in instance_config.get_volumes(system_paasta_config.get_volumes()):
+    for volume in instance_config.get_volumes(
+        system_paasta_config.get_volumes(),
+        system_paasta_config.get_uses_bulkdata_default(),
+    ):
         if os.path.exists(volume["hostPath"]):
             volumes.append(
                 "{}:{}:{}".format(
