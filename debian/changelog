@@ -1,3 +1,13 @@
+paasta-tools (1.4.23) xenial; urgency=medium
+
+  * 1.4.23 tagged with 'make release'
+    Commit: MLCOMPUTE-1562 | fix Spark driver maxresultsize validation
+    (#3933)  * MLCOMPUTE-1562 | fix Spark driver maxresultsize
+    validation  ---------  Co-authored-by: Sameer Sharma
+    <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 20 Aug 2024 04:59:37 -0700
+
 paasta-tools (1.4.22) xenial; urgency=medium
 
   * 1.4.22 tagged with 'make release'
