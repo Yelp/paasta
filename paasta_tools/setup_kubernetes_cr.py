@@ -362,6 +362,7 @@ def reconcile_kubernetes_resource(
                     instance=inst,
                     cluster=cluster,
                     soa_dir=DEFAULT_SOA_DIR,
+                    kube_client=kube_client,
                 )
             git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
             formatted_resource = format_custom_resource(
@@ -414,6 +415,9 @@ def reconcile_kubernetes_resource(
                 )
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")
+            log.info(f"Ensuring related API objects for {desired_resource} are in sync")
+            if hasattr(soa_config, "update_related_api_objects"):
+                soa_config.update_related_api_objects(kube_client)
         except Exception as e:
             log.error(str(e))
             succeeded = False
