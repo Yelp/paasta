@@ -117,6 +117,26 @@ VITESS_CONFIG = {
                     "mysql_auth_vault_ttl": "60s",
                 },
                 "extraLabels": {"tablet_type": "fake_keyspaces_migration"},
+                "lifecycle": {
+                    "postStart": {
+                        "exec": {
+                            "command": [
+                                "/bin/sh",
+                                "-c",
+                                "/cloudmap/scripts/register_to_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
+                            ]
+                        }
+                    },
+                    "preStop": {
+                        "exec": {
+                            "command": [
+                                "/bin/sh",
+                                "-c",
+                                "/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-fake_cell mo-ck_r-e",
+                            ]
+                        }
+                    },
+                },
                 "replicas": 1,
                 "resources": {
                     "limits": {"cpu": "100m", "memory": "256Mi"},

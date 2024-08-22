@@ -134,6 +134,7 @@ class GatewayConfigDict(TypedDict, total=False):
     extraEnv: List[Union[KVEnvVar, KVEnvVarValueFrom]]
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
+    lifecycle: Dict[str, Dict[str, Dict[str, List[str]]]]
     replicas: int
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
@@ -236,6 +237,7 @@ def get_cell_config(
     labels: Dict[str, str],
     node_affinity: dict,
     annotations: Mapping[str, Any],
+    aws_region: str,
 ) -> CellConfigDict:
     """
     get vtgate config
@@ -256,6 +258,26 @@ def get_cell_config(
     config = CellConfigDict(
         name=cell,
         gateway=GatewayConfigDict(
+            lifecycle={
+                "preStop": {
+                    "exec": {
+                        "command": [
+                            "/bin/sh",
+                            "-c",
+                            f"/cloudmap/scripts/deregister_from_cloudmap.sh vtgate-{cell} {aws_region}",
+                        ]
+                    }
+                },
+                "postStart": {
+                    "exec": {
+                        "command": [
+                            "/bin/sh",
+                            "-c",
+                            f"/cloudmap/scripts/register_to_cloudmap.sh vtgate-{cell} {aws_region}",
+                        ]
+                    }
+                },
+            },
             affinity={"nodeAffinity": node_affinity},
             extraEnv=updated_vtgate_extra_env,
             extraFlags={
@@ -712,6 +734,10 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             sys.exit(1)
         return region
 
+    def get_aws_region(self) -> str:
+        region = self.get_region()
+        return f"{region[:2]}-{region[2:6]}-{region[6:7]}"
+
     def get_global_lock_server(self) -> Dict[str, Dict[str, str]]:
         zk_address = self.config_dict.get("zk_address")
         return {
@@ -725,6 +751,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
     def get_cells(self) -> List[CellConfigDict]:
         cells = self.config_dict.get("cells")
         region = self.get_region()
+        aws_region = self.get_aws_region()
         vtgate_resources = self.config_dict.get("vtgate_resources")
 
         formatted_env = self.get_env_variables()
@@ -741,6 +768,7 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
                 labels,
                 node_affinity,
                 annotations,
+                aws_region,
             )
             for cell in cells
         ]
