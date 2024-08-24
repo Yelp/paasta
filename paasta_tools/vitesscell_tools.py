@@ -1,6 +1,4 @@
-import json
 import logging
-import sys
 from typing import Any
 from typing import Dict
 from typing import List
@@ -10,16 +8,12 @@ from typing import TypedDict
 from typing import Union
 
 import service_configuration_lib
-from kubernetes.client import ApiClient
 
-from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import sanitised_cr_name
-from paasta_tools.long_running_service_tools import load_service_namespace_config
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
-from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_service_instance_config
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import load_v2_deployments_json
@@ -28,6 +22,8 @@ from paasta_tools.vitesscluster_tools import KVEnvVar
 from paasta_tools.vitesscluster_tools import KVEnvVarValueFrom
 from paasta_tools.vitesscluster_tools import RequestsDict
 from paasta_tools.vitesscluster_tools import ResourceConfigDict
+from paasta_tools.vitesscluster_tools import VitessDeploymentConfig
+from paasta_tools.vitesscluster_tools import VitessDeploymentConfigDict
 
 
 log = logging.getLogger(__name__)
@@ -67,9 +63,8 @@ class GatewayConfigDict(TypedDict, total=False):
     annotations: Mapping[str, Any]
 
 
-class VitessCellConfigDict(KubernetesDeploymentConfigDict, total=False):
+class VitessCellConfigDict(VitessDeploymentConfigDict, total=False):
     name: str
-    images: Dict[str, str]
     allCells: List[str]
     globalLockserver: Dict[str, str]
     gateway: GatewayConfigDict
@@ -138,7 +133,7 @@ class VitessCellInstanceConfigDict(KubernetesDeploymentConfigDict, total=False):
     images: Dict[str, str]
 
 
-class VitessCellConfig(KubernetesDeploymentConfig):
+class VitessCellConfig(VitessDeploymentConfig):
     config_dict: VitessCellInstanceConfigDict
 
     config_filename_prefix = "vitesscell"
@@ -161,9 +156,6 @@ class VitessCellConfig(KubernetesDeploymentConfig):
             branch_dict=branch_dict,
         )
 
-    def get_namespace(self) -> str:
-        return KUBERNETES_NAMESPACE
-
     def get_images(self) -> Dict[str, str]:
         vitess_images = self.config_dict.get(
             "images", load_system_paasta_config().get_vitess_images()
@@ -174,69 +166,6 @@ class VitessCellConfig(KubernetesDeploymentConfig):
             "vtgate": vitess_images["vtgate_image"],
             "vttablet": vitess_images["vttablet_image"],
         }
-
-    def get_env_variables(self) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
-        # get all K8s container env vars and format their keys to camel case
-
-        # Workaround from https://github.com/kubernetes-client/python/issues/390
-        api_client = ApiClient()
-        env = [
-            api_client.sanitize_for_serialization(env)
-            for env in self.get_container_env()
-        ]
-        return env
-
-    def get_labels(self) -> Dict[str, str]:
-        # get default labels from parent class to adhere to paasta contract
-        docker_url = self.get_docker_url(
-            system_paasta_config=load_system_paasta_config()
-        )
-        git_sha = get_git_sha_from_dockerurl(docker_url)
-        labels = self.get_kubernetes_metadata(git_sha=git_sha).labels
-        if "yelp.com/owner" in labels.keys():
-            labels["yelp.com/owner"] = "dre_mysql"
-        return labels
-
-    def get_annotations(self) -> Mapping[str, Any]:
-        # get required annotations to be added to the formatted resource before creating or updating custom resource
-        service_namespace_config = load_service_namespace_config(
-            service=self.service, namespace=self.get_nerve_namespace()
-        )
-        system_paasta_config = load_system_paasta_config()
-        has_routable_ip = self.has_routable_ip(
-            service_namespace_config, system_paasta_config
-        )
-        annotations: Mapping[str, Any] = {
-            "smartstack_registrations": json.dumps(self.get_registrations()),
-            "paasta.yelp.com/routable_ip": has_routable_ip,
-        }
-
-        return annotations
-
-    def get_vitess_node_affinity(self) -> dict:
-        # Workaround from https://github.com/kubernetes-client/python/issues/390
-        api_client = ApiClient()
-        node_affinity = api_client.sanitize_for_serialization(self.get_node_affinity())
-        return node_affinity
-
-    def get_region(self) -> str:
-        superregion = self.get_cluster()
-        superregion_to_region_map = (
-            load_system_paasta_config().get_superregion_to_region_mapping()
-        )
-        region = None
-        for superregion_prefix in superregion_to_region_map:
-            if superregion.startswith(superregion_prefix):
-                region = superregion.replace(
-                    superregion_prefix, superregion_to_region_map[superregion_prefix]
-                )
-        if region is None:
-            log.error(
-                f"Region not found for superregion {superregion}. Check superregion_to_region_mapping in system paasta config"
-            )
-            # Exiting early here since region is needed to fetch secrets from vault
-            sys.exit(1)
-        return region
 
     def get_global_lock_server(self) -> Dict[str, str]:
         zk_address = self.config_dict.get("zk_address")
