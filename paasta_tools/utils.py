@@ -137,6 +137,8 @@ INSTANCE_TYPES = (
     "cassandracluster",
     "kafkacluster",
     "vitesscluster",
+    "vitesscell",
+    "vitesskeyspace",
     "monkrelays",
     "nrtsearchservice",
     "nrtsearchserviceeks",
@@ -156,6 +158,8 @@ INSTANCE_TYPE_TO_K8S_NAMESPACE = {
     "cassandracluster": "paasta-cassandraclusters",
     "kafkacluster": "paasta-kafkaclusters",
     "vitesscluster": "paasta-vitessclusters",
+    "vitesscell": "paasta-vitessclusters",
+    "vitesskeyspace": "paasta-vitessclusters",
     "nrtsearchservice": "paasta-nrtsearchservices",
     "nrtsearchserviceeks": "paasta-nrtsearchservices",
 }

@@ -49,13 +49,19 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.vitesscluster_tools import load_vitess_service_instance_configs
+from paasta_tools.vitesscell_tools import load_vitess_cell_instance_configs
+from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_configs
+from paasta_tools.vitesskeyspace_tools import load_vitess_keyspace_instance_configs
 
 
 log = logging.getLogger(__name__)
 
 
-INSTANCE_TYPE_TO_CONFIG_LOADER = {"vitesscluster": load_vitess_service_instance_configs}
+INSTANCE_TYPE_TO_CONFIG_LOADER = {
+    "vitesscluster": load_vitess_cluster_instance_configs,
+    "vitesscell": load_vitess_cell_instance_configs,
+    "vitesskeyspace": load_vitess_keyspace_instance_configs,
+}
 
 
 class StdoutKubeClient:
