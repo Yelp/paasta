@@ -1,3 +1,12 @@
+paasta-tools (1.4.24) xenial; urgency=medium
+
+  * 1.4.24 tagged with 'make release'
+    Commit: Merge pull request #3935 from
+    Yelp/u/gonabavi/split_vitess_crs  Add separate fileprefix handlers
+    for vitess crs
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Mon, 26 Aug 2024 12:50:45 -0700
+
 paasta-tools (1.4.23) xenial; urgency=medium
 
   * 1.4.23 tagged with 'make release'
