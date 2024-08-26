@@ -2363,6 +2363,8 @@ def test_validate_service_instance_invalid():
     mock_nrtsearcheks_instances = [("service1", "nrtsearcheks")]
     mock_monkrelaycluster_instances = [("service1", "monkrelays")]
     mock_vitesscluster_instances = [("service1", "vitesscluster")]
+    mock_vitesscell_instances = [("service1", "vitesscell")]
+    mock_vitesskeyspace_instances = [("service1", "vitesskeyspace")]
     my_service = "service1"
     my_instance = "main"
     fake_cluster = "fake_cluster"
@@ -2385,6 +2387,8 @@ def test_validate_service_instance_invalid():
             mock_nrtsearcheks_instances,
             mock_monkrelaycluster_instances,
             mock_vitesscluster_instances,
+            mock_vitesscell_instances,
+            mock_vitesskeyspace_instances,
         ],
     ):
         with raises(
