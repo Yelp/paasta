@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-KUBERNETES_NAMESPACE = "paasta-vitessclusters"
+VITESSCLUSTER_KUBERNETES_NAMESPACE = "paasta-vitessclusters"
 
 
 # Global variables
@@ -249,7 +249,7 @@ class VitessClusterInstanceConfigDict(KubernetesDeploymentConfigDict, total=Fals
 
 class VitessDeploymentConfig(KubernetesDeploymentConfig):
     def get_namespace(self) -> str:
-        return KUBERNETES_NAMESPACE
+        return VITESSCLUSTER_KUBERNETES_NAMESPACE
 
     def get_env_variables(self) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
         # get all K8s container env vars and format their keys to camel case
@@ -493,7 +493,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="planetscale.com",
         version="v2",
-        namespace=KUBERNETES_NAMESPACE,
+        namespace=VITESSCLUSTER_KUBERNETES_NAMESPACE,
         plural="vitessclusters",
         name=sanitised_cr_name(service, instance),
     )
