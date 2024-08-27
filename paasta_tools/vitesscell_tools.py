@@ -187,19 +187,6 @@ class VitessCellConfig(VitessDeploymentConfig):
             "rootPath": TOPO_GLOBAL_ROOT,
         }
 
-    def update_related_api_objects(self, kube_client: KubeClient):
-        vitesscell_cr = get_cr(kube_client, cr_id(self.service, self.instance))
-        if not vitesscell_cr:
-            # Nothing to do, HPAs are deleted when its owner VitessCell is deleted.
-            return
-
-        uid = vitesscell_cr["metadata"]["uid"]
-        log.info(f"Reconciling HPA for {self.service} {self.instance}")
-        self.reconcile_vtgate_hpa(
-            kube_client,
-            owner_uid=uid,
-        )
-
     def get_desired_hpa(
         self,
         kube_client: KubeClient,
@@ -251,28 +238,35 @@ class VitessCellConfig(VitessDeploymentConfig):
             ),
         )
 
-    def reconcile_vtgate_hpa(
+    def update_related_api_objects(
         self,
         kube_client: KubeClient,
-        owner_uid: str,
     ):
+        name = sanitised_cr_name(self.service, self.instance)
+
         vtgate_resources = self.config_dict.get("vtgate_resources")
         min_instances = vtgate_resources.get("min_instances", 1)
         max_instances = vtgate_resources.get("max_instances")
         should_exist = min_instances and max_instances
 
-        name = sanitised_cr_name(self.service, self.instance)
         exists = (
             len(
                 kube_client.autoscaling.list_namespaced_horizontal_pod_autoscaler(
                     field_selector=f"metadata.name={name}",
                     namespace=self.get_namespace(),
+                    limit=1,
                 ).items
             )
             > 0
         )
 
         if should_exist:
+            vitesscell_cr = get_cr(kube_client, cr_id(self.service, self.instance))
+            if not vitesscell_cr:
+                # We need the uid of the VitessCell CR to set the owner reference on the HPA.
+                return
+
+            owner_uid = vitesscell_cr["metadata"]["uid"]
             hpa = self.get_desired_hpa(
                 kube_client=kube_client,
                 owner_uid=owner_uid,
