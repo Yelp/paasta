@@ -871,6 +871,11 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
         )
         return None
 
+    def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
+        return V2beta2CrossVersionObjectReference(
+            api_version="apps/v1", kind="Deployment", name=name
+        )
+
     def get_autoscaling_metric_spec(
         self,
         name: str,
@@ -926,9 +931,7 @@ class KubernetesDeploymentConfig(LongRunningServiceConfig):
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
                 metrics=metrics,
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="apps/v1", kind="Deployment", name=name
-                ),
+                scale_target_ref=self.get_autoscaling_target(name),
             ),
         )
 
