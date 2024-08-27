@@ -1,3 +1,11 @@
+paasta-tools (1.4.25) xenial; urgency=medium
+
+  * 1.4.25 tagged with 'make release'
+    Commit: MLCOMPUTE-1209 | allow 0 in spark.driver.maxResultSize
+    (#3937)  Co-authored-by: Sameer Sharma <sameersharma@yelp.com>
+
+ -- Sameer Sharma <sameersharma@yelp.com>  Tue, 27 Aug 2024 07:58:56 -0700
+
 paasta-tools (1.4.24) xenial; urgency=medium
 
   * 1.4.24 tagged with 'make release'
