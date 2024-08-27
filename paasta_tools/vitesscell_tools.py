@@ -8,9 +8,19 @@ from typing import TypedDict
 from typing import Union
 
 import service_configuration_lib
+from kubernetes.client import V1ObjectMeta
+from kubernetes.client import V1OwnerReference
+from kubernetes.client import V2beta2CrossVersionObjectReference
+from kubernetes.client import V2beta2HorizontalPodAutoscaler
+from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 
+from paasta_tools.kubernetes_tools import get_cr
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
+from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
+from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
+from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -59,6 +69,7 @@ class GatewayConfigDict(TypedDict, total=False):
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
+    scale_selector: str
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
 
@@ -115,6 +126,7 @@ def get_cell_config(
             },
             extraLabels=labels,
             replicas=replicas,
+            scale_selector=",".join([f"{k}={v}" for k, v in labels.items()]),
             resources={
                 "requests": requests,
                 "limits": requests,
@@ -174,6 +186,116 @@ class VitessCellConfig(VitessDeploymentConfig):
             "address": zk_address,
             "rootPath": TOPO_GLOBAL_ROOT,
         }
+
+    def update_related_api_objects(self, kube_client: KubeClient):
+        vitesscell_cr = get_cr(kube_client, cr_id(self.service, self.instance))
+        if not vitesscell_cr:
+            # Nothing to do, HPAs are deleted when its owner VitessCell is deleted.
+            return
+
+        uid = vitesscell_cr["metadata"]["uid"]
+        log.info(f"Reconciling HPA for {self.service} {self.instance}")
+        self.reconcile_vtgate_hpa(
+            kube_client,
+            owner_uid=uid,
+        )
+
+    def get_desired_hpa(
+        self,
+        kube_client: KubeClient,
+        owner_uid: str,
+        min_replicas: Optional[int],
+        max_replicas: Optional[int],
+    ) -> Optional[V2beta2HorizontalPodAutoscaler]:
+        name = sanitised_cr_name(self.service, self.instance)
+        return V2beta2HorizontalPodAutoscaler(
+            kind="HorizontalPodAutoscaler",
+            metadata=V1ObjectMeta(
+                name=name,
+                namespace=self.get_namespace(),
+                annotations=dict(),
+                labels={
+                    paasta_prefixed("service"): self.service,
+                    paasta_prefixed("instance"): self.instance,
+                    paasta_prefixed("pool"): self.get_pool(),
+                    paasta_prefixed("managed"): "true",
+                },
+                owner_references=[
+                    V1OwnerReference(
+                        api_version="planetscale.com/v2",
+                        kind="VitessCell",
+                        name=name,
+                        uid=owner_uid,
+                        controller=True,
+                        block_owner_deletion=True,
+                    ),
+                ],
+            ),
+            spec=V2beta2HorizontalPodAutoscalerSpec(
+                behavior=self.get_autoscaling_scaling_policy(max_replicas, {}),
+                max_replicas=max_replicas,
+                min_replicas=min_replicas,
+                metrics=[
+                    self.get_autoscaling_provider_spec(
+                        name=name,
+                        namespace=self.get_namespace(),
+                        provider={
+                            "type": METRICS_PROVIDER_CPU,
+                            "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
+                        },
+                    ),
+                ],
+                scale_target_ref=V2beta2CrossVersionObjectReference(
+                    api_version="planetscale.com/v2", kind="VitessCell", name=name
+                ),
+            ),
+        )
+
+    def reconcile_vtgate_hpa(
+        self,
+        kube_client: KubeClient,
+        owner_uid: str,
+    ):
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        min_instances = vtgate_resources.get("min_instances", 1)
+        max_instances = vtgate_resources.get("max_instances")
+        should_exist = min_instances and max_instances
+
+        name = sanitised_cr_name(self.service, self.instance)
+        exists = (
+            len(
+                kube_client.autoscaling.list_namespaced_horizontal_pod_autoscaler(
+                    field_selector=f"metadata.name={name}",
+                    namespace=self.get_namespace(),
+                ).items
+            )
+            > 0
+        )
+
+        if should_exist:
+            hpa = self.get_desired_hpa(
+                kube_client=kube_client,
+                owner_uid=owner_uid,
+                min_replicas=min_instances,
+                max_replicas=max_instances,
+            )
+            if exists:
+                kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
+                    name=name,
+                    namespace=self.get_namespace(),
+                    body=hpa,
+                )
+            else:
+                log.info(f"Creating HPA for {name} in {self.get_namespace()}")
+                kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
+                    namespace=self.get_namespace(),
+                    body=hpa,
+                )
+        elif exists:
+            kube_client.autoscaling.delete_namespaced_horizontal_pod_autoscaler(
+                name=name,
+                namespace=self.get_namespace(),
+            )
 
     def get_vitess_cell_config(self) -> VitessCellConfigDict:
         cell = self.config_dict.get("cell")
@@ -276,6 +398,18 @@ def load_vitess_cell_instance_configs(
         service, instance, cluster, soa_dir=soa_dir
     ).get_vitess_cell_config()
     return vitess_cell_instance_configs
+
+
+def update_vitess_cell_related_api_objects(
+    service: str,
+    instance: str,
+    cluster: str,
+    kube_client: KubeClient,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> VitessCellConfigDict:
+    load_vitess_cell_instance_config(
+        service, instance, cluster, soa_dir=soa_dir
+    ).update_related_api_objects(kube_client)
 
 
 # TODO: read this from CRD in service configs

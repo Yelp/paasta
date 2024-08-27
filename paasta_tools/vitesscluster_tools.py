@@ -73,6 +73,8 @@ class RequestsDict(TypedDict, total=False):
 
 class ResourceConfigDict(TypedDict, total=False):
     replicas: int
+    min_instances: Optional[int]
+    max_instances: Optional[int]
     requests: Dict[str, RequestsDict]
     limits: Dict[str, RequestsDict]
 
