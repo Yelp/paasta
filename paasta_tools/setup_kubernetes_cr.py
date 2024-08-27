@@ -50,11 +50,8 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.vitesscell_tools import load_vitess_cell_instance_configs
-from paasta_tools.vitesscell_tools import VITESSCELL_KUBERNETES_NAMESPACE
 from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_configs
-from paasta_tools.vitesscluster_tools import VITESSCLUSTER_KUBERNETES_NAMESPACE
 from paasta_tools.vitesskeyspace_tools import load_vitess_keyspace_instance_configs
-from paasta_tools.vitesskeyspace_tools import VITESSKEYSPACE_KUBERNETES_NAMESPACE
 
 
 log = logging.getLogger(__name__)
@@ -64,13 +61,6 @@ INSTANCE_TYPE_TO_CONFIG_LOADER = {
     "vitesscluster": load_vitess_cluster_instance_configs,
     "vitesscell": load_vitess_cell_instance_configs,
     "vitesskeyspace": load_vitess_keyspace_instance_configs,
-}
-
-
-INSTANCE_TYPE_TO_NAMESPACE_LOADER = {
-    "vitesscluster": VITESSCLUSTER_KUBERNETES_NAMESPACE,
-    "vitesscell": VITESSCELL_KUBERNETES_NAMESPACE,
-    "vitesskeyspace": VITESSKEYSPACE_KUBERNETES_NAMESPACE,
 }
 
 
@@ -250,16 +240,8 @@ def setup_custom_resources(
 ) -> bool:
     succeded = True
     if config_dicts:
-        if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_LOADER:
-            namespace = INSTANCE_TYPE_TO_NAMESPACE_LOADER[crd.file_prefix]
-        else:
-            namespace = f"paasta-{kind.plural}"
         crs = list_custom_resources(
-            kube_client=kube_client,
-            kind=kind,
-            version=version,
-            group=group,
-            namespace=namespace,
+            kube_client=kube_client, kind=kind, version=version, group=group
         )
     for svc, config in config_dicts.items():
         if service is not None and service != svc:
@@ -387,10 +369,6 @@ def reconcile_kubernetes_resource(
                     cluster=cluster,
                     soa_dir=DEFAULT_SOA_DIR,
                 )
-            if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_LOADER:
-                namespace = INSTANCE_TYPE_TO_NAMESPACE_LOADER[crd.file_prefix]
-            else:
-                namespace = f"paasta-{kind.plural}"
             git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
             formatted_resource = format_custom_resource(
                 instance_config=config,
@@ -400,7 +378,7 @@ def reconcile_kubernetes_resource(
                 kind=kind.singular,
                 version=version,
                 group=group,
-                namespace=namespace,
+                namespace=f"paasta-{kind.plural}",
                 git_sha=git_sha,
                 is_eks=is_eks,
             )
@@ -415,7 +393,7 @@ def reconcile_kubernetes_resource(
                 ),
                 kind=kind.singular,
                 name=formatted_resource["metadata"]["name"],
-                namespace=namespace,
+                namespace=f"paasta-{kind.plural}",
             )
             if not (service, inst, kind.singular) in [
                 (c.service, c.instance, c.kind) for c in custom_resources
@@ -427,7 +405,6 @@ def reconcile_kubernetes_resource(
                     kind=kind,
                     formatted_resource=formatted_resource,
                     group=group,
-                    namespace=namespace,
                 )
             elif desired_resource not in custom_resources:
                 sanitised_service = sanitise_kubernetes_name(service)
@@ -440,7 +417,6 @@ def reconcile_kubernetes_resource(
                     kind=kind,
                     formatted_resource=formatted_resource,
                     group=group,
-                    namespace=namespace,
                 )
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")
