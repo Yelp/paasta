@@ -11,6 +11,8 @@ nodes:
     extraMounts:
       - hostPath: /nail/etc
         containerPath: /nail/etc
+      - hostPath: /nail/srv
+        containerPath: /nail/srv
   - role: worker
     labels:
       yelp.com/pool: default
@@ -18,3 +20,5 @@ nodes:
     extraMounts:
       - hostPath: /nail/etc
         containerPath: /nail/etc
+      - hostPath: /nail/srv
+        containerPath: /nail/srv
