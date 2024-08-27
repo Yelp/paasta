@@ -31,7 +31,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import list_custom_resources
 from paasta_tools.kubernetes_tools import load_custom_resource_definitions
 from paasta_tools.kubernetes_tools import paasta_prefixed
-from paasta_tools.setup_kubernetes_cr import INSTANCE_TYPE_TO_NAMESPACE_LOADER
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
@@ -106,16 +105,11 @@ def cleanup_all_custom_resources(
         )
         if not config_dicts:
             continue
-        if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_LOADER:
-            namespace = INSTANCE_TYPE_TO_NAMESPACE_LOADER[crd.file_prefix]
-        else:
-            namespace = ""
         crs = list_custom_resources(
             kube_client=kube_client,
             kind=crd.kube_kind,
             version=crd.version,
             group=crd.group,
-            namespace=namespace,
         )
         for cr in crs:
             service = config_dicts.get(cr.service)

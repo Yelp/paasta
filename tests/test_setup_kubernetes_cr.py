@@ -457,7 +457,6 @@ def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS)
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
             group="yelp.com",
-            namespace="paasta-flinks",
         )
 
         # instance not exist, create
@@ -478,7 +477,6 @@ def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS)
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
             group="yelp.com",
-            namespace="paasta-flinks",
         )
 
         # instance not exist, create but error with k8s
@@ -500,5 +498,4 @@ def test_reconcile_kubernetes_resource(mock_LONG_RUNNING_INSTANCE_TYPE_HANDLERS)
             kind=mock_kind,
             formatted_resource=mock_format_custom_resource.return_value,
             group="yelp.com",
-            namespace="paasta-flinks",
         )

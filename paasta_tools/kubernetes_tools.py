@@ -3081,14 +3081,11 @@ def create_custom_resource(
     version: str,
     kind: KubeKind,
     group: str,
-    namespace: str = "",
 ) -> None:
-    if not namespace:
-        namespace = f"paasta-{kind.plural}"
     return kube_client.custom.create_namespaced_custom_object(
         group=group,
         version=version,
-        namespace=namespace,
+        namespace=f"paasta-{kind.plural}",
         plural=kind.plural,
         body=formatted_resource,
     )
@@ -3101,15 +3098,12 @@ def update_custom_resource(
     name: str,
     kind: KubeKind,
     group: str,
-    namespace: str = "",
 ) -> None:
-    if not namespace:
-        namespace = f"paasta-{kind.plural}"
     co = kube_client.custom.get_namespaced_custom_object(
         name=name,
         group=group,
         version=version,
-        namespace=namespace,
+        namespace=f"paasta-{kind.plural}",
         plural=kind.plural,
     )
     formatted_resource["metadata"]["resourceVersion"] = co["metadata"][
@@ -3119,7 +3113,7 @@ def update_custom_resource(
         name=name,
         group=group,
         version=version,
-        namespace=namespace,
+        namespace=f"paasta-{kind.plural}",
         plural=kind.plural,
         body=formatted_resource,
     )
@@ -3131,16 +3125,13 @@ def list_custom_resources(
     kube_client: KubeClient,
     group: str,
     label_selector: str = "",
-    namespace: str = "",
 ) -> Sequence[KubeCustomResource]:
-    if not namespace:
-        namespace = f"paasta-{kind.plural}"
     crs = kube_client.custom.list_namespaced_custom_object(
         group=group,
         version=version,
         label_selector=label_selector,
         plural=kind.plural,
-        namespace=namespace,
+        namespace=f"paasta-{kind.plural}",
     )
     kube_custom_resources = []
     for cr in crs["items"]:
