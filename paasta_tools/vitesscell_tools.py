@@ -30,7 +30,7 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
 
-KUBERNETES_NAMESPACE = "paasta-vitessclusters"
+VITESSCELL_KUBERNETES_NAMESPACE = "paasta-vitessclusters"
 
 
 # Global variables
@@ -283,7 +283,7 @@ def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(
         group="planetscale.com",
         version="v2",
-        namespace=KUBERNETES_NAMESPACE,
+        namespace=VITESSCELL_KUBERNETES_NAMESPACE,
         plural="vitesscells",
         name=sanitised_cr_name(service, instance),
     )
