@@ -21,7 +21,6 @@ from paasta_tools.oom_logger import capture_oom_events_from_stdin
 from paasta_tools.oom_logger import log_to_clog
 from paasta_tools.oom_logger import LogLine
 from paasta_tools.oom_logger import main
-from paasta_tools.oom_logger import parse_args
 from paasta_tools.oom_logger import send_sfx_event
 
 
@@ -118,6 +117,39 @@ def sys_stdin_kubernetes_structured_burstable_systemd_cgroup():
         "docker-e7ba37bd37089f8b1fda33c6f1fe753421ca6216518594bc73bca2ead7c13ba0.scope,"
         "task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod8a0a7a03_d305_4ebc_83ad_91180c9d5ef9.slice/"
         "docker-e7ba37bd37089f8b1fda33c6f1fe753421ca6216518594bc73bca2ead7c13ba0.scope,task=apache2,pid=1757658,uid=0\n",
+    ]
+
+
+@pytest.fixture
+def sys_stdin_kubernetes_containerd_systemd_cgroup_structured():
+    return [
+        "some random line1\n",
+        "1720128512 dev208-uswest1adevc [ 7195.442797] python3 invoked oom-killer: "
+        "gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=999\n",
+        "some random line2\n",
+        "1720128512 dev208-uswest1adevc [ 7195.442928] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "cpuset=cri-containerd-e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c.scope,"
+        "mems_allowed=0,oom_memcg=/kubepods.slice/kubepods-burstable.slice/"
+        "kubepods-burstable-pod08768c36_163c_40e5_8e49_09cf42ff5046.slice,"
+        "task_memcg=/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod08768c36_163c_40e5_8e49_09cf42ff5046.slice/"
+        "cri-containerd-e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c.scope,task=python3,pid=485850,uid=33\n",
+    ]
+
+
+@pytest.fixture
+def sys_stdin_kubernetes_containerd_systemd_cgroup():
+    return [
+        "some random line1\n",
+        "1720128512 dev208-uswest1adevc [42201.484624] python3 invoked oom-killer: "
+        "gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=999\n",
+        "some random line2\n",
+        "1720128512 dev208-uswest1adevc [42201.484749] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "nodemask=(null),cpuset=kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,"
+        "mems_allowed=0,oom_memcg=/system.slice/kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,"
+        "task_memcg=/system.slice/kubepods-burstable-pod73331cbb_9b96_4a62_9702_46a56ad49dd0.slice:"
+        "cri-containerd:52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199,task=python3,pid=4190418,uid=33\n",
     ]
 
 
@@ -248,6 +280,42 @@ def test_capture_oom_events_from_stdin_kubernetes_structured_burstable_systemd_c
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup(
+    mock_sys_stdin,
+    sys_stdin_kubernetes_containerd_systemd_cgroup,
+):
+    mock_sys_stdin.readline.side_effect = sys_stdin_kubernetes_containerd_systemd_cgroup
+    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+    assert test_output == [
+        (
+            1720128512,
+            "dev208-uswest1adevc",
+            "52f9ece9bcf929a08951aa3b4312fbec50890d82b58988f91a0aa9dc96ebc199",
+            "python3",
+        )
+    ]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
+def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup_structured(
+    mock_sys_stdin,
+    sys_stdin_kubernetes_containerd_systemd_cgroup_structured,
+):
+    mock_sys_stdin.readline.side_effect = (
+        sys_stdin_kubernetes_containerd_systemd_cgroup_structured
+    )
+    test_output = [a_tuple for a_tuple in capture_oom_events_from_stdin()]
+    assert test_output == [
+        (
+            1720128512,
+            "dev208-uswest1adevc",
+            "e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
+            "python3",
+        )
+    ]
+
+
+@patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
 def test_capture_oom_events_from_stdin_with_slashes(
     mock_sys_stdin, sys_stdin_process_name_with_slashes
 ):
@@ -343,11 +411,6 @@ def test_send_sfx_event(mock_get_instance_config):
             "paasta.service.oom_count", default_dimensions=expected_dimensions
         )
         assert mock_meteorite.create_counter.return_value.count.call_count == 1
-
-
-@patch("paasta_tools.oom_logger.argparse", autospec=True)
-def test_parse_args(mock_argparse):
-    assert parse_args() == mock_argparse.ArgumentParser.return_value.parse_args()
 
 
 @patch("paasta_tools.oom_logger.sys.stdin", autospec=True)
