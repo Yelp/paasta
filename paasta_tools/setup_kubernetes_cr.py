@@ -50,6 +50,7 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.vitesscell_tools import load_vitess_cell_instance_configs
+from paasta_tools.vitesscell_tools import update_vitess_cell_related_api_objects
 from paasta_tools.vitesscell_tools import VITESSCELL_KUBERNETES_NAMESPACE
 from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_configs
 from paasta_tools.vitesscluster_tools import VITESSCLUSTER_KUBERNETES_NAMESPACE
@@ -64,6 +65,11 @@ INSTANCE_TYPE_TO_CONFIG_LOADER = {
     "vitesscluster": load_vitess_cluster_instance_configs,
     "vitesscell": load_vitess_cell_instance_configs,
     "vitesskeyspace": load_vitess_keyspace_instance_configs,
+}
+
+
+INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER = {
+    "vitesscell": update_vitess_cell_related_api_objects,
 }
 
 
@@ -444,6 +450,15 @@ def reconcile_kubernetes_resource(
                 )
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")
+
+            if crd.file_prefix in INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER:
+                INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER[crd.file_prefix](
+                    service=service,
+                    instance=inst,
+                    cluster=cluster,
+                    kube_client=kube_client,
+                    soa_dir=DEFAULT_SOA_DIR,
+                )
         except Exception as e:
             log.error(str(e))
             succeeded = False

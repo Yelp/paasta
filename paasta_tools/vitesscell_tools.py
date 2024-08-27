@@ -8,7 +8,9 @@ from typing import TypedDict
 from typing import Union
 
 import service_configuration_lib
+from kubernetes.client import V2beta2CrossVersionObjectReference
 
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.utils import BranchDictV2
@@ -59,6 +61,7 @@ class GatewayConfigDict(TypedDict, total=False):
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
+    scale_selector: str
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
 
@@ -115,6 +118,7 @@ def get_cell_config(
             },
             extraLabels=labels,
             replicas=replicas,
+            scale_selector=",".join([f"{k}={v}" for k, v in labels.items()]),
             resources={
                 "requests": requests,
                 "limits": requests,
@@ -174,6 +178,69 @@ class VitessCellConfig(VitessDeploymentConfig):
             "address": zk_address,
             "rootPath": TOPO_GLOBAL_ROOT,
         }
+
+    def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
+        return V2beta2CrossVersionObjectReference(
+            api_version="planetscale.com/v2", kind="VitessCell", name=name
+        )
+
+    def get_min_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("min_instances", 1)
+
+    def get_max_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("max_instances")
+
+    def update_related_api_objects(
+        self,
+        kube_client: KubeClient,
+    ):
+        name = sanitised_cr_name(self.service, self.instance)
+
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        min_instances = vtgate_resources.get("min_instances", 1)
+        max_instances = vtgate_resources.get("max_instances")
+        should_exist = min_instances and max_instances
+
+        exists = (
+            len(
+                kube_client.autoscaling.list_namespaced_horizontal_pod_autoscaler(
+                    field_selector=f"metadata.name={name}",
+                    namespace=self.get_namespace(),
+                    limit=1,
+                ).items
+            )
+            > 0
+        )
+
+        if should_exist:
+            hpa = self.get_autoscaling_metric_spec(
+                name=name,
+                cluster=self.get_cluster(),
+                kube_client=kube_client,
+                namespace=self.get_namespace(),
+            )
+            if not hpa:
+                return
+
+            if exists:
+                kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
+                    name=name,
+                    namespace=self.get_namespace(),
+                    body=hpa,
+                )
+            else:
+                log.info(f"Creating HPA for {name} in {self.get_namespace()}")
+                kube_client.autoscaling.create_namespaced_horizontal_pod_autoscaler(
+                    namespace=self.get_namespace(),
+                    body=hpa,
+                )
+        elif exists:
+            kube_client.autoscaling.delete_namespaced_horizontal_pod_autoscaler(
+                name=name,
+                namespace=self.get_namespace(),
+            )
 
     def get_vitess_cell_config(self) -> VitessCellConfigDict:
         cell = self.config_dict.get("cell")
@@ -276,6 +343,18 @@ def load_vitess_cell_instance_configs(
         service, instance, cluster, soa_dir=soa_dir
     ).get_vitess_cell_config()
     return vitess_cell_instance_configs
+
+
+def update_vitess_cell_related_api_objects(
+    service: str,
+    instance: str,
+    cluster: str,
+    kube_client: KubeClient,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> None:
+    load_vitess_cell_instance_config(
+        service, instance, cluster, soa_dir=soa_dir
+    ).update_related_api_objects(kube_client)
 
 
 # TODO: read this from CRD in service configs
