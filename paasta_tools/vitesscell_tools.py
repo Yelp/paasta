@@ -400,7 +400,7 @@ def update_vitess_cell_related_api_objects(
     cluster: str,
     kube_client: KubeClient,
     soa_dir: str = DEFAULT_SOA_DIR,
-) -> VitessCellConfigDict:
+) -> None:
     load_vitess_cell_instance_config(
         service, instance, cluster, soa_dir=soa_dir
     ).update_related_api_objects(kube_client)
