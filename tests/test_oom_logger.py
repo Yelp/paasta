@@ -125,10 +125,10 @@ def sys_stdin_kubernetes_structured_burstable_systemd_cgroup():
 def sys_stdin_kubernetes_containerd_systemd_cgroup_structured():
     return [
         "some random line1\n",
-        "1720128512 dev208-uswest1adevc [ 7195.442797] python3 invoked oom-killer: "
+        "1720128512 dev37-devc [ 7195.442797] python3 invoked oom-killer: "
         "gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=999\n",
         "some random line2\n",
-        "1720128512 dev208-uswest1adevc [ 7195.442928] oom-kill:constraint=CONSTRAINT_MEMCG,"
+        "1720128512 dev37-devc [ 7195.442928] oom-kill:constraint=CONSTRAINT_MEMCG,"
         "cpuset=cri-containerd-e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c.scope,"
         "mems_allowed=0,oom_memcg=/kubepods.slice/kubepods-burstable.slice/"
         "kubepods-burstable-pod08768c36_163c_40e5_8e49_09cf42ff5046.slice,"
@@ -220,7 +220,6 @@ def containerd_inspect():
                 "PAASTA_SERVICE=fake_service",
                 "PAASTA_INSTANCE=fake_instance",
                 "PAASTA_RESOURCE_MEM=512",
-                "MESOS_CONTAINER_NAME=mesos-a04c14a6-83ea-4047-a802-92b850b1624e",
             ]
         }
     }
@@ -245,13 +244,13 @@ def log_line():
 def log_line_containerd():
     return LogLine(
         timestamp=1720128512,
-        hostname="dev208-uswest1adevc",
+        hostname="dev37-devc",
         container_id="e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
         cluster="fake_cluster",
         service="fake_service",
         instance="fake_instance",
         process_name="python3",
-        mesos_container_id="mesos-a04c14a6-83ea-4047-a802-92b850b1624e",
+        mesos_container_id="mesos-null",
         mem_limit="512",
     )
 
@@ -338,7 +337,7 @@ def test_capture_oom_events_from_stdin_kubernetes_containerd_systemd_cgroup_stru
     assert test_output == [
         (
             1720128512,
-            "dev208-uswest1adevc",
+            "dev37-devc",
             "e216d2f1e6c625d363c71edb6b3cbab5a9e1b447641b61028d0b94b077adf27c",
             "python3",
         )
