@@ -49,12 +49,18 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.vitesscell_tools import (
+    KUBERNETES_NAMESPACE as VITESSCELL_KUBERNETES_NAMESPACE,
+)
 from paasta_tools.vitesscell_tools import load_vitess_cell_instance_configs
-from paasta_tools.vitesscell_tools import VITESSCELL_KUBERNETES_NAMESPACE
+from paasta_tools.vitesscluster_tools import (
+    KUBERNETES_NAMESPACE as VITESSCLUSTER_KUBERNETES_NAMESPACE,
+)
 from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_configs
-from paasta_tools.vitesscluster_tools import VITESSCLUSTER_KUBERNETES_NAMESPACE
+from paasta_tools.vitesskeyspace_tools import (
+    KUBERNETES_NAMESPACE as VITESSKEYSPACE_KUBERNETES_NAMESPACE,
+)
 from paasta_tools.vitesskeyspace_tools import load_vitess_keyspace_instance_configs
-from paasta_tools.vitesskeyspace_tools import VITESSKEYSPACE_KUBERNETES_NAMESPACE
 
 
 log = logging.getLogger(__name__)
@@ -67,7 +73,7 @@ INSTANCE_TYPE_TO_CONFIG_LOADER = {
 }
 
 
-INSTANCE_TYPE_TO_NAMESPACE_LOADER = {
+INSTANCE_TYPE_TO_NAMESPACE_MAPPING = {
     "vitesscluster": VITESSCLUSTER_KUBERNETES_NAMESPACE,
     "vitesscell": VITESSCELL_KUBERNETES_NAMESPACE,
     "vitesskeyspace": VITESSKEYSPACE_KUBERNETES_NAMESPACE,
@@ -250,8 +256,8 @@ def setup_custom_resources(
 ) -> bool:
     succeded = True
     if config_dicts:
-        if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_LOADER:
-            namespace = INSTANCE_TYPE_TO_NAMESPACE_LOADER[crd.file_prefix]
+        if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_MAPPING:
+            namespace = INSTANCE_TYPE_TO_NAMESPACE_MAPPING[crd.file_prefix]
         else:
             namespace = f"paasta-{kind.plural}"
         crs = list_custom_resources(
@@ -387,8 +393,8 @@ def reconcile_kubernetes_resource(
                     cluster=cluster,
                     soa_dir=DEFAULT_SOA_DIR,
                 )
-            if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_LOADER:
-                namespace = INSTANCE_TYPE_TO_NAMESPACE_LOADER[crd.file_prefix]
+            if crd.file_prefix in INSTANCE_TYPE_TO_NAMESPACE_MAPPING:
+                namespace = INSTANCE_TYPE_TO_NAMESPACE_MAPPING[crd.file_prefix]
             else:
                 namespace = f"paasta-{kind.plural}"
             git_sha = get_git_sha_from_dockerurl(soa_config.get_docker_url(), long=True)
