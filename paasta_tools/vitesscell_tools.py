@@ -67,7 +67,7 @@ class GatewayConfigDict(TypedDict, total=False):
     extraFlags: Dict[str, str]
     extraLabels: Dict[str, str]
     replicas: int
-    scale_selector: str
+    yelp_selector: str
     resources: Dict[str, Any]
     annotations: Mapping[str, Any]
 
@@ -124,7 +124,7 @@ def get_cell_config(
             },
             extraLabels=labels,
             replicas=replicas,
-            scale_selector=",".join([f"{k}={v}" for k, v in labels.items()]),
+            yelp_selector=",".join([f"{k}={v}" for k, v in labels.items()]),
             resources={
                 "requests": requests,
                 "limits": requests,
