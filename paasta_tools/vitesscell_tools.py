@@ -9,12 +9,10 @@ from typing import Union
 
 import service_configuration_lib
 from kubernetes.client import V1ObjectMeta
-from kubernetes.client import V1OwnerReference
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
 
-from paasta_tools.kubernetes_tools import get_cr
 from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import paasta_prefixed
@@ -187,14 +185,35 @@ class VitessCellConfig(VitessDeploymentConfig):
             "rootPath": TOPO_GLOBAL_ROOT,
         }
 
-    def get_desired_hpa(
+    def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
+        return V2beta2CrossVersionObjectReference(
+            api_version="planetscale.com/v2", kind="VitessCell", name=name
+        )
+
+    def get_autoscaling_metric_spec(
         self,
+        name: str,
+        cluster: str,
         kube_client: KubeClient,
-        owner_uid: str,
-        min_replicas: Optional[int],
-        max_replicas: Optional[int],
+        namespace: str,
     ) -> Optional[V2beta2HorizontalPodAutoscaler]:
-        name = sanitised_cr_name(self.service, self.instance)
+        # Returns None if an HPA should not be attached based on the config,
+        # or the config is invalid.
+
+        if self.get_desired_state() == "stop":
+            return None
+
+        if not self.is_autoscaling_enabled():
+            return None
+
+        min_replicas = self.get_min_instances()
+        max_replicas = self.get_max_instances()
+        if min_replicas == 0 or max_replicas == 0:
+            log.error(
+                f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"
+            )
+            return None
+
         return V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
@@ -207,21 +226,11 @@ class VitessCellConfig(VitessDeploymentConfig):
                     paasta_prefixed("pool"): self.get_pool(),
                     paasta_prefixed("managed"): "true",
                 },
-                owner_references=[
-                    V1OwnerReference(
-                        api_version="planetscale.com/v2",
-                        kind="VitessCell",
-                        name=name,
-                        uid=owner_uid,
-                        controller=True,
-                        block_owner_deletion=True,
-                    ),
-                ],
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
                 behavior=self.get_autoscaling_scaling_policy(max_replicas, {}),
-                max_replicas=max_replicas,
-                min_replicas=min_replicas,
+                max_replicas=self.get_max_instances(),
+                min_replicas=self.get_min_instances(),
                 metrics=[
                     self.get_autoscaling_provider_spec(
                         name=name,
@@ -232,11 +241,17 @@ class VitessCellConfig(VitessDeploymentConfig):
                         },
                     ),
                 ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="planetscale.com/v2", kind="VitessCell", name=name
-                ),
+                scale_target_ref=self.get_autoscaling_target(name),
             ),
         )
+
+    def get_min_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("min_instances", 1)
+
+    def get_max_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("max_instances")
 
     def update_related_api_objects(
         self,
@@ -244,9 +259,8 @@ class VitessCellConfig(VitessDeploymentConfig):
     ):
         name = sanitised_cr_name(self.service, self.instance)
 
-        vtgate_resources = self.config_dict.get("vtgate_resources")
-        min_instances = vtgate_resources.get("min_instances", 1)
-        max_instances = vtgate_resources.get("max_instances")
+        min_instances = self.get_min_instances()
+        max_instances = self.get_max_instances()
         should_exist = min_instances and max_instances
 
         exists = (
@@ -261,18 +275,15 @@ class VitessCellConfig(VitessDeploymentConfig):
         )
 
         if should_exist:
-            vitesscell_cr = get_cr(kube_client, cr_id(self.service, self.instance))
-            if not vitesscell_cr:
-                # We need the uid of the VitessCell CR to set the owner reference on the HPA.
+            hpa = self.get_autoscaling_metric_spec(
+                name=sanitised_cr_name(self.service, self.instance),
+                cluster=self.get_cluster(),
+                kube_client=kube_client,
+                namespace=self.get_namespace(),
+            )
+            if not hpa:
                 return
 
-            owner_uid = vitesscell_cr["metadata"]["uid"]
-            hpa = self.get_desired_hpa(
-                kube_client=kube_client,
-                owner_uid=owner_uid,
-                min_replicas=min_instances,
-                max_replicas=max_instances,
-            )
             if exists:
                 kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
                     name=name,
