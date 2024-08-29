@@ -1,3 +1,30 @@
+paasta-tools (1.4.26) xenial; urgency=medium
+
+  * 1.4.26 tagged with 'make release'
+    Commit: Adding containerd compatability to oom_logger - COMPINFRA-
+    3947 (#3904)  * Adding containerd compatability to oom_logger  *
+    Addressing reviews + adding new regex for containerd  * Adding in
+    addition to the nerdctl regex a regex for capturing containerd-cri
+    oom  * Updating packages for the k8s_itest to pass  * use wheels +
+    main internal pypi  * Revert "Updating packages for the k8s_itest to
+    pass"  This reverts commit 52b62c8b3b85ec008cc15832dbd31a57a0ee947f.
+    * update addict  * update argcomplete  * Revert "update argcomplete"
+    This reverts commit 8a9f0d1ad3a7397c48358aee17f3b8c12ec1399f.  *
+    Revert "update addict"  This reverts commit
+    aa1df405459b35b060446fc96f37fb710eec161d.  * prefer binary  * prefer
+    binary harder  * prefer binary this way  * maybe?  * missed a spot
+    * upgrade??  * do we still need deadsnakes here  * anotha one  *
+    more fixes  * deadsnakes  * distutils is fun  * cleanup  * Revert
+    "Updating packages for the k8s_itest to pass"  This reverts commit
+    52b62c8b3b85ec008cc15832dbd31a57a0ee947f.  * Removed the nerdctl
+    regex and the adjusted ones for docker  * Address getting from
+    config when its none  * Add a less structured regex for containerd
+    * Added two tests to test the regex if its working  * Adding a unit
+    test for testing main with containerd=true  * Addressing more
+    reviews  ---------  Co-authored-by: Luis Perez <luisp@yelp.com>
+
+ -- Eman Elsabban <emanelsabban@yelp.com>  Thu, 29 Aug 2024 09:07:01 -0700
+
 paasta-tools (1.4.25) xenial; urgency=medium
 
   * 1.4.25 tagged with 'make release'
