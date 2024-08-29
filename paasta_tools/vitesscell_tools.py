@@ -17,8 +17,6 @@ from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
-from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
-from paasta_tools.long_running_service_tools import METRICS_PROVIDER_CPU
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -206,6 +204,10 @@ class VitessCellConfig(VitessDeploymentConfig):
         if not self.is_autoscaling_enabled():
             return None
 
+        autoscaling_params = self.get_autoscaling_params()
+        if autoscaling_params["metrics_providers"][0]["decision_policy"] == "bespoke":
+            return None
+
         min_replicas = self.get_min_instances()
         max_replicas = self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
@@ -214,36 +216,38 @@ class VitessCellConfig(VitessDeploymentConfig):
             )
             return None
 
-        return V2beta2HorizontalPodAutoscaler(
+        metrics = []
+        for provider in autoscaling_params["metrics_providers"]:
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
+            if spec is not None:
+                metrics.append(spec)
+        scaling_policy = self.get_autoscaling_scaling_policy(
+            max_replicas,
+            autoscaling_params,
+        )
+
+        labels = {
+            paasta_prefixed("service"): self.service,
+            paasta_prefixed("instance"): self.instance,
+            paasta_prefixed("pool"): self.get_pool(),
+            paasta_prefixed("managed"): "true",
+        }
+
+        hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name,
-                namespace=self.get_namespace(),
-                annotations=dict(),
-                labels={
-                    paasta_prefixed("service"): self.service,
-                    paasta_prefixed("instance"): self.instance,
-                    paasta_prefixed("pool"): self.get_pool(),
-                    paasta_prefixed("managed"): "true",
-                },
+                name=name, namespace=namespace, annotations=dict(), labels=labels
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
-                behavior=self.get_autoscaling_scaling_policy(max_replicas, {}),
-                max_replicas=self.get_max_instances(),
-                min_replicas=self.get_min_instances(),
-                metrics=[
-                    self.get_autoscaling_provider_spec(
-                        name=name,
-                        namespace=self.get_namespace(),
-                        provider={
-                            "type": METRICS_PROVIDER_CPU,
-                            "setpoint": DEFAULT_AUTOSCALING_SETPOINT,
-                        },
-                    ),
-                ],
+                behavior=scaling_policy,
+                max_replicas=max_replicas,
+                min_replicas=min_replicas,
+                metrics=metrics,
                 scale_target_ref=self.get_autoscaling_target(name),
             ),
         )
+
+        return hpa
 
     def get_min_instances(self) -> Optional[int]:
         vtgate_resources = self.config_dict.get("vtgate_resources")
