@@ -50,7 +50,9 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.vitesscell_tools import load_vitess_cell_instance_configs
-from paasta_tools.vitesscell_tools import update_vitess_cell_related_api_objects
+from paasta_tools.vitesscell_tools import (
+    update_related_api_objects as update_vitess_cell_related_api_objects,
+)
 from paasta_tools.vitesscell_tools import VITESSCELL_KUBERNETES_NAMESPACE
 from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_configs
 from paasta_tools.vitesscluster_tools import VITESSCLUSTER_KUBERNETES_NAMESPACE

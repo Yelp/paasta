@@ -345,7 +345,7 @@ def load_vitess_cell_instance_configs(
     return vitess_cell_instance_configs
 
 
-def update_vitess_cell_related_api_objects(
+def update_related_api_objects(
     service: str,
     instance: str,
     cluster: str,
