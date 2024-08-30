@@ -257,6 +257,28 @@
                     "minimum_error_rps": {
                         "type": "integer",
                         "minimum": 0
+                    },
+                    "namespace_alert": {
+                        "type": "boolean"
+                    },
+                    "endpoints": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "error_threshold_ratio": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                }
+                            },
+                            "required": [
+                                "name"
+                            ]
+                        }
                     }
                 }
             }

@@ -1072,7 +1072,7 @@ internally at Yelp.
      integer, this cannot be specified as a floating-point number.
 
 Error Alerting
-``````````````
+^^^^^^^^^^^^^^^^^^^^
 
 These keys provide optional overrides for the default alerting behaviour.
 
@@ -1088,18 +1088,32 @@ These keys provide optional overrides for the default alerting behaviour.
           page_nonprod: true
           error_threshold_ratio: 0.02
           minimum_error_rps: 10
-    - ``team``: Override the default team for alerting.
-    - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
-      Use this key if you prefer a different channel.
-    - ``project``: Override the default JIRA project for alerting.
-    - ``ticket``: Override the default ticketing behaviour. Error Alert ticketing defaults to **false** but also
-      respects the ticketing behaviour set in the monitoring.yaml file. Override that here if required.
-    - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
-      respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
-    - ``page_nonprod``: Override the default paging behaviour for non-production
-      environments. Defaults to **false**.
-    - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
-    - ``minimum_error_rps``: Minimum error rate per second, minimum is zero. Defaults to **5**.
+          namespace_alert: false
+          enpoints:
+            - name: GET /something
+            - name: GET /something/else
+              error_threshold_ratio: 0.05
+            - name: PUT /something
+              error_threshold_ratio: 0.01
+
+
+
+   - ``team``: Override the default team for alerting.
+   - ``slack_channel``: Error alerts notify the first channel in the monitoring.yaml slack_channels list.
+     Use this key if you prefer a different channel.
+   - ``project``: Override the default JIRA project for alerting.
+   - ``ticket``: Override the default ticketing behaviour. Error Alert ticketing defaults to **false** but also
+     respects the ticketing behaviour set in the monitoring.yaml file. Override that here if required.
+   - ``page``: Override the default paging behaviour. Error Alert paging defaults to **true** but also
+     respects the paging behaviour set in the monitoring.yaml file. Override that here if required.
+   - ``page_nonprod``: Override the default paging behaviour for non-production
+     environments. Defaults to **false**.
+   - ``error_threshold_ratio``: Error threshold ratio (0-1). Defaults to **0.01**.
+   - ``minimum_error_rps``: Minimum error rate per second, minimum is zero. Defaults to **5**.
+   - ``namespace_alert``: Toggle namespace alerting. Defaults to **true**.
+   - ``endpoints``: List of enpoints to create alerts for.
+      - ``name``: The name of the endpoint.
+      - ``error_threshold_ratio``: Error threshold ratio (0-1). If not specified the threshold will be inherited from the parent.
 
 Moving a Service to a different location type
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1121,7 +1135,7 @@ to ensure Marathon balances the tasks evenly::
 
     extra_constraints: [['region', 'GROUP_BY', 2]]
 
-2. (Optional) Use zkCli.sh to monitor your new registrations for each
+1. (Optional) Use zkCli.sh to monitor your new registrations for each
 superregion you are changing::
 
     $ /usr/share/zookeeper/bin/zkCli.sh
