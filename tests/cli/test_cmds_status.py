@@ -2162,8 +2162,10 @@ class TestPrintKubernetesStatus:
     )
     @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_output(
         self,
+        mock_datetime,
         mock_bouncing_status,
         mock_desired_state,
         mock_kubernetes_app_deploy_status_human,
@@ -2173,6 +2175,8 @@ class TestPrintKubernetesStatus:
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
+        specific_datetime = datetime.datetime(2019, 7, 12, 13, 31)
+        mock_datetime.fromtimestamp.return_value = specific_datetime
         mock_desired_state.return_value = "Started"
         mock_kubernetes_app_deploy_status_human.return_value = "Running"
         mock_naturaltime.return_value = "a month ago"
@@ -2869,11 +2873,16 @@ class TestFormatKubernetesPodTable:
             config_sha=None,
         )
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_pod_table(
         self,
+        mock_datetime,
         mock_naturaltime,
         mock_kubernetes_pod,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict == {
@@ -2883,11 +2892,16 @@ class TestFormatKubernetesPodTable:
             "Health": PaastaColors.green("Healthy"),
         }
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_replicaset_table(
         self,
+        mock_datetime,
         mock_naturaltime,
         mock_kubernetes_replicaset,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
         replicaset_table_dict = _formatted_table_to_dict(output)
         assert replicaset_table_dict == {
