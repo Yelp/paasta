@@ -2233,13 +2233,13 @@ class TestPrintKubernetesStatus:
         expected_output += [
             f"      Pods:",
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
-            f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_3   fake_host3        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
+            f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
             f"        {PaastaColors.grey('  Disk quota exceeded')}",
             f"      ReplicaSets:",
             f"        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
-            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
+            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
         assert expected_output == output
@@ -2879,7 +2879,7 @@ class TestFormatKubernetesPodTable:
         assert pod_table_dict == {
             "Pod ID": "abc123",
             "Host deployed to": "paasta.cloud",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Deployed at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Health": PaastaColors.green("Healthy"),
         }
 
@@ -2893,7 +2893,7 @@ class TestFormatKubernetesPodTable:
         assert replicaset_table_dict == {
             "ReplicaSet Name": "abc123",
             "Ready / Desired": PaastaColors.green("3/3"),
-            "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Created at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Service git SHA": "def456",
             "Config hash": "Unknown",
         }
