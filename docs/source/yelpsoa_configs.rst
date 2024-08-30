@@ -1135,7 +1135,7 @@ to ensure Marathon balances the tasks evenly::
 
     extra_constraints: [['region', 'GROUP_BY', 2]]
 
-1. (Optional) Use zkCli.sh to monitor your new registrations for each
+2. (Optional) Use zkCli.sh to monitor your new registrations for each
 superregion you are changing::
 
     $ /usr/share/zookeeper/bin/zkCli.sh
