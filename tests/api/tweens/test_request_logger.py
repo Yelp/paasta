@@ -86,7 +86,7 @@ def test_request_logger_tween_factory_log(mock_clog, mock_factory):
                 '{"additional_key": "additional_value", '
                 '"cluster": "a_cluster", '
                 '"hostname": "a_hostname", '
-                '"human_timestamp": "2020-05-18T11:54:09", '
+                '"human_timestamp": "2020-05-18T18:54:09", '
                 '"level": "ERROR", '
                 '"unix_timestamp": 1589828049.0}'
             ),
