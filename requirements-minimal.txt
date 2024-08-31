@@ -51,7 +51,7 @@ pytimeparse >= 1.1.0
 pytz >= 2014.10
 # the upper-bound is required for older docker-py (<=7.0.0)
 # to function: https://github.com/psf/requests/issues/6707
-requests >= 2.18.4, <2.32.0
+requests >= 2.18.4, < 2.33.0
 requests-cache >= 0.4.10
 retry
 ruamel.yaml
