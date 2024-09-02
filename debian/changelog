@@ -1,3 +1,10 @@
+paasta-tools (1.4.28) xenial; urgency=medium
+
+  * 1.4.28 tagged with 'make release'
+    Commit: Merge branch "u/mpiano/SEC-19431"
+
+ -- Matteo Piano <mpiano@yelp.com>  Mon, 02 Sep 2024 06:25:12 -0700
+
 paasta-tools (1.4.27) xenial; urgency=medium
 
   * 1.4.27 tagged with 'make release'
