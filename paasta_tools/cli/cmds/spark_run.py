@@ -26,6 +26,7 @@ from service_configuration_lib.spark_config import UnsupportedClusterManagerExce
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import get_instance_config
+from paasta_tools.cli.utils import get_service_auth_token
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.clusterman import get_clusterman_metrics
@@ -335,6 +336,18 @@ def add_subparser(subparsers):
         help="Tron job id <job_name>.<action_name> in the Tronfig to run. Use wuth --tronfig.",
         type=str,
         default=None,
+    )
+
+    list_parser.add_argument(
+        "--use-service-auth-token",
+        help=(
+            "Acquire service authentication token for the underlying instance,"
+            " and set it in the container environment"
+        ),
+        action="store_true",
+        dest="use_service_auth_token",
+        required=False,
+        default=False,
     )
 
     aws_group = list_parser.add_argument_group(
@@ -794,6 +807,9 @@ def configure_and_run_docker_container(
         )
     )  # type:ignore
     environment.update(extra_driver_envs)
+
+    if args.use_service_auth_token:
+        environment["YELP_SVC_AUTHZ_TOKEN"] = get_service_auth_token()
 
     webui_url = get_webui_url(spark_conf["spark.ui.port"])
     webui_url_msg = PaastaColors.green(f"\nSpark monitoring URL: ") + f"{webui_url}\n"

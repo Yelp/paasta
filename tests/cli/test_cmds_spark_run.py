@@ -493,6 +493,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_shm_size = False
         args.tronfig = None
         args.job_id = None
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -607,6 +608,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_cpu_limit = 3
         args.docker_memory_limit = "4g"
         args.docker_shm_size = "1g"
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -721,6 +723,7 @@ class TestConfigureAndRunDockerContainer:
         args.docker_cpu_limit = False
         args.docker_memory_limit = False
         args.docker_shm_size = False
+        args.use_service_auth_token = False
         with mock.patch.object(
             self.instance_config, "get_env_dictionary", return_value={"env1": "val1"}
         ):
@@ -792,7 +795,9 @@ class TestConfigureAndRunDockerContainer:
                 "spark.app.name": "fake app",
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
-            args = mock.MagicMock(cmd="pyspark", nvidia=True)
+            args = mock.MagicMock(
+                cmd="pyspark", nvidia=True, use_service_auth_token=False
+            )
 
             configure_and_run_docker_container(
                 args=args,
@@ -828,7 +833,9 @@ class TestConfigureAndRunDockerContainer:
                 "spark.app.name": "fake_app",
                 "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
             }
-            args = mock.MagicMock(cmd="python mrjob_wrapper.py", mrjob=True)
+            args = mock.MagicMock(
+                cmd="python mrjob_wrapper.py", mrjob=True, use_service_auth_token=False
+            )
 
             configure_and_run_docker_container(
                 args=args,
@@ -856,7 +863,7 @@ class TestConfigureAndRunDockerContainer:
             "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
         ):
             mock_create_spark_config_str.return_value = "--conf spark.cores.max=5"
-            args = mock.MagicMock(cmd="bash", mrjob=False)
+            args = mock.MagicMock(cmd="bash", mrjob=False, use_service_auth_token=False)
 
             configure_and_run_docker_container(
                 args=args,
@@ -868,6 +875,46 @@ class TestConfigureAndRunDockerContainer:
                 cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
                 pod_template_path="unique-run",
             )
+
+    @mock.patch("paasta_tools.cli.cmds.spark_run.get_service_auth_token", autospec=True)
+    def test_configure_and_run_docker_container_auth_token(
+        self,
+        mock_get_service_auth_token,
+        mock_create_spark_config_str,
+        mock_get_docker_cmd,
+        mock_get_webui_url,
+        mock_run_docker_container,
+        mock_get_username,
+    ):
+        mock_get_service_auth_token.return_value = "foobar"
+        with mock.patch(
+            "paasta_tools.cli.cmds.spark_run.clusterman_metrics", autospec=True
+        ):
+            spark_conf = {
+                "spark.cores.max": "5",
+                "spark.executor.cores": 1,
+                "spark.executor.memory": "2g",
+                "spark.master": "mesos://spark.master",
+                "spark.ui.port": "1234",
+                "spark.app.name": "fake app",
+                "spark.executorEnv.PAASTA_CLUSTER": "test-cluster",
+            }
+            args = mock.MagicMock(
+                cmd="pyspark",
+                use_service_auth_token=True,
+            )
+            configure_and_run_docker_container(
+                args=args,
+                docker_img="fake-registry/fake-service",
+                instance_config=self.instance_config,
+                system_paasta_config=self.system_paasta_config,
+                aws_creds=("id", "secret", "token"),
+                spark_conf=spark_conf,
+                cluster_manager=spark_run.CLUSTER_MANAGER_K8S,
+                pod_template_path="unique-run",
+            )
+            args, kwargs = mock_run_docker_container.call_args
+            assert kwargs["environment"]["YELP_SVC_AUTHZ_TOKEN"] == "foobar"
 
 
 @pytest.mark.parametrize(
