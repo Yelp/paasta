@@ -1089,7 +1089,7 @@ These keys provide optional overrides for the default alerting behaviour.
           error_threshold_ratio: 0.02
           minimum_error_rps: 10
           namespace_alert: false
-          enpoints:
+          endpoints:
             - name: GET /something
             - name: GET /something/else
               error_threshold_ratio: 0.05
