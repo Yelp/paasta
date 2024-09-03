@@ -2162,8 +2162,10 @@ class TestPrintKubernetesStatus:
     )
     @patch("paasta_tools.cli.cmds.status.desired_state_human", autospec=True)
     @patch("paasta_tools.cli.cmds.status.bouncing_status_human", autospec=True)
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_output(
         self,
+        mock_datetime,
         mock_bouncing_status,
         mock_desired_state,
         mock_kubernetes_app_deploy_status_human,
@@ -2173,6 +2175,8 @@ class TestPrintKubernetesStatus:
         mock_kubernetes_status,
     ):
         mock_bouncing_status.return_value = "Bouncing (crossover)"
+        specific_datetime = datetime.datetime(2019, 7, 12, 13, 31)
+        mock_datetime.fromtimestamp.return_value = specific_datetime
         mock_desired_state.return_value = "Started"
         mock_kubernetes_app_deploy_status_human.return_value = "Running"
         mock_naturaltime.return_value = "a month ago"
@@ -2233,13 +2237,13 @@ class TestPrintKubernetesStatus:
         expected_output += [
             f"      Pods:",
             f"        Pod ID  Host deployed to  Deployed at what localtime      Health",
-            f"        app_1   fake_host1        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_2   fake_host2        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
-            f"        app_3   fake_host3        2019-07-12T20:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
+            f"        app_1   fake_host1        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_2   fake_host2        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.green('Healthy')}",
+            f"        app_3   fake_host3        2019-07-12T13:31 ({mock_naturaltime.return_value})  {PaastaColors.red('Evicted')}",
             f"        {PaastaColors.grey('  Disk quota exceeded')}",
             f"      ReplicaSets:",
             f"        ReplicaSet Name  Ready / Desired  Created at what localtime       Service git SHA  Config hash",
-            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T20:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
+            f"        replicaset_1     {PaastaColors.red('2/3')}              2019-07-12T13:31 ({mock_naturaltime.return_value})  Unknown          Unknown",
         ]
 
         assert expected_output == output
@@ -2869,31 +2873,41 @@ class TestFormatKubernetesPodTable:
             config_sha=None,
         )
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_pod_table(
         self,
+        mock_datetime,
         mock_naturaltime,
         mock_kubernetes_pod,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_pod_table([mock_kubernetes_pod], verbose=0)
         pod_table_dict = _formatted_table_to_dict(output)
         assert pod_table_dict == {
             "Pod ID": "abc123",
             "Host deployed to": "paasta.cloud",
-            "Deployed at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Deployed at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Health": PaastaColors.green("Healthy"),
         }
 
+    @patch("paasta_tools.cli.cmds.status.datetime", autospec=True)
     def test_format_kubernetes_replicaset_table(
         self,
+        mock_datetime,
         mock_naturaltime,
         mock_kubernetes_replicaset,
     ):
+        mock_date = MagicMock()
+        mock_date.strftime.return_value = "2019-08-12T15:23"
+        mock_datetime.fromtimestamp.return_value = mock_date
         output = format_kubernetes_replicaset_table([mock_kubernetes_replicaset])
         replicaset_table_dict = _formatted_table_to_dict(output)
         assert replicaset_table_dict == {
             "ReplicaSet Name": "abc123",
             "Ready / Desired": PaastaColors.green("3/3"),
-            "Created at what localtime": f"2019-08-12T22:23 ({mock_naturaltime.return_value})",
+            "Created at what localtime": f"2019-08-12T15:23 ({mock_naturaltime.return_value})",
             "Service git SHA": "def456",
             "Config hash": "Unknown",
         }
