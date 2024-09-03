@@ -1216,6 +1216,18 @@ def load_vitess_service_instance_configs(
     return vitess_service_instance_configs
 
 
+def update_related_api_objects(
+    service: str,
+    instance: str,
+    cluster: str,
+    kube_client: KubeClient,
+    soa_dir: str = DEFAULT_SOA_DIR,
+) -> None:
+    load_vitess_instance_config(
+        service, instance, cluster, soa_dir=soa_dir
+    ).update_related_api_objects(kube_client)
+
+
 # TODO: read this from CRD in service configs
 def cr_id(service: str, instance: str) -> Mapping[str, str]:
     return dict(

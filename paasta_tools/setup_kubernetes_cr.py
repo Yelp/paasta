@@ -50,12 +50,20 @@ from paasta_tools.utils import get_git_sha_from_dockerurl
 from paasta_tools.utils import load_all_configs
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.vitesscluster_tools import load_vitess_service_instance_configs
+from paasta_tools.vitesscluster_tools import (
+    update_related_api_objects as update_vitess_cluster_related_api_objects,
+)
 
 
 log = logging.getLogger(__name__)
 
 
 INSTANCE_TYPE_TO_CONFIG_LOADER = {"vitesscluster": load_vitess_service_instance_configs}
+
+
+INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER = {
+    "vitesscluster": update_vitess_cluster_related_api_objects,
+}
 
 
 class StdoutKubeClient:
@@ -415,9 +423,15 @@ def reconcile_kubernetes_resource(
                 )
             else:
                 log.info(f"{desired_resource} is up to date, no action taken")
-            log.info(f"Ensuring related API objects for {desired_resource} are in sync")
-            if hasattr(soa_config, "update_related_api_objects"):
-                soa_config.update_related_api_objects(kube_client)
+
+            if crd.file_prefix in INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER:
+                INSTANCE_TYPE_TO_RELATED_OBJECTS_UPDATER[crd.file_prefix](
+                    service=service,
+                    instance=inst,
+                    cluster=cluster,
+                    kube_client=kube_client,
+                    soa_dir=DEFAULT_SOA_DIR,
+                )
         except Exception as e:
             log.error(str(e))
             succeeded = False
