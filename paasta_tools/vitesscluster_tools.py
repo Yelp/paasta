@@ -12,13 +12,9 @@ from typing import Union
 import service_configuration_lib
 from kubernetes.client import ApiClient
 from kubernetes.client import V1ObjectMeta
-from kubernetes.client import V1OwnerReference
 from kubernetes.client import V2beta2CrossVersionObjectReference
 from kubernetes.client import V2beta2HorizontalPodAutoscaler
 from kubernetes.client import V2beta2HorizontalPodAutoscalerSpec
-from kubernetes.client import V2beta2MetricSpec
-from kubernetes.client import V2beta2MetricTarget
-from kubernetes.client import V2beta2ResourceMetricSource
 from kubernetes.client.rest import ApiException
 
 from paasta_tools.kubernetes_tools import get_cr
@@ -29,7 +25,6 @@ from paasta_tools.kubernetes_tools import limit_size_with_hash
 from paasta_tools.kubernetes_tools import paasta_prefixed
 from paasta_tools.kubernetes_tools import sanitised_cr_name
 from paasta_tools.long_running_service_tools import load_service_namespace_config
-from paasta_tools.long_running_service_tools import DEFAULT_AUTOSCALING_SETPOINT
 from paasta_tools.utils import BranchDictV2
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -854,7 +849,9 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         return {"type": "Immediate"}
 
     def is_vtgate_autoscaling_enabled(self, cell_config) -> bool:
-        return cell_config["gateway"]["max_instances"] is not None
+        min_instances = self.get_min_instances()
+        max_instances = self.get_max_instances()
+        return min_instances and max_instances
 
     def get_desired_vtgate_cr(
         self,
@@ -891,79 +888,79 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             },
         }
 
-    def get_desired_horizontal_pod_autoscaler(
+    def get_autoscaling_target(self, name: str) -> V2beta2CrossVersionObjectReference:
+        return V2beta2CrossVersionObjectReference(
+            api_version="yelp.com/v1alpha1", kind="Vtgate", name=name
+        )
+
+    def get_autoscaling_metric_spec(
         self,
-        kube_client: KubeClient,
         name: str,
-        owner_uid: str,
-        min_replicas: Optional[int],
-        max_replicas: Optional[int],
+        cluster: str,
+        kube_client: KubeClient,
+        namespace: str,
     ) -> Optional[V2beta2HorizontalPodAutoscaler]:
         # Returns None if an HPA should not be attached based on the config,
         # or the config is invalid.
 
+        if self.get_desired_state() == "stop":
+            return None
+
+        if not self.is_autoscaling_enabled():
+            return None
+
+        autoscaling_params = self.get_autoscaling_params()
+        if autoscaling_params["metrics_providers"][0]["decision_policy"] == "bespoke":
+            return None
+
+        min_replicas = self.get_min_instances()
+        max_replicas = self.get_max_instances()
         if min_replicas == 0 or max_replicas == 0:
             log.error(
                 f"Invalid value for min or max_instances on {name}: {min_replicas}, {max_replicas}"
             )
             return None
 
-        return V2beta2HorizontalPodAutoscaler(
+        metrics = []
+        for provider in autoscaling_params["metrics_providers"]:
+            spec = self.get_autoscaling_provider_spec(name, namespace, provider)
+            if spec is not None:
+                metrics.append(spec)
+        scaling_policy = self.get_autoscaling_scaling_policy(
+            max_replicas,
+            autoscaling_params,
+        )
+
+        labels = {
+            paasta_prefixed("service"): self.service,
+            paasta_prefixed("instance"): self.instance,
+            paasta_prefixed("pool"): self.get_pool(),
+            paasta_prefixed("managed"): "true",
+        }
+
+        hpa = V2beta2HorizontalPodAutoscaler(
             kind="HorizontalPodAutoscaler",
             metadata=V1ObjectMeta(
-                name=name,
-                namespace=self.get_namespace(),
-                annotations=dict(),
-                labels={
-                    paasta_prefixed("service"): self.service,
-                    paasta_prefixed("instance"): self.instance,
-                    paasta_prefixed("pool"): self.get_pool(),
-                    paasta_prefixed("managed"): "true",
-                },
-                owner_references=[
-                    V1OwnerReference(
-                        api_version="planetscale.com/v2",
-                        kind="VitessCluster",
-                        name=sanitised_cr_name(self.service, self.instance),
-                        uid=owner_uid,
-                        controller=True,
-                        block_owner_deletion=True,
-                    ),
-                ],
+                name=name, namespace=namespace, annotations=dict(), labels=labels
             ),
             spec=V2beta2HorizontalPodAutoscalerSpec(
-                behavior={
-                    "scaleDown": {
-                        "stabilizationWindowSeconds": 300,
-                        # the policy in a human-readable way: scale down every 60s by
-                        # at most 30% of current replicas.
-                        "selectPolicy": "Max",
-                        "policies": [
-                            {"type": "Percent", "value": 30, "periodSeconds": 60}
-                        ],
-                    }
-                },
+                behavior=scaling_policy,
                 max_replicas=max_replicas,
                 min_replicas=min_replicas,
-                metrics=[
-                    V2beta2MetricSpec(
-                        type="Resource",
-                        resource=V2beta2ResourceMetricSource(
-                            name="cpu",
-                            target=V2beta2MetricTarget(
-                                type="Utilization",
-                                average_utilization=int(
-                                    DEFAULT_AUTOSCALING_SETPOINT * 100
-                                ),
-                            ),
-                        ),
-                    )
-                ],
-                scale_target_ref=V2beta2CrossVersionObjectReference(
-                    api_version="yelp.com/v1alpha1", kind="Vtgate", name=name
-                ),
+                metrics=metrics,
+                scale_target_ref=self.get_autoscaling_target(name),
             ),
         )
+
+        return hpa
+
+    def get_min_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("min_instances", 1)
+
+    def get_max_instances(self) -> Optional[int]:
+        vtgate_resources = self.config_dict.get("vtgate_resources")
+        return vtgate_resources.get("max_instances")
 
     def reconcile_vtgate_hpa(
         self,
@@ -971,8 +968,9 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         owner_uid: str,
         cell_config: CellConfigDict,
     ):
-        should_exist = self.is_vtgate_autoscaling_enabled(cell_config)
         name = self.get_vtgate_hpa_name(cell_config["name"])
+        should_exist = self.is_vtgate_autoscaling_enabled(cell_config)
+
         exists = (
             len(
                 kube_client.autoscaling.list_namespaced_horizontal_pod_autoscaler(
@@ -984,13 +982,15 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
         )
 
         if should_exist:
-            hpa = self.get_desired_horizontal_pod_autoscaler(
+            hpa = self.get_autoscaling_metric_spec(
+                name=sanitised_cr_name(self.service, self.instance),
+                cluster=self.get_cluster(),
                 kube_client=kube_client,
-                name=name,
-                owner_uid=owner_uid,
-                min_replicas=cell_config["gateway"]["min_instances"],
-                max_replicas=cell_config["gateway"]["max_instances"],
+                namespace=self.get_namespace(),
             )
+            if not hpa:
+                return
+
             if exists:
                 kube_client.autoscaling.replace_namespaced_horizontal_pod_autoscaler(
                     name=name,
