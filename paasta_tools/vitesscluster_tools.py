@@ -224,12 +224,8 @@ def get_vt_admin_config(
     return config
 
 
-class VitessDeploymentConfigDict(KubernetesDeploymentConfigDict, total=False):
+class VitessClusterConfigDict(KubernetesDeploymentConfigDict, total=False):
     images: Dict[str, str]
-    zk_address: str
-
-
-class VitessClusterConfigDict(VitessDeploymentConfigDict, total=False):
     cells: List[CellConfigDict]
     vitessDashboard: VitessDashboardConfigDict
     vtadmin: VtAdminConfigDict
@@ -247,9 +243,42 @@ class VitessClusterInstanceConfigDict(KubernetesDeploymentConfigDict, total=Fals
     images: Dict[str, str]
 
 
-class VitessDeploymentConfig(KubernetesDeploymentConfig):
+class VitessClusterConfig(KubernetesDeploymentConfig):
+    config_dict: VitessClusterInstanceConfigDict
+
+    config_filename_prefix = "vitesscluster"
+
+    def __init__(
+        self,
+        service: str,
+        cluster: str,
+        instance: str,
+        config_dict: VitessClusterConfigDict,
+        branch_dict: Optional[BranchDictV2],
+        soa_dir: str = DEFAULT_SOA_DIR,
+    ) -> None:
+        super().__init__(
+            cluster=cluster,  # superregion
+            instance=instance,  # host-1
+            service=service,  # vitess
+            soa_dir=soa_dir,
+            config_dict=config_dict,
+            branch_dict=branch_dict,
+        )
+
     def get_namespace(self) -> str:
         return KUBERNETES_NAMESPACE
+
+    def get_images(self) -> Dict[str, str]:
+        vitess_images = self.config_dict.get(
+            "images", load_system_paasta_config().get_vitess_images()
+        )
+        return {
+            "vtctld": vitess_images["vtctld_image"],
+            "vtadmin": vitess_images["vtadmin_image"],
+            "vtgate": vitess_images["vtgate_image"],
+            "vttablet": vitess_images["vttablet_image"],
+        }
 
     def get_env_variables(self) -> List[Union[KVEnvVar, KVEnvVarValueFrom]]:
         # get all K8s container env vars and format their keys to camel case
@@ -314,44 +343,6 @@ class VitessDeploymentConfig(KubernetesDeploymentConfig):
             sys.exit(1)
         return region
 
-    def get_update_strategy(self) -> Dict[str, str]:
-        return {"type": "Immediate"}
-
-
-class VitessClusterConfig(VitessDeploymentConfig):
-    config_dict: VitessClusterInstanceConfigDict
-
-    config_filename_prefix = "vitesscluster"
-
-    def __init__(
-        self,
-        service: str,
-        cluster: str,
-        instance: str,
-        config_dict: VitessClusterConfigDict,
-        branch_dict: Optional[BranchDictV2],
-        soa_dir: str = DEFAULT_SOA_DIR,
-    ) -> None:
-        super().__init__(
-            cluster=cluster,  # superregion
-            instance=instance,  # host-1
-            service=service,  # vitess
-            soa_dir=soa_dir,
-            config_dict=config_dict,
-            branch_dict=branch_dict,
-        )
-
-    def get_images(self) -> Dict[str, str]:
-        vitess_images = self.config_dict.get(
-            "images", load_system_paasta_config().get_vitess_images()
-        )
-        return {
-            "vtctld": vitess_images["vtctld_image"],
-            "vtadmin": vitess_images["vtadmin_image"],
-            "vtgate": vitess_images["vtgate_image"],
-            "vttablet": vitess_images["vttablet_image"],
-        }
-
     def get_global_lock_server(self) -> Dict[str, Dict[str, str]]:
         zk_address = self.config_dict.get("zk_address")
         return {
@@ -398,6 +389,9 @@ class VitessClusterConfig(VitessDeploymentConfig):
     def get_cells(self) -> List[CellConfigDict]:
         cells = self.config_dict.get("cells")
         return [get_cell_config(cell) for cell in cells]
+
+    def get_update_strategy(self) -> Dict[str, str]:
+        return {"type": "Immediate"}
 
     def get_vitess_config(self) -> VitessClusterConfigDict:
         vitess_config = VitessClusterConfigDict(
