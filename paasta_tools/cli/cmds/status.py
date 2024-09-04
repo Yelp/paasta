@@ -95,18 +95,14 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.vitesscell_tools import VitessCellConfig
-from paasta_tools.vitesscluster_tools import VitessClusterConfig
-from paasta_tools.vitesskeyspace_tools import VitessKeyspaceConfig
+from paasta_tools.vitesscluster_tools import VitessDeploymentConfig
 
 FLINK_STATUS_MAX_THREAD_POOL_WORKERS = 50
 ALLOWED_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
-    VitessClusterConfig,
-    VitessCellConfig,
-    VitessKeyspaceConfig,
+    VitessDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -119,9 +115,7 @@ DEPLOYMENT_INSTANCE_CONFIG: Sequence[Type[InstanceConfig]] = [
     FlinkDeploymentConfig,
     FlinkEksDeploymentConfig,
     CassandraClusterDeploymentConfig,
-    VitessClusterConfig,
-    VitessCellConfig,
-    VitessKeyspaceConfig,
+    VitessDeploymentConfig,
     KafkaClusterDeploymentConfig,
     KubernetesDeploymentConfig,
     EksDeploymentConfig,
@@ -143,9 +137,7 @@ InstanceStatusWriter = Callable[
 EKS_DEPLOYMENT_CONFIGS = [
     EksDeploymentConfig,
     FlinkEksDeploymentConfig,
-    VitessClusterConfig,
-    VitessCellConfig,
-    VitessKeyspaceConfig,
+    VitessDeploymentConfig,
 ]
 FLINK_DEPLOYMENT_CONFIGS = [FlinkDeploymentConfig, FlinkEksDeploymentConfig]
 

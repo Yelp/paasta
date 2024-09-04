@@ -76,9 +76,7 @@ from paasta_tools.utils import PAASTA_K8S_INSTANCE_TYPES
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import validate_service_instance
-from paasta_tools.vitesscell_tools import load_vitess_cell_instance_config
-from paasta_tools.vitesscluster_tools import load_vitess_cluster_instance_config
-from paasta_tools.vitesskeyspace_tools import load_vitess_keyspace_instance_config
+from paasta_tools.vitesscluster_tools import load_vitess_instance_config
 
 try:
     from vault_tools.paasta_secret import get_client as get_vault_client
@@ -682,13 +680,7 @@ INSTANCE_TYPE_HANDLERS: Mapping[str, InstanceTypeHandler] = defaultdict(
         get_service_instance_list, load_kafkacluster_instance_config
     ),
     vitesscluster=InstanceTypeHandler(
-        get_service_instance_list, load_vitess_cluster_instance_config
-    ),
-    vitesscell=InstanceTypeHandler(
-        get_service_instance_list, load_vitess_cell_instance_config
-    ),
-    vitesskeyspace=InstanceTypeHandler(
-        get_service_instance_list, load_vitess_keyspace_instance_config
+        get_service_instance_list, load_vitess_instance_config
     ),
     nrtsearchservice=InstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
@@ -721,13 +713,7 @@ LONG_RUNNING_INSTANCE_TYPE_HANDLERS: Mapping[
         get_service_instance_list, load_kafkacluster_instance_config
     ),
     vitesscluster=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_vitess_cluster_instance_config
-    ),
-    vitesscell=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_vitess_cell_instance_config
-    ),
-    vitesskeyspace=LongRunningInstanceTypeHandler(
-        get_service_instance_list, load_vitess_keyspace_instance_config
+        get_service_instance_list, load_vitess_instance_config
     ),
     nrtsearchservice=LongRunningInstanceTypeHandler(
         get_service_instance_list, load_nrtsearchservice_instance_config
