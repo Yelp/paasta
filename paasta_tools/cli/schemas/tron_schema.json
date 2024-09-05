@@ -231,6 +231,9 @@
                         }
                     }
                 },
+                "uses_bulkdata": {
+                    "type": "boolean"
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
@@ -660,9 +663,6 @@
                 },
                 "deploy_group": {
                     "type": "string"
-                },
-                "uses_bulkdata": {
-                    "type": "boolean"
                 }
             }
         }

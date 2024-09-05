@@ -1021,7 +1021,13 @@ def format_tron_action_dict(action_config: TronActionConfig):
         # service account token volumes for service authentication
         result["projected_sa_volumes"] = action_config.get_projected_sa_volumes()
 
-        extra_volumes = action_config.get_extra_volumes()
+        # XXX: now that we're actually passing through extra_volumes correctly (e.g., using get_volumes()),
+        # we can get rid of the default_volumes from the Tron master config
+        system_paasta_config = load_system_paasta_config()
+        extra_volumes = action_config.get_volumes(
+            system_paasta_config.get_volumes(),
+            uses_bulkdata_default=system_paasta_config.get_uses_bulkdata_default(),
+        )
         if executor == "spark":
             is_mrjob = action_config.config_dict.get("mrjob", False)
             system_paasta_config = load_system_paasta_config()
