@@ -1,3 +1,12 @@
+paasta-tools (1.4.29) xenial; urgency=medium
+
+  * 1.4.29 tagged with 'make release'
+    Commit: Merge pull request #3943 from Yelp/u/ahaswell/perel-4210-per-
+    endpoint-alerting-schema  U/ahaswell/perel 4210 per endpoint
+    alerting schema
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Thu, 05 Sep 2024 10:15:22 -0700
+
 paasta-tools (1.4.28) xenial; urgency=medium
 
   * 1.4.28 tagged with 'make release'
