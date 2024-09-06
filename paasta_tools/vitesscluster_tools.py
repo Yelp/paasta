@@ -545,7 +545,10 @@ def get_keyspaces_config(
         tablet_types = load_system_paasta_config().get_vitess_tablet_types()
         for tablet_type in tablet_types:
             ecosystem = region.split("-")[-1]
-            host = f"mysql-{cluster}-{tablet_type}.dre-{ecosystem}"
+            if tablet_type == "primary":
+                host = f"mysql-{cluster}.dre-{ecosystem}"
+            else:
+                host = f"mysql-{cluster}-{tablet_type}.dre-{ecosystem}"
 
             # We use migration_replication delay for migration tablets and read_replication_delay for everything else
             # Also throttling threshold for refresh and sanitized primaries is set at 30 seconds and everything else at 3 seconds

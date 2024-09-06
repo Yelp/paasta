@@ -209,7 +209,7 @@ VITESS_CONFIG = {
                                             "volumeName": "vttablet-fake-credentials",
                                         },
                                         "database": "fake_keyspaces",
-                                        "host": "mysql-fake_cluster-primary.dre-devc",
+                                        "host": "mysql-fake_cluster.dre-devc",
                                         "port": 3306,
                                         "user": "vt_app",
                                     },
