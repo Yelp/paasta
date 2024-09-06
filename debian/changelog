@@ -1,3 +1,14 @@
+paasta-tools (1.4.30) xenial; urgency=medium
+
+  * 1.4.30 tagged with 'make release'
+    Commit: Merge pull request #3934 from
+    Yelp/u/gonabavi/u/gonabavi/DREIMP-
+    10901_add_cloudmap_scripts_add_lifecycle_hooks_for_vtgate_pods  Add
+    lifecycle hooks for cloudmap (de)registration operations on vtgate
+    pods
+
+ -- Vinay Sagar Gonabavi <gonabavi@yelp.com>  Fri, 06 Sep 2024 12:17:05 -0700
+
 paasta-tools (1.4.29) xenial; urgency=medium
 
   * 1.4.29 tagged with 'make release'
