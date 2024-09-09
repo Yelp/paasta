@@ -1,6 +1,8 @@
 import json
 import logging
 import sys
+from datetime import datetime
+from datetime import timezone
 from typing import Any
 from typing import Dict
 from typing import List
@@ -12,6 +14,7 @@ from typing import Union
 import service_configuration_lib
 from kubernetes.client import ApiClient
 
+from paasta_tools.kubernetes_tools import KubeClient
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.kubernetes_tools import KubernetesDeploymentConfigDict
 from paasta_tools.kubernetes_tools import limit_size_with_hash
@@ -589,6 +592,52 @@ def get_keyspaces_config(
         )
         config.append(keyspace_config_value)
     return config
+
+
+def set_annotations(target: dict, desired_state: str, current_time: str) -> None:
+    annotations = target.setdefault("annotations", {})
+    annotations["yelp.com/desired_state"] = desired_state
+    annotations["paasta.yelp.com/desired_state"] = desired_state
+    annotations["paasta.yelp.com/desired_state_updated_at"] = current_time
+
+
+def get_current_time() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def set_cr_desired_state(
+    kube_client: KubeClient,
+    cr_id: Mapping[str, str],
+    component: str,
+    desired_state: str,
+) -> None:
+    cr = kube_client.custom.get_namespaced_custom_object(**cr_id)
+    current_time = get_current_time()
+
+    if component.startswith("vtgate"):
+        cr.setdefault("spec", {}).setdefault("cells", [])
+        for cell in cr["spec"]["cells"]:
+            if component in ["vtgate", f"vtgate.{cell.get('name')}"]:
+                cell.setdefault("annotations", {})
+                set_annotations(cell, desired_state, current_time)
+    elif component == "vtadmin":
+        vtadmin = cr.setdefault("spec", {}).setdefault("vtadmin", {})
+        set_annotations(vtadmin, desired_state, current_time)
+    elif component == "vtctld":
+        vitess_dashboard = cr.setdefault("spec", {}).setdefault("vitessDashboard", {})
+        set_annotations(vitess_dashboard, desired_state, current_time)
+    elif component == "vtorc":
+        vitess_shard = cr.setdefault("spec", {}).setdefault("vitessShard", {})
+        set_annotations(vitess_shard, desired_state, current_time)
+    elif component == "vttablet":
+        cr.setdefault("spec", {}).setdefault("tabletPools", [])
+        for pool in cr["spec"]["tabletPools"]:
+            if component in ["vttablet", f"vttablet.{cell.get('cell')}"]:
+                set_annotations(pool, desired_state, current_time)
+    else:
+        raise RuntimeError(f"Unsupported component {component}")
+
+    kube_client.custom.replace_namespaced_custom_object(**cr_id, body=cr)
 
 
 class VitessDeploymentConfigDict(KubernetesDeploymentConfigDict, total=False):

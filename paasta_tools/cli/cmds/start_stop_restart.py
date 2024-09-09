@@ -37,6 +37,7 @@ from paasta_tools.kubernetes_tools import KubernetesDeploymentConfig
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.vitesscluster_tools import VitessDeploymentConfig
 
 
 def add_subparser(subparsers):
@@ -45,6 +46,7 @@ def add_subparser(subparsers):
         ("restart", "start or restart", "Start or restart", paasta_restart),
         ("stop", "stop", "Stop", paasta_stop),
     ]:
+        # TODO: rename status_parser to start_stop_restart_parser
         status_parser = subparsers.add_parser(
             command,
             help="%ss a PaaSTA service in a graceful way." % upper,
@@ -65,6 +67,11 @@ def add_subparser(subparsers):
             metavar="SOA_DIR",
             default=DEFAULT_SOA_DIR,
             help="define a different soa config directory",
+        )
+        status_parser.add_argument(
+            "--component",
+            dest="component",
+            help="The component to start/stop/restart",
         )
         status_parser.set_defaults(command=cmd_func)
 
@@ -160,6 +167,13 @@ def print_flink_message(desired_state):
         )
 
 
+def print_vitess_message(desired_state: str, component: str):
+    if desired_state == "start":
+        print("'start' will start or restart component {component}.")
+    elif desired_state == "stop":
+        print("'stop' will stop component {component}.")
+
+
 def confirm_to_continue(cluster_service_instances, desired_state):
     print(f"You are about to {desired_state} the following instances:")
     print("Either --instances or --clusters not specified. Asking for confirmation.")
@@ -231,6 +245,7 @@ def paasta_start_or_stop(args, desired_state):
     invalid_deploy_groups = []
     kubernetes_message_printed = False
     affected_flinks = []
+    affected_vitess_instances = []
 
     if args.clusters is None or args.instances is None:
         if confirm_to_continue(pargs.items(), desired_state) is False:
@@ -250,6 +265,10 @@ def paasta_start_or_stop(args, desired_state):
                 )
                 if isinstance(service_config, FlinkDeploymentConfig):
                     affected_flinks.append(service_config)
+                    continue
+
+                if isinstance(service_config, VitessDeploymentConfig):
+                    affected_vitess_instances.append(service_config)
                     continue
 
                 try:
@@ -314,6 +333,37 @@ def paasta_start_or_stop(args, desired_state):
                     service=service,
                     instance=instance,
                     desired_state=desired_state,
+                )
+            except client.api_error as exc:
+                print(exc.reason)
+                return exc.status
+
+            return_val = 0
+
+    if affected_vitess_instances:
+        print_vitess_message(desired_state, args.component)
+
+        system_paasta_config = load_system_paasta_config()
+        for service_config in affected_vitess_instances:
+            cluster = service_config.cluster
+            service = service_config.service
+            instance = service_config.instance
+            is_eks = True
+
+            client = get_paasta_oapi_client(
+                cluster=get_paasta_oapi_api_clustername(cluster=cluster, is_eks=is_eks),
+                system_paasta_config=system_paasta_config,
+            )
+            if not client:
+                print("Cannot get a paasta-api client")
+                exit(1)
+
+            try:
+                client.service.instance_set_state(
+                    service=service,
+                    instance=instance,
+                    desired_state=desired_state,
+                    component=args.component,
                 )
             except client.api_error as exc:
                 print(exc.reason)

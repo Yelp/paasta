@@ -5,6 +5,7 @@ from kubernetes.client import V1ObjectMeta
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.vitesscluster_tools import load_vitess_instance_config
 from paasta_tools.vitesscluster_tools import load_vitess_service_instance_configs
+from paasta_tools.vitesscluster_tools import set_cr_desired_state
 from paasta_tools.vitesscluster_tools import VitessDeploymentConfig
 
 
@@ -641,6 +642,40 @@ def mock_vitess_deployment_config():
         return_value=V1ObjectMeta(labels={}),
     ):
         yield
+
+
+@mock.patch(
+    "paasta_tools.vitesscluster_tools.get_current_time",
+    autospec=True,
+)
+def test_set_cr_desired_state(
+    mock_get_current_time,
+):
+    cr = {"spec": {"cells": [{"name": "fake_cell"}]}}
+    mock_get_current_time.return_value = "2024-09-09T19:40:24.680957+00:00"
+    kube_client = mock.MagicMock()
+    kube_client.custom.get_namespaced_custom_object.return_value = cr
+    set_cr_desired_state(
+        kube_client=kube_client,
+        cr_id={},
+        component="vtgate",
+        desired_state="start",
+    )
+    body = kube_client.custom.replace_namespaced_custom_object.call_args[1]["body"]
+    assert body == {
+        "spec": {
+            "cells": [
+                {
+                    "name": "fake_cell",
+                    "annotations": {
+                        "yelp.com/desired_state": "start",
+                        "paasta.yelp.com/desired_state": "start",
+                        "paasta.yelp.com/desired_state_updated_at": mock_get_current_time.return_value,
+                    },
+                },
+            ],
+        },
+    }
 
 
 @mock.patch(
