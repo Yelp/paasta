@@ -663,6 +663,10 @@
                 },
                 "deploy_group": {
                     "type": "string"
+                },
+                "uses_bulkdata": {
+                    "type": "boolean",
+                    "$comment": "XXX: this entry should be deleted once we've refactored existing configs to use the correct toggle location"
                 }
             }
         }
