@@ -1,3 +1,24 @@
+paasta-tools (1.4.31) xenial; urgency=medium
+
+  * 1.4.31 tagged with 'make release'
+    Commit: tron: update schema for bulkdata + correctly pass extra
+    volumes (#3948)  We collectively missed that get_volumes() gets
+    called on the TronActionConfig and not the TronJobConfig.
+    Furthermore, we missed that we weren"t actually calling
+    get_volumes() for normal Tron jobs - instead, we were only calling
+    get_extra_volumes() and relying on the Tron `default_volumes` config
+    to add the usual default volumes (which differs from how services
+    work: we always call get_volumes() as we don"t distinguish between
+    user-provided volumes and default ones when generating the config
+    there).  I"ve tested this on tron-infrastage (as well as ensured
+    tests pass for this commit), so this should be safe.  NOTE: this
+    leaves existing uses_bulkdata toggle location in the schema.
+    Otherwise, the timing of this will be annoying since there"s places
+    that use the paasta-tools deb that can take a while to get the
+    latest version (e.g., CICD)
+
+ -- Luis Perez <luisp@yelp.com>  Mon, 09 Sep 2024 10:23:21 -0700
+
 paasta-tools (1.4.30) xenial; urgency=medium
 
   * 1.4.30 tagged with 'make release'
