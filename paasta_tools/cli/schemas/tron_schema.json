@@ -231,6 +231,9 @@
                         }
                     }
                 },
+                "uses_bulkdata": {
+                    "type": "boolean"
+                },
                 "extra_volumes": {
                     "type": "array",
                     "items": {
@@ -662,7 +665,8 @@
                     "type": "string"
                 },
                 "uses_bulkdata": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "$comment": "XXX: this entry should be deleted once we've refactored existing configs to use the correct toggle location"
                 }
             }
         }

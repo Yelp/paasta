@@ -943,7 +943,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1002,7 +1007,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "projected_sa_volumes": [
                 {"audience": "foo.bar.com", "container_path": "/var/foo/bar"},
@@ -1086,6 +1096,11 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
                 {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
@@ -1099,18 +1114,21 @@ class TestTronTools:
             "force_bounce": None,
         }
         mock_get_k8s_docker_volumes_conf.return_value = {
-            "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/nail/tmp",
-            "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/nail/tmp",
-            "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "false",
-            "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/etc/pki/spark",
-            "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/etc/pki/spark",
-            "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "true",
-            "spark.kubernetes.executor.volumes.hostPath.2.mount.path": "/etc/passwd",
-            "spark.kubernetes.executor.volumes.hostPath.2.options.path": "/etc/passwd",
+            "spark.kubernetes.executor.volumes.hostPath.0.mount.path": "/nail/bulkdata",
+            "spark.kubernetes.executor.volumes.hostPath.0.options.path": "/nail/bulkdata",
+            "spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly": "true",
+            "spark.kubernetes.executor.volumes.hostPath.1.mount.path": "/nail/tmp",
+            "spark.kubernetes.executor.volumes.hostPath.1.options.path": "/nail/tmp",
+            "spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly": "false",
+            "spark.kubernetes.executor.volumes.hostPath.2.mount.path": "/etc/pki/spark",
+            "spark.kubernetes.executor.volumes.hostPath.2.options.path": "/etc/pki/spark",
             "spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly": "true",
-            "spark.kubernetes.executor.volumes.hostPath.3.mount.path": "/etc/group",
-            "spark.kubernetes.executor.volumes.hostPath.3.options.path": "/etc/group",
+            "spark.kubernetes.executor.volumes.hostPath.3.mount.path": "/etc/passwd",
+            "spark.kubernetes.executor.volumes.hostPath.3.options.path": "/etc/passwd",
             "spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly": "true",
+            "spark.kubernetes.executor.volumes.hostPath.4.mount.path": "/etc/group",
+            "spark.kubernetes.executor.volumes.hostPath.4.options.path": "/etc/group",
+            "spark.kubernetes.executor.volumes.hostPath.4.mount.readOnly": "true",
         }
         mock_load_spark_srv_conf.return_value = (
             {},
@@ -1254,18 +1272,21 @@ class TestTronTools:
             "--conf spark.kubernetes.executor.label.paasta.yelp.com/pool=special_pool "
             "--conf spark.kubernetes.executor.label.yelp.com/owner=core_ml "
             "--conf spark.kubernetes.executor.podTemplateFile=/nail/srv/configs/spark_dns_pod_template.yaml "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/tmp "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/tmp "
-            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=false "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/etc/pki/spark "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/etc/pki/spark "
-            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=true "
-            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/passwd "
-            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.path=/nail/bulkdata "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.options.path=/nail/bulkdata "
+            "--conf spark.kubernetes.executor.volumes.hostPath.0.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.options.path=/nail/tmp "
+            "--conf spark.kubernetes.executor.volumes.hostPath.1.mount.readOnly=false "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.path=/etc/pki/spark "
+            "--conf spark.kubernetes.executor.volumes.hostPath.2.options.path=/etc/pki/spark "
             "--conf spark.kubernetes.executor.volumes.hostPath.2.mount.readOnly=true "
-            "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.path=/etc/group "
-            "--conf spark.kubernetes.executor.volumes.hostPath.3.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.path=/etc/passwd "
+            "--conf spark.kubernetes.executor.volumes.hostPath.3.options.path=/etc/passwd "
             "--conf spark.kubernetes.executor.volumes.hostPath.3.mount.readOnly=true "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.mount.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.options.path=/etc/group "
+            "--conf spark.kubernetes.executor.volumes.hostPath.4.mount.readOnly=true "
             "--conf spark.dynamicAllocation.enabled=true "
             "--conf spark.dynamicAllocation.shuffleTracking.enabled=true "
             "--conf spark.dynamicAllocation.executorAllocationRatio=0.8 "
@@ -1357,6 +1378,11 @@ class TestTronTools:
                 "prometheus.io/path": "/metrics/prometheus",
             },
             "extra_volumes": [
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
                 {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
                 {
                     "container_path": "/etc/kubernetes/spark.conf",
@@ -1443,7 +1469,13 @@ class TestTronTools:
             "secret_env": {},
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "secret_volumes": [],
-            "extra_volumes": [],
+            "extra_volumes": [
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                }
+            ],
             "service_account_name": "a-magic-sa",
         }
         expected_docker = "{}/{}".format(
@@ -1498,7 +1530,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1591,7 +1628,12 @@ class TestTronTools:
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "trigger_downstreams": True,
             "triggered_by": ["foo.bar.{shortdate}"],
@@ -1628,7 +1670,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"}
+                {
+                    "containerPath": "/nail/bulkdata",
+                    "hostPath": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"containerPath": "/nail/tmp", "hostPath": "/nail/tmp", "mode": "RW"},
             ],
         }
         action_config = tron_tools.TronActionConfig(
@@ -1672,7 +1719,12 @@ class TestTronTools:
                 }
             ],
             "extra_volumes": [
-                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"}
+                {
+                    "container_path": "/nail/bulkdata",
+                    "host_path": "/nail/bulkdata",
+                    "mode": "RO",
+                },
+                {"container_path": "/nail/tmp", "host_path": "/nail/tmp", "mode": "RW"},
             ],
             "field_selector_env": {"PAASTA_POD_IP": {"field_path": "status.podIP"}},
             "node_selectors": {"yelp.com/pool": "special_pool"},
@@ -1830,7 +1882,7 @@ fake_job:
         # that are not static, this will cause continuous reconfiguration, which
         # will add significant load to the Tron API, which happened in DAR-1461.
         # but if this is intended, just change the hash.
-        assert hasher.hexdigest() == "211f7a9d1fdee382664ee0e25fe76e17"
+        assert hasher.hexdigest() == "26dae1d70ae0b937706e3de597cc07e8"
 
     def test_override_default_pool_override(self, tmpdir):
         soa_dir = tmpdir.mkdir("test_create_complete_config_soa")
