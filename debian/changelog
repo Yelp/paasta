@@ -1,3 +1,14 @@
+paasta-tools (1.4.33) xenial; urgency=medium
+
+  * 1.4.33 tagged with 'make release'
+    Commit: Revert "Bump service-configuration-lib to 2.18.22 to reduce
+    logspam + IO (#3952)" (#3953)  Reverts #3952 since there"s one spark
+    config that is mounting /etc/pki/spark unnecessarily and i"m running
+    into issues setting up a test to confirm that it"s indeed not
+    necessary
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Sep 2024 15:42:21 -0700
+
 paasta-tools (1.4.32) xenial; urgency=medium
 
   * 1.4.32 tagged with 'make release'
