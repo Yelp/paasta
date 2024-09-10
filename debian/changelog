@@ -1,3 +1,15 @@
+paasta-tools (1.4.32) xenial; urgency=medium
+
+  * 1.4.32 tagged with 'make release'
+    Commit: Bump service-configuration-lib to 2.18.22 to reduce logspam
+    + IO (#3952)  The previous version printed out a log line for every
+    volume that did not exist on the host running a spark config getter -
+    but that"s not necessarily an error as the set of files on a kube
+    node do not always match those on boxes where s-c-l is being invoked
+    from
+
+ -- Luis Perez <luisp@yelp.com>  Tue, 10 Sep 2024 12:08:38 -0700
+
 paasta-tools (1.4.31) xenial; urgency=medium
 
   * 1.4.31 tagged with 'make release'
