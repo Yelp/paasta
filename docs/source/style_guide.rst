@@ -47,9 +47,9 @@ Bad:
  * Anything going to scribe should ALSO go to stdout.
 
 Good:
- * setup_marathon_job => general output to stdout, app-specific output to scribe
+ * setup_kubernetes_job => general output to stdout, app-specific output to scribe
 Bad:
- * setup_marathon_job | stdint2scribe (no selective filtering, raw stdout dump)
+ * setup_kubernetes_job | stdint2scribe (no selective filtering, raw stdout dump)
 
 Good:
  * paasta itest => Sends summary of pass or fail to scribe event log. Sends full output of the run to the scribe debug log

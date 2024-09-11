@@ -29,7 +29,7 @@ System Package Building / itests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA is distributed as a debian package. This package can be built and tested
-with ``make itest_xenial``. These tests make assertions about the
+with ``make itest_<os_codename>``. These tests make assertions about the
 packaging implementation.
 
 
@@ -71,12 +71,3 @@ it is a little tricky.
   * ``eval "$(.tox/py27/bin/register-python-argcomplete ./tox/py27/bin/paasta)"``
 
 * There is a simple integration test. See the itest/ folder.
-
-Upgrading Components
---------------------
-
-As things progress, there will come a time that you will have to upgrade
-PaaSTA components to new versions.
-
-* See `Upgrading Mesos <upgrading_mesos.html>`_ for how to upgrade Mesos safely.
-* See `Upgrading Marathon <upgrading_marathon.html>`_ for how to upgrade Marathon safely.

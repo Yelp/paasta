@@ -1,27 +1,25 @@
 ==============================================
-Resource Isolation in PaaSTA, Mesos and Docker
+Resource Isolation in PaaSTA, Kubernetes and Docker
 ==============================================
 
 PaaSTA instance definitions include fields that specify the required resources
-for your service. The reason for this is two-fold: firstly, so that whichever
-Mesos framework can evaluate which Mesos agent making
-offers have enough capacity to run the task (and pick one of the agents
-accordingly); secondly, so that tasks can be protected from especially noisy
-neighbours on a box. That is, if a task under-specifies the resources it
+for your service. The reason for this is two-fold: firstly, so that the Kubernetes scheduler
+can evaluate which Kubernetes nodes have enough capacity to schedule the kubernetes pods (representing paasta instances) on, in the cluster specified;
+secondly, so that the pods can be protected from especially noisy
+neighbours on a box. That is, if a pod under-specifies the resources it
 requires to run, or in another case, has a bug that means that it consumes far
-more resources than it *should* require, then the offending tasks can be
+more resources than it *should* require, then the offending pods can be
 isolated effectively, preventing them from having a negative impact on its
 neighbours.
 
-This document is designed to give a more detailed review of how Mesos
-Frameworks such as Marathon use these requirements to run tasks on
-different Mesos agents, and how these isolation mechanisms are implemented.
+This document is designed to give a more detailed review of how Kubernetes
+use these requirements to run pods on different Kubernetes nodes, and how these isolation mechanisms are implemented.
 
 Note: Knowing the details of these systems isn't a requirement of using PaaSTA;
 most service authors may never need to know the details of such things. In
 fact, one of PaaSTA's primary design goals is to *hide* the minutiae of
 schedulers and resource isolation. However, this may benefit administrators
-of PaaSTA (and, more generally, Mesos clusters), and the simply curious.
+of PaaSTA (and, more generally, Kubernetes clusters), and the simply curious.
 
 Final note: The details herein may, nay, will contain (unintended) inaccuracies.
 If you notice such a thing, we'd be super grateful if you could open a pull
@@ -31,64 +29,55 @@ How Tasks are Scheduled on Hosts
 --------------------------------
 
 To first understand how these resources are used, one must understand how
-a task is run on a Mesos cluster.
+a pod is run on a Kubernetes cluster.
 
-Mesos can run in two modes: Master and Agent. When a node is running Mesos in
-Master mode, it is responsible for communicating between agent processes and
-frameworks. A Framework is a program which wants to run tasks on the Mesos
-cluster.
+Kubernetes has two types of nodes: Master and worker nodes. The master node is
+is responsible for managing the cluster. This includes scheduling applications (i.e. paasta services), maintaining
+applications' desired states, scaling applications and rolling out new updates.
 
-A master is responsible for presenting frameworks with resource offers.
-Resource offers are compute resource free for a framework to run a task. The
-details of that compute resource comes from the agent nodes, which regularly
-tell the Master agent the resources it has available for running tasks. Using
-the correct parlance, Mesos agents make 'offers' to the master.
+The master node contains the following components:
 
-Once a master node receives offers from an agent, it forwards it to
-a framework. Resource offers are split between frameworks according to
-the master's configuration - there may be particular priority given
-to some frameworks.
+  * API Server: Exposes the Kubernetes API. It is the front-end for the Kubernetes control plane.
+  * Scheduler: Responsible for distributing workloads across multiple nodes.
+  * Controller Manager: Responsible for regulating the state of the cluster.
+  * etcd: Consistent and highly-available key value store used as Kubernetes' backing store for all cluster data.
 
-At Yelp, we treat the frameworks we run (at the time of writing, Marathon and
-Tron) equally. That means that frameworks *should* have offers distributed
-between them evenly, and all tasks are considered equal.
+Worker nodes are the machines that run the workload. Each worker node runs the following components
+to manage the execution and networking of containers:
 
-It is then up to the framework to decide what it wants to do with an offer.
-The framework may decide to:
+  * Kubelet: An agent that runs on each node in the cluster. It makes sure that containers are running in a pod.
+  * Kube-proxy: Maintains network rules on nodes. These network rules allow network communication to pods from network sessions inside or outside of the cluster.
+  * Container runtime: The software that is responsible for running containers. Kubernetes supports several container runtimes: Docker, containerd, CRI-O, and any implementation of the Kubernetes CRI (Container Runtime Interface).
 
-  * Reject the offer, if the framework has no tasks to run.
-  * Reject the offer, if the resources included in the offer are not enough to
-    match those required by the application.
-  * Reject the offer, if attributes on the slave conflict with any constraints
-    set by the task.
-  * Accept the offer, if there is a task that requires resources less than or
-    equal to the resources offered by the Agent.
 
-When rejecting an offer, the framework may apply a 'filter' to the offer. This
-filter is then used by the Mesos master to ensure that it does *not* resend
-offers that are 'filtered' by a framework. The default filter applied includes
-a timeout - a Master will not resend an offer to a framework for a period of 5
-seconds.
+When a new pod (representing a paasta instance) is created, the Kubernetes scheduler (kube-scheduler) will assign it to the best node for it to run on.
+The scheduler will take into account the resources required by the pod, the resources available on the nodes, and any constraints that are specified. It takes the following
+criteria into account when selecting a node to have the pod run on:
 
-If a framework decides it wants to accept a resource offer, it then tells the
-master to run a task on the agent. The details of the 'acceptance' include a
-detail of the task to be run, and the 'executor' used to run the task.
+  * Resource requirements: Checks if nodes have enough CPU, memory, and other resources requested by the pod.
+  * Node affinity: Checks if the pod should be scheduled on a node that has a specific label.
+  * Inter-pod affinity/anti-affinity: checks if the pod should be scheduled near or far from another pod.
+  * Taints and tolerations: Checks if the pod should be scheduled on a node that has a specific taint.
+  * Node selectors: Checks if the pod should be scheduled on a node that has a specific label.
+  * Custom Policies: any custom scheduling policies or priorities such as "deploy_whitelist", "deploy_blacklist" and "discovery" (used by smartstack).
 
-By default, PaaSTA uses the 'Docker' executor everywhere. This means that *all*
-tasks launched by Marathon and Tron are done so with a Docker container.
+The scheduler will then score each node that can host the pod, based on the criteria above and any custom policies and then select the node
+with the highest score to run the pod on. If multiple nodes have the same highest score then one of them is chosen randomly. Once a node is selected, the scheduler assigns
+the pod to the node and the decision is then communicated back to the API server, which in turn notifies the kubelet on the chosen node to start the pod.
 
-How Tasks are isolated from each other.
+How are paasta services isolated from each other.
 ---------------------------------------
 
-Given that a slave may run multiple tasks, we need to ensure that tasks cannot
+Given that a node may run multiple pods for paasta services, we need to ensure that pods cannot
 'interfere' with one another. We do this on a file system level using Docker -
 processes launched in Docker containers are protected from each other and the
 host by using kernel namespaces. Note that the use of kernel namespaces is a
-feature of Docker - PaaSTA doesn't do anything 'extra' to enable this. It's
-also worth noting that there are other 'container' technologies that could
-provide this - the native Mesos 'containerizer' included.
+feature of Docker - PaaSTA doesn't do anything 'extra' to enable this. In addition,
+Kubernetes namespaces provide further isolation of resources within the cluster. Each paasta service
+is assigned to a namespace, and resources within a namespace are isolated from those in other namespaces. This helps in managing
+resources for different paasta services.
 
-However, these tasks are still running and consuming resources on the same
+However, these pods are still running and consuming resources on the same
 host. The next section aims to explain how PaaSTA services are protected from
 so-called 'noisy neighbours' that can starve others from resources.
 
@@ -130,21 +119,21 @@ If the processes in the cgroup reaches the ``memsw.limit_in_bytes`` value ,
 then the kernel will invoke the OOM killer, which in turn will kill off one of
 the processes in the cgroup (often, but not always, this is the biggest
 contributor to the memory usage). If this is the only process running in the
-Docker container, then the container will die. The mesos framework which
-launched the task may or may not decide to try and start the same task
-elsewhere.
+Docker container, then the container will die. Kubernetes will attempt to reschedule the pod
+to maintain the desired number of replicas specified in the Deployment. For each paasta instance, a deployment is created
+which manages the state of the pods for that instance, ensuring that a specified number of replicas (specified in soa-configs) are running at any given time.
 
 CPUs
 """"
 
 CPU enforcement is implemented slightly differently. Many people expect the
 value defined in the ``cpus`` field in a service's soa-configs to map to a
-number of cores that are reserved for a task. However, isolating CPU time like
+number of cores that are reserved for a pod. However, isolating CPU time like
 this can be particularly wasteful; unless a task spends 100% of its time on
-CPU (and thus has *no* I/O), then there is no need to prevent other tasks from
+CPU (and thus has *no* I/O), then there is no need to prevent other pods from
 running on the spare CPU time available.
 
-Instead, the CPU value is used to give tasks a relative priority. This priority
+Instead, the CPU value is used to give pods a relative priority. This priority
 is used by the Linux Scheduler decide the order in which to run waiting
 threads.
 
@@ -170,17 +159,9 @@ Some notes on this:
     against the share available for another. The result of this may be that
     a higher number of 'skinny' containers may be preferable to 'fat' containers.
 
-This is different from how Mesos and Marathon use the CPU value when evaluating
-whether a task 'fits' on a host. Yelp configures agents to advertise the number
-of cores on the box, and Marathon will only schedule containers on agents where
-there is enough 'room' on the host, when in reality, there is no such limit.
-
 Disk
 """""
 
-Unfortunately, the isolator provided by Mesos does not support isolating disk
-space used by Docker containers; that is, we have no way of limiting the amount
-of disk space used by a task. Our best effort is to ensure that the disk space
-is part of the offer given by a given Mesos agent to frameworks, and ensure
-that any services we know to use high disk usage (such as search indexes) have
-the ``disk`` field set appropriately in their configuration.
+Kubernetes supports disk resource isolation through the use of Persistent Volumes (PVs), Persistent Volume Claims (PVCs), and
+storage quotas. Paasta instances pods can claim a portion of storage through PVCs. This doesn't limit the disk space that the pod can use directly but
+it allows for the allocation of storage resources to pods. Disk resource is also isolated through the use of namespaces - each namespace has a set quota for the total amount of storage that can be requested by the paasta service running in it.

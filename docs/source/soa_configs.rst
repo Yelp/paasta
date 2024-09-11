@@ -22,8 +22,6 @@ directory. There is one folder per service. Here is an example tree::
   ├── api
   │   ├── adhoc-prod.yaml
   │   ├── deploy.yaml
-  │   ├── marathon-dev.yaml
-  │   ├── marathon-prod.yaml
   │   ├── monitoring.yaml
   │   ├── service.yaml
   │   ├── smartstack.yaml

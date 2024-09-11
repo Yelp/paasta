@@ -7,9 +7,9 @@ Ways That PaaSTA Can Run Services
 Long Running Services
 ^^^^^^^^^^^^^^^^^^^^^
 
-Long running services are are processes that are expected to run continuously
+Long running services are processes that are expected to run continuously
 and usually have the same process id throughout. PaaSTA uses
-`Marathon <yelpsoa_configs.html#marathon-clustername-yaml>`_ to configure how these
+`Kubernetes <yelpsoa_configs.html#kubernetes-clustername-yaml>`_ to configure how these
 services should run.
 
 These services often serve network traffic, usually HTTP. PaaSTA integrates with
@@ -61,68 +61,13 @@ Deployment
 A yelpsoa-configs master runs `generate_deployments_for_service <generated/paasta_tools.generate_deployments_for_service.html>`_
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
-Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
-a thin wrapper around ``setup_marathon_job``.
-These scripts parse ``deployments.json`` and the current cluster state,
-then issue commands to Marathon to put the cluster into the right state
--- cluster X should be running version Y of service Z.
-
 How PaaSTA Runs Docker Containers
 ---------------------------------
-Marathon launches the Docker containers that comprise a PaaSTA service.
+Kubernetes launches the Docker containers that comprise a PaaSTA service. Once a pod is scheduled to start, the kubelet on the node running the pod interacts with the container runtime
+through the Container Runtime Interface (CRI) to start the container defined in the pod specification.
 
-Docker images are run by Mesos's native Docker executor. PaaSTA composes the
-configuration for the running image:
-
-* ``--attach``: stdout and stderr from running images are sent to logs that end
-  up in the Mesos sandbox (currently unavailable).
-
-* ``--cpu-shares``: This is the value set in ``marathon.yaml`` as "cpus".
-
-* ``--memory``: This is the value set in ``marathon.yaml`` as "mem".
-
-* ``--memory-swap``: Total memory limit (memory + swap). We set this to the same value
-  as "mem", rounded up to the nearest MB, to prevent containers being able to swap.
-
-* ``--net``: PaaSTA uses bridge mode to enable random port allocation.
-
-* ``--env``: Any environment variables specified in the ``env`` section will be here. Additional
-  ``PAASTA_``, ``MARATHON_``, and ``MESOS_`` environment variables will also be injected, see the
-  `related docs <yelpsoa_configs.html#env>`_ for more information.
-
-* ``--publish``: Mesos picks a random port on the host that maps to and exposes
-  port 8888 inside the container. This random port is announced to Smartstack
-  so that it can be used for load balancing.
-
-* ``--privileged``: Containers run by PaaSTA are not privileged.
-
-* ``--restart``: No restart policy is set on PaaSTA containers. Restarting
-  tasks is left as a job for the Framework (Marathon).
-
-* ``--rm``: Mesos containers are rm'd after they finish.
-
-* ``--tty``: Mesos containers are *not* given a tty.
-
-* ``--volume``: Volume mapping is controlled via the paasta_tools
-  configuration. PaaSTA uses the volumes declared in ``/etc/paasta/volumes.json``
-  as well as per-service volumes declared in ``extra_volumes`` declared
-  in the `soa-configs <yelpsoa_configs.html#marathon-clustername-yaml>`_.
-
-* ``--workdir``: Mesos containers are launched in a temporary "workspace"
-  directory on disk. Use the workdir sparingly and try not to output files.
-
-Mesos is the actual system that runs the docker images. In Mesos land these are
-called "TASKS". PaaSTA-configured tasks use exponential backoff to prevent
-unhealthy tasks from continuously filling up disks and logs -- the more times
-that your service has failed to start, the longer Mesos will wait before
-trying to start it again.
-
-Mesos *will* healthcheck the task based on the same healthcheck that SmartStack
-uses, in order to prune unhealthy tasks. This pruning is less aggressive than
-SmartStack's checking, so a dead task will go DOWN in SmartStack before it is
-reaped by Marathon. By default the healthchecks occur every 10 seconds, and a service
-must fail 30 times before that task is pruned and a new one is launched in its place.
-This means a task had 5 minutes by default to properly respond to its healthchecks.
+Note: Kubernetes support multiple container runtimes, including Docker (via "dockershim", which is deprecated and removed as of Kubernetes v1.24), containerd, and CRI-O.
+In Yelp, we use docker and are currently in the process of migrating to containerd.
 
 Time Zones In Docker Containers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -180,15 +125,10 @@ Monitoring
 PaaSTA gives you a few `Sensu <https://sensuapp.org/docs/latest/>`_-powered
 monitoring checks for free:
 
-* `setup_marathon_job <generated/paasta_tools.setup_marathon_job.html#module-paasta_tools.setup_marathon_job>`_:
-  Alerts when a Marathon service cannot be deployed or bounced for some reason.
-  It will resolve when a service has been successfully deployed/bounced.
-
-* `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_:
+* **check_kubernetes_services_replication**:
   runs periodically and sends an alert if fewer than 50% of the requested
-  instances are deployed on a cluster. If the service is registered in Smartstack
-  it will look in Smartstack to count the available instances. Otherwise it
-  counts the number of healthy tasks in Mesos.
+  instances are deployed on a cluster. it will look in Smartstack to count the available instances
+  against the expected amount of instances that should've been deployed via Kubernetes.
 
 
 The PaaSTA command line

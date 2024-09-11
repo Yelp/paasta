@@ -13,7 +13,6 @@ Subpackages
    paasta_tools.frameworks
    paasta_tools.instance
    paasta_tools.kubernetes
-   paasta_tools.mesos
    paasta_tools.metrics
    paasta_tools.monitoring
    paasta_tools.paastaapi
@@ -71,9 +70,6 @@ Submodules
    paasta_tools.log_task_lifecycle_events
    paasta_tools.long_running_service_tools
    paasta_tools.mac_address
-   paasta_tools.marathon_dashboard
-   paasta_tools.mesos_maintenance
-   paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.monkrelaycluster_tools
    paasta_tools.nrtsearchservice_tools
