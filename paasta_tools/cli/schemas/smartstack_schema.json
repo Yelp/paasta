@@ -273,6 +273,24 @@
                                     "type": "number",
                                     "minimum": 0,
                                     "maximum": 1
+                                },
+                                "team": {
+                                    "type": "string"
+                                },
+                                "slack_channel": {
+                                    "type": "string"
+                                },
+                                "project": {
+                                    "type": "string"
+                                },
+                                "ticket": {
+                                    "type": "boolean"
+                                },
+                                "page": {
+                                    "type": "boolean"
+                                },
+                                "page_nonprod": {
+                                    "type": "boolean"
                                 }
                             },
                             "required": [
